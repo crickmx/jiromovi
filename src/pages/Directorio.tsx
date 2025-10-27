@@ -219,8 +219,15 @@ export function Directorio() {
                         </div>
                       )}
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-slate-900">
-                          {usuario.nombre} {usuario.apellidos}
+                        <div className="flex items-center space-x-2">
+                          <div className="text-sm font-medium text-slate-900">
+                            {usuario.nombre} {usuario.apellidos}
+                          </div>
+                          {usuario.estado === 'registrado' && (
+                            <span className="px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 rounded">
+                              Pendiente
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm text-slate-500">{usuario.puesto}</div>
                       </div>

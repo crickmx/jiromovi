@@ -42,13 +42,39 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     });
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: currentUser } } = await supabaseAdmin.auth.getUser(token);
+
+    if (!currentUser) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: currentUserData } = await supabaseAdmin
+      .from('usuarios')
+      .select('rol')
+      .eq('id', currentUser.id)
+      .single();
+
+    const isGerente = currentUserData?.rol === 'Gerente';
 
     const { email, password, userData }: CreateUserRequest = await req.json();
 
@@ -108,6 +134,7 @@ Deno.serve(async (req: Request) => {
       esquema_pago_id: userData.esquema_pago_id || null,
       banco: userData.banco || '',
       clabe: userData.clabe || '',
+      estado: isGerente ? 'registrado' : 'activo',
     });
 
     if (insertError) {

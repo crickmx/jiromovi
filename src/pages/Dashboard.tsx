@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Users, Building2, Calendar, Cake, Award, ExternalLink } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { UltimosCorreos } from '../components/UltimosCorreos';
+import { UsuariosPendientes } from '../components/UsuariosPendientes';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -183,6 +184,8 @@ export function Dashboard() {
       </div>
 
       <UltimosCorreos />
+
+      {currentUser?.rol === 'Administrador' && <UsuariosPendientes />}
 
       <div className={`grid grid-cols-1 md:grid-cols-2 ${isGerente ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-6`}>
         <div
