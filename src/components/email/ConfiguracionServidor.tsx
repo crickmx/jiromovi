@@ -1,16 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Server, Plus, Edit2, Trash2, X, Save, Eye, EyeOff, Bell } from 'lucide-react';
+import { Send, Plus, Edit2, Trash2, X, Save, Eye, EyeOff, Bell } from 'lucide-react';
 
-interface ConfiguracionServidor {
+interface ConfiguracionSendGrid {
   id: string;
-  tipo_servidor: 'smtp' | 'imap' | 'pop3';
-  host: string;
-  puerto: number;
-  usuario: string;
-  password_encriptado: string;
-  usa_ssl: boolean;
-  usa_tls: boolean;
+  api_key: string;
   email_remitente: string;
   nombre_remitente: string;
   activo: boolean;
@@ -25,24 +19,18 @@ interface ConfiguracionNotificacion {
 }
 
 export function ConfiguracionServidor() {
-  const [configuraciones, setConfiguraciones] = useState<ConfiguracionServidor[]>([]);
+  const [configuraciones, setConfiguraciones] = useState<ConfiguracionSendGrid[]>([]);
   const [notificacionConfig, setNotificacionConfig] = useState<ConfiguracionNotificacion | null>(null);
   const [emailsNotificacion, setEmailsNotificacion] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingConfig, setEditingConfig] = useState<ConfiguracionServidor | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<ConfiguracionSendGrid | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
   const [savingNotif, setSavingNotif] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [formData, setFormData] = useState({
-    tipo_servidor: 'smtp' as const,
-    host: '',
-    puerto: 587,
-    usuario: '',
-    password_encriptado: '',
-    usa_ssl: false,
-    usa_tls: true,
+    api_key: '',
     email_remitente: '',
     nombre_remitente: '',
     activo: false,
@@ -55,12 +43,12 @@ export function ConfiguracionServidor() {
   const loadData = async () => {
     setLoading(true);
     const [configRes, notifRes] = await Promise.all([
-      supabase.from('configuracion_servidor_correo').select('*').order('tipo_servidor'),
+      supabase.from('configuracion_sendgrid').select('*'),
       supabase.from('configuracion_notificaciones').select('*').eq('clave', 'emails_notificaciones_internas').maybeSingle(),
     ]);
 
     if (configRes.error) {
-      console.error('Error loading server configs:', configRes.error);
+      console.error('Error loading SendGrid configs:', configRes.error);
     } else {
       setConfiguraciones(configRes.data || []);
     }
@@ -113,13 +101,7 @@ export function ConfiguracionServidor() {
   const handleCreate = () => {
     setEditingConfig(null);
     setFormData({
-      tipo_servidor: 'smtp',
-      host: '',
-      puerto: 587,
-      usuario: '',
-      password_encriptado: '',
-      usa_ssl: false,
-      usa_tls: true,
+      api_key: '',
       email_remitente: '',
       nombre_remitente: '',
       activo: false,
@@ -127,16 +109,10 @@ export function ConfiguracionServidor() {
     setShowModal(true);
   };
 
-  const handleEdit = (config: ConfiguracionServidor) => {
+  const handleEdit = (config: ConfiguracionSendGrid) => {
     setEditingConfig(config);
     setFormData({
-      tipo_servidor: config.tipo_servidor,
-      host: config.host,
-      puerto: config.puerto,
-      usuario: config.usuario,
-      password_encriptado: '',
-      usa_ssl: config.usa_ssl,
-      usa_tls: config.usa_tls,
+      api_key: '',
       email_remitente: config.email_remitente,
       nombre_remitente: config.nombre_remitente,
       activo: config.activo,
@@ -147,45 +123,38 @@ export function ConfiguracionServidor() {
   const handleSave = async () => {
     setMessage(null);
 
-    if (!formData.host || !formData.usuario || !formData.email_remitente || !formData.nombre_remitente) {
+    if (!formData.email_remitente || !formData.nombre_remitente) {
       setMessage({ type: 'error', text: 'Completa todos los campos requeridos' });
       return;
     }
 
-    if (!editingConfig && !formData.password_encriptado) {
-      setMessage({ type: 'error', text: 'La contraseña es requerida' });
+    if (!editingConfig && !formData.api_key) {
+      setMessage({ type: 'error', text: 'La API key es requerida' });
       return;
     }
 
     try {
-      if (formData.activo && formData.tipo_servidor === 'smtp') {
+      if (formData.activo) {
         await supabase
-          .from('configuracion_servidor_correo')
+          .from('configuracion_sendgrid')
           .update({ activo: false })
-          .eq('tipo_servidor', 'smtp')
           .neq('id', editingConfig?.id || '00000000-0000-0000-0000-000000000000');
       }
 
       const dataToSave: any = {
-        tipo_servidor: formData.tipo_servidor,
-        host: formData.host,
-        puerto: formData.puerto,
-        usuario: formData.usuario,
-        usa_ssl: formData.usa_ssl,
-        usa_tls: formData.usa_tls,
         email_remitente: formData.email_remitente,
         nombre_remitente: formData.nombre_remitente,
         activo: formData.activo,
         updated_at: new Date().toISOString(),
       };
 
-      if (formData.password_encriptado) {
-        dataToSave.password_encriptado = formData.password_encriptado;
+      if (formData.api_key) {
+        dataToSave.api_key = formData.api_key;
       }
 
       if (editingConfig) {
         const { error } = await supabase
-          .from('configuracion_servidor_correo')
+          .from('configuracion_sendgrid')
           .update(dataToSave)
           .eq('id', editingConfig.id);
 
@@ -193,7 +162,7 @@ export function ConfiguracionServidor() {
         setMessage({ type: 'success', text: 'Configuración actualizada correctamente' });
       } else {
         const { error } = await supabase
-          .from('configuracion_servidor_correo')
+          .from('configuracion_sendgrid')
           .insert(dataToSave);
 
         if (error) throw error;
@@ -201,7 +170,7 @@ export function ConfiguracionServidor() {
       }
 
       setShowModal(false);
-      loadConfiguraciones();
+      loadData();
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
     }
@@ -212,30 +181,29 @@ export function ConfiguracionServidor() {
 
     try {
       const { error } = await supabase
-        .from('configuracion_servidor_correo')
+        .from('configuracion_sendgrid')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
       setMessage({ type: 'success', text: 'Configuración eliminada correctamente' });
-      loadConfiguraciones();
+      loadData();
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
     }
   };
 
-  const handleToggleActivo = async (config: ConfiguracionServidor) => {
+  const handleToggleActivo = async (config: ConfiguracionSendGrid) => {
     try {
-      if (!config.activo && config.tipo_servidor === 'smtp') {
+      if (!config.activo) {
         await supabase
-          .from('configuracion_servidor_correo')
+          .from('configuracion_sendgrid')
           .update({ activo: false })
-          .eq('tipo_servidor', 'smtp')
           .neq('id', config.id);
       }
 
       const { error } = await supabase
-        .from('configuracion_servidor_correo')
+        .from('configuracion_sendgrid')
         .update({
           activo: !config.activo,
           updated_at: new Date().toISOString(),
@@ -244,22 +212,10 @@ export function ConfiguracionServidor() {
 
       if (error) throw error;
       setMessage({ type: 'success', text: `Configuración ${!config.activo ? 'activada' : 'desactivada'}` });
-      loadConfiguraciones();
+      loadData();
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message });
     }
-  };
-
-  const tipoLabels = {
-    smtp: 'SMTP (Envío)',
-    imap: 'IMAP (Recepción)',
-    pop3: 'POP3 (Recepción)',
-  };
-
-  const puertosComunes = {
-    smtp: { ssl: 465, tls: 587 },
-    imap: { ssl: 993, tls: 143 },
-    pop3: { ssl: 995, tls: 110 },
   };
 
   if (loading) {
@@ -327,12 +283,11 @@ export function ConfiguracionServidor() {
 
       <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div className="flex items-start space-x-3">
-          <Server className="w-5 h-5 text-blue-600 mt-0.5" />
+          <Send className="w-5 h-5 text-blue-600 mt-0.5" />
           <div className="flex-1">
-            <h3 className="font-semibold text-blue-900 mb-2">Configuración del servidor de correo</h3>
+            <h3 className="font-semibold text-blue-900 mb-2">Configuración de SendGrid</h3>
             <p className="text-sm text-blue-800">
-              Configura los servidores de correo para enviar y recibir mensajes. Solo puede haber una
-              configuración SMTP activa a la vez para envío de correos.
+              Configura SendGrid para enviar correos electrónicos. Solo puede haber una configuración activa a la vez.
             </p>
           </div>
         </div>
@@ -350,8 +305,9 @@ export function ConfiguracionServidor() {
 
       {configuraciones.length === 0 ? (
         <div className="text-center py-12 bg-slate-50 rounded-lg">
-          <Server className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600">No hay configuraciones de servidor</p>
+          <Send className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+          <p className="text-slate-600">No hay configuraciones de SendGrid</p>
+          <p className="text-sm text-slate-500 mt-2">Agrega tu API key de SendGrid para comenzar a enviar correos</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -368,11 +324,8 @@ export function ConfiguracionServidor() {
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-3">
                     <h3 className="text-lg font-semibold text-slate-900">
-                      {tipoLabels[config.tipo_servidor]}
+                      SendGrid Configuration
                     </h3>
-                    <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded uppercase">
-                      {config.tipo_servidor}
-                    </span>
                     {config.activo && (
                       <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
                         Activo
@@ -382,22 +335,10 @@ export function ConfiguracionServidor() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-600">
                     <div>
-                      <strong>Host:</strong> {config.host}
-                    </div>
-                    <div>
-                      <strong>Puerto:</strong> {config.puerto}
-                    </div>
-                    <div>
-                      <strong>Usuario:</strong> {config.usuario}
+                      <strong>API Key:</strong> {'•'.repeat(20)}
                     </div>
                     <div>
                       <strong>Remitente:</strong> {config.nombre_remitente} &lt;{config.email_remitente}&gt;
-                    </div>
-                    <div>
-                      <strong>SSL:</strong> {config.usa_ssl ? 'Sí' : 'No'}
-                    </div>
-                    <div>
-                      <strong>TLS:</strong> {config.usa_tls ? 'Sí' : 'No'}
                     </div>
                   </div>
                 </div>
@@ -439,7 +380,7 @@ export function ConfiguracionServidor() {
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white">
               <h2 className="text-xl font-bold text-slate-900">
-                {editingConfig ? 'Editar Configuración' : 'Nueva Configuración'}
+                {editingConfig ? 'Editar Configuración de SendGrid' : 'Nueva Configuración de SendGrid'}
               </h2>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-6 h-6" />
@@ -447,155 +388,69 @@ export function ConfiguracionServidor() {
             </div>
 
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Tipo de Servidor</label>
-                <select
-                  value={formData.tipo_servidor}
-                  onChange={(e) => {
-                    const tipo = e.target.value as 'smtp' | 'imap' | 'pop3';
-                    setFormData({
-                      ...formData,
-                      tipo_servidor: tipo,
-                      puerto: formData.usa_ssl
-                        ? puertosComunes[tipo].ssl
-                        : puertosComunes[tipo].tls,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="smtp">SMTP (Envío)</option>
-                  <option value="imap">IMAP (Recepción)</option>
-                  <option value="pop3">POP3 (Recepción)</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Host *</label>
-                  <input
-                    type="text"
-                    value={formData.host}
-                    onChange={(e) => setFormData({ ...formData, host: e.target.value })}
-                    placeholder="smtp.gmail.com"
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Puerto *</label>
-                  <input
-                    type="number"
-                    value={formData.puerto}
-                    onChange={(e) => setFormData({ ...formData, puerto: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Usuario *</label>
-                <input
-                  type="text"
-                  value={formData.usuario}
-                  onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
-                  placeholder="tu-email@dominio.com"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                <strong>Nota:</strong> Necesitas una cuenta de SendGrid para obtener tu API key. Visita{' '}
+                <a href="https://sendgrid.com" target="_blank" rel="noopener noreferrer" className="underline">
+                  sendgrid.com
+                </a>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Contraseña {editingConfig && '(dejar vacío para mantener)'}
+                  API Key de SendGrid {editingConfig && '(dejar vacío para mantener)'}
                 </label>
                 <div className="relative">
                   <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password_encriptado}
-                    onChange={(e) => setFormData({ ...formData, password_encriptado: e.target.value })}
-                    placeholder={editingConfig ? 'Nueva contraseña (opcional)' : 'Contraseña'}
+                    type={showApiKey ? 'text' : 'password'}
+                    value={formData.api_key}
+                    onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+                    placeholder={editingConfig ? 'Nueva API key (opcional)' : 'SG.xxxxxxxxxxxx'}
                     className="w-full px-4 py-2 pr-12 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowApiKey(!showApiKey)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Email Remitente *</label>
-                  <input
-                    type="email"
-                    value={formData.email_remitente}
-                    onChange={(e) => setFormData({ ...formData, email_remitente: e.target.value })}
-                    placeholder="noreply@empresa.com"
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Nombre Remitente *</label>
-                  <input
-                    type="text"
-                    value={formData.nombre_remitente}
-                    onChange={(e) => setFormData({ ...formData, nombre_remitente: e.target.value })}
-                    placeholder="Nuestra Empresa"
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Email Remitente *</label>
+                <input
+                  type="email"
+                  value={formData.email_remitente}
+                  onChange={(e) => setFormData({ ...formData, email_remitente: e.target.value })}
+                  placeholder="noreply@tudominio.com"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Este email debe estar verificado en SendGrid
+                </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.usa_ssl}
-                    onChange={(e) => {
-                      const usaSSL = e.target.checked;
-                      setFormData({
-                        ...formData,
-                        usa_ssl: usaSSL,
-                        puerto: usaSSL
-                          ? puertosComunes[formData.tipo_servidor].ssl
-                          : puertosComunes[formData.tipo_servidor].tls,
-                      });
-                    }}
-                    className="w-4 h-4 text-blue-600 rounded"
-                  />
-                  <span className="text-sm text-slate-700">Usar SSL</span>
-                </label>
-
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.usa_tls}
-                    onChange={(e) => setFormData({ ...formData, usa_tls: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded"
-                  />
-                  <span className="text-sm text-slate-700">Usar TLS</span>
-                </label>
-
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.activo}
-                    onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded"
-                  />
-                  <span className="text-sm text-slate-700">Activo</span>
-                </label>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Nombre Remitente *</label>
+                <input
+                  type="text"
+                  value={formData.nombre_remitente}
+                  onChange={(e) => setFormData({ ...formData, nombre_remitente: e.target.value })}
+                  placeholder="Nuestra Empresa"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-lg text-sm text-slate-600">
-                <strong>Puertos comunes:</strong>
-                <div className="mt-1">
-                  SMTP: 587 (TLS), 465 (SSL) | IMAP: 143 (TLS), 993 (SSL) | POP3: 110 (TLS), 995 (SSL)
-                </div>
-              </div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.activo}
+                  onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 rounded"
+                />
+                <span className="text-sm text-slate-700">Activar esta configuración</span>
+              </label>
             </div>
 
             <div className="px-6 py-4 bg-slate-50 rounded-b-2xl flex justify-end space-x-3">
