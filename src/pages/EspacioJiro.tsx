@@ -71,7 +71,7 @@ export function EspacioJiro() {
   const loadReservas = async () => {
     let query = supabase
       .from('reservas_espacio')
-      .select('*, areas(nombre), usuarios(nombre, apellidos, celular_personal, email_laboral), oficinas(nombre)')
+      .select('*, areas(nombre), usuarios!reservas_espacio_usuario_fkey(nombre, apellidos, celular_personal, email_laboral), oficinas(nombre)')
       .order('created_at', { ascending: false });
 
     if (isEmpleadoOrAgente) {
@@ -171,13 +171,24 @@ export function EspacioJiro() {
           notas: formData.notas,
           creado_por: currentUser?.id,
         })
-        .select('*, areas(nombre), usuarios(nombre, apellidos, celular_personal, email_laboral), oficinas(nombre)')
+        .select()
         .single();
 
       if (error) throw error;
 
       if (nuevaReserva) {
-        setReservas([nuevaReserva, ...reservas]);
+        const reservaCompleta: Reserva = {
+          ...nuevaReserva,
+          areas: { nombre: selectedArea.nombre },
+          usuarios: {
+            nombre: currentUser?.nombre || '',
+            apellidos: currentUser?.apellidos || '',
+            celular_personal: currentUser?.celular_personal || '',
+            email_laboral: currentUser?.email_laboral || '',
+          },
+          oficinas: { nombre: selectedArea.oficinas?.nombre || '' },
+        };
+        setReservas([reservaCompleta, ...reservas]);
       }
 
       setShowModal(false);
