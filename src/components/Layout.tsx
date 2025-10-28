@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video, Calculator, Palette, Inbox } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video, Calculator, Palette, Inbox, FileSignature } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -26,12 +26,14 @@ export function Layout({ children }: LayoutProps) {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/gestor-emails', label: 'Mi E-Mail', icon: Inbox, show: true },
+    { path: '/mi-firma', label: 'Mi Firma', icon: FileSignature, show: true },
     { path: '/movi-meet', label: 'MOVI Meet', icon: Video, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Calculator, show: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: isAdminOrGerente },
+    { path: '/firmas-email', label: 'Firmas de E-Mail', icon: FileSignature, show: isAdmin },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
     { path: '/configuracion', label: 'Configuración', icon: Settings, show: isAdmin },
   ];

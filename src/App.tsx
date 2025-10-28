@@ -18,6 +18,8 @@ import { MeetingRoom } from './pages/MeetingRoom';
 import MulticotizadorDigital from './pages/MulticotizadorDigital';
 import { Publicidad } from './pages/Publicidad';
 import { GestorEmails } from './pages/GestorEmails';
+import { FirmasEmail } from './pages/FirmasEmail';
+import { MiFirma } from './pages/MiFirma';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -191,6 +193,28 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <GestorEmails />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/firmas-email"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <FirmasEmail />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-firma"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MiFirma />
             </Layout>
           </ProtectedRoute>
         }
