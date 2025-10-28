@@ -23,6 +23,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUsuario = async (userId: string) => {
     try {
+      console.log('[AuthContext] Fetching usuario for ID:', userId);
+
       const { data, error } = await supabase
         .from('usuarios')
         .select('*')
@@ -31,21 +33,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching usuario:', error);
+        console.error('[AuthContext] Error fetching usuario:', error);
+        console.error('[AuthContext] Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
         setUsuario(null);
         return;
       }
 
       if (!data) {
-        console.warn('Usuario not found or not active:', userId);
+        console.warn('[AuthContext] Usuario not found or not active:', userId);
+        console.warn('[AuthContext] This usually means:');
+        console.warn('  1. User does not exist in usuarios table');
+        console.warn('  2. User activo field is false');
+        console.warn('  3. User was deleted');
+
         await supabase.auth.signOut();
         setUsuario(null);
         return;
       }
 
+      console.log('[AuthContext] Usuario loaded successfully:', {
+        id: data.id,
+        nombre: data.nombre,
+        apellidos: data.apellidos,
+        rol: data.rol,
+        email_laboral: data.email_laboral
+      });
+
       setUsuario(data);
     } catch (err) {
-      console.error('Unexpected error fetching usuario:', err);
+      console.error('[AuthContext] Unexpected error fetching usuario:', err);
       setUsuario(null);
     }
   };
@@ -57,7 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    console.log('[AuthContext] Initializing...');
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AuthContext] Initial session check:', session?.user?.email || 'No session');
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUsuario(session.user.id).finally(() => setLoading(false));
@@ -66,7 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AuthContext] Auth state changed:', event, session?.user?.email || 'No session');
       (async () => {
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -81,10 +106,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    console.log('[AuthContext] Attempting sign in for:', email);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
+    if (error) {
+      console.error('[AuthContext] Sign in failed:', error);
+      console.error('[AuthContext] Error details:', {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      });
+    } else {
+      console.log('[AuthContext] Sign in successful:', {
+        userId: data.user?.id,
+        email: data.user?.email
+      });
+    }
+
     return { error };
   };
 

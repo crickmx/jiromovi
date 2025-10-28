@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico de Login - MOVI Digital</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        h2 {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .info-text {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .user-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .user-card h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .user-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            font-size: 14px;
+        }
+        .user-info div {
+            color: #666;
+        }
+        .user-info strong {
+            color: #333;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .button-secondary {
+            background: #6c757d;
+        }
+        .button-secondary:hover {
+            background: #5a6268;
+        }
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            line-height: 1.5;
+        }
+        .log-error { color: #f48771; }
+        .log-success { color: #89d185; }
+        .log-info { color: #6cb6ff; }
+        .log-warn { color: #dcdcaa; }
+        pre {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔐 Diagnóstico de Login - MOVI Digital</h1>
+            <p class="info-text">Esta herramienta te ayudará a diagnosticar problemas de inicio de sesión</p>
+            <div id="systemStatus"></div>
+        </div>
+
+        <div class="card">
+            <h2>👥 Usuarios Disponibles</h2>
+            <div id="usersList"></div>
+        </div>
+
+        <div class="card">
+            <h2>🧪 Probar Inicio de Sesión</h2>
+
+            <div class="form-group">
+                <label for="testUser">Seleccionar Usuario:</label>
+                <select id="testUser">
+                    <option value="">-- O ingresa manualmente --</option>
+                    <option value="ccjimenez@jiro.com.mx">ccjimenez@jiro.com.mx (Administrador)</option>
+                    <option value="ccjimenez@jiro.mx">ccjimenez@jiro.mx (Gerente)</option>
+                    <option value="zacatecas@jiro.mx">zacatecas@jiro.mx (Empleado)</option>
+                    <option value="pjimenez@jiro.mx">pjimenez@jiro.mx (Empleado)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" placeholder="usuario@jiro.mx">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña:</label>
+                <input type="password" id="password" placeholder="Ingresa la contraseña">
+            </div>
+
+            <button onclick="testLogin()">Probar Login</button>
+            <button class="button-secondary" onclick="checkSession()">Verificar Sesión Actual</button>
+            <button class="button-secondary" onclick="clearStorage()">Limpiar Storage</button>
+
+            <div id="loginResult"></div>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        const SUPABASE_URL = 'https://akkbisolbjkusbuihrad.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFra2Jpc29sYmprdXNidWlocmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNzkwNDAsImV4cCI6MjA3NjY1NTA0MH0.iJf04oJv0ERuyWyY0gLpd7ntP6bITJ8LWxGFKJNSLvQ';
+
+        let supabase;
+        let logs = [];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push({ timestamp, message, type });
+            updateLogsDisplay();
+        }
+
+        function updateLogsDisplay() {
+            const logsDiv = document.getElementById('logs');
+            if (logs.length === 0) return;
+
+            const logsHtml = logs.map(log =>
+                `<div class="log-entry log-${log.type}">[${log.timestamp}] ${log.message}</div>`
+            ).join('');
+
+            logsDiv.innerHTML = `
+                <h3 style="margin-top: 20px; color: #333;">Logs de Diagnóstico:</h3>
+                <div class="log-container">${logsHtml}</div>
+            `;
+        }
+
+        async function initSupabase() {
+            try {
+                const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+
+                supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                    auth: {
+                        autoRefreshToken: true,
+                        persistSession: true,
+                        detectSessionInUrl: true,
+                        flowType: 'pkce',
+                    }
+                });
+
+                addLog('✅ Cliente Supabase inicializado correctamente', 'success');
+                await checkSystemStatus();
+                await loadUsers();
+            } catch (err) {
+                addLog('❌ Error al inicializar Supabase: ' + err.message, 'error');
+                document.getElementById('systemStatus').innerHTML =
+                    '<div class="status status-error">❌ Error al conectar con Supabase</div>';
+            }
+        }
+
+        async function checkSystemStatus() {
+            const statusDiv = document.getElementById('systemStatus');
+            let statusHtml = '';
+
+            statusHtml += '<div class="status status-info">';
+            statusHtml += '<strong>🌐 Información del Sistema:</strong><br>';
+            statusHtml += `Dominio: ${window.location.hostname}<br>`;
+            statusHtml += `Protocolo: ${window.location.protocol}<br>`;
+            statusHtml += `URL: ${window.location.href}`;
+            statusHtml += '</div>';
+
+            try {
+                const { data, error } = await supabase.from('usuarios').select('count').limit(1);
+                if (error) {
+                    statusHtml += '<div class="status status-error">❌ Error de conexión a base de datos</div>';
+                    addLog('❌ Error de conexión: ' + error.message, 'error');
+                } else {
+                    statusHtml += '<div class="status status-success">✅ Conexión a base de datos exitosa</div>';
+                    addLog('✅ Conexión a base de datos verificada', 'success');
+                }
+            } catch (err) {
+                statusHtml += '<div class="status status-error">❌ Error inesperado: ' + err.message + '</div>';
+                addLog('❌ Error inesperado: ' + err.message, 'error');
+            }
+
+            statusDiv.innerHTML = statusHtml;
+        }
+
+        async function loadUsers() {
+            try {
+                addLog('📋 Cargando lista de usuarios...', 'info');
+
+                const { data, error } = await supabase
+                    .from('usuarios')
+                    .select('id, email_laboral, nombre, apellidos, rol, activo, estado')
+                    .eq('activo', true)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    throw error;
+                }
+
+                const usersDiv = document.getElementById('usersList');
+
+                if (!data || data.length === 0) {
+                    usersDiv.innerHTML = '<div class="status status-warning">⚠️ No se encontraron usuarios</div>';
+                    addLog('⚠️ No se encontraron usuarios activos', 'warn');
+                    return;
+                }
+
+                let usersHtml = '';
+                data.forEach(user => {
+                    const statusBadge = user.activo ?
+                        '<span class="badge badge-success">Activo</span>' :
+                        '<span class="badge badge-danger">Inactivo</span>';
+
+                    usersHtml += `
+                        <div class="user-card">
+                            <h3>${user.nombre} ${user.apellidos} ${statusBadge}</h3>
+                            <div class="user-info">
+                                <div><strong>Email:</strong> ${user.email_laboral}</div>
+                                <div><strong>Rol:</strong> ${user.rol}</div>
+                                <div><strong>Estado:</strong> ${user.estado}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                usersDiv.innerHTML = usersHtml;
+                addLog(`✅ ${data.length} usuarios cargados correctamente`, 'success');
+
+            } catch (err) {
+                document.getElementById('usersList').innerHTML =
+                    '<div class="status status-error">❌ Error al cargar usuarios: ' + err.message + '</div>';
+                addLog('❌ Error al cargar usuarios: ' + err.message, 'error');
+            }
+        }
+
+        window.testLogin = async function() {
+            const selectElement = document.getElementById('testUser');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const resultDiv = document.getElementById('loginResult');
+
+            const email = selectElement.value || emailInput.value;
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                resultDiv.innerHTML = '<div class="status status-error">❌ Por favor ingresa email y contraseña</div>';
+                addLog('❌ Intento de login sin credenciales', 'error');
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="status status-info">⏳ Intentando iniciar sesión...</div>';
+            addLog(`🔐 Intentando login con: ${email}`, 'info');
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+
+                if (error) {
+                    resultDiv.innerHTML = `<div class="status status-error">❌ Error: ${error.message}</div>`;
+                    addLog(`❌ Login fallido: ${error.message}`, 'error');
+                    addLog(`   Status: ${error.status}`, 'error');
+                    addLog(`   Name: ${error.name}`, 'error');
+                    return;
+                }
+
+                addLog(`✅ Login exitoso en auth.users`, 'success');
+                addLog(`   User ID: ${data.user.id}`, 'success');
+                addLog(`   Email: ${data.user.email}`, 'success');
+
+                resultDiv.innerHTML = '<div class="status status-success">✅ Login exitoso en Supabase Auth!</div>';
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                addLog(`🔍 Verificando usuario en tabla usuarios...`, 'info');
+                const { data: usuario, error: usuarioError } = await supabase
+                    .from('usuarios')
+                    .select('*')
+                    .eq('id', data.user.id)
+                    .eq('activo', true)
+                    .maybeSingle();
+
+                if (usuarioError) {
+                    resultDiv.innerHTML += `<div class="status status-error">❌ Error al cargar datos: ${usuarioError.message}</div>`;
+                    addLog(`❌ Error al cargar usuario: ${usuarioError.message}`, 'error');
+                    return;
+                }
+
+                if (!usuario) {
+                    resultDiv.innerHTML += '<div class="status status-error">❌ Usuario no encontrado en tabla usuarios o no está activo</div>';
+                    addLog(`❌ Usuario ${data.user.id} no encontrado o inactivo`, 'error');
+                    return;
+                }
+
+                addLog(`✅ Usuario encontrado en tabla usuarios`, 'success');
+                addLog(`   Nombre: ${usuario.nombre} ${usuario.apellidos}`, 'success');
+                addLog(`   Rol: ${usuario.rol}`, 'success');
+                addLog(`   Email Laboral: ${usuario.email_laboral}`, 'success');
+
+                resultDiv.innerHTML += `
+                    <div class="status status-success">
+                        ✅ ¡Login completamente exitoso!<br><br>
+                        <strong>Datos del usuario:</strong><br>
+                        Nombre: ${usuario.nombre} ${usuario.apellidos}<br>
+                        Email: ${usuario.email_laboral}<br>
+                        Rol: ${usuario.rol}<br>
+                        Estado: ${usuario.estado}
+                    </div>
+                `;
+
+                addLog(`🎉 Login completo exitoso para ${usuario.nombre}`, 'success');
+
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="status status-error">❌ Error inesperado: ${err.message}</div>`;
+                addLog(`❌ Error inesperado: ${err.message}`, 'error');
+                console.error('Error completo:', err);
+            }
+        };
+
+        window.checkSession = async function() {
+            const resultDiv = document.getElementById('loginResult');
+            addLog('🔍 Verificando sesión actual...', 'info');
+
+            try {
+                const { data, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    resultDiv.innerHTML = `<div class="status status-error">❌ Error: ${error.message}</div>`;
+                    addLog(`❌ Error al verificar sesión: ${error.message}`, 'error');
+                    return;
+                }
+
+                if (!data.session) {
+                    resultDiv.innerHTML = '<div class="status status-info">ℹ️ No hay sesión activa</div>';
+                    addLog('ℹ️ No hay sesión activa', 'info');
+                    return;
+                }
+
+                addLog('✅ Sesión activa encontrada', 'success');
+                resultDiv.innerHTML = `
+                    <div class="status status-success">
+                        ✅ Sesión activa<br><br>
+                        <strong>Usuario:</strong> ${data.session.user.email}<br>
+                        <strong>ID:</strong> ${data.session.user.id}
+                    </div>
+                `;
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="status status-error">❌ Error: ${err.message}</div>`;
+                addLog(`❌ Error al verificar sesión: ${err.message}`, 'error');
+            }
+        };
+
+        window.clearStorage = function() {
+            addLog('🧹 Limpiando localStorage y sessionStorage...', 'info');
+            localStorage.clear();
+            sessionStorage.clear();
+            document.getElementById('loginResult').innerHTML =
+                '<div class="status status-success">✅ Storage limpiado. Recarga la página para empezar de nuevo.</div>';
+            addLog('✅ Storage limpiado correctamente', 'success');
+        };
+
+        document.getElementById('testUser').addEventListener('change', function() {
+            if (this.value) {
+                document.getElementById('email').value = this.value;
+            }
+        });
+
+        initSupabase();
+    </script>
+</body>
+</html>
