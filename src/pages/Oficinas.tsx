@@ -44,7 +44,6 @@ export function Oficinas() {
     instagram: '',
     activa: true,
     es_espacio_jiro: false,
-    descripcion: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -115,7 +114,6 @@ export function Oficinas() {
       instagram: oficina?.instagram || '',
       activa: oficina?.activa ?? true,
       es_espacio_jiro: oficina?.es_espacio_jiro ?? false,
-      descripcion: oficina?.descripcion || '',
     });
 
     if (oficina) {
@@ -149,6 +147,7 @@ export function Oficinas() {
             facebook: formData.facebook,
             instagram: formData.instagram,
             activa: formData.activa,
+            es_espacio_jiro: formData.es_espacio_jiro,
           })
           .eq('id', selectedOficina.id);
 
@@ -166,6 +165,7 @@ export function Oficinas() {
             facebook: formData.facebook,
             instagram: formData.instagram,
             activa: formData.activa,
+            es_espacio_jiro: formData.es_espacio_jiro,
           })
           .select()
           .single();
@@ -640,21 +640,6 @@ export function Oficinas() {
                     Marcar como Espacio JIRO (oficina con áreas reservables)
                   </label>
                 </div>
-
-                {formData.es_espacio_jiro && (
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Descripción del Espacio
-                    </label>
-                    <textarea
-                      value={formData.descripcion}
-                      onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                      rows={3}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Describe las características de este espacio..."
-                    />
-                  </div>
-                )}
               </div>
 
               <div className="flex justify-end space-x-4 mt-6">
