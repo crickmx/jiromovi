@@ -25,7 +25,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
-    { path: '/gestor-emails', label: 'Gestor de E-Mails', icon: Inbox, show: true },
+    { path: '/gestor-emails', label: 'Mi E-Mail', icon: Inbox, show: true },
     { path: '/movi-meet', label: 'MOVI Meet', icon: Video, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },

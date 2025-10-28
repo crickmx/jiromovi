@@ -194,7 +194,7 @@ export function GestorEmails() {
             <Mail className="w-8 h-8 text-primary-600" />
             <div>
               <h1 className="text-2xl font-display font-bold text-neutral-900">
-                Gestor de E-Mails
+                Mi E-Mail
               </h1>
               {configuracion && (
                 <p className="text-sm text-neutral-600">
@@ -261,7 +261,7 @@ export function GestorEmails() {
               Configura tu cuenta de correo IONOS
             </h2>
             <p className="text-neutral-600 mb-6">
-              Para comenzar a usar el gestor de e-mails, configura tu correo IONOS en tu perfil o aquí.
+              Para comenzar a usar Mi E-Mail, configura tu correo IONOS en tu perfil o aquí.
             </p>
             <div className="space-y-3">
               <button

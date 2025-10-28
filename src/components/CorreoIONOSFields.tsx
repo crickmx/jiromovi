@@ -104,7 +104,7 @@ export function CorreoIONOSFields({
         <div>
           <h3 className="font-bold text-neutral-900 text-lg">Configuración de correo (IONOS)</h3>
           <p className="text-sm text-neutral-600">
-            Ingresa tu correo y contraseña para acceder al Gestor de E-Mails
+            Ingresa tu correo y contraseña para acceder a Mi E-Mail
           </p>
         </div>
       </div>
