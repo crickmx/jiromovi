@@ -20,9 +20,11 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
 
   useEffect(() => {
     if (chat) {
+      console.log('[ChatMessages] Cargando chat:', chat.id);
       loadMessages();
 
       // Suscribirse a nuevos mensajes
+      console.log('[ChatMessages] Configurando suscripción realtime...');
       const subscription = supabase
         .channel(`chat-${chat.id}`)
         .on('postgres_changes', {
@@ -31,12 +33,25 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
           table: 'chat_mensajes',
           filter: `chat_id=eq.${chat.id}`
         }, (payload) => {
+          console.log('[ChatMessages] Nuevo mensaje recibido:', payload.new);
           setMessages(prev => [...prev, payload.new]);
-          scrollToBottom();
+          setTimeout(scrollToBottom, 100);
         })
-        .subscribe();
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_mensajes',
+          filter: `chat_id=eq.${chat.id}`
+        }, (payload) => {
+          console.log('[ChatMessages] Mensaje actualizado:', payload.new);
+          setMessages(prev => prev.map(msg => msg.id === payload.new.id ? payload.new : msg));
+        })
+        .subscribe((status) => {
+          console.log('[ChatMessages] Estado de suscripción:', status);
+        });
 
       return () => {
+        console.log('[ChatMessages] Desuscribiendo del chat:', chat.id);
         subscription.unsubscribe();
       };
     }
@@ -44,6 +59,8 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
 
   const loadMessages = async () => {
     setLoading(true);
+    console.log('[ChatMessages] Cargando mensajes del chat:', chat.id);
+
     const { data, error } = await supabase
       .from('chat_mensajes')
       .select(`
@@ -61,6 +78,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
     if (error) {
       console.error('[ChatMessages] Error cargando mensajes:', error);
     } else {
+      console.log('[ChatMessages] Mensajes cargados:', data?.length || 0);
       setMessages(data || []);
       setTimeout(scrollToBottom, 100);
     }
@@ -72,19 +90,31 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
   };
 
   const handleSend = async () => {
-    if (!newMessage.trim() || !usuario) return;
+    if (!newMessage.trim() || !usuario) {
+      console.log('[ChatMessages] No se puede enviar: mensaje vacío o sin usuario');
+      return;
+    }
 
-    const { error } = await supabase
+    console.log('[ChatMessages] Enviando mensaje...', {
+      chat_id: chat.id,
+      remitente_id: usuario.id,
+      mensaje: newMessage.trim()
+    });
+
+    const { data, error } = await supabase
       .from('chat_mensajes')
       .insert({
         chat_id: chat.id,
         remitente_id: usuario.id,
         mensaje: newMessage.trim()
-      });
+      })
+      .select();
 
     if (error) {
       console.error('[ChatMessages] Error enviando mensaje:', error);
+      alert(`Error al enviar mensaje: ${error.message}`);
     } else {
+      console.log('[ChatMessages] Mensaje enviado exitosamente:', data);
       setNewMessage('');
     }
   };
