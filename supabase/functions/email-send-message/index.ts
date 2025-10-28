@@ -18,6 +18,235 @@ interface SendEmailRequest {
   fechaProgramada?: string;
 }
 
+async function connectSMTP(host: string, port: number) {
+  const conn = await Deno.connect({
+    hostname: host,
+    port: port,
+    transport: 'tcp',
+  });
+
+  const tlsConn = await Deno.startTls(conn, { hostname: host });
+  return tlsConn;
+}
+
+async function sendSMTPCommand(conn: Deno.TlsConn, command: string, expectCode?: string): Promise<string> {
+  const encoder = new TextEncoder();
+  await conn.write(encoder.encode(command + '\r\n'));
+
+  const decoder = new TextDecoder();
+  const buffer = new Uint8Array(4096);
+  const n = await conn.read(buffer);
+
+  if (n === null) throw new Error('Conexión cerrada');
+
+  const response = decoder.decode(buffer.subarray(0, n));
+
+  if (expectCode && !response.startsWith(expectCode)) {
+    throw new Error(`Error SMTP: ${response}`);
+  }
+
+  return response;
+}
+
+function encodeBase64(str: string): string {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  return btoa(String.fromCharCode(...data));
+}
+
+function buildEmailMessage(
+  from: string,
+  fromName: string,
+  to: string[],
+  cc: string[],
+  bcc: string[],
+  subject: string,
+  htmlBody: string
+): string {
+  const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36)}`;
+  const messageId = `<${Date.now()}.${Math.random().toString(36)}@ionos.mx>`;
+  const date = new Date().toUTCString();
+
+  let message = `From: ${fromName} <${from}>\r\n`;
+  message += `To: ${to.join(', ')}\r\n`;
+
+  if (cc.length > 0) {
+    message += `Cc: ${cc.join(', ')}\r\n`;
+  }
+
+  message += `Subject: ${subject}\r\n`;
+  message += `Date: ${date}\r\n`;
+  message += `Message-ID: ${messageId}\r\n`;
+  message += `MIME-Version: 1.0\r\n`;
+  message += `Content-Type: multipart/alternative; boundary="${boundary}"\r\n`;
+  message += `\r\n`;
+
+  const textBody = htmlBody.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+
+  message += `--${boundary}\r\n`;
+  message += `Content-Type: text/plain; charset="UTF-8"\r\n`;
+  message += `Content-Transfer-Encoding: quoted-printable\r\n`;
+  message += `\r\n`;
+  message += `${textBody}\r\n`;
+  message += `\r\n`;
+
+  message += `--${boundary}\r\n`;
+  message += `Content-Type: text/html; charset="UTF-8"\r\n`;
+  message += `Content-Transfer-Encoding: quoted-printable\r\n`;
+  message += `\r\n`;
+  message += `${htmlBody}\r\n`;
+  message += `\r\n`;
+
+  message += `--${boundary}--\r\n`;
+
+  return message;
+}
+
+async function sendEmailSMTP(
+  config: any,
+  fromName: string,
+  to: string[],
+  cc: string[],
+  bcc: string[],
+  subject: string,
+  htmlBody: string
+): Promise<string> {
+  let conn: Deno.TlsConn | null = null;
+
+  try {
+    conn = await connectSMTP(config.servidor_salida, config.puerto_salida);
+
+    await sendSMTPCommand(conn, '', '220');
+
+    await sendSMTPCommand(conn, `EHLO ${config.servidor_salida}`, '250');
+
+    const authCommand = encodeBase64(`\0${config.email}\0${config.password}`);
+    await sendSMTPCommand(conn, `AUTH PLAIN ${authCommand}`, '235');
+
+    await sendSMTPCommand(conn, `MAIL FROM:<${config.email}>`, '250');
+
+    const allRecipients = [...to, ...cc, ...bcc];
+    for (const recipient of allRecipients) {
+      await sendSMTPCommand(conn, `RCPT TO:<${recipient}>`, '250');
+    }
+
+    await sendSMTPCommand(conn, 'DATA', '354');
+
+    const emailMessage = buildEmailMessage(config.email, fromName, to, cc, bcc, subject, htmlBody);
+    await sendSMTPCommand(conn, emailMessage + '\r\n.', '250');
+
+    await sendSMTPCommand(conn, 'QUIT');
+
+    const messageId = `<${Date.now()}.${Math.random().toString(36)}@${config.servidor_salida}>`;
+    return messageId;
+
+  } catch (error) {
+    console.error('Error SMTP:', error);
+    throw error;
+  } finally {
+    if (conn) {
+      try {
+        conn.close();
+      } catch (e) {
+        console.error('Error cerrando conexión SMTP:', e);
+      }
+    }
+  }
+}
+
+async function getFirmaUsuario(supabase: any, userId: string): Promise<string> {
+  try {
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select(`
+        *,
+        oficinas (
+          id,
+          nombre,
+          direccion,
+          telefono,
+          email,
+          sitio_web,
+          facebook,
+          instagram,
+          linkedin,
+          twitter
+        )
+      `)
+      .eq('id', userId)
+      .single();
+
+    if (!usuario) return '';
+
+    const { data: firmaAsignada } = await supabase
+      .rpc('get_firma_asignada', { p_usuario_id: userId });
+
+    if (!firmaAsignada || firmaAsignada.length === 0) return '';
+
+    let firmaHtml = firmaAsignada[0].template_html;
+
+    const templateData: any = {
+      nombre: usuario.nombre || '',
+      apellidos: usuario.apellidos || '',
+      rol: usuario.rol || '',
+      puesto: usuario.puesto || '',
+      email_laboral: usuario.email_laboral || '',
+      celular_laboral: usuario.celular_laboral || '',
+      extension_telefonica: usuario.extension_telefonica || '',
+      url_web_jiro: usuario.url_web_jiro || '',
+      url_web_multicotizador: usuario.url_web_multicotizador || '',
+      imagen_perfil: usuario.imagen_perfil_url || '',
+    };
+
+    if (usuario.oficinas) {
+      const oficina = usuario.oficinas;
+      templateData.oficina_nombre = oficina.nombre || '';
+      templateData.oficina_direccion = oficina.direccion || '';
+      templateData.oficina_telefono = oficina.telefono || '';
+      templateData.oficina_email = oficina.email || '';
+      templateData.oficina_sitio_web = oficina.sitio_web || '';
+      templateData.oficina_facebook = oficina.facebook || '';
+      templateData.oficina_instagram = oficina.instagram || '';
+      templateData.oficina_linkedin = oficina.linkedin || '';
+      templateData.oficina_twitter = oficina.twitter || '';
+    }
+
+    firmaHtml = firmaHtml.replace(/\{\{([^#\/][^}]+)\}\}/g, (match, key) => {
+      const trimmedKey = key.trim();
+      return templateData[trimmedKey] !== undefined && templateData[trimmedKey] !== null
+        ? String(templateData[trimmedKey])
+        : '';
+    });
+
+    firmaHtml = firmaHtml.replace(/\{\{#if ([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
+      const trimmedKey = key.trim();
+      const value = templateData[trimmedKey];
+      if (value && value !== '' && value !== null && value !== undefined) {
+        return content.replace(/\{\{([^}]+)\}\}/g, (m, k) => {
+          const tk = k.trim();
+          return templateData[tk] !== undefined ? String(templateData[tk]) : '';
+        });
+      }
+      return '';
+    });
+
+    return firmaHtml;
+  } catch (error) {
+    console.error('Error obteniendo firma:', error);
+    return '';
+  }
+}
+
+function aplicarFirma(cuerpoHtml: string, firmaHtml: string): string {
+  if (!firmaHtml) return cuerpoHtml;
+
+  if (cuerpoHtml.includes('<!-- FIRMA_BEGIN -->')) {
+    return cuerpoHtml;
+  }
+
+  return cuerpoHtml + '\n\n' + firmaHtml;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -41,7 +270,6 @@ Deno.serve(async (req: Request) => {
 
     const body: SendEmailRequest = await req.json();
 
-    // Obtener configuración del usuario
     const { data: config, error: configError } = await supabase
       .from('email_configuraciones')
       .select('*')
@@ -56,8 +284,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Si es programado, guardar en tabla de programados
     if (body.programado && body.fechaProgramada) {
+      const firmaHtml = await getFirmaUsuario(supabase, user.id);
+      const cuerpoConFirma = aplicarFirma(body.cuerpoHtml, firmaHtml);
+
       const { data: programado, error: progError } = await supabase
         .from('email_programados')
         .insert({
@@ -67,7 +297,7 @@ Deno.serve(async (req: Request) => {
           cc: body.cc || [],
           bcc: body.bcc || [],
           asunto: body.asunto,
-          cuerpo_html: body.cuerpoHtml,
+          cuerpo_html: cuerpoConFirma,
           adjuntos: body.adjuntos || [],
           fecha_programada: body.fechaProgramada,
           estado: 'pendiente'
@@ -90,12 +320,29 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Enviar inmediatamente
-    // En producción, aquí se usaría SMTP real (nodemailer u otra librería)
-    // Por ahora simulamos el envío
-    const messageId = `<${Date.now()}.${Math.random().toString(36)}@${config.servidor_salida}>`;
+    const firmaHtml = await getFirmaUsuario(supabase, user.id);
+    const cuerpoConFirma = aplicarFirma(body.cuerpoHtml, firmaHtml);
 
-    // Guardar en enviados (caché)
+    const { data: usuarioData } = await supabase
+      .from('usuarios')
+      .select('nombre, apellidos')
+      .eq('id', user.id)
+      .single();
+
+    const fromName = usuarioData
+      ? `${usuarioData.nombre} ${usuarioData.apellidos}`.trim()
+      : config.nombre_remitente || config.email;
+
+    const messageId = await sendEmailSMTP(
+      config,
+      fromName,
+      body.destinatarios,
+      body.cc || [],
+      body.bcc || [],
+      body.asunto,
+      cuerpoConFirma
+    );
+
     await supabase
       .from('email_mensajes_cache')
       .insert({
@@ -104,19 +351,19 @@ Deno.serve(async (req: Request) => {
         carpeta: 'SENT',
         message_uid: `sent_${Date.now()}`,
         message_id: messageId,
-        remitente: config.nombre_remitente || user.email,
+        remitente: fromName,
         remitente_email: config.email,
         destinatarios: body.destinatarios,
         cc: body.cc || [],
         bcc: body.bcc || [],
         asunto: body.asunto,
-        cuerpo_texto: body.cuerpoHtml.replace(/<[^>]*>/g, ''),
-        cuerpo_html: body.cuerpoHtml,
+        cuerpo_texto: cuerpoConFirma.replace(/<[^>]*>/g, ''),
+        cuerpo_html: cuerpoConFirma,
         fecha: new Date().toISOString(),
         leido: true,
         marcado: false,
         tiene_adjuntos: (body.adjuntos?.length || 0) > 0,
-        size_bytes: body.cuerpoHtml.length,
+        size_bytes: cuerpoConFirma.length,
         etiquetas: []
       });
 
