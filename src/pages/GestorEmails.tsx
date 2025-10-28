@@ -109,9 +109,12 @@ export function GestorEmails() {
       }
 
       console.log('[GestorEmails] Sincronizando todas las carpetas por primera vez...');
+      setSincronizando(true);
 
       const carpetas: Carpeta[] = ['INBOX', 'SENT', 'DRAFTS', 'TRASH', 'SPAM'];
       const { data: { session } } = await supabase.auth.getSession();
+
+      let totalSincronizados = 0;
 
       for (const carpeta of carpetas) {
         console.log(`[GestorEmails] Sincronizando carpeta: ${carpeta}`);
@@ -135,20 +138,25 @@ export function GestorEmails() {
           if (response.ok) {
             const result = await response.json();
             console.log(`[GestorEmails] ${carpeta} sincronizada:`, result);
+            totalSincronizados += result.mensajes || 0;
           } else {
-            console.error(`[GestorEmails] Error sincronizando ${carpeta}:`, await response.text());
+            const errorText = await response.text();
+            console.error(`[GestorEmails] Error sincronizando ${carpeta}:`, errorText);
           }
         } catch (err) {
           console.error(`[GestorEmails] Error en carpeta ${carpeta}:`, err);
         }
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      console.log('[GestorEmails] Sincronización inicial completa');
-      setTimeout(() => loadMensajes(), 1000);
+      console.log(`[GestorEmails] Sincronización inicial completa. Total: ${totalSincronizados} mensajes`);
+      setSincronizando(false);
+
+      setTimeout(() => loadMensajes(), 500);
     } catch (error) {
       console.error('[GestorEmails] Error en sincronización inicial:', error);
+      setSincronizando(false);
     }
   };
 
@@ -183,6 +191,8 @@ export function GestorEmails() {
       const carpetas: Carpeta[] = ['INBOX', 'SENT', 'DRAFTS', 'TRASH', 'SPAM'];
       const { data: { session } } = await supabase.auth.getSession();
 
+      let totalSincronizados = 0;
+
       for (const carpeta of carpetas) {
         console.log(`[GestorEmails] Sincronizando ${carpeta}...`);
 
@@ -205,8 +215,10 @@ export function GestorEmails() {
           if (response.ok) {
             const result = await response.json();
             console.log(`[GestorEmails] ${carpeta} sincronizada:`, result);
+            totalSincronizados += result.mensajes || 0;
           } else {
-            console.error(`[GestorEmails] Error en ${carpeta}:`, await response.text());
+            const errorText = await response.text();
+            console.error(`[GestorEmails] Error en ${carpeta}:`, errorText);
           }
         } catch (err) {
           console.error(`[GestorEmails] Error sincronizando ${carpeta}:`, err);
@@ -215,13 +227,19 @@ export function GestorEmails() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
+      console.log(`[GestorEmails] Sincronización completa. Total: ${totalSincronizados} mensajes`);
+
       await loadMensajes();
       await loadConfiguracion();
+
+      if (totalSincronizados > 0) {
+        alert(`Sincronización completa: ${totalSincronizados} mensajes actualizados`);
+      }
     } catch (error) {
       console.error('[GestorEmails] Error sincronizando:', error);
+      alert('Error al sincronizar. Revisa la consola para más detalles.');
     } finally {
       setSincronizando(false);
-      console.log('[GestorEmails] Sincronización completa');
     }
   };
 

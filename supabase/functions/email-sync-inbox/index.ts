@@ -79,7 +79,7 @@ async function syncIMAPMessages(config: any, carpeta: string) {
   const mensajes: any[] = [];
 
   try {
-    conn = await connectIMAP(config.servidor_imap, config.puerto_imap, config.email, config.password);
+    conn = await connectIMAP(config.servidor_entrada, config.puerto_entrada, config.email, config.password_encrypted);
 
     let response = await sendCommand(conn, '');
     console.log('Conexión IMAP iniciada:', response);
@@ -87,7 +87,7 @@ async function syncIMAPMessages(config: any, carpeta: string) {
     let tagNum = 1;
     const getTag = () => `A${tagNum++}`;
 
-    response = await sendCommand(conn, `${getTag()} LOGIN "${config.email}" "${config.password}"`);
+    response = await sendCommand(conn, `${getTag()} LOGIN "${config.email}" "${config.password_encrypted}"`);
     if (!response.includes('OK')) {
       throw new Error('Error de autenticación IMAP');
     }
@@ -178,7 +178,7 @@ async function syncIMAPMessages(config: any, carpeta: string) {
 
         const mensaje = {
           message_uid: `${uidMatch[1]}`,
-          message_id: messageIdMatch ? messageIdMatch[1].trim() : `<${uidMatch[1]}@${config.servidor_imap}>`,
+          message_id: messageIdMatch ? messageIdMatch[1].trim() : `<${uidMatch[1]}@${config.servidor_entrada}>`,
           remitente: decodeHeader(fromName),
           remitente_email: fromEmail,
           destinatarios: toMatch ? parseEmailAddresses(toMatch[1]) : [config.email],
