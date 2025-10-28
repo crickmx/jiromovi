@@ -8,7 +8,8 @@ const corsHeaders = {
 
 interface UpdatePasswordRequest {
   userId: string;
-  password: string;
+  password?: string;
+  email?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -30,11 +31,11 @@ Deno.serve(async (req: Request) => {
       },
     });
 
-    const { userId, password }: UpdatePasswordRequest = await req.json();
+    const { userId, password, email }: UpdatePasswordRequest = await req.json();
 
-    if (!userId || !password) {
+    if (!userId) {
       return new Response(
-        JSON.stringify({ error: 'User ID and password are required' }),
+        JSON.stringify({ error: 'User ID is required' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -42,9 +43,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (!password && !email) {
+      return new Response(
+        JSON.stringify({ error: 'At least password or email must be provided' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const updateData: { password?: string; email?: string; email_confirm?: boolean } = {};
+    if (password) updateData.password = password;
+    if (email) {
+      updateData.email = email;
+      updateData.email_confirm = true;
+    }
+
     const { error } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
-      { password }
+      updateData
     );
 
     if (error) {
