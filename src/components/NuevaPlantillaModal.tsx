@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Image as ImageIcon, Video as VideoIcon, Move, Type } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Video as VideoIcon, Move, Type, Maximize2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -46,14 +46,26 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
   const [zonaTexto, setZonaTexto] = useState<ZonaConfig>({ x: 0.05, y: 0.75, width: 0.9, height: 0.2 });
   const [editingZone, setEditingZone] = useState<'logo' | 'texto' | null>(null);
 
-  // Canvas ref
-  const canvasRef = useRef<HTMLDivElement>(null);
+  // Referencias y estado de drag
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<string>('');
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     if (!isOpen) {
       resetForm();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (containerRef.current && step === 2) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setContainerSize({ width: rect.width, height: rect.height });
+    }
+  }, [step, previewUrl]);
 
   const resetForm = () => {
     setStep(1);
@@ -80,10 +92,8 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
 
-    // Detectar tipo
     if (file.type.startsWith('image/')) {
       setTipoArchivo('imagen');
-      // Obtener dimensiones de imagen
       const img = new Image();
       img.onload = () => {
         setAncho(img.width);
@@ -92,7 +102,6 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
       img.src = url;
     } else if (file.type.startsWith('video/')) {
       setTipoArchivo('video');
-      // Obtener dimensiones y duración de video
       const video = document.createElement('video');
       video.onloadedmetadata = () => {
         setAncho(video.videoWidth);
@@ -102,6 +111,112 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
       video.src = url;
     }
   };
+
+  // Handlers para drag
+  const handleZoneMouseDown = (zone: 'logo' | 'texto', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!containerRef.current) return;
+
+    setEditingZone(zone);
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  // Handlers para resize
+  const handleResizeMouseDown = (zone: 'logo' | 'texto', handle: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setEditingZone(zone);
+    setIsResizing(true);
+    setResizeHandle(handle);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current || (!isDragging && !isResizing)) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const deltaX = (e.clientX - dragStart.x) / rect.width;
+      const deltaY = (e.clientY - dragStart.y) / rect.height;
+
+      const currentZone = editingZone === 'logo' ? zonaLogo : zonaTexto;
+      const setZone = editingZone === 'logo' ? setZonaLogo : setZonaTexto;
+
+      if (isDragging) {
+        // Mover zona
+        const newX = Math.max(0, Math.min(1 - currentZone.width, currentZone.x + deltaX));
+        const newY = Math.max(0, Math.min(1 - currentZone.height, currentZone.y + deltaY));
+
+        setZone({
+          ...currentZone,
+          x: newX,
+          y: newY
+        });
+      } else if (isResizing) {
+        // Redimensionar zona
+        let newZone = { ...currentZone };
+
+        switch (resizeHandle) {
+          case 'se': // Esquina inferior derecha
+            newZone.width = Math.max(0.05, Math.min(1 - currentZone.x, currentZone.width + deltaX));
+            newZone.height = Math.max(0.05, Math.min(1 - currentZone.y, currentZone.height + deltaY));
+            break;
+          case 'sw': // Esquina inferior izquierda
+            const newWidth = Math.max(0.05, currentZone.width - deltaX);
+            if (currentZone.x + deltaX >= 0) {
+              newZone.x = currentZone.x + deltaX;
+              newZone.width = newWidth;
+            }
+            newZone.height = Math.max(0.05, Math.min(1 - currentZone.y, currentZone.height + deltaY));
+            break;
+          case 'ne': // Esquina superior derecha
+            newZone.width = Math.max(0.05, Math.min(1 - currentZone.x, currentZone.width + deltaX));
+            const newHeight = Math.max(0.05, currentZone.height - deltaY);
+            if (currentZone.y + deltaY >= 0) {
+              newZone.y = currentZone.y + deltaY;
+              newZone.height = newHeight;
+            }
+            break;
+          case 'nw': // Esquina superior izquierda
+            const newW = Math.max(0.05, currentZone.width - deltaX);
+            if (currentZone.x + deltaX >= 0) {
+              newZone.x = currentZone.x + deltaX;
+              newZone.width = newW;
+            }
+            const newH = Math.max(0.05, currentZone.height - deltaY);
+            if (currentZone.y + deltaY >= 0) {
+              newZone.y = currentZone.y + deltaY;
+              newZone.height = newH;
+            }
+            break;
+        }
+
+        setZone(newZone);
+      }
+
+      setDragStart({ x: e.clientX, y: e.clientY });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(false);
+      setResizeHandle('');
+    };
+
+    if (isDragging || isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, isResizing, dragStart, editingZone, zonaLogo, zonaTexto, resizeHandle]);
 
   const handleSubmit = async () => {
     if (!archivo || !titulo || !categoriaId || !usuario) {
@@ -113,7 +228,6 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
     setError('');
 
     try {
-      // 1. Subir archivo principal
       const fileExt = archivo.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `plantillas/${fileName}`;
@@ -124,15 +238,12 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
 
       if (uploadError) throw uploadError;
 
-      // 2. Obtener URL pública
       const { data: { publicUrl } } = supabase.storage
         .from('publicidad-plantillas')
         .getPublicUrl(filePath);
 
-      // 3. Crear miniatura (usar la misma por ahora)
       const miniaturaUrl = publicUrl;
 
-      // 4. Guardar en base de datos
       const { error: insertError } = await supabase
         .from('publicidad_plantillas')
         .insert({
@@ -169,12 +280,43 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
     }
   };
 
+  const renderResizeHandles = (zone: 'logo' | 'texto') => {
+    const handleClass = zone === 'logo'
+      ? 'bg-blue-500 border-2 border-white'
+      : 'bg-green-500 border-2 border-white';
+
+    return (
+      <>
+        {/* Esquina superior izquierda */}
+        <div
+          className={`absolute -top-1 -left-1 w-3 h-3 rounded-full ${handleClass} cursor-nw-resize z-10`}
+          onMouseDown={(e) => handleResizeMouseDown(zone, 'nw', e)}
+        />
+        {/* Esquina superior derecha */}
+        <div
+          className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${handleClass} cursor-ne-resize z-10`}
+          onMouseDown={(e) => handleResizeMouseDown(zone, 'ne', e)}
+        />
+        {/* Esquina inferior izquierda */}
+        <div
+          className={`absolute -bottom-1 -left-1 w-3 h-3 rounded-full ${handleClass} cursor-sw-resize z-10`}
+          onMouseDown={(e) => handleResizeMouseDown(zone, 'sw', e)}
+        />
+        {/* Esquina inferior derecha */}
+        <div
+          className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full ${handleClass} cursor-se-resize z-10`}
+          onMouseDown={(e) => handleResizeMouseDown(zone, 'se', e)}
+        />
+      </>
+    );
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-white rounded-3xl shadow-strong max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between rounded-t-3xl">
+        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between rounded-t-3xl z-20">
           <div>
             <h2 className="text-2xl font-display font-bold text-neutral-900">
               Nueva Plantilla
@@ -291,141 +433,84 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
           {step === 2 && previewUrl && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+                <h3 className="text-lg font-semibold text-neutral-900 mb-2">
                   Configurar Zonas de Logo y Texto
                 </h3>
-                <p className="text-sm text-neutral-600 mb-6">
-                  Ajusta las áreas donde los usuarios podrán colocar su logo y texto personalizado
+                <p className="text-sm text-neutral-600 mb-4">
+                  Arrastra las zonas para posicionarlas. Usa las esquinas para redimensionar.
                 </p>
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-blue-500/30 border-2 border-blue-500 rounded"></div>
+                    <span className="text-sm text-neutral-700">Zona Logo</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-green-500/30 border-2 border-green-500 rounded"></div>
+                    <span className="text-sm text-neutral-700">Zona Texto</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="relative bg-neutral-900 rounded-xl overflow-hidden" ref={canvasRef}>
+              <div
+                className="relative bg-neutral-900 rounded-xl overflow-hidden select-none"
+                ref={containerRef}
+              >
                 {tipoArchivo === 'imagen' ? (
-                  <img src={previewUrl} alt="Template" className="w-full" />
+                  <img src={previewUrl} alt="Template" className="w-full" draggable={false} />
                 ) : (
                   <video src={previewUrl} className="w-full" />
                 )}
 
                 {/* Zona Logo */}
                 <div
-                  className={`absolute border-2 ${editingZone === 'logo' ? 'border-blue-500' : 'border-blue-400'} bg-blue-500/20 cursor-move transition-all`}
+                  className={`absolute border-2 ${editingZone === 'logo' ? 'border-blue-500 shadow-lg' : 'border-blue-400'} bg-blue-500/20 cursor-move transition-all`}
                   style={{
                     left: `${zonaLogo.x * 100}%`,
                     top: `${zonaLogo.y * 100}%`,
                     width: `${zonaLogo.width * 100}%`,
                     height: `${zonaLogo.height * 100}%`,
                   }}
-                  onClick={() => setEditingZone('logo')}
+                  onMouseDown={(e) => handleZoneMouseDown('logo', e)}
                 >
-                  <div className="absolute -top-8 left-0 bg-blue-500 text-white px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1">
+                  <div className="absolute -top-7 left-0 bg-blue-500 text-white px-2 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1 pointer-events-none">
                     <ImageIcon className="w-3 h-3" />
-                    <span>Zona Logo</span>
+                    <span>Logo</span>
                   </div>
+                  {renderResizeHandles('logo')}
                 </div>
 
                 {/* Zona Texto */}
                 <div
-                  className={`absolute border-2 ${editingZone === 'texto' ? 'border-green-500' : 'border-green-400'} bg-green-500/20 cursor-move transition-all`}
+                  className={`absolute border-2 ${editingZone === 'texto' ? 'border-green-500 shadow-lg' : 'border-green-400'} bg-green-500/20 cursor-move transition-all`}
                   style={{
                     left: `${zonaTexto.x * 100}%`,
                     top: `${zonaTexto.y * 100}%`,
                     width: `${zonaTexto.width * 100}%`,
                     height: `${zonaTexto.height * 100}%`,
                   }}
-                  onClick={() => setEditingZone('texto')}
+                  onMouseDown={(e) => handleZoneMouseDown('texto', e)}
                 >
-                  <div className="absolute -top-8 left-0 bg-green-500 text-white px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1">
+                  <div className="absolute -top-7 left-0 bg-green-500 text-white px-2 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1 pointer-events-none">
                     <Type className="w-3 h-3" />
-                    <span>Zona Texto</span>
+                    <span>Texto</span>
                   </div>
+                  {renderResizeHandles('texto')}
                 </div>
               </div>
 
-              {editingZone && (
-                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
-                  <h4 className="font-semibold text-neutral-900 mb-3">
-                    Ajustar {editingZone === 'logo' ? 'Zona Logo' : 'Zona Texto'}
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">X (%)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={Math.round((editingZone === 'logo' ? zonaLogo.x : zonaTexto.x) * 100)}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) / 100;
-                          if (editingZone === 'logo') {
-                            setZonaLogo({ ...zonaLogo, x: val });
-                          } else {
-                            setZonaTexto({ ...zonaTexto, x: val });
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">Y (%)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={Math.round((editingZone === 'logo' ? zonaLogo.y : zonaTexto.y) * 100)}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) / 100;
-                          if (editingZone === 'logo') {
-                            setZonaLogo({ ...zonaLogo, y: val });
-                          } else {
-                            setZonaTexto({ ...zonaTexto, y: val });
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">Ancho (%)</label>
-                      <input
-                        type="number"
-                        min="5"
-                        max="100"
-                        step="1"
-                        value={Math.round((editingZone === 'logo' ? zonaLogo.width : zonaTexto.width) * 100)}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) / 100;
-                          if (editingZone === 'logo') {
-                            setZonaLogo({ ...zonaLogo, width: val });
-                          } else {
-                            setZonaTexto({ ...zonaTexto, width: val });
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">Alto (%)</label>
-                      <input
-                        type="number"
-                        min="5"
-                        max="100"
-                        step="1"
-                        value={Math.round((editingZone === 'logo' ? zonaLogo.height : zonaTexto.height) * 100)}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) / 100;
-                          if (editingZone === 'logo') {
-                            setZonaLogo({ ...zonaLogo, height: val });
-                          } else {
-                            setZonaTexto({ ...zonaTexto, height: val });
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
-                      />
-                    </div>
+              <div className="bg-primary-50 border border-primary-200 rounded-xl p-4">
+                <div className="flex items-start space-x-3">
+                  <Move className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-primary-900">
+                    <p className="font-semibold mb-1">Instrucciones:</p>
+                    <ul className="list-disc list-inside space-y-1 text-primary-800">
+                      <li>Haz clic y arrastra el centro de una zona para moverla</li>
+                      <li>Arrastra las esquinas (círculos) para redimensionar</li>
+                      <li>La zona activa se resalta con un borde más grueso</li>
+                    </ul>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </div>
