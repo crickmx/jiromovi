@@ -215,7 +215,7 @@ export function Chat() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-neutral-50">
+    <div className="h-full flex flex-col bg-neutral-50">
       {/* Header */}
       <div className="bg-white border-b border-neutral-200 px-6 py-4">
         <div className="flex items-center justify-between">
@@ -252,7 +252,7 @@ export function Chat() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Sidebar */}
         <div className="w-80 border-r border-neutral-200 bg-white flex flex-col">
           {/* Search */}

@@ -107,6 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     console.log('[AuthContext] Attempting sign in for:', email);
+    console.log('[AuthContext] Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+    console.log('[AuthContext] Has Anon Key:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -119,7 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[AuthContext] Error details:', {
           message: error.message,
           status: error.status,
-          name: error.name
+          name: error.name,
+          code: error.code
         });
         return { error };
       }
@@ -131,7 +134,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { error: null };
     } catch (err: any) {
-      console.error('[AuthContext] Network or unexpected error:', err);
+      console.error('[AuthContext] Network or unexpected error:', {
+        message: err.message,
+        name: err.name,
+        stack: err.stack
+      });
 
       const networkError: AuthError = {
         name: 'NetworkError',
