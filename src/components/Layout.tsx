@@ -26,14 +26,14 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
-    { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
-    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/gestor-emails', label: 'Mi E-Mail', icon: Inbox, show: true },
-    { path: '/contactos', label: 'Contactos', icon: Contact, show: true },
+    { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/movi-meet', label: 'MOVI Meet', icon: Video, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Calculator, show: true },
+    { path: '/contactos', label: 'Contactos', icon: Contact, show: true },
+    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: isAdminOrGerente },
     { path: '/firmas-email', label: 'Firmas de E-Mail', icon: FileSignature, show: isAdmin },
