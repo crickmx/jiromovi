@@ -55,7 +55,6 @@ export interface Database {
       usuarios: {
         Row: {
           id: string
-          username: string
           rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
           nombre: string
           apellidos: string
@@ -80,10 +79,10 @@ export interface Database {
         }
         Insert: {
           id: string
-          username: string
           rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
           nombre: string
           apellidos: string
+          email_laboral: string
           puesto?: string
           oficina_id?: string | null
           fecha_nacimiento?: string | null
@@ -91,7 +90,6 @@ export interface Database {
           celular_personal?: string
           email_personal?: string
           celular_laboral?: string
-          email_laboral?: string
           extension_telefonica?: string
           url_web_jiro?: string
           url_web_multicotizador?: string
@@ -105,7 +103,6 @@ export interface Database {
         }
         Update: {
           id?: string
-          username?: string
           rol?: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
           nombre?: string
           apellidos?: string

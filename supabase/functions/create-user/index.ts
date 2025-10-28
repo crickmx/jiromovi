@@ -7,13 +7,12 @@ const corsHeaders = {
 };
 
 interface CreateUserRequest {
-  email: string;
   password: string;
   userData: {
-    username: string;
     nombre: string;
     apellidos: string;
     rol: string;
+    email_laboral: string;
     puesto?: string;
     oficina_id?: string | null;
     fecha_nacimiento?: string | null;
@@ -21,7 +20,6 @@ interface CreateUserRequest {
     celular_personal?: string;
     email_personal?: string;
     celular_laboral?: string;
-    email_laboral?: string;
     extension_telefonica?: string;
     url_web_jiro?: string;
     url_web_multicotizador?: string;
@@ -76,11 +74,11 @@ Deno.serve(async (req: Request) => {
 
     const isGerente = currentUserData?.rol === 'Gerente';
 
-    const { email, password, userData }: CreateUserRequest = await req.json();
+    const { password, userData }: CreateUserRequest = await req.json();
 
-    if (!email || !password) {
+    if (!userData.email_laboral || !password) {
       return new Response(
-        JSON.stringify({ error: 'Email and password are required' }),
+        JSON.stringify({ error: 'Email laboral and password are required' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -89,7 +87,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
+      email: userData.email_laboral,
       password,
       email_confirm: true,
     });
@@ -116,10 +114,10 @@ Deno.serve(async (req: Request) => {
 
     const { error: insertError } = await supabaseAdmin.from('usuarios').insert({
       id: authData.user.id,
-      username: userData.username,
       nombre: userData.nombre,
       apellidos: userData.apellidos,
       rol: userData.rol,
+      email_laboral: userData.email_laboral,
       puesto: userData.puesto || '',
       oficina_id: userData.oficina_id || null,
       fecha_nacimiento: userData.fecha_nacimiento || null,
@@ -127,7 +125,6 @@ Deno.serve(async (req: Request) => {
       celular_personal: userData.celular_personal || '',
       email_personal: userData.email_personal || '',
       celular_laboral: userData.celular_laboral || '',
-      email_laboral: userData.email_laboral || '',
       extension_telefonica: userData.extension_telefonica || '',
       url_web_jiro: userData.url_web_jiro || '',
       url_web_multicotizador: userData.url_web_multicotizador || '',

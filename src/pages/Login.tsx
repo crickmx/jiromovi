@@ -24,7 +24,7 @@ export function Login() {
     const { error: signInError } = await signIn(email, password);
 
     if (signInError) {
-      setError('Credenciales incorrectas. Por favor, verifica tu correo y contraseña.');
+      setError('Credenciales incorrectas. Por favor, verifica tu e-mail laboral y contraseña.');
       setLoading(false);
     } else {
       navigate('/');
@@ -82,7 +82,7 @@ export function Login() {
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
-                  Correo Electrónico
+                  E-Mail Laboral
                 </label>
                 <input
                   id="email"
@@ -91,7 +91,7 @@ export function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="tu@correo.com"
+                  placeholder="nombre@empresa.com"
                 />
               </div>
 
@@ -142,7 +142,7 @@ export function Login() {
 
               <div>
                 <label htmlFor="resetEmail" className="block text-sm font-medium text-slate-700 mb-2">
-                  Correo Electrónico
+                  E-Mail Laboral
                 </label>
                 <input
                   id="resetEmail"
@@ -151,7 +151,7 @@ export function Login() {
                   onChange={(e) => setResetEmail(e.target.value)}
                   required
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="tu@correo.com"
+                  placeholder="nombre@empresa.com"
                 />
               </div>
 

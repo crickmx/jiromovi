@@ -19,8 +19,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
   const isGerente = currentUser?.rol === 'Gerente';
 
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
     password: '',
     nombre: '',
     apellidos: '',
@@ -55,8 +53,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     loadOficinas();
     if (user) {
       setFormData({
-        username: user.username,
-        email: '',
         password: '',
         nombre: user.nombre,
         apellidos: user.apellidos,
@@ -97,7 +93,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     try {
       if (user) {
         const updateData: Partial<Usuario> = {
-          username: formData.username,
           nombre: formData.nombre,
           apellidos: formData.apellidos,
           rol: formData.rol,
@@ -151,8 +146,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           }
         }
       } else {
-        if (!formData.email || !formData.password) {
-          setError('Correo y contraseña son requeridos para crear un usuario');
+        if (!formData.email_laboral || !formData.password) {
+          setError('E-mail laboral y contraseña son requeridos para crear un usuario');
           setLoading(false);
           return;
         }
@@ -173,13 +168,12 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
-              email: formData.email,
               password: formData.password,
               userData: {
-                username: formData.username,
                 nombre: formData.nombre,
                 apellidos: formData.apellidos,
                 rol: formData.rol,
+                email_laboral: formData.email_laboral,
                 puesto: formData.puesto,
                 oficina_id: formData.oficina_id || null,
                 fecha_nacimiento: formData.fecha_nacimiento || null,
@@ -187,7 +181,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 celular_personal: formData.celular_personal,
                 email_personal: formData.email_personal,
                 celular_laboral: formData.celular_laboral,
-                email_laboral: formData.email_laboral,
                 extension_telefonica: formData.extension_telefonica,
                 url_web_jiro: formData.url_web_jiro,
                 url_web_multicotizador: formData.url_web_multicotizador,
@@ -241,47 +234,19 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Información de Acceso</h3>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Nombre de Usuario *
-              </label>
-              <input
-                type="text"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                required
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
             {!user && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Correo Electrónico *
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Contraseña *
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Contraseña *
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             )}
 
             {user && (
