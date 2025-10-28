@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -24,6 +24,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: isAdminOrGerente },
     { path: '/perfil', label: 'Mi Perfil', icon: User, show: true },
+    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: isAdminOrGerente },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },

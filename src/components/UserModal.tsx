@@ -39,6 +39,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     esquema_pago_id: '',
     banco: '',
     clabe: '',
+    dias_vacaciones_disponibles: 0,
   });
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,6 +75,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         esquema_pago_id: user.esquema_pago_id || '',
         banco: user.banco || '',
         clabe: user.clabe || '',
+        dias_vacaciones_disponibles: user.dias_vacaciones_disponibles || 0,
       });
     }
   }, [user]);
@@ -113,6 +115,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           esquema_pago_id: formData.esquema_pago_id || null,
           banco: formData.banco,
           clabe: formData.clabe,
+          dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
           updated_at: new Date().toISOString(),
         };
 
@@ -191,6 +194,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 esquema_pago_id: formData.esquema_pago_id || null,
                 banco: formData.banco,
                 clabe: formData.clabe,
+                dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
               },
             }),
           }
@@ -493,6 +497,29 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               editable={true}
             />
           </div>
+
+          {currentUser?.rol === 'Administrador' && (
+            <div className="mt-6 pt-6 border-t border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Gestión de Vacaciones</h3>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Días de Vacaciones Disponibles
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.dias_vacaciones_disponibles}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dias_vacaciones_disponibles: parseInt(e.target.value) || 0 })
+                  }
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Número de días de vacaciones que este usuario puede solicitar
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-4 mt-8">
             <button

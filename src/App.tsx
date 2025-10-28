@@ -11,6 +11,7 @@ import { Oficinas } from './pages/Oficinas';
 import { Configuracion } from './pages/Configuracion';
 import { CentroCorreos } from './pages/CentroCorreos';
 import { MisCorreos } from './pages/MisCorreos';
+import { Vacaciones } from './pages/Vacaciones';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -113,6 +114,17 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <MisCorreos />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/vacaciones"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Vacaciones />
             </Layout>
           </ProtectedRoute>
         }
