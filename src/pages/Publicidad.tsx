@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, Search, Filter, Edit, Trash2, Copy, Palette } from 'lucide-react';
+import { Image, Video, Plus, Search, Filter, CreditCard as Edit, Trash2, Copy, Palette } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 
 interface Categoria {
