@@ -12,6 +12,7 @@ import { Configuracion } from './pages/Configuracion';
 import { CentroCorreos } from './pages/CentroCorreos';
 import { MisCorreos } from './pages/MisCorreos';
 import { Vacaciones } from './pages/Vacaciones';
+import { EspacioJiro } from './pages/EspacioJiro';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -125,6 +126,17 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Vacaciones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/espacio-jiro"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <EspacioJiro />
             </Layout>
           </ProtectedRoute>
         }

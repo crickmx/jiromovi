@@ -43,6 +43,8 @@ export function Oficinas() {
     facebook: '',
     instagram: '',
     activa: true,
+    es_espacio_jiro: false,
+    descripcion: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -112,6 +114,8 @@ export function Oficinas() {
       facebook: oficina?.facebook || '',
       instagram: oficina?.instagram || '',
       activa: oficina?.activa ?? true,
+      es_espacio_jiro: oficina?.es_espacio_jiro ?? false,
+      descripcion: oficina?.descripcion || '',
     });
 
     if (oficina) {
@@ -623,6 +627,34 @@ export function Oficinas() {
                     Oficina activa
                   </label>
                 </div>
+
+                <div className="md:col-span-2 flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="es_espacio_jiro"
+                    checked={formData.es_espacio_jiro}
+                    onChange={(e) => setFormData({ ...formData, es_espacio_jiro: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <label htmlFor="es_espacio_jiro" className="text-sm font-medium text-slate-700">
+                    Marcar como Espacio JIRO (oficina con áreas reservables)
+                  </label>
+                </div>
+
+                {formData.es_espacio_jiro && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Descripción del Espacio
+                    </label>
+                    <textarea
+                      value={formData.descripcion}
+                      onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Describe las características de este espacio..."
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end space-x-4 mt-6">
