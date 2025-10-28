@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -26,6 +26,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: isAdminOrGerente },
     { path: '/perfil', label: 'Mi Perfil', icon: User, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
+    { path: '/movi-meet', label: 'MOVI Meet', icon: Video, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: isAdminOrGerente },

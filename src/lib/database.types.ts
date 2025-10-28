@@ -213,6 +213,93 @@ export interface Database {
           updated_at?: string
         }
       }
+      meetings: {
+        Row: {
+          id: string
+          code: string
+          creator_id: string
+          title: string
+          scheduled_datetime: string
+          status: 'scheduled' | 'active' | 'ended' | 'cancelled'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          creator_id: string
+          title: string
+          scheduled_datetime: string
+          status?: 'scheduled' | 'active' | 'ended' | 'cancelled'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          creator_id?: string
+          title?: string
+          scheduled_datetime?: string
+          status?: 'scheduled' | 'active' | 'ended' | 'cancelled'
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      meeting_participants: {
+        Row: {
+          id: string
+          meeting_id: string
+          user_id: string | null
+          name: string
+          role: 'host' | 'participant'
+          joined_at: string
+          left_at: string | null
+        }
+        Insert: {
+          id?: string
+          meeting_id: string
+          user_id?: string | null
+          name: string
+          role?: 'host' | 'participant'
+          joined_at?: string
+          left_at?: string | null
+        }
+        Update: {
+          id?: string
+          meeting_id?: string
+          user_id?: string | null
+          name?: string
+          role?: 'host' | 'participant'
+          joined_at?: string
+          left_at?: string | null
+        }
+      }
+      meeting_chat_messages: {
+        Row: {
+          id: string
+          meeting_id: string
+          sender_name: string
+          sender_id: string | null
+          message: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          meeting_id: string
+          sender_name: string
+          sender_id?: string | null
+          message: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          meeting_id?: string
+          sender_name?: string
+          sender_id?: string | null
+          message?: string
+          created_at?: string
+        }
+      }
     }
   }
 }
