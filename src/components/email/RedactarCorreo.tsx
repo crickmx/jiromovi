@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Send, Clock, Paperclip, Trash2, Bold, Italic, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { ContactoAutocomplete } from './ContactoAutocomplete';
 
 interface RedactarCorreoProps {
   isOpen: boolean;
@@ -129,12 +130,11 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
           <div>
             <div className="flex items-center space-x-2 mb-2">
               <label className="text-sm font-semibold text-neutral-700 w-16">Para:</label>
-              <input
-                type="text"
+              <ContactoAutocomplete
                 value={destinatarios}
-                onChange={(e) => setDestinatarios(e.target.value)}
+                onChange={setDestinatarios}
+                placeholder="Escribe un email o busca en contactos..."
                 className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="correo@example.com, otro@example.com"
               />
               <button
                 onClick={() => setShowCC(!showCC)}
@@ -154,12 +154,11 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
           {showCC && (
             <div className="flex items-center space-x-2">
               <label className="text-sm font-semibold text-neutral-700 w-16">CC:</label>
-              <input
-                type="text"
+              <ContactoAutocomplete
                 value={cc}
-                onChange={(e) => setCc(e.target.value)}
+                onChange={setCc}
+                placeholder="CC..."
                 className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="cc@example.com"
               />
             </div>
           )}
@@ -167,12 +166,11 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
           {showBCC && (
             <div className="flex items-center space-x-2">
               <label className="text-sm font-semibold text-neutral-700 w-16">CCO:</label>
-              <input
-                type="text"
+              <ContactoAutocomplete
                 value={bcc}
-                onChange={(e) => setBcc(e.target.value)}
+                onChange={setBcc}
+                placeholder="CCO..."
                 className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="bcc@example.com"
               />
             </div>
           )}

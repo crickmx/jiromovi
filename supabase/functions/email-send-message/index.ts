@@ -367,6 +367,15 @@ Deno.serve(async (req: Request) => {
         etiquetas: []
       });
 
+    await supabase.rpc('extraer_contactos_email', {
+      p_usuario_id: user.id,
+      p_remitente_email: config.email,
+      p_remitente_nombre: fromName,
+      p_destinatarios: body.destinatarios,
+      p_cc: body.cc || [],
+      p_fecha: new Date().toISOString()
+    }).catch(err => console.error('Error extrayendo contactos:', err));
+
     return new Response(
       JSON.stringify({
         success: true,

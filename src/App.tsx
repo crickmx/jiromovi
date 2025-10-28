@@ -19,6 +19,7 @@ import MulticotizadorDigital from './pages/MulticotizadorDigital';
 import { Publicidad } from './pages/Publicidad';
 import { GestorEmails } from './pages/GestorEmails';
 import { FirmasEmail } from './pages/FirmasEmail';
+import { Contactos } from './pages/Contactos';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -192,6 +193,17 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <GestorEmails />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/contactos"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Contactos />
             </Layout>
           </ProtectedRoute>
         }

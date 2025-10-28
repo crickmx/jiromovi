@@ -270,6 +270,15 @@ Deno.serve(async (req: Request) => {
         }, {
           onConflict: 'usuario_id,message_uid,carpeta'
         });
+
+      await supabase.rpc('extraer_contactos_email', {
+        p_usuario_id: user.id,
+        p_remitente_email: msg.remitente_email,
+        p_remitente_nombre: msg.remitente,
+        p_destinatarios: msg.destinatarios,
+        p_cc: msg.cc,
+        p_fecha: msg.fecha
+      }).catch(err => console.error('Error extrayendo contactos:', err));
     }
 
     await supabase
