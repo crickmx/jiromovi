@@ -1,8 +1,31 @@
-# Configuración de Dominio para app.movi.digital
+# Configuración para Despliegue en app.movi.digital
+
+## 🚨 IMPORTANTE: Variables de Entorno
+
+La aplicación requiere las siguientes variables de entorno configuradas en tu plataforma de hosting:
+
+### Variables Requeridas:
+
+```
+VITE_SUPABASE_URL=https://akkbisolbjkusbuihrad.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFra2Jpc29sYmprdXNidWlocmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNzkwNDAsImV4cCI6MjA3NjY1NTA0MH0.iJf04oJv0ERuyWyY0gLpd7ntP6bITJ8LWxGFKJNSLvQ
+```
+
+⚠️ **CRÍTICO**: Sin estas variables, la aplicación mostrará una pantalla en blanco o error.
+
+---
 
 ## Problemas Identificados y Resueltos
 
-### ❌ Problema 1: Restricciones de dominio en Supabase
+### ❌ Problema 1: Variables de Entorno en Producción
+
+**Síntoma:** La aplicación funciona en preview/local pero no en app.movi.digital (pantalla en blanco)
+
+**Causa:** Las variables de entorno (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY) no están configuradas en la plataforma de hosting
+
+**Solución:** Configurar las variables en la plataforma de hosting (ver secciones abajo)
+
+### ❌ Problema 2: Restricciones de dominio en Supabase
 El sistema no permitía iniciar sesión desde app.movi.digital debido a restricciones de configuración.
 
 ### ✅ Problema 2: Desincronización de emails (RESUELTO)
@@ -74,6 +97,128 @@ app.movi.digital
 ### PASO 3: Verificar Configuración de Email Auth
 
 **Ruta:** Authentication → Providers → Email
+
+---
+
+## 📋 Configuración de Variables de Entorno por Plataforma
+
+### Netlify
+
+**Pasos:**
+1. Ve a tu sitio en Netlify Dashboard
+2. Haz clic en "Site settings"
+3. En el menú lateral, ve a "Environment variables" (o "Build & deploy" → "Environment")
+4. Haz clic en "Add a variable" o "Add environment variable"
+5. Agrega la primera variable:
+   - **Key:** `VITE_SUPABASE_URL`
+   - **Value:** `https://akkbisolbjkusbuihrad.supabase.co`
+   - **Scopes:** Todas las opciones marcadas
+6. Haz clic en "Add variable"
+7. Agrega la segunda variable:
+   - **Key:** `VITE_SUPABASE_ANON_KEY`
+   - **Value:** `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFra2Jpc29sYmprdXNidWlocmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNzkwNDAsImV4cCI6MjA3NjY1NTA0MH0.iJf04oJv0ERuyWyY0gLpd7ntP6bITJ8LWxGFKJNSLvQ`
+   - **Scopes:** Todas las opciones marcadas
+8. Guarda los cambios
+9. Ve a "Deploys" y haz clic en "Trigger deploy" → "Clear cache and deploy site"
+
+**Build Settings Recomendadas:**
+- Build command: `npm run build`
+- Publish directory: `dist`
+- Node version: 18 o superior
+
+### Vercel
+
+**Pasos:**
+1. Ve a tu proyecto en Vercel Dashboard
+2. Haz clic en "Settings"
+3. En el menú lateral, ve a "Environment Variables"
+4. Para cada variable:
+   - **Name:** Nombre de la variable (ej: `VITE_SUPABASE_URL`)
+   - **Value:** Valor de la variable
+   - **Environments:** Marca Production, Preview, y Development
+5. Haz clic en "Save"
+6. Repite para la segunda variable
+7. Ve a "Deployments" y redeploy el proyecto más reciente
+
+**Framework Preset:**
+- Selecciona "Vite" automáticamente detectado
+- Build Command: `npm run build`
+- Output Directory: `dist`
+
+### Railway
+
+**Pasos:**
+1. Ve a tu proyecto en Railway
+2. Haz clic en tu servicio
+3. Ve a la pestaña "Variables"
+4. Haz clic en "New Variable"
+5. Agrega ambas variables:
+   - `VITE_SUPABASE_URL` = `https://akkbisolbjkusbuihrad.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = tu anon key
+6. Railway automáticamente redeployará
+
+### Render
+
+**Pasos:**
+1. Ve a tu Web Service en Render Dashboard
+2. Haz clic en "Environment"
+3. Haz clic en "Add Environment Variable"
+4. Agrega ambas variables:
+   - Key: `VITE_SUPABASE_URL`, Value: URL de Supabase
+   - Key: `VITE_SUPABASE_ANON_KEY`, Value: Anon key
+5. Guarda y Render redeployará automáticamente
+
+**Build Command:** `npm run build`
+**Publish Directory:** `dist`
+
+### AWS Amplify
+
+**Pasos:**
+1. Ve a tu app en AWS Amplify Console
+2. Haz clic en "Environment variables"
+3. Haz clic en "Manage variables"
+4. Agrega las dos variables
+5. Guarda los cambios
+6. Redeploy desde el dashboard
+
+### Digital Ocean App Platform
+
+**Pasos:**
+1. Ve a tu app en Digital Ocean
+2. Haz clic en "Settings"
+3. Ve a "App-Level Environment Variables"
+4. Agrega ambas variables
+5. Guarda y redeploy
+
+---
+
+## ⚠️ Notas Importantes sobre Variables de Entorno
+
+1. **Las variables DEBEN empezar con `VITE_`** para que Vite las incluya en el build
+2. **Las variables se leen en BUILD TIME**, no en runtime
+3. **Después de agregar variables, DEBES redeploy** para que surtan efecto
+4. **No confundir con variables de runtime** - estas son de build time
+5. **El archivo `.env` local NO se usa en producción** - solo para desarrollo
+
+## 🧪 Cómo Verificar que las Variables Están Configuradas
+
+Después de desplegar con las variables configuradas:
+
+1. Abre https://app.movi.digital
+2. Abre la consola del navegador (F12)
+3. Escribe: `console.log(import.meta.env)`
+4. Deberías ver un objeto vacío (las variables no son accesibles desde consola por seguridad)
+5. Si ves el error "Faltan las variables de entorno de Supabase", las variables NO están configuradas
+
+**Forma alternativa de verificar:**
+
+Mira el código fuente compilado:
+1. Abre https://app.movi.digital
+2. Ve a DevTools → Sources
+3. Busca el archivo `index-[hash].js` en assets
+4. Busca la palabra "akkbisolbjkusbuihrad"
+5. Si la encuentras, las variables están correctamente embebidas en el build
+6. Si no la encuentras, las variables NO se configuraron antes del build
 
 Asegurarse de que:
 - ✅ Email provider está habilitado
