@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -12,8 +12,19 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [diagnosticInfo, setDiagnosticInfo] = useState<string[]>([]);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const info: string[] = [];
+    info.push(`Supabase URL: ${import.meta.env.VITE_SUPABASE_URL || 'NO CONFIGURADA'}`);
+    info.push(`Anon Key: ${import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Configurada' : 'NO CONFIGURADA'}`);
+    info.push(`Origen: ${window.location.origin}`);
+    info.push(`Host: ${window.location.host}`);
+    setDiagnosticInfo(info);
+    console.log('[Login] Información de diagnóstico:', info);
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -208,6 +219,19 @@ export function Login() {
         <p className="text-center text-sm text-neutral-500 mt-6">
           Intranet JIRO by MOVI Digital
         </p>
+
+        {diagnosticInfo.length > 0 && (
+          <details className="mt-4 text-xs">
+            <summary className="cursor-pointer text-neutral-500 hover:text-neutral-700 text-center">
+              Información de diagnóstico (click para ver)
+            </summary>
+            <div className="mt-2 p-3 bg-neutral-100 rounded-lg border border-neutral-300 text-left">
+              {diagnosticInfo.map((info, idx) => (
+                <div key={idx} className="text-neutral-700 font-mono">{info}</div>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
     </div>
   );

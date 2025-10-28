@@ -104,47 +104,71 @@ export function GestorEmails() {
         .limit(1);
 
       if (mensajes && mensajes.length > 0) {
+        console.log('[GestorEmails] Ya existen mensajes en caché');
         return;
       }
 
+      console.log('[GestorEmails] Sincronizando todas las carpetas por primera vez...');
+
+      const carpetas: Carpeta[] = ['INBOX', 'SENT', 'DRAFTS', 'TRASH', 'SPAM'];
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-sync-inbox`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            configuracionId: config.id,
-            carpeta: 'INBOX'
-          })
-        }
-      );
+      for (const carpeta of carpetas) {
+        console.log(`[GestorEmails] Sincronizando carpeta: ${carpeta}`);
 
-      if (response.ok) {
-        setTimeout(() => loadMensajes(), 1000);
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-sync-inbox`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session?.access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                configuracionId: config.id,
+                carpeta: carpeta
+              })
+            }
+          );
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log(`[GestorEmails] ${carpeta} sincronizada:`, result);
+          } else {
+            console.error(`[GestorEmails] Error sincronizando ${carpeta}:`, await response.text());
+          }
+        } catch (err) {
+          console.error(`[GestorEmails] Error en carpeta ${carpeta}:`, err);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
+
+      console.log('[GestorEmails] Sincronización inicial completa');
+      setTimeout(() => loadMensajes(), 1000);
     } catch (error) {
-      console.error('Error en sincronización inicial:', error);
+      console.error('[GestorEmails] Error en sincronización inicial:', error);
     }
   };
 
   const loadMensajes = async () => {
     if (!configuracion) return;
 
+    console.log(`[GestorEmails] Cargando mensajes de carpeta: ${carpetaActual}`);
+
     const { data, error } = await supabase
       .from('email_mensajes_cache')
       .select('*')
       .eq('usuario_id', usuario!.id)
       .eq('carpeta', carpetaActual)
-      .order('fecha', { ascending: false });
+      .order('fecha', { ascending: false })
+      .limit(200);
 
     if (error) {
-      console.error('Error cargando mensajes:', error);
+      console.error('[GestorEmails] Error cargando mensajes:', error);
     } else {
+      console.log(`[GestorEmails] ${data?.length || 0} mensajes cargados`);
       setMensajes(data || []);
     }
   };
@@ -153,33 +177,51 @@ export function GestorEmails() {
     if (!configuracion) return;
 
     setSincronizando(true);
+    console.log('[GestorEmails] Sincronizando todas las carpetas...');
 
     try {
+      const carpetas: Carpeta[] = ['INBOX', 'SENT', 'DRAFTS', 'TRASH', 'SPAM'];
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-sync-inbox`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            configuracionId: configuracion.id,
-            carpeta: carpetaActual
-          })
-        }
-      );
+      for (const carpeta of carpetas) {
+        console.log(`[GestorEmails] Sincronizando ${carpeta}...`);
 
-      if (response.ok) {
-        await loadMensajes();
-        await loadConfiguracion();
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-sync-inbox`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session?.access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                configuracionId: configuracion.id,
+                carpeta: carpeta
+              })
+            }
+          );
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log(`[GestorEmails] ${carpeta} sincronizada:`, result);
+          } else {
+            console.error(`[GestorEmails] Error en ${carpeta}:`, await response.text());
+          }
+        } catch (err) {
+          console.error(`[GestorEmails] Error sincronizando ${carpeta}:`, err);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
+
+      await loadMensajes();
+      await loadConfiguracion();
     } catch (error) {
-      console.error('Error sincronizando:', error);
+      console.error('[GestorEmails] Error sincronizando:', error);
     } finally {
       setSincronizando(false);
+      console.log('[GestorEmails] Sincronización completa');
     }
   };
 
