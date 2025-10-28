@@ -6,6 +6,7 @@ import { CustomFields } from '../components/CustomFields';
 import { DocumentsSection } from '../components/DocumentsSection';
 import { PaymentFields } from '../components/PaymentFields';
 import { UltimosCorreos } from '../components/UltimosCorreos';
+import { ProximasReuniones } from '../components/ProximasReuniones';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -150,7 +151,10 @@ export function Perfil() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <UltimosCorreos />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <UltimosCorreos />
+        <ProximasReuniones />
+      </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">

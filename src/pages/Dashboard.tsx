@@ -7,6 +7,7 @@ import type { Database } from '../lib/database.types';
 import { UltimosCorreos } from '../components/UltimosCorreos';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
 import { ResumenVacaciones } from '../components/ResumenVacaciones';
+import { ProximasReuniones } from '../components/ProximasReuniones';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -184,7 +185,10 @@ export function Dashboard() {
         </div>
       </div>
 
-      <UltimosCorreos />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <UltimosCorreos />
+        <ProximasReuniones />
+      </div>
 
       <ResumenVacaciones />
 
