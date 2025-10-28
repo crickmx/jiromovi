@@ -23,7 +23,7 @@ export function Layout({ children }: LayoutProps) {
   const isAdminOrGerente = isAdmin || isGerente;
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: isAdminOrGerente },
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/movi-meet', label: 'MOVI Meet', icon: Video, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },

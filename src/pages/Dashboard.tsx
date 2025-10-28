@@ -16,7 +16,9 @@ type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
 export function Dashboard() {
   const navigate = useNavigate();
   const { usuario: currentUser } = useAuth();
+  const isAdmin = currentUser?.rol === 'Administrador';
   const isGerente = currentUser?.rol === 'Gerente';
+  const isAdminOrGerente = isAdmin || isGerente;
   const [totalUsuarios, setTotalUsuarios] = useState(0);
   const [totalOficinas, setTotalOficinas] = useState(0);
   const [proximosCumpleanos, setProximosCumpleanos] = useState<Usuario[]>([]);
@@ -26,8 +28,12 @@ export function Dashboard() {
   const [customBirthdayDate, setCustomBirthdayDate] = useState('');
 
   useEffect(() => {
-    loadDashboardData();
-  }, [birthdayFilter, customBirthdayDate]);
+    if (isAdminOrGerente) {
+      loadDashboardData();
+    } else {
+      setLoading(false);
+    }
+  }, [birthdayFilter, customBirthdayDate, isAdminOrGerente]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -149,6 +155,108 @@ export function Dashboard() {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!isAdminOrGerente) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-8 text-white">
+          <h1 className="text-3xl font-bold mb-4">
+            Bienvenido, {currentUser?.nombre}
+          </h1>
+          <p className="text-blue-100 text-lg">
+            Aquí puedes ver un resumen de tus actividades y accesos rápidos
+          </p>
+          <div className="flex flex-wrap gap-4 mt-6">
+            {currentUser?.url_web_multicotizador && (
+              <a
+                href={currentUser.url_web_multicotizador}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition shadow-md"
+              >
+                <span>Multicotizador Digital</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+            {currentUser?.url_web_jiro && (
+              <a
+                href={currentUser.url_web_jiro}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition shadow-md"
+              >
+                <span>Página web de contacto</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ProximasReuniones />
+          <ResumenVacaciones />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <button
+            onClick={() => navigate('/vacaciones')}
+            className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white hover:shadow-xl hover:scale-105 transition-all text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-emerald-100 text-sm font-medium">Mis Vacaciones</p>
+                <p className="text-2xl font-bold mt-2">Gestionar</p>
+                <p className="text-emerald-100 text-sm mt-4">Ver calendario →</p>
+              </div>
+              <Calendar className="w-12 h-12 text-emerald-200 opacity-50" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/movi-meet')}
+            className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white hover:shadow-xl hover:scale-105 transition-all text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm font-medium">MOVI Meet</p>
+                <p className="text-2xl font-bold mt-2">Reuniones</p>
+                <p className="text-purple-100 text-sm mt-4">Iniciar reunión →</p>
+              </div>
+              <Video className="w-12 h-12 text-purple-200 opacity-50" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/espacio-jiro')}
+            className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-lg p-6 text-white hover:shadow-xl hover:scale-105 transition-all text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-amber-100 text-sm font-medium">Espacio JIRO</p>
+                <p className="text-2xl font-bold mt-2">Reservar</p>
+                <p className="text-amber-100 text-sm mt-4">Ver espacios →</p>
+              </div>
+              <MapPin className="w-12 h-12 text-amber-200 opacity-50" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/perfil')}
+            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white hover:shadow-xl hover:scale-105 transition-all text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm font-medium">Mi Perfil</p>
+                <p className="text-2xl font-bold mt-2">Ver / Editar</p>
+                <p className="text-blue-100 text-sm mt-4">Ir a mi perfil →</p>
+              </div>
+              <User className="w-12 h-12 text-blue-200 opacity-50" />
+            </div>
+          </button>
+        </div>
       </div>
     );
   }
