@@ -20,6 +20,7 @@ import { Publicidad } from './pages/Publicidad';
 import { GestorEmails } from './pages/GestorEmails';
 import { FirmasEmail } from './pages/FirmasEmail';
 import { Contactos } from './pages/Contactos';
+import { Chat } from './pages/Chat';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -216,6 +217,15 @@ function AppRoutes() {
             <Layout>
               <FirmasEmail />
             </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/chat"
+        element={
+          <ProtectedRoute>
+            <Chat />
           </ProtectedRoute>
         }
       />

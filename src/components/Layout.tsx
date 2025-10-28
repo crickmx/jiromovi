@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video, Calculator, Palette, Inbox, FileSignature, Contact } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -22,8 +22,11 @@ export function Layout({ children }: LayoutProps) {
   const isGerente = usuario?.rol === 'Gerente';
   const isAdminOrGerente = isAdmin || isGerente;
 
+  const isNotAgent = usuario?.rol !== 'Agente';
+
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
+    { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/gestor-emails', label: 'Mi E-Mail', icon: Inbox, show: true },
     { path: '/contactos', label: 'Contactos', icon: Contact, show: true },
