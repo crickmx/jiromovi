@@ -158,24 +158,31 @@ export function EspacioJiro() {
     }
 
     try {
-      const { error } = await supabase.from('reservas_espacio').insert({
-        area_id: selectedArea.id,
-        oficina_id: selectedArea.oficina_id,
-        usuario_id: currentUser?.id,
-        fecha: formData.fecha,
-        hora_inicio: formData.hora_inicio,
-        hora_fin: formData.hora_fin,
-        estado: 'pendiente',
-        notas: formData.notas,
-        creado_por: currentUser?.id,
-      });
+      const { data: nuevaReserva, error } = await supabase
+        .from('reservas_espacio')
+        .insert({
+          area_id: selectedArea.id,
+          oficina_id: selectedArea.oficina_id,
+          usuario_id: currentUser?.id,
+          fecha: formData.fecha,
+          hora_inicio: formData.hora_inicio,
+          hora_fin: formData.hora_fin,
+          estado: 'pendiente',
+          notas: formData.notas,
+          creado_por: currentUser?.id,
+        })
+        .select('*, areas(nombre), usuarios(nombre, apellidos, celular_personal, email_laboral), oficinas(nombre)')
+        .single();
 
       if (error) throw error;
+
+      if (nuevaReserva) {
+        setReservas([nuevaReserva, ...reservas]);
+      }
 
       setShowModal(false);
       setSelectedArea(null);
       setFormData({ fecha: '', hora_inicio: '', hora_fin: '', notas: '' });
-      loadReservas();
       alert('Solicitud de reserva enviada correctamente. Espera la aprobación del gerente.');
     } catch (error: any) {
       console.error('Error creating reservation:', error);
@@ -193,7 +200,7 @@ export function EspacioJiro() {
 
       if (error) throw error;
 
-      loadReservas();
+      setReservas(reservas.map(r => r.id === reservaId ? { ...r, estado: 'aprobada' } : r));
       alert('Reserva aprobada correctamente');
     } catch (error: any) {
       console.error('Error:', error);
@@ -220,7 +227,11 @@ export function EspacioJiro() {
 
       if (error) throw error;
 
-      loadReservas();
+      setReservas(reservas.map(r =>
+        r.id === reservaId
+          ? { ...r, estado: 'rechazada', comentarios_gerente: comentario }
+          : r
+      ));
       alert('Reserva rechazada');
     } catch (error: any) {
       console.error('Error:', error);
