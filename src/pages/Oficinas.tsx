@@ -14,9 +14,11 @@ import {
   Facebook,
   Instagram,
   X,
-  Settings
+  Settings,
+  Layers
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
+import { AreasManager } from '../components/AreasManager';
 
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -49,6 +51,8 @@ export function Oficinas() {
   const [error, setError] = useState('');
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState('text');
+  const [areasManagerOpen, setAreasManagerOpen] = useState(false);
+  const [selectedOficinaForAreas, setSelectedOficinaForAreas] = useState<Oficina | null>(null);
 
   useEffect(() => {
     loadData();
@@ -404,6 +408,18 @@ export function Oficinas() {
                     </button>
 
                     <div className="flex space-x-2">
+                      {oficina.es_espacio_jiro && (
+                        <button
+                          onClick={() => {
+                            setSelectedOficinaForAreas(oficina);
+                            setAreasManagerOpen(true);
+                          }}
+                          className="flex items-center space-x-2 text-green-600 hover:bg-green-50 px-3 py-2 rounded-lg transition"
+                        >
+                          <Layers className="w-4 h-4" />
+                          <span className="text-sm font-medium">Áreas</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => openModal(oficina)}
                         className="flex items-center space-x-2 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg transition"
@@ -735,6 +751,17 @@ export function Oficinas() {
             </div>
           </div>
         </div>
+      )}
+
+      {areasManagerOpen && selectedOficinaForAreas && (
+        <AreasManager
+          oficinaId={selectedOficinaForAreas.id}
+          oficinaNombre={selectedOficinaForAreas.nombre}
+          onClose={() => {
+            setAreasManagerOpen(false);
+            setSelectedOficinaForAreas(null);
+          }}
+        />
       )}
     </div>
   );
