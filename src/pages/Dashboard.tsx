@@ -6,6 +6,7 @@ import { Users, Building2, Calendar, Cake, Award, ExternalLink } from 'lucide-re
 import type { Database } from '../lib/database.types';
 import { UltimosCorreos } from '../components/UltimosCorreos';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
+import { ResumenVacaciones } from '../components/ResumenVacaciones';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -186,6 +187,8 @@ export function Dashboard() {
       <UltimosCorreos />
 
       {currentUser?.rol === 'Administrador' && <UsuariosPendientes />}
+
+      <ResumenVacaciones />
 
       <div className={`grid grid-cols-1 md:grid-cols-2 ${isGerente ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-6`}>
         <div
