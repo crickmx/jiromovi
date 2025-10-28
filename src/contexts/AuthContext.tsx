@@ -108,26 +108,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     console.log('[AuthContext] Attempting sign in for:', email);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error('[AuthContext] Sign in failed:', error);
-      console.error('[AuthContext] Error details:', {
-        message: error.message,
-        status: error.status,
-        name: error.name
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-    } else {
+
+      if (error) {
+        console.error('[AuthContext] Sign in failed:', error);
+        console.error('[AuthContext] Error details:', {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
+        return { error };
+      }
+
       console.log('[AuthContext] Sign in successful:', {
         userId: data.user?.id,
         email: data.user?.email
       });
-    }
 
-    return { error };
+      return { error: null };
+    } catch (err: any) {
+      console.error('[AuthContext] Network or unexpected error:', err);
+
+      const networkError: AuthError = {
+        name: 'NetworkError',
+        message: err.message || 'Error de conexión. Verifica tu conexión a internet y que la URL de Supabase sea correcta.',
+        status: 0,
+      } as AuthError;
+
+      return { error: networkError };
+    }
   };
 
   const signOut = async () => {

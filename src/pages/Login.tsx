@@ -31,6 +31,8 @@ export function Login() {
           setError('Credenciales incorrectas. Por favor, verifica tu e-mail laboral y contraseña.');
         } else if (signInError.message.includes('Email not confirmed')) {
           setError('Debes confirmar tu correo electrónico antes de iniciar sesión.');
+        } else if (signInError.message.includes('Failed to fetch') || signInError.name === 'NetworkError' || signInError.status === 0) {
+          setError('Error de conexión con el servidor. Verifica tu conexión a internet o contacta al administrador.');
         } else if (signInError.message.includes('network')) {
           setError('Error de conexión. Por favor, verifica tu conexión a internet.');
         } else {
@@ -40,9 +42,14 @@ export function Login() {
       } else {
         navigate('/');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error inesperado:', err);
-      setError('Error inesperado al iniciar sesión. Por favor, intenta de nuevo.');
+
+      if (err.message && err.message.includes('Failed to fetch')) {
+        setError('No se pudo conectar con el servidor. Verifica tu conexión a internet y vuelve a intentar.');
+      } else {
+        setError('Error inesperado al iniciar sesión. Por favor, intenta de nuevo.');
+      }
       setLoading(false);
     }
   };

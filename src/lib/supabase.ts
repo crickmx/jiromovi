@@ -68,16 +68,24 @@ if (!supabaseUrl || !supabaseAnonKey) {
   // Crear cliente dummy para evitar errores de importación
   supabaseClient = createClient('https://placeholder.supabase.co', 'placeholder-key');
 } else {
+  console.log('[Supabase] Initializing with URL:', supabaseUrl);
+
   supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce',
       storage: window.localStorage,
       storageKey: 'movi-auth',
     },
+    global: {
+      headers: {
+        'X-Client-Info': 'movi-digital-intranet',
+      },
+    },
   });
+
+  console.log('[Supabase] Client initialized successfully');
 }
 
 export const supabase = supabaseClient;
