@@ -200,7 +200,7 @@ export function Dashboard() {
           <ResumenVacaciones />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <button
             onClick={() => navigate('/vacaciones')}
             className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white hover:shadow-xl hover:scale-105 transition-all text-left"
@@ -240,20 +240,6 @@ export function Dashboard() {
                 <p className="text-amber-100 text-sm mt-4">Ver espacios →</p>
               </div>
               <MapPin className="w-12 h-12 text-amber-200 opacity-50" />
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate('/perfil')}
-            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white hover:shadow-xl hover:scale-105 transition-all text-left"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm font-medium">Mi Perfil</p>
-                <p className="text-2xl font-bold mt-2">Ver / Editar</p>
-                <p className="text-blue-100 text-sm mt-4">Ir a mi perfil →</p>
-              </div>
-              <User className="w-12 h-12 text-blue-200 opacity-50" />
             </div>
           </button>
         </div>
