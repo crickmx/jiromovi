@@ -1,7 +1,24 @@
 # Configuración de Dominio para app.movi.digital
 
-## Problema Identificado
-El sistema no permite iniciar sesión desde el dominio app.movi.digital debido a restricciones de configuración en Supabase.
+## Problemas Identificados y Resueltos
+
+### ❌ Problema 1: Restricciones de dominio en Supabase
+El sistema no permitía iniciar sesión desde app.movi.digital debido a restricciones de configuración.
+
+### ✅ Problema 2: Desincronización de emails (RESUELTO)
+**Estado:** CORREGIDO mediante migración de base de datos
+
+Había inconsistencias entre los emails en `auth.users` y `usuarios.email_laboral`:
+- Algunos usuarios tenían emails diferentes en ambas tablas
+- Esto causaba que el sistema de autenticación no encontrara al usuario después del login
+- **Solución aplicada:** Migración automática que sincronizó todos los emails
+- **Prevención futura:** Trigger automático mantiene la sincronización en tiempo real
+
+**Usuarios verificados y sincronizados:**
+- ✅ ccjimenez@jiro.com.mx (Administrador)
+- ✅ ccjimenez@jiro.mx (Gerente)
+- ✅ zacatecas@jiro.mx (Empleado)
+- ✅ pjimenez@jiro.mx (Empleado)
 
 ## Soluciones Implementadas en el Código
 
