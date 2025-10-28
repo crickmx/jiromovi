@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Image, Video, Plus, Search, Filter, CreditCard as Edit, Trash2, Copy, Palette } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
+import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 
 interface Categoria {
   id: string;
@@ -23,6 +24,9 @@ interface Plantilla {
   alto: number | null;
   duracion: number | null;
   activa: boolean;
+  zona_logo?: any;
+  zona_texto?: any;
+  estilo_texto_default?: any;
   publicidad_categorias?: { nombre: string } | null;
 }
 
@@ -49,7 +53,7 @@ export function Publicidad() {
   const [selectedCategoria, setSelectedCategoria] = useState<string>('todas');
   const [selectedTipo, setSelectedTipo] = useState<string>('todos');
   const [showNuevaPlantillaModal, setShowNuevaPlantillaModal] = useState(false);
-  const [showEditorModal, setShowEditorModal] = useState(false);
+  const [showPersonalizarModal, setShowPersonalizarModal] = useState(false);
   const [selectedPlantilla, setSelectedPlantilla] = useState<Plantilla | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
@@ -121,7 +125,7 @@ export function Publicidad() {
 
   const handleUsarPlantilla = (plantilla: Plantilla) => {
     setSelectedPlantilla(plantilla);
-    setShowEditorModal(true);
+    setShowPersonalizarModal(true);
   };
 
   return (
@@ -389,6 +393,20 @@ export function Publicidad() {
           loadData();
         }}
         categorias={categorias}
+      />
+
+      <PersonalizarPlantillaModal
+        isOpen={showPersonalizarModal}
+        onClose={() => {
+          setShowPersonalizarModal(false);
+          setSelectedPlantilla(null);
+        }}
+        plantilla={selectedPlantilla}
+        onSuccess={() => {
+          setShowPersonalizarModal(false);
+          setSelectedPlantilla(null);
+          loadData();
+        }}
       />
     </div>
   );
