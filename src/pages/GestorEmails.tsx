@@ -88,9 +88,48 @@ export function GestorEmails() {
 
     if (!data && !usuario.email_cuenta) {
       setShowConfig(true);
+    } else if (data && data.email && data.estado_conexion === 'conectado') {
+      handleSincronizarInicial(data);
     }
 
     setLoading(false);
+  };
+
+  const handleSincronizarInicial = async (config: EmailConfig) => {
+    try {
+      const { data: mensajes } = await supabase
+        .from('email_mensajes_cache')
+        .select('id')
+        .eq('usuario_id', usuario!.id)
+        .limit(1);
+
+      if (mensajes && mensajes.length > 0) {
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-sync-inbox`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            configuracionId: config.id,
+            carpeta: 'INBOX'
+          })
+        }
+      );
+
+      if (response.ok) {
+        setTimeout(() => loadMensajes(), 1000);
+      }
+    } catch (error) {
+      console.error('Error en sincronización inicial:', error);
+    }
   };
 
   const loadMensajes = async () => {
@@ -197,14 +236,21 @@ export function GestorEmails() {
                 Mi E-Mail
               </h1>
               {configuracion && (
-                <p className="text-sm text-neutral-600">
-                  {configuracion.email}
-                  {configuracion.ultima_sincronizacion && (
-                    <span className="ml-2">
-                      · Actualizado {formatFecha(configuracion.ultima_sincronizacion)}
-                    </span>
+                <div>
+                  <p className="text-sm text-neutral-600">
+                    {configuracion.email}
+                    {configuracion.ultima_sincronizacion && (
+                      <span className="ml-2">
+                        · Actualizado {formatFecha(configuracion.ultima_sincronizacion)}
+                      </span>
+                    )}
+                  </p>
+                  {!configuracion.ultima_sincronizacion && mensajes.length === 0 && (
+                    <p className="text-xs text-blue-600 font-semibold mt-1">
+                      Haz clic en "Actualizar" para sincronizar tus correos
+                    </p>
                   )}
-                </p>
+                </div>
               )}
             </div>
           </div>
@@ -280,7 +326,26 @@ export function GestorEmails() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Banner informativo */}
+          {configuracion && !configuracion.ultima_sincronizacion && mensajes.length === 0 && (
+            <div className="bg-blue-50 border-b border-blue-200 px-6 py-4">
+              <div className="flex items-center space-x-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-blue-900">
+                    Cuenta configurada exitosamente
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Tu correo <strong>{configuracion.email}</strong> está conectado.
+                    Haz clic en el botón "Actualizar" arriba para sincronizar tus correos del servidor IONOS.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 flex overflow-hidden">
           {/* Sidebar - Carpetas */}
           <div className="w-64 bg-white border-r border-neutral-200 overflow-y-auto">
             <div className="p-4 space-y-1">
@@ -332,7 +397,14 @@ export function GestorEmails() {
             {mensajes.length === 0 ? (
               <div className="p-8 text-center">
                 <Mail className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-                <p className="text-neutral-500">No hay mensajes</p>
+                <p className="text-neutral-500 mb-4">No hay mensajes</p>
+                <button
+                  onClick={handleSincronizar}
+                  disabled={sincronizando}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 text-sm"
+                >
+                  {sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}
+                </button>
               </div>
             ) : (
               <div>
@@ -479,6 +551,7 @@ export function GestorEmails() {
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
 
