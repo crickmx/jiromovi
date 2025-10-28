@@ -8,6 +8,7 @@ import { UltimosCorreos } from '../components/UltimosCorreos';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
 import { ResumenVacaciones } from '../components/ResumenVacaciones';
 import { ProximasReuniones } from '../components/ProximasReuniones';
+import { ProximasReservas } from '../components/ProximasReservas';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -167,7 +168,7 @@ export function Dashboard() {
             Bienvenido, {currentUser?.nombre}
           </h1>
           <p className="text-blue-100 text-lg">
-            Aquí puedes ver un resumen de tus actividades y accesos rápidos
+            Aquí puedes ver un resumen de tus actividades
           </p>
           <div className="flex flex-wrap gap-4 mt-6">
             {currentUser?.url_web_multicotizador && (
@@ -195,53 +196,10 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <UltimosCorreos />
           <ProximasReuniones />
-          <ResumenVacaciones />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <button
-            onClick={() => navigate('/vacaciones')}
-            className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white hover:shadow-xl hover:scale-105 transition-all text-left"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-emerald-100 text-sm font-medium">Mis Vacaciones</p>
-                <p className="text-2xl font-bold mt-2">Gestionar</p>
-                <p className="text-emerald-100 text-sm mt-4">Ver calendario →</p>
-              </div>
-              <Calendar className="w-12 h-12 text-emerald-200 opacity-50" />
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate('/movi-meet')}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white hover:shadow-xl hover:scale-105 transition-all text-left"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm font-medium">MOVI Meet</p>
-                <p className="text-2xl font-bold mt-2">Reuniones</p>
-                <p className="text-purple-100 text-sm mt-4">Iniciar reunión →</p>
-              </div>
-              <Video className="w-12 h-12 text-purple-200 opacity-50" />
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate('/espacio-jiro')}
-            className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-lg p-6 text-white hover:shadow-xl hover:scale-105 transition-all text-left"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-amber-100 text-sm font-medium">Espacio JIRO</p>
-                <p className="text-2xl font-bold mt-2">Reservar</p>
-                <p className="text-amber-100 text-sm mt-4">Ver espacios →</p>
-              </div>
-              <MapPin className="w-12 h-12 text-amber-200 opacity-50" />
-            </div>
-          </button>
+          <ProximasReservas />
         </div>
       </div>
     );
