@@ -1,6 +1,17 @@
-# Sistema de Gestión de Empleados
+# Intranet JIRO by MOVI Digital
 
-Sistema completo de gestión de empleados y directorio con control de acceso basado en roles y campos editables personalizables, desarrollado completamente en español.
+Sistema completo de gestión de empleados, directorio, vacaciones, reuniones y multicotizador digital con control de acceso basado en roles, desarrollado completamente en español.
+
+## ⚠️ IMPORTANTE: Antes de Desplegar
+
+**Si la aplicación no carga en app.movi.digital**, lee estos archivos en orden:
+
+1. 📖 **[README_IMPORTANTE.md](README_IMPORTANTE.md)** - Solución rápida (3 minutos)
+2. 📋 **[RESUMEN_DESPLIEGUE.md](RESUMEN_DESPLIEGUE.md)** - Explicación del problema
+3. 🔧 **[SOLUCION_DEFINITIVA.md](SOLUCION_DEFINITIVA.md)** - Cambios implementados
+4. 🌐 **[CONFIGURACION_DOMINIO.md](CONFIGURACION_DOMINIO.md)** - Guía por plataforma
+
+**TL;DR:** Necesitas configurar las variables de entorno `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en tu plataforma de hosting y hacer redeploy.
 
 ## Características Principales
 
