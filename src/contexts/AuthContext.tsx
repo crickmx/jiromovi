@@ -22,16 +22,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchUsuario = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('id', userId)
-      .eq('activo', true)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', userId)
+        .eq('activo', true)
+        .maybeSingle();
 
-    if (!error && data) {
+      if (error) {
+        console.error('Error fetching usuario:', error);
+        setUsuario(null);
+        return;
+      }
+
+      if (!data) {
+        console.warn('Usuario not found or not active:', userId);
+        await supabase.auth.signOut();
+        setUsuario(null);
+        return;
+      }
+
       setUsuario(data);
-    } else {
+    } catch (err) {
+      console.error('Unexpected error fetching usuario:', err);
       setUsuario(null);
     }
   };

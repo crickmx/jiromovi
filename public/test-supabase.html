@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Conexión Supabase</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test de Conexión Supabase</h1>
+
+        <div id="status" class="status info">
+            ⏳ Iniciando pruebas...
+        </div>
+
+        <div id="details"></div>
+
+        <h2>Prueba de Login</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button onclick="testLogin()">Probar Login</button>
+        <button onclick="checkSession()">Verificar Sesión</button>
+        <button onclick="clearStorage()">Limpiar Storage</button>
+
+        <div id="loginResult"></div>
+    </div>
+
+    <script type="module">
+        const SUPABASE_URL = 'https://akkbisolbjkusbuihrad.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFra2Jpc29sYmprdXNidWlocmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNzkwNDAsImV4cCI6MjA3NjY1NTA0MH0.iJf04oJv0ERuyWyY0gLpd7ntP6bITJ8LWxGFKJNSLvQ';
+
+        let supabase;
+
+        async function initSupabase() {
+            const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+
+            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: {
+                    autoRefreshToken: true,
+                    persistSession: true,
+                    detectSessionInUrl: true,
+                    flowType: 'pkce',
+                }
+            });
+
+            await runTests();
+        }
+
+        async function runTests() {
+            const statusDiv = document.getElementById('status');
+            const detailsDiv = document.getElementById('details');
+
+            let results = '<h2>Resultados de Pruebas</h2>';
+
+            // Test 1: Conexión básica
+            try {
+                const { data, error } = await supabase.from('usuarios').select('count').limit(1);
+                if (error) {
+                    results += `<div class="status error">❌ Error de conexión: ${error.message}</div>`;
+                } else {
+                    results += `<div class="status success">✅ Conexión a Supabase exitosa</div>`;
+                }
+            } catch (err) {
+                results += `<div class="status error">❌ Error inesperado: ${err.message}</div>`;
+            }
+
+            // Test 2: Información del entorno
+            results += `<div class="status info">
+                📍 Dominio actual: ${window.location.hostname}<br>
+                🌐 Protocolo: ${window.location.protocol}<br>
+                🔗 URL completa: ${window.location.href}
+            </div>`;
+
+            // Test 3: LocalStorage
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+                results += `<div class="status success">✅ LocalStorage funcional</div>`;
+            } catch (err) {
+                results += `<div class="status error">❌ LocalStorage bloqueado: ${err.message}</div>`;
+            }
+
+            // Test 4: Sesión actual
+            try {
+                const { data: session } = await supabase.auth.getSession();
+                if (session.session) {
+                    results += `<div class="status success">✅ Sesión activa encontrada</div>`;
+                    results += `<pre>${JSON.stringify(session.session.user, null, 2)}</pre>`;
+                } else {
+                    results += `<div class="status info">ℹ️ No hay sesión activa</div>`;
+                }
+            } catch (err) {
+                results += `<div class="status error">❌ Error al verificar sesión: ${err.message}</div>`;
+            }
+
+            detailsDiv.innerHTML = results;
+            statusDiv.className = 'status success';
+            statusDiv.textContent = '✅ Pruebas completadas';
+        }
+
+        window.testLogin = async function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            if (!email || !password) {
+                resultDiv.innerHTML = '<div class="status error">❌ Por favor ingresa email y contraseña</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="status info">⏳ Intentando login...</div>';
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+
+                if (error) {
+                    resultDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                    console.error('Login error:', error);
+                } else {
+                    resultDiv.innerHTML = `<div class="status success">✅ Login exitoso!</div>`;
+                    resultDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    console.log('Login success:', data);
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="status error">❌ Error inesperado: ${err.message}</div>`;
+                console.error('Unexpected error:', err);
+            }
+        };
+
+        window.checkSession = async function() {
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                const { data, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    resultDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                } else if (data.session) {
+                    resultDiv.innerHTML = `<div class="status success">✅ Sesión activa</div>`;
+                    resultDiv.innerHTML += `<pre>${JSON.stringify(data.session.user, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="status info">ℹ️ No hay sesión activa</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="status error">❌ Error: ${err.message}</div>`;
+            }
+        };
+
+        window.clearStorage = function() {
+            localStorage.clear();
+            sessionStorage.clear();
+            document.getElementById('loginResult').innerHTML = '<div class="status success">✅ Storage limpiado. Recarga la página.</div>';
+        };
+
+        // Inicializar
+        initSupabase();
+    </script>
+</body>
+</html>

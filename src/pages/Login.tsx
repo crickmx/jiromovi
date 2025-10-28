@@ -21,13 +21,29 @@ export function Login() {
     setSuccess('');
     setLoading(true);
 
-    const { error: signInError } = await signIn(email, password);
+    try {
+      const { error: signInError } = await signIn(email, password);
 
-    if (signInError) {
-      setError('Credenciales incorrectas. Por favor, verifica tu e-mail laboral y contraseña.');
+      if (signInError) {
+        console.error('Error de autenticación:', signInError);
+
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError('Credenciales incorrectas. Por favor, verifica tu e-mail laboral y contraseña.');
+        } else if (signInError.message.includes('Email not confirmed')) {
+          setError('Debes confirmar tu correo electrónico antes de iniciar sesión.');
+        } else if (signInError.message.includes('network')) {
+          setError('Error de conexión. Por favor, verifica tu conexión a internet.');
+        } else {
+          setError(`Error al iniciar sesión: ${signInError.message}`);
+        }
+        setLoading(false);
+      } else {
+        navigate('/');
+      }
+    } catch (err) {
+      console.error('Error inesperado:', err);
+      setError('Error inesperado al iniciar sesión. Por favor, intenta de nuevo.');
       setLoading(false);
-    } else {
-      navigate('/');
     }
   };
 

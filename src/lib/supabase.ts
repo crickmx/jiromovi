@@ -8,4 +8,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Faltan las variables de entorno de Supabase');
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+    storage: window.localStorage,
+    storageKey: 'movi-auth',
+  },
+});
