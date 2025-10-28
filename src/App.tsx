@@ -19,7 +19,6 @@ import MulticotizadorDigital from './pages/MulticotizadorDigital';
 import { Publicidad } from './pages/Publicidad';
 import { GestorEmails } from './pages/GestorEmails';
 import { FirmasEmail } from './pages/FirmasEmail';
-import { MiFirma } from './pages/MiFirma';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -204,17 +203,6 @@ function AppRoutes() {
           <ProtectedRoute requireAdmin>
             <Layout>
               <FirmasEmail />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mi-firma"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <MiFirma />
             </Layout>
           </ProtectedRoute>
         }

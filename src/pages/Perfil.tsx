@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Save, Upload, User as UserIcon } from 'lucide-react';
+import { Save, Upload, User as UserIcon, FileSignature, AlertCircle } from 'lucide-react';
 import { CustomFields } from '../components/CustomFields';
 import { DocumentsSection } from '../components/DocumentsSection';
 import { PaymentFields } from '../components/PaymentFields';
@@ -22,11 +22,15 @@ export function Perfil() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [firmaHtml, setFirmaHtml] = useState('');
+  const [firmaInfo, setFirmaInfo] = useState<any>(null);
+  const [loadingFirma, setLoadingFirma] = useState(false);
 
   useEffect(() => {
     if (usuario) {
       setFormData(usuario);
       loadData();
+      loadFirma();
     }
   }, [usuario]);
 
@@ -43,6 +47,40 @@ export function Perfil() {
       console.error('Error cargando datos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFirma = async () => {
+    if (!usuario) return;
+
+    setLoadingFirma(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/render-firma`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            usuarioId: usuario.id
+          })
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        setFirmaHtml(result.html);
+        setFirmaInfo(result.info);
+      }
+    } catch (error) {
+      console.error('Error cargando firma:', error);
+    } finally {
+      setLoadingFirma(false);
     }
   };
 
@@ -275,6 +313,60 @@ export function Perfil() {
 
           <div className="mt-8">
             <DocumentsSection usuarioId={usuario.id} canEdit={true} />
+          </div>
+
+          <div className="mt-8 border-t border-slate-200 pt-8">
+            <div className="flex items-center space-x-3 mb-4">
+              <FileSignature className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-bold text-slate-900">Mi Firma de E-Mail</h2>
+            </div>
+
+            {loadingFirma ? (
+              <div className="text-center py-8">
+                <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-sm text-slate-500 mt-2">Cargando firma...</p>
+              </div>
+            ) : firmaHtml ? (
+              <div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-blue-900 mb-1">
+                        Esta firma se aplica automáticamente en tus correos salientes
+                      </p>
+                      <p className="text-xs text-blue-700">
+                        {firmaInfo && (
+                          <>
+                            Plantilla: <strong>{firmaInfo.template_nombre}</strong>
+                            {' '} · Asignación: <strong className="capitalize">{firmaInfo.tipo_asignacion}</strong>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-2 border-slate-300 rounded-xl p-6 bg-white">
+                  <div dangerouslySetInnerHTML={{ __html: firmaHtml }} />
+                </div>
+
+                <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <p className="text-sm text-slate-600">
+                    <strong>Nota:</strong> Las firmas son gestionadas por el Administrador. Si necesitas cambios en tu firma,
+                    contacta al departamento de administración.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-slate-50 border border-slate-200 rounded-lg">
+                <FileSignature className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-600 font-semibold">No tienes una firma asignada</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Contacta al Administrador para que te asigne una firma.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="mt-8 flex justify-end">
