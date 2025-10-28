@@ -24,7 +24,6 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: isAdminOrGerente },
-    { path: '/perfil', label: 'Mi Perfil', icon: User, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/movi-meet', label: 'MOVI Meet', icon: Video, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
@@ -76,27 +75,34 @@ export function Layout({ children }: LayoutProps) {
           </nav>
 
           <div className="p-4 border-t border-slate-200">
-            <div className="flex items-center space-x-3 mb-4">
+            <button
+              onClick={() => {
+                navigate('/perfil');
+                setSidebarOpen(false);
+              }}
+              className="flex items-center space-x-3 mb-4 w-full p-3 rounded-lg hover:bg-slate-100 transition group"
+            >
               {usuario?.imagen_perfil_url ? (
                 <img
                   src={usuario.imagen_perfil_url}
                   alt="Perfil"
-                  className="w-10 h-10 rounded-full object-cover border-2 border-slate-200"
+                  className="w-10 h-10 rounded-full object-cover border-2 border-slate-200 group-hover:border-blue-600 transition"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-700 transition">
                   <span className="text-white font-medium text-sm">
                     {usuario?.nombre?.[0]}{usuario?.apellidos?.[0]}
                   </span>
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate">
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-medium text-slate-800 truncate group-hover:text-blue-600 transition">
                   {usuario?.nombre} {usuario?.apellidos}
                 </p>
-                <p className="text-xs text-slate-500">{usuario?.rol}</p>
+                <p className="text-xs text-slate-500 group-hover:text-blue-500 transition">{usuario?.rol}</p>
               </div>
-            </div>
+              <User className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition" />
+            </button>
 
             <button
               onClick={handleSignOut}
