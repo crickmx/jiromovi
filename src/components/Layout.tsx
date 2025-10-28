@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video, Calculator } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -28,6 +28,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/movi-meet', label: 'MOVI Meet', icon: Video, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
+    { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Calculator, show: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: isAdminOrGerente },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
@@ -129,7 +130,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className={location.pathname === '/multicotizador-digital' ? 'h-screen' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}>
           {children}
         </main>
       </div>

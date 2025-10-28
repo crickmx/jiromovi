@@ -15,6 +15,7 @@ import { Vacaciones } from './pages/Vacaciones';
 import { EspacioJiro } from './pages/EspacioJiro';
 import { MoviMeet } from './pages/MoviMeet';
 import { MeetingRoom } from './pages/MeetingRoom';
+import MulticotizadorDigital from './pages/MulticotizadorDigital';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -158,6 +159,17 @@ function AppRoutes() {
       <Route
         path="/m/:code"
         element={<MeetingRoom />}
+      />
+
+      <Route
+        path="/multicotizador-digital"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MulticotizadorDigital />
+            </Layout>
+          </ProtectedRoute>
+        }
       />
 
       <Route path="/" element={<Navigate to={usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' ? "/dashboard" : "/perfil"} replace />} />
