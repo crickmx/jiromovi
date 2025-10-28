@@ -22,31 +22,45 @@ export function ResumenVacaciones() {
   const isAdmin = currentUser?.rol === 'Administrador';
 
   useEffect(() => {
-    loadSolicitudes();
-  }, []);
+    if (isGerente || isAdmin) {
+      loadSolicitudes();
+    } else {
+      setLoading(false);
+    }
+  }, [isGerente, isAdmin]);
 
   const loadSolicitudes = async () => {
     setLoading(true);
     try {
-      if (isGerente) {
-        const { data } = await supabase
+      if (isGerente && currentUser?.oficina_id) {
+        const { data, error } = await supabase
           .from('solicitudes_vacaciones')
           .select('*, empleado:usuarios!solicitudes_vacaciones_empleado_id_fkey(nombre, apellidos)')
-          .eq('oficina_id', currentUser?.oficina_id || '')
+          .eq('oficina_id', currentUser.oficina_id)
           .eq('estado', 'pendiente')
           .order('created_at', { ascending: false })
           .limit(5);
 
-        setSolicitudesPendientes(data || []);
+        if (error) {
+          console.error('Error loading vacation requests for Gerente:', error);
+        } else {
+          console.log('Gerente vacation requests loaded:', data);
+          setSolicitudesPendientes(data || []);
+        }
       } else if (isAdmin) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('solicitudes_vacaciones')
           .select('*, empleado:usuarios!solicitudes_vacaciones_empleado_id_fkey(nombre, apellidos), oficinas(nombre)')
           .eq('estado', 'preaprobado')
           .order('created_at', { ascending: false })
           .limit(5);
 
-        setSolicitudesPreaprobadas(data || []);
+        if (error) {
+          console.error('Error loading vacation requests for Admin:', error);
+        } else {
+          console.log('Admin vacation requests loaded:', data);
+          setSolicitudesPreaprobadas(data || []);
+        }
       }
     } catch (error) {
       console.error('Error loading vacation requests:', error);
@@ -55,10 +69,16 @@ export function ResumenVacaciones() {
     }
   };
 
+  if (!isGerente && !isAdmin) {
+    return null;
+  }
+
   if (loading) {
     return (
-      <div className="flex justify-center py-8">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div className="flex justify-center py-8">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
       </div>
     );
   }
@@ -69,7 +89,23 @@ export function ResumenVacaciones() {
   const estadoLabel = isGerente ? 'Pendiente' : 'Preaprobado';
 
   if (solicitudes.length === 0) {
-    return null;
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <Calendar className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">{titulo}</h2>
+            <p className="text-sm text-slate-600">No hay solicitudes en este momento</p>
+          </div>
+        </div>
+        <div className="text-center py-8 text-slate-500">
+          <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-400" />
+          <p>No hay solicitudes de vacaciones {isGerente ? 'pendientes' : 'preaprobadas'}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
