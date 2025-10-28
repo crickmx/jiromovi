@@ -116,26 +116,38 @@ async function sendEmailSMTP(
   try {
     conn = await connectSMTP(config.servidor_salida, config.puerto_salida);
 
-    await sendSMTPCommand(conn, '', '220');
+    const greeting = await sendSMTPCommand(conn, '', '220');
+    console.log('SMTP Greeting:', greeting);
 
-    await sendSMTPCommand(conn, `EHLO ${config.servidor_salida}`, '250');
+    const domain = config.email.split('@')[1] || 'localhost';
+    const ehlo = await sendSMTPCommand(conn, `EHLO ${domain}`, '250');
+    console.log('EHLO Response:', ehlo);
 
-    const authCommand = encodeBase64(`\0${config.email}\0${config.password}`);
-    await sendSMTPCommand(conn, `AUTH PLAIN ${authCommand}`, '235');
+    const authCommand = encodeBase64(`\0${config.email}\0${config.password_encrypted}`);
+    const authResponse = await sendSMTPCommand(conn, `AUTH PLAIN ${authCommand}`, '235');
+    console.log('AUTH Response:', authResponse);
 
-    await sendSMTPCommand(conn, `MAIL FROM:<${config.email}>`, '250');
+    const mailFrom = await sendSMTPCommand(conn, `MAIL FROM:<${config.email}>`, '250');
+    console.log('MAIL FROM Response:', mailFrom);
 
     const allRecipients = [...to, ...cc, ...bcc];
     for (const recipient of allRecipients) {
-      await sendSMTPCommand(conn, `RCPT TO:<${recipient}>`, '250');
+      const rcpt = await sendSMTPCommand(conn, `RCPT TO:<${recipient}>`, '250');
+      console.log(`RCPT TO <${recipient}> Response:`, rcpt);
     }
 
-    await sendSMTPCommand(conn, 'DATA', '354');
+    const dataCmd = await sendSMTPCommand(conn, 'DATA', '354');
+    console.log('DATA Response:', dataCmd);
 
     const emailMessage = buildEmailMessage(config.email, fromName, to, cc, bcc, subject, htmlBody);
-    await sendSMTPCommand(conn, emailMessage + '\r\n.', '250');
+
+    const encoder = new TextEncoder();
+    await conn.write(encoder.encode(emailMessage));
+    const endData = await sendSMTPCommand(conn, '\r\n.', '250');
+    console.log('End DATA Response:', endData);
 
     await sendSMTPCommand(conn, 'QUIT');
+    console.log('QUIT sent');
 
     const messageId = `<${Date.now()}.${Math.random().toString(36)}@${config.servidor_salida}>`;
     return messageId;
