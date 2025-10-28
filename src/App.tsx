@@ -17,6 +17,7 @@ import { MoviMeet } from './pages/MoviMeet';
 import { MeetingRoom } from './pages/MeetingRoom';
 import MulticotizadorDigital from './pages/MulticotizadorDigital';
 import { Publicidad } from './pages/Publicidad';
+import { GestorEmails } from './pages/GestorEmails';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -179,6 +180,17 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Publicidad />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/gestor-emails"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <GestorEmails />
             </Layout>
           </ProtectedRoute>
         }
