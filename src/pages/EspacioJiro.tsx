@@ -7,7 +7,7 @@ import { DIAS_SEMANA_LABELS, validarHorario, getEstadoReservaBadgeClass, getEsta
 
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 type Area = Database['public']['Tables']['areas']['Row'] & {
-  oficinas?: Pick<Oficina, 'nombre'> | null;
+  oficinas?: Pick<Oficina, 'nombre' | 'domicilio'> | null;
 };
 type Reserva = Database['public']['Tables']['reservas_espacio']['Row'] & {
   areas?: Pick<Area, 'nombre'> | null;
@@ -54,7 +54,7 @@ export function EspacioJiro() {
   const loadAreas = async () => {
     const { data, error } = await supabase
       .from('areas')
-      .select('*, oficinas!inner(nombre, es_espacio_jiro, activa)')
+      .select('*, oficinas!inner(nombre, domicilio, es_espacio_jiro, activa)')
       .eq('activo', true)
       .eq('oficinas.es_espacio_jiro', true)
       .eq('oficinas.activa', true)
@@ -388,13 +388,19 @@ export function EspacioJiro() {
                   className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition"
                 >
                   <div className="mb-3">
-                    <h3 className="font-bold text-slate-900 mb-1">{area.nombre}</h3>
-                    <div className="flex items-center text-sm text-slate-600 mb-2">
-                      <MapPin className="w-4 h-4 mr-1" />
+                    <div className="flex items-center text-sm font-semibold text-blue-600 mb-2">
+                      <Building2 className="w-4 h-4 mr-1" />
                       {area.oficinas?.nombre}
                     </div>
+                    <h3 className="font-bold text-slate-900 text-lg mb-2">{area.nombre}</h3>
                     {area.detalles && (
                       <p className="text-sm text-slate-600 mb-2">{area.detalles}</p>
+                    )}
+                    {area.oficinas?.domicilio && (
+                      <div className="flex items-start text-sm text-slate-600 mb-2">
+                        <MapPin className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" />
+                        <span>{area.oficinas.domicilio}</span>
+                      </div>
                     )}
                   </div>
 
