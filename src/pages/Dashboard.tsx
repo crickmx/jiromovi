@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, Building2, Calendar, Cake, Award, ExternalLink } from 'lucide-react';
+import { Users, Building2, Calendar, Cake, Award, ExternalLink, Sparkles } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { UltimosCorreos } from '../components/UltimosCorreos';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
@@ -163,36 +163,43 @@ export function Dashboard() {
   if (!isAdminOrGerente) {
     return (
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-8 text-white">
-          <h1 className="text-3xl font-bold mb-4">
-            Bienvenido, {currentUser?.nombre}
-          </h1>
-          <p className="text-blue-100 text-lg">
-            Aquí puedes ver un resumen de tus actividades
-          </p>
-          <div className="flex flex-wrap gap-4 mt-6">
-            {currentUser?.url_web_multicotizador && (
-              <a
-                href={currentUser.url_web_multicotizador}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition shadow-md"
-              >
-                <span>Multicotizador Digital</span>
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            )}
-            {currentUser?.url_web_jiro && (
-              <a
-                href={currentUser.url_web_jiro}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition shadow-md"
-              >
-                <span>Página web de contacto</span>
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            )}
+        <div className="bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 rounded-3xl shadow-strong p-8 md:p-10 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+          <div className="relative z-10">
+            <div className="flex items-center space-x-2 mb-3">
+              <Sparkles className="w-6 h-6" />
+              <h1 className="text-3xl md:text-4xl font-display font-bold">
+                Bienvenido, {currentUser?.nombre}
+              </h1>
+            </div>
+            <p className="text-primary-100 text-lg mb-6">
+              Aquí puedes ver un resumen de tus actividades
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {currentUser?.url_web_multicotizador && (
+                <a
+                  href={currentUser.url_web_multicotizador}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 bg-white/95 backdrop-blur text-primary-700 px-5 py-2.5 rounded-xl font-semibold hover:bg-white hover:shadow-medium transition-all duration-200 hover:scale-105"
+                >
+                  <span>Multicotizador Digital</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+              {currentUser?.url_web_jiro && (
+                <a
+                  href={currentUser.url_web_jiro}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 bg-white/95 backdrop-blur text-primary-700 px-5 py-2.5 rounded-xl font-semibold hover:bg-white hover:shadow-medium transition-all duration-200 hover:scale-105"
+                >
+                  <span>Página web de contacto</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+            </div>
           </div>
         </div>
 
@@ -207,33 +214,40 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-8 text-white">
-        <h1 className="text-3xl font-bold mb-4">
-          Bienvenido {currentUser?.nombre}
-        </h1>
-        <div className="flex flex-wrap gap-4">
-          {currentUser?.url_web_multicotizador && (
-            <a
-              href={currentUser.url_web_multicotizador}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-2 bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition shadow-md"
-            >
-              <span>Multicotizador Digital</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          )}
-          {currentUser?.url_web_jiro && (
-            <a
-              href={currentUser.url_web_jiro}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-2 bg-white text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition shadow-md"
-            >
-              <span>Página web de contacto</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          )}
+      <div className="bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 rounded-3xl shadow-strong p-8 md:p-10 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+        <div className="relative z-10">
+          <div className="flex items-center space-x-2 mb-3">
+            <Sparkles className="w-6 h-6" />
+            <h1 className="text-3xl md:text-4xl font-display font-bold">
+              Bienvenido, {currentUser?.nombre}
+            </h1>
+          </div>
+          <div className="flex flex-wrap gap-3 mt-6">
+            {currentUser?.url_web_multicotizador && (
+              <a
+                href={currentUser.url_web_multicotizador}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 bg-white/95 backdrop-blur text-primary-700 px-5 py-2.5 rounded-xl font-semibold hover:bg-white hover:shadow-medium transition-all duration-200 hover:scale-105"
+              >
+                <span>Multicotizador Digital</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+            {currentUser?.url_web_jiro && (
+              <a
+                href={currentUser.url_web_jiro}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 bg-white/95 backdrop-blur text-primary-700 px-5 py-2.5 rounded-xl font-semibold hover:bg-white hover:shadow-medium transition-all duration-200 hover:scale-105"
+              >
+                <span>Página web de contacto</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+          </div>
         </div>
       </div>
 

@@ -71,17 +71,21 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-primary-50/30 to-neutral-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md animate-fade-in">
+        <div className="bg-white rounded-3xl shadow-strong p-8 md:p-10 border border-neutral-200">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <LogIn className="w-8 h-8 text-white" />
+            <div className="flex justify-center mb-6">
+              <img
+                src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
+                alt="MOVI Digital Logo"
+                className="h-16 object-contain"
+              />
             </div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">
+            <h1 className="text-3xl font-display font-bold text-neutral-800 mb-2">
               {showForgotPassword ? 'Recuperar Contraseña' : 'Bienvenido'}
             </h1>
-            <p className="text-slate-600">
+            <p className="text-neutral-600">
               {showForgotPassword
                 ? 'Ingresa tu correo para recibir instrucciones'
                 : 'Ingresa a tu cuenta para continuar'}
@@ -91,13 +95,13 @@ export function Login() {
           {!showForgotPassword ? (
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                <div className="bg-accent-50 border border-accent-200 text-accent-700 px-4 py-3 rounded-xl text-sm animate-slide-down">
                   {error}
                 </div>
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                <label htmlFor="email" className="block text-sm font-semibold text-neutral-700 mb-2">
                   E-Mail Laboral
                 </label>
                 <input
@@ -106,13 +110,13 @@ export function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full px-4 py-3.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-neutral-50 hover:bg-white"
                   placeholder="nombre@empresa.com"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-neutral-700 mb-2">
                   Contraseña
                 </label>
                 <input
@@ -121,7 +125,7 @@ export function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full px-4 py-3.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-neutral-50 hover:bg-white"
                   placeholder="••••••••"
                 />
               </div>
@@ -129,7 +133,7 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-medium hover:shadow-strong hover:scale-[1.02] active:scale-[0.98]"
               >
                 {loading ? 'Ingresando...' : 'Iniciar Sesión'}
               </button>
@@ -137,7 +141,7 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => setShowForgotPassword(true)}
-                className="w-full text-blue-600 hover:text-blue-700 text-sm font-medium transition"
+                className="w-full text-primary-600 hover:text-primary-700 text-sm font-medium transition-colors py-2"
               >
                 ¿Olvidaste tu contraseña?
               </button>
@@ -145,19 +149,19 @@ export function Login() {
           ) : (
             <form onSubmit={handlePasswordReset} className="space-y-5">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                <div className="bg-accent-50 border border-accent-200 text-accent-700 px-4 py-3 rounded-xl text-sm animate-slide-down">
                   {error}
                 </div>
               )}
 
               {success && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-sm animate-slide-down">
                   {success}
                 </div>
               )}
 
               <div>
-                <label htmlFor="resetEmail" className="block text-sm font-medium text-slate-700 mb-2">
+                <label htmlFor="resetEmail" className="block text-sm font-semibold text-neutral-700 mb-2">
                   E-Mail Laboral
                 </label>
                 <input
@@ -166,7 +170,7 @@ export function Login() {
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full px-4 py-3.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-neutral-50 hover:bg-white"
                   placeholder="nombre@empresa.com"
                 />
               </div>
@@ -174,7 +178,7 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-medium hover:shadow-strong hover:scale-[1.02] active:scale-[0.98]"
               >
                 {loading ? 'Enviando...' : 'Enviar Instrucciones'}
               </button>
@@ -186,7 +190,7 @@ export function Login() {
                   setError('');
                   setSuccess('');
                 }}
-                className="w-full text-slate-600 hover:text-slate-800 text-sm font-medium transition"
+                className="w-full text-neutral-600 hover:text-neutral-800 text-sm font-medium transition-colors py-2"
               >
                 Volver al inicio de sesión
               </button>
@@ -194,8 +198,8 @@ export function Login() {
           )}
         </div>
 
-        <p className="text-center text-sm text-slate-600 mt-6">
-          Intranet JIRO y MOVI Digital
+        <p className="text-center text-sm text-neutral-500 mt-6">
+          Intranet JIRO by MOVI Digital
         </p>
       </div>
     </div>
