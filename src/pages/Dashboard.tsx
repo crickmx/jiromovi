@@ -186,9 +186,9 @@ export function Dashboard() {
 
       <UltimosCorreos />
 
-      {currentUser?.rol === 'Administrador' && <UsuariosPendientes />}
-
       <ResumenVacaciones />
+
+      {currentUser?.rol === 'Administrador' && <UsuariosPendientes />}
 
       <div className={`grid grid-cols-1 md:grid-cols-2 ${isGerente ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-6`}>
         <div
