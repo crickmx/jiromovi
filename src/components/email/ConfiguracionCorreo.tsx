@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Server, Mail, Lock, Check, AlertCircle } from 'lucide-react';
+import { X, Server, Mail, Lock, Check, AlertCircle, Shield } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -10,84 +10,126 @@ interface ConfiguracionCorreoProps {
   configuracion: any | null;
 }
 
+interface ConfigGlobal {
+  servidor_imap: string;
+  puerto_imap: number;
+  servidor_smtp: string;
+  puerto_smtp: number;
+}
+
 export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion }: ConfiguracionCorreoProps) {
   const { usuario } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [verificando, setVerificando] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Campos del formulario
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [nombreRemitente, setNombreRemitente] = useState('');
+  const [configGlobal, setConfigGlobal] = useState<ConfigGlobal | null>(null);
 
-  const [servidorEntrada, setServidorEntrada] = useState('');
-  const [puertoEntrada, setPuertoEntrada] = useState(993);
-  const [tipoEntrada, setTipoEntrada] = useState<'IMAP' | 'POP3'>('IMAP');
-  const [sslEntrada, setSslEntrada] = useState(true);
-
-  const [servidorSalida, setServidorSalida] = useState('');
-  const [puertoSalida, setPuertoSalida] = useState(587);
-  const [sslSalida, setSslSalida] = useState(true);
+  const isAdmin = usuario?.rol === 'Administrador';
 
   useEffect(() => {
-    if (configuracion) {
-      setEmail(configuracion.email || '');
-      setNombreRemitente(configuracion.nombre_remitente || '');
-      setServidorEntrada(configuracion.servidor_entrada || '');
-      setPuertoEntrada(configuracion.puerto_entrada || 993);
-      setTipoEntrada(configuracion.tipo_entrada || 'IMAP');
-      setSslEntrada(configuracion.ssl_entrada ?? true);
-      setServidorSalida(configuracion.servidor_salida || '');
-      setPuertoSalida(configuracion.puerto_salida || 587);
-      setSslSalida(configuracion.ssl_salida ?? true);
-    } else if (usuario) {
-      setNombreRemitente(usuario.nombre_completo || '');
+    loadConfigGlobal();
+    if (usuario) {
+      setEmail(usuario.email_cuenta || '');
     }
-  }, [configuracion, usuario]);
+  }, [usuario]);
+
+  const loadConfigGlobal = async () => {
+    const { data } = await supabase
+      .from('email_config_global')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      setConfigGlobal(data);
+    }
+  };
+
+  const handleVerificarConexion = async () => {
+    if (!email || !password) {
+      setError('Por favor ingresa tu correo y contraseña');
+      return;
+    }
+
+    setVerificando(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-verify-connection`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email,
+            password
+          })
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setSuccess('✅ Conexión exitosa con el servidor de correo IONOS');
+
+        await supabase
+          .from('usuarios')
+          .update({
+            email_verificado: true,
+            email_ultima_verificacion: new Date().toISOString(),
+            email_error_mensaje: null
+          })
+          .eq('id', usuario!.id);
+
+      } else {
+        throw new Error(result.error || 'Error al conectar');
+      }
+
+    } catch (err: any) {
+      console.error('Error verificando conexión:', err);
+      setError('❌ Error al conectar con el servidor. Verifique su correo y contraseña.');
+
+      await supabase
+        .from('usuarios')
+        .update({
+          email_verificado: false,
+          email_error_mensaje: err.message
+        })
+        .eq('id', usuario!.id);
+    } finally {
+      setVerificando(false);
+    }
+  };
 
   const handleGuardar = async () => {
-    if (!email || !servidorEntrada || !servidorSalida) {
-      setError('Por favor completa todos los campos requeridos');
+    if (!email || !password) {
+      setError('Por favor completa todos los campos');
       return;
     }
 
     setLoading(true);
     setError('');
-    setSuccess('');
 
     try {
-      const datos = {
-        usuario_id: usuario!.id,
-        email,
-        password_encrypted: password || configuracion?.password_encrypted,
-        nombre_remitente: nombreRemitente || usuario!.nombre_completo,
-        servidor_entrada: servidorEntrada,
-        puerto_entrada: puertoEntrada,
-        tipo_entrada: tipoEntrada,
-        ssl_entrada: sslEntrada,
-        servidor_salida: servidorSalida,
-        puerto_salida: puertoSalida,
-        ssl_salida: sslSalida,
-        activa: true,
-        estado_conexion: 'sin_verificar',
-        updated_at: new Date().toISOString()
-      };
+      const { error: updateError } = await supabase
+        .from('usuarios')
+        .update({
+          email_cuenta: email,
+          email_password: password
+        })
+        .eq('id', usuario!.id);
 
-      if (configuracion) {
-        const { error: updateError } = await supabase
-          .from('email_configuraciones')
-          .update(datos)
-          .eq('id', configuracion.id);
-
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from('email_configuraciones')
-          .insert(datos);
-
-        if (insertError) throw insertError;
-      }
+      if (updateError) throw updateError;
 
       setSuccess('Configuración guardada correctamente');
       setTimeout(() => {
@@ -102,52 +144,18 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
     }
   };
 
-  const handleAutoConfig = (proveedor: 'gmail' | 'outlook' | 'yahoo') => {
-    const configs = {
-      gmail: {
-        servidorEntrada: 'imap.gmail.com',
-        puertoEntrada: 993,
-        servidorSalida: 'smtp.gmail.com',
-        puertoSalida: 587,
-        ssl: true
-      },
-      outlook: {
-        servidorEntrada: 'outlook.office365.com',
-        puertoEntrada: 993,
-        servidorSalida: 'smtp.office365.com',
-        puertoSalida: 587,
-        ssl: true
-      },
-      yahoo: {
-        servidorEntrada: 'imap.mail.yahoo.com',
-        puertoEntrada: 993,
-        servidorSalida: 'smtp.mail.yahoo.com',
-        puertoSalida: 587,
-        ssl: true
-      }
-    };
-
-    const config = configs[proveedor];
-    setServidorEntrada(config.servidorEntrada);
-    setPuertoEntrada(config.puertoEntrada);
-    setServidorSalida(config.servidorSalida);
-    setPuertoSalida(config.puertoSalida);
-    setSslEntrada(config.ssl);
-    setSslSalida(config.ssl);
-  };
-
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-strong max-w-3xl w-full mx-4 my-8">
+      <div className="bg-white rounded-3xl shadow-strong max-w-2xl w-full mx-4 my-8">
         <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
           <div>
             <h2 className="text-2xl font-display font-bold text-neutral-900">
-              Configuración de correo
+              Configuración de correo (IONOS)
             </h2>
             <p className="text-sm text-neutral-600">
-              Configura tu cuenta de correo electrónico
+              Ingresa tu correo y contraseña de IONOS
             </p>
           </div>
           <button
@@ -173,191 +181,115 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
             </div>
           )}
 
-          {/* Configuración rápida */}
-          <div>
-            <label className="block text-sm font-semibold text-neutral-700 mb-3">
-              Configuración rápida
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={() => handleAutoConfig('gmail')}
-                className="p-4 border-2 border-neutral-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all text-center"
-              >
-                <div className="font-semibold text-neutral-900">Gmail</div>
-                <div className="text-xs text-neutral-600">Google</div>
-              </button>
-              <button
-                onClick={() => handleAutoConfig('outlook')}
-                className="p-4 border-2 border-neutral-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all text-center"
-              >
-                <div className="font-semibold text-neutral-900">Outlook</div>
-                <div className="text-xs text-neutral-600">Microsoft</div>
-              </button>
-              <button
-                onClick={() => handleAutoConfig('yahoo')}
-                className="p-4 border-2 border-neutral-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all text-center"
-              >
-                <div className="font-semibold text-neutral-900">Yahoo</div>
-                <div className="text-xs text-neutral-600">Yahoo Mail</div>
-              </button>
-            </div>
-          </div>
-
-          {/* Datos de la cuenta */}
           <div className="space-y-4">
             <h3 className="font-semibold text-neutral-900 flex items-center space-x-2">
               <Mail className="w-5 h-5 text-primary-600" />
-              <span>Datos de la cuenta</span>
+              <span>Tus credenciales de correo</span>
             </h3>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Correo electrónico *
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="tu@correo.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Contraseña {!configuracion && '*'}
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder={configuracion ? '(No cambiar)' : 'Contraseña'}
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Nombre del remitente
-                </label>
-                <input
-                  type="text"
-                  value={nombreRemitente}
-                  onChange={(e) => setNombreRemitente(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Tu nombre"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Correo electrónico *
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="nombre@jiro.mx"
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                Tu dirección de correo completa en IONOS
+              </p>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Contraseña *
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Tu contraseña de correo"
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                La contraseña se guarda encriptada y nunca se muestra
+              </p>
+            </div>
+
+            <button
+              onClick={handleVerificarConexion}
+              disabled={verificando || !email || !password}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-50 text-blue-700 border-2 border-blue-200 rounded-xl hover:bg-blue-100 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Shield className="w-5 h-5" />
+              <span>{verificando ? 'Verificando conexión...' : 'Verificar conexión'}</span>
+            </button>
+
+            {usuario?.email_verificado && usuario.email_ultima_verificacion && (
+              <div className="bg-success-50 border border-success-200 rounded-xl p-3 flex items-center space-x-2">
+                <Check className="w-5 h-5 text-success-600 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-semibold text-success-900">Conexión verificada</p>
+                  <p className="text-success-700">
+                    Última verificación: {new Date(usuario.email_ultima_verificacion).toLocaleString('es-MX')}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Servidor de entrada */}
-          <div className="space-y-4">
+          <div className="space-y-4 bg-neutral-50 rounded-xl p-4 border border-neutral-200">
             <h3 className="font-semibold text-neutral-900 flex items-center space-x-2">
               <Server className="w-5 h-5 text-blue-600" />
-              <span>Servidor de entrada ({tipoEntrada})</span>
+              <span>Servidores (preconfigurados)</span>
             </h3>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Servidor *
-                </label>
-                <input
-                  type="text"
-                  value={servidorEntrada}
-                  onChange={(e) => setServidorEntrada(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="imap.example.com"
-                />
-              </div>
+            {configGlobal && (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-neutral-600 font-medium mb-1">Entrada (IMAP):</p>
+                    <p className="font-mono text-neutral-900">
+                      {configGlobal.servidor_imap}:{configGlobal.puerto_imap}
+                    </p>
+                    <p className="text-xs text-neutral-500">SSL/TLS habilitado</p>
+                  </div>
+                  <div>
+                    <p className="text-neutral-600 font-medium mb-1">Salida (SMTP):</p>
+                    <p className="font-mono text-neutral-900">
+                      {configGlobal.servidor_smtp}:{configGlobal.puerto_smtp}
+                    </p>
+                    <p className="text-xs text-neutral-500">SSL/TLS habilitado</p>
+                  </div>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Tipo
-                </label>
-                <select
-                  value={tipoEntrada}
-                  onChange={(e) => setTipoEntrada(e.target.value as 'IMAP' | 'POP3')}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="IMAP">IMAP</option>
-                  <option value="POP3">POP3</option>
-                </select>
+                <div className="pt-3 border-t border-neutral-300">
+                  <p className="text-xs text-neutral-600 flex items-center space-x-1">
+                    <Lock className="w-3 h-3" />
+                    <span>
+                      Todos los servidores están preconfigurados para IONOS México.
+                      {isAdmin && ' Como administrador, puedes modificar estos valores en Configuración.'}
+                    </span>
+                  </p>
+                </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Puerto
-                </label>
-                <input
-                  type="number"
-                  value={puertoEntrada}
-                  onChange={(e) => setPuertoEntrada(parseInt(e.target.value))}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sslEntrada}
-                    onChange={(e) => setSslEntrada(e.target.checked)}
-                    className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-sm text-neutral-700">Usar SSL/TLS</span>
-                </label>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Servidor de salida */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-neutral-900 flex items-center space-x-2">
-              <Server className="w-5 h-5 text-green-600" />
-              <span>Servidor de salida (SMTP)</span>
-            </h3>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Servidor *
-                </label>
-                <input
-                  type="text"
-                  value={servidorSalida}
-                  onChange={(e) => setServidorSalida(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="smtp.example.com"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Puerto
-                </label>
-                <input
-                  type="number"
-                  value={puertoSalida}
-                  onChange={(e) => setPuertoSalida(parseInt(e.target.value))}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sslSalida}
-                    onChange={(e) => setSslSalida(e.target.checked)}
-                    className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-sm text-neutral-700">Usar SSL/TLS</span>
-                </label>
-              </div>
-            </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <h4 className="font-semibold text-blue-900 mb-2 flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5" />
+              <span>Información importante</span>
+            </h4>
+            <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+              <li>Tu nombre de remitente será: <strong>{usuario?.nombre}</strong></li>
+              <li>Los correos se enviarán desde tu cuenta IONOS personal</li>
+              <li>La sincronización es automática y en tiempo real</li>
+              <li>Tus credenciales están protegidas con encriptación</li>
+            </ul>
           </div>
         </div>
 
@@ -371,10 +303,10 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
 
           <button
             onClick={handleGuardar}
-            disabled={loading}
-            className="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:shadow-medium transition-all font-semibold disabled:opacity-50"
+            disabled={loading || !email || !password}
+            className="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:shadow-medium transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Guardando...' : configuracion ? 'Actualizar' : 'Guardar'}
+            {loading ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </div>
       </div>

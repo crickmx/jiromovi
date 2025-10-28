@@ -5,6 +5,7 @@ import { Save, Upload, User as UserIcon } from 'lucide-react';
 import { CustomFields } from '../components/CustomFields';
 import { DocumentsSection } from '../components/DocumentsSection';
 import { PaymentFields } from '../components/PaymentFields';
+import { CorreoIONOSFields } from '../components/CorreoIONOSFields';
 import { UltimosCorreos } from '../components/UltimosCorreos';
 import { ProximasReuniones } from '../components/ProximasReuniones';
 import type { Database } from '../lib/database.types';
@@ -247,6 +248,19 @@ export function Perfil() {
             })}
 
             <CustomFields usuarioId={usuario.id} editable={true} />
+          </div>
+
+          <div className="mt-8">
+            <CorreoIONOSFields
+              emailCuenta={formData.email_cuenta || null}
+              emailPassword={formData.email_password || null}
+              emailVerificado={formData.email_verificado || null}
+              emailUltimaVerificacion={formData.email_ultima_verificacion || null}
+              emailErrorMensaje={formData.email_error_mensaje || null}
+              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+              editable={true}
+              usuarioId={usuario.id}
+            />
           </div>
 
           <div className="mt-8">

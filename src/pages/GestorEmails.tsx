@@ -48,7 +48,7 @@ const CARPETAS_INFO = {
 };
 
 export function GestorEmails() {
-  const { usuario } = useAuth();
+  const { usuario, refreshUsuario } = useAuth();
   const [configuracion, setConfiguracion] = useState<EmailConfig | null>(null);
   const [carpetaActual, setCarpetaActual] = useState<Carpeta>('INBOX');
   const [mensajes, setMensajes] = useState<EmailMessage[]>([]);
@@ -86,7 +86,7 @@ export function GestorEmails() {
 
     setConfiguracion(data);
 
-    if (!data) {
+    if (!data && !usuario.email_cuenta) {
       setShowConfig(true);
     }
 
@@ -253,22 +253,30 @@ export function GestorEmails() {
       </div>
 
       {/* Contenido principal */}
-      {!configuracion ? (
+      {!configuracion && !usuario?.email_cuenta ? (
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center max-w-md">
             <Mail className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-neutral-900 mb-2">
-              Configura tu cuenta de correo
+              Configura tu cuenta de correo IONOS
             </h2>
             <p className="text-neutral-600 mb-6">
-              Para comenzar a usar el gestor de e-mails, primero debes configurar tu cuenta de correo.
+              Para comenzar a usar el gestor de e-mails, configura tu correo IONOS en tu perfil o aquí.
             </p>
-            <button
-              onClick={() => setShowConfig(true)}
-              className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl hover:shadow-medium transition-all font-semibold"
-            >
-              Configurar ahora
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => window.location.href = '/perfil'}
+                className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl hover:shadow-medium transition-all font-semibold"
+              >
+                Ir a Mi Perfil
+              </button>
+              <button
+                onClick={() => setShowConfig(true)}
+                className="w-full border-2 border-primary-500 text-primary-600 px-6 py-3 rounded-xl hover:bg-primary-50 transition-all font-semibold"
+              >
+                Configurar aquí
+              </button>
+            </div>
           </div>
         </div>
       ) : (
