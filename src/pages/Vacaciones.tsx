@@ -63,7 +63,7 @@ export function Vacaciones() {
     if (currentUser?.rol === 'Empleado' || currentUser?.rol === 'Agente') {
       query = query.eq('empleado_id', currentUser.id);
     } else if (currentUser?.rol === 'Gerente') {
-      query = query.eq('oficina_id', currentUser.oficina_id);
+      query = query.or(`empleado_id.eq.${currentUser.id},oficina_id.eq.${currentUser.oficina_id}`);
     }
 
     const { data, error } = await query;
@@ -256,8 +256,9 @@ export function Vacaciones() {
   const isGerente = currentUser?.rol === 'Gerente';
   const isAdmin = currentUser?.rol === 'Administrador';
 
-  const solicitudesPendientes = solicitudes.filter(s => s.estado === 'pendiente');
+  const solicitudesPendientes = solicitudes.filter(s => s.estado === 'pendiente' && s.empleado_id !== currentUser?.id);
   const solicitudesPreaprobadas = solicitudes.filter(s => s.estado === 'preaprobado');
+  const misSolicitudes = isGerente ? solicitudes.filter(s => s.empleado_id === currentUser?.id) : solicitudes;
 
   return (
     <div className="space-y-6">
@@ -265,12 +266,12 @@ export function Vacaciones() {
         <h1 className="text-3xl font-bold mb-2">Gestión de Vacaciones</h1>
         <p className="text-blue-100">
           {isEmpleado && 'Solicita y gestiona tus días de vacaciones'}
-          {isGerente && 'Revisa y aprueba solicitudes de vacaciones de tu oficina'}
+          {isGerente && 'Solicita tus vacaciones y gestiona las solicitudes de tu oficina'}
           {isAdmin && 'Autoriza solicitudes de vacaciones preaprobadas'}
         </p>
       </div>
 
-      {isEmpleado && (
+      {(isEmpleado || isGerente) && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -426,9 +427,59 @@ export function Vacaciones() {
         </div>
       )}
 
+      {isGerente && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h2 className="text-xl font-bold text-slate-800 mb-4">Mis Solicitudes de Vacaciones</h2>
+          {misSolicitudes.filter(s => s.empleado_id === currentUser?.id).length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-400" />
+              <p>No has solicitado vacaciones aún</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {misSolicitudes.filter(s => s.empleado_id === currentUser?.id).map((solicitud) => (
+                <div key={solicitud.id} className="border border-slate-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center space-x-4 text-sm text-slate-700">
+                      <span className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        {formatearFecha(solicitud.fecha_inicio)} - {formatearFecha(solicitud.fecha_fin)}
+                      </span>
+                      <span className="flex items-center">
+                        <Clock className="w-4 h-4 mr-1" />
+                        {solicitud.dias_solicitados} días
+                      </span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getEstadoBadgeClass(solicitud.estado)}`}>
+                      {getEstadoLabel(solicitud.estado)}
+                    </span>
+                  </div>
+                  {(solicitud.comentarios_gerente || solicitud.comentarios_administrador) && (
+                    <div className="mt-2 text-sm text-slate-600">
+                      {solicitud.comentarios_gerente && (
+                        <div className="mb-1">
+                          <strong>Comentarios del Gerente:</strong> {solicitud.comentarios_gerente}
+                        </div>
+                      )}
+                      {solicitud.comentarios_administrador && (
+                        <div>
+                          <strong>Comentarios del Administrador:</strong> {solicitud.comentarios_administrador}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-xl font-bold text-slate-800 mb-4">Historial de Solicitudes</h2>
-        {solicitudes.length === 0 ? (
+        <h2 className="text-xl font-bold text-slate-800 mb-4">
+          {isGerente ? 'Solicitudes de la Oficina' : 'Historial de Solicitudes'}
+        </h2>
+        {(isGerente ? solicitudes.filter(s => s.empleado_id !== currentUser?.id) : solicitudes).length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-400" />
             <p>No hay solicitudes de vacaciones</p>
@@ -463,7 +514,7 @@ export function Vacaciones() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {solicitudes.map((solicitud) => (
+                {(isGerente ? solicitudes.filter(s => s.empleado_id !== currentUser?.id) : solicitudes).map((solicitud) => (
                   <tr key={solicitud.id} className="hover:bg-slate-50">
                     {!isEmpleado && (
                       <td className="px-4 py-3 text-sm">
