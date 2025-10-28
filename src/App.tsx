@@ -16,6 +16,7 @@ import { EspacioJiro } from './pages/EspacioJiro';
 import { MoviMeet } from './pages/MoviMeet';
 import { MeetingRoom } from './pages/MeetingRoom';
 import MulticotizadorDigital from './pages/MulticotizadorDigital';
+import { Publicidad } from './pages/Publicidad';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -167,6 +168,17 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <MulticotizadorDigital />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/publicidad"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Publicidad />
             </Layout>
           </ProtectedRoute>
         }
