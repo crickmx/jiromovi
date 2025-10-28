@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Video, Plus, Calendar, Clock, Copy, ExternalLink, Search, Trash2 } from 'lucide-react';
+import { Video, Plus, Calendar, Clock, Copy, ExternalLink, Search, Trash2, Zap } from 'lucide-react';
 import { createMeeting, formatMeetingDateTime, getMeetingUrl, getStatusBadgeClass, getStatusLabel } from '../lib/meetingUtils';
 import type { Database } from '../lib/database.types';
 
@@ -14,7 +14,9 @@ export function MoviMeet() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showExpressModal, setShowExpressModal] = useState(false);
   const [title, setTitle] = useState('');
+  const [expressTitle, setExpressTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [creating, setCreating] = useState(false);
@@ -80,6 +82,27 @@ export function MoviMeet() {
     navigate(`/m/${code}`);
   };
 
+  const handleCreateExpressMeeting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!usuario || !expressTitle) return;
+
+    setCreating(true);
+    try {
+      const meeting = await createMeeting(expressTitle, null, usuario.id);
+
+      setMeetings([meeting, ...meetings]);
+      setShowExpressModal(false);
+      setExpressTitle('');
+
+      navigate(`/m/${meeting.code}`);
+    } catch (error) {
+      console.error('Error creating express meeting:', error);
+      alert('Error al crear la reunión express. Por favor intenta de nuevo.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleDeleteMeeting = async (id: string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar esta reunión?')) return;
 
@@ -113,20 +136,29 @@ export function MoviMeet() {
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl shadow-lg p-8 text-white">
-        <div className="flex items-center space-x-4 mb-4">
+        <div className="flex items-center space-x-4 mb-6">
           <Video className="w-12 h-12" />
           <div>
             <h1 className="text-3xl font-bold">MOVI Meet</h1>
             <p className="text-purple-100">Sistema de reuniones virtuales integrado</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center space-x-2 bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition shadow-md"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Nueva Reunión</span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setShowExpressModal(true)}
+            className="flex items-center space-x-2 bg-yellow-400 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition shadow-md"
+          >
+            <Zap className="w-5 h-5" />
+            <span>Reunión Express</span>
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center space-x-2 bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition shadow-md"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Nueva Reunión</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -295,6 +327,57 @@ export function MoviMeet() {
                   className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Creando...' : 'Crear Reunión'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showExpressModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <Zap className="w-6 h-6 text-yellow-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800">Reunión Express</h2>
+            </div>
+            <p className="text-slate-600 mb-4">
+              Crea una reunión instantánea y únete inmediatamente
+            </p>
+            <form onSubmit={handleCreateExpressMeeting} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Nombre de la reunión
+                </label>
+                <input
+                  type="text"
+                  value={expressTitle}
+                  onChange={(e) => setExpressTitle(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  placeholder="Ej: Reunión rápida de equipo"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExpressModal(false);
+                    setExpressTitle('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="flex-1 px-4 py-2 bg-yellow-400 text-slate-900 rounded-lg hover:bg-yellow-300 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creating ? 'Creando...' : 'Iniciar Ahora'}
                 </button>
               </div>
             </form>

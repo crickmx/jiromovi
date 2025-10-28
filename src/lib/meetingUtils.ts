@@ -9,7 +9,7 @@ export function generateMeetingCode(): string {
   return code;
 }
 
-export async function createMeeting(title: string, scheduledDatetime: Date, creatorId: string) {
+export async function createMeeting(title: string, scheduledDatetime: Date | null, creatorId: string) {
   let code = generateMeetingCode();
   let attempts = 0;
   const maxAttempts = 10;
@@ -29,14 +29,17 @@ export async function createMeeting(title: string, scheduledDatetime: Date, crea
     attempts++;
   }
 
+  const datetime = scheduledDatetime ? scheduledDatetime.toISOString() : new Date().toISOString();
+  const status = scheduledDatetime ? 'scheduled' : 'active';
+
   const { data, error } = await supabase
     .from('meetings')
     .insert({
       code,
       creator_id: creatorId,
       title,
-      scheduled_datetime: scheduledDatetime.toISOString(),
-      status: 'scheduled',
+      scheduled_datetime: datetime,
+      status,
     })
     .select()
     .single();
@@ -64,7 +67,8 @@ export function formatMeetingDateTime(dateTime: string): { date: string; time: s
 }
 
 export function getMeetingUrl(code: string): string {
-  return `${window.location.origin}/m/${code}`;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}/m/${code}`;
 }
 
 export function getStatusBadgeClass(status: string): string {

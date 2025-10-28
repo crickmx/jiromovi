@@ -43,10 +43,17 @@ export function MeetingRoom() {
   }, [code]);
 
   useEffect(() => {
-    if (usuario && meeting) {
-      setJoinName(`${usuario.nombre} ${usuario.apellidos}`);
+    if (usuario && meeting && !hasJoined) {
+      const name = `${usuario.nombre} ${usuario.apellidos}`;
+      setJoinName(name);
+      handleAutoJoin(name);
     }
   }, [usuario, meeting]);
+
+  const handleAutoJoin = async (name: string) => {
+    if (!meeting || hasJoined) return;
+    await handleJoinWithName(name);
+  };
 
   const loadMeeting = async () => {
     if (!code) return;
@@ -92,7 +99,12 @@ export function MeetingRoom() {
   };
 
   const handleJoin = async () => {
-    if (!joinName.trim() || !meeting) return;
+    if (!joinName.trim()) return;
+    await handleJoinWithName(joinName);
+  };
+
+  const handleJoinWithName = async (name: string) => {
+    if (!meeting || hasJoined) return;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -109,7 +121,7 @@ export function MeetingRoom() {
         .insert({
           meeting_id: meeting.id,
           user_id: usuario?.id || null,
-          name: joinName,
+          name: name,
           role: participantRole,
         })
         .select()
@@ -121,7 +133,7 @@ export function MeetingRoom() {
 
       const newParticipant: Participant = {
         id: participantData.id,
-        name: joinName,
+        name: name,
         role: participantRole,
         stream,
         audioEnabled: true,
