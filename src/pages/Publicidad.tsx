@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Image, Video, Plus, Search, Filter, Edit, Trash2, Copy, Palette } from 'lucide-react';
+import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 
 interface Categoria {
   id: string;
@@ -47,6 +48,7 @@ export function Publicidad() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState<string>('todas');
   const [selectedTipo, setSelectedTipo] = useState<string>('todos');
+  const [showNuevaPlantillaModal, setShowNuevaPlantillaModal] = useState(false);
   const [showEditorModal, setShowEditorModal] = useState(false);
   const [selectedPlantilla, setSelectedPlantilla] = useState<Plantilla | null>(null);
 
@@ -136,7 +138,7 @@ export function Publicidad() {
           </div>
           {isAdmin && (
             <button
-              onClick={() => setActiveTab('admin')}
+              onClick={() => setShowNuevaPlantillaModal(true)}
               className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
             >
               <Plus className="w-5 h-5" />
@@ -378,6 +380,16 @@ export function Publicidad() {
           </p>
         </div>
       )}
+
+      <NuevaPlantillaModal
+        isOpen={showNuevaPlantillaModal}
+        onClose={() => setShowNuevaPlantillaModal(false)}
+        onSuccess={() => {
+          setShowNuevaPlantillaModal(false);
+          loadData();
+        }}
+        categorias={categorias}
+      />
     </div>
   );
 }
