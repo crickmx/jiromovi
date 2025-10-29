@@ -243,12 +243,17 @@ export async function obtenerSesiones() {
     .from('aula_virtual_sesiones')
     .select(`
       *,
-      instructor:usuarios!instructor_id(id, nombre_completo)
+      instructor:usuarios(id, nombre_completo)
     `)
     .order('fecha_inicio', { ascending: true });
 
-  if (error) throw error;
-  return data as (AulaSession & { instructor: { id: string; nombre_completo: string } })[];
+  if (error) {
+    console.error('Error obteniendo sesiones:', error);
+    throw error;
+  }
+
+  console.log('✅ Sesiones obtenidas desde Supabase:', data);
+  return data as (AulaSession & { instructor: { id: string; nombre_completo: string } | null })[];
 }
 
 export async function obtenerParticipantes(sessionId: string) {

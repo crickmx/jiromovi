@@ -45,31 +45,67 @@ export function SegurosEducationAulaVirtual() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Iniciando fetchData...');
+
       const [sesionesData, grabacionesData] = await Promise.all([
         obtenerSesiones(),
         obtenerGrabaciones()
       ]);
 
-      console.log('Sesiones obtenidas:', sesionesData);
+      console.log('📊 Total sesiones obtenidas:', sesionesData?.length || 0);
+      console.log('📋 Sesiones completas:', sesionesData);
+
+      if (!sesionesData || sesionesData.length === 0) {
+        console.warn('⚠️ No se obtuvieron sesiones de la base de datos');
+        setSessions([]);
+        setActiveSessions([]);
+        setUpcomingSessions([]);
+        setGrabaciones(grabacionesData || []);
+        return;
+      }
 
       const now = new Date();
-      const active = sesionesData.filter(s => s.esta_activa);
+      console.log('🕐 Hora actual:', now.toISOString());
+
+      const active = sesionesData.filter(s => {
+        const isActive = s.esta_activa === true;
+        if (isActive) console.log('🔴 Sesión ACTIVA:', s.titulo);
+        return isActive;
+      });
+
       const upcoming = sesionesData.filter(s => {
         const sessionDate = new Date(s.fecha_inicio);
-        const isUpcoming = sessionDate >= now && !s.esta_activa && s.estado === 'programada';
-        console.log(`Sesión ${s.titulo}: fecha=${sessionDate.toISOString()}, now=${now.toISOString()}, activa=${s.esta_activa}, estado=${s.estado}, esProxima=${isUpcoming}`);
+        const isFuture = sessionDate > now;
+        const isNotActive = s.esta_activa === false;
+        const isProgrammed = s.estado === 'programada';
+        const isUpcoming = isFuture && isNotActive && isProgrammed;
+
+        console.log(`
+📅 Sesión: "${s.titulo}"
+   - Fecha sesión: ${sessionDate.toISOString()}
+   - Fecha actual: ${now.toISOString()}
+   - Es futura: ${isFuture}
+   - Esta activa: ${s.esta_activa}
+   - No activa: ${isNotActive}
+   - Estado: ${s.estado}
+   - Es programada: ${isProgrammed}
+   - ✅ ES PRÓXIMA: ${isUpcoming}
+        `);
+
         return isUpcoming;
       });
 
-      console.log('Sesiones activas:', active);
-      console.log('Próximas sesiones:', upcoming);
+      console.log('🔴 Total sesiones ACTIVAS:', active.length, active);
+      console.log('📅 Total sesiones PRÓXIMAS:', upcoming.length, upcoming);
 
       setSessions(sesionesData);
       setActiveSessions(active);
       setUpcomingSessions(upcoming);
-      setGrabaciones(grabacionesData);
+      setGrabaciones(grabacionesData || []);
+
+      console.log('✅ Estado actualizado correctamente');
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('❌ Error fetching data:', error);
     } finally {
       setLoading(false);
     }
