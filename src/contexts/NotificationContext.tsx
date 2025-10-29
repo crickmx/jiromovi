@@ -57,7 +57,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         .from('notificaciones')
         .select('*')
         .eq('usuario_id', usuario.id)
-        .order('fecha_creacion', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
