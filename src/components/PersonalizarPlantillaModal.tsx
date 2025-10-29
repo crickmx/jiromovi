@@ -229,8 +229,119 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
     });
   };
 
+  const generateFullResolutionCanvas = async (): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!plantilla) {
+        reject(new Error('No hay plantilla seleccionada'));
+        return;
+      }
+
+      const fullCanvas = document.createElement('canvas');
+      const fullCtx = fullCanvas.getContext('2d');
+      if (!fullCtx) {
+        reject(new Error('No se pudo crear el contexto del canvas'));
+        return;
+      }
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        fullCanvas.width = img.width;
+        fullCanvas.height = img.height;
+
+        fullCtx.drawImage(img, 0, 0);
+
+        const finishDrawing = () => {
+          if (plantilla?.zona_texto) {
+            const textoX = plantilla.zona_texto.x * fullCanvas.width;
+            const textoY = plantilla.zona_texto.y * fullCanvas.height;
+            const textoW = plantilla.zona_texto.width * fullCanvas.width;
+            const textoH = plantilla.zona_texto.height * fullCanvas.height;
+
+            const texts: Array<{ text: string; style: TextStyle }> = [];
+            if (nombreCompleto) texts.push({ text: nombreCompleto, style: styleNombre });
+            if (urlJiro) texts.push({ text: urlJiro, style: styleJiro });
+            if (urlMulticotizador) texts.push({ text: urlMulticotizador, style: styleMulti });
+
+            const maxSize = Math.max(styleNombre.size, styleJiro.size, styleMulti.size);
+            const lineHeight = maxSize * 1.4;
+            const totalHeight = texts.length * lineHeight;
+            const startY = textoY + (textoH - totalHeight) / 2 + maxSize;
+
+            texts.forEach((item, index) => {
+              const { text, style } = item;
+              const fontStyle = `${style.italic ? 'italic ' : ''}${style.bold ? 'bold ' : ''}${style.size}px ${style.font}`;
+              fullCtx.font = fontStyle;
+              fullCtx.fillStyle = style.color;
+              fullCtx.textAlign = style.align;
+
+              let x = textoX;
+              if (style.align === 'center') x = textoX + textoW / 2;
+              else if (style.align === 'right') x = textoX + textoW;
+
+              const y = startY + index * lineHeight;
+
+              fullCtx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+              fullCtx.shadowBlur = 6;
+              fullCtx.shadowOffsetX = 2;
+              fullCtx.shadowOffsetY = 2;
+
+              fullCtx.fillText(text, x, y, textoW);
+
+              fullCtx.shadowColor = 'transparent';
+              fullCtx.shadowBlur = 0;
+              fullCtx.shadowOffsetX = 0;
+              fullCtx.shadowOffsetY = 0;
+            });
+          }
+
+          fullCanvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Error al generar imagen'));
+          }, 'image/png');
+        };
+
+        if (logoPreview && plantilla.zona_logo) {
+          const logo = new Image();
+          logo.crossOrigin = 'anonymous';
+          logo.onload = () => {
+            const logoX = plantilla.zona_logo.x * fullCanvas.width;
+            const logoY = plantilla.zona_logo.y * fullCanvas.height;
+            const logoW = plantilla.zona_logo.width * fullCanvas.width;
+            const logoH = plantilla.zona_logo.height * fullCanvas.height;
+
+            const logoAspect = logo.width / logo.height;
+            const zoneAspect = logoW / logoH;
+
+            let drawW = logoW;
+            let drawH = logoH;
+            let drawX = logoX;
+            let drawY = logoY;
+
+            if (logoAspect > zoneAspect) {
+              drawH = logoW / logoAspect;
+              drawY = logoY + (logoH - drawH) / 2;
+            } else {
+              drawW = logoH * logoAspect;
+              drawX = logoX + (logoW - drawW) / 2;
+            }
+
+            fullCtx.drawImage(logo, drawX, drawY, drawW, drawH);
+            finishDrawing();
+          };
+          logo.onerror = () => reject(new Error('Error al cargar el logo'));
+          logo.src = logoPreview;
+        } else {
+          finishDrawing();
+        }
+      };
+      img.onerror = () => reject(new Error('Error al cargar la plantilla'));
+      img.src = plantilla.archivo_url;
+    });
+  };
+
   const handleDescargar = async () => {
-    if (!canvasRef.current || !plantilla || !usuario) {
+    if (!plantilla || !usuario) {
       setError('Error al generar el diseño');
       return;
     }
@@ -257,22 +368,17 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
         logoUrl = publicUrl;
       }
 
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvasRef.current?.toBlob((blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('Error al generar imagen'));
-        }, 'image/png');
-      });
+      const blob = await generateFullResolutionCanvas();
 
       const resultFileName = `${usuario.id}/${Date.now()}.png`;
       const { error: uploadError } = await supabase.storage
-        .from('publicidad-resultados')
+        .from('publicidad-disenos')
         .upload(resultFileName, blob);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('publicidad-resultados')
+        .from('publicidad-disenos')
         .getPublicUrl(resultFileName);
 
       const { error: disenoError } = await supabase.from('publicidad_disenos').insert({

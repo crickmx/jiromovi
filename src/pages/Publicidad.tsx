@@ -405,6 +405,7 @@ export function Publicidad() {
         onSuccess={() => {
           setShowPersonalizarModal(false);
           setSelectedPlantilla(null);
+          setActiveTab('mis-disenos');
           loadData();
         }}
       />
