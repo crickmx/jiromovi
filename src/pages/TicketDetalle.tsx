@@ -59,6 +59,26 @@ export function TicketDetalle() {
     if (id) {
       loadTicket();
       loadEstatus();
+
+      const subscription = supabase
+        .channel(`ticket_${id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'tickets',
+            filter: `id=eq.${id}`
+          },
+          async () => {
+            await loadTicket();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [id]);
 
@@ -106,6 +126,15 @@ export function TicketDetalle() {
     if (!ticket || !usuario) return;
 
     setSaving(true);
+
+    const newEstatus = estatusList.find(e => e.id === selectedEstatus);
+    setTicket(prev => prev ? {
+      ...prev,
+      prioridad: selectedPrioridad,
+      estatus: newEstatus || prev.estatus
+    } : null);
+    setEditing(false);
+
     try {
       const { error } = await supabase
         .from('tickets')
@@ -118,11 +147,20 @@ export function TicketDetalle() {
 
       if (error) throw error;
 
-      setEditing(false);
+      await supabase
+        .from('ticket_historial')
+        .insert({
+          ticket_id: ticket.id,
+          usuario_id: usuario.id,
+          accion: 'Actualización',
+          descripcion: `Estatus: ${newEstatus?.nombre}, Prioridad: ${selectedPrioridad}`
+        });
+
       await loadTicket();
     } catch (err: any) {
       console.error('Error updating ticket:', err);
       alert('Error al actualizar el ticket');
+      await loadTicket();
     } finally {
       setSaving(false);
     }

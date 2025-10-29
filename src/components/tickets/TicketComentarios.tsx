@@ -48,7 +48,17 @@ export function TicketComentarios({ ticketId }: TicketComentariosProps) {
             .single();
 
           if (data) {
-            setComentarios(prev => [...prev, data as Comentario]);
+            setComentarios(prev => {
+              const exists = prev.some(c => c.id === data.id);
+              if (exists) return prev;
+
+              const hasTempComment = prev.some(c => c.id.startsWith('temp-') && c.usuario?.id === data.usuario?.id);
+              if (hasTempComment && data.usuario?.id === usuario?.id) {
+                return prev;
+              }
+
+              return [...prev, data as Comentario];
+            });
           }
         }
       )
@@ -90,10 +100,11 @@ export function TicketComentarios({ ticketId }: TicketComentariosProps) {
     if ((!mensaje.trim() && !archivo) || !usuario) return;
 
     setSending(true);
-    try {
-      let archivoUrl = '';
-      let mensajeTexto = mensaje.trim();
 
+    const tempId = `temp-${Date.now()}`;
+    let mensajeTexto = mensaje.trim();
+
+    try {
       if (archivo) {
         const fileExt = archivo.name.split('.').pop();
         const fileName = `${ticketId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -107,8 +118,6 @@ export function TicketComentarios({ ticketId }: TicketComentariosProps) {
         const { data: { publicUrl } } = supabase.storage
           .from('ticket-archivos')
           .getPublicUrl(fileName);
-
-        archivoUrl = publicUrl;
 
         const { error: archivoError } = await supabase
           .from('ticket_archivos')
@@ -130,21 +139,42 @@ export function TicketComentarios({ ticketId }: TicketComentariosProps) {
         }
       }
 
-      const { error } = await supabase
+      const optimisticComment: Comentario = {
+        id: tempId,
+        mensaje: mensajeTexto,
+        fecha_hora: new Date().toISOString(),
+        usuario: {
+          id: usuario.id,
+          nombre_completo: usuario.nombre_completo,
+          rol: usuario.rol
+        }
+      };
+
+      setComentarios(prev => [...prev, optimisticComment]);
+      setMensaje('');
+      setArchivo(null);
+
+      const { data, error } = await supabase
         .from('ticket_comentarios')
         .insert({
           ticket_id: ticketId,
           usuario_id: usuario.id,
           mensaje: mensajeTexto
-        });
+        })
+        .select('*, usuario:usuario_id(id, nombre_completo, rol)')
+        .single();
 
       if (error) throw error;
 
-      setMensaje('');
-      setArchivo(null);
+      setComentarios(prev =>
+        prev.map(c => c.id === tempId ? data as Comentario : c)
+      );
+
     } catch (err: any) {
       console.error('Error sending message:', err);
       alert('Error al enviar el mensaje');
+      setComentarios(prev => prev.filter(c => c.id !== tempId));
+      setMensaje(mensajeTexto);
     } finally {
       setSending(false);
     }

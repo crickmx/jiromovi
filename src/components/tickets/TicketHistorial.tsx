@@ -22,6 +22,34 @@ export function TicketHistorial({ ticketId }: TicketHistorialProps) {
 
   useEffect(() => {
     loadHistorial();
+
+    const subscription = supabase
+      .channel(`ticket_historial_${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ticket_historial',
+          filter: `ticket_id=eq.${ticketId}`
+        },
+        async (payload) => {
+          const { data } = await supabase
+            .from('ticket_historial')
+            .select('*, usuario:usuario_id(nombre_completo)')
+            .eq('id', payload.new.id)
+            .single();
+
+          if (data) {
+            setHistorial(prev => [data as HistorialItem, ...prev]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [ticketId]);
 
   const loadHistorial = async () => {

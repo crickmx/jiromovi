@@ -27,6 +27,38 @@ export function TicketArchivos({ ticketId }: TicketArchivosProps) {
 
   useEffect(() => {
     loadArchivos();
+
+    const subscription = supabase
+      .channel(`ticket_archivos_${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ticket_archivos',
+          filter: `ticket_id=eq.${ticketId}`
+        },
+        async (payload) => {
+          const { data } = await supabase
+            .from('ticket_archivos')
+            .select('*, usuario:usuario_id(nombre_completo)')
+            .eq('id', payload.new.id)
+            .single();
+
+          if (data) {
+            setArchivos(prev => {
+              const exists = prev.some(a => a.id === data.id);
+              if (exists) return prev;
+              return [data as Archivo, ...prev];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [ticketId]);
 
   const loadArchivos = async () => {
@@ -45,8 +77,26 @@ export function TicketArchivos({ ticketId }: TicketArchivosProps) {
     if (!files || files.length === 0 || !usuario) return;
 
     setUploading(true);
+    const tempFiles: Archivo[] = [];
+
     try {
       for (const file of Array.from(files)) {
+        const tempId = `temp-${Date.now()}-${Math.random()}`;
+        const optimisticFile: Archivo = {
+          id: tempId,
+          nombre: file.name,
+          url: '',
+          tipo: file.type,
+          tamano: file.size,
+          fecha_subida: new Date().toISOString(),
+          usuario: {
+            nombre_completo: usuario.nombre_completo
+          }
+        };
+
+        tempFiles.push(optimisticFile);
+        setArchivos(prev => [optimisticFile, ...prev]);
+
         const fileExt = file.name.split('.').pop();
         const fileName = `${ticketId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
@@ -60,7 +110,7 @@ export function TicketArchivos({ ticketId }: TicketArchivosProps) {
           .from('ticket-archivos')
           .getPublicUrl(fileName);
 
-        const { error: dbError } = await supabase
+        const { data, error: dbError } = await supabase
           .from('ticket_archivos')
           .insert({
             ticket_id: ticketId,
@@ -69,15 +119,22 @@ export function TicketArchivos({ ticketId }: TicketArchivosProps) {
             url: publicUrl,
             tipo: file.type,
             tamano: file.size
-          });
+          })
+          .select('*, usuario:usuario_id(nombre_completo)')
+          .single();
 
         if (dbError) throw dbError;
-      }
 
-      await loadArchivos();
+        setArchivos(prev =>
+          prev.map(a => a.id === tempId ? data as Archivo : a)
+        );
+      }
     } catch (err: any) {
       console.error('Error uploading file:', err);
       alert('Error al subir el archivo');
+      setArchivos(prev =>
+        prev.filter(a => !tempFiles.some(tf => tf.id === a.id))
+      );
     } finally {
       setUploading(false);
       e.target.value = '';
