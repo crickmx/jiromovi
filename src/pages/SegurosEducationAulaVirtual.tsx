@@ -50,12 +50,19 @@ export function SegurosEducationAulaVirtual() {
         obtenerGrabaciones()
       ]);
 
+      console.log('Sesiones obtenidas:', sesionesData);
+
       const now = new Date();
       const active = sesionesData.filter(s => s.esta_activa);
       const upcoming = sesionesData.filter(s => {
         const sessionDate = new Date(s.fecha_inicio);
-        return sessionDate >= now && !s.esta_activa && s.estado === 'programada';
+        const isUpcoming = sessionDate >= now && !s.esta_activa && s.estado === 'programada';
+        console.log(`Sesión ${s.titulo}: fecha=${sessionDate.toISOString()}, now=${now.toISOString()}, activa=${s.esta_activa}, estado=${s.estado}, esProxima=${isUpcoming}`);
+        return isUpcoming;
       });
+
+      console.log('Sesiones activas:', active);
+      console.log('Próximas sesiones:', upcoming);
 
       setSessions(sesionesData);
       setActiveSessions(active);
@@ -70,11 +77,15 @@ export function SegurosEducationAulaVirtual() {
 
   const handleCrearSesion = async (formData: any) => {
     try {
-      await crearSesion(formData);
+      const nuevaSesion = await crearSesion(formData);
+      console.log('Sesión creada exitosamente:', nuevaSesion);
       await fetchData();
       setShowCreateModal(false);
+      alert('Sesión creada exitosamente. Aparecerá en "Próximas Sesiones".');
     } catch (error: any) {
+      console.error('Error al crear sesión:', error);
       alert(error.message || 'Error al crear la sesión');
+      throw error;
     }
   };
 
@@ -367,19 +378,45 @@ export function SegurosEducationAulaVirtual() {
 
 function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (data: any) => void }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const getDefaultDateTime = () => {
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
+    const fecha = now.toISOString().split('T')[0];
+    const hora = now.toTimeString().slice(0, 5);
+    return { fecha, hora };
+  };
+
+  const defaultDateTime = getDefaultDateTime();
+
   const [formData, setFormData] = useState({
     titulo: '',
     descripcion: '',
-    fecha_inicio: '',
-    hora_inicio: '',
+    fecha_inicio: defaultDateTime.fecha,
+    hora_inicio: defaultDateTime.hora,
     duracion_minutos: 60,
     grabar_sesion: true,
     max_participantes: 30
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+
+    if (!formData.titulo.trim()) {
+      setError('El título es requerido');
+      return;
+    }
+
+    if (!formData.fecha_inicio || !formData.hora_inicio) {
+      setError('La fecha y hora son requeridas');
+      return;
+    }
+
     setLoading(true);
+    setError('');
 
     try {
       const fecha_inicio = new Date(`${formData.fecha_inicio}T${formData.hora_inicio}`).toISOString();
@@ -387,17 +424,17 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       fecha_fin.setMinutes(fecha_fin.getMinutes() + formData.duracion_minutos);
 
       await onSuccess({
-        titulo: formData.titulo,
-        descripcion: formData.descripcion,
+        titulo: formData.titulo.trim(),
+        descripcion: formData.descripcion.trim() || null,
         fecha_inicio,
         fecha_fin: fecha_fin.toISOString(),
         duracion_minutos: formData.duracion_minutos,
         grabar_sesion: formData.grabar_sesion,
         max_participantes: formData.max_participantes
       });
-    } catch (error) {
-      console.error(error);
-    } finally {
+    } catch (err: any) {
+      console.error('Error en formulario:', err);
+      setError(err.message || 'Error al crear la sesión');
       setLoading(false);
     }
   };
@@ -405,13 +442,16 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   const footer = (
     <>
       <button
+        type="button"
         onClick={onClose}
-        className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-sm font-medium transition-all"
+        disabled={loading}
+        className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
       >
         Cancelar
       </button>
       <button
-        onClick={handleSubmit}
+        type="submit"
+        form="crear-sesion-form"
         disabled={loading}
         className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all disabled:opacity-50"
       >
@@ -422,7 +462,12 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
 
   return (
     <BaseModal isOpen={true} onClose={onClose} title="Nueva Sesión en Vivo" footer={footer} maxWidth="2xl">
-      <form onSubmit={handleSubmit} className="space-y-3">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm mb-3">
+          {error}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-3" id="crear-sesion-form">
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">Título *</label>
           <input
