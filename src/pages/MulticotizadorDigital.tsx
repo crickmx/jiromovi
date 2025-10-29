@@ -71,6 +71,12 @@ export default function MulticotizadorDigital() {
         <iframe
           src="https://www.multicotizador.digital/"
           title="Multicotizador Digital"
+            onLoad={handleIframeLoad}
+          onError={handleIframeError}
+          className={`w-full h-full border-0 ${isLoading || hasError ? 'hidden' : 'block'}`}
+          style={{
+            minHeight: 'calc(100vh - 120px)',
+          }}
         />
       </div>
 
