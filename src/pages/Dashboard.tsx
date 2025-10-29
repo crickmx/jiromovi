@@ -9,6 +9,7 @@ import { UsuariosPendientes } from '../components/UsuariosPendientes';
 import { ResumenVacaciones } from '../components/ResumenVacaciones';
 import { ProximasReuniones } from '../components/ProximasReuniones';
 import { ProximasReservas } from '../components/ProximasReservas';
+import { TicketsWidget } from '../components/TicketsWidget';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -251,9 +252,10 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <UltimosCorreos />
         <ProximasReuniones />
+        <TicketsWidget />
       </div>
 
       <ResumenVacaciones />

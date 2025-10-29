@@ -27,6 +27,8 @@ import { SegurosEducation } from './pages/SegurosEducation';
 import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
 import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
 import { CentroNotificaciones } from './pages/CentroNotificaciones';
+import { Tickets } from './pages/Tickets';
+import { TicketDetalle } from './pages/TicketDetalle';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -279,6 +281,28 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <CentroNotificaciones />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tickets"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Tickets />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tickets/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TicketDetalle />
+            </Layout>
           </ProtectedRoute>
         }
       />
