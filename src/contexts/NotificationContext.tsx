@@ -56,7 +56,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('notificaciones')
         .select('*')
-        .eq('user_id', usuario.id)
+        .eq('usuario_id', usuario.id)
         .order('fecha_creacion', { ascending: false })
         .limit(50);
 
@@ -80,7 +80,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           event: 'INSERT',
           schema: 'public',
           table: 'notificaciones',
-          filter: `user_id=eq.${usuario.id}`,
+          filter: `usuario_id=eq.${usuario.id}`,
         },
         (payload) => {
           const newNotification = payload.new as Notification;
@@ -101,7 +101,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           event: 'UPDATE',
           schema: 'public',
           table: 'notificaciones',
-          filter: `user_id=eq.${usuario.id}`,
+          filter: `usuario_id=eq.${usuario.id}`,
         },
         (payload) => {
           const updatedNotification = payload.new as Notification;
@@ -116,7 +116,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           event: 'DELETE',
           schema: 'public',
           table: 'notificaciones',
-          filter: `user_id=eq.${usuario.id}`,
+          filter: `usuario_id=eq.${usuario.id}`,
         },
         (payload) => {
           const deletedId = payload.old.id;

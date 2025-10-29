@@ -35,7 +35,7 @@ export function ResumenVacaciones() {
       if (isGerente && currentUser?.oficina_id) {
         const { data, error } = await supabase
           .from('solicitudes_vacaciones')
-          .select('*, empleado:usuarios!solicitudes_vacaciones_empleado_id_fkey(nombre, apellidos)')
+          .select('*, empleado:usuarios!usuario_id(nombre_completo)')
           .eq('oficina_id', currentUser.oficina_id)
           .eq('estado', 'pendiente')
           .order('created_at', { ascending: false })
@@ -50,7 +50,7 @@ export function ResumenVacaciones() {
       } else if (isAdmin) {
         const { data, error } = await supabase
           .from('solicitudes_vacaciones')
-          .select('*, empleado:usuarios!solicitudes_vacaciones_empleado_id_fkey(nombre, apellidos), oficinas(nombre)')
+          .select('*, empleado:usuarios!usuario_id(nombre_completo), oficinas(nombre)')
           .eq('estado', 'preaprobado')
           .order('created_at', { ascending: false })
           .limit(5);

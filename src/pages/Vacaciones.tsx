@@ -57,13 +57,13 @@ export function Vacaciones() {
   const loadSolicitudes = async () => {
     let query = supabase
       .from('solicitudes_vacaciones')
-      .select('*, empleado:usuarios!solicitudes_vacaciones_empleado_id_fkey(nombre, apellidos, email_laboral), oficinas(nombre)')
+      .select('*, empleado:usuarios!usuario_id(nombre_completo, email_laboral), oficinas(nombre)')
       .order('created_at', { ascending: false });
 
     if (currentUser?.rol === 'Empleado' || currentUser?.rol === 'Agente') {
-      query = query.eq('empleado_id', currentUser.id);
+      query = query.eq('usuario_id', currentUser.id);
     } else if (currentUser?.rol === 'Gerente') {
-      query = query.or(`empleado_id.eq.${currentUser.id},oficina_id.eq.${currentUser.oficina_id}`);
+      query = query.or(`usuario_id.eq.${currentUser.id},oficina_id.eq.${currentUser.oficina_id}`);
     }
 
     const { data, error } = await query;
