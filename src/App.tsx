@@ -14,8 +14,6 @@ import { CentroCorreos } from './pages/CentroCorreos';
 import { MisCorreos } from './pages/MisCorreos';
 import { Vacaciones } from './pages/Vacaciones';
 import { EspacioJiro } from './pages/EspacioJiro';
-import { MoviMeet } from './pages/MoviMeet';
-import { MeetingRoom } from './pages/MeetingRoom';
 import MulticotizadorDigital from './pages/MulticotizadorDigital';
 import { Publicidad } from './pages/Publicidad';
 import { GestorEmails } from './pages/GestorEmails';
@@ -158,21 +156,6 @@ function AppRoutes() {
         }
       />
 
-      <Route
-        path="/movi-meet"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <MoviMeet />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/m/:code"
-        element={<MeetingRoom />}
-      />
 
       <Route
         path="/multicotizador-digital"
