@@ -15,7 +15,7 @@ export default function MulticotizadorDigital() {
   };
 
   const openInNewTab = () => {
-    window.open('https://www.multicotizador.digital/', '_blank', 'noopener,noreferrer');
+    window.open('https://www.multicotizador.digital', '_blank', 'noopener,noreferrer');
   };
 
   return (
