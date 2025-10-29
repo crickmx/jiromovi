@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
@@ -25,6 +26,7 @@ import { AccesosNacional } from './pages/AccesosNacional';
 import { SegurosEducation } from './pages/SegurosEducation';
 import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
 import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
+import { CentroNotificaciones } from './pages/CentroNotificaciones';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -272,6 +274,15 @@ function AppRoutes() {
         }
       />
 
+      <Route
+        path="/centro-notificaciones"
+        element={
+          <ProtectedRoute>
+            <CentroNotificaciones />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="/" element={<Navigate to={usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' ? "/dashboard" : "/perfil"} replace />} />
       <Route path="*" element={<Navigate to={usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' ? "/dashboard" : "/perfil"} replace />} />
     </Routes>
@@ -282,7 +293,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <NotificationProvider>
+          <AppRoutes />
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );

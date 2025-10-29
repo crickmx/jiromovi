@@ -1,7 +1,8 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key, GraduationCap } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key, GraduationCap, Bell } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 
 interface LayoutProps {
   children: ReactNode;
@@ -38,6 +39,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: isAdminOrGerente },
+    { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
     { path: '/firmas-email', label: 'Firmas de E-Mail', icon: FileSignature, show: isAdmin },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
     { path: '/configuracion', label: 'Configuración', icon: Settings, show: isAdmin },
@@ -151,7 +153,14 @@ export function Layout({ children }: LayoutProps) {
               alt="MOVI Digital Logo"
               className="h-10 object-contain"
             />
-            <div className="w-10" />
+            <NotificationBell />
+          </div>
+        </header>
+
+        {/* Desktop Header with Notification Bell */}
+        <header className="hidden lg:block bg-white/80 backdrop-blur-md border-b border-neutral-200 sticky top-0 z-30 shadow-soft">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-end">
+            <NotificationBell />
           </div>
         </header>
 
