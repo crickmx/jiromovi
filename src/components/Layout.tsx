@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Video, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key, GraduationCap } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -35,6 +35,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/contactos', label: 'Contactos', icon: Contact, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
+    { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: isAdminOrGerente },
     { path: '/firmas-email', label: 'Firmas de E-Mail', icon: FileSignature, show: isAdmin },

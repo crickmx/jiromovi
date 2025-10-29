@@ -22,6 +22,9 @@ import { FirmasEmail } from './pages/FirmasEmail';
 import { Contactos } from './pages/Contactos';
 import { Chat } from './pages/Chat';
 import { AccesosNacional } from './pages/AccesosNacional';
+import { SegurosEducation } from './pages/SegurosEducation';
+import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
+import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -238,6 +241,33 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <AccesosNacional />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/seguros-education"
+        element={
+          <ProtectedRoute>
+            <SegurosEducation />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/seguros-education/on-demand"
+        element={
+          <ProtectedRoute>
+            <SegurosEducationOnDemand />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/seguros-education/aula-virtual"
+        element={
+          <ProtectedRoute>
+            <SegurosEducationAulaVirtual />
           </ProtectedRoute>
         }
       />
