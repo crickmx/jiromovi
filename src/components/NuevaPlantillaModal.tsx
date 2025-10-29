@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Image as ImageIcon, Video as VideoIcon, Move, Type, Maximize2 } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Video as VideoIcon, Move, Type, Maximize2, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Categoria {
   id: string;
   nombre: string;
+  orden?: number;
 }
 
 interface ZonaConfig {
@@ -40,6 +41,12 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
   const [ancho, setAncho] = useState(0);
   const [alto, setAlto] = useState(0);
   const [duracion, setDuracion] = useState(0);
+
+  // Nueva categoría
+  const [showNuevaCategoria, setShowNuevaCategoria] = useState(false);
+  const [nuevaCategoriaNombre, setNuevaCategoriaNombre] = useState('');
+  const [nuevaCategoriaDescripcion, setNuevaCategoriaDescripcion] = useState('');
+  const [loadingCategoria, setLoadingCategoria] = useState(false);
 
   // Zonas editables
   const [zonaLogo, setZonaLogo] = useState<ZonaConfig>({ x: 0.05, y: 0.05, width: 0.2, height: 0.2 });
@@ -81,7 +88,49 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
     setZonaLogo({ x: 0.05, y: 0.05, width: 0.2, height: 0.2 });
     setZonaTexto({ x: 0.05, y: 0.75, width: 0.9, height: 0.2 });
     setEditingZone(null);
+    setShowNuevaCategoria(false);
+    setNuevaCategoriaNombre('');
+    setNuevaCategoriaDescripcion('');
     setError('');
+  };
+
+  const handleCrearCategoria = async () => {
+    if (!nuevaCategoriaNombre.trim()) {
+      setError('El nombre de la categoría es requerido');
+      return;
+    }
+
+    setLoadingCategoria(true);
+    setError('');
+
+    try {
+      const maxOrden = categorias.length > 0 ? Math.max(...categorias.map(c => c.orden || 0)) : 0;
+
+      const { data, error: insertError } = await supabase
+        .from('publicidad_categorias')
+        .insert({
+          nombre: nuevaCategoriaNombre.trim(),
+          descripcion: nuevaCategoriaDescripcion.trim() || null,
+          orden: maxOrden + 1
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      if (data) {
+        setCategoriaId(data.id);
+        setShowNuevaCategoria(false);
+        setNuevaCategoriaNombre('');
+        setNuevaCategoriaDescripcion('');
+        onSuccess();
+      }
+    } catch (err: any) {
+      console.error('Error creando categoría:', err);
+      setError(err.message || 'Error al crear la categoría');
+    } finally {
+      setLoadingCategoria(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -372,16 +421,78 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">
                   Categoría *
                 </label>
-                <select
-                  value={categoriaId}
-                  onChange={(e) => setCategoriaId(e.target.value)}
-                  className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                >
-                  <option value="">Selecciona una categoría</option>
-                  {categorias.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-                  ))}
-                </select>
+                <div className="flex space-x-2">
+                  <select
+                    value={categoriaId}
+                    onChange={(e) => setCategoriaId(e.target.value)}
+                    className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                  >
+                    <option value="">Selecciona una categoría</option>
+                    {categorias.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowNuevaCategoria(!showNuevaCategoria)}
+                    className="px-4 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl transition-all flex items-center space-x-2 font-semibold"
+                    title="Nueva categoría"
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span>Nueva</span>
+                  </button>
+                </div>
+
+                {showNuevaCategoria && (
+                  <div className="mt-4 p-4 bg-neutral-50 border border-neutral-200 rounded-xl space-y-3">
+                    <h4 className="text-sm font-semibold text-neutral-900">Crear Nueva Categoría</h4>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Nombre *
+                      </label>
+                      <input
+                        type="text"
+                        value={nuevaCategoriaNombre}
+                        onChange={(e) => setNuevaCategoriaNombre(e.target.value)}
+                        placeholder="Ej: Eventos Corporativos"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-1">
+                        Descripción (opcional)
+                      </label>
+                      <textarea
+                        value={nuevaCategoriaDescripcion}
+                        onChange={(e) => setNuevaCategoriaDescripcion(e.target.value)}
+                        placeholder="Descripción de la categoría"
+                        rows={2}
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                      />
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={handleCrearCategoria}
+                        disabled={loadingCategoria || !nuevaCategoriaNombre.trim()}
+                        className="flex-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loadingCategoria ? 'Creando...' : 'Crear Categoría'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNuevaCategoria(false);
+                          setNuevaCategoriaNombre('');
+                          setNuevaCategoriaDescripcion('');
+                        }}
+                        className="px-3 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded-lg font-semibold text-sm transition-all"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
