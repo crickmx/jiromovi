@@ -112,11 +112,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const username = userData.email_laboral.split('@')[0];
-
     const { error: insertError } = await supabaseAdmin.from('usuarios').insert({
       id: authData.user.id,
-      username: username,
+      username: null,
       nombre: userData.nombre,
       apellidos: userData.apellidos,
       rol: userData.rol,
