@@ -48,25 +48,64 @@ export function Chat() {
           schema: 'public',
           table: 'chats'
         }, () => {
+          console.log('[Chat] Cambio en tabla chats, recargando...');
           loadChats();
         })
         .on('postgres_changes', {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'chat_mensajes'
-        }, () => {
-          loadChats();
-          if (selectedChat) {
+        }, async (payload) => {
+          console.log('[Chat] Nuevo mensaje en chat_mensajes:', payload.new);
+
+          // Actualizar el timestamp del chat y reordenar
+          const chatId = payload.new.chat_id;
+
+          // Actualizar el chat en la lista
+          setChats(prev => {
+            const updated = prev.map(chat => {
+              if (chat.id === chatId) {
+                return {
+                  ...chat,
+                  ultimo_mensaje_at: payload.new.created_at,
+                  ultimo_mensaje: payload.new
+                };
+              }
+              return chat;
+            });
+
+            // Reordenar por último mensaje
+            return updated.sort((a, b) => {
+              const dateA = new Date(a.ultimo_mensaje_at || a.created_at);
+              const dateB = new Date(b.ultimo_mensaje_at || b.created_at);
+              return dateB.getTime() - dateA.getTime();
+            });
+          });
+
+          // Si es el chat actual, actualizar sus detalles
+          if (selectedChat && selectedChat.id === chatId) {
+            loadChatDetails(chatId);
+          }
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_mensajes'
+        }, (payload) => {
+          console.log('[Chat] Mensaje actualizado:', payload.new);
+          if (selectedChat && selectedChat.id === payload.new.chat_id) {
             loadChatDetails(selectedChat.id);
           }
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log('[Chat] Estado de suscripción principal:', status);
+        });
 
       return () => {
         subscription.unsubscribe();
       };
     }
-  }, [usuario]);
+  }, [usuario, selectedChat]);
 
   const loadChats = async () => {
     if (!usuario) return;

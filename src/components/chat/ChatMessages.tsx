@@ -35,19 +35,62 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
           schema: 'public',
           table: 'chat_mensajes',
           filter: `chat_id=eq.${chat.id}`
-        }, (payload) => {
+        }, async (payload) => {
           console.log('[ChatMessages] Nuevo mensaje recibido:', payload.new);
-          setMessages(prev => [...prev, payload.new]);
-          setTimeout(scrollToBottom, 100);
+
+          // Cargar datos completos del mensaje incluyendo usuario
+          const { data: messageWithUser } = await supabase
+            .from('chat_mensajes')
+            .select(`
+              *,
+              usuarios:remitente_id (
+                id,
+                nombre,
+                apellidos,
+                imagen_perfil_url
+              )
+            `)
+            .eq('id', payload.new.id)
+            .single();
+
+          if (messageWithUser) {
+            setMessages(prev => {
+              // Evitar duplicados
+              const exists = prev.some(m => m.id === messageWithUser.id);
+              if (exists) return prev;
+              return [...prev, messageWithUser];
+            });
+            setTimeout(scrollToBottom, 100);
+          }
         })
         .on('postgres_changes', {
           event: 'UPDATE',
           schema: 'public',
           table: 'chat_mensajes',
           filter: `chat_id=eq.${chat.id}`
-        }, (payload) => {
+        }, async (payload) => {
           console.log('[ChatMessages] Mensaje actualizado:', payload.new);
-          setMessages(prev => prev.map(msg => msg.id === payload.new.id ? payload.new : msg));
+
+          // Cargar datos completos del mensaje actualizado
+          const { data: messageWithUser } = await supabase
+            .from('chat_mensajes')
+            .select(`
+              *,
+              usuarios:remitente_id (
+                id,
+                nombre,
+                apellidos,
+                imagen_perfil_url
+              )
+            `)
+            .eq('id', payload.new.id)
+            .single();
+
+          if (messageWithUser) {
+            setMessages(prev => prev.map(msg =>
+              msg.id === messageWithUser.id ? messageWithUser : msg
+            ));
+          }
         })
         .subscribe((status) => {
           console.log('[ChatMessages] Estado de suscripción:', status);
@@ -165,18 +208,37 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
           tipo,
           ...fileData
         })
-        .select();
+        .select(`
+          *,
+          usuarios:remitente_id (
+            id,
+            nombre,
+            apellidos,
+            imagen_perfil_url
+          )
+        `)
+        .single();
 
       if (error) {
         console.error('[ChatMessages] Error enviando mensaje:', error);
         alert(`Error al enviar mensaje: ${error.message}`);
       } else {
         console.log('[ChatMessages] Mensaje enviado exitosamente:', data);
+
+        // Agregar inmediatamente a la lista (optimistic update)
+        setMessages(prev => {
+          // Verificar que no existe ya (por si el realtime fue más rápido)
+          const exists = prev.some(m => m.id === data.id);
+          if (exists) return prev;
+          return [...prev, data];
+        });
+
         setNewMessage('');
         setSelectedFile(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
+        setTimeout(scrollToBottom, 100);
       }
     } catch (error: any) {
       console.error('[ChatMessages] Error:', error);
