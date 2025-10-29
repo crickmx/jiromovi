@@ -10,54 +10,74 @@ function showConfigError() {
     const root = document.getElementById('root');
     if (root) {
       root.innerHTML = `
-        <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-          <div style="background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); padding: 48px; max-width: 600px; text-align: center;">
-            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);">
-              <svg style="width: 40px; height: 40px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%); padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+          <div style="background: white; border-radius: 20px; box-shadow: 0 25px 70px rgba(0,0,0,0.3); padding: 48px; max-width: 650px; text-align: center;">
+            <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; box-shadow: 0 10px 40px rgba(239, 68, 68, 0.4);">
+              <svg style="width: 50px; height: 50px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <h1 style="font-size: 28px; font-weight: 700; color: #1a202c; margin: 0 0 16px 0;">
-              Configuración Requerida
+            <h1 style="font-size: 32px; font-weight: 800; color: #1a202c; margin: 0 0 12px 0; letter-spacing: -0.5px;">
+              Error de Conexión
             </h1>
-            <p style="font-size: 16px; color: #4a5568; line-height: 1.6; margin: 0 0 32px 0;">
-              Esta aplicación requiere variables de entorno para funcionar. Por favor, configura las siguientes variables en tu plataforma de hosting:
+            <p style="font-size: 18px; color: #dc2626; font-weight: 600; margin: 0 0 24px 0;">
+              No se puede conectar con el servidor
             </p>
-            <div style="background: #f7fafc; border: 2px dashed #cbd5e0; border-radius: 12px; padding: 24px; text-align: left; margin-bottom: 32px;">
-              <code style="display: block; font-family: 'Monaco', 'Courier New', monospace; font-size: 13px; color: #2d3748; line-height: 1.8; word-break: break-all;">
-                <strong style="color: #667eea;">VITE_SUPABASE_URL</strong><br/>
-                <strong style="color: #667eea;">VITE_SUPABASE_ANON_KEY</strong>
+            <p style="font-size: 16px; color: #4a5568; line-height: 1.7; margin: 0 0 32px 0;">
+              Las variables de entorno de Supabase no están configuradas en esta instalación. Para que la aplicación funcione correctamente, un administrador debe configurar las siguientes variables en la plataforma de hosting:
+            </p>
+            <div style="background: #fef2f2; border: 2px solid #fca5a5; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <svg style="width: 24px; height: 24px; color: #dc2626; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <p style="margin: 0; font-size: 15px; color: #991b1b; font-weight: 600; text-align: left;">
+                  Variables Requeridas (Administradores)
+                </p>
+              </div>
+              <code style="display: block; font-family: 'Monaco', 'Courier New', monospace; font-size: 13px; color: #7f1d1d; line-height: 2; text-align: left; background: white; padding: 16px; border-radius: 8px;">
+                <strong style="color: #dc2626;">VITE_SUPABASE_URL</strong><br/>
+                <strong style="color: #dc2626;">VITE_SUPABASE_ANON_KEY</strong>
               </code>
             </div>
-            <div style="background: #edf2f7; border-left: 4px solid #667eea; padding: 16px; border-radius: 8px; margin-bottom: 32px; text-align: left;">
-              <p style="margin: 0; font-size: 14px; color: #2d3748; line-height: 1.6;">
-                <strong style="color: #667eea;">💡 Importante:</strong> Las variables deben configurarse en tu plataforma de hosting (Netlify, Vercel, etc.) y después debes hacer un nuevo deploy.
+            <div style="background: #eff6ff; border-left: 5px solid #3b82f6; padding: 20px; border-radius: 10px; margin-bottom: 32px; text-align: left;">
+              <p style="margin: 0 0 12px 0; font-size: 15px; color: #1e40af; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                <svg style="width: 20px; height: 20px;" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                </svg>
+                Pasos para Administradores
+              </p>
+              <ol style="margin: 0; padding-left: 20px; font-size: 14px; color: #1e3a8a; line-height: 1.8;">
+                <li>Accede al panel de tu plataforma de hosting (Netlify, Vercel, etc.)</li>
+                <li>Ve a la sección "Environment Variables" o "Variables de Entorno"</li>
+                <li>Agrega las dos variables listadas arriba</li>
+                <li><strong>Importante:</strong> Realiza un nuevo deploy después de agregar las variables</li>
+              </ol>
+            </div>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 32px;">
+              <p style="margin: 0; font-size: 14px; color: #475569; line-height: 1.6;">
+                <strong style="color: #0f172a;">📖 Guía Completa:</strong> Lee el archivo
+                <code style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; color: #0f172a; font-weight: 600;">CONFIGURAR_VARIABLES_ENTORNO.md</code>
+                en el repositorio para instrucciones detalladas paso a paso.
               </p>
             </div>
-            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-              <a href="/README_IMPORTANTE.md" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">
-                <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                Guía de Configuración
-              </a>
-              <a href="https://github.com/yourusername/yourrepo" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; background: white; color: #667eea; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; border: 2px solid #667eea; transition: all 0.2s;">
-                <svg style="width: 18px; height: 18px;" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                </svg>
-                Documentación
-              </a>
+            <div style="border-top: 2px solid #e2e8f0; padding-top: 24px;">
+              <p style="margin: 0; font-size: 14px; color: #64748b; line-height: 1.6;">
+                ¿No eres administrador? Contacta al equipo de sistemas para resolver este problema.<br/>
+                <strong style="color: #334155;">Dominio:</strong> <code style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; color: #0f172a;">app.movi.digital</code>
+              </p>
             </div>
-            <p style="margin-top: 32px; font-size: 13px; color: #718096; line-height: 1.6;">
-              Si ya configuraste las variables y sigues viendo este mensaje, verifica que hayas redeployed la aplicación después de agregar las variables.
-            </p>
           </div>
         </div>
       `;
     }
   }
   console.error('❌ ERROR: Variables de entorno de Supabase no configuradas');
-  console.info('📚 Lee el archivo README_IMPORTANTE.md para instrucciones');
+  console.error('📍 Dominio actual:', window.location.hostname);
+  console.error('🔧 Configuración requerida:');
+  console.error('   - VITE_SUPABASE_URL');
+  console.error('   - VITE_SUPABASE_ANON_KEY');
+  console.info('📚 Consulta el archivo CONFIGURAR_VARIABLES_ENTORNO.md para instrucciones completas');
 }
 
 // Verificar que las variables existan y crear el cliente
