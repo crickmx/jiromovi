@@ -217,7 +217,7 @@ export function Login() {
         </div>
 
         <p className="text-center text-sm text-neutral-500 mt-6">
-          Intranet JIRO by MOVI Digital
+          MOVI Digital
         </p>
 
         {diagnosticInfo.length > 0 && (
