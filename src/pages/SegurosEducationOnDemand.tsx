@@ -512,7 +512,7 @@ export function SegurosEducationOnDemand() {
               <div className="text-white">
                 <h2 className="text-2xl font-bold">{selectedLesson.titulo}</h2>
                 {selectedLesson.descripcion && (
-                  <p className="text-neutral-300 mt-1">{selectedLesson.descripcion}</p>
+                  <p className="text-neutral-100 mt-1">{selectedLesson.descripcion}</p>
                 )}
               </div>
               <button
