@@ -71,8 +71,7 @@ export default function MulticotizadorDigital() {
         <iframe
           src="https://www.multicotizador.digital/"
           title="Multicotizador Digital"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-          allow="camera; microphone; clipboard-read; clipboard-write; geolocation"
+          
           onLoad={handleIframeLoad}
           onError={handleIframeError}
           className={`w-full h-full border-0 ${isLoading || hasError ? 'hidden' : 'block'}`}
