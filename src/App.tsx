@@ -21,6 +21,7 @@ import { GestorEmails } from './pages/GestorEmails';
 import { FirmasEmail } from './pages/FirmasEmail';
 import { Contactos } from './pages/Contactos';
 import { Chat } from './pages/Chat';
+import { AccesosNacional } from './pages/AccesosNacional';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -228,6 +229,15 @@ function AppRoutes() {
             <Layout>
               <Chat />
             </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/accesos-nacional"
+        element={
+          <ProtectedRoute>
+            <AccesosNacional />
           </ProtectedRoute>
         }
       />
