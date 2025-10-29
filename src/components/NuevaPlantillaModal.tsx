@@ -314,9 +314,9 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl shadow-strong max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between rounded-t-3xl z-20">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full my-8 flex flex-col max-h-[85vh]">
+        <div className="flex-shrink-0 sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 rounded-t-2xl z-10">
           <div>
             <h2 className="text-2xl font-display font-bold text-neutral-900">
               Nueva Plantilla
@@ -333,7 +333,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {error && (
             <div className="bg-accent-50 border border-accent-200 text-accent-700 px-4 py-3 rounded-xl mb-6">
               {error}
@@ -515,7 +515,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-neutral-50 border-t border-neutral-200 px-6 py-4 flex justify-between rounded-b-3xl">
+        <div className="flex-shrink-0 sticky bottom-0 bg-neutral-50 border-t border-neutral-200 px-6 py-4 flex justify-between rounded-b-2xl">
           <button
             onClick={() => {
               if (step === 1) {

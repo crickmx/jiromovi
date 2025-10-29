@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { X } from 'lucide-react';
 import { PaymentFields } from './PaymentFields';
+import { BaseModal } from './BaseModal';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -207,22 +207,35 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-slate-800">
-            {user ? 'Editar Usuario' : 'Nuevo Usuario'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition"
-          >
-            <X className="w-6 h-6 text-slate-500" />
-          </button>
-        </div>
+  const footer = (
+    <div className="flex justify-end space-x-3">
+      <button
+        type="button"
+        onClick={onClose}
+        className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition"
+      >
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        form="user-form"
+        disabled={loading}
+        className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+      >
+        {loading ? 'Guardando...' : user ? 'Actualizar' : 'Crear Usuario'}
+      </button>
+    </div>
+  );
 
-        <form onSubmit={handleSubmit} className="p-6">
+  return (
+    <BaseModal
+      isOpen={true}
+      onClose={onClose}
+      title={user ? 'Editar Usuario' : 'Nuevo Usuario'}
+      maxWidth="4xl"
+      footer={footer}
+    >
+      <form id="user-form" onSubmit={handleSubmit}>
           {error && (
             <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
               {error}
@@ -486,24 +499,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             </div>
           )}
 
-          <div className="flex justify-end space-x-4 mt-8">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
-            >
-              {loading ? 'Guardando...' : user ? 'Actualizar' : 'Crear Usuario'}
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </BaseModal>
   );
 }

@@ -530,13 +530,14 @@ export function EspacioJiro() {
       </div>
 
       {showModal && selectedArea && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-slate-200 sticky top-0 bg-white">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
+            <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">Reservar: {selectedArea.nombre}</h2>
               <p className="text-sm text-slate-600">{selectedArea.oficinas?.nombre}</p>
             </div>
-            <form onSubmit={handleSubmit} className="p-6">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <form id="reserva-form" onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Fecha <span className="text-red-600">*</span>
@@ -591,6 +592,9 @@ export function EspacioJiro() {
                 />
               </div>
 
+              </form>
+            </div>
+            <div className="flex-shrink-0 border-t border-slate-200 px-6 py-4">
               <div className="flex space-x-3">
                 <button
                   type="button"
@@ -605,12 +609,13 @@ export function EspacioJiro() {
                 </button>
                 <button
                   type="submit"
+                  form="reserva-form"
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
                   Reservar
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

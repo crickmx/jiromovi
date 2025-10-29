@@ -144,9 +144,9 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 bg-white">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full my-8 flex flex-col max-h-[85vh]">
+        <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-slate-800">Áreas de {oficinaNombre}</h2>
             <p className="text-sm text-slate-600">Gestiona las áreas reservables del Espacio JIRO</p>
@@ -156,7 +156,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="mb-6">
             <button
               onClick={() => openModal(null)}
@@ -228,9 +228,9 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 bg-white">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[60] p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full my-8 flex flex-col max-h-[85vh]">
+            <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
               <h3 className="text-xl font-bold text-slate-800">
                 {selectedArea ? 'Editar Área' : 'Nueva Área'}
               </h3>
@@ -239,7 +239,8 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <form id="area-form" onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Nombre del Área <span className="text-red-600">*</span>
@@ -321,7 +322,10 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-4">
+              </form>
+            </div>
+            <div className="flex-shrink-0 border-t border-slate-200 px-6 py-4">
+              <div className="flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
@@ -331,13 +335,14 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                 </button>
                 <button
                   type="submit"
+                  form="area-form"
                   disabled={saving}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                 >
                   {saving ? 'Guardando...' : selectedArea ? 'Actualizar' : 'Crear'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

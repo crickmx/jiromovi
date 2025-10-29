@@ -493,9 +493,9 @@ export function Oficinas() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full my-8">
-            <div className="border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full my-8 flex flex-col max-h-[85vh]">
+            <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-slate-800">
                 {selectedOficina ? 'Editar Oficina' : 'Nueva Oficina'}
               </h2>
@@ -507,7 +507,8 @@ export function Oficinas() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <form id="oficina-form" onSubmit={handleSubmit}>
               {error && (
                 <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                   {error}
@@ -657,8 +658,10 @@ export function Oficinas() {
                   </label>
                 </div>
               </div>
-
-              <div className="flex justify-end space-x-4 mt-6">
+              </form>
+            </div>
+            <div className="flex-shrink-0 border-t border-slate-200 px-6 py-4">
+              <div className="flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
@@ -668,21 +671,22 @@ export function Oficinas() {
                 </button>
                 <button
                   type="submit"
+                  form="oficina-form"
                   disabled={saving}
                   className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
                 >
                   {saving ? 'Guardando...' : selectedOficina ? 'Actualizar' : 'Crear'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
       {customFieldsModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full">
-            <div className="border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full my-8 flex flex-col max-h-[85vh]">
+            <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-slate-800">Campos Personalizados</h2>
               <button
                 onClick={() => setCustomFieldsModalOpen(false)}
@@ -692,7 +696,7 @@ export function Oficinas() {
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
               <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <h3 className="font-semibold text-slate-800 mb-3">Agregar Nuevo Campo</h3>
                 <div className="flex space-x-3">

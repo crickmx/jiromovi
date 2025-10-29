@@ -264,10 +264,13 @@ export function MoviMeet() {
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">Nueva Reunión</h2>
-            <form onSubmit={handleCreateMeeting} className="space-y-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
+            <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4">
+              <h2 className="text-xl font-bold text-slate-900">Nueva Reunión</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <form id="create-meeting-form" onSubmit={handleCreateMeeting} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Título de la reunión
@@ -307,8 +310,10 @@ export function MoviMeet() {
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
-
-              <div className="flex space-x-3 pt-4">
+              </form>
+            </div>
+            <div className="flex-shrink-0 border-t border-slate-200 px-6 py-4">
+              <div className="flex space-x-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -323,30 +328,34 @@ export function MoviMeet() {
                 </button>
                 <button
                   type="submit"
+                  form="create-meeting-form"
                   disabled={creating}
                   className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Creando...' : 'Crear Reunión'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
       {showExpressModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Zap className="w-6 h-6 text-yellow-600" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
+            <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Zap className="w-6 h-6 text-yellow-600" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900">Reunión Express</h2>
               </div>
-              <h2 className="text-2xl font-bold text-slate-800">Reunión Express</h2>
             </div>
-            <p className="text-slate-600 mb-4">
-              Crea una reunión instantánea y únete inmediatamente
-            </p>
-            <form onSubmit={handleCreateExpressMeeting} className="space-y-4">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <p className="text-slate-600 mb-4">
+                Crea una reunión instantánea y únete inmediatamente
+              </p>
+              <form id="express-meeting-form" onSubmit={handleCreateExpressMeeting} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Nombre de la reunión
@@ -360,8 +369,10 @@ export function MoviMeet() {
                   placeholder="Ej: Reunión rápida de equipo"
                 />
               </div>
-
-              <div className="flex space-x-3 pt-4">
+              </form>
+            </div>
+            <div className="flex-shrink-0 border-t border-slate-200 px-6 py-4">
+              <div className="flex space-x-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -374,13 +385,14 @@ export function MoviMeet() {
                 </button>
                 <button
                   type="submit"
+                  form="express-meeting-form"
                   disabled={creating}
                   className="flex-1 px-4 py-2 bg-yellow-400 text-slate-900 rounded-lg hover:bg-yellow-300 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Creando...' : 'Iniciar Ahora'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

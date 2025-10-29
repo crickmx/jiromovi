@@ -434,9 +434,9 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
   if (!isOpen || !plantilla) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto p-4">
-      <div className="bg-white rounded-3xl shadow-strong max-w-7xl w-full my-8">
-        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl max-w-7xl w-full my-8 flex flex-col max-h-[85vh]">
+        <div className="flex-shrink-0 sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 rounded-t-2xl z-10">
           <div>
             <h2 className="text-2xl font-display font-bold text-neutral-900">
               Personalizar: {plantilla.titulo}
@@ -453,15 +453,15 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {error && (
             <div className="bg-accent-50 border border-accent-200 text-accent-700 px-4 py-3 rounded-xl mb-6">
               {error}
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+            <div className="space-y-6 lg:max-h-full lg:overflow-y-auto lg:pr-2">
               <div>
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">
                   <ImageIcon className="w-4 h-4 inline mr-2" />
@@ -540,7 +540,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
               </div>
             </div>
 
-            <div className="sticky top-24">
+            <div className="lg:sticky lg:top-4 lg:self-start">
               <label className="block text-sm font-semibold text-neutral-700 mb-2">
                 Vista Previa
               </label>
