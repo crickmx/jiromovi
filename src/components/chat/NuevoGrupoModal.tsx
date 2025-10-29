@@ -68,11 +68,10 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
 
       if (chatError) throw chatError;
 
-      // Agregar creador como admin del grupo
+      // Agregar creador
       await supabase.from('chat_miembros').insert({
         chat_id: chat.id,
         usuario_id: usuario.id,
-        rol: 'admin',
         rol_al_unirse: usuario.rol
       });
 
@@ -80,7 +79,6 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
       const miembros = selectedUsuarios.map(userId => ({
         chat_id: chat.id,
         usuario_id: userId,
-        rol: 'miembro',
         rol_al_unirse: usuarios.find(u => u.id === userId)?.rol || 'Empleado'
       }));
 

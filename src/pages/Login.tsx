@@ -33,11 +33,10 @@ export function Login() {
     setLoading(true);
 
     try {
-      console.log('[Login] Attempting to sign in...');
       const { error: signInError } = await signIn(email, password);
 
       if (signInError) {
-        console.error('[Login] Sign in error:', signInError);
+        console.error('Error de autenticación:', signInError);
 
         if (signInError.message.includes('Invalid login credentials')) {
           setError('Credenciales incorrectas. Por favor, verifica tu e-mail laboral y contraseña.');
@@ -52,53 +51,10 @@ export function Login() {
         }
         setLoading(false);
       } else {
-        console.log('[Login] Sign in successful, fetching user profile...');
-
-        // Esperar a que el usuario se cargue completamente
-        let attempts = 0;
-        const maxAttempts = 10;
-        const checkInterval = 300;
-
-        const waitForUser = async (): Promise<boolean> => {
-          const { data: { user } } = await supabase.auth.getUser();
-
-          if (user) {
-            console.log('[Login] User loaded:', user.email);
-            const { data: usuarioData } = await supabase
-              .from('usuarios')
-              .select('*')
-              .eq('id', user.id)
-              .eq('activo', true)
-              .maybeSingle();
-
-            if (usuarioData) {
-              console.log('[Login] Usuario profile loaded:', usuarioData.rol);
-              return true;
-            }
-          }
-
-          attempts++;
-          if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, checkInterval));
-            return waitForUser();
-          }
-
-          return false;
-        };
-
-        const userLoaded = await waitForUser();
-
-        if (userLoaded) {
-          console.log('[Login] Navigating to home...');
-          navigate('/', { replace: true });
-        } else {
-          console.error('[Login] Usuario profile not loaded after max attempts');
-          setError('Error al cargar tu perfil. Por favor, intenta de nuevo.');
-          setLoading(false);
-        }
+        navigate('/');
       }
     } catch (err: any) {
-      console.error('[Login] Unexpected error:', err);
+      console.error('Error inesperado:', err);
 
       if (err.message && err.message.includes('Failed to fetch')) {
         setError('No se pudo conectar con el servidor. Verifica tu conexión a internet y vuelve a intentar.');

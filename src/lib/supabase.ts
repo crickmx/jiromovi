@@ -1,11 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
-// Configuración de Supabase con fallback
-// IMPORTANTE: Las variables de entorno deben configurarse en producción
-// Este fallback es temporal para evitar errores de despliegue
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qhwvuuyjhcennqccgvse.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjA5OTAsImV4cCI6MjA3NzI5Njk5MH0.bIlGsgeAC6oxGUalODg0C5-l6KaJip0wWa9IbQ7MjTQ';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Función para mostrar error amigable cuando faltan variables
 function showConfigError() {
@@ -71,15 +68,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   // Crear cliente dummy para evitar errores de importación
   supabaseClient = createClient('https://placeholder.supabase.co', 'placeholder-key');
 } else {
-  // Log si está usando fallback
-  const usingFallback = !import.meta.env.VITE_SUPABASE_URL;
-  if (usingFallback) {
-    console.warn('⚠️ [Supabase] Usando configuración fallback. Para producción, configura las variables de entorno.');
-    console.info('📚 [Supabase] Lee CONFIGURACION_PRODUCCION.md para más información.');
-  } else {
-    console.log('✅ [Supabase] Usando variables de entorno configuradas correctamente.');
-  }
-
   console.log('[Supabase] Initializing with URL:', supabaseUrl);
 
   supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {

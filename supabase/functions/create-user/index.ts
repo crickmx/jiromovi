@@ -114,7 +114,6 @@ Deno.serve(async (req: Request) => {
 
     const { error: insertError } = await supabaseAdmin.from('usuarios').insert({
       id: authData.user.id,
-      username: null,
       nombre: userData.nombre,
       apellidos: userData.apellidos,
       rol: userData.rol,
@@ -130,7 +129,8 @@ Deno.serve(async (req: Request) => {
       url_web_jiro: userData.url_web_jiro || '',
       url_web_multicotizador: userData.url_web_multicotizador || '',
       esquema_pago_id: userData.esquema_pago_id || null,
-      activo: true,
+      banco: userData.banco || '',
+      clabe: userData.clabe || '',
       estado: isGerente ? 'registrado' : 'activo',
     });
 

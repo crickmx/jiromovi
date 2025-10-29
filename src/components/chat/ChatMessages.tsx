@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Info, Send, Paperclip, X, FileText, Image as ImageIcon, Download } from 'lucide-react';
+import { Info, Send, Paperclip } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
@@ -16,10 +16,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (chat) {
@@ -35,62 +32,19 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
           schema: 'public',
           table: 'chat_mensajes',
           filter: `chat_id=eq.${chat.id}`
-        }, async (payload) => {
+        }, (payload) => {
           console.log('[ChatMessages] Nuevo mensaje recibido:', payload.new);
-
-          // Cargar datos completos del mensaje incluyendo usuario
-          const { data: messageWithUser } = await supabase
-            .from('chat_mensajes')
-            .select(`
-              *,
-              usuarios:remitente_id (
-                id,
-                nombre,
-                apellidos,
-                imagen_perfil_url
-              )
-            `)
-            .eq('id', payload.new.id)
-            .single();
-
-          if (messageWithUser) {
-            setMessages(prev => {
-              // Evitar duplicados
-              const exists = prev.some(m => m.id === messageWithUser.id);
-              if (exists) return prev;
-              return [...prev, messageWithUser];
-            });
-            setTimeout(scrollToBottom, 100);
-          }
+          setMessages(prev => [...prev, payload.new]);
+          setTimeout(scrollToBottom, 100);
         })
         .on('postgres_changes', {
           event: 'UPDATE',
           schema: 'public',
           table: 'chat_mensajes',
           filter: `chat_id=eq.${chat.id}`
-        }, async (payload) => {
+        }, (payload) => {
           console.log('[ChatMessages] Mensaje actualizado:', payload.new);
-
-          // Cargar datos completos del mensaje actualizado
-          const { data: messageWithUser } = await supabase
-            .from('chat_mensajes')
-            .select(`
-              *,
-              usuarios:remitente_id (
-                id,
-                nombre,
-                apellidos,
-                imagen_perfil_url
-              )
-            `)
-            .eq('id', payload.new.id)
-            .single();
-
-          if (messageWithUser) {
-            setMessages(prev => prev.map(msg =>
-              msg.id === messageWithUser.id ? messageWithUser : msg
-            ));
-          }
+          setMessages(prev => prev.map(msg => msg.id === payload.new.id ? payload.new : msg));
         })
         .subscribe((status) => {
           console.log('[ChatMessages] Estado de suscripción:', status);
@@ -135,137 +89,34 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const uploadFile = async (file: File) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${chat.id}/${usuario?.id}/${Date.now()}.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('chat-attachments')
-      .upload(fileName, file);
-
-    if (error) throw error;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('chat-attachments')
-      .getPublicUrl(fileName);
-
-    return {
-      url: publicUrl,
-      path: fileName
-    };
-  };
-
   const handleSend = async () => {
-    if ((!newMessage.trim() && !selectedFile) || !usuario) {
+    if (!newMessage.trim() || !usuario) {
       console.log('[ChatMessages] No se puede enviar: mensaje vacío o sin usuario');
       return;
     }
 
-    try {
-      setUploadingFile(true);
+    console.log('[ChatMessages] Enviando mensaje...', {
+      chat_id: chat.id,
+      remitente_id: usuario.id,
+      mensaje: newMessage.trim()
+    });
 
-      let fileData = null;
-      let tipo = 'texto';
-
-      if (selectedFile) {
-        console.log('[ChatMessages] Subiendo archivo...', selectedFile.name);
-        const { url, path } = await uploadFile(selectedFile);
-
-        fileData = {
-          archivo_url: path,
-          archivo_nombre: selectedFile.name,
-          archivo_tipo: selectedFile.type,
-          archivo_tamano: selectedFile.size
-        };
-
-        if (selectedFile.type.startsWith('image/')) tipo = 'imagen';
-        else if (selectedFile.type.startsWith('video/')) tipo = 'video';
-        else if (selectedFile.type.startsWith('audio/')) tipo = 'audio';
-        else tipo = 'archivo';
-      }
-
-      console.log('[ChatMessages] Enviando mensaje...', {
+    const { data, error } = await supabase
+      .from('chat_mensajes')
+      .insert({
         chat_id: chat.id,
         remitente_id: usuario.id,
-        mensaje: newMessage.trim() || selectedFile?.name || '',
-        tipo,
-        ...fileData
-      });
-
-      const { data, error } = await supabase
-        .from('chat_mensajes')
-        .insert({
-          chat_id: chat.id,
-          remitente_id: usuario.id,
-          mensaje: newMessage.trim() || selectedFile?.name || '',
-          tipo,
-          ...fileData
-        })
-        .select(`
-          *,
-          usuarios:remitente_id (
-            id,
-            nombre,
-            apellidos,
-            imagen_perfil_url
-          )
-        `)
-        .single();
-
-      if (error) {
-        console.error('[ChatMessages] Error enviando mensaje:', error);
-        alert(`Error al enviar mensaje: ${error.message}`);
-      } else {
-        console.log('[ChatMessages] Mensaje enviado exitosamente:', data);
-
-        // Agregar inmediatamente a la lista (optimistic update)
-        setMessages(prev => {
-          // Verificar que no existe ya (por si el realtime fue más rápido)
-          const exists = prev.some(m => m.id === data.id);
-          if (exists) return prev;
-          return [...prev, data];
-        });
-
-        setNewMessage('');
-        setSelectedFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        setTimeout(scrollToBottom, 100);
-      }
-    } catch (error: any) {
-      console.error('[ChatMessages] Error:', error);
-      alert(`Error: ${error.message}`);
-    } finally {
-      setUploadingFile(false);
-    }
-  };
-
-  const downloadFile = async (filePath: string, fileName: string) => {
-    const { data, error } = await supabase.storage
-      .from('chat-attachments')
-      .download(filePath);
+        mensaje: newMessage.trim()
+      })
+      .select();
 
     if (error) {
-      console.error('Error descargando archivo:', error);
-      return;
+      console.error('[ChatMessages] Error enviando mensaje:', error);
+      alert(`Error al enviar mensaje: ${error.message}`);
+    } else {
+      console.log('[ChatMessages] Mensaje enviado exitosamente:', data);
+      setNewMessage('');
     }
-
-    const url = URL.createObjectURL(data);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -331,39 +182,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                       </p>
                     ) : (
                       <>
-                        {message.tipo === 'imagen' && message.archivo_url ? (
-                          <div className="space-y-2">
-                            <img
-                              src={supabase.storage.from('chat-attachments').getPublicUrl(message.archivo_url).data.publicUrl}
-                              alt={message.archivo_nombre}
-                              className="max-w-xs rounded-lg cursor-pointer"
-                              onClick={() => window.open(supabase.storage.from('chat-attachments').getPublicUrl(message.archivo_url).data.publicUrl, '_blank')}
-                            />
-                            {message.mensaje && message.mensaje !== message.archivo_nombre && (
-                              <p className="whitespace-pre-wrap break-words">{message.mensaje}</p>
-                            )}
-                          </div>
-                        ) : message.archivo_url ? (
-                          <div className="flex items-center space-x-3">
-                            <div className={`p-2 rounded-lg ${isMine ? 'bg-blue-700' : 'bg-neutral-100'}`}>
-                              <FileText className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{message.archivo_nombre}</p>
-                              <p className="text-xs opacity-70">
-                                {(message.archivo_tamano / 1024).toFixed(1)} KB
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => downloadFile(message.archivo_url, message.archivo_nombre)}
-                              className={`p-1 rounded hover:bg-opacity-20 hover:bg-neutral-900 transition-colors`}
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <p className="whitespace-pre-wrap break-words">{message.mensaje}</p>
-                        )}
+                        <p className="whitespace-pre-wrap break-words">{message.mensaje}</p>
                         {message.editado && (
                           <p className="text-xs opacity-70 mt-1">(editado)</p>
                         )}
@@ -387,45 +206,10 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
 
       {/* Input */}
       <div className="bg-white border-t border-neutral-200 p-4">
-        {selectedFile && (
-          <div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              {selectedFile.type.startsWith('image/') ? (
-                <ImageIcon className="w-5 h-5 text-blue-600" />
-              ) : (
-                <FileText className="w-5 h-5 text-blue-600" />
-              )}
-              <div>
-                <p className="text-sm font-medium text-neutral-900">{selectedFile.name}</p>
-                <p className="text-xs text-neutral-600">
-                  {(selectedFile.size / 1024).toFixed(1)} KB
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setSelectedFile(null);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-              }}
-              className="p-1 hover:bg-blue-100 rounded transition-colors"
-            >
-              <X className="w-4 h-4 text-neutral-600" />
-            </button>
-          </div>
-        )}
         <div className="flex items-end space-x-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileSelect}
-            className="hidden"
-            accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,video/*,audio/*"
-          />
           <button
-            onClick={() => fileInputRef.current?.click()}
             className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
             title="Adjuntar archivo"
-            disabled={uploadingFile}
           >
             <Paperclip className="w-5 h-5 text-neutral-600" />
           </button>
@@ -436,18 +220,13 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
             placeholder="Escribe un mensaje..."
             rows={1}
             className="flex-1 px-4 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            disabled={uploadingFile}
           />
           <button
             onClick={handleSend}
-            disabled={(!newMessage.trim() && !selectedFile) || uploadingFile}
+            disabled={!newMessage.trim()}
             className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {uploadingFile ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
+            <Send className="w-5 h-5" />
           </button>
         </div>
       </div>

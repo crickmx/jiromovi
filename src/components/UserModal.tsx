@@ -69,8 +69,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         url_web_jiro: user.url_web_jiro,
         url_web_multicotizador: user.url_web_multicotizador,
         esquema_pago_id: user.esquema_pago_id || '',
-        banco: user.cuenta_banco || '',
-        clabe: user.clabe_interbancaria || '',
+        banco: user.banco || '',
+        clabe: user.clabe || '',
         dias_vacaciones_disponibles: user.dias_vacaciones_disponibles || 0,
       });
     }
@@ -108,8 +108,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           url_web_jiro: formData.url_web_jiro,
           url_web_multicotizador: formData.url_web_multicotizador,
           esquema_pago_id: formData.esquema_pago_id || null,
-          cuenta_banco: formData.banco,
-          clabe_interbancaria: formData.clabe,
+          banco: formData.banco,
+          clabe: formData.clabe,
           dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
           updated_at: new Date().toISOString(),
         };
@@ -185,8 +185,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 url_web_jiro: formData.url_web_jiro,
                 url_web_multicotizador: formData.url_web_multicotizador,
                 esquema_pago_id: formData.esquema_pago_id || null,
-                cuenta_banco: formData.banco,
-                clabe_interbancaria: formData.clabe,
+                banco: formData.banco,
+                clabe: formData.clabe,
                 dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
               },
             }),

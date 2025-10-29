@@ -28,29 +28,6 @@ import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
 import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
 import { CentroNotificaciones } from './pages/CentroNotificaciones';
 
-function HomeRedirect() {
-  const { usuario, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Cargando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!usuario) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const targetPath = usuario.rol === 'Administrador' || usuario.rol === 'Gerente' ? '/dashboard' : '/perfil';
-  console.log('[HomeRedirect] Redirecting to:', targetPath, 'for role:', usuario.rol);
-  return <Navigate to={targetPath} replace />;
-}
-
 function AppRoutes() {
   const { usuario, loading } = useAuth();
 
@@ -306,8 +283,8 @@ function AppRoutes() {
         }
       />
 
-      <Route path="/" element={<HomeRedirect />} />
-      <Route path="*" element={<HomeRedirect />} />
+      <Route path="/" element={<Navigate to={usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' ? "/dashboard" : "/perfil"} replace />} />
+      <Route path="*" element={<Navigate to={usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' ? "/dashboard" : "/perfil"} replace />} />
     </Routes>
   );
 }

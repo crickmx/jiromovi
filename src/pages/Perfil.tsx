@@ -304,12 +304,9 @@ export function Perfil() {
           <div className="mt-8">
             <PaymentFields
               esquemaPagoId={formData.esquema_pago_id || ''}
-              banco={formData.cuenta_banco || ''}
-              clabe={formData.clabe_interbancaria || ''}
-              onChange={(field, value) => {
-                const dbField = field === 'banco' ? 'cuenta_banco' : field === 'clabe' ? 'clabe_interbancaria' : field;
-                setFormData({ ...formData, [dbField]: value });
-              }}
+              banco={formData.banco || ''}
+              clabe={formData.clabe || ''}
+              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
               editable={true}
             />
           </div>
