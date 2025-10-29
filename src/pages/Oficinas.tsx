@@ -294,7 +294,7 @@ export function Oficinas() {
             <div className="flex space-x-3">
               <button
                 onClick={() => setCustomFieldsModalOpen(true)}
-                className="flex items-center space-x-2 bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg font-medium hover:bg-opacity-30 transition"
+                className="flex items-center space-x-2 bg-white/90 backdrop-blur text-blue-900 px-4 py-2 rounded-lg font-semibold hover:bg-white border-2 border-white/50 transition shadow-sm"
               >
                 <Settings className="w-5 h-5" />
                 <span>Campos Personalizados</span>

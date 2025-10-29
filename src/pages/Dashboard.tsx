@@ -330,7 +330,7 @@ export function Dashboard() {
               <select
                 value={birthdayFilter}
                 onChange={(e) => setBirthdayFilter(e.target.value as 'next_month' | 'custom')}
-                className="bg-white bg-opacity-20 text-white rounded-lg px-3 py-1.5 text-sm border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                className="bg-white/90 backdrop-blur text-purple-900 font-medium rounded-lg px-3 py-1.5 text-sm border-2 border-white/50 focus:outline-none focus:ring-2 focus:ring-white focus:border-white shadow-sm"
               >
                 <option value="next_month" className="text-slate-900">Siguiente mes</option>
                 <option value="custom" className="text-slate-900">Fecha personalizada</option>
@@ -340,7 +340,7 @@ export function Dashboard() {
                   type="month"
                   value={customBirthdayDate}
                   onChange={(e) => setCustomBirthdayDate(e.target.value)}
-                  className="bg-white bg-opacity-20 text-white rounded-lg px-3 py-1.5 text-sm border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                  className="bg-white/90 backdrop-blur text-purple-900 font-medium rounded-lg px-3 py-1.5 text-sm border-2 border-white/50 focus:outline-none focus:ring-2 focus:ring-white focus:border-white shadow-sm"
                 />
               )}
             </div>
