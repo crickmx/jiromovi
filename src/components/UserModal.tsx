@@ -208,11 +208,11 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
   };
 
   const footer = (
-    <div className="flex justify-end space-x-3">
+    <>
       <button
         type="button"
         onClick={onClose}
-        className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition"
+        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
       >
         Cancelar
       </button>
@@ -220,11 +220,11 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         type="submit"
         form="user-form"
         disabled={loading}
-        className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
       >
-        {loading ? 'Guardando...' : user ? 'Actualizar' : 'Crear Usuario'}
+        {loading ? 'Guardando...' : user ? 'Actualizar' : 'Crear'}
       </button>
-    </div>
+    </>
   );
 
   return (
@@ -232,24 +232,24 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
       isOpen={true}
       onClose={onClose}
       title={user ? 'Editar Usuario' : 'Nuevo Usuario'}
-      maxWidth="4xl"
+      maxWidth="3xl"
       footer={footer}
     >
-      <form id="user-form" onSubmit={handleSubmit}>
+      <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
               {error}
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Información de Acceso</h3>
-            </div>
+          <div>
+            <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Información de Acceso</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
             {!user && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
                   Contraseña *
                 </label>
                 <input
@@ -257,58 +257,60 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             )}
 
             {user && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Nueva Contraseña (dejar vacío para no cambiar)
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Nueva Contraseña (opcional)
                 </label>
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             )}
 
-            <div className="md:col-span-2 pt-4">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Información Personal</h3>
-            </div>
+          </div>
 
+          <div>
+            <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Información Personal</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Nombre *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Nombre *</label>
               <input
                 type="text"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 required
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Apellidos *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Apellidos *</label>
               <input
                 type="text"
                 value={formData.apellidos}
                 onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
                 required
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Rol *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Rol *</label>
               <select
                 value={formData.rol}
                 onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
                 required
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="Empleado">Empleado</option>
                 <option value="Agente">Agente</option>
@@ -318,17 +320,17 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Puesto</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Puesto</label>
               <input
                 type="text"
                 value={formData.puesto}
                 onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Oficina</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Oficina</label>
               <select
                 value={formData.oficina_id}
                 onChange={(e) => setFormData({ ...formData, oficina_id: e.target.value })}
@@ -350,83 +352,86 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Fecha de Nacimiento
               </label>
               <input
                 type="date"
                 value={formData.fecha_nacimiento}
                 onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Fecha de Ingreso
               </label>
               <input
                 type="date"
                 value={formData.fecha_ingreso}
                 onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            <div className="md:col-span-2 pt-4">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Información de Contacto</h3>
-            </div>
+          </div>
+
+          <div>
+            <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Información de Contacto</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Celular Personal
               </label>
               <input
                 type="tel"
                 value={formData.celular_personal}
                 onChange={(e) => setFormData({ ...formData, celular_personal: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Email Personal
               </label>
               <input
                 type="email"
                 value={formData.email_personal}
                 onChange={(e) => setFormData({ ...formData, email_personal: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Celular Laboral
               </label>
               <input
                 type="tel"
                 value={formData.celular_laboral}
                 onChange={(e) => setFormData({ ...formData, celular_laboral: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Email Laboral
               </label>
               <input
                 type="email"
                 value={formData.email_laboral}
                 onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 Extensión Telefónica
               </label>
               <input
@@ -435,24 +440,24 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 onChange={(e) =>
                   setFormData({ ...formData, extension_telefonica: e.target.value })
                 }
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 URL Web Jiro
               </label>
               <input
                 type="url"
                 value={formData.url_web_jiro}
                 onChange={(e) => setFormData({ ...formData, url_web_jiro: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">
                 URL Web Multicotizador
               </label>
               <input
@@ -461,12 +466,12 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 onChange={(e) =>
                   setFormData({ ...formData, url_web_multicotizador: e.target.value })
                 }
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
-          <div className="mt-6">
+          <div>
             <PaymentFields
               esquemaPagoId={formData.esquema_pago_id}
               banco={formData.banco}
@@ -477,10 +482,10 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           </div>
 
           {currentUser?.rol === 'Administrador' && (
-            <div className="mt-6 pt-6 border-t border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Gestión de Vacaciones</h3>
+            <div>
+              <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Gestión de Vacaciones</h3>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
                   Días de Vacaciones Disponibles
                 </label>
                 <input
@@ -490,7 +495,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   onChange={(e) =>
                     setFormData({ ...formData, dias_vacaciones_disponibles: parseInt(e.target.value) || 0 })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-slate-500 mt-1">
                   Número de días de vacaciones que este usuario puede solicitar

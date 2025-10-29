@@ -55,7 +55,7 @@ export function BaseModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -63,16 +63,16 @@ export function BaseModal({
       }}
     >
       <div
-        className={`relative bg-white rounded-2xl shadow-xl ${maxWidthClasses[maxWidth]} w-full my-8 flex flex-col max-h-[85vh]`}
+        className={`relative bg-white rounded-xl shadow-2xl ${maxWidthClasses[maxWidth]} w-full my-4 flex flex-col max-h-[92vh]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex-shrink-0 sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl">
+        <div className="flex-shrink-0 sticky top-0 z-10 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 px-4 py-3 rounded-t-xl">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+            <h2 className="text-lg font-bold text-slate-900">{title}</h2>
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-lg transition-colors"
+                className="text-slate-400 hover:text-slate-700 hover:bg-white p-1.5 rounded-lg transition-all"
                 aria-label="Cerrar"
               >
                 <X className="w-5 h-5" />
@@ -81,12 +81,12 @@ export function BaseModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-3">
           {children}
         </div>
 
         {footer && (
-          <div className="flex-shrink-0 sticky bottom-0 z-10 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-2xl">
+          <div className="flex-shrink-0 sticky bottom-0 z-10 bg-slate-50 border-t border-slate-200 px-4 py-3 rounded-b-xl flex justify-end gap-2">
             {footer}
           </div>
         )}
