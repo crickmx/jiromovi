@@ -118,7 +118,7 @@ export function SegurosEducation() {
           completados,
           en_proceso,
           ultima_leccion: ultima?.lesson?.titulo || null,
-          tiempo_total: Math.floor(tiempo_total / 60), // Convert to minutes
+          tiempo_total: Math.floor(tiempo_total / 60),
         });
       }
     } catch (error) {
@@ -153,44 +153,7 @@ export function SegurosEducation() {
           <p className="text-primary-100">Sistema de capacitación y formación continua</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-neutral-600 text-sm font-medium">Completados</span>
-              <Award className="w-5 h-5 text-emerald-600" />
-            </div>
-            <p className="text-3xl font-bold text-neutral-800">{stats.completados}</p>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-neutral-600 text-sm font-medium">En Proceso</span>
-              <TrendingUp className="w-5 h-5 text-blue-600" />
-            </div>
-            <p className="text-3xl font-bold text-neutral-800">{stats.en_proceso}</p>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-neutral-600 text-sm font-medium">Tiempo Total</span>
-              <Clock className="w-5 h-5 text-amber-600" />
-            </div>
-            <p className="text-3xl font-bold text-neutral-800">{stats.tiempo_total}<span className="text-lg text-neutral-500 ml-1">min</span></p>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-neutral-600 text-sm font-medium">Última Lección</span>
-              <Play className="w-5 h-5 text-primary-600" />
-            </div>
-            <p className="text-sm font-medium text-neutral-800 line-clamp-2">
-              {stats.ultima_leccion || 'Ninguna'}
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Access Buttons */}
+        {/* Quick Access Buttons - TOP PRIORITY */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <button
             onClick={() => navigate('/seguros-education/on-demand')}
@@ -209,7 +172,7 @@ export function SegurosEducation() {
 
           <button
             onClick={() => navigate('/seguros-education/aula-virtual')}
-            className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-primary-500 shadow-sm hover:shadow-md transition-all group"
+            className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-emerald-500 shadow-sm hover:shadow-md transition-all group"
           >
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
@@ -284,7 +247,7 @@ export function SegurosEducation() {
                 {recentLessons.map((lesson) => (
                   <div
                     key={lesson.id}
-                    onClick={() => navigate(`/seguros-education/on-demand/${lesson.id}`)}
+                    onClick={() => navigate(`/seguros-education/on-demand`)}
                     className="bg-white rounded-lg border border-neutral-200 overflow-hidden hover:shadow-md transition-all cursor-pointer group"
                   >
                     <div className="aspect-video bg-neutral-200 relative overflow-hidden">
@@ -332,6 +295,46 @@ export function SegurosEducation() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Stats Cards - AT THE BOTTOM */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-neutral-600 text-sm font-medium">Cursos Completados</span>
+              <Award className="w-5 h-5 text-emerald-600" />
+            </div>
+            <p className="text-3xl font-bold text-neutral-800">{stats.completados}</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-neutral-600 text-sm font-medium">En Proceso</span>
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+            </div>
+            <p className="text-3xl font-bold text-neutral-800">{stats.en_proceso}</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-neutral-600 text-sm font-medium">Tiempo Total</span>
+              <Clock className="w-5 h-5 text-amber-600" />
+            </div>
+            <p className="text-3xl font-bold text-neutral-800">
+              {stats.tiempo_total}
+              <span className="text-lg text-neutral-500 ml-1">min</span>
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-neutral-600 text-sm font-medium">Última Lección</span>
+              <Play className="w-5 h-5 text-primary-600" />
+            </div>
+            <p className="text-sm font-medium text-neutral-800 line-clamp-2">
+              {stats.ultima_leccion || 'Ninguna'}
+            </p>
           </div>
         </div>
       </div>
