@@ -2,9 +2,16 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Plus, Video, Filter, Play, Clock, Award } from 'lucide-react';
+import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings } from 'lucide-react';
+import { VideoPlayer } from '../components/VideoPlayer';
 
 interface Category {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+}
+
+interface Oficina {
   id: string;
   nombre: string;
 }
@@ -13,12 +20,14 @@ interface Lesson {
   id: string;
   titulo: string;
   descripcion: string;
-  categoria: { nombre: string } | null;
+  categoria: { nombre: string; id: string } | null;
   miniatura_url: string | null;
+  video_url: string;
   duracion: number;
   fecha_creacion: string;
   progreso?: number;
   completado?: boolean;
+  tiempo_reproduccion?: number;
 }
 
 export function SegurosEducationOnDemand() {
@@ -26,10 +35,27 @@ export function SegurosEducationOnDemand() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [filteredLessons, setFilteredLessons] = useState<Lesson[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    titulo: '',
+    descripcion: '',
+    categoria_id: '',
+    oficinas_asignadas: [] as string[],
+  });
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -52,25 +78,30 @@ export function SegurosEducationOnDemand() {
         .from('seguros_categories')
         .select('*')
         .order('nombre');
-
       setCategories(cats || []);
+
+      // Fetch oficinas
+      const { data: ofis } = await supabase
+        .from('oficinas')
+        .select('id, nombre')
+        .order('nombre');
+      setOficinas(ofis || []);
 
       // Fetch lessons with progress
       const { data: lessonsData } = await supabase
         .from('seguros_lessons')
         .select(`
           *,
-          categoria:seguros_categories(nombre)
+          categoria:seguros_categories(id, nombre)
         `)
         .order('fecha_creacion', { ascending: false });
 
       if (lessonsData) {
-        // Get progress for each lesson
         const lessonsWithProgress = await Promise.all(
           lessonsData.map(async (lesson) => {
             const { data: progress } = await supabase
               .from('seguros_progress')
-              .select('progreso, completado')
+              .select('progreso, completado, tiempo_reproduccion')
               .eq('lesson_id', lesson.id)
               .eq('user_id', usuario.id)
               .maybeSingle();
@@ -79,6 +110,7 @@ export function SegurosEducationOnDemand() {
               ...lesson,
               progreso: progress?.progreso || 0,
               completado: progress?.completado || false,
+              tiempo_reproduccion: progress?.tiempo_reproduccion || 0,
             };
           })
         );
@@ -87,6 +119,7 @@ export function SegurosEducationOnDemand() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      showToast('Error al cargar datos', 'error');
     } finally {
       setLoading(false);
     }
@@ -106,11 +139,183 @@ export function SegurosEducationOnDemand() {
 
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(
-        (lesson) => lesson.categoria?.nombre === selectedCategory
+        (lesson) => lesson.categoria?.id === selectedCategory
       );
     }
 
     setFilteredLessons(filtered);
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('seguros_categories')
+        .insert({
+          nombre: newCategoryName,
+          creado_por: usuario?.id,
+        });
+
+      if (error) throw error;
+
+      showToast('Categoría creada', 'success');
+      setNewCategoryName('');
+      setShowCategoryModal(false);
+      fetchData();
+    } catch (error: any) {
+      console.error('Error creating category:', error);
+      showToast('Error al crear categoría', 'error');
+    }
+  };
+
+  const handleUploadLesson = async () => {
+    if (!videoFile || !formData.titulo || !formData.categoria_id) {
+      showToast('Complete todos los campos requeridos', 'error');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadProgress(10);
+
+      // Upload video
+      const videoFileName = `${Date.now()}-${videoFile.name}`;
+      const { data: videoData, error: videoError } = await supabase.storage
+        .from('seguros-videos')
+        .upload(videoFileName, videoFile);
+
+      if (videoError) throw videoError;
+      setUploadProgress(50);
+
+      // Upload thumbnail if provided
+      let thumbnailUrl = null;
+      if (thumbnailFile) {
+        const thumbFileName = `${Date.now()}-${thumbnailFile.name}`;
+        const { data: thumbData, error: thumbError } = await supabase.storage
+          .from('seguros-thumbnails')
+          .upload(thumbFileName, thumbnailFile);
+
+        if (thumbError) throw thumbError;
+
+        const { data: thumbPublicUrl } = supabase.storage
+          .from('seguros-thumbnails')
+          .getPublicUrl(thumbFileName);
+
+        thumbnailUrl = thumbPublicUrl.publicUrl;
+      }
+      setUploadProgress(70);
+
+      // Get video public URL
+      const { data: videoPublicUrl } = supabase.storage
+        .from('seguros-videos')
+        .getPublicUrl(videoFileName);
+
+      // Get video duration (approximate - in real implementation would use server-side processing)
+      const videoDuration = await getVideoDuration(videoFile);
+
+      // Create lesson record
+      const { error: lessonError } = await supabase
+        .from('seguros_lessons')
+        .insert({
+          titulo: formData.titulo,
+          descripcion: formData.descripcion,
+          categoria_id: formData.categoria_id,
+          video_url: videoPublicUrl.publicUrl,
+          miniatura_url: thumbnailUrl,
+          duracion: Math.floor(videoDuration),
+          oficinas_asignadas: formData.oficinas_asignadas,
+          creado_por: usuario?.id,
+        });
+
+      if (lessonError) throw lessonError;
+      setUploadProgress(100);
+
+      showToast('Lección subida exitosamente', 'success');
+      setShowUploadModal(false);
+      resetForm();
+      fetchData();
+    } catch (error: any) {
+      console.error('Error uploading lesson:', error);
+      showToast('Error al subir lección: ' + error.message, 'error');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const getVideoDuration = (file: File): Promise<number> => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        resolve(video.duration);
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
+  const resetForm = () => {
+    setFormData({
+      titulo: '',
+      descripcion: '',
+      categoria_id: '',
+      oficinas_asignadas: [],
+    });
+    setVideoFile(null);
+    setThumbnailFile(null);
+  };
+
+  const handleLessonClick = (lesson: Lesson) => {
+    setSelectedLesson(lesson);
+    setShowVideoModal(true);
+  };
+
+  const handleProgressUpdate = async (progress: number, currentTime: number) => {
+    if (!selectedLesson || !usuario) return;
+
+    try {
+      const { error } = await supabase
+        .from('seguros_progress')
+        .upsert({
+          user_id: usuario.id,
+          lesson_id: selectedLesson.id,
+          progreso: Math.min(progress, 100),
+          tiempo_reproduccion: Math.floor(currentTime),
+          completado: progress >= 95,
+          ultima_vista: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,lesson_id'
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating progress:', error);
+    }
+  };
+
+  const handleVideoComplete = async () => {
+    if (!selectedLesson || !usuario) return;
+
+    try {
+      await supabase
+        .from('seguros_progress')
+        .upsert({
+          user_id: usuario.id,
+          lesson_id: selectedLesson.id,
+          progreso: 100,
+          completado: true,
+          ultima_vista: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,lesson_id'
+        });
+
+      showToast('¡Lección completada!', 'success');
+      fetchData();
+    } catch (error) {
+      console.error('Error completing lesson:', error);
+    }
   };
 
   const formatDuration = (seconds: number) => {
@@ -119,9 +324,17 @@ export function SegurosEducationOnDemand() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleLessonClick = (lessonId: string) => {
-    // In a full implementation, this would open a video player modal
-    alert(`Abrir lección: ${lessonId}\n\nNOTA: El reproductor de video requiere configuración adicional de Supabase Storage para cargar videos.`);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 ${
+      type === 'success' ? 'bg-emerald-500' : 'bg-red-500'
+    }`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
   };
 
   if (loading) {
@@ -147,13 +360,22 @@ export function SegurosEducationOnDemand() {
             <p className="text-neutral-600 mt-1">Biblioteca de lecciones grabadas</p>
           </div>
           {isAdmin && (
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Subir Lección
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCategoryModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Categorías
+              </button>
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Subir Lección
+              </button>
+            </div>
           )}
         </div>
 
@@ -179,7 +401,7 @@ export function SegurosEducationOnDemand() {
               >
                 <option value="all">Todas las categorías</option>
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.nombre}>
+                  <option key={cat.id} value={cat.id}>
                     {cat.nombre}
                   </option>
                 ))}
@@ -203,7 +425,7 @@ export function SegurosEducationOnDemand() {
             filteredLessons.map((lesson) => (
               <div
                 key={lesson.id}
-                onClick={() => handleLessonClick(lesson.id)}
+                onClick={() => handleLessonClick(lesson)}
                 className="bg-white rounded-lg border border-neutral-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
               >
                 {/* Thumbnail */}
@@ -282,33 +504,282 @@ export function SegurosEducationOnDemand() {
         </div>
       </div>
 
-      {/* Upload Modal (Placeholder) */}
+      {/* Video Player Modal */}
+      {showVideoModal && selectedLesson && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-6xl">
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-white">
+                <h2 className="text-2xl font-bold">{selectedLesson.titulo}</h2>
+                {selectedLesson.descripcion && (
+                  <p className="text-neutral-300 mt-1">{selectedLesson.descripcion}</p>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setShowVideoModal(false);
+                  setSelectedLesson(null);
+                  fetchData();
+                }}
+                className="text-white hover:text-neutral-300 p-2"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <VideoPlayer
+              videoUrl={selectedLesson.video_url}
+              initialTime={selectedLesson.tiempo_reproduccion || 0}
+              onProgressUpdate={handleProgressUpdate}
+              onComplete={handleVideoComplete}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Upload Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full my-8">
             <div className="p-6 border-b border-neutral-200">
               <h2 className="text-xl font-bold text-neutral-800">Subir Nueva Lección</h2>
             </div>
-            <div className="p-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Nota:</strong> La funcionalidad completa de carga de videos requiere:
-                </p>
-                <ul className="text-sm text-blue-700 mt-2 ml-4 list-disc">
-                  <li>Configuración de Supabase Storage para videos</li>
-                  <li>Procesamiento de videos en el servidor</li>
-                  <li>Generación de miniaturas</li>
-                  <li>Cálculo de duración del video</li>
-                </ul>
+
+            <div className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Título <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.titulo}
+                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Nombre de la lección"
+                />
               </div>
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowUploadModal(false)}
-                  className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors"
+
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Descripción
+                </label>
+                <textarea
+                  value={formData.descripcion}
+                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Descripción de la lección"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Categoría <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.categoria_id}
+                  onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
-                  Cerrar
-                </button>
+                  <option value="">Seleccionar categoría</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nombre}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Oficinas Asignadas
+                </label>
+                <div className="border border-neutral-300 rounded-lg p-3 max-h-40 overflow-y-auto">
+                  <label className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.oficinas_asignadas.length === 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({ ...formData, oficinas_asignadas: [] });
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-sm">Todas las oficinas</span>
+                  </label>
+                  {oficinas.map((ofi) => (
+                    <label key={ofi.id} className="flex items-center gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.oficinas_asignadas.includes(ofi.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({
+                              ...formData,
+                              oficinas_asignadas: [...formData.oficinas_asignadas, ofi.id],
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              oficinas_asignadas: formData.oficinas_asignadas.filter(
+                                (id) => id !== ofi.id
+                              ),
+                            });
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm">{ofi.nombre}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Si no seleccionas ninguna oficina, la lección estará disponible para todos
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Video <span className="text-red-500">*</span>
+                </label>
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                    id="video-upload"
+                  />
+                  <label htmlFor="video-upload" className="cursor-pointer">
+                    <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
+                    <p className="text-sm text-neutral-600">
+                      {videoFile ? videoFile.name : 'Click para subir video (MP4, WebM, MOV)'}
+                    </p>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Miniatura (opcional)
+                </label>
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                    id="thumbnail-upload"
+                  />
+                  <label htmlFor="thumbnail-upload" className="cursor-pointer">
+                    <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
+                    <p className="text-sm text-neutral-600">
+                      {thumbnailFile ? thumbnailFile.name : 'Click para subir imagen (JPG, PNG, WebP)'}
+                    </p>
+                  </label>
+                </div>
+              </div>
+
+              {uploading && (
+                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-primary-800">Subiendo...</span>
+                    <span className="text-sm font-bold text-primary-800">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-primary-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary-600 transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-neutral-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowUploadModal(false);
+                  resetForm();
+                }}
+                disabled={uploading}
+                className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleUploadLesson}
+                disabled={uploading || !videoFile || !formData.titulo || !formData.categoria_id}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploading ? 'Subiendo...' : 'Subir Lección'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Management Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-neutral-200">
+              <h2 className="text-xl font-bold text-neutral-800">Gestionar Categorías</h2>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Nueva Categoría
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
+                    className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Nombre de la categoría"
+                  />
+                  <button
+                    onClick={handleCreateCategory}
+                    disabled={!newCategoryName.trim()}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                  >
+                    Crear
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                <p className="text-sm font-semibold text-neutral-700 mb-2">Categorías Existentes:</p>
+                {categories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
+                  >
+                    <span className="text-sm text-neutral-800">{cat.nombre}</span>
+                  </div>
+                ))}
+                {categories.length === 0 && (
+                  <p className="text-sm text-neutral-500 text-center py-4">
+                    No hay categorías creadas
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-neutral-200 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowCategoryModal(false);
+                  setNewCategoryName('');
+                }}
+                className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors"
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         </div>
