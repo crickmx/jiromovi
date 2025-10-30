@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, Building2, Calendar, Cake, Award, ExternalLink, Sparkles } from 'lucide-react';
 import type { Database } from '../lib/database.types';
-import { UltimosCorreos } from '../components/UltimosCorreos';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
 import { ResumenVacaciones } from '../components/ResumenVacaciones';
 import { ProximasReservas } from '../components/ProximasReservas';
@@ -203,10 +202,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <UltimosCorreos />
-          <ProximasReservas />
-        </div>
+        <ProximasReservas />
       </div>
     );
   }
@@ -251,7 +247,6 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <UltimosCorreos />
         <TicketsWidget />
       </div>
 
