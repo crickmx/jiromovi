@@ -216,6 +216,16 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
 
       if (uploadError) {
         console.error('[ChatMessages] Error subiendo archivo:', uploadError);
+        console.error('[ChatMessages] Detalles del error:', {
+          message: uploadError.message,
+          statusCode: uploadError.statusCode,
+          error: uploadError
+        });
+
+        if (uploadError.message?.includes('policy') || uploadError.statusCode === '403') {
+          throw new Error('No tienes permisos para subir archivos. Verifica la configuración de políticas RLS en Storage.');
+        }
+
         throw uploadError;
       }
 
