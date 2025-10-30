@@ -42,16 +42,23 @@ export function NuevoChatModal({ isOpen, onClose, onSuccess }: NuevoChatModalPro
     setLoading(true);
 
     try {
+      console.log('[NuevoChatModal] Creando chat con:', selectedUsuario);
+
       const { data, error } = await supabase.rpc('get_or_create_direct_chat', {
         p_user1_id: usuario.id,
         p_user2_id: selectedUsuario
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[NuevoChatModal] Error RPC:', error);
+        throw error;
+      }
 
+      console.log('[NuevoChatModal] Chat creado/encontrado:', data);
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error('[NuevoChatModal] Error:', error);
+      alert(`Error al crear chat: ${error.message || 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }

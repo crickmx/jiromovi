@@ -69,41 +69,52 @@ export function Chat() {
   }, [usuario]);
 
   const loadChats = async () => {
-    if (!usuario) return;
-
-    console.log('[Chat] Cargando chats del usuario...');
-
-    // Obtener chats donde el usuario es miembro
-    const { data: miembros, error: miembrosError } = await supabase
-      .from('chat_miembros')
-      .select('chat_id')
-      .eq('usuario_id', usuario.id);
-
-    if (miembrosError) {
-      console.error('[Chat] Error cargando membresías:', miembrosError);
-      setLoading(false);
+    if (!usuario) {
+      console.log('[Chat] No hay usuario, saltando carga de chats');
       return;
     }
 
-    const chatIds = miembros?.map(m => m.chat_id) || [];
+    console.log('[Chat] Cargando chats del usuario:', usuario.id);
 
-    if (chatIds.length === 0) {
-      console.log('[Chat] Usuario no tiene chats');
-      setChats([]);
-      setLoading(false);
-      return;
-    }
+    try {
+      // Obtener chats donde el usuario es miembro
+      const { data: miembros, error: miembrosError } = await supabase
+        .from('chat_miembros')
+        .select('chat_id')
+        .eq('usuario_id', usuario.id);
 
-    // Obtener detalles de los chats
-    const { data: chatsData, error: chatsError } = await supabase
-      .from('chats')
-      .select('*')
-      .in('id', chatIds)
-      .order('ultimo_mensaje_at', { ascending: false });
+      if (miembrosError) {
+        console.error('[Chat] Error cargando membresías:', miembrosError);
+        setLoading(false);
+        return;
+      }
 
-    if (chatsError) {
-      console.error('[Chat] Error cargando chats:', chatsError);
-    } else {
+      console.log('[Chat] Membresías encontradas:', miembros?.length || 0);
+
+      const chatIds = miembros?.map(m => m.chat_id) || [];
+
+      if (chatIds.length === 0) {
+        console.log('[Chat] Usuario no tiene chats');
+        setChats([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('[Chat] IDs de chats:', chatIds);
+
+      // Obtener detalles de los chats
+      const { data: chatsData, error: chatsError } = await supabase
+        .from('chats')
+        .select('*')
+        .in('id', chatIds)
+        .order('ultimo_mensaje_at', { ascending: false, nullsFirst: false });
+
+      if (chatsError) {
+        console.error('[Chat] Error cargando chats:', chatsError);
+        setLoading(false);
+        return;
+      }
+
       console.log('[Chat] Chats cargados:', chatsData?.length);
 
       // Enriquecer con información de miembros y último mensaje
@@ -142,10 +153,13 @@ export function Chat() {
         })
       );
 
+      console.log('[Chat] Chats enriquecidos:', enrichedChats.length);
       setChats(enrichedChats);
+    } catch (error) {
+      console.error('[Chat] Error general:', error);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const loadChatDetails = async (chatId: string) => {

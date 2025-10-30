@@ -55,6 +55,8 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
     setLoading(true);
 
     try {
+      console.log('[NuevoGrupoModal] Creando grupo:', nombre);
+
       // Crear grupo
       const { data: chat, error: chatError } = await supabase
         .from('chats')
@@ -62,19 +64,32 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
           tipo: 'group',
           nombre: nombre.trim(),
           descripcion: descripcion.trim() || null,
-          creador_id: usuario.id
+          creador_id: usuario.id,
+          ultimo_mensaje_at: new Date().toISOString()
         })
         .select()
         .single();
 
-      if (chatError) throw chatError;
+      if (chatError) {
+        console.error('[NuevoGrupoModal] Error creando chat:', chatError);
+        throw chatError;
+      }
 
-      // Agregar creador
-      await supabase.from('chat_miembros').insert({
-        chat_id: chat.id,
-        usuario_id: usuario.id,
-        rol_al_unirse: usuario.rol
-      });
+      console.log('[NuevoGrupoModal] Grupo creado:', chat.id);
+
+      // Agregar creador como miembro
+      const { error: creadorError } = await supabase
+        .from('chat_miembros')
+        .insert({
+          chat_id: chat.id,
+          usuario_id: usuario.id,
+          rol_al_unirse: usuario.rol
+        });
+
+      if (creadorError) {
+        console.error('[NuevoGrupoModal] Error agregando creador:', creadorError);
+        throw creadorError;
+      }
 
       // Agregar miembros seleccionados
       const miembros = selectedUsuarios.map(userId => ({
@@ -83,11 +98,20 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
         rol_al_unirse: usuarios.find(u => u.id === userId)?.rol || 'Empleado'
       }));
 
-      await supabase.from('chat_miembros').insert(miembros);
+      const { error: miembrosError } = await supabase
+        .from('chat_miembros')
+        .insert(miembros);
 
+      if (miembrosError) {
+        console.error('[NuevoGrupoModal] Error agregando miembros:', miembrosError);
+        throw miembrosError;
+      }
+
+      console.log('[NuevoGrupoModal] Grupo creado exitosamente con', selectedUsuarios.length + 1, 'miembros');
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error('[NuevoGrupoModal] Error:', error);
+      alert(`Error al crear grupo: ${error.message || 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }
