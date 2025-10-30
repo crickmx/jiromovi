@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Info, Send, Paperclip } from 'lucide-react';
+import { Info, Send, Paperclip, Download, FileText, Image as ImageIcon, Video, Music } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
@@ -134,6 +134,45 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
     }
   };
 
+  const handleDownloadFile = async (fileUrl: string, fileName: string) => {
+    try {
+      console.log('[ChatMessages] Descargando archivo:', fileName);
+
+      // Si es una URL de Supabase Storage
+      if (fileUrl.includes('supabase')) {
+        const response = await fetch(fileUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        // Para URLs externas, abrir en nueva pestaña
+        window.open(fileUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('[ChatMessages] Error descargando archivo:', error);
+      alert('Error al descargar el archivo');
+    }
+  };
+
+  const getFileIcon = (fileType: string) => {
+    if (fileType.startsWith('image/')) return <ImageIcon className="w-5 h-5" />;
+    if (fileType.startsWith('video/')) return <Video className="w-5 h-5" />;
+    if (fileType.startsWith('audio/')) return <Music className="w-5 h-5" />;
+    return <FileText className="w-5 h-5" />;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
@@ -190,7 +229,64 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                       </p>
                     ) : (
                       <>
-                        <p className="whitespace-pre-wrap break-words">{message.mensaje}</p>
+                        {message.mensaje && (
+                          <p className="whitespace-pre-wrap break-words">{message.mensaje}</p>
+                        )}
+
+                        {/* Archivo adjunto */}
+                        {message.archivo_url && (
+                          <div className={`mt-2 ${message.mensaje ? 'pt-2 border-t' : ''} ${
+                            isMine ? 'border-blue-400' : 'border-neutral-200'
+                          }`}>
+                            {message.tipo === 'imagen' && message.archivo_tipo?.startsWith('image/') ? (
+                              <div className="space-y-2">
+                                <img
+                                  src={message.archivo_url}
+                                  alt={message.archivo_nombre}
+                                  className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => window.open(message.archivo_url, '_blank')}
+                                />
+                                <button
+                                  onClick={() => handleDownloadFile(message.archivo_url, message.archivo_nombre)}
+                                  className={`flex items-center space-x-2 text-sm ${
+                                    isMine ? 'text-blue-100 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'
+                                  }`}
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span>{message.archivo_nombre}</span>
+                                  {message.archivo_tamano && (
+                                    <span className="text-xs opacity-70">
+                                      ({formatFileSize(message.archivo_tamano)})
+                                    </span>
+                                  )}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleDownloadFile(message.archivo_url, message.archivo_nombre)}
+                                className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${
+                                  isMine
+                                    ? 'bg-blue-500 hover:bg-blue-400'
+                                    : 'bg-neutral-100 hover:bg-neutral-200'
+                                }`}
+                              >
+                                <div className={isMine ? 'text-white' : 'text-neutral-700'}>
+                                  {getFileIcon(message.archivo_tipo || '')}
+                                </div>
+                                <div className="flex-1 text-left">
+                                  <p className="text-sm font-medium">{message.archivo_nombre}</p>
+                                  {message.archivo_tamano && (
+                                    <p className="text-xs opacity-70">
+                                      {formatFileSize(message.archivo_tamano)}
+                                    </p>
+                                  )}
+                                </div>
+                                <Download className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+
                         {message.editado && (
                           <p className="text-xs opacity-70 mt-1">(editado)</p>
                         )}
