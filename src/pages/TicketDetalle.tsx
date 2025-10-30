@@ -147,15 +147,6 @@ export function TicketDetalle() {
 
       if (error) throw error;
 
-      await supabase
-        .from('ticket_historial')
-        .insert({
-          ticket_id: ticket.id,
-          usuario_id: usuario.id,
-          accion: 'Actualización',
-          descripcion: `Estatus: ${newEstatus?.nombre}, Prioridad: ${selectedPrioridad}`
-        });
-
       await loadTicket();
     } catch (err: any) {
       console.error('Error updating ticket:', err);
@@ -173,7 +164,11 @@ export function TicketDetalle() {
     setSaving(true);
     try {
       const estatusCerrado = estatusList.find(e => e.nombre === 'Cerrado');
-      if (!estatusCerrado) throw new Error('No se encontró el estatus "Cerrado"');
+      if (!estatusCerrado) {
+        alert('No se encontró el estatus "Cerrado". Verifica la configuración.');
+        setSaving(false);
+        return;
+      }
 
       const { error } = await supabase
         .from('tickets')
@@ -185,12 +180,17 @@ export function TicketDetalle() {
         })
         .eq('id', ticket.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error al cerrar ticket:', error);
+        throw error;
+      }
 
       await loadTicket();
+      alert('Ticket cerrado exitosamente');
+      navigate('/tickets');
     } catch (err: any) {
       console.error('Error closing ticket:', err);
-      alert('Error al cerrar el ticket');
+      alert(`Error al cerrar el ticket: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -203,7 +203,11 @@ export function TicketDetalle() {
     setSaving(true);
     try {
       const estatusEnProceso = estatusList.find(e => e.nombre === 'En proceso');
-      if (!estatusEnProceso) throw new Error('No se encontró el estatus "En proceso"');
+      if (!estatusEnProceso) {
+        alert('No se encontró el estatus "En proceso". Verifica la configuración.');
+        setSaving(false);
+        return;
+      }
 
       const { error } = await supabase
         .from('tickets')
@@ -215,12 +219,16 @@ export function TicketDetalle() {
         })
         .eq('id', ticket.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error al reabrir ticket:', error);
+        throw error;
+      }
 
       await loadTicket();
+      alert('Ticket reabierto exitosamente');
     } catch (err: any) {
       console.error('Error reopening ticket:', err);
-      alert('Error al reabrir el ticket');
+      alert(`Error al reabrir el ticket: ${err.message}`);
     } finally {
       setSaving(false);
     }
