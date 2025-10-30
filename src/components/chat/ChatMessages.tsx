@@ -211,7 +211,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
       console.log('[ChatMessages] Subiendo archivo:', filePath);
 
       const { error: uploadError, data } = await supabase.storage
-        .from('chat-files')
+        .from('chat-attachments')
         .upload(filePath, file);
 
       if (uploadError) {
@@ -230,7 +230,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
       }
 
       const { data: { publicUrl } } = supabase.storage
-        .from('chat-files')
+        .from('chat-attachments')
         .getPublicUrl(filePath);
 
       console.log('[ChatMessages] Archivo subido exitosamente:', publicUrl);
