@@ -98,35 +98,68 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
       return;
     }
 
+    const messageText = newMessage.trim();
+    setNewMessage('');
+
     console.log('[ChatMessages] Enviando mensaje...', {
       chat_id: chat.id,
       remitente_id: usuario.id,
-      mensaje: newMessage.trim()
+      mensaje: messageText
     });
+
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      chat_id: chat.id,
+      remitente_id: usuario.id,
+      mensaje: messageText,
+      tipo: 'texto',
+      created_at: new Date().toISOString(),
+      editado: false,
+      archivo_url: null,
+      archivo_nombre: null,
+      archivo_tipo: null,
+      archivo_tamano: null,
+      usuarios: {
+        id: usuario.id,
+        nombre_completo: usuario.nombre_completo,
+        foto_perfil: usuario.foto_perfil
+      }
+    };
+
+    setMessages(prev => [...prev, tempMessage]);
+    scrollToBottom();
 
     const { data, error } = await supabase
       .from('chat_mensajes')
       .insert({
         chat_id: chat.id,
         remitente_id: usuario.id,
-        mensaje: newMessage.trim(),
+        mensaje: messageText,
         tipo: 'texto'
       })
-      .select();
+      .select(`
+        *,
+        usuarios:remitente_id (
+          id,
+          nombre_completo,
+          foto_perfil
+        )
+      `)
+      .single();
 
     if (error) {
       console.error('[ChatMessages] Error enviando mensaje:', error);
+      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+      setNewMessage(messageText);
       alert(`Error al enviar mensaje: ${error.message}`);
     } else {
       console.log('[ChatMessages] Mensaje enviado exitosamente:', data);
+      setMessages(prev => prev.map(m => m.id === tempMessage.id ? data : m));
 
-      // Actualizar timestamp del chat
       await supabase
         .from('chats')
         .update({ ultimo_mensaje_at: new Date().toISOString() })
         .eq('id', chat.id);
-
-      setNewMessage('');
     }
   };
 
@@ -255,15 +288,45 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
       return;
     }
 
+    const messageText = newMessage.trim();
+    const fileToSend = selectedFile;
+
+    setNewMessage('');
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setUploading(true);
+
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage = {
+      id: tempId,
+      chat_id: chat.id,
+      remitente_id: usuario.id,
+      mensaje: messageText || (fileToSend ? `Archivo: ${fileToSend.name}` : ''),
+      tipo: fileToSend ? getMessageType(fileToSend.type) : 'texto',
+      created_at: new Date().toISOString(),
+      editado: false,
+      archivo_url: fileToSend ? URL.createObjectURL(fileToSend) : null,
+      archivo_nombre: fileToSend?.name || null,
+      archivo_tipo: fileToSend?.type || null,
+      archivo_tamano: fileToSend?.size || null,
+      usuarios: {
+        id: usuario.id,
+        nombre_completo: usuario.nombre_completo,
+        foto_perfil: usuario.foto_perfil
+      }
+    };
+
+    setMessages(prev => [...prev, tempMessage]);
+    scrollToBottom();
 
     try {
       let fileData = null;
 
-      // Subir archivo si existe
-      if (selectedFile) {
+      if (fileToSend) {
         console.log('[ChatMessages] Subiendo archivo adjunto...');
-        const uploadResult = await uploadFile(selectedFile);
+        const uploadResult = await uploadFile(fileToSend);
 
         if (!uploadResult) {
           throw new Error('Error al subir el archivo');
@@ -271,18 +334,17 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
 
         fileData = {
           archivo_url: uploadResult.url,
-          archivo_nombre: selectedFile.name,
-          archivo_tipo: selectedFile.type,
-          archivo_tamano: selectedFile.size,
-          tipo: getMessageType(selectedFile.type)
+          archivo_nombre: fileToSend.name,
+          archivo_tipo: fileToSend.type,
+          archivo_tamano: fileToSend.size,
+          tipo: getMessageType(fileToSend.type)
         };
       }
 
-      // Insertar mensaje
       const messageData: any = {
         chat_id: chat.id,
         remitente_id: usuario.id,
-        mensaje: newMessage.trim() || (selectedFile ? `Archivo: ${selectedFile.name}` : ''),
+        mensaje: messageText || (fileToSend ? `Archivo: ${fileToSend.name}` : ''),
         tipo: fileData ? fileData.tipo : 'texto'
       };
 
@@ -295,29 +357,37 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
 
       console.log('[ChatMessages] Enviando mensaje con datos:', messageData);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('chat_mensajes')
-        .insert(messageData);
+        .insert(messageData)
+        .select(`
+          *,
+          usuarios:remitente_id (
+            id,
+            nombre_completo,
+            foto_perfil
+          )
+        `)
+        .single();
 
       if (error) {
         console.error('[ChatMessages] Error enviando mensaje:', error);
         throw error;
       }
 
-      // Actualizar timestamp del chat
+      console.log('[ChatMessages] Mensaje enviado exitosamente:', data);
+      setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+
       await supabase
         .from('chats')
         .update({ ultimo_mensaje_at: new Date().toISOString() })
         .eq('id', chat.id);
 
-      console.log('[ChatMessages] Mensaje enviado exitosamente');
-      setNewMessage('');
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     } catch (error: any) {
       console.error('[ChatMessages] Error:', error);
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setNewMessage(messageText);
+      setSelectedFile(fileToSend);
       alert(`Error al enviar mensaje: ${error.message || 'Error desconocido'}`);
     } finally {
       setUploading(false);
