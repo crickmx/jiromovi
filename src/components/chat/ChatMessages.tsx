@@ -121,8 +121,9 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
       archivo_tamano: null,
       usuarios: {
         id: usuario.id,
-        nombre_completo: usuario.nombre_completo,
-        foto_perfil: usuario.foto_perfil
+        nombre: usuario.nombre,
+        apellidos: usuario.apellidos,
+        imagen_perfil_url: usuario.imagen_perfil_url
       }
     };
 
@@ -141,8 +142,9 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
         *,
         usuarios:remitente_id (
           id,
-          nombre_completo,
-          foto_perfil
+          nombre,
+          apellidos,
+          imagen_perfil_url
         )
       `)
       .single();
@@ -313,8 +315,9 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
       archivo_tamano: fileToSend?.size || null,
       usuarios: {
         id: usuario.id,
-        nombre_completo: usuario.nombre_completo,
-        foto_perfil: usuario.foto_perfil
+        nombre: usuario.nombre,
+        apellidos: usuario.apellidos,
+        imagen_perfil_url: usuario.imagen_perfil_url
       }
     };
 
@@ -364,8 +367,9 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
           *,
           usuarios:remitente_id (
             id,
-            nombre_completo,
-            foto_perfil
+            nombre,
+            apellidos,
+            imagen_perfil_url
           )
         `)
         .single();
