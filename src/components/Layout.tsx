@@ -27,7 +27,7 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
-    { path: '/gestor-emails', label: 'Mi E-Mail', icon: Inbox, show: true },
+    { path: '/mis-correos', label: 'Mi Email', icon: Inbox, show: true },
     { path: '/tickets', label: 'CRM de Tickets', icon: Ticket, show: true },
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
