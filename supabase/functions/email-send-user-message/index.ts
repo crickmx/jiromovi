@@ -13,6 +13,7 @@ interface SendEmailRequest {
   asunto: string;
   cuerpo_html?: string;
   cuerpo_texto?: string;
+  adjuntos?: Array<{nombre: string; contenido: string; tipo: string}>;
 }
 
 async function connectSMTP(email: string, password: string): Promise<Deno.TlsConn> {
@@ -75,7 +76,8 @@ async function sendEmail(
   bcc: string[],
   asunto: string,
   cuerpoHtml: string,
-  cuerpoTexto: string
+  cuerpoTexto: string,
+  adjuntos: Array<{nombre: string; contenido: string; tipo: string}>
 ): Promise<void> {
   let conn: Deno.TlsConn | null = null;
 
@@ -118,7 +120,7 @@ async function sendEmail(
     message += `Subject: =?UTF-8?B?${encodeBase64(asunto)}?=\r\n`;
     message += `Date: ${new Date().toUTCString()}\r\n`;
     message += `MIME-Version: 1.0\r\n`;
-    message += `Content-Type: multipart/alternative; boundary="${boundary}"\r\n`;
+    message += `Content-Type: multipart/mixed; boundary="${boundary}"\r\n`;
     message += `\r\n`;
 
     if (cuerpoTexto) {
@@ -135,6 +137,15 @@ async function sendEmail(
       message += `Content-Transfer-Encoding: base64\r\n`;
       message += `\r\n`;
       message += encodeBase64(cuerpoHtml) + '\r\n';
+    }
+
+    for (const adjunto of adjuntos) {
+      message += `--${boundary}\r\n`;
+      message += `Content-Type: ${adjunto.tipo}; name="${adjunto.nombre}"\r\n`;
+      message += `Content-Transfer-Encoding: base64\r\n`;
+      message += `Content-Disposition: attachment; filename="${adjunto.nombre}"\r\n`;
+      message += `\r\n`;
+      message += adjunto.contenido + '\r\n';
     }
 
     message += `--${boundary}--\r\n`;
@@ -223,8 +234,38 @@ Deno.serve(async (req: Request) => {
       body.bcc || [],
       body.asunto,
       body.cuerpo_html || '',
-      body.cuerpo_texto || body.asunto
+      body.cuerpo_texto || body.asunto,
+      body.adjuntos || []
     );
+
+    const { data: carpetaEnviados } = await supabase
+      .from('carpetas_correo')
+      .select('id')
+      .eq('usuario_id', user.id)
+      .eq('tipo_carpeta', 'sent')
+      .maybeSingle();
+
+    if (carpetaEnviados) {
+      await supabase
+        .from('correos_usuario')
+        .insert({
+          usuario_id: user.id,
+          carpeta_id: carpetaEnviados.id,
+          message_uid: `sent-${Date.now()}`,
+          message_id: `<${Date.now()}@${usuario.email_cuenta.split('@')[1]}>`,
+          remitente_nombre: usuario.nombre_completo || usuario.email_cuenta,
+          remitente_email: usuario.email_cuenta,
+          destinatarios: body.para,
+          cc: body.cc || [],
+          bcc: body.bcc || [],
+          asunto: body.asunto,
+          cuerpo_html: body.cuerpo_html || '',
+          cuerpo_texto: body.cuerpo_texto || '',
+          fecha: new Date().toISOString(),
+          leido: true,
+          tiene_adjuntos: (body.adjuntos || []).length > 0
+        });
+    }
 
     return new Response(
       JSON.stringify({
