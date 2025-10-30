@@ -66,14 +66,11 @@ Deno.serve(async (req: Request) => {
         oficinas (
           id,
           nombre,
-          direccion,
+          domicilio,
           telefono,
           email,
-          sitio_web,
           facebook,
-          instagram,
-          linkedin,
-          twitter
+          instagram
         )
       `)
       .eq('id', targetUserId)
@@ -174,14 +171,12 @@ Deno.serve(async (req: Request) => {
     if (usuario.oficinas) {
       const oficina = usuario.oficinas;
       templateData.oficina_nombre = oficina.nombre || '';
-      templateData.oficina_direccion = oficina.direccion || '';
+      templateData.oficina_direccion = oficina.domicilio || '';
+      templateData.oficina_domicilio = oficina.domicilio || '';
       templateData.oficina_telefono = oficina.telefono || '';
       templateData.oficina_email = oficina.email || '';
-      templateData.oficina_sitio_web = oficina.sitio_web || '';
       templateData.oficina_facebook = oficina.facebook || '';
       templateData.oficina_instagram = oficina.instagram || '';
-      templateData.oficina_linkedin = oficina.linkedin || '';
-      templateData.oficina_twitter = oficina.twitter || '';
     }
 
     // Renderizar template
