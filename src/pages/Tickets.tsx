@@ -85,10 +85,6 @@ export function Tickets() {
       query = query.is('cerrado_en', null);
     }
 
-    if (!canManageAll) {
-      query = query.or(`agente_id.eq.${usuario.id},creado_por.eq.${usuario.id}`);
-    }
-
     const { data } = await query;
     if (data) setTickets(data as TicketItem[]);
   };
