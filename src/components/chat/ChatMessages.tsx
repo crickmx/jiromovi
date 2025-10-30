@@ -106,7 +106,8 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
       .insert({
         chat_id: chat.id,
         remitente_id: usuario.id,
-        mensaje: newMessage.trim()
+        mensaje: newMessage.trim(),
+        tipo: 'texto'
       })
       .select();
 
@@ -115,6 +116,13 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
       alert(`Error al enviar mensaje: ${error.message}`);
     } else {
       console.log('[ChatMessages] Mensaje enviado exitosamente:', data);
+
+      // Actualizar timestamp del chat
+      await supabase
+        .from('chats')
+        .update({ ultimo_mensaje_at: new Date().toISOString() })
+        .eq('id', chat.id);
+
       setNewMessage('');
     }
   };
