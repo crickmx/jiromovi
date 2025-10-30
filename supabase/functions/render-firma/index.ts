@@ -56,6 +56,8 @@ Deno.serve(async (req: Request) => {
 
     const targetUserId = usuarioId || user.id;
 
+    console.log('[render-firma] Buscando usuario:', targetUserId);
+
     // Obtener datos del usuario y oficina
     const { data: usuario, error: usuarioError } = await supabase
       .from('usuarios')
@@ -77,12 +79,30 @@ Deno.serve(async (req: Request) => {
       .eq('id', targetUserId)
       .single();
 
-    if (usuarioError || !usuario) {
+    if (usuarioError) {
+      console.error('[render-firma] Error obteniendo usuario:', usuarioError);
       return new Response(
-        JSON.stringify({ error: 'Usuario no encontrado' }),
+        JSON.stringify({
+          error: 'Usuario no encontrado',
+          details: usuarioError.message,
+          userId: targetUserId
+        }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    if (!usuario) {
+      console.error('[render-firma] Usuario no existe:', targetUserId);
+      return new Response(
+        JSON.stringify({
+          error: 'Usuario no encontrado',
+          userId: targetUserId
+        }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[render-firma] Usuario encontrado:', usuario.nombre, usuario.apellidos);
 
     // Obtener firma asignada
     let firmaHtml = '';
