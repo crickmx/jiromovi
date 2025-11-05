@@ -8,6 +8,7 @@ import { UsuariosPendientes } from '../components/UsuariosPendientes';
 import { ResumenVacaciones } from '../components/ResumenVacaciones';
 import { ProximasReservas } from '../components/ProximasReservas';
 import { TicketsWidget } from '../components/TicketsWidget';
+import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -202,7 +203,10 @@ export function Dashboard() {
           </div>
         </div>
 
-        <ProximasReservas />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ProximasReservas />
+          <ProximasCapacitaciones />
+        </div>
       </div>
     );
   }
@@ -248,6 +252,7 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TicketsWidget />
+        <ProximasCapacitaciones />
       </div>
 
       <ResumenVacaciones />
