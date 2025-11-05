@@ -1,4 +1,4 @@
-import { UserCircle, Mic, MicOff, Video as VideoIcon, VideoOff, Crown, UserX } from 'lucide-react';
+import { UserCircle, Mic, MicOff, Video as VideoIcon, VideoOff, Crown, UserX, UserPlus, UserMinus, Monitor } from 'lucide-react';
 
 interface Participant {
   id: string;
@@ -6,6 +6,8 @@ interface Participant {
   role: string;
   audioEnabled: boolean;
   videoEnabled: boolean;
+  isCohost: boolean;
+  isScreenSharing: boolean;
 }
 
 interface ParticipantsListProps {
@@ -13,9 +15,16 @@ interface ParticipantsListProps {
   isHost: boolean;
   currentUserId: string;
   onKickParticipant?: (participantId: string) => void;
+  onToggleCohost?: (participantId: string, currentIsCohost: boolean) => void;
 }
 
-export function ParticipantsList({ participants, isHost, currentUserId, onKickParticipant }: ParticipantsListProps) {
+export function ParticipantsList({
+  participants,
+  isHost,
+  currentUserId,
+  onKickParticipant,
+  onToggleCohost
+}: ParticipantsListProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-slate-200">
@@ -39,7 +48,13 @@ export function ParticipantsList({ participants, isHost, currentUserId, onKickPa
                     {participant.id === currentUserId && ' (Tú)'}
                   </p>
                   {participant.role === 'host' && (
-                    <Crown className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                    <Crown className="w-4 h-4 text-purple-600 flex-shrink-0" title="Anfitrión" />
+                  )}
+                  {participant.isCohost && participant.role !== 'host' && (
+                    <Crown className="w-4 h-4 text-blue-600 flex-shrink-0" title="Co-anfitrión" />
+                  )}
+                  {participant.isScreenSharing && (
+                    <Monitor className="w-4 h-4 text-green-600 flex-shrink-0" title="Compartiendo pantalla" />
                   )}
                 </div>
                 <div className="flex items-center space-x-2 mt-1">
@@ -57,14 +72,31 @@ export function ParticipantsList({ participants, isHost, currentUserId, onKickPa
               </div>
             </div>
 
-            {isHost && participant.id !== currentUserId && (
-              <button
-                onClick={() => onKickParticipant?.(participant.id)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition flex-shrink-0"
-                title="Expulsar participante"
-              >
-                <UserX className="w-4 h-4" />
-              </button>
+            {isHost && participant.id !== currentUserId && participant.role !== 'host' && (
+              <div className="flex items-center space-x-1 flex-shrink-0">
+                <button
+                  onClick={() => onToggleCohost?.(participant.id, participant.isCohost)}
+                  className={`p-2 rounded-lg transition ${
+                    participant.isCohost
+                      ? 'text-blue-600 hover:bg-blue-50'
+                      : 'text-slate-600 hover:bg-slate-200'
+                  }`}
+                  title={participant.isCohost ? 'Quitar co-anfitrión' : 'Hacer co-anfitrión'}
+                >
+                  {participant.isCohost ? (
+                    <UserMinus className="w-4 h-4" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" />
+                  )}
+                </button>
+                <button
+                  onClick={() => onKickParticipant?.(participant.id)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                  title="Expulsar participante"
+                >
+                  <UserX className="w-4 h-4" />
+                </button>
+              </div>
             )}
           </div>
         ))}

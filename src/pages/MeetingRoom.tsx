@@ -17,6 +17,8 @@ interface Participant {
   stream?: MediaStream;
   audioEnabled: boolean;
   videoEnabled: boolean;
+  isCohost: boolean;
+  isScreenSharing: boolean;
 }
 
 export function MeetingRoom() {
@@ -34,7 +36,10 @@ export function MeetingRoom() {
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [isHost, setIsHost] = useState(false);
+  const [isCohost, setIsCohost] = useState(false);
   const [currentParticipantId, setCurrentParticipantId] = useState<string>('');
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   useEffect(() => {
     if (code) {
@@ -138,6 +143,8 @@ export function MeetingRoom() {
         stream,
         audioEnabled: true,
         videoEnabled: true,
+        isCohost: false,
+        isScreenSharing: false,
       };
 
       setParticipants([newParticipant]);
@@ -181,9 +188,17 @@ export function MeetingRoom() {
                   stream: existing?.stream,
                   audioEnabled: existing?.audioEnabled ?? true,
                   videoEnabled: existing?.videoEnabled ?? true,
+                  isCohost: p.is_cohost || false,
+                  isScreenSharing: p.is_screen_sharing || false,
                 };
               })
             );
+
+            // Update own cohost status
+            const ownParticipant = data.find((p) => p.id === currentParticipantId);
+            if (ownParticipant) {
+              setIsCohost(ownParticipant.is_cohost || false);
+            }
           }
         }
       )
@@ -268,6 +283,77 @@ export function MeetingRoom() {
         .eq('id', participantId);
     } catch (error) {
       console.error('Error kicking participant:', error);
+    }
+  };
+
+  const handleToggleCohost = async (participantId: string, currentIsCohost: boolean) => {
+    if (!isHost || !meeting) return;
+
+    try {
+      const { error } = await supabase.rpc('toggle_cohost_status', {
+        p_meeting_id: meeting.id,
+        p_participant_id: participantId,
+        p_is_cohost: !currentIsCohost,
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error toggling cohost:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const handleShareScreen = async () => {
+    if (!isHost && !isCohost) {
+      alert('Solo el anfitrión y co-anfitriones pueden compartir pantalla');
+      return;
+    }
+
+    if (isScreenSharing) {
+      if (screenStream) {
+        screenStream.getTracks().forEach((track) => track.stop());
+        setScreenStream(null);
+      }
+      setIsScreenSharing(false);
+
+      try {
+        await supabase.rpc('toggle_screen_sharing', {
+          p_participant_id: currentParticipantId,
+          p_is_sharing: false,
+        });
+      } catch (error) {
+        console.error('Error stopping screen share:', error);
+      }
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+
+      setScreenStream(stream);
+      setIsScreenSharing(true);
+
+      stream.getVideoTracks()[0].onended = () => {
+        setScreenStream(null);
+        setIsScreenSharing(false);
+        supabase.rpc('toggle_screen_sharing', {
+          p_participant_id: currentParticipantId,
+          p_is_sharing: false,
+        });
+      };
+
+      await supabase.rpc('toggle_screen_sharing', {
+        p_participant_id: currentParticipantId,
+        p_is_sharing: true,
+      });
+    } catch (error: any) {
+      console.error('Error sharing screen:', error);
+      if (error.name !== 'NotAllowedError') {
+        alert('Error al compartir pantalla: ' + error.message);
+      }
     }
   };
 
@@ -378,6 +464,7 @@ export function MeetingRoom() {
               isHost={isHost}
               currentUserId={currentParticipantId}
               onKickParticipant={handleKickParticipant}
+              onToggleCohost={handleToggleCohost}
             />
           </div>
         )}
@@ -432,6 +519,20 @@ export function MeetingRoom() {
           >
             <Users className="w-6 h-6" />
           </button>
+
+          {(isHost || isCohost) && (
+            <button
+              onClick={handleShareScreen}
+              className={`p-4 rounded-full transition ${
+                isScreenSharing
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-slate-700 text-white hover:bg-slate-600'
+              }`}
+              title={isScreenSharing ? 'Detener compartir pantalla' : 'Compartir pantalla'}
+            >
+              <Monitor className="w-6 h-6" />
+            </button>
+          )}
 
           <div className="w-px h-12 bg-slate-700" />
 
