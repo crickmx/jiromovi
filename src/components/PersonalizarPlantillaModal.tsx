@@ -390,7 +390,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           urlJiro,
           urlMulticotizador
         },
-        estilos_texto_individual: {
+        estilo_texto: {
           nombreCompleto: styleNombre,
           urlJiro: styleJiro,
           urlMulticotizador: styleMulti

@@ -6,8 +6,7 @@ import { calcularDiasLaborables, formatearFecha, getEstadoBadgeClass, getEstadoL
 import type { Database } from '../lib/database.types';
 
 type SolicitudVacaciones = Database['public']['Tables']['solicitudes_vacaciones']['Row'] & {
-  empleado?: { nombre: string; apellidos: string; email_laboral: string } | null;
-  oficinas?: { nombre: string } | null;
+  empleado?: { nombre_completo: string; email_laboral: string; oficina_id: string } | null;
 };
 
 export function Vacaciones() {
@@ -57,13 +56,22 @@ export function Vacaciones() {
   const loadSolicitudes = async () => {
     let query = supabase
       .from('solicitudes_vacaciones')
-      .select('*, empleado:usuarios!usuario_id(nombre_completo, email_laboral), oficinas(nombre)')
+      .select('*, empleado:usuarios!usuario_id(nombre_completo, email_laboral, oficina_id)')
       .order('created_at', { ascending: false });
 
     if (currentUser?.rol === 'Empleado' || currentUser?.rol === 'Agente') {
       query = query.eq('usuario_id', currentUser.id);
-    } else if (currentUser?.rol === 'Gerente') {
-      query = query.or(`usuario_id.eq.${currentUser.id},oficina_id.eq.${currentUser.oficina_id}`);
+    } else if (currentUser?.rol === 'Gerente' && currentUser.oficina_id) {
+      // Para gerentes: cargar solicitudes de usuarios de su oficina
+      const { data: usuariosOficina } = await supabase
+        .from('usuarios')
+        .select('id')
+        .eq('oficina_id', currentUser.oficina_id);
+
+      if (usuariosOficina && usuariosOficina.length > 0) {
+        const usuarioIds = usuariosOficina.map(u => u.id);
+        query = query.in('usuario_id', usuarioIds);
+      }
     }
 
     const { data, error } = await query;
@@ -302,7 +310,7 @@ export function Vacaciones() {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="font-semibold text-slate-900">
-                      {solicitud.empleado?.nombre} {solicitud.empleado?.apellidos}
+                      {solicitud.empleado?.nombre_completo}
                     </h3>
                     <p className="text-sm text-slate-600">{solicitud.empleado?.email_laboral}</p>
                     <div className="flex items-center space-x-4 mt-2 text-sm text-slate-700">
@@ -367,9 +375,9 @@ export function Vacaciones() {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="font-semibold text-slate-900">
-                      {solicitud.empleado?.nombre} {solicitud.empleado?.apellidos}
+                      {solicitud.empleado?.nombre_completo}
                     </h3>
-                    <p className="text-sm text-slate-600">{solicitud.oficinas?.nombre}</p>
+                    <p className="text-sm text-slate-600">{solicitud.empleado?.email_laboral}</p>
                     <div className="flex items-center space-x-4 mt-2 text-sm text-slate-700">
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
@@ -493,11 +501,6 @@ export function Vacaciones() {
                       Empleado
                     </th>
                   )}
-                  {isAdmin && (
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                      Oficina
-                    </th>
-                  )}
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                     Periodo
                   </th>
@@ -518,14 +521,9 @@ export function Vacaciones() {
                     {!isEmpleado && (
                       <td className="px-4 py-3 text-sm">
                         <div className="font-medium text-slate-900">
-                          {solicitud.empleado?.nombre} {solicitud.empleado?.apellidos}
+                          {solicitud.empleado?.nombre_completo}
                         </div>
                         <div className="text-slate-600">{solicitud.empleado?.email_laboral}</div>
-                      </td>
-                    )}
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-sm text-slate-900">
-                        {solicitud.oficinas?.nombre || '-'}
                       </td>
                     )}
                     <td className="px-4 py-3 text-sm text-slate-900">
