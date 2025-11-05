@@ -289,11 +289,11 @@ export async function obtenerGrabaciones(sessionId?: string) {
 }
 
 export function generarEnlaceInvitado(session: AulaSession): string {
-  return `${window.location.origin}/aula-virtual/invitado/${session.enlace_invitado}`;
+  return `${window.location.origin}/aula-virtual/sala/${session.room_id}`;
 }
 
 export function generarEnlaceSala(session: AulaSession): string {
-  return `${window.location.origin}/aula-virtual/sala/${session.enlace_sala}`;
+  return `${window.location.origin}/aula-virtual/sala/${session.room_id}`;
 }
 
 export function copiarAlPortapapeles(texto: string): Promise<void> {

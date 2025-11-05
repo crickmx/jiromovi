@@ -77,15 +77,17 @@ export function SegurosEducationAulaVirtual() {
 
       const upcoming = sesionesData.filter(s => {
         const sessionDate = new Date(s.fecha_inicio);
-        const isFuture = sessionDate > now;
+        const sessionTime = sessionDate.getTime();
+        const nowTime = now.getTime();
+        const isFuture = sessionTime > nowTime;
         const isNotActive = s.esta_activa === false;
         const isProgrammed = s.estado === 'programada';
         const isUpcoming = isFuture && isNotActive && isProgrammed;
 
         console.log(`
 📅 Sesión: "${s.titulo}"
-   - Fecha sesión: ${sessionDate.toISOString()}
-   - Fecha actual: ${now.toISOString()}
+   - Fecha sesión: ${sessionDate.toISOString()} (${sessionTime})
+   - Fecha actual: ${now.toISOString()} (${nowTime})
    - Es futura: ${isFuture}
    - Esta activa: ${s.esta_activa}
    - No activa: ${isNotActive}
@@ -156,7 +158,7 @@ export function SegurosEducationAulaVirtual() {
   const handleUnirseASesion = async (sessionId: string) => {
     try {
       const result = await unirseASesion(sessionId);
-      window.location.href = `/seguros-education/sala/${result.session.room_id}`;
+      window.location.href = `/aula-virtual/sala/${result.session.room_id}`;
     } catch (error: any) {
       alert(error.message || 'Error al unirse a la sesión');
     }
