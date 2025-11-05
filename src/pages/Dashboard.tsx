@@ -203,6 +203,44 @@ export function Dashboard() {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <a
+            href="/seguros-education"
+            className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
+          >
+            <div className="aspect-[16/9] w-full">
+              <img
+                src="https://movi.digital/seguros-education"
+                alt="Seguros Education"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
+              <h3 className="text-white text-2xl font-bold group-hover:translate-y-[-4px] transition-transform">
+                Seguros Education
+              </h3>
+            </div>
+          </a>
+
+          <a
+            href="/multicotizador-digital"
+            className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
+          >
+            <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
+              <img
+                src="https://movi.digital/wp-content/uploads/elementor/thumbs/Logo_MCD_v2-r0qhbo2naggb7667cc6dg6h629ac03clkxckswc7b4.png"
+                alt="Multicotizador Digital"
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
+              <h3 className="text-white text-2xl font-bold group-hover:translate-y-[-4px] transition-transform">
+                Multicotizador Digital
+              </h3>
+            </div>
+          </a>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ResumenVacaciones />
           <TicketsWidget />
@@ -253,6 +291,44 @@ export function Dashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <a
+          href="/seguros-education"
+          className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
+        >
+          <div className="aspect-[16/9] w-full">
+            <img
+              src="https://movi.digital/seguros-education"
+              alt="Seguros Education"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
+            <h3 className="text-white text-2xl font-bold group-hover:translate-y-[-4px] transition-transform">
+              Seguros Education
+            </h3>
+          </div>
+        </a>
+
+        <a
+          href="/multicotizador-digital"
+          className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
+        >
+          <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
+            <img
+              src="https://movi.digital/wp-content/uploads/elementor/thumbs/Logo_MCD_v2-r0qhbo2naggb7667cc6dg6h629ac03clkxckswc7b4.png"
+              alt="Multicotizador Digital"
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
+            <h3 className="text-white text-2xl font-bold group-hover:translate-y-[-4px] transition-transform">
+              Multicotizador Digital
+            </h3>
+          </div>
+        </a>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
