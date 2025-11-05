@@ -49,10 +49,10 @@ export function NotificationBell() {
   }, [isOpen]);
 
   const filteredNotifications = filterModule === 'all'
-    ? notifications
-    : notifications.filter(n => n.modulo === filterModule);
+    ? (notifications || [])
+    : (notifications || []).filter(n => n.modulo === filterModule);
 
-  const modules = Array.from(new Set(notifications.map(n => n.modulo)));
+  const modules = Array.from(new Set((notifications || []).map(n => n.modulo)));
 
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
@@ -201,7 +201,7 @@ export function NotificationBell() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-neutral-500">
-                                {formatDistanceToNow(new Date(notification.fecha_creacion), {
+                                {formatDistanceToNow(new Date(notification.created_at), {
                                   addSuffix: true,
                                   locale: es,
                                 })}
@@ -218,7 +218,7 @@ export function NotificationBell() {
                                   onClick={() => handleNotificationClick(notification)}
                                   className="px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded transition-colors"
                                 >
-                                  {notification.accion_texto}
+                                  {notification.accion_texto || 'Ver'}
                                 </button>
                               )}
 
@@ -257,10 +257,10 @@ export function NotificationBell() {
           </div>
 
           {/* Footer */}
-          {notifications.length > 0 && (
+          {(notifications || []).length > 0 && (
             <div className="p-3 border-t border-neutral-200 bg-neutral-50">
               <p className="text-xs text-center text-neutral-500">
-                Mostrando {filteredNotifications.length} de {notifications.length} notificaciones
+                Mostrando {filteredNotifications.length} de {(notifications || []).length} notificaciones
               </p>
             </div>
           )}

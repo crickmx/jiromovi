@@ -7,11 +7,12 @@ interface Notification {
   titulo: string;
   mensaje: string;
   modulo: string;
-  icono: string;
   accion_url: string | null;
-  accion_texto: string;
+  accion_texto: string | null;
   leida: boolean;
-  fecha_creacion: string;
+  created_at: string;
+  tipo?: string;
+  prioridad?: string;
 }
 
 interface NotificationContextType {
@@ -21,7 +22,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
-  createNotification: (notification: Omit<Notification, 'id' | 'fecha_creacion' | 'leida'>) => Promise<void>;
+  createNotification: (notification: Omit<Notification, 'id' | 'created_at' | 'leida'>) => Promise<void>;
   requestPushPermission: () => Promise<void>;
   pushEnabled: boolean;
 }
@@ -60,10 +61,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        setNotifications([]);
+        return;
+      }
+
       setNotifications(data || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
