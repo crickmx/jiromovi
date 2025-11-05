@@ -154,6 +154,34 @@ export function Publicidad() {
     }
   };
 
+  const handleEliminarDiseno = async (diseno: Diseno) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este diseño?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('publicidad_disenos')
+        .delete()
+        .eq('id', diseno.id);
+
+      if (error) throw error;
+
+      alert('Diseño eliminado correctamente');
+      loadDisenos();
+    } catch (error: any) {
+      console.error('Error al eliminar diseño:', error);
+      alert('Error al eliminar el diseño');
+    }
+  };
+
+  const handleDescargarDiseno = (url: string, titulo: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${titulo}-${Date.now()}.png`;
+    link.click();
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
@@ -295,7 +323,7 @@ export function Publicidad() {
                         )}
                       </div>
                     )}
-                    <div className="absolute top-3 right-3 flex items-center gap-2">
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         plantilla.tipo === 'imagen'
                           ? 'bg-blue-100 text-blue-700'
@@ -305,8 +333,11 @@ export function Publicidad() {
                       </span>
                       {isAdmin && (
                         <button
-                          onClick={() => handleEliminarPlantilla(plantilla)}
-                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEliminarPlantilla(plantilla);
+                          }}
+                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-200 shadow-lg"
                           title="Eliminar plantilla"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -394,13 +425,21 @@ export function Publicidad() {
                         year: 'numeric'
                       })}
                     </p>
-                    <a
-                      href={diseno.archivo_resultante_url || '#'}
-                      download
-                      className="block w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold text-center"
-                    >
-                      Descargar
-                    </a>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDescargarDiseno(diseno.archivo_resultante_url || '', diseno.publicidad_plantillas?.titulo || 'Diseño')}
+                        className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
+                      >
+                        Descargar
+                      </button>
+                      <button
+                        onClick={() => handleEliminarDiseno(diseno)}
+                        className="p-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all duration-200 hover:scale-105"
+                        title="Eliminar diseño"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
