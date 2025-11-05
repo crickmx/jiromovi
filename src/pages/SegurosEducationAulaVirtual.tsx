@@ -76,9 +76,15 @@ export function SegurosEducationAulaVirtual() {
       });
 
       const upcoming = sesionesData.filter(s => {
+        if (!s.fecha_inicio || !s.estado) {
+          console.log(`⚠️ Sesión "${s.titulo}" sin fecha_inicio o estado`);
+          return false;
+        }
+
         const sessionDate = new Date(s.fecha_inicio);
         const sessionTime = sessionDate.getTime();
         const nowTime = now.getTime();
+
         const isFuture = sessionTime > nowTime;
         const isNotActive = s.esta_activa === false;
         const isProgrammed = s.estado === 'programada';
@@ -88,6 +94,7 @@ export function SegurosEducationAulaVirtual() {
 📅 Sesión: "${s.titulo}"
    - Fecha sesión: ${sessionDate.toISOString()} (${sessionTime})
    - Fecha actual: ${now.toISOString()} (${nowTime})
+   - Diferencia ms: ${sessionTime - nowTime}
    - Es futura: ${isFuture}
    - Esta activa: ${s.esta_activa}
    - No activa: ${isNotActive}
