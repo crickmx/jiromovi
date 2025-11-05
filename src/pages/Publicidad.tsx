@@ -128,6 +128,32 @@ export function Publicidad() {
     setShowPersonalizarModal(true);
   };
 
+  const handleEliminarPlantilla = async (plantilla: Plantilla) => {
+    if (!isAdmin) {
+      alert('Solo los administradores pueden eliminar plantillas');
+      return;
+    }
+
+    if (!confirm(`¿Estás seguro de que deseas eliminar la plantilla "${plantilla.titulo}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('publicidad_plantillas')
+        .update({ activa: false })
+        .eq('id', plantilla.id);
+
+      if (error) throw error;
+
+      alert('Plantilla eliminada correctamente');
+      loadPlantillas();
+    } catch (error: any) {
+      console.error('Error al eliminar plantilla:', error);
+      alert('Error al eliminar la plantilla');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
@@ -269,7 +295,7 @@ export function Publicidad() {
                         )}
                       </div>
                     )}
-                    <div className="absolute top-3 right-3">
+                    <div className="absolute top-3 right-3 flex items-center gap-2">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         plantilla.tipo === 'imagen'
                           ? 'bg-blue-100 text-blue-700'
@@ -277,6 +303,15 @@ export function Publicidad() {
                       }`}>
                         {plantilla.tipo === 'imagen' ? 'Imagen' : 'Video'}
                       </span>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleEliminarPlantilla(plantilla)}
+                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg"
+                          title="Eliminar plantilla"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="p-4">
