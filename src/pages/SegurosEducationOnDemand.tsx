@@ -222,7 +222,7 @@ export function SegurosEducationOnDemand() {
         .insert({
           titulo: formData.titulo,
           descripcion: formData.descripcion,
-          categoria_id: formData.categoria_id,
+          categoria_id: formData.categoria_id || null,
           video_url: videoPublicUrl.publicUrl,
           miniatura_url: thumbnailUrl,
           duracion: Math.floor(videoDuration),
