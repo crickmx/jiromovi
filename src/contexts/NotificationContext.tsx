@@ -184,15 +184,25 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const markAsRead = async (id: string) => {
     try {
+      // Actualización optimista del estado local
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, leida: true } : n))
+      );
+
       const { error } = await supabase
         .from('notificaciones')
         .update({ leida: true })
         .eq('id', id)
         .eq('usuario_id', usuario?.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        // Revertir cambio optimista si falla
+        fetchNotifications();
+      }
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      fetchNotifications();
     }
   };
 
@@ -200,34 +210,55 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (!usuario) return;
 
     try {
+      // Actualización optimista del estado local
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, leida: true }))
+      );
+
       const { error } = await supabase
         .from('notificaciones')
         .update({ leida: true })
         .eq('usuario_id', usuario.id)
         .eq('leida', false);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking all as read:', error);
+        // Revertir cambio optimista si falla
+        fetchNotifications();
+      }
     } catch (error) {
       console.error('Error marking all as read:', error);
+      fetchNotifications();
     }
   };
 
   const deleteNotification = async (id: string) => {
     try {
+      // Actualización optimista del estado local
+      const notificationToDelete = notifications.find(n => n.id === id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+
       const { error } = await supabase
         .from('notificaciones')
         .delete()
         .eq('id', id)
         .eq('usuario_id', usuario?.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting notification:', error);
+        // Revertir cambio optimista si falla
+        if (notificationToDelete) {
+          setNotifications((prev) => [notificationToDelete, ...prev]);
+        }
+      }
     } catch (error) {
       console.error('Error deleting notification:', error);
+      fetchNotifications();
     }
   };
 
   const createNotification = async (
-    notification: Omit<Notification, 'id' | 'fecha_creacion' | 'leida'>
+    notification: Omit<Notification, 'id' | 'created_at' | 'leida'>
   ) => {
     if (!usuario) return;
 
