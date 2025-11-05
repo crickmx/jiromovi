@@ -28,6 +28,7 @@ import { CentroNotificaciones } from './pages/CentroNotificaciones';
 import { Tickets } from './pages/Tickets';
 import { TicketDetalle } from './pages/TicketDetalle';
 import { MeetingRoom } from './pages/MeetingRoom';
+import { AulaVirtualSala } from './pages/AulaVirtualSala';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -264,7 +265,7 @@ function AppRoutes() {
         path="/aula-virtual/sala/:roomId"
         element={
           <ProtectedRoute>
-            <MeetingRoom />
+            <AulaVirtualSala />
           </ProtectedRoute>
         }
       />
