@@ -6,7 +6,7 @@ import { MapPin, Calendar, Clock, ArrowRight } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 
 type Reserva = Database['public']['Tables']['reservas_espacio']['Row'] & {
-  espacios_jiro?: { nombre: string } | null;
+  areas?: { nombre: string } | null;
 };
 
 export function ProximasReservas() {
@@ -26,13 +26,16 @@ export function ProximasReservas() {
     try {
       const now = new Date().toISOString();
 
+      const today = new Date().toISOString().split('T')[0];
+
       const { data, error } = await supabase
         .from('reservas_espacio')
-        .select('*, espacios_jiro(nombre)')
+        .select('*, areas(nombre)')
         .eq('usuario_id', usuario.id)
-        .eq('estado', 'confirmada')
-        .gte('fecha_inicio', now)
-        .order('fecha_inicio', { ascending: true })
+        .in('estado', ['pendiente', 'aprobada'])
+        .gte('fecha', today)
+        .order('fecha', { ascending: true })
+        .order('hora_inicio', { ascending: true })
         .limit(5);
 
       if (error) throw error;
@@ -44,18 +47,18 @@ export function ProximasReservas() {
     }
   };
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const dateStr = date.toLocaleDateString('es-MX', {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('es-MX', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
-    const timeStr = date.toLocaleTimeString('es-MX', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    return { date: dateStr, time: timeStr };
+  };
+
+  const formatTime = (timeString: string) => {
+    if (!timeString) return '';
+    return timeString.substring(0, 5);
   };
 
   if (loading) {
@@ -117,8 +120,11 @@ export function ProximasReservas() {
 
       <div className="space-y-3">
         {reservas.map((reserva) => {
-          const { date: dateInicio, time: timeInicio } = formatDateTime(reserva.fecha_inicio);
-          const { time: timeFin } = formatDateTime(reserva.fecha_fin);
+          const estadoBadge = reserva.estado === 'aprobada'
+            ? 'bg-green-100 text-green-800'
+            : 'bg-yellow-100 text-yellow-800';
+          const estadoLabel = reserva.estado === 'aprobada' ? 'Aprobada' : 'Pendiente';
+
           return (
             <div
               key={reserva.id}
@@ -127,24 +133,24 @@ export function ProximasReservas() {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <h3 className="font-semibold text-slate-900 mb-2">
-                    {reserva.espacios_jiro?.nombre || 'Espacio'}
+                    {reserva.areas?.nombre || 'Espacio'}
                   </h3>
                   <div className="flex items-center space-x-4 text-sm text-slate-600">
                     <span className="flex items-center">
                       <Calendar className="w-4 h-4 mr-1" />
-                      {dateInicio}
+                      {formatDate(reserva.fecha)}
                     </span>
                     <span className="flex items-center">
                       <Clock className="w-4 h-4 mr-1" />
-                      {timeInicio} - {timeFin}
+                      {formatTime(reserva.hora_inicio)} - {formatTime(reserva.hora_fin)}
                     </span>
                   </div>
-                  {reserva.proposito && (
-                    <p className="text-sm text-slate-500 mt-2">{reserva.proposito}</p>
+                  {reserva.notas && (
+                    <p className="text-sm text-slate-500 mt-2">{reserva.notas}</p>
                   )}
                 </div>
-                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                  Confirmada
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${estadoBadge}`}>
+                  {estadoLabel}
                 </span>
               </div>
 
