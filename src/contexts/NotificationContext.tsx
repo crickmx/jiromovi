@@ -181,7 +181,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         .from('notificaciones')
         .update({ leida: true })
         .eq('id', id)
-        .eq('user_id', usuario?.id);
+        .eq('usuario_id', usuario?.id);
 
       if (error) throw error;
     } catch (error) {
@@ -196,7 +196,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase
         .from('notificaciones')
         .update({ leida: true })
-        .eq('user_id', usuario.id)
+        .eq('usuario_id', usuario.id)
         .eq('leida', false);
 
       if (error) throw error;
@@ -211,7 +211,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         .from('notificaciones')
         .delete()
         .eq('id', id)
-        .eq('user_id', usuario?.id);
+        .eq('usuario_id', usuario?.id);
 
       if (error) throw error;
     } catch (error) {
@@ -226,7 +226,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     try {
       const { error } = await supabase.from('notificaciones').insert({
-        user_id: usuario.id,
+        usuario_id: usuario.id,
         ...notification,
       });
 

@@ -27,20 +27,17 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
-    { path: '/mis-correos', label: 'Mi Email', icon: Inbox, show: true },
     { path: '/tickets', label: 'Tickets', icon: Ticket, show: true },
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Calculator, show: true },
-    { path: '/contactos', label: 'Contactos', icon: Contact, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: isAdminOrGerente },
     { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
-    { path: '/firmas-email', label: 'Firmas de E-Mail', icon: FileSignature, show: isAdmin },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
     { path: '/configuracion', label: 'Configuración', icon: Settings, show: isAdmin },
   ];

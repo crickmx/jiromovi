@@ -11,14 +11,11 @@ import { Directorio } from './pages/Directorio';
 import { Oficinas } from './pages/Oficinas';
 import { Configuracion } from './pages/Configuracion';
 import { CentroCorreos } from './pages/CentroCorreos';
-import { MisCorreos } from './pages/MisCorreos';
 import { Vacaciones } from './pages/Vacaciones';
 import { EspacioJiro } from './pages/EspacioJiro';
 import MulticotizadorDigital from './pages/MulticotizadorDigital';
 import { Publicidad } from './pages/Publicidad';
 import { GestorEmails } from './pages/GestorEmails';
-import { FirmasEmail } from './pages/FirmasEmail';
-import { Contactos } from './pages/Contactos';
 import { Chat } from './pages/Chat';
 import { AccesosNacional } from './pages/AccesosNacional';
 import { SegurosEducation } from './pages/SegurosEducation';
@@ -125,16 +122,6 @@ function AppRoutes() {
         }
       />
 
-      <Route
-        path="/mis-correos"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <MisCorreos />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
 
       <Route
         path="/vacaciones"
@@ -192,27 +179,7 @@ function AppRoutes() {
         }
       />
 
-      <Route
-        path="/contactos"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Contactos />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
 
-      <Route
-        path="/firmas-email"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <FirmasEmail />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
 
       <Route
         path="/chat"
