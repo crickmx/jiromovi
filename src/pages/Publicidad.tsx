@@ -139,10 +139,9 @@ export function Publicidad() {
     }
 
     try {
-      const { error } = await supabase
-        .from('publicidad_plantillas')
-        .update({ activa: false })
-        .eq('id', plantilla.id);
+      const { data, error } = await supabase.rpc('deactivate_plantilla', {
+        plantilla_id: plantilla.id
+      });
 
       if (error) throw error;
 
@@ -150,7 +149,7 @@ export function Publicidad() {
       loadPlantillas();
     } catch (error: any) {
       console.error('Error al eliminar plantilla:', error);
-      alert('Error al eliminar la plantilla');
+      alert(`Error al eliminar la plantilla: ${error.message}`);
     }
   };
 
