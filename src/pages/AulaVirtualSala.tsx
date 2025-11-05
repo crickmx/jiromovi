@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Mic, MicOff, Video as VideoIcon, VideoOff, MessageSquare, Users, PhoneOff, X } from 'lucide-react';
+import { Mic, MicOff, Video as VideoIcon, VideoOff, MessageSquare, Users, PhoneOff, X, Monitor } from 'lucide-react';
 import { VideoGrid } from '../components/meeting/VideoGrid';
 import { MeetingChat } from '../components/meeting/MeetingChat';
 import { ParticipantsList } from '../components/meeting/ParticipantsList';
@@ -24,6 +24,7 @@ interface Participant {
   stream?: MediaStream;
   audioEnabled: boolean;
   videoEnabled: boolean;
+  isScreenSharing?: boolean;
 }
 
 export function AulaVirtualSala() {
@@ -42,6 +43,8 @@ export function AulaVirtualSala() {
   const [showParticipants, setShowParticipants] = useState(false);
   const [isInstructor, setIsInstructor] = useState(false);
   const [currentParticipantId, setCurrentParticipantId] = useState<string>('');
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   useEffect(() => {
     if (roomId) {
@@ -204,6 +207,7 @@ export function AulaVirtualSala() {
                   stream: existing?.stream,
                   audioEnabled: existing?.audioEnabled ?? true,
                   videoEnabled: existing?.videoEnabled ?? true,
+                  isScreenSharing: p.is_screen_sharing || false,
                 };
               })
             );
@@ -310,6 +314,60 @@ export function AulaVirtualSala() {
         .eq('id', participantId);
     } catch (error) {
       console.error('Error kicking participant:', error);
+    }
+  };
+
+  const handleShareScreen = async () => {
+    if (!isInstructor) {
+      alert('Solo los instructores pueden compartir pantalla');
+      return;
+    }
+
+    if (isScreenSharing) {
+      if (screenStream) {
+        screenStream.getTracks().forEach((track) => track.stop());
+        setScreenStream(null);
+      }
+      setIsScreenSharing(false);
+
+      try {
+        await supabase.rpc('toggle_aula_screen_sharing', {
+          p_participant_id: currentParticipantId,
+          p_is_sharing: false,
+        });
+      } catch (error) {
+        console.error('Error stopping screen share:', error);
+      }
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+
+      setScreenStream(stream);
+      setIsScreenSharing(true);
+
+      stream.getVideoTracks()[0].onended = () => {
+        setScreenStream(null);
+        setIsScreenSharing(false);
+        supabase.rpc('toggle_aula_screen_sharing', {
+          p_participant_id: currentParticipantId,
+          p_is_sharing: false,
+        });
+      };
+
+      await supabase.rpc('toggle_aula_screen_sharing', {
+        p_participant_id: currentParticipantId,
+        p_is_sharing: true,
+      });
+    } catch (error: any) {
+      console.error('Error sharing screen:', error);
+      if (error.name !== 'NotAllowedError') {
+        alert('Error al compartir pantalla: ' + error.message);
+      }
     }
   };
 
@@ -476,6 +534,20 @@ export function AulaVirtualSala() {
           >
             <Users className="w-6 h-6" />
           </button>
+
+          {isInstructor && (
+            <button
+              onClick={handleShareScreen}
+              className={`p-4 rounded-full transition ${
+                isScreenSharing
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-slate-700 text-white hover:bg-slate-600'
+              }`}
+              title={isScreenSharing ? 'Detener compartir pantalla' : 'Compartir pantalla'}
+            >
+              <Monitor className="w-6 h-6" />
+            </button>
+          )}
 
           <div className="w-px h-12 bg-slate-700" />
 
