@@ -208,11 +208,11 @@ export function Dashboard() {
             href="/seguros-education"
             className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
           >
-            <div className="aspect-[16/9] w-full">
+            <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
               <img
-                src="https://movi.digital/seguros-education"
+                src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
                 alt="Seguros Education"
-                className="w-full h-full object-cover"
+                className="max-w-full max-h-full object-contain"
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
@@ -298,11 +298,11 @@ export function Dashboard() {
           href="/seguros-education"
           className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
         >
-          <div className="aspect-[16/9] w-full">
+          <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
             <img
-              src="https://movi.digital/seguros-education"
+              src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
               alt="Seguros Education"
-              className="w-full h-full object-cover"
+              className="max-w-full max-h-full object-contain"
             />
           </div>
           <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
