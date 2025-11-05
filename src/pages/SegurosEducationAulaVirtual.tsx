@@ -10,6 +10,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { BaseModal } from '../components/BaseModal';
+import { PublicarOnDemandModal, PublicarOnDemandData } from '../components/PublicarOnDemandModal';
 import {
   obtenerSesiones,
   obtenerGrabaciones,
@@ -35,6 +36,8 @@ export function SegurosEducationAulaVirtual() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGrabacionesModal, setShowGrabacionesModal] = useState(false);
+  const [showPublicarModal, setShowPublicarModal] = useState(false);
+  const [grabacionAPublicar, setGrabacionAPublicar] = useState<AulaGrabacion | null>(null);
   const [selectedSession, setSelectedSession] = useState<AulaSession | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
@@ -185,17 +188,31 @@ export function SegurosEducationAulaVirtual() {
     }
   };
 
-  const handleConvertirAOnDemand = async (grabacion: AulaGrabacion) => {
-    if (!confirm('¿Convertir esta grabación a contenido On Demand? Estará disponible en la biblioteca de lecciones.')) {
-      return;
-    }
+  const handleConvertirAOnDemand = (grabacion: AulaGrabacion) => {
+    setGrabacionAPublicar(grabacion);
+    setShowPublicarModal(true);
+  };
+
+  const handlePublicarOnDemand = async (data: PublicarOnDemandData) => {
+    if (!grabacionAPublicar) return;
 
     try {
-      await convertirGrabacionAOnDemand(grabacion.id);
+      await convertirGrabacionAOnDemand(grabacionAPublicar.id, {
+        titulo: data.titulo,
+        descripcion: data.descripcion,
+        categoriaId: data.categoria_id,
+        duracionMinutos: data.duracion_minutos,
+        activa: data.activa,
+        oficinaIds: data.oficina_ids,
+        publicar: data.activa
+      });
+
       await fetchData();
-      alert('Grabación convertida exitosamente a contenido On Demand');
+      setShowPublicarModal(false);
+      setGrabacionAPublicar(null);
+      alert('Grabación publicada exitosamente en On Demand');
     } catch (error: any) {
-      alert(error.message || 'Error al convertir la grabación');
+      throw new Error(error.message || 'Error al publicar la grabación');
     }
   };
 
@@ -426,6 +443,18 @@ export function SegurosEducationAulaVirtual() {
           onClose={() => setShowGrabacionesModal(false)}
           onConvertir={handleConvertirAOnDemand}
           isAdmin={isAdmin}
+        />
+      )}
+
+      {showPublicarModal && grabacionAPublicar && (
+        <PublicarOnDemandModal
+          isOpen={showPublicarModal}
+          onClose={() => {
+            setShowPublicarModal(false);
+            setGrabacionAPublicar(null);
+          }}
+          onPublicar={handlePublicarOnDemand}
+          grabacionTitulo={grabacionAPublicar.sesion?.titulo || 'Grabación de sesión'}
         />
       )}
     </Layout>

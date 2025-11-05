@@ -12,6 +12,9 @@ interface ConversionRequest {
   titulo?: string;
   descripcion?: string;
   categoriaId?: string;
+  duracionMinutos?: number;
+  activa?: boolean;
+  oficinaIds?: string[];
 }
 
 Deno.serve(async (req: Request) => {
@@ -46,7 +49,16 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: ConversionRequest = await req.json();
-    const { grabacionId, publicar = false, titulo, descripcion, categoriaId } = body;
+    const {
+      grabacionId,
+      publicar = false,
+      titulo,
+      descripcion,
+      categoriaId,
+      duracionMinutos,
+      activa = true,
+      oficinaIds = []
+    } = body;
 
     const { data: grabacion, error: grabacionError } = await supabase
       .from('aula_virtual_grabaciones')
@@ -87,6 +99,7 @@ Deno.serve(async (req: Request) => {
 
     const lessonTitulo = titulo || grabacion.sesion.titulo || 'Grabación de sesión';
     const lessonDescripcion = descripcion || grabacion.sesion.descripcion || '';
+    const lessonDuracion = duracionMinutos || grabacion.sesion.duracion_minutos || Math.ceil((grabacion.duracion_segundos || 0) / 60);
 
     const { data: newLesson, error: lessonError } = await supabase
       .from('seguros_lessons')
@@ -96,12 +109,11 @@ Deno.serve(async (req: Request) => {
         categoria_id: categoriaId || null,
         miniatura_url: grabacion.miniatura_url,
         video_url: grabacion.archivo_procesado_url || grabacion.archivo_original_url,
-        duracion: grabacion.duracion_segundos,
-        oficinas_asignadas: [],
-        es_grabacion: true,
+        duracion_minutos: lessonDuracion,
+        oficina_ids: oficinaIds.length > 0 ? oficinaIds : null,
+        activa: activa,
         session_id: grabacion.sesion_id,
-        creado_por: user.id,
-        fecha_creacion: new Date().toISOString()
+        creado_por: user.id
       })
       .select()
       .single();

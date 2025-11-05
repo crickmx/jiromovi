@@ -209,6 +209,9 @@ export async function convertirGrabacionAOnDemand(
     titulo?: string;
     descripcion?: string;
     categoriaId?: string;
+    duracionMinutos?: number;
+    activa?: boolean;
+    oficinaIds?: string[];
     publicar?: boolean;
   }
 ) {
