@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 
 interface Category {
@@ -32,6 +33,7 @@ interface Lesson {
 
 export function SegurosEducationOnDemand() {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [filteredLessons, setFilteredLessons] = useState<Lesson[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -352,12 +354,21 @@ export function SegurosEducationOnDemand() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-800 flex items-center gap-2">
-              <Video className="w-6 h-6 text-primary-600" />
-              On Demand
-            </h1>
-            <p className="text-neutral-600 mt-1">Biblioteca de lecciones grabadas</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/seguros-education')}
+              className="p-2 text-neutral-600 hover:text-primary-600 hover:bg-neutral-100 rounded-lg transition-colors"
+              title="Volver a Seguros Education"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-800 flex items-center gap-2">
+                <Video className="w-6 h-6 text-primary-600" />
+                On Demand
+              </h1>
+              <p className="text-neutral-600 mt-1">Biblioteca de lecciones grabadas</p>
+            </div>
           </div>
           {isAdmin && (
             <div className="flex gap-2">

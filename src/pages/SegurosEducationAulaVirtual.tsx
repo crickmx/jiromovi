@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar, Clock, Plus, Users, Video, AlertCircle,
   Play, Pause, Link as LinkIcon, Copy, CheckCircle,
-  Trash2, Settings, BarChart3, Download, FileVideo
+  Trash2, Settings, BarChart3, Download, FileVideo, ArrowLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -26,6 +27,7 @@ import {
 
 export function SegurosEducationAulaVirtual() {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<AulaSession[]>([]);
   const [grabaciones, setGrabaciones] = useState<AulaGrabacion[]>([]);
   const [activeSessions, setActiveSessions] = useState<AulaSession[]>([]);
@@ -202,12 +204,21 @@ export function SegurosEducationAulaVirtual() {
     <Layout>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <Video className="w-6 h-6 text-blue-600" />
-              Aula Virtual
-            </h1>
-            <p className="text-slate-600 mt-1">Capacitaciones en vivo con WebRTC</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/seguros-education')}
+              className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+              title="Volver a Seguros Education"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <Video className="w-6 h-6 text-blue-600" />
+                Aula Virtual
+              </h1>
+              <p className="text-slate-600 mt-1">Capacitaciones en vivo con WebRTC</p>
+            </div>
           </div>
           <div className="flex gap-2">
             <button
