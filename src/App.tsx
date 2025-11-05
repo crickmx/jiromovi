@@ -43,12 +43,12 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={usuario ? <Navigate to={usuario.rol === 'Administrador' || usuario.rol === 'Gerente' ? "/dashboard" : "/perfil"} replace /> : <Login />} />
+      <Route path="/login" element={usuario ? <Navigate to="/dashboard" replace /> : <Login />} />
 
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute requireAdminOrGerente>
+          <ProtectedRoute>
             <Layout>
               <Dashboard />
             </Layout>
@@ -268,8 +268,8 @@ function AppRoutes() {
         }
       />
 
-      <Route path="/" element={<Navigate to={usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' ? "/dashboard" : "/perfil"} replace />} />
-      <Route path="*" element={<Navigate to={usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' ? "/dashboard" : "/perfil"} replace />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

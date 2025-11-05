@@ -204,6 +204,11 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ResumenVacaciones />
+          <TicketsWidget />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ProximasReservas />
           <ProximasCapacitaciones />
         </div>
