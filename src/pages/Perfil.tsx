@@ -6,6 +6,7 @@ import { CustomFields } from '../components/CustomFields';
 import { DocumentsSection } from '../components/DocumentsSection';
 import { PaymentFields } from '../components/PaymentFields';
 import { CorreoIONOSFields } from '../components/CorreoIONOSFields';
+import { ExpedienteSection } from '../components/ExpedienteSection';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -268,6 +269,10 @@ export function Perfil() {
 
           <div className="mt-8">
             <DocumentsSection usuarioId={usuario.id} canEdit={true} />
+          </div>
+
+          <div className="mt-8">
+            <ExpedienteSection usuarioId={usuario.id} canEdit={false} />
           </div>
 
 

@@ -35,6 +35,11 @@ export function Directorio() {
         .select('*, oficinas(nombre)')
         .order('nombre');
 
+      const isGerente = currentUser?.rol === 'Gerente';
+      if (isGerente && currentUser?.oficina_id) {
+        usuariosQuery = usuariosQuery.eq('oficina_id', currentUser.oficina_id);
+      }
+
       const [usuariosRes, oficinasRes] = await Promise.all([
         usuariosQuery,
         supabase.from('oficinas').select('*').order('nombre'),

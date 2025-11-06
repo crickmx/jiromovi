@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Save, Upload, User as UserIcon, ArrowLeft } from 'lucide-react';
 import { CustomFields } from '../components/CustomFields';
 import { DocumentsSection } from '../components/DocumentsSection';
 import { PaymentFields } from '../components/PaymentFields';
+import { ExpedienteSection } from '../components/ExpedienteSection';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -13,12 +15,15 @@ type Oficina = Database['public']['Tables']['oficinas']['Row'];
 export function PerfilUsuario() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { usuario: currentUser } = useAuth();
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [formData, setFormData] = useState<Partial<Usuario>>({});
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const canEditExpediente = currentUser?.rol === 'Administrador' || currentUser?.rol === 'Gerente';
 
   useEffect(() => {
     if (id) {
@@ -248,6 +253,10 @@ export function PerfilUsuario() {
 
           <div className="mt-8">
             <DocumentsSection usuarioId={usuario.id} canEdit={true} />
+          </div>
+
+          <div className="mt-8">
+            <ExpedienteSection usuarioId={usuario.id} canEdit={canEditExpediente} />
           </div>
 
           <div className="mt-8 flex justify-end space-x-3">
