@@ -364,13 +364,19 @@ export function Vacaciones() {
         </div>
       )}
 
-      {isAdmin && solicitudesPreaprobadas.length > 0 && (
+      {isAdmin && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <h2 className="text-xl font-bold text-slate-800 mb-4">
             Solicitudes Preaprobadas ({solicitudesPreaprobadas.length})
           </h2>
-          <div className="space-y-4">
-            {solicitudesPreaprobadas.map((solicitud) => (
+          {solicitudesPreaprobadas.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <AlertCircle className="w-12 h-12 mx-auto mb-2 text-slate-400" />
+              <p>No hay solicitudes preaprobadas pendientes de autorización</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {solicitudesPreaprobadas.map((solicitud) => (
               <div key={solicitud.id} className="border border-slate-200 rounded-lg p-4">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -430,7 +436,8 @@ export function Vacaciones() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
