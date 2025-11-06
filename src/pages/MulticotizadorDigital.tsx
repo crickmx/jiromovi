@@ -20,18 +20,6 @@ export default function MulticotizadorDigital() {
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold text-slate-900">
-            Multicotizador Digital
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Consulta y gestiona tus cotizaciones sin salir del portal
-          </p>
-        </div>
-      </div>
-
       {/* Loading Indicator */}
       {isLoading && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
@@ -77,7 +65,7 @@ export default function MulticotizadorDigital() {
           onError={handleIframeError}
           className={`w-full h-full border-0 ${isLoading || hasError ? 'hidden' : 'block'}`}
           style={{
-            minHeight: 'calc(100vh - 120px)',
+            minHeight: '100vh',
           }}
         />
       </div>
