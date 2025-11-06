@@ -210,7 +210,7 @@ export function Dashboard() {
           >
             <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
               <img
-                src="https://movi.digital/wp-content/uploads/2025/02/Logo_MCD_v1-1.png"
+                src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
                 alt="Seguros Education"
                 className="max-w-full max-h-full object-contain"
               />
@@ -228,7 +228,7 @@ export function Dashboard() {
           >
             <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
               <img
-                src="https://movi.digital/wp-content/uploads/elementor/thumbs/Logo_MCD_v2-r0qhbo2naggb7667cc6dg6h629ac03clkxckswc7b4.png"
+                src="https://movi.digital/wp-content/uploads/2025/02/Logo_MCD_v1-1.png"
                 alt="Multicotizador Digital"
                 className="max-w-full max-h-full object-contain"
               />
