@@ -31,11 +31,11 @@ export function ProtectedRoute({
   }
 
   if (requireAdmin && usuario.rol !== 'Administrador') {
-    return <Navigate to="/perfil" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (requireAdminOrGerente && usuario.rol !== 'Administrador' && usuario.rol !== 'Gerente') {
-    return <Navigate to="/perfil" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

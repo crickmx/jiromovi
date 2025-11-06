@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Video, Calendar, Clock, Play, Award, TrendingUp } from 'lucide-react';
+import { Video, Calendar, Clock, Play, Award, TrendingUp, GraduationCap } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { obtenerSesiones } from '../lib/aulaVirtualUtils';
@@ -166,7 +166,7 @@ export function SegurosEducation() {
           >
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl bg-primary-100 flex items-center justify-center group-hover:bg-primary-200 transition-colors">
-                <Video className="w-8 h-8 text-primary-600" />
+                <GraduationCap className="w-8 h-8 text-primary-600" />
               </div>
               <div className="text-left flex-1">
                 <h3 className="text-xl font-bold text-neutral-800 mb-1">On Demand</h3>

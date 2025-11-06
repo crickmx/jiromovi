@@ -36,7 +36,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
-    { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: isAdminOrGerente },
+    { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: false },
     { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
     { path: '/configuracion', label: 'Configuración', icon: Settings, show: isAdmin },
