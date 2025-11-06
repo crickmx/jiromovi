@@ -1,26 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { obtenerSesiones } from '../lib/aulaVirtualUtils';
-import { Video, Calendar, Clock, ArrowRight, GraduationCap } from 'lucide-react';
+import { obtenerSesionesProgramadas, type SesionConRegistro } from '../lib/educationSesionesUtils';
+import { Video, Calendar, Clock, ArrowRight, GraduationCap, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-interface AulaSession {
-  id: string;
-  titulo: string;
-  descripcion: string | null;
-  instructor_id: string | null;
-  fecha_inicio: string;
-  fecha_fin: string;
-  duracion_minutos: number;
-  esta_activa: boolean;
-  estado: 'programada' | 'en_vivo' | 'finalizada' | 'cancelada';
-  instructor?: { id: string; nombre_completo: string } | null;
-}
-
 export function ProximasCapacitaciones() {
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState<AulaSession[]>([]);
+  const [sessions, setSessions] = useState<SesionConRegistro[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,15 +17,19 @@ export function ProximasCapacitaciones() {
   const loadUpcomingSessions = async () => {
     setLoading(true);
     try {
-      const data = await obtenerSesiones();
+      const data = await obtenerSesionesProgramadas({ estatus: 'programada' });
       const now = new Date();
 
       const upcoming = data
         .filter(s => {
-          const sessionDate = new Date(s.fecha_inicio);
-          return sessionDate > now && s.estado === 'programada' && !s.esta_activa;
+          const sessionDate = new Date(`${s.fecha}T${s.hora}`);
+          return sessionDate > now;
         })
-        .sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime())
+        .sort((a, b) => {
+          const dateA = new Date(`${a.fecha}T${a.hora}`);
+          const dateB = new Date(`${b.fecha}T${b.hora}`);
+          return dateA.getTime() - dateB.getTime();
+        })
         .slice(0, 5);
 
       setSessions(upcoming);
@@ -78,7 +69,7 @@ export function ProximasCapacitaciones() {
             onClick={() => navigate('/seguros-education/aula-virtual')}
             className="text-emerald-600 hover:text-emerald-700 font-medium text-sm"
           >
-            Ver Aula Virtual →
+            Ver Aula Digital →
           </button>
         </div>
       </div>
@@ -109,9 +100,9 @@ export function ProximasCapacitaciones() {
 
       <div className="space-y-3">
         {sessions.map((session) => {
-          const sessionDate = new Date(session.fecha_inicio);
+          const sessionDate = new Date(`${session.fecha}T${session.hora}`);
           const dateStr = format(sessionDate, "d 'de' MMMM", { locale: es });
-          const timeStr = format(sessionDate, 'HH:mm', { locale: es });
+          const timeStr = session.hora.slice(0, 5);
 
           return (
             <div
@@ -123,6 +114,9 @@ export function ProximasCapacitaciones() {
                   <h3 className="font-semibold text-slate-900 mb-1">
                     {session.titulo}
                   </h3>
+                  <p className="text-xs text-emerald-600 font-medium mb-2">
+                    {session.compania}
+                  </p>
                   {session.descripcion && (
                     <p className="text-sm text-slate-600 mb-2 line-clamp-1">
                       {session.descripcion}
@@ -138,9 +132,9 @@ export function ProximasCapacitaciones() {
                       {timeStr}
                     </span>
                   </div>
-                  {session.instructor && (
+                  {session.ponente && (
                     <p className="text-xs text-slate-500 mt-1">
-                      Instructor: {session.instructor.nombre_completo}
+                      Ponente: {session.ponente}
                     </p>
                   )}
                 </div>

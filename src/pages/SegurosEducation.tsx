@@ -184,8 +184,8 @@ export function SegurosEducation() {
                 <Calendar className="w-8 h-8 text-emerald-600" />
               </div>
               <div className="text-left flex-1">
-                <h3 className="text-xl font-bold text-neutral-800 mb-1">Aula Virtual</h3>
-                <p className="text-neutral-600 text-sm">Únete a clases en vivo</p>
+                <h3 className="text-xl font-bold text-neutral-800 mb-1">Aula Digital</h3>
+                <p className="text-neutral-600 text-sm">Capacitaciones programadas y eventos en vivo</p>
               </div>
             </div>
           </button>

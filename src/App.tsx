@@ -21,6 +21,7 @@ import { AccesosNacional } from './pages/AccesosNacional';
 import { SegurosEducation } from './pages/SegurosEducation';
 import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
 import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
+import { SegurosEducationAulaDigital } from './pages/SegurosEducationAulaDigital';
 import { CentroNotificaciones } from './pages/CentroNotificaciones';
 import { Tickets } from './pages/Tickets';
 import { TicketDetalle } from './pages/TicketDetalle';
@@ -221,6 +222,16 @@ function AppRoutes() {
 
       <Route
         path="/seguros-education/aula-virtual"
+        element={
+          <ProtectedRoute>
+            <SegurosEducationAulaDigital />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Ruta antigua oculta - mantener por compatibilidad pero no usar */}
+      <Route
+        path="/seguros-education/aula-virtual-old"
         element={
           <ProtectedRoute>
             <SegurosEducationAulaVirtual />
