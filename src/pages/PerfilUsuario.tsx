@@ -85,8 +85,28 @@ export function PerfilUsuario() {
     setSaving(true);
     setMessage(null);
 
-    const updateData: Partial<Usuario> = { ...formData };
-    updateData.updated_at = new Date().toISOString();
+    const updateData: Partial<Usuario> = {
+      nombre: formData.nombre,
+      apellidos: formData.apellidos,
+      puesto: formData.puesto,
+      oficina_id: formData.oficina_id || null,
+      fecha_nacimiento: formData.fecha_nacimiento || null,
+      fecha_ingreso: formData.fecha_ingreso || null,
+      celular_personal: formData.celular_personal,
+      email_personal: formData.email_personal,
+      celular_laboral: formData.celular_laboral,
+      email_laboral: formData.email_laboral,
+      extension_telefonica: formData.extension_telefonica,
+      equipo_computo: formData.equipo_computo,
+      equipo_celular: formData.equipo_celular,
+      url_web_jiro: formData.url_web_jiro,
+      url_web_multicotizador: formData.url_web_multicotizador,
+      esquema_pago_id: formData.esquema_pago_id || null,
+      banco: formData.banco || null,
+      clabe: formData.clabe || null,
+      dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles ?? 0,
+      updated_at: new Date().toISOString(),
+    };
 
     const { error } = await supabase
       .from('usuarios')
@@ -94,7 +114,8 @@ export function PerfilUsuario() {
       .eq('id', id);
 
     if (error) {
-      setMessage({ type: 'error', text: 'Error al guardar cambios' });
+      console.error('Error saving user:', error);
+      setMessage({ type: 'error', text: `Error al guardar cambios: ${error.message}` });
     } else {
       setMessage({ type: 'success', text: 'Cambios guardados correctamente' });
       setHasUnsavedChanges(false);
