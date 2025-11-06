@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Filter, UserPlus, Edit, Trash2, ToggleLeft, ToggleRight, Eye } from 'lucide-react';
+import { Search, Filter, UserPlus, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import type { Database } from '../lib/database.types';
 
@@ -282,20 +282,11 @@ export function Directorio() {
                     <div className="flex justify-end space-x-2">
                       <button
                         onClick={() => navigate(`/usuario/${usuario.id}`)}
-                        className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition"
-                        title="Ver Perfil"
+                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-900 px-3 py-2 hover:bg-blue-50 rounded-lg transition"
+                        title="Ver / Editar Usuario"
                       >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedUser(usuario);
-                          setModalOpen(true);
-                        }}
-                        className="text-slate-600 hover:text-slate-900 p-2 hover:bg-slate-50 rounded-lg transition"
-                        title="Editar Rápido"
-                      >
-                        <Edit className="w-5 h-5" />
+                        <Edit className="w-4 h-4" />
+                        <span className="text-sm font-medium">Ver / Editar</span>
                       </button>
                       <button
                         onClick={() => handleDelete(usuario.id)}
