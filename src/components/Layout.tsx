@@ -31,10 +31,10 @@ export function Layout({ children }: LayoutProps) {
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
-    { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Calculator, show: true },
+    { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Calculator, show: true, imageUrl: 'https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png', hideLabel: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
-    { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
+    { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true, imageUrl: 'https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png', hideLabel: true },
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: false },
     { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
@@ -74,14 +74,24 @@ export function Layout({ children }: LayoutProps) {
                       navigate(item.path);
                       setSidebarOpen(false);
                     }}
-                    className={`w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center space-x-3 group ${
+                    className={`w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center group ${
+                      (item as any).hideLabel ? 'justify-center' : 'space-x-3'
+                    } ${
                       isActive
                         ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-medium'
                         : 'text-neutral-700 hover:bg-neutral-100 hover:text-primary-600'
                     }`}
                   >
-                    <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? '' : 'group-hover:scale-110'}`} />
-                    <span>{item.label}</span>
+                    {(item as any).imageUrl ? (
+                      <img
+                        src={(item as any).imageUrl}
+                        alt={item.label}
+                        className="h-8 object-contain transition-transform duration-200 group-hover:scale-110"
+                      />
+                    ) : (
+                      <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? '' : 'group-hover:scale-110'}`} />
+                    )}
+                    {!(item as any).hideLabel && <span>{item.label}</span>}
                   </button>
                 );
               })}
