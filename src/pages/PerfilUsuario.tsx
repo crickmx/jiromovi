@@ -469,6 +469,24 @@ export function PerfilUsuario() {
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Días de Vacaciones Disponibles
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={formData.dias_vacaciones_disponibles ?? 0}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          const clampedValue = Math.max(0, Math.min(50, value));
+                          setFormData({ ...formData, dias_vacaciones_disponibles: clampedValue });
+                        }}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Días disponibles: 0 - 50</p>
+                    </div>
                   </div>
 
                   <div className="mt-8">

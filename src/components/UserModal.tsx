@@ -491,14 +491,17 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 <input
                   type="number"
                   min="0"
+                  max="50"
                   value={formData.dias_vacaciones_disponibles}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dias_vacaciones_disponibles: parseInt(e.target.value) || 0 })
-                  }
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    const clampedValue = Math.max(0, Math.min(50, value));
+                    setFormData({ ...formData, dias_vacaciones_disponibles: clampedValue });
+                  }}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-slate-500 mt-1">
-                  Número de días de vacaciones que este usuario puede solicitar
+                  Días disponibles: 0 - 50
                 </p>
               </div>
             </div>
