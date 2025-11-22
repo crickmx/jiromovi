@@ -10,14 +10,16 @@ import {
   XCircle,
   Clock,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  MessageCircle
 } from 'lucide-react';
 import { ConfiguracionSMTP } from '../components/notificaciones/ConfiguracionSMTP';
+import { ConfiguracionWhatsApp } from '../components/notificaciones/ConfiguracionWhatsApp';
 import { TiposNotificaciones } from '../components/notificaciones/TiposNotificaciones';
 import { GestionPlantillas } from '../components/notificaciones/GestionPlantillas';
 import { HistorialEnvios } from '../components/notificaciones/HistorialEnvios';
 
-type Tab = 'configuracion' | 'notificaciones' | 'plantillas' | 'historial';
+type Tab = 'configuracion' | 'whatsapp' | 'notificaciones' | 'plantillas' | 'historial';
 
 interface Config {
   id: string;
@@ -40,6 +42,7 @@ export function NotificacionesTransaccionales() {
   const { usuario } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('configuracion');
   const [config, setConfig] = useState<Config | null>(null);
+  const [whatsappConfig, setWhatsappConfig] = useState<any>(null);
   const [stats, setStats] = useState<Stats>({
     total_enviados: 0,
     total_fallidos: 0,
@@ -68,6 +71,18 @@ export function NotificacionesTransaccionales() {
 
       if (configData) {
         setConfig(configData);
+      }
+
+      // Obtener configuración WhatsApp
+      const { data: whatsappData } = await supabase
+        .from('whatsapp_configuracion')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (whatsappData) {
+        setWhatsappConfig(whatsappData);
       }
 
       // Obtener estadísticas
@@ -226,6 +241,17 @@ export function NotificacionesTransaccionales() {
               Configuración SMTP
             </button>
             <button
+              onClick={() => setActiveTab('whatsapp')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'whatsapp'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-neutral-600 hover:text-neutral-800'
+              }`}
+            >
+              <Send className="w-5 h-5" />
+              WhatsApp
+            </button>
+            <button
               onClick={() => setActiveTab('notificaciones')}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'notificaciones'
@@ -265,6 +291,12 @@ export function NotificacionesTransaccionales() {
           {activeTab === 'configuracion' && (
             <ConfiguracionSMTP
               config={config}
+              onConfigSaved={fetchData}
+            />
+          )}
+          {activeTab === 'whatsapp' && (
+            <ConfiguracionWhatsApp
+              config={whatsappConfig}
               onConfigSaved={fetchData}
             />
           )}
