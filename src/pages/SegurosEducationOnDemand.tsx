@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft } from 'lucide-react';
+import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2 } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 
 interface Category {
@@ -163,11 +163,42 @@ export function SegurosEducationOnDemand() {
 
       showToast('Categoría creada', 'success');
       setNewCategoryName('');
-      setShowCategoryModal(false);
       fetchData();
     } catch (error: any) {
       console.error('Error creating category:', error);
       showToast('Error al crear categoría', 'error');
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    const confirmDelete = window.confirm(
+      '¿Estás seguro de eliminar esta categoría? Las lecciones asociadas no se eliminarán, pero perderán su categoría.'
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      // Primero, desasociar las lecciones de esta categoría
+      const { error: updateError } = await supabase
+        .from('seguros_lessons')
+        .update({ categoria_id: null })
+        .eq('categoria_id', categoryId);
+
+      if (updateError) throw updateError;
+
+      // Luego, eliminar la categoría
+      const { error: deleteError } = await supabase
+        .from('seguros_categories')
+        .delete()
+        .eq('id', categoryId);
+
+      if (deleteError) throw deleteError;
+
+      showToast('Categoría eliminada', 'success');
+      fetchData();
+    } catch (error: any) {
+      console.error('Error deleting category:', error);
+      showToast('Error al eliminar categoría', 'error');
     }
   };
 
@@ -785,15 +816,16 @@ export function SegurosEducationOnDemand() {
 
       {/* Category Management Modal */}
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="p-6 border-b border-neutral-200">
-              <h2 className="text-xl font-bold text-neutral-800">Gestionar Categorías</h2>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-ios flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-ios-2xl shadow-ios-xl max-w-md w-full animate-scale-in">
+            <div className="bg-ios-gray-50 px-6 py-5 border-b border-ios-gray-200/50">
+              <h2 className="text-[22px] font-bold text-ios-gray-900">Gestionar Categorías</h2>
+              <p className="text-[13px] text-ios-gray-600 mt-1">Crea y elimina categorías de lecciones</p>
             </div>
 
             <div className="p-6">
-              <div className="mb-4">
-                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <div className="mb-5">
+                <label className="block text-[15px] font-semibold text-ios-gray-900 mb-2">
                   Nueva Categoría
                 </label>
                 <div className="flex gap-2">
@@ -802,13 +834,13 @@ export function SegurosEducationOnDemand() {
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
-                    className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="flex-1 px-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-ios-blue transition-colors text-[15px]"
                     placeholder="Nombre de la categoría"
                   />
                   <button
                     onClick={handleCreateCategory}
                     disabled={!newCategoryName.trim()}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                    className="px-4 py-2.5 bg-ios-blue text-white rounded-ios-lg hover:bg-ios-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[15px] font-medium active:scale-95 shadow-ios"
                   >
                     Crear
                   </button>
@@ -816,30 +848,37 @@ export function SegurosEducationOnDemand() {
               </div>
 
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                <p className="text-sm font-semibold text-neutral-700 mb-2">Categorías Existentes:</p>
+                <p className="text-[15px] font-semibold text-ios-gray-900 mb-3">Categorías Existentes</p>
                 {categories.map((cat) => (
                   <div
                     key={cat.id}
-                    className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-ios-gray-50 rounded-ios-lg border border-ios-gray-200/50 hover:bg-ios-gray-100 transition-colors"
                   >
-                    <span className="text-sm text-neutral-800">{cat.nombre}</span>
+                    <span className="text-[15px] text-ios-gray-900 font-medium">{cat.nombre}</span>
+                    <button
+                      onClick={() => handleDeleteCategory(cat.id)}
+                      className="p-2 text-ios-red hover:bg-ios-red/10 rounded-ios transition-all active:scale-95"
+                      title="Eliminar categoría"
+                    >
+                      <Trash2 className="w-4 h-4 stroke-[2]" />
+                    </button>
                   </div>
                 ))}
                 {categories.length === 0 && (
-                  <p className="text-sm text-neutral-500 text-center py-4">
+                  <p className="text-[15px] text-ios-gray-500 text-center py-8">
                     No hay categorías creadas
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="p-6 border-t border-neutral-200 flex justify-end">
+            <div className="bg-ios-gray-50 px-6 py-4 border-t border-ios-gray-200/50 flex justify-end">
               <button
                 onClick={() => {
                   setShowCategoryModal(false);
                   setNewCategoryName('');
                 }}
-                className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors"
+                className="px-5 py-2.5 bg-ios-gray-200 text-ios-gray-900 rounded-ios-lg hover:bg-ios-gray-300 transition-colors text-[15px] font-medium active:scale-95"
               >
                 Cerrar
               </button>
