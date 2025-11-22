@@ -213,7 +213,8 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
           </h4>
           <ul className="text-sm text-amber-800 space-y-1 ml-7">
             <li>• Los mensajes se enviarán al celular laboral de cada usuario</li>
-            <li>• Los números deben tener formato internacional (521234567890)</li>
+            <li>• Los números se normalizan automáticamente: 52 + 10 dígitos (ejemplo: 525512345678)</li>
+            <li>• Si el número tiene 10 dígitos, se agrega el prefijo 52 automáticamente</li>
             <li>• Si un usuario no tiene celular laboral, no recibirá WhatsApp</li>
             <li>• Wazzup24 cobra por mensaje enviado</li>
           </ul>
@@ -243,7 +244,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
               type="text"
               value={testNumero}
               onChange={(e) => setTestNumero(e.target.value)}
-              placeholder="5215512345678"
+              placeholder="5512345678 o 525512345678"
               className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
             <button
@@ -257,7 +258,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
             </button>
           </div>
           <p className="text-sm text-neutral-600 mt-2">
-            Ingresa un número con formato internacional (ejemplo: 5215512345678)
+            Ingresa 10 dígitos (5512345678) o formato completo (525512345678). El sistema normaliza automáticamente.
           </p>
         </div>
       )}

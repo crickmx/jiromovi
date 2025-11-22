@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +20,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Importar Supabase client
     const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
 
     const supabaseClient = createClient(
@@ -31,7 +31,6 @@ Deno.serve(async (req) => {
 
     console.log('Procesando solicitud de correo:', { tipo, destinatario });
 
-    // Obtener configuración activa
     const { data: config, error: configError } = await supabaseClient
       .from('correo_configuracion')
       .select('*')
@@ -44,17 +43,10 @@ Deno.serve(async (req) => {
     }
 
     console.log('Configuración encontrada:', {
-      servidor: config.servidor,
-      puerto: config.puerto,
-      usuario: config.usuario
+      tipo: config.tipo_integracion,
+      remitente: config.remitente_email
     });
 
-    // Validar que sea SMTP
-    if (config.tipo_integracion !== 'smtp') {
-      throw new Error('Esta función solo soporta SMTP. Use SendGrid para API.');
-    }
-
-    // Obtener tipo de notificación
     const { data: tipoNotif, error: tipoError } = await supabaseClient
       .from('correo_tipos_notificacion')
       .select('id, activo, enviar_por_correo')
@@ -66,7 +58,6 @@ Deno.serve(async (req) => {
       throw new Error(`Tipo de notificación '${tipo}' no está configurado para correo`);
     }
 
-    // Obtener plantilla
     const { data: plantilla, error: plantillaError } = await supabaseClient
       .from('correo_plantillas')
       .select('asunto, html_cuerpo')
@@ -78,11 +69,9 @@ Deno.serve(async (req) => {
       throw new Error('No se encontró plantilla para este tipo de notificación');
     }
 
-    // Reemplazar variables en asunto y cuerpo
     let asunto = plantilla.asunto;
     let cuerpo = plantilla.html_cuerpo;
 
-    // Variables por defecto
     datos['nombre_plataforma'] = 'MOVI Digital';
     datos['fecha'] = new Date().toLocaleDateString('es-MX');
 
@@ -94,37 +83,36 @@ Deno.serve(async (req) => {
 
     console.log('Plantilla procesada:', { asunto });
 
-    // Enviar correo usando Resend (alternativa más compatible)
-    // Para IONOS SMTP, vamos a simular el envío por ahora y registrar en historial
-
     let estadoEnvio = 'enviado';
     let errorMensaje = null;
+    let resendId = null;
 
     try {
-      // Intento de envío SMTP
-      console.log('Intentando envío SMTP...');
+      const resend = new Resend('re_hdUhQ6MB_BEiDto4R5NKZDwsaxvWMLeeW');
 
-      // Por limitaciones de Deno Deploy con SMTP, vamos a registrar como exitoso
-      // y el sistema puede usar un worker separado para envíos reales
+      console.log('Enviando correo con Resend...');
 
-      console.log('Correo preparado:', {
+      const { data, error } = await resend.emails.send({
         from: `${config.remitente_nombre} <${config.remitente_email}>`,
-        to: destinatario,
-        subject: asunto
+        to: [destinatario],
+        subject: asunto,
+        html: cuerpo,
       });
 
-      // Aquí normalmente iría la conexión SMTP real
-      // Para que funcione, necesitas un servicio como Resend, SendGrid, o un worker SMTP
+      if (error) {
+        throw error;
+      }
 
+      console.log('Correo enviado exitosamente:', data.id);
+      resendId = data.id;
       estadoEnvio = 'enviado';
 
-    } catch (smtpError: any) {
-      console.error('Error SMTP:', smtpError);
+    } catch (emailError: any) {
+      console.error('Error al enviar correo:', emailError);
       estadoEnvio = 'fallido';
-      errorMensaje = smtpError.message;
+      errorMensaje = emailError.message || 'Error al enviar correo';
     }
 
-    // Registrar en historial
     const { error: historialError } = await supabaseClient
       .from('correo_historial_envios')
       .insert({
@@ -148,9 +136,9 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: estadoEnvio === 'enviado',
         message: estadoEnvio === 'enviado'
-          ? 'Correo procesado exitosamente (modo de prueba)'
+          ? 'Correo enviado exitosamente'
           : 'Error al enviar correo',
-        note: 'Para envíos reales SMTP desde Edge Functions, considere usar Resend o SendGrid',
+        resend_id: resendId,
         asunto,
         destinatario
       }),
