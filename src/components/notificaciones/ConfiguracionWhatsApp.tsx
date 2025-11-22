@@ -10,6 +10,7 @@ interface ConfiguracionWhatsAppProps {
 export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWhatsAppProps) {
   const [formData, setFormData] = useState({
     api_key: 'aeaecead58f14a3286b37e4d0b81dc3a',
+    channel_id_uuid: '',
     numero_remitente: '5215588545516',
     activo: false
   });
@@ -24,6 +25,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
     if (config) {
       setFormData({
         api_key: config.api_key || 'aeaecead58f14a3286b37e4d0b81dc3a',
+        channel_id_uuid: config.channel_id_uuid || '',
         numero_remitente: config.numero_remitente || '5215588545516',
         activo: config.activo || false
       });
@@ -38,6 +40,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
     try {
       const dataToSave: any = {
         api_key: formData.api_key,
+        channel_id_uuid: formData.channel_id_uuid,
         numero_remitente: formData.numero_remitente,
         activo: formData.activo,
         configurado_por: (await supabase.auth.getUser()).data.user?.id,
@@ -163,6 +166,24 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
           </div>
           <p className="text-xs text-neutral-600 mt-1">
             Obtén tu API Key desde el panel de Wazzup24
+          </p>
+        </div>
+
+        {/* Channel ID UUID */}
+        <div>
+          <label className="block text-sm font-semibold text-neutral-700 mb-2">
+            Channel ID (UUID) *
+          </label>
+          <input
+            type="text"
+            value={formData.channel_id_uuid}
+            onChange={(e) => setFormData({ ...formData, channel_id_uuid: e.target.value })}
+            required
+            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="24197d5f-06de-421f-8576-9f6e6cb67f28"
+          />
+          <p className="text-xs text-neutral-600 mt-1">
+            UUID del canal. Ve a <strong>Channels</strong> en tu dashboard de Wazzup24, haz clic en tu canal y copia el ID de la URL
           </p>
         </div>
 

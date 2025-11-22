@@ -41,10 +41,14 @@ Deno.serve(async (req) => {
       throw new Error('No hay configuración de WhatsApp activa');
     }
 
-    console.log('Configuración encontrada:', JSON.stringify(config));
+    console.log('Configuración encontrada:', JSON.stringify({
+      tiene_channel_id: !!config.channel_id_uuid,
+      tiene_api_key: !!config.api_key,
+      numero_remitente: config.numero_remitente
+    }));
 
-    if (!config.numero_remitente) {
-      throw new Error('El número remitente no está configurado');
+    if (!config.channel_id_uuid) {
+      throw new Error('El Channel ID (UUID) no está configurado. Obtén el UUID del canal desde tu dashboard de Wazzup24 en la sección "Channels".');
     }
 
     if (!config.api_key) {
@@ -59,12 +63,11 @@ Deno.serve(async (req) => {
 
     console.log('Número normalizado:', numeroNormalizado);
 
-    // channelId debe ser el ID del canal de Wazzup24 (formato: +5215588545516)
-    const channelIdFormatted = `+${config.numero_remitente}`;
-
+    // channelId debe ser el UUID del canal de Wazzup24
+    // Se obtiene del dashboard en la sección "Channels"
     const wazzupPayload = {
-      channelId: channelIdFormatted,
-      chatId: `${numeroNormalizado}@c.us`,
+      channelId: config.channel_id_uuid,
+      chatId: numeroNormalizado,
       chatType: 'whatsapp',
       text: mensaje
     };

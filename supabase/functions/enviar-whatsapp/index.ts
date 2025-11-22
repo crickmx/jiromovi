@@ -95,12 +95,14 @@ Deno.serve(async (req) => {
 
     console.log('Texto procesado:', texto);
 
-    // channelId debe ser el ID del canal de Wazzup24 (formato: +5215588545516)
-    const channelIdFormatted = `+${config.numero_remitente}`;
+    if (!config.channel_id_uuid) {
+      throw new Error('El Channel ID (UUID) no está configurado');
+    }
 
+    // channelId debe ser el UUID del canal de Wazzup24
     const wazzupPayload = {
-      channelId: channelIdFormatted,
-      chatId: `${numeroNormalizado}@c.us`,
+      channelId: config.channel_id_uuid,
+      chatId: numeroNormalizado,
       chatType: 'whatsapp',
       text: texto
     };
