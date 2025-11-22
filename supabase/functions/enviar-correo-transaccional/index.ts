@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,15 +39,20 @@ serve(async (req) => {
       throw new Error('No hay configuración de correo activa');
     }
 
+    // Validar que sea SMTP
+    if (config.tipo_integracion !== 'smtp') {
+      throw new Error('Esta función solo soporta SMTP. Use SendGrid para API.');
+    }
+
     // Obtener tipo de notificación
     const { data: tipoNotif, error: tipoError } = await supabaseClient
       .from('correo_tipos_notificacion')
-      .select('id, activo')
+      .select('id, activo, enviar_por_correo')
       .eq('codigo', tipo)
       .single();
 
-    if (tipoError || !tipoNotif || !tipoNotif.activo) {
-      throw new Error(`Tipo de notificación '${tipo}' no está activo o no existe`);
+    if (tipoError || !tipoNotif || !tipoNotif.activo || !tipoNotif.enviar_por_correo) {
+      throw new Error(`Tipo de notificación '${tipo}' no está configurado para correo`);
     }
 
     // Obtener plantilla
@@ -74,35 +80,90 @@ serve(async (req) => {
       cuerpo = cuerpo.replace(regex, datos[key] || '');
     });
 
-    // Enviar correo (simulado - aquí debes integrar con SMTP o SendGrid real)
-    console.log('Enviando correo:', {
-      from: `${config.remitente_nombre} <${config.remitente_email}>`,
-      to: destinatario,
-      subject: asunto,
-      html: cuerpo
+    console.log('Configurando SMTP:', {
+      hostname: config.servidor,
+      port: config.puerto,
+      username: config.usuario
     });
 
-    // Registrar en historial
-    await supabaseClient
-      .from('correo_historial_envios')
-      .insert({
-        tipo_notificacion_id: tipoNotif.id,
-        tipo_notificacion_codigo: tipo,
-        destinatario_email: destinatario,
-        destinatario_nombre: datos.nombre || null,
-        asunto,
-        cuerpo_html: cuerpo,
-        estado: 'enviado',
-        evento_id: evento_id || null
+    // Configurar cliente SMTP
+    const client = new SMTPClient({
+      connection: {
+        hostname: config.servidor,
+        port: config.puerto,
+        tls: config.seguridad === 'ssl' || config.seguridad === 'tls',
+        auth: {
+          username: config.usuario,
+          password: config.password_encriptado,
+        },
+      },
+    });
+
+    // Enviar correo
+    try {
+      await client.send({
+        from: `${config.remitente_nombre} <${config.remitente_email}>`,
+        to: destinatario,
+        subject: asunto,
+        content: cuerpo,
+        html: cuerpo,
       });
 
-    return new Response(
-      JSON.stringify({ success: true, message: 'Correo enviado exitosamente' }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      console.log('Correo enviado exitosamente a:', destinatario);
+
+      // Cerrar conexión
+      await client.close();
+
+      // Registrar en historial como exitoso
+      await supabaseClient
+        .from('correo_historial_envios')
+        .insert({
+          tipo_notificacion_id: tipoNotif.id,
+          tipo_notificacion_codigo: tipo,
+          destinatario_email: destinatario,
+          destinatario_nombre: datos.nombre || null,
+          asunto,
+          cuerpo_html: cuerpo,
+          estado: 'enviado',
+          canal_envio: 'correo',
+          evento_id: evento_id || null
+        });
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Correo enviado exitosamente' }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    } catch (smtpError: any) {
+      console.error('Error SMTP:', smtpError);
+
+      // Cerrar conexión en caso de error
+      try {
+        await client.close();
+      } catch (e) {
+        // Ignorar errores al cerrar
       }
-    );
+
+      // Registrar en historial como fallido
+      await supabaseClient
+        .from('correo_historial_envios')
+        .insert({
+          tipo_notificacion_id: tipoNotif.id,
+          tipo_notificacion_codigo: tipo,
+          destinatario_email: destinatario,
+          destinatario_nombre: datos.nombre || null,
+          asunto,
+          cuerpo_html: cuerpo,
+          estado: 'fallido',
+          error_mensaje: smtpError.message || 'Error al enviar correo',
+          canal_envio: 'correo',
+          evento_id: evento_id || null
+        });
+
+      throw new Error(`Error SMTP: ${smtpError.message}`);
+    }
   } catch (error: any) {
     console.error('Error al enviar correo:', error);
 
