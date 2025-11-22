@@ -22,6 +22,8 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
   });
   const [showPassword, setShowPassword] = useState(false);
   const [testEmail, setTestEmail] = useState('');
+  const [testAsunto, setTestAsunto] = useState('Prueba de Correo - MOVI Digital');
+  const [testMensaje, setTestMensaje] = useState('Hola!\n\nEste es un mensaje de prueba del sistema de notificaciones por correo electrónico de MOVI Digital.\n\nSi recibes este correo, la configuración está funcionando correctamente. ✅\n\nSaludos,\nEquipo MOVI Digital');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -103,42 +105,40 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
       return;
     }
 
+    if (!testAsunto.trim()) {
+      setMessage({ type: 'error', text: 'Ingresa un asunto para el correo' });
+      return;
+    }
+
+    if (!testMensaje.trim()) {
+      setMessage({ type: 'error', text: 'Ingresa un mensaje para el correo' });
+      return;
+    }
+
     setMessage(null);
     setTesting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('enviar-correo-transaccional', {
+      const { data, error } = await supabase.functions.invoke('test-email', {
         body: {
-          tipo: 'prueba',
           destinatario: testEmail,
-          datos: {
-            nombre: 'Usuario de Prueba'
-          }
+          asunto: testAsunto,
+          mensaje: testMensaje
         }
       });
 
       if (error) throw error;
 
-      const updateData: any = {
-        ultima_prueba: new Date().toISOString(),
-        estado_ultima_prueba: data?.success ? 'Exitoso' : 'Fallido'
-      };
-
-      if (config?.id) {
-        await supabase
-          .from('correo_configuracion')
-          .update(updateData)
-          .eq('id', config.id);
-      }
-
       setMessage({
         type: data?.success ? 'success' : 'error',
         text: data?.success
-          ? 'Correo de prueba enviado exitosamente'
-          : 'Error al enviar correo de prueba'
+          ? `✅ Correo enviado exitosamente a ${data.destinatario}${data.resend_id ? ` (ID: ${data.resend_id})` : ''}`
+          : `❌ ${data?.error || 'Error al enviar correo de prueba'}`
       });
 
-      onConfigSaved();
+      if (data?.success) {
+        onConfigSaved();
+      }
     } catch (error: any) {
       console.error('Error al enviar prueba:', error);
       setMessage({ type: 'error', text: error.message || 'Error al enviar correo de prueba' });
@@ -371,28 +371,70 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
       {/* Prueba de Envío */}
       {config?.id && (
         <div className="border-t border-neutral-200 pt-6">
-          <h3 className="text-lg font-semibold text-neutral-800 mb-4">Prueba de Envío</h3>
-          <div className="flex gap-3">
-            <input
-              type="email"
-              value={testEmail}
-              onChange={(e) => setTestEmail(e.target.value)}
-              placeholder="correo@ejemplo.com"
-              className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
+          <h3 className="text-lg font-semibold text-neutral-800 mb-4 flex items-center gap-2">
+            <Send className="w-5 h-5 text-primary-600" />
+            Prueba de Envío por Correo
+          </h3>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Correo Destino *
+              </label>
+              <input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="tucorreo@ejemplo.com"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+              <p className="text-xs text-neutral-600 mt-1">
+                📧 Ingresa el correo donde recibirás el mensaje de prueba
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Asunto del Correo *
+              </label>
+              <input
+                type="text"
+                value={testAsunto}
+                onChange={(e) => setTestAsunto(e.target.value)}
+                placeholder="Asunto del mensaje..."
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+              <p className="text-xs text-neutral-600 mt-1">
+                📝 Personaliza el asunto del correo de prueba
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Mensaje Personalizado *
+              </label>
+              <textarea
+                value={testMensaje}
+                onChange={(e) => setTestMensaje(e.target.value)}
+                rows={6}
+                placeholder="Escribe tu mensaje de prueba aquí..."
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+              />
+              <p className="text-xs text-neutral-600 mt-1">
+                💬 Personaliza el contenido del correo. Se enviará con formato HTML automático.
+              </p>
+            </div>
+
             <button
               type="button"
               onClick={handleTestEmail}
-              disabled={testing || !testEmail}
-              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium"
+              disabled={testing || !testEmail || !testAsunto.trim() || !testMensaje.trim()}
+              className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
             >
               <Send className="w-5 h-5" />
-              {testing ? 'Enviando...' : 'Enviar Prueba'}
+              {testing ? 'Enviando correo...' : 'Enviar Prueba por Correo'}
             </button>
           </div>
-          <p className="text-sm text-neutral-600 mt-2">
-            Se enviará un correo de prueba a la dirección especificada
-          </p>
         </div>
       )}
     </div>

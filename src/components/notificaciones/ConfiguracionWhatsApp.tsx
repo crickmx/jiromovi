@@ -15,6 +15,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
   });
   const [showApiKey, setShowApiKey] = useState(false);
   const [testNumero, setTestNumero] = useState('');
+  const [testMensaje, setTestMensaje] = useState('Hola! 👋\n\nEste es un mensaje de prueba desde MOVI Digital.\n\nSistema de notificaciones por WhatsApp funcionando correctamente. ✅');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -74,46 +75,34 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
       return;
     }
 
+    if (!testMensaje.trim()) {
+      setMessage({ type: 'error', text: 'Ingresa un mensaje para la prueba' });
+      return;
+    }
+
     setMessage(null);
     setTesting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('enviar-whatsapp', {
+      const { data, error } = await supabase.functions.invoke('test-whatsapp', {
         body: {
-          tipo: 'bienvenida',
           numero: testNumero,
-          datos: {
-            nombre: 'Usuario de Prueba',
-            apellidos: '',
-            email: 'prueba@movi.digital',
-            email_laboral: 'prueba@movi.digital',
-            rol: 'Usuario de Prueba'
-          }
+          mensaje: testMensaje
         }
       });
 
       if (error) throw error;
 
-      const updateData: any = {
-        ultima_prueba: new Date().toISOString(),
-        estado_ultima_prueba: data?.success ? 'Exitoso' : 'Fallido'
-      };
-
-      if (config?.id) {
-        await supabase
-          .from('whatsapp_configuracion')
-          .update(updateData)
-          .eq('id', config.id);
-      }
-
       setMessage({
         type: data?.success ? 'success' : 'error',
         text: data?.success
-          ? 'Mensaje de WhatsApp enviado exitosamente'
-          : 'Error al enviar mensaje de WhatsApp'
+          ? `✅ Mensaje enviado exitosamente a ${data.numero_normalizado}`
+          : `❌ ${data?.error || 'Error al enviar mensaje de WhatsApp'}`
       });
 
-      onConfigSaved();
+      if (data?.success) {
+        onConfigSaved();
+      }
     } catch (error: any) {
       console.error('Error al enviar prueba:', error);
       setMessage({ type: 'error', text: error.message || 'Error al enviar mensaje de prueba' });
@@ -240,30 +229,54 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
       {/* Prueba de Envío */}
       {config?.id && (
         <div className="border-t border-neutral-200 pt-6">
-          <h3 className="text-lg font-semibold text-neutral-800 mb-4">
+          <h3 className="text-lg font-semibold text-neutral-800 mb-4 flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-emerald-600" />
             Prueba de Envío por WhatsApp
           </h3>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={testNumero}
-              onChange={(e) => setTestNumero(e.target.value)}
-              placeholder="5512345678 o 525512345678"
-              className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Número de WhatsApp *
+              </label>
+              <input
+                type="text"
+                value={testNumero}
+                onChange={(e) => setTestNumero(e.target.value)}
+                placeholder="5520206922 o 525520206922"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+              <p className="text-xs text-neutral-600 mt-1">
+                📱 Ingresa 10 dígitos o formato completo. El sistema normaliza automáticamente a formato México (52 + 10 dígitos).
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Mensaje Personalizado *
+              </label>
+              <textarea
+                value={testMensaje}
+                onChange={(e) => setTestMensaje(e.target.value)}
+                rows={5}
+                placeholder="Escribe tu mensaje de prueba aquí..."
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+              />
+              <p className="text-xs text-neutral-600 mt-1">
+                💬 Personaliza el mensaje que se enviará por WhatsApp. Puedes usar saltos de línea y emojis.
+              </p>
+            </div>
+
             <button
               type="button"
               onClick={handleTestWhatsApp}
-              disabled={testing || !testNumero}
-              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium"
+              disabled={testing || !testNumero || !testMensaje.trim()}
+              className="w-full px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
             >
               <Send className="w-5 h-5" />
-              {testing ? 'Enviando...' : 'Enviar Prueba'}
+              {testing ? 'Enviando mensaje...' : 'Enviar Prueba por WhatsApp'}
             </button>
           </div>
-          <p className="text-sm text-neutral-600 mt-2">
-            Ingresa 10 dígitos (5512345678) o formato completo (525512345678). El sistema normaliza automáticamente.
-          </p>
         </div>
       )}
     </div>
