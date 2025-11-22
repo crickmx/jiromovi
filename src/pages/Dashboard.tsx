@@ -9,6 +9,7 @@ import { ResumenVacaciones } from '../components/ResumenVacaciones';
 import { ProximasReservas } from '../components/ProximasReservas';
 import { TicketsWidget } from '../components/TicketsWidget';
 import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
+import { ProximosEventos } from '../components/ProximosEventos';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -251,6 +252,8 @@ export function Dashboard() {
           <ProximasReservas />
           <ProximasCapacitaciones />
         </div>
+
+        <ProximosEventos />
       </div>
     );
   }
@@ -519,6 +522,8 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+
+      <ProximosEventos />
     </div>
   );
 }
