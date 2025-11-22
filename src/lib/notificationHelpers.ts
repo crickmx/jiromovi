@@ -40,7 +40,8 @@ export async function crearNotificacionGlobal(
     rol?: string;
     user_id?: string;
   },
-  enviado_por: string
+  enviado_por: string,
+  enviar_whatsapp: boolean = false
 ) {
   try {
     const { error } = await supabase.rpc('enviar_notificacion_global', {
@@ -49,6 +50,7 @@ export async function crearNotificacionGlobal(
       p_accion_url: accion_url,
       p_destinatarios: destinatarios,
       p_enviado_por: enviado_por,
+      p_enviar_whatsapp: enviar_whatsapp,
     });
 
     if (error) throw error;

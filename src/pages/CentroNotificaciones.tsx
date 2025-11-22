@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Send, Users, Building2, UserCheck, Megaphone, Bell, CheckCircle } from 'lucide-react';
+import { Send, Users, Building2, UserCheck, Megaphone, Bell, CheckCircle, MessageCircle } from 'lucide-react';
 import { crearNotificacionGlobal } from '../lib/notificationHelpers';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -38,6 +38,7 @@ export function CentroNotificaciones() {
     oficina_id: '',
     rol: '',
     user_id: '',
+    enviar_whatsapp: false,
   });
 
   const roles = ['Administrador', 'Gerente', 'Empleado', 'Agente'];
@@ -103,7 +104,8 @@ export function CentroNotificaciones() {
         formData.mensaje,
         formData.accion_url || null,
         destinatarios,
-        usuario.id
+        usuario.id,
+        formData.enviar_whatsapp
       );
 
       if (result.success) {
@@ -116,6 +118,7 @@ export function CentroNotificaciones() {
           oficina_id: '',
           rol: '',
           user_id: '',
+          enviar_whatsapp: false,
         });
         fetchData();
       } else {
@@ -319,6 +322,63 @@ export function CentroNotificaciones() {
                   Esta función requiere buscar usuarios. Por ahora, usa oficina o rol.
                 </p>
               )}
+            </div>
+
+            {/* Canales de Envío */}
+            <div className="border-t border-neutral-200 pt-4">
+              <label className="block text-sm font-semibold text-neutral-700 mb-3">
+                Canales de Envío
+              </label>
+
+              <div className="space-y-3">
+                {/* Notificación Push (siempre activa) */}
+                <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Bell className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-blue-900">Notificación Push (Campanita)</span>
+                      <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">Siempre</span>
+                    </div>
+                    <p className="text-xs text-blue-700 mt-1">
+                      Se enviará una notificación en el sistema a todos los destinatarios seleccionados
+                    </p>
+                  </div>
+                </div>
+
+                {/* WhatsApp Opcional */}
+                <div className={`flex items-start gap-3 p-3 border rounded-lg transition-colors ${
+                  formData.enviar_whatsapp
+                    ? 'bg-emerald-50 border-emerald-200'
+                    : 'bg-neutral-50 border-neutral-200'
+                }`}>
+                  <MessageCircle className={`w-5 h-5 mt-0.5 ${
+                    formData.enviar_whatsapp ? 'text-emerald-600' : 'text-neutral-400'
+                  }`} />
+                  <div className="flex-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.enviar_whatsapp}
+                        onChange={(e) => setFormData({ ...formData, enviar_whatsapp: e.target.checked })}
+                        className="w-4 h-4 text-emerald-600 border-neutral-300 rounded focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <span className={`font-medium ${
+                        formData.enviar_whatsapp ? 'text-emerald-900' : 'text-neutral-700'
+                      }`}>
+                        Enviar también por WhatsApp
+                      </span>
+                    </label>
+                    <p className={`text-xs mt-1 ${
+                      formData.enviar_whatsapp ? 'text-emerald-700' : 'text-neutral-500'
+                    }`}>
+                      {formData.enviar_whatsapp
+                        ? 'Se enviará el mensaje por WhatsApp a todos los usuarios que tengan número de teléfono'
+                        : 'Marca esta opción para enviar el mensaje también por WhatsApp'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end pt-4">
