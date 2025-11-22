@@ -12,7 +12,7 @@ export function Layout({ children }: LayoutProps) {
   const { usuario, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleSignOut = async () => {
     await signOut();
@@ -44,7 +44,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-neutral-200 shadow-soft transform transition-all duration-300 ease-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-neutral-200 shadow-soft transform transition-all duration-300 ease-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
             <a href="/dashboard" className="flex items-center transition-transform hover:scale-105">
@@ -56,7 +56,8 @@ export function Layout({ children }: LayoutProps) {
             </a>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 p-2 rounded-lg transition-all"
+              className="text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 p-2 rounded-lg transition-all"
+              title="Cerrar menú"
             >
               <X className="w-5 h-5" />
             </button>
@@ -136,12 +137,14 @@ export function Layout({ children }: LayoutProps) {
         />
       )}
 
-      <div className="flex-1 lg:ml-72">
+      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>
+        {/* Mobile Header */}
         <header className="bg-white/80 backdrop-blur-md border-b border-neutral-200 sticky top-0 z-30 shadow-soft lg:hidden">
           <div className="flex items-center justify-between px-4 py-3.5">
             <button
               onClick={() => setSidebarOpen(true)}
               className="text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 p-2 rounded-lg transition-all"
+              title="Abrir menú"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -154,9 +157,16 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </header>
 
-        {/* Desktop Header with Notification Bell */}
+        {/* Desktop Header with Menu Button and Notification Bell */}
         <header className="hidden lg:block bg-white/80 backdrop-blur-md border-b border-neutral-200 sticky top-0 z-30 shadow-soft">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-end">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 p-2 rounded-lg transition-all"
+              title={sidebarOpen ? "Cerrar menú" : "Abrir menú"}
+            >
+              <Menu className="w-6 h-6" />
+            </button>
             <NotificationBell />
           </div>
         </header>
