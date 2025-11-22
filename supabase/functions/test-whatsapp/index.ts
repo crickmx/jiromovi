@@ -41,7 +41,15 @@ Deno.serve(async (req) => {
       throw new Error('No hay configuración de WhatsApp activa');
     }
 
-    console.log('Configuración encontrada');
+    console.log('Configuración encontrada:', JSON.stringify(config));
+
+    if (!config.numero_remitente) {
+      throw new Error('El número remitente no está configurado');
+    }
+
+    if (!config.api_key) {
+      throw new Error('El API key no está configurado');
+    }
 
     let numeroNormalizado = numero.replace(/[^0-9]/g, '');
 
@@ -58,7 +66,12 @@ Deno.serve(async (req) => {
       text: mensaje
     };
 
-    console.log('Enviando a Wazzup24:', wazzupPayload);
+    console.log('=== PAYLOAD COMPLETO ===');
+    console.log('channelId:', wazzupPayload.channelId);
+    console.log('chatId:', wazzupPayload.chatId);
+    console.log('chatType:', wazzupPayload.chatType);
+    console.log('text length:', wazzupPayload.text.length);
+    console.log('Payload JSON:', JSON.stringify(wazzupPayload, null, 2));
 
     const wazzupResponse = await fetch('https://api.wazzup24.com/v3/message', {
       method: 'POST',

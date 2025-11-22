@@ -9,13 +9,14 @@ interface ConfiguracionSMTPProps {
 
 export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPProps) {
   const [formData, setFormData] = useState({
-    tipo_integracion: 'smtp' as 'smtp' | 'sendgrid',
+    tipo_integracion: 'resend' as 'smtp' | 'sendgrid' | 'resend',
     servidor: '',
     puerto: 587,
     usuario: '',
     password: '',
     seguridad: 'tls' as 'tls' | 'ssl' | 'none',
     api_key: '',
+    resend_api_key: '',
     remitente_nombre: '',
     remitente_email: '',
     activo: false
@@ -31,13 +32,14 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
   useEffect(() => {
     if (config) {
       setFormData({
-        tipo_integracion: config.tipo_integracion || 'smtp',
+        tipo_integracion: config.tipo_integracion || 'resend',
         servidor: config.servidor || '',
         puerto: config.puerto || 587,
         usuario: config.usuario || '',
         password: '',
         seguridad: config.seguridad || 'tls',
         api_key: '',
+        resend_api_key: '',
         remitente_nombre: config.remitente_nombre || '',
         remitente_email: config.remitente_email || '',
         activo: config.activo || false
@@ -68,9 +70,13 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
         if (formData.password) {
           dataToSave.password_encriptado = formData.password;
         }
-      } else {
+      } else if (formData.tipo_integracion === 'sendgrid') {
         if (formData.api_key) {
           dataToSave.api_key_encriptada = formData.api_key;
+        }
+      } else if (formData.tipo_integracion === 'resend') {
+        if (formData.resend_api_key) {
+          dataToSave.resend_api_key = formData.resend_api_key;
         }
       }
 
@@ -171,6 +177,16 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
             Tipo de Integración
           </label>
           <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                value="resend"
+                checked={formData.tipo_integracion === 'resend'}
+                onChange={(e) => setFormData({ ...formData, tipo_integracion: e.target.value as 'resend' })}
+                className="w-4 h-4 text-primary-600"
+              />
+              <span className="text-sm text-neutral-700 font-medium">Resend (Recomendado)</span>
+            </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
@@ -302,6 +318,45 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Configuración Resend */}
+        {formData.tipo_integracion === 'resend' && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Resend</strong> es un servicio de email moderno y confiable. Obtén tu API key en{' '}
+                <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">
+                  resend.com/api-keys
+                </a>
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                Resend API Key {config?.id && '(dejar en blanco para mantener actual)'}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.resend_api_key}
+                  onChange={(e) => setFormData({ ...formData, resend_api_key: e.target.value })}
+                  required={!config?.id}
+                  className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="re_xxxxxxxxxxxx"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              <p className="text-xs text-neutral-600 mt-1">
+                La API key comienza con "re_" y la puedes generar en tu dashboard de Resend
+              </p>
             </div>
           </div>
         )}
