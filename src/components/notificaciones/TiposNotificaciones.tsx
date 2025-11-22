@@ -35,6 +35,17 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
+
+      console.log('=== TIPOS CARGADOS ===');
+      console.log('Total:', data?.length);
+      if (data && data.length > 0) {
+        console.log('Ejemplo:', {
+          nombre: data[0].nombre,
+          correo: data[0].enviar_por_correo,
+          whatsapp: data[0].enviar_por_whatsapp
+        });
+      }
+
       setTipos(data || []);
     } catch (error) {
       console.error('Error al cargar tipos:', error);
@@ -124,7 +135,13 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       )}
 
       <div className="space-y-3">
-        {tipos.map((tipo) => (
+        {tipos.map((tipo) => {
+          console.log(`Render ${tipo.nombre}:`, {
+            correo: tipo.enviar_por_correo,
+            whatsapp: tipo.enviar_por_whatsapp
+          });
+
+          return (
           <div
             key={tipo.id}
             className="bg-white rounded-lg border border-neutral-200 hover:border-neutral-300 transition-colors"
@@ -241,7 +258,8 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {tipos.length === 0 && (

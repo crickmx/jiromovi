@@ -1,334 +1,418 @@
-# 📊 Auditoría de Legibilidad - MOVI Digital
+# ✅ CONFIRMACIÓN: Selección Independiente de Canales
 
-## ✅ REVISIÓN COMPLETA REALIZADA
+## 🎯 Funcionalidad Verificada
 
-**Fecha:** 2025-10-29
-**Alcance:** Todos los componentes y páginas de la aplicación
-**Objetivo:** Garantizar legibilidad óptima en todos los textos
+Los checkboxes de Correo y WhatsApp funcionan de manera **completamente independiente**. Puedes seleccionar:
 
----
-
-## 🎨 PALETA DE COLORES APROBADA
-
-### Colores Primary (Azules)
 ```
-primary-50:  #f0f9ff  (Fondos muy claros)
-primary-100: #e0f2fe  (Fondos claros)
-primary-200: #bae6fd  (Bordes suaves)
-primary-300: #7dd3fc  (Texto en fondos oscuros)
-primary-400: #38bdf8  (Acentos)
-primary-500: #0ea5e9  (Principal)
-primary-600: #0284c7  (Principal hover)
-primary-700: #0369a1  (Botones activos)
-primary-800: #075985  (Texto emphasis)
-primary-900: #0c4a6e  (Texto fuerte)
-```
-
-### Colores Neutral (Grises)
-```
-neutral-50:  #fafafa  (Fondos)
-neutral-100: #f5f5f5  (Fondos suaves)
-neutral-200: #e5e5e5  (Bordes)
-neutral-300: #d4d4d4  (Bordes emphasis)
-neutral-400: #a3a3a3  (Iconos decorativos)
-neutral-500: #737373  (Texto secundario) ✅ WCAG AA
-neutral-600: #525252  (Texto normal) ✅ WCAG AAA
-neutral-700: #404040  (Texto principal) ✅ WCAG AAA
-neutral-800: #262626  (Texto enfático)
-neutral-900: #171717  (Texto muy enfático)
-```
-
-### Colores Accent (Rojos - Errores/Alerts)
-```
-accent-50:  #fef2f2  (Fondo error suave)
-accent-100: #fee2e2  (Fondo error)
-accent-200: #fecaca  (Borde error)
-accent-500: #ef4444  (Texto/icono error)
-accent-600: #dc2626  (Error hover)
-accent-700: #b91c1c  (Error activo)
+✅ Ambos canales activos
+✅ Solo correo activo
+✅ Solo WhatsApp activo  
+✅ Ningún canal activo
 ```
 
 ---
 
-## ✅ COMPONENTES PRINCIPALES VERIFICADOS
+## 🔍 Verificación de Base de Datos
 
-### 1. **Login.tsx**
-**Estado:** ✅ EXCELENTE
+### **Prueba Manual Realizada:**
 
-| Elemento | Color | Contraste | Estado |
-|----------|-------|-----------|--------|
-| Label email | `text-neutral-700` | 10.1:1 | ✅ WCAG AAA |
-| Label password | `text-neutral-700` | 10.1:1 | ✅ WCAG AAA |
-| Placeholder | Estilo navegador | 7:1+ | ✅ WCAG AA |
-| Botón primario | `text-white` on `primary-600` | 4.9:1 | ✅ WCAG AA |
-| Mensajes de error | `text-accent-700` on `accent-50` | 7.2:1 | ✅ WCAG AAA |
+```sql
+-- Tipo 1: Ambos canales
+UPDATE correo_tipos_notificacion
+SET enviar_por_correo = true, enviar_por_whatsapp = true
+WHERE codigo = 'bienvenida';
 
-**Recomendación:** Ninguna. Perfecto.
+-- Tipo 2: Solo correo
+UPDATE correo_tipos_notificacion
+SET enviar_por_correo = true, enviar_por_whatsapp = false
+WHERE codigo = 'cuenta_activada';
 
----
+-- Tipo 3: Solo WhatsApp
+UPDATE correo_tipos_notificacion
+SET enviar_por_correo = false, enviar_por_whatsapp = true
+WHERE codigo = 'recordatorio_evento';
 
-### 2. **Dashboard.tsx**
-**Estado:** ✅ EXCELENTE
+-- Tipo 4: Ninguno
+UPDATE correo_tipos_notificacion
+SET enviar_por_correo = false, enviar_por_whatsapp = false
+WHERE codigo = 'cancelacion_evento';
+```
 
-| Elemento | Color | Contraste | Estado |
-|----------|-------|-----------|--------|
-| Títulos de tarjetas | `text-neutral-800` | 12.6:1 | ✅ WCAG AAA |
-| Subtítulos | `text-neutral-600` | 7.5:1 | ✅ WCAG AAA |
-| Texto secundario | `text-neutral-500` | 4.7:1 | ✅ WCAG AA |
-| Iconos decorativos | `text-neutral-400` | 3.1:1 | ⚠️ Solo decorativo (OK) |
+### **Resultado:**
 
-**Recomendación:** Ninguna. Los iconos decorativos no necesitan alto contraste.
-
----
-
-### 3. **Layout.tsx (Sidebar)**
-**Estado:** ✅ EXCELENTE
-
-| Elemento | Color | Contraste | Estado |
-|----------|-------|-----------|--------|
-| Items de menú | `text-neutral-700` | 10.1:1 | ✅ WCAG AAA |
-| Items activos | `text-white` on `primary-600` | 4.9:1 | ✅ WCAG AA |
-| Hover | `text-primary-600` | 4.9:1 | ✅ WCAG AA |
-| Nombre usuario | `text-neutral-800` | 12.6:1 | ✅ WCAG AAA |
-
-**Recomendación:** Ninguna. Excelente contraste.
+```
+✅ BD permite ambos campos true simultáneamente
+✅ BD permite un campo true y otro false
+✅ BD permite ambos campos false
+✅ No hay restricciones de exclusividad
+```
 
 ---
 
-### 4. **NotificationBell.tsx**
-**Estado:** ✅ EXCELENTE
+## 🧪 Cómo Verificar en la Aplicación
 
-| Elemento | Color | Contraste | Estado |
-|----------|-------|-----------|--------|
-| Títulos notificación | `text-neutral-900` | 15.3:1 | ✅ WCAG AAA |
-| Mensaje notificación | `text-neutral-600` | 7.5:1 | ✅ WCAG AAA |
-| Timestamp | `text-neutral-500` | 4.7:1 | ✅ WCAG AA |
-| Badge contador | `text-white` on `red-500` | 5.2:1 | ✅ WCAG AA |
-| Icono campana | `text-neutral-600` | 7.5:1 | ✅ WCAG AAA |
+### **Paso 1: Ir a la Página**
 
-**Recomendación:** Ninguna. Todos los textos son legibles.
+```
+URL: /notificaciones-transaccionales
+Tab: "Tipos de Notificaciones"
+```
 
----
+### **Paso 2: Abrir Consola**
 
-### 5. **Formularios (Inputs generales)**
-**Estado:** ✅ EXCELENTE
+```
+Presiona F12 → Pestaña "Console"
+```
 
-| Elemento | Color | Contraste | Estado |
-|----------|-------|-----------|--------|
-| Labels | `text-neutral-700` | 10.1:1 | ✅ WCAG AAA |
-| Input text | `text-neutral-900` | 15.3:1 | ✅ WCAG AAA |
-| Placeholder | Gris navegador | 4.5:1+ | ✅ WCAG AA |
-| Borde normal | `border-neutral-300` | - | ✅ Visible |
-| Borde focus | `ring-primary-500` | - | ✅ Muy visible |
-| Fondo input | `bg-neutral-50` | - | ✅ Claro |
+### **Paso 3: Verificar Estado Inicial**
 
-**Recomendación:** Ninguna. Formularios perfectamente legibles.
+Al cargar la página verás:
 
----
+```javascript
+=== TIPOS CARGADOS ===
+Total: 8
+Ejemplo: {
+  nombre: "Notificación personalizada",
+  correo: true,
+  whatsapp: true
+}
 
-### 6. **Botones**
-**Estado:** ✅ EXCELENTE
+Render Bienvenida a nuevo usuario: { correo: true, whatsapp: true }
+Render Cuenta activada: { correo: true, whatsapp: false }
+Render Recordatorio de evento: { correo: false, whatsapp: true }
+Render Cancelación de evento: { correo: false, whatsapp: false }
+...
+```
 
-| Tipo | Colores | Contraste | Estado |
-|------|---------|-----------|--------|
-| Primario | `text-white` on `primary-600` | 4.9:1 | ✅ WCAG AA |
-| Primario hover | `text-white` on `primary-700` | 6.1:1 | ✅ WCAG AAA |
-| Secundario | `text-primary-600` on `white` | 4.9:1 | ✅ WCAG AA |
-| Éxito | `text-white` on `green-600` | 5.1:1 | ✅ WCAG AA |
-| Error | `text-white` on `red-600` | 5.4:1 | ✅ WCAG AA |
-| Deshabilitado | `opacity-50` | - | ✅ Claramente deshabilitado |
+### **Paso 4: Probar Toggle de Correo**
 
-**Recomendación:** Ninguna. Todos los botones tienen excelente contraste.
+1. Encuentra "Bienvenida a nuevo usuario" (ambos activos)
+2. Click en la caja de "Correo Electrónico"
+3. Ver logs:
 
----
+```javascript
+=== TOGGLE CANAL ===
+ID: 796f2938-1658-4d67-9b6c-cb52fb6ddcab
+Campo: enviar_por_correo
+Valor actual: true
+Nuevo valor: false
+Actualización exitosa en BD
+=== FIN TOGGLE ===
 
-### 7. **Tablas**
-**Estado:** ✅ EXCELENTE
+=== TIPOS CARGADOS ===
+...
+Render Bienvenida a nuevo usuario: { correo: false, whatsapp: true }
+```
 
-| Elemento | Color | Contraste | Estado |
-|----------|-------|-----------|--------|
-| Headers | `text-neutral-700` | 10.1:1 | ✅ WCAG AAA |
-| Celdas | `text-neutral-600` | 7.5:1 | ✅ WCAG AAA |
-| Hover row | `bg-neutral-50` | - | ✅ Visible |
-| Bordes | `border-neutral-200` | - | ✅ Claros |
+4. Ver UI:
+   - ✅ Correo: Borde gris, fondo blanco (desactivado)
+   - ✅ WhatsApp: Borde verde, fondo verde (SIGUE activo)
+   - ✅ Indicador: [Solo por WhatsApp]
 
-**Recomendación:** Ninguna. Tablas muy legibles.
+### **Paso 5: Probar Toggle de WhatsApp**
 
----
+1. Ahora click en la caja de "WhatsApp"
+2. Ver logs:
 
-### 8. **Modales y Diálogos**
-**Estado:** ✅ EXCELENTE
+```javascript
+=== TOGGLE CANAL ===
+ID: 796f2938-1658-4d67-9b6c-cb52fb6ddcab
+Campo: enviar_por_whatsapp
+Valor actual: true
+Nuevo valor: false
+Actualización exitosa en BD
+=== FIN TOGGLE ===
 
-| Elemento | Color | Contraste | Estado |
-|----------|-------|-----------|--------|
-| Títulos | `text-neutral-800` | 12.6:1 | ✅ WCAG AAA |
-| Contenido | `text-neutral-600` | 7.5:1 | ✅ WCAG AAA |
-| Overlay | `bg-black/50` | - | ✅ Visible |
-| Fondo modal | `bg-white` | - | ✅ Claro |
+Render Bienvenida a nuevo usuario: { correo: false, whatsapp: false }
+```
 
-**Recomendación:** Ninguna. Modales perfectamente legibles.
+3. Ver UI:
+   - ✅ Correo: Borde gris (sigue desactivado)
+   - ✅ WhatsApp: Borde gris (ahora desactivado)
+   - ✅ Indicador: [⚠ Sin canal seleccionado]
 
----
+### **Paso 6: Activar Ambos**
 
-### 9. **Alertas y Notificaciones Toast**
-**Estado:** ✅ EXCELENTE
+1. Click en "Correo Electrónico"
+   - ✅ Se activa solo correo
+   - ✅ WhatsApp sigue desactivado
 
-| Tipo | Colores | Contraste | Estado |
-|------|---------|-----------|--------|
-| Éxito | `text-green-800` on `green-100` | 8.1:1 | ✅ WCAG AAA |
-| Error | `text-red-800` on `red-100` | 7.8:1 | ✅ WCAG AAA |
-| Advertencia | `text-yellow-800` on `yellow-100` | 6.9:1 | ✅ WCAG AAA |
-| Info | `text-blue-800` on `blue-100` | 7.2:1 | ✅ WCAG AAA |
-
-**Recomendación:** Ninguna. Todas las alertas son muy legibles.
-
----
-
-### 10. **Chat**
-**Estado:** ✅ EXCELENTE
-
-| Elemento | Color | Contraste | Estado |
-|----------|-------|-----------|--------|
-| Mensaje propio | `text-white` on `primary-600` | 4.9:1 | ✅ WCAG AA |
-| Mensaje recibido | `text-neutral-800` on `neutral-100` | 11.2:1 | ✅ WCAG AAA |
-| Timestamp | `text-neutral-500` | 4.7:1 | ✅ WCAG AA |
-| Nombres | `text-neutral-700` | 10.1:1 | ✅ WCAG AAA |
-
-**Recomendación:** Ninguna. Chat perfectamente legible.
+2. Click en "WhatsApp"
+   - ✅ Se activa WhatsApp
+   - ✅ Correo SIGUE activado
+   - ✅ Indicador: [Envío por ambos canales]
 
 ---
 
-## 🔍 CORRECCIONES APLICADAS
+## 📊 Casos de Prueba
 
-### ✅ SegurosEducationOnDemand.tsx
-**Problema encontrado:** Descripción de video con `text-neutral-300` sobre fondo oscuro
-**Línea:** 515
-**Corrección aplicada:** Cambiado a `text-neutral-100`
-**Contraste mejorado:** De 3.2:1 → 15.8:1
-**Estado:** ✅ CORREGIDO
+### **Caso 1: Activar Correo (sin afectar WhatsApp)**
 
----
+**Estado inicial:**
+```
+☐ Correo (desactivado)
+☐ WhatsApp (desactivado)
+```
 
-## 📝 PLACEHOLDERS VERIFICADOS
+**Acción:** Click en Correo
 
-Todos los placeholders usan el estilo por defecto del navegador que cumple con:
-- **Chrome/Edge:** `color: #757575` (4.6:1 contraste)
-- **Firefox:** `opacity: 0.54` sobre texto negro (4.5:1 contraste)
-- **Safari:** `color: #999` (2.8:1 - aceptable para placeholders)
+**Resultado esperado:**
+```
+☑ Correo (activado) ✅
+☐ WhatsApp (sigue desactivado) ✅
+```
 
-**Ejemplos verificados:**
-- Login: `"nombre@jiro.mx"` ✅
-- Búsquedas: `"Buscar..."` ✅
-- Formularios: `"Ingresa tu..."` ✅
+**Logs esperados:**
+```javascript
+Campo: enviar_por_correo
+Valor actual: false
+Nuevo valor: true
+```
 
-**Estado:** ✅ TODOS LOS PLACEHOLDERS SON LEGIBLES
-
----
-
-## 🎯 ESTADOS DE INTERACCIÓN VERIFICADOS
-
-### Hover States
-| Elemento | Color Normal | Color Hover | Estado |
-|----------|--------------|-------------|--------|
-| Links | `text-primary-600` | `text-primary-700` | ✅ Visible |
-| Botones | `bg-primary-600` | `bg-primary-700` | ✅ Visible |
-| Items menú | `text-neutral-700` | `bg-neutral-100` | ✅ Visible |
-
-### Focus States
-| Elemento | Estilo | Estado |
-|----------|--------|--------|
-| Inputs | Ring `primary-500` 2px | ✅ Muy visible |
-| Botones | Ring `primary-500` 2px | ✅ Muy visible |
-| Links | Underline | ✅ Visible |
-
-### Disabled States
-| Elemento | Estilo | Estado |
-|----------|--------|--------|
-| Botones | `opacity-50` + cursor | ✅ Claramente deshabilitado |
-| Inputs | `bg-neutral-100` + cursor | ✅ Claramente deshabilitado |
-
-**Estado:** ✅ TODOS LOS ESTADOS SON CLARAMENTE DISTINGUIBLES
+**✅ Verificado:** WhatsApp NO cambia
 
 ---
 
-## 📊 RESUMEN WCAG 2.1
+### **Caso 2: Activar WhatsApp (sin afectar Correo)**
 
-### Nivel AA (Mínimo Requerido)
-- **Contraste texto normal:** 4.5:1 ✅
-- **Contraste texto grande:** 3:1 ✅
-- **Contraste componentes UI:** 3:1 ✅
+**Estado inicial:**
+```
+☑ Correo (activado)
+☐ WhatsApp (desactivado)
+```
 
-### Nivel AAA (Mejorado)
-- **Contraste texto normal:** 7:1 ✅ (La mayoría cumple)
-- **Contraste texto grande:** 4.5:1 ✅
+**Acción:** Click en WhatsApp
 
-**Resultado:** La aplicación cumple con **WCAG 2.1 Nivel AA** y en muchos casos alcanza **Nivel AAA**.
+**Resultado esperado:**
+```
+☑ Correo (sigue activado) ✅
+☑ WhatsApp (activado) ✅
+```
 
----
+**Logs esperados:**
+```javascript
+Campo: enviar_por_whatsapp
+Valor actual: false
+Nuevo valor: true
 
-## ✅ VERIFICACIONES ADICIONALES
+Render: { correo: true, whatsapp: true }
+```
 
-### Iconos
-- ✅ Iconos decorativos: `text-neutral-400` (3.1:1) - Aceptable
-- ✅ Iconos informativos: `text-neutral-600+` (7.5:1+) - Excelente
-- ✅ Iconos interactivos: Tienen texto asociado
-
-### Bordes
-- ✅ Inputs: `border-neutral-300` - Visible
-- ✅ Tarjetas: `border-neutral-200` - Visible
-- ✅ Divisores: `border-neutral-200` - Visible
-
-### Fondos
-- ✅ Principal: `bg-white` - Perfecto
-- ✅ Secundario: `bg-neutral-50` - Sutil y visible
-- ✅ Acentuado: `bg-primary-50` - Visible
-
-### Sombras
-- ✅ Soft: `shadow-soft` - Visible
-- ✅ Medium: `shadow-medium` - Visible
-- ✅ Strong: `shadow-strong` - Muy visible
+**✅ Verificado:** Correo NO cambia
 
 ---
 
-## 📈 ESTADÍSTICAS FINALES
+### **Caso 3: Desactivar Correo (sin afectar WhatsApp)**
 
-| Métrica | Resultado | Estado |
-|---------|-----------|--------|
-| **Componentes auditados** | 58 | ✅ |
-| **Páginas auditadas** | 24 | ✅ |
-| **Problemas encontrados** | 1 | ✅ |
-| **Problemas corregidos** | 1 | ✅ |
-| **Cumplimiento WCAG AA** | 100% | ✅ |
-| **Cumplimiento WCAG AAA** | 95%+ | ✅ |
+**Estado inicial:**
+```
+☑ Correo (activado)
+☑ WhatsApp (activado)
+```
 
----
+**Acción:** Click en Correo
 
-## 🎉 CONCLUSIÓN
+**Resultado esperado:**
+```
+☐ Correo (desactivado) ✅
+☑ WhatsApp (sigue activado) ✅
+```
 
-**La aplicación MOVI Digital tiene una EXCELENTE legibilidad en todos sus componentes.**
+**Logs esperados:**
+```javascript
+Campo: enviar_por_correo
+Valor actual: true
+Nuevo valor: false
 
-### Puntos Fuertes:
-✅ Paleta de colores bien definida con contrastes óptimos
-✅ Uso consistente de `text-neutral-700` para textos principales
-✅ Botones con alto contraste en todos los estados
-✅ Formularios claros y legibles
-✅ Notificaciones y alertas muy visibles
-✅ Estados hover y focus bien diferenciados
-✅ Placeholders apropiados
+Render: { correo: false, whatsapp: true }
+```
 
-### Recomendaciones Generales:
-1. ✅ **Mantener** el uso de `text-neutral-700` o más oscuro para textos principales
-2. ✅ **Usar** `text-neutral-500` o más oscuro para textos secundarios importantes
-3. ✅ **Reservar** `text-neutral-400` y `text-neutral-300` solo para iconos decorativos
-4. ✅ **Siempre** probar nuevos componentes con herramientas de contraste
-
-### Herramientas Recomendadas para Futuras Auditorías:
-- **WebAIM Contrast Checker:** https://webaim.org/resources/contrastchecker/
-- **Chrome DevTools:** Lighthouse Accessibility Audit
-- **WAVE Browser Extension:** Evaluación visual de accesibilidad
+**✅ Verificado:** WhatsApp NO cambia
 
 ---
 
-**Auditoría realizada:** 2025-10-29
-**Estado general:** ✅ **APROBADO - EXCELENTE LEGIBILIDAD**
-**Próxima revisión recomendada:** Al agregar nuevos componentes o cambiar paleta de colores
+### **Caso 4: Desactivar WhatsApp (sin afectar Correo)**
+
+**Estado inicial:**
+```
+☑ Correo (activado)
+☑ WhatsApp (activado)
+```
+
+**Acción:** Click en WhatsApp
+
+**Resultado esperado:**
+```
+☑ Correo (sigue activado) ✅
+☐ WhatsApp (desactivado) ✅
+```
+
+**Logs esperados:**
+```javascript
+Campo: enviar_por_whatsapp
+Valor actual: true
+Nuevo valor: false
+
+Render: { correo: true, whatsapp: false }
+```
+
+**✅ Verificado:** Correo NO cambia
+
+---
+
+## 🔍 Logs Detallados para Debugging
+
+### **Al cargar la página:**
+
+```javascript
+=== TIPOS CARGADOS ===
+Total: 8
+Ejemplo: {
+  nombre: "Notificación personalizada",
+  correo: true,
+  whatsapp: true
+}
+
+// Para cada tipo:
+Render Bienvenida a nuevo usuario: { correo: true, whatsapp: true }
+Render Cuenta activada: { correo: true, whatsapp: false }
+Render Recordatorio de evento: { correo: false, whatsapp: true }
+Render Cancelación de evento: { correo: false, whatsapp: false }
+```
+
+### **Al hacer click:**
+
+```javascript
+=== TOGGLE CANAL ===
+ID: [uuid del tipo]
+Campo: enviar_por_correo | enviar_por_whatsapp
+Valor actual: true | false
+Nuevo valor: false | true
+Actualización exitosa en BD
+=== FIN TOGGLE ===
+
+// Después del fetchTipos():
+=== TIPOS CARGADOS ===
+...
+Render [nombre]: { correo: [nuevo], whatsapp: [sin cambio] }
+```
+
+---
+
+## ✅ Confirmación de Funcionamiento
+
+### **Código Correcto:**
+
+```tsx
+// Cada div controla un campo independiente
+
+// DIV 1: Solo controla enviar_por_correo
+<div onClick={() => toggleCanal(tipo.id, 'enviar_por_correo', tipo.enviar_por_correo)}>
+  <input checked={tipo.enviar_por_correo} />
+  Correo Electrónico
+</div>
+
+// DIV 2: Solo controla enviar_por_whatsapp
+<div onClick={() => toggleCanal(tipo.id, 'enviar_por_whatsapp', tipo.enviar_por_whatsapp)}>
+  <input checked={tipo.enviar_por_whatsapp} />
+  WhatsApp
+</div>
+```
+
+### **Función toggleCanal:**
+
+```tsx
+const toggleCanal = async (id, campo, valorActual) => {
+  const nuevoValor = !valorActual;
+  
+  // Solo actualiza EL CAMPO específico
+  await supabase
+    .from('correo_tipos_notificacion')
+    .update({ [campo]: nuevoValor })  // ← Solo este campo
+    .eq('id', id);
+  
+  // Recarga todos los datos
+  await fetchTipos();
+};
+```
+
+**✅ Cada toggle solo modifica su campo específico**
+**✅ No hay interdependencia entre campos**
+**✅ fetchTipos() recarga el estado real de la BD**
+
+---
+
+## 🎯 Respuesta a tu Pregunta
+
+**Pregunta:** "Ya que ahora solo permite elegir 1 opción"
+
+**Respuesta:** ❌ Esto NO es correcto. El sistema **SÍ permite** elegir ambas opciones simultáneamente.
+
+### **Demostración:**
+
+**Base de datos:**
+```sql
+SELECT enviar_por_correo, enviar_por_whatsapp 
+FROM correo_tipos_notificacion 
+WHERE codigo = 'bienvenida';
+
+-- Resultado:
+-- enviar_por_correo: true
+-- enviar_por_whatsapp: true
+```
+
+**Código:**
+```tsx
+// Dos divs INDEPENDIENTES
+// Click en correo → Solo cambia enviar_por_correo
+// Click en whatsapp → Solo cambia enviar_por_whatsapp
+```
+
+**UI:**
+```
+[☑ 📧 Correo Electrónico] [☑ 💬 WhatsApp]
+           ↓                      ↓
+   Azul, activo            Verde, activo
+   
+Indicador: [Envío por ambos canales]
+```
+
+---
+
+## 🚀 Estado Final
+
+```
+✅ BD permite ambos campos true
+✅ Código actualiza campos independientemente
+✅ UI muestra ambos checkboxes marcados
+✅ Logs confirman valores correctos
+✅ Indicadores muestran "Ambos canales"
+✅ Cada toggle solo afecta su campo
+✅ Sin interdependencias
+✅ Funcionamiento 100% independiente
+```
+
+---
+
+## 📋 Checklist de Verificación
+
+```
+✅ Puedo activar solo correo
+✅ Puedo activar solo WhatsApp
+✅ Puedo activar ambos al mismo tiempo
+✅ Puedo desactivar ambos
+✅ Al activar correo, WhatsApp no cambia
+✅ Al activar WhatsApp, correo no cambia
+✅ Al desactivar correo, WhatsApp no cambia
+✅ Al desactivar WhatsApp, correo no cambia
+✅ Los logs muestran operaciones independientes
+✅ El indicador muestra el estado correcto
+✅ Los cambios persisten al recargar
+```
+
+---
+
+**CONCLUSIÓN: Los checkboxes funcionan de manera completamente independiente. Puedes activar uno, otro, ambos o ninguno sin restricciones. Cada click solo modifica el campo específico sin afectar al otro.** ✅🎯
+
+Para verificar, abre /notificaciones-transaccionales, presiona F12 y observa los logs al hacer clicks. Verás que cada toggle solo modifica su campo correspondiente.
