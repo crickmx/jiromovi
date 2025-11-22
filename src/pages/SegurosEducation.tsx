@@ -3,10 +3,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Video, Calendar, Clock, Play, Award, TrendingUp, GraduationCap } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { obtenerSesiones } from '../lib/aulaVirtualUtils';
+import { Video, Play, Award, TrendingUp, GraduationCap } from 'lucide-react';
 
 interface Lesson {
   id: string;
@@ -16,17 +13,6 @@ interface Lesson {
   duracion: number;
   categoria: { nombre: string } | null;
   progreso?: number;
-}
-
-interface Session {
-  id: string;
-  titulo: string;
-  descripcion: string | null;
-  fecha_inicio: string;
-  duracion_minutos: number;
-  instructor?: { id: string; nombre_completo: string } | null;
-  esta_activa: boolean;
-  estado: 'programada' | 'en_vivo' | 'finalizada' | 'cancelada';
 }
 
 interface Stats {
@@ -39,7 +25,6 @@ interface Stats {
 export function SegurosEducation() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
-  const [proxSessions, setProxSessions] = useState<Session[]>([]);
   const [recentLessons, setRecentLessons] = useState<Lesson[]>([]);
   const [stats, setStats] = useState<Stats>({
     completados: 0,
@@ -58,19 +43,6 @@ export function SegurosEducation() {
 
     try {
       setLoading(true);
-
-      const sessionsData = await obtenerSesiones();
-      const now = new Date();
-
-      const upcoming = sessionsData
-        .filter(s => {
-          const sessionDate = new Date(s.fecha_inicio);
-          return sessionDate > now && s.estado === 'programada' && !s.esta_activa;
-        })
-        .sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime())
-        .slice(0, 5);
-
-      setProxSessions(upcoming);
 
       // Fetch recent lessons with progress
       const { data: lessons } = await supabase
@@ -191,66 +163,6 @@ export function SegurosEducation() {
           </button>
         </div>
 
-        {/* Próximas Capacitaciones */}
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
-          <div className="p-6 border-b border-neutral-200">
-            <h2 className="text-xl font-bold text-neutral-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary-600" />
-              Próximas Capacitaciones
-            </h2>
-          </div>
-          <div className="p-6">
-            {proxSessions.length === 0 ? (
-              <p className="text-neutral-500 text-center py-8">No hay capacitaciones programadas</p>
-            ) : (
-              <div className="space-y-4">
-                {proxSessions.map((session) => {
-                  const sessionDate = new Date(session.fecha_inicio);
-                  const dateStr = format(sessionDate, 'dd MMMM yyyy', { locale: es });
-                  const timeStr = format(sessionDate, 'HH:mm', { locale: es });
-
-                  return (
-                    <div
-                      key={session.id}
-                      className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-neutral-800 mb-1">{session.titulo}</h3>
-                        {session.descripcion && (
-                          <p className="text-sm text-neutral-600 mb-2">{session.descripcion}</p>
-                        )}
-                        <div className="flex items-center gap-4 text-xs text-neutral-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {dateStr}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {timeStr}
-                          </span>
-                          <span className="text-neutral-400">
-                            {session.duracion_minutos} min
-                          </span>
-                        </div>
-                        {session.instructor && (
-                          <p className="text-xs text-neutral-500 mt-1">
-                            Instructor: {session.instructor.nombre_completo}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => navigate('/seguros-education/aula-virtual')}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-                      >
-                        Ver Detalles
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
 
         {/* Últimos Cursos */}
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
