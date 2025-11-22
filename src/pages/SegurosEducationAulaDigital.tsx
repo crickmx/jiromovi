@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   Calendar, Clock, Plus, ExternalLink, Search, Filter,
   Building2, User, AlertCircle, CheckCircle, X, Copy,
-  Download, Users, Tag, Edit, Trash2, Eye, EyeOff, ChevronDown
+  Download, Users, Tag, Edit, Trash2, Eye, EyeOff, ChevronDown,
+  ArrowLeft, Menu
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -123,26 +124,55 @@ export function SegurosEducationAulaDigital() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Aula Digital</h1>
-            <p className="text-blue-100">
-              Capacitaciones programadas y eventos en vivo
-            </p>
-          </div>
-          {isAdmin && (
+    <div className="min-h-screen bg-neutral-50">
+      {/* Header con navegación */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-neutral-200 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
             <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center space-x-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition"
+              onClick={() => navigate('/seguros-education')}
+              className="p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-all"
+              title="Volver a Seguros Education"
             >
-              <Plus className="w-5 h-5" />
-              <span>Nueva Sesión</span>
+              <ArrowLeft className="w-5 h-5" />
             </button>
-          )}
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-all"
+              title="Ir al menú principal"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
+          <img
+            src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
+            alt="MOVI Digital Logo"
+            className="h-10 object-contain"
+          />
+          <div className="w-20"></div>
         </div>
-      </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-8 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Aula Digital</h1>
+              <p className="text-blue-100">
+                Capacitaciones programadas y eventos en vivo
+              </p>
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center space-x-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Nueva Sesión</span>
+              </button>
+            )}
+          </div>
+        </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -293,6 +323,7 @@ export function SegurosEducationAulaDigital() {
           onCopy={handleCopy}
         />
       )}
+      </div>
     </div>
   );
 }
