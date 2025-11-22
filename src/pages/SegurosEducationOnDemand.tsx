@@ -351,39 +351,39 @@ export function SegurosEducationOnDemand() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/seguros-education')}
-              className="p-2 text-neutral-600 hover:text-primary-600 hover:bg-neutral-100 rounded-lg transition-colors"
+              className="p-2.5 text-ios-gray-600 hover:text-ios-gray-900 hover:bg-ios-gray-100 rounded-ios-lg transition-colors active:scale-95"
               title="Volver a Seguros Education"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 stroke-[1.5]" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-neutral-800 flex items-center gap-2">
-                <Video className="w-6 h-6 text-primary-600" />
+              <h1 className="text-[28px] font-bold text-ios-gray-900 flex items-center gap-2 tracking-tight">
+                <Video className="w-7 h-7 text-ios-blue stroke-[1.5]" />
                 On Demand
               </h1>
-              <p className="text-neutral-600 mt-1">Biblioteca de lecciones grabadas</p>
+              <p className="text-ios-gray-600 mt-1 text-[15px]">Biblioteca de lecciones grabadas</p>
             </div>
           </div>
           {isAdmin && (
             <div className="flex gap-2">
               <button
                 onClick={() => setShowCategoryModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-ios-gray-100 text-ios-gray-900 rounded-ios-lg hover:bg-ios-gray-200 transition-colors text-[15px] font-medium active:scale-95"
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-4 h-4 stroke-[2]" />
                 Categorías
               </button>
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-ios-blue text-white rounded-ios-lg hover:bg-ios-blue-dark transition-colors text-[15px] font-medium active:scale-95 shadow-ios"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 stroke-[2]" />
                 Subir Lección
               </button>
             </div>
@@ -391,24 +391,24 @@ export function SegurosEducationOnDemand() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-ios-gray-500 stroke-[1.5]" />
               <input
                 type="text"
                 placeholder="Buscar lecciones..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-ios-blue transition-colors text-[15px]"
               />
             </div>
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-ios-gray-500 stroke-[1.5]" />
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 appearance-none"
+                className="w-full pl-10 pr-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-ios-blue transition-colors appearance-none text-[15px]"
               >
                 <option value="all">Todas las categorías</option>
                 {categories.map((cat) => (
@@ -422,11 +422,13 @@ export function SegurosEducationOnDemand() {
         </div>
 
         {/* Lessons Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredLessons.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <Video className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-              <p className="text-neutral-500">
+            <div className="col-span-full text-center py-16">
+              <div className="w-20 h-20 rounded-full bg-ios-gray-100 flex items-center justify-center mx-auto mb-4">
+                <Video className="w-10 h-10 text-ios-gray-400 stroke-[1.5]" />
+              </div>
+              <p className="text-ios-gray-500 text-[15px]">
                 {searchTerm || selectedCategory !== 'all'
                   ? 'No se encontraron lecciones'
                   : 'No hay lecciones disponibles'}
@@ -437,34 +439,34 @@ export function SegurosEducationOnDemand() {
               <div
                 key={lesson.id}
                 onClick={() => handleLessonClick(lesson)}
-                className="bg-white rounded-lg border border-neutral-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
+                className="bg-white rounded-ios-xl border border-ios-gray-200/50 overflow-hidden hover:shadow-ios-lg transition-all duration-200 cursor-pointer group active:scale-[0.98]"
               >
                 {/* Thumbnail */}
-                <div className="aspect-video bg-neutral-200 relative overflow-hidden">
+                <div className="aspect-video bg-ios-gray-100 relative overflow-hidden">
                   {lesson.miniatura_url ? (
                     <img
                       src={lesson.miniatura_url}
                       alt={lesson.titulo}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Video className="w-16 h-16 text-neutral-400" />
+                      <Video className="w-16 h-16 text-ios-gray-300 stroke-[1.5]" />
                     </div>
                   )}
 
                   {/* Play Button Overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity transform scale-75 group-hover:scale-100">
-                      <Play className="w-8 h-8 text-primary-600 ml-1" fill="currentColor" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform scale-75 group-hover:scale-100 shadow-ios-lg">
+                      <Play className="w-8 h-8 text-ios-blue ml-1" fill="currentColor" />
                     </div>
                   </div>
 
                   {/* Progress Bar */}
                   {lesson.progreso > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-neutral-800 bg-opacity-50">
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
                       <div
-                        className="h-full bg-primary-600"
+                        className="h-full bg-ios-blue"
                         style={{ width: `${lesson.progreso}%` }}
                       />
                     </div>
@@ -472,8 +474,8 @@ export function SegurosEducationOnDemand() {
 
                   {/* Completed Badge */}
                   {lesson.completado && (
-                    <div className="absolute top-2 right-2 bg-emerald-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                      <Award className="w-3 h-3" />
+                    <div className="absolute top-3 right-3 bg-ios-green text-white px-2.5 py-1 rounded-ios text-[11px] font-semibold flex items-center gap-1 shadow-ios">
+                      <Award className="w-3 h-3 stroke-[2]" />
                       Completado
                     </div>
                   )}
@@ -481,31 +483,31 @@ export function SegurosEducationOnDemand() {
 
                 {/* Content */}
                 <div className="p-4">
-                  <div className="flex items-center gap-2 text-xs mb-2">
+                  <div className="flex items-center gap-2 text-[11px] mb-2">
                     {lesson.categoria && (
-                      <span className="px-2 py-1 bg-primary-100 text-primary-700 rounded font-medium">
+                      <span className="px-2 py-1 bg-ios-blue/10 text-ios-blue rounded-ios font-semibold">
                         {lesson.categoria.nombre}
                       </span>
                     )}
-                    <span className="flex items-center gap-1 text-neutral-500">
-                      <Clock className="w-3 h-3" />
+                    <span className="flex items-center gap-1 text-ios-gray-600">
+                      <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
                       {formatDuration(lesson.duracion)}
                     </span>
                   </div>
 
-                  <h3 className="font-semibold text-neutral-800 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
+                  <h3 className="font-semibold text-ios-gray-900 mb-2 line-clamp-2 group-hover:text-ios-blue transition-colors text-[15px]">
                     {lesson.titulo}
                   </h3>
 
                   {lesson.descripcion && (
-                    <p className="text-sm text-neutral-600 line-clamp-2 mb-3">
+                    <p className="text-[13px] text-ios-gray-600 line-clamp-2 mb-3">
                       {lesson.descripcion}
                     </p>
                   )}
 
                   {lesson.progreso > 0 && !lesson.completado && (
-                    <div className="text-xs text-neutral-600">
-                      <span className="font-medium">{Math.floor(lesson.progreso)}% visto</span>
+                    <div className="text-[13px] text-ios-gray-600">
+                      <span className="font-semibold">{Math.floor(lesson.progreso)}% visto</span>
                     </div>
                   )}
                 </div>
@@ -517,14 +519,30 @@ export function SegurosEducationOnDemand() {
 
       {/* Video Player Modal */}
       {showVideoModal && selectedLesson && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-6xl">
-            <div className="flex justify-between items-center mb-4">
-              <div className="text-white">
-                <h2 className="text-2xl font-bold">{selectedLesson.titulo}</h2>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-ios flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="w-full max-w-5xl bg-white rounded-ios-2xl shadow-ios-xl overflow-hidden animate-scale-in">
+            {/* Header */}
+            <div className="bg-ios-gray-50 px-6 py-4 border-b border-ios-gray-200/50 flex justify-between items-start gap-4">
+              <div className="flex-1">
+                <h2 className="text-[20px] font-semibold text-ios-gray-900 mb-1">
+                  {selectedLesson.titulo}
+                </h2>
                 {selectedLesson.descripcion && (
-                  <p className="text-neutral-100 mt-1">{selectedLesson.descripcion}</p>
+                  <p className="text-[15px] text-ios-gray-600 line-clamp-2">
+                    {selectedLesson.descripcion}
+                  </p>
                 )}
+                <div className="flex items-center gap-3 mt-2">
+                  {selectedLesson.categoria && (
+                    <span className="inline-flex items-center px-2.5 py-1 bg-ios-blue/10 text-ios-blue rounded-ios text-[13px] font-medium">
+                      {selectedLesson.categoria.nombre}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5 text-ios-gray-600 text-[13px]">
+                    <Clock className="w-4 h-4 stroke-[1.5]" />
+                    {formatDuration(selectedLesson.duracion)}
+                  </span>
+                </div>
               </div>
               <button
                 onClick={() => {
@@ -532,18 +550,52 @@ export function SegurosEducationOnDemand() {
                   setSelectedLesson(null);
                   fetchData();
                 }}
-                className="text-white hover:text-neutral-300 p-2"
+                className="text-ios-gray-500 hover:text-ios-gray-900 hover:bg-ios-gray-200 p-2 rounded-ios transition-all active:scale-95"
+                title="Cerrar"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 stroke-[1.5]" />
               </button>
             </div>
 
-            <VideoPlayer
-              videoUrl={selectedLesson.video_url}
-              initialTime={selectedLesson.tiempo_reproduccion || 0}
-              onProgressUpdate={handleProgressUpdate}
-              onComplete={handleVideoComplete}
-            />
+            {/* Video Container */}
+            <div className="bg-black">
+              <VideoPlayer
+                videoUrl={selectedLesson.video_url}
+                initialTime={selectedLesson.tiempo_reproduccion || 0}
+                onProgressUpdate={handleProgressUpdate}
+                onComplete={handleVideoComplete}
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="bg-ios-gray-50 px-6 py-4 border-t border-ios-gray-200/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {selectedLesson.completado ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ios-green/10 text-ios-green rounded-ios-lg text-[13px] font-medium">
+                      <Award className="w-4 h-4 stroke-[1.5]" />
+                      Completado
+                    </span>
+                  ) : selectedLesson.progreso > 0 ? (
+                    <span className="text-[13px] text-ios-gray-600">
+                      Progreso: <span className="font-semibold text-ios-blue">{Math.floor(selectedLesson.progreso)}%</span>
+                    </span>
+                  ) : (
+                    <span className="text-[13px] text-ios-gray-500">Sin progreso</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setShowVideoModal(false);
+                    setSelectedLesson(null);
+                    fetchData();
+                  }}
+                  className="px-4 py-2 bg-ios-blue text-white rounded-ios-lg text-[15px] font-medium hover:bg-ios-blue-dark transition-colors active:scale-95"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

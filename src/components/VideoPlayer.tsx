@@ -144,32 +144,32 @@ export function VideoPlayer({
   return (
     <div
       ref={containerRef}
-      className="relative bg-black rounded-lg overflow-hidden group"
+      className="relative bg-black aspect-video overflow-hidden group"
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(false)}
     >
       <video
         ref={videoRef}
         src={videoUrl}
-        className="w-full h-full"
+        className="w-full h-full object-contain"
         onClick={togglePlay}
       />
 
       {/* Play/Pause Overlay */}
       {!isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
           <button
             onClick={togglePlay}
-            className="w-20 h-20 bg-white bg-opacity-90 rounded-full flex items-center justify-center hover:bg-opacity-100 transition-all transform hover:scale-110"
+            className="w-20 h-20 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white hover:scale-105 transition-all active:scale-95 shadow-ios-lg"
           >
-            <Play className="w-10 h-10 text-primary-600 ml-2" fill="currentColor" />
+            <Play className="w-10 h-10 text-ios-blue ml-1" fill="currentColor" />
           </button>
         </div>
       )}
 
       {/* Controls */}
       <div
-        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4 transition-opacity ${
+        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-5 py-4 transition-opacity duration-200 ${
           showControls ? 'opacity-100' : 'opacity-0'
         }`}
       >
@@ -180,9 +180,9 @@ export function VideoPlayer({
           max={duration || 0}
           value={currentTime}
           onChange={handleSeek}
-          className="w-full h-1 mb-3 bg-neutral-600 rounded-lg appearance-none cursor-pointer slider"
+          className="w-full h-1 mb-4 bg-white/30 rounded-full appearance-none cursor-pointer slider"
           style={{
-            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(currentTime / duration) * 100}%, #525252 ${(currentTime / duration) * 100}%, #525252 100%)`
+            background: `linear-gradient(to right, #0A84FF 0%, #0A84FF ${(currentTime / duration) * 100}%, rgba(255,255,255,0.3) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.3) 100%)`
           }}
         />
 
@@ -191,21 +191,21 @@ export function VideoPlayer({
             {/* Play/Pause Button */}
             <button
               onClick={togglePlay}
-              className="text-white hover:text-primary-400 transition-colors"
+              className="text-white hover:text-ios-blue transition-colors active:scale-95"
             >
-              {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+              {isPlaying ? <Pause className="w-6 h-6 stroke-[2]" /> : <Play className="w-6 h-6 stroke-[2]" />}
             </button>
 
             {/* Volume Controls */}
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleMute}
-                className="text-white hover:text-primary-400 transition-colors"
+                className="text-white hover:text-ios-blue transition-colors active:scale-95"
               >
                 {isMuted || volume === 0 ? (
-                  <VolumeX className="w-5 h-5" />
+                  <VolumeX className="w-5 h-5 stroke-[2]" />
                 ) : (
-                  <Volume2 className="w-5 h-5" />
+                  <Volume2 className="w-5 h-5 stroke-[2]" />
                 )}
               </button>
               <input
@@ -215,12 +215,12 @@ export function VideoPlayer({
                 step="0.1"
                 value={volume}
                 onChange={handleVolumeChange}
-                className="w-20 h-1 bg-neutral-600 rounded-lg appearance-none cursor-pointer"
+                className="w-20 h-1 bg-white/30 rounded-full appearance-none cursor-pointer"
               />
             </div>
 
             {/* Time Display */}
-            <span className="text-white text-sm font-medium">
+            <span className="text-white text-[13px] font-medium tabular-nums">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
           </div>
@@ -228,9 +228,9 @@ export function VideoPlayer({
           {/* Fullscreen Button */}
           <button
             onClick={toggleFullscreen}
-            className="text-white hover:text-primary-400 transition-colors"
+            className="text-white hover:text-ios-blue transition-colors active:scale-95"
           >
-            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+            {isFullscreen ? <Minimize className="w-5 h-5 stroke-[2]" /> : <Maximize className="w-5 h-5 stroke-[2]" />}
           </button>
         </div>
       </div>
