@@ -66,6 +66,24 @@
 @layer base {
   :root {
     --color-primary: 29 68 135;
+    --ios-blue: #0A84FF;
+    --ios-gray-50: #F9F9F9;
+    --ios-gray-100: #F2F2F7;
+    --ios-gray-200: #E5E5EA;
+  }
+
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 

@@ -43,10 +43,10 @@ export function Layout({ children }: LayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-neutral-200 shadow-soft transform transition-all duration-300 ease-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    <div className="min-h-screen bg-ios-gray-100 flex">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/95 backdrop-blur-ios border-r border-ios-gray-200 shadow-ios-md transform transition-all duration-300 ease-ios ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
+          <div className="flex items-center justify-between px-6 py-6 border-b border-ios-gray-200/50">
             <a href="/dashboard" className="flex items-center transition-transform hover:scale-105">
               <img
                 src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
@@ -56,15 +56,15 @@ export function Layout({ children }: LayoutProps) {
             </a>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 p-2 rounded-lg transition-all"
+              className="text-ios-gray-600 hover:text-ios-gray-900 hover:bg-ios-gray-100 p-2.5 rounded-ios-lg transition-all duration-200"
               title="Cerrar menú"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 stroke-[1.5]" />
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-4 py-6">
-            <div className="space-y-2">
+          <nav className="flex-1 overflow-y-auto px-3 py-4">
+            <div className="space-y-1">
               {navItems.filter(item => item.show).map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
@@ -75,13 +75,13 @@ export function Layout({ children }: LayoutProps) {
                       navigate(item.path);
                       setSidebarOpen(false);
                     }}
-                    className={`w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center space-x-3 text-left group ${
+                    className={`w-full px-4 py-3 rounded-ios-lg text-[15px] font-medium transition-all duration-200 flex items-center space-x-3 text-left group ${
                       isActive
-                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-medium'
-                        : 'text-neutral-700 hover:bg-neutral-100 hover:text-primary-600'
+                        ? 'bg-ios-blue text-white shadow-ios'
+                        : 'text-ios-gray-900 hover:bg-ios-gray-100 active:bg-ios-gray-200'
                     }`}
                   >
-                    <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? '' : 'group-hover:scale-110'}`} />
+                    <Icon className={`w-[22px] h-[22px] flex-shrink-0 transition-all duration-200 stroke-[1.5] ${isActive ? '' : 'group-hover:scale-105'}`} />
                     <span className="text-left">{item.label}</span>
                   </button>
                 );
@@ -89,39 +89,39 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </nav>
 
-          <div className="p-4 border-t border-neutral-100 bg-neutral-50/50">
+          <div className="p-4 border-t border-ios-gray-200/50 bg-ios-gray-50/30">
             <button
               onClick={() => {
                 navigate('/perfil');
                 setSidebarOpen(false);
               }}
-              className="flex items-center space-x-3 mb-3 w-full p-3 rounded-xl hover:bg-white hover:shadow-soft transition-all duration-200 group"
+              className="flex items-center space-x-3 mb-2 w-full p-3 rounded-ios-lg hover:bg-white active:bg-ios-gray-100 transition-all duration-200 group"
             >
               {usuario?.imagen_perfil_url ? (
                 <img
                   src={usuario.imagen_perfil_url}
                   alt="Perfil"
-                  className="w-11 h-11 rounded-full object-cover border-2 border-neutral-200 group-hover:border-primary-500 transition-all shadow-sm"
+                  className="w-11 h-11 rounded-full object-cover border-2 border-ios-gray-200 group-hover:border-ios-blue transition-all shadow-ios"
                 />
               ) : (
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0 group-hover:shadow-glow transition-all">
+                <div className="w-11 h-11 rounded-full bg-ios-blue flex items-center justify-center flex-shrink-0 shadow-ios transition-all">
                   <span className="text-white font-semibold text-sm">
                     {usuario?.nombre?.[0]}{usuario?.apellidos?.[0]}
                   </span>
                 </div>
               )}
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-semibold text-neutral-800 truncate group-hover:text-primary-600 transition">
+                <p className="text-[15px] font-semibold text-ios-gray-900 truncate group-hover:text-ios-blue transition">
                   {usuario?.nombre} {usuario?.apellidos}
                 </p>
-                <p className="text-xs text-neutral-500 group-hover:text-primary-500 transition">{usuario?.rol}</p>
+                <p className="text-[13px] text-ios-gray-600">{usuario?.rol}</p>
               </div>
-              <User className="w-4 h-4 text-neutral-400 group-hover:text-primary-600 transition" />
+              <User className="w-[18px] h-[18px] text-ios-gray-500 group-hover:text-ios-blue transition stroke-[1.5]" />
             </button>
 
             <button
               onClick={handleSignOut}
-              className="w-full px-4 py-2.5 text-sm font-medium text-accent-600 hover:bg-accent-50 rounded-xl transition-all duration-200 flex items-center justify-center space-x-2 hover:shadow-soft"
+              className="w-full px-4 py-2.5 text-[15px] font-medium text-ios-red hover:bg-ios-red/10 rounded-ios-lg transition-all duration-200 flex items-center justify-center space-x-2 active:scale-95"
             >
               <LogOut className="w-4 h-4" />
               <span>Cerrar Sesión</span>
@@ -132,46 +132,46 @@ export function Layout({ children }: LayoutProps) {
 
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden animate-fade-in"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>
+      <div className={`flex-1 transition-all duration-300 ease-ios ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>
         {/* Mobile Header */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-neutral-200 sticky top-0 z-30 shadow-soft lg:hidden">
-          <div className="flex items-center justify-between px-4 py-3.5">
+        <header className="bg-white/90 backdrop-blur-ios border-b border-ios-gray-200/50 sticky top-0 z-30 shadow-ios lg:hidden">
+          <div className="flex items-center justify-between px-5 py-4">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 p-2 rounded-lg transition-all"
+              className="text-ios-gray-700 hover:text-ios-gray-900 active:bg-ios-gray-100 p-2 rounded-ios transition-all"
               title="Abrir menú"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-6 h-6 stroke-[1.5]" />
             </button>
             <img
               src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
               alt="MOVI Digital Logo"
-              className="h-10 object-contain"
+              className="h-9 object-contain"
             />
             <NotificationBell />
           </div>
         </header>
 
         {/* Desktop Header with Menu Button and Notification Bell */}
-        <header className="hidden lg:block bg-white/80 backdrop-blur-md border-b border-neutral-200 sticky top-0 z-30 shadow-soft">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+        <header className="hidden lg:block bg-white/90 backdrop-blur-ios border-b border-ios-gray-200/50 sticky top-0 z-30 shadow-ios">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 p-2 rounded-lg transition-all"
+              className="text-ios-gray-700 hover:text-ios-gray-900 active:bg-ios-gray-100 p-2.5 rounded-ios-lg transition-all"
               title={sidebarOpen ? "Cerrar menú" : "Abrir menú"}
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-6 h-6 stroke-[1.5]" />
             </button>
             <NotificationBell />
           </div>
         </header>
 
-        <main className={location.pathname === '/multicotizador-digital' ? 'h-screen' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in'}>
+        <main className={location.pathname === '/multicotizador-digital' ? 'h-screen' : 'max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-6 lg:py-8 animate-fade-in'}>
           {children}
         </main>
       </div>
