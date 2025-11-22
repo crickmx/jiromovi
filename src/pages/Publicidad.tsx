@@ -311,7 +311,7 @@ export function Publicidad() {
                       <img
                         src={plantilla.miniatura_url}
                         alt={plantilla.titulo}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -405,7 +405,7 @@ export function Publicidad() {
                       <img
                         src={diseno.archivo_resultante_url}
                         alt="Diseño personalizado"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
