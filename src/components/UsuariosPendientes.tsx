@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { UserCheck, UserX, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Database } from '../lib/database.types';
+import { enviarCuentaActivada } from '../lib/transactionalNotifications';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -37,12 +38,32 @@ export function UsuariosPendientes() {
   const handleActivar = async (usuarioId: string) => {
     setProcessingId(usuarioId);
     try {
+      // Obtener datos completos del usuario antes de activar
+      const { data: usuario, error: fetchError } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', usuarioId)
+        .single();
+
+      if (fetchError || !usuario) {
+        throw new Error('No se pudo obtener información del usuario');
+      }
+
+      // Actualizar estado a activo
       const { error } = await supabase
         .from('usuarios')
         .update({ estado: 'activo', updated_at: new Date().toISOString() })
         .eq('id', usuarioId);
 
       if (error) throw error;
+
+      // Enviar notificación de cuenta activada
+      await enviarCuentaActivada({
+        nombre: usuario.nombre,
+        apellidos: usuario.apellidos,
+        email: usuario.email_laboral || usuario.email_personal || '',
+        telefono: usuario.telefono_movil || usuario.celular_personal || undefined,
+      });
 
       await loadUsuariosPendientes();
     } catch (error) {

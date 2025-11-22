@@ -145,28 +145,72 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Enviar notificación de bienvenida al nuevo usuario
     try {
-      const notificationResponse = await fetch(
-        `${supabaseUrl}/functions/v1/send-internal-notification`,
+      const welcomeResponse = await fetch(
+        `${supabaseUrl}/functions/v1/enviar-correo-transaccional`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
           },
           body: JSON.stringify({
-            usuarioId: authData.user.id,
+            tipo: 'bienvenida',
+            destinatario: userData.email_laboral,
+            datos: {
+              nombre: userData.nombre,
+              apellidos: userData.apellidos,
+              email_laboral: userData.email_laboral,
+              rol: userData.rol,
+              puesto: userData.puesto || '',
+              nombre_plataforma: 'MOVI Digital',
+              fecha: new Date().toLocaleDateString('es-MX'),
+            },
           }),
         }
       );
 
-      if (!notificationResponse.ok) {
-        console.error('Error sending internal notification:', await notificationResponse.text());
+      if (!welcomeResponse.ok) {
+        console.error('Error sending welcome email:', await welcomeResponse.text());
       } else {
-        const notificationResult = await notificationResponse.json();
-        console.log('Internal notification sent:', notificationResult);
+        console.log('Welcome email sent successfully');
+      }
+
+      // Enviar por WhatsApp si tiene número
+      if (userData.celular_personal || userData.celular_laboral) {
+        const whatsappResponse = await fetch(
+          `${supabaseUrl}/functions/v1/enviar-whatsapp`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              tipo: 'bienvenida',
+              numero: userData.celular_personal || userData.celular_laboral,
+              datos: {
+                nombre: userData.nombre,
+                apellidos: userData.apellidos,
+                email_laboral: userData.email_laboral,
+                rol: userData.rol,
+                puesto: userData.puesto || '',
+                nombre_plataforma: 'MOVI Digital',
+                fecha: new Date().toLocaleDateString('es-MX'),
+              },
+            }),
+          }
+        );
+
+        if (!whatsappResponse.ok) {
+          console.error('Error sending welcome WhatsApp:', await whatsappResponse.text());
+        } else {
+          console.log('Welcome WhatsApp sent successfully');
+        }
       }
     } catch (notifError) {
-      console.error('Failed to send internal notification:', notifError);
+      console.error('Failed to send welcome notifications:', notifError);
     }
 
     return new Response(
