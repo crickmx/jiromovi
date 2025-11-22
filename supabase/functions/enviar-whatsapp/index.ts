@@ -97,7 +97,8 @@ Deno.serve(async (req) => {
 
     const wazzupPayload = {
       channelId: config.numero_remitente,
-      phone: numeroNormalizado,
+      chatId: `${numeroNormalizado}@c.us`,
+      chatType: 'whatsapp',
       text: texto
     };
 
