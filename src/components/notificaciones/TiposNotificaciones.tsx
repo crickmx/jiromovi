@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, AlertCircle } from 'lucide-react';
+import { Mail, Power, MessageCircle, AlertCircle, Edit } from 'lucide-react';
+import { EditarPlantillaModal } from './EditarPlantillaModal';
 
 interface TipoNotificacion {
   id: string;
@@ -21,6 +22,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const [tipos, setTipos] = useState<TipoNotificacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [editingTipo, setEditingTipo] = useState<{ id: string, nombre: string } | null>(null);
 
   useEffect(() => {
     fetchTipos();
@@ -162,6 +164,14 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
 
               <div className="flex items-center gap-3">
                 <button
+                  onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre })}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-100 text-primary-700 hover:bg-primary-200 transition-colors"
+                  title="Editar plantilla"
+                >
+                  <Edit className="w-4 h-4" />
+                  Editar Plantilla
+                </button>
+                <button
                   onClick={() => toggleActivo(tipo.id, tipo.activo)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                     tipo.activo
@@ -267,6 +277,19 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
           <Mail className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>No hay tipos de notificaciones configurados</p>
         </div>
+      )}
+
+      {/* Modal de Edición */}
+      {editingTipo && (
+        <EditarPlantillaModal
+          tipoId={editingTipo.id}
+          tipoNombre={editingTipo.nombre}
+          onClose={() => setEditingTipo(null)}
+          onSave={() => {
+            fetchTipos();
+            onUpdate();
+          }}
+        />
       )}
     </div>
   );
