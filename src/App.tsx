@@ -27,6 +27,7 @@ import { Tickets } from './pages/Tickets';
 import { TicketDetalle } from './pages/TicketDetalle';
 import { MeetingRoom } from './pages/MeetingRoom';
 import { AulaVirtualSala } from './pages/AulaVirtualSala';
+import { NotificacionesTransaccionales } from './pages/NotificacionesTransaccionales';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -107,6 +108,17 @@ function AppRoutes() {
           <ProtectedRoute requireAdmin>
             <Layout>
               <Configuracion />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/notificaciones-transaccionales"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <NotificacionesTransaccionales />
             </Layout>
           </ProtectedRoute>
         }

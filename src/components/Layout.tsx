@@ -38,6 +38,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: false },
     { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
+    { path: '/notificaciones-transaccionales', label: 'Notificaciones Transaccionales', icon: Mail, show: isAdmin },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
     { path: '/configuracion', label: 'Configuración', icon: Settings, show: isAdmin },
   ];
