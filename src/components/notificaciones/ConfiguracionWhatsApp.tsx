@@ -80,10 +80,14 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
     try {
       const { data, error } = await supabase.functions.invoke('enviar-whatsapp', {
         body: {
-          tipo: 'prueba',
+          tipo: 'bienvenida',
           numero: testNumero,
           datos: {
-            nombre: 'Usuario de Prueba'
+            nombre: 'Usuario de Prueba',
+            apellidos: '',
+            email: 'prueba@movi.digital',
+            email_laboral: 'prueba@movi.digital',
+            rol: 'Usuario de Prueba'
           }
         }
       });
