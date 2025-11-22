@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de WhatsApp - Wazzup24</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .whatsapp-icon {
+            width: 40px;
+            height: 40px;
+            background: #25D366;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .info-box {
+            background: #E7F8ED;
+            border-left: 4px solid #25D366;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #128C7E;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .info-box p {
+            color: #555;
+            font-size: 13px;
+            margin: 5px 0;
+        }
+
+        .success-badge {
+            background: #d4edda;
+            color: #155724;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .alert-box {
+            background: #FFF3CD;
+            border-left: 4px solid #FFC107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .alert-box h4 {
+            color: #856404;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .alert-box ul {
+            color: #856404;
+            font-size: 13px;
+            margin-left: 20px;
+        }
+
+        .alert-box li {
+            margin: 5px 0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .helper-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #25D366;
+            box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(37, 211, 102, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+
+        .result h4 {
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .result pre {
+            background: rgba(0,0,0,0.05);
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #25D366;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .test-number {
+            background: #E7F8ED;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #128C7E;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <div class="whatsapp-icon">📱</div>
+            Prueba de WhatsApp
+        </h1>
+        <p class="subtitle">Wazzup24 API - Formato México (52 + 10 dígitos)</p>
+
+        <div class="success-badge">✅ Wazzup24 Configurado</div>
+
+        <div class="info-box">
+            <h3>📋 Configuración Actual</h3>
+            <p><strong>Servicio:</strong> Wazzup24 API</p>
+            <p><strong>API Key:</strong> aeaecead58f14a3286b37e4d0b81dc3a</p>
+            <p><strong>Channel ID:</strong> 5215588545516</p>
+            <p><strong>Formato:</strong> 52 + 10 dígitos (México)</p>
+        </div>
+
+        <div class="alert-box">
+            <h4>🔔 Normalización Automática</h4>
+            <ul>
+                <li>Si ingresas 10 dígitos: <code>5520206922</code> → <code>525520206922</code></li>
+                <li>Si ingresas formato completo: <code>525520206922</code> → <code>525520206922</code></li>
+                <li>El sistema remueve espacios, paréntesis y guiones automáticamente</li>
+            </ul>
+        </div>
+
+        <form id="testForm">
+            <div class="form-group">
+                <label for="numero">Número de WhatsApp *</label>
+                <input
+                    type="text"
+                    id="numero"
+                    placeholder="5520206922 o 525520206922"
+                    required
+                    value="5520206922"
+                >
+                <div class="helper-text">
+                    📱 Ingresa 10 dígitos o formato completo. El sistema normaliza automáticamente.
+                </div>
+                <div class="test-number" id="numeroNormalizado">
+                    Formato normalizado: 525520206922
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="nombre">Nombre del Destinatario *</label>
+                <input
+                    type="text"
+                    id="nombre"
+                    placeholder="Juan Pérez"
+                    required
+                    value="Usuario de Prueba"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="tipo">Tipo de Notificación *</label>
+                <select id="tipo" required>
+                    <option value="">Seleccionar...</option>
+                    <option value="bienvenida" selected>Bienvenida</option>
+                    <option value="recuperacion_password">Recuperación de Contraseña</option>
+                    <option value="nuevo_evento">Nuevo Evento</option>
+                    <option value="cuenta_activada">Cuenta Activada</option>
+                    <option value="recordatorio_evento">Recordatorio de Evento</option>
+                </select>
+            </div>
+
+            <button type="submit" id="submitBtn">
+                <span>📤</span>
+                <span>Enviar WhatsApp de Prueba</span>
+            </button>
+        </form>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ohiltskmrmuwrxlrgfnx.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oaWx0c2ttcm11d3J4bHJnZm54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NzA4MjAsImV4cCI6MjA0NTE0NjgyMH0.I1k-qKPUk5v5E7Yy4LvjD0WvU-8Yr_Nk_BThc_0JRJE';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const form = document.getElementById('testForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultDiv = document.getElementById('result');
+        const numeroInput = document.getElementById('numero');
+        const numeroNormalizadoDiv = document.getElementById('numeroNormalizado');
+
+        function normalizarNumero(numero) {
+            let normalizado = numero.replace(/[^0-9]/g, '');
+            if (normalizado.length === 10) {
+                normalizado = '52' + normalizado;
+            }
+            return normalizado;
+        }
+
+        numeroInput.addEventListener('input', (e) => {
+            const normalizado = normalizarNumero(e.target.value);
+            if (normalizado.length === 12) {
+                numeroNormalizadoDiv.textContent = `Formato normalizado: ${normalizado} ✅`;
+                numeroNormalizadoDiv.style.background = '#d4edda';
+                numeroNormalizadoDiv.style.color = '#155724';
+            } else {
+                numeroNormalizadoDiv.textContent = `Formato normalizado: ${normalizado || 'Ingresa número'}`;
+                numeroNormalizadoDiv.style.background = '#FFF3CD';
+                numeroNormalizadoDiv.style.color = '#856404';
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const numero = document.getElementById('numero').value;
+            const nombre = document.getElementById('nombre').value;
+            const tipo = document.getElementById('tipo').value;
+
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '';
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loader"></div><span>Enviando mensaje...</span>';
+
+            try {
+                console.log('=== ENVIANDO WHATSAPP ===');
+                console.log('Número original:', numero);
+                console.log('Nombre:', nombre);
+                console.log('Tipo:', tipo);
+
+                const numeroNormalizado = normalizarNumero(numero);
+                console.log('Número normalizado:', numeroNormalizado);
+
+                const { data, error } = await supabase.functions.invoke(
+                    'enviar-whatsapp',
+                    {
+                        body: {
+                            tipo: tipo,
+                            numero: numero,
+                            datos: {
+                                nombre: nombre,
+                                apellidos: '',
+                                email: 'prueba@movi.digital',
+                                email_laboral: 'prueba@movi.digital',
+                                rol: 'Usuario de Prueba',
+                                titulo_evento: 'Evento de Prueba WhatsApp',
+                                fecha_evento: new Date().toLocaleDateString('es-MX'),
+                                hora_evento: '10:00 AM',
+                                link_evento: 'https://movi.digital',
+                                ponente: 'Equipo MOVI'
+                            }
+                        }
+                    }
+                );
+
+                console.log('Respuesta:', data);
+                console.log('Error:', error);
+
+                if (error) {
+                    throw error;
+                }
+
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ ¡WhatsApp Enviado Exitosamente!</h4>
+                        <p><strong>Número destino:</strong> ${data.numero_normalizado}</p>
+                        <p><strong>Formato:</strong> México (52 + 10 dígitos)</p>
+                        <p><strong>Estado:</strong> Enviado</p>
+                        <p>🔍 Revisa tu WhatsApp en el número: ${numero}</p>
+                        <h4 style="margin-top: 15px;">📝 Mensaje enviado:</h4>
+                        <pre>${data.texto_enviado}</pre>
+                        <h4 style="margin-top: 15px;">📊 Respuesta de Wazzup24:</h4>
+                        <pre>${JSON.stringify(data.response, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(data.message || 'Error desconocido al enviar WhatsApp');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Error al Enviar WhatsApp</h4>
+                    <p>${error.message || 'Error desconocido'}</p>
+                    <pre>${JSON.stringify(error, null, 2)}</pre>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>📤</span><span>Enviar WhatsApp de Prueba</span>';
+            }
+        });
+
+        console.log('%c📱 Prueba de WhatsApp - Wazzup24', 'font-size: 20px; color: #25D366; font-weight: bold;');
+        console.log('Servicio: Wazzup24 API');
+        console.log('Channel ID: 5215588545516');
+        console.log('Formato: 52 + 10 dígitos (México)');
+        console.log('Número de prueba: 5520206922 → 525520206922');
+    </script>
+</body>
+</html>

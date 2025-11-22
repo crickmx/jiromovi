@@ -1,5 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,12 +13,14 @@ interface WhatsAppRequest {
   evento_id?: string;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -27,7 +28,11 @@ serve(async (req) => {
 
     const { tipo, numero, datos, evento_id } = await req.json() as WhatsAppRequest;
 
-    // Obtener configuración activa de WhatsApp
+    console.log('=== INICIO ENVÍO WHATSAPP ===');
+    console.log('Tipo:', tipo);
+    console.log('Número recibido:', numero);
+    console.log('Datos:', datos);
+
     const { data: config, error: configError } = await supabaseClient
       .from('whatsapp_configuracion')
       .select('*')
@@ -35,10 +40,15 @@ serve(async (req) => {
       .single();
 
     if (configError || !config) {
+      console.error('Error configuración:', configError);
       throw new Error('No hay configuración de WhatsApp activa');
     }
 
-    // Obtener tipo de notificación
+    console.log('Configuración encontrada:', {
+      numero_remitente: config.numero_remitente,
+      tiene_api_key: !!config.api_key
+    });
+
     const { data: tipoNotif, error: tipoError } = await supabaseClient
       .from('correo_tipos_notificacion')
       .select('id, activo, enviar_por_whatsapp')
@@ -46,10 +56,12 @@ serve(async (req) => {
       .single();
 
     if (tipoError || !tipoNotif || !tipoNotif.activo || !tipoNotif.enviar_por_whatsapp) {
+      console.error('Error tipo notificación:', tipoError);
       throw new Error(`Tipo de notificación '${tipo}' no está configurado para WhatsApp`);
     }
 
-    // Obtener plantilla WhatsApp
+    console.log('Tipo notificación válido:', tipoNotif.id);
+
     const { data: plantilla, error: plantillaError } = await supabaseClient
       .from('correo_plantillas')
       .select('whatsapp_plantilla')
@@ -57,21 +69,22 @@ serve(async (req) => {
       .single();
 
     if (plantillaError || !plantilla || !plantilla.whatsapp_plantilla) {
+      console.error('Error plantilla:', plantillaError);
       throw new Error('No se encontró plantilla de WhatsApp para este tipo de notificación');
     }
 
-    // Normalizar número de teléfono
+    console.log('Plantilla encontrada');
+
     let numeroNormalizado = numero.replace(/[^0-9]/g, '');
 
-    // Si no empieza con 52 y tiene 10 dígitos, agregar 52
     if (numeroNormalizado.length === 10) {
       numeroNormalizado = '52' + numeroNormalizado;
     }
 
-    // Reemplazar variables en el texto
+    console.log('Número normalizado:', numeroNormalizado);
+
     let texto = plantilla.whatsapp_plantilla;
 
-    // Variables por defecto
     datos['nombre_plataforma'] = 'MOVI Digital';
     datos['fecha'] = new Date().toLocaleDateString('es-MX');
 
@@ -80,34 +93,51 @@ serve(async (req) => {
       texto = texto.replace(regex, datos[key] || '');
     });
 
-    console.log('Enviando WhatsApp a:', numeroNormalizado);
-    console.log('Texto:', texto);
+    console.log('Texto procesado:', texto);
 
-    // Enviar mensaje via Wazzup24 API
+    const wazzupPayload = {
+      channelId: config.numero_remitente,
+      phone: numeroNormalizado,
+      text: texto
+    };
+
+    console.log('=== ENVIANDO A WAZZUP24 ===');
+    console.log('URL: https://api.wazzup24.com/v3/message');
+    console.log('Payload:', wazzupPayload);
+
     const wazzupResponse = await fetch('https://api.wazzup24.com/v3/message', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${config.api_key}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        channelId: config.numero_remitente,
-        phone: numeroNormalizado,
-        text: texto
-      })
+      body: JSON.stringify(wazzupPayload)
     });
 
-    const wazzupData = await wazzupResponse.json();
+    console.log('Status Wazzup24:', wazzupResponse.status);
+
+    const responseText = await wazzupResponse.text();
+    console.log('Respuesta raw:', responseText);
+
+    let wazzupData;
+    try {
+      wazzupData = JSON.parse(responseText);
+    } catch (e) {
+      wazzupData = { raw_response: responseText };
+    }
+
+    console.log('Respuesta Wazzup24:', wazzupData);
 
     const success = wazzupResponse.ok;
 
-    // Registrar en historial
-    await supabaseClient
+    console.log('=== REGISTRANDO EN HISTORIAL ===');
+
+    const { error: historialError } = await supabaseClient
       .from('correo_historial_envios')
       .insert({
         tipo_notificacion_id: tipoNotif.id,
         tipo_notificacion_codigo: tipo,
-        destinatario_email: datos.email_laboral || '',
+        destinatario_email: datos.email_laboral || datos.email || '',
         destinatario_nombre: datos.nombre || null,
         asunto: `WhatsApp: ${tipo}`,
         cuerpo_html: texto,
@@ -119,11 +149,22 @@ serve(async (req) => {
         evento_id: evento_id || null
       });
 
+    if (historialError) {
+      console.error('Error al guardar historial:', historialError);
+    } else {
+      console.log('Historial guardado correctamente');
+    }
+
+    console.log('=== FIN ENVÍO WHATSAPP ===');
+    console.log('Success:', success);
+
     return new Response(
       JSON.stringify({
         success,
         message: success ? 'Mensaje de WhatsApp enviado exitosamente' : 'Error al enviar mensaje',
-        response: wazzupData
+        numero_normalizado: numeroNormalizado,
+        response: wazzupData,
+        texto_enviado: texto
       }),
       {
         status: success ? 200 : 500,
@@ -131,10 +172,16 @@ serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error('Error al enviar WhatsApp:', error);
+    console.error('=== ERROR GENERAL ===');
+    console.error('Error:', error);
+    console.error('Stack:', error.stack);
 
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({
+        success: false,
+        error: error.message,
+        stack: error.stack
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
