@@ -27,6 +27,7 @@ interface Session {
   instructor?: { id: string; nombre_completo: string } | null;
   esta_activa: boolean;
   estado: 'programada' | 'en_vivo' | 'finalizada' | 'cancelada';
+  tipo: 'sesion' | 'evento';
 }
 
 interface Stats {
@@ -62,11 +63,47 @@ export function SegurosEducation() {
       const sessionsData = await obtenerSesiones();
       const now = new Date();
 
-      const upcoming = sessionsData
+      // Filtrar sesiones futuras
+      const upcomingSessions = sessionsData
         .filter(s => {
           const sessionDate = new Date(s.fecha_inicio);
           return sessionDate > now && s.estado === 'programada' && !s.esta_activa;
         })
+        .map(s => ({ ...s, tipo: 'sesion' as const }));
+
+      // Obtener eventos del aula digital (RLS filtra por permisos automáticamente)
+      const { data: eventosData } = await supabase
+        .from('aula_eventos')
+        .select(`
+          id,
+          titulo,
+          descripcion,
+          fecha,
+          hora,
+          ponente
+        `)
+        .gte('fecha', new Date().toISOString().split('T')[0])
+        .order('fecha', { ascending: true })
+        .order('hora', { ascending: true });
+
+      // Transformar eventos al formato de sesiones
+      const upcomingEvents = (eventosData || []).map(e => {
+        const fechaInicio = `${e.fecha}T${e.hora}`;
+        return {
+          id: e.id,
+          titulo: e.titulo,
+          descripcion: e.descripcion,
+          fecha_inicio: fechaInicio,
+          duracion_minutos: 60,
+          instructor: { id: '', nombre_completo: e.ponente },
+          esta_activa: false,
+          estado: 'programada' as const,
+          tipo: 'evento' as const
+        };
+      });
+
+      // Combinar sesiones y eventos, ordenar y limitar a 5
+      const upcoming = [...upcomingSessions, ...upcomingEvents]
         .sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime())
         .slice(0, 5);
 
@@ -198,6 +235,7 @@ export function SegurosEducation() {
               <Calendar className="w-5 h-5 text-primary-600" />
               Próximas Capacitaciones
             </h2>
+            <p className="text-sm text-neutral-600 mt-1">Sesiones y eventos programados</p>
           </div>
           <div className="p-6">
             {proxSessions.length === 0 ? (
@@ -215,7 +253,16 @@ export function SegurosEducation() {
                       className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors"
                     >
                       <div className="flex-1">
-                        <h3 className="font-semibold text-neutral-800 mb-1">{session.titulo}</h3>
+                        <div className="flex items-start justify-between mb-1">
+                          <h3 className="font-semibold text-neutral-800 flex-1">{session.titulo}</h3>
+                          <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            session.tipo === 'evento'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-primary-100 text-primary-700'
+                          }`}>
+                            {session.tipo === 'evento' ? 'Evento' : 'Sesión'}
+                          </span>
+                        </div>
                         {session.descripcion && (
                           <p className="text-sm text-neutral-600 mb-2">{session.descripcion}</p>
                         )}
@@ -234,12 +281,16 @@ export function SegurosEducation() {
                         </div>
                         {session.instructor && (
                           <p className="text-xs text-neutral-500 mt-1">
-                            Instructor: {session.instructor.nombre_completo}
+                            {session.tipo === 'evento' ? 'Ponente' : 'Instructor'}: {session.instructor.nombre_completo}
                           </p>
                         )}
                       </div>
                       <button
-                        onClick={() => navigate('/seguros-education/aula-virtual')}
+                        onClick={() => navigate(
+                          session.tipo === 'evento'
+                            ? '/seguros-education/aula-digital'
+                            : '/seguros-education/aula-virtual'
+                        )}
                         className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
                       >
                         Ver Detalles
