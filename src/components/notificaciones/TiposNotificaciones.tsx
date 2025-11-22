@@ -71,12 +71,24 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       setMessage(null);
 
       const nuevoValor = !valorActual;
+
+      console.log('=== TOGGLE CANAL ===');
+      console.log('ID:', id);
+      console.log('Campo:', campo);
+      console.log('Valor actual:', valorActual);
+      console.log('Nuevo valor:', nuevoValor);
+
       const { error } = await supabase
         .from('correo_tipos_notificacion')
         .update({ [campo]: nuevoValor })
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error de Supabase:', error);
+        throw error;
+      }
+
+      console.log('Actualización exitosa en BD');
 
       const canalNombre = campo === 'enviar_por_correo' ? 'Correo' : 'WhatsApp';
       setMessage({
@@ -84,11 +96,13 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         text: `Canal ${canalNombre} ${nuevoValor ? 'activado' : 'desactivado'} exitosamente`
       });
 
-      fetchTipos();
+      await fetchTipos();
       onUpdate();
+
+      console.log('=== FIN TOGGLE ===');
     } catch (error: any) {
       console.error('Error al actualizar canal:', error);
-      setMessage({ type: 'error', text: 'Error al actualizar el canal' });
+      setMessage({ type: 'error', text: 'Error al actualizar el canal: ' + error.message });
     }
   };
 
@@ -149,7 +163,11 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
               <h4 className="text-sm font-semibold text-neutral-700 mb-3">Canales de Envío</h4>
               <div className="flex flex-wrap gap-3">
                 {/* Correo */}
-                <label
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleCanal(tipo.id, 'enviar_por_correo', tipo.enviar_por_correo);
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
                     tipo.enviar_por_correo
                       ? 'border-primary-500 bg-primary-50'
@@ -159,17 +177,23 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                   <input
                     type="checkbox"
                     checked={tipo.enviar_por_correo}
-                    onChange={() => toggleCanal(tipo.id, 'enviar_por_correo', tipo.enviar_por_correo)}
-                    className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500"
+                    onChange={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500 pointer-events-none"
                   />
                   <Mail className={`w-4 h-4 ${tipo.enviar_por_correo ? 'text-primary-600' : 'text-neutral-500'}`} />
                   <span className={`text-sm font-medium ${tipo.enviar_por_correo ? 'text-primary-700' : 'text-neutral-600'}`}>
                     Correo Electrónico
                   </span>
-                </label>
+                </div>
 
                 {/* WhatsApp */}
-                <label
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleCanal(tipo.id, 'enviar_por_whatsapp', tipo.enviar_por_whatsapp);
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
                     tipo.enviar_por_whatsapp
                       ? 'border-emerald-500 bg-emerald-50'
@@ -179,14 +203,16 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                   <input
                     type="checkbox"
                     checked={tipo.enviar_por_whatsapp}
-                    onChange={() => toggleCanal(tipo.id, 'enviar_por_whatsapp', tipo.enviar_por_whatsapp)}
-                    className="w-4 h-4 text-emerald-600 rounded focus:ring-2 focus:ring-emerald-500"
+                    onChange={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-2 focus:ring-emerald-500 pointer-events-none"
                   />
                   <MessageCircle className={`w-4 h-4 ${tipo.enviar_por_whatsapp ? 'text-emerald-600' : 'text-neutral-500'}`} />
                   <span className={`text-sm font-medium ${tipo.enviar_por_whatsapp ? 'text-emerald-700' : 'text-neutral-600'}`}>
                     WhatsApp
                   </span>
-                </label>
+                </div>
               </div>
 
               {/* Indicador de estado */}

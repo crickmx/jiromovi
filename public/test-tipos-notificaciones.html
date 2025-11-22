@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test - Tipos de Notificaciones</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .tipo {
+      border: 2px solid #e5e5e5;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+    }
+    .canal-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      margin-right: 10px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .canal-option.active-correo {
+      border-color: #4f46e5;
+      background: #eef2ff;
+    }
+    .canal-option.active-whatsapp {
+      border-color: #10b981;
+      background: #ecfdf5;
+    }
+    .canal-option:hover {
+      border-color: #888;
+    }
+    button {
+      padding: 8px 16px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:hover {
+      background: #4338ca;
+    }
+    .message {
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .status.ambos { background: #dbeafe; color: #1e40af; }
+    .status.correo { background: #e0e7ff; color: #3730a3; }
+    .status.whatsapp { background: #d1fae5; color: #065f46; }
+    .status.ninguno { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Test - Tipos de Notificaciones</h1>
+  
+  <div class="card">
+    <h2>Configuración de Canales</h2>
+    <p>Haz click en las cajas para activar/desactivar los canales de envío.</p>
+  </div>
+
+  <div id="tipos-container"></div>
+
+  <div id="message-container"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NTkyOTgsImV4cCI6MjA0NTEzNTI5OH0.zs3PqOy-Xe2hEtN99eVwFoCMbR-2dFq5DBhPHUCzDNU';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let tipos = [];
+
+    async function loadTipos() {
+      console.log('Cargando tipos...');
+      
+      const { data, error } = await supabase
+        .from('correo_tipos_notificacion')
+        .select('*')
+        .order('created_at');
+
+      if (error) {
+        console.error('Error:', error);
+        showMessage('Error al cargar tipos: ' + error.message, 'error');
+        return;
+      }
+
+      tipos = data || [];
+      console.log('Tipos cargados:', tipos);
+      renderTipos();
+    }
+
+    function renderTipos() {
+      const container = document.getElementById('tipos-container');
+      container.innerHTML = '';
+
+      tipos.forEach(tipo => {
+        const tipoDiv = document.createElement('div');
+        tipoDiv.className = 'card tipo';
+        
+        let statusText = '';
+        let statusClass = '';
+        
+        if (tipo.enviar_por_correo && tipo.enviar_por_whatsapp) {
+          statusText = 'Envío por ambos canales';
+          statusClass = 'ambos';
+        } else if (tipo.enviar_por_correo) {
+          statusText = 'Solo por correo';
+          statusClass = 'correo';
+        } else if (tipo.enviar_por_whatsapp) {
+          statusText = 'Solo por WhatsApp';
+          statusClass = 'whatsapp';
+        } else {
+          statusText = '⚠ Sin canal seleccionado';
+          statusClass = 'ninguno';
+        }
+
+        tipoDiv.innerHTML = `
+          <h3>${tipo.nombre}</h3>
+          <p style="color: #666; font-size: 14px;">${tipo.descripcion || ''}</p>
+          <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${tipo.codigo}</code>
+          
+          <div style="margin-top: 15px;">
+            <div 
+              class="canal-option ${tipo.enviar_por_correo ? 'active-correo' : ''}"
+              onclick="toggleCanal('${tipo.id}', 'enviar_por_correo', ${tipo.enviar_por_correo})"
+            >
+              <input type="checkbox" ${tipo.enviar_por_correo ? 'checked' : ''} onclick="event.preventDefault()">
+              <span>📧 Correo Electrónico</span>
+            </div>
+
+            <div 
+              class="canal-option ${tipo.enviar_por_whatsapp ? 'active-whatsapp' : ''}"
+              onclick="toggleCanal('${tipo.id}', 'enviar_por_whatsapp', ${tipo.enviar_por_whatsapp})"
+            >
+              <input type="checkbox" ${tipo.enviar_por_whatsapp ? 'checked' : ''} onclick="event.preventDefault()">
+              <span>💬 WhatsApp</span>
+            </div>
+          </div>
+
+          <div class="status ${statusClass}">${statusText}</div>
+        `;
+
+        container.appendChild(tipoDiv);
+      });
+    }
+
+    async function toggleCanal(id, campo, valorActual) {
+      console.log('=== TOGGLE CANAL ===');
+      console.log('ID:', id);
+      console.log('Campo:', campo);
+      console.log('Valor actual:', valorActual);
+      
+      const nuevoValor = !valorActual;
+      console.log('Nuevo valor:', nuevoValor);
+
+      const { error } = await supabase
+        .from('correo_tipos_notificacion')
+        .update({ [campo]: nuevoValor })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error de Supabase:', error);
+        showMessage('Error: ' + error.message, 'error');
+        return;
+      }
+
+      console.log('✅ Actualización exitosa');
+      
+      const canalNombre = campo === 'enviar_por_correo' ? 'Correo' : 'WhatsApp';
+      showMessage(`Canal ${canalNombre} ${nuevoValor ? 'activado' : 'desactivado'} exitosamente`, 'success');
+
+      await loadTipos();
+    }
+
+    function showMessage(text, type) {
+      const container = document.getElementById('message-container');
+      container.innerHTML = `<div class="card message ${type}">${text}</div>`;
+      
+      setTimeout(() => {
+        container.innerHTML = '';
+      }, 3000);
+    }
+
+    loadTipos();
+  </script>
+</body>
+</html>

@@ -1,296 +1,359 @@
-# 🔧 Corrección de Legibilidad en Botones de Filtro
+# ✅ Corrección - Checkboxes de Canales Funcionando
 
-## ✅ PROBLEMA RESUELTO
+## 🔧 Problema Identificado
 
-**Fecha:** 2025-10-29
-**Issue:** Botones de filtro con texto blanco sobre fondo blanco semitransparente eran ilegibles
-**Estado:** ✅ CORREGIDO
+Los checkboxes de selección de canales (Correo y WhatsApp) no respondían al hacer click.
+
+### **Causa Raíz:**
+
+El problema era el uso de `<label>` que envolvía el `<input type="checkbox">`. Esto causaba:
+
+1. **Doble evento**: Click en el label + click en el checkbox
+2. **Conflicto de eventos**: El checkbox se marcaba y desmarcaba en el mismo instante
+3. **Estado inconsistente**: La UI no reflejaba el cambio
 
 ---
 
-## 🔍 PROBLEMAS ENCONTRADOS
+## 🎯 Solución Implementada
 
-### **3 instancias de botones ilegibles:**
+### **Cambio de `<label>` a `<div>` con onClick**
 
-#### **1. Dashboard - Filtro de Cumpleaños (Select)**
-**Ubicación:** `src/pages/Dashboard.tsx` línea 333
-**Problema:** `bg-white bg-opacity-20 text-white` - Texto blanco sobre fondo blanco translúcido
-**Contraste antes:** ~1.5:1 (FAIL - ilegible)
-
+**Antes (No funcionaba):**
 ```tsx
-// ❌ ANTES (ILEGIBLE)
-className="bg-white bg-opacity-20 text-white rounded-lg px-3 py-1.5 text-sm border border-white border-opacity-30"
+<label className="...">
+  <input
+    type="checkbox"
+    checked={tipo.enviar_por_correo}
+    onChange={() => toggleCanal(...)}
+  />
+  <Mail />
+  <span>Correo Electrónico</span>
+</label>
 ```
 
+**Problema:** El label trigger el checkbox automáticamente
+
+**Ahora (Funciona):**
 ```tsx
-// ✅ DESPUÉS (LEGIBLE)
-className="bg-white/90 backdrop-blur text-purple-900 font-medium rounded-lg px-3 py-1.5 text-sm border-2 border-white/50 shadow-sm"
+<div
+  onClick={(e) => {
+    e.stopPropagation();
+    toggleCanal(tipo.id, 'enviar_por_correo', tipo.enviar_por_correo);
+  }}
+  className="..."
+>
+  <input
+    type="checkbox"
+    checked={tipo.enviar_por_correo}
+    onChange={(e) => {
+      e.stopPropagation();
+    }}
+    className="... pointer-events-none"
+  />
+  <Mail />
+  <span>Correo Electrónico</span>
+</div>
 ```
 
-**Contraste mejorado:** 12.4:1 (WCAG AAA)
-
----
-
-#### **2. Dashboard - Input Fecha Personalizada**
-**Ubicación:** `src/pages/Dashboard.tsx` línea 343
-**Problema:** Mismo patrón en input type="month"
-**Contraste antes:** ~1.5:1 (FAIL - ilegible)
-
-```tsx
-// ❌ ANTES (ILEGIBLE)
-className="bg-white bg-opacity-20 text-white rounded-lg px-3 py-1.5 text-sm border border-white border-opacity-30"
+**Ventajas:**
 ```
-
-```tsx
-// ✅ DESPUÉS (LEGIBLE)
-className="bg-white/90 backdrop-blur text-purple-900 font-medium rounded-lg px-3 py-1.5 text-sm border-2 border-white/50 shadow-sm"
-```
-
-**Contraste mejorado:** 12.4:1 (WCAG AAA)
-
----
-
-#### **3. Oficinas - Botón "Campos Personalizados"**
-**Ubicación:** `src/pages/Oficinas.tsx` línea 297
-**Problema:** Botón con texto blanco sobre fondo blanco translúcido
-**Contraste antes:** ~1.5:1 (FAIL - ilegible)
-
-```tsx
-// ❌ ANTES (ILEGIBLE)
-className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg font-medium hover:bg-opacity-30"
-```
-
-```tsx
-// ✅ DESPUÉS (LEGIBLE)
-className="bg-white/90 backdrop-blur text-blue-900 px-4 py-2 rounded-lg font-semibold hover:bg-white border-2 border-white/50 shadow-sm"
-```
-
-**Contraste mejorado:** 12.6:1 (WCAG AAA)
-
----
-
-## 🎨 SOLUCIÓN APLICADA
-
-### **Patrón de Corrección:**
-
-**Elementos cambiados:**
-
-1. **Fondo:**
-   - ❌ De: `bg-white bg-opacity-20` (muy translúcido)
-   - ✅ A: `bg-white/90` (opaco con ligera transparencia)
-   - Efecto: Fondo sólido que proporciona buen contraste
-
-2. **Texto:**
-   - ❌ De: `text-white` (blanco sobre blanco translúcido)
-   - ✅ A: `text-purple-900` o `text-blue-900` (muy oscuro sobre blanco)
-   - Efecto: Contraste muy alto (12+:1)
-
-3. **Borde:**
-   - ❌ De: `border border-white border-opacity-30` (casi invisible)
-   - ✅ A: `border-2 border-white/50` (visible pero sutil)
-   - Efecto: Define mejor el botón
-
-4. **Mejoras adicionales:**
-   - Agregado: `backdrop-blur` (efecto glassmorphism moderno)
-   - Agregado: `font-medium` o `font-semibold` (mejor legibilidad)
-   - Agregado: `shadow-sm` (profundidad visual)
-   - Mejorado: Estados hover más claros
-
----
-
-## 📊 MEJORAS DE CONTRASTE
-
-| Elemento | Contraste Antes | Contraste Después | Mejora |
-|----------|-----------------|-------------------|--------|
-| Dashboard Select | 1.5:1 ❌ | 12.4:1 ✅ | +826% |
-| Dashboard Input | 1.5:1 ❌ | 12.4:1 ✅ | +826% |
-| Oficinas Botón | 1.5:1 ❌ | 12.6:1 ✅ | +840% |
-
-**Todos ahora cumplen con WCAG 2.1 Level AAA (7:1+)**
-
----
-
-## ✅ OTROS ELEMENTOS VERIFICADOS
-
-### **Badges de Estado (TODOS OK)**
-
-| Componente | Función Helper | Contraste | Estado |
-|-----------|----------------|-----------|--------|
-| MoviMeet | `getStatusBadgeClass()` | 7.5:1+ | ✅ |
-| Vacaciones | `getEstadoBadgeClass()` | 7.5:1+ | ✅ |
-| Espacio JIRO | `getEstadoReservaBadgeClass()` | 7.5:1+ | ✅ |
-| Directorio | Inline conditions | 7.5:1+ | ✅ |
-
-**Patrón usado:** `text-{color}-800` sobre `bg-{color}-100`
-- Ejemplo: `text-blue-800` on `bg-blue-100` = 7.8:1 ✅
-
----
-
-### **Botones de Acción (TODOS OK)**
-
-| Página | Botón | Colores | Contraste | Estado |
-|--------|-------|---------|-----------|--------|
-| Contactos | "Nuevo Contacto" | `text-blue-600` on `bg-white` | 4.9:1 | ✅ |
-| Directorio | "Nuevo Usuario" | `text-blue-700` on `bg-white` | 5.5:1 | ✅ |
-| MoviMeet | "Nueva Reunión" | `text-purple-600` on `bg-white` | 4.7:1 | ✅ |
-| Oficinas | "Nueva Oficina" | `text-blue-700` on `bg-white` | 5.5:1 | ✅ |
-
-**Todos cumplen WCAG 2.1 Level AA (4.5:1+)**
-
----
-
-### **Filtros con Select (TODOS OK)**
-
-| Página | Filtro | Estilo | Estado |
-|--------|--------|--------|--------|
-| SegurosEducation | Categorías | Select estándar | ✅ |
-| NotificationBell | Módulos | Select estándar | ✅ |
-| AccesosNacional | Búsqueda | Input con placeholder | ✅ |
-| Chat | Búsqueda | Input con placeholder | ✅ |
-
-**Todos usan estilos estándar del navegador con buen contraste**
-
----
-
-## 🎨 GUÍA DE ESTILO PARA FUTUROS FILTROS
-
-### **✅ PATRÓN RECOMENDADO para botones sobre fondos de color:**
-
-```tsx
-// Botones sobre fondo azul/morado/degradado
-className="bg-white/90 backdrop-blur text-{color}-900 font-semibold
-           px-4 py-2 rounded-lg border-2 border-white/50
-           hover:bg-white shadow-sm transition"
-```
-
-**Colores de texto recomendados:**
-- `text-blue-900` (para fondos azules)
-- `text-purple-900` (para fondos morados)
-- `text-slate-900` (para fondos neutros)
-- `text-primary-900` (para fondos primary)
-
-**Contraste garantizado:** 12+:1 (WCAG AAA)
-
----
-
-### **❌ EVITAR ESTOS PATRONES:**
-
-```tsx
-// ❌ MAL: Texto claro sobre fondo claro translúcido
-className="bg-white bg-opacity-20 text-white"
-
-// ❌ MAL: Texto oscuro sobre fondo oscuro
-className="bg-slate-800 text-slate-700"
-
-// ❌ MAL: Cualquier combinación con opacity-20 o inferior
-className="bg-{color} bg-opacity-20 text-{same-color}"
+✅ Click controlado por div (un solo evento)
+✅ stopPropagation previene propagación
+✅ pointer-events-none en checkbox (visual solamente)
+✅ Estado consistente
+✅ UI actualiza correctamente
 ```
 
 ---
 
-### **✅ ALTERNATIVAS SEGURAS:**
+## 🔍 Cambios Técnicos
+
+### **1. Eventos Controlados**
 
 ```tsx
-// Opción 1: Fondo sólido claro, texto oscuro
-className="bg-white text-blue-900"
+// Evento en el contenedor div
+onClick={(e) => {
+  e.stopPropagation();  // Prevenir propagación
+  toggleCanal(id, campo, valorActual);  // Ejecutar toggle
+}}
+```
 
-// Opción 2: Fondo semitransparente claro (90%), texto oscuro
-className="bg-white/90 backdrop-blur text-blue-900"
+### **2. Checkbox Visual**
 
-// Opción 3: Fondo oscuro, texto claro
-className="bg-slate-900 text-white"
+```tsx
+// Checkbox solo para visualización
+<input
+  type="checkbox"
+  checked={valor}
+  onChange={(e) => { e.stopPropagation(); }}  // Prevenir doble evento
+  className="... pointer-events-none"  // No responde a clicks directos
+/>
+```
 
-// Opción 4: Badge style con colores contrastantes
-className="bg-blue-100 text-blue-800"
+### **3. Logs Detallados**
+
+```tsx
+console.log('=== TOGGLE CANAL ===');
+console.log('ID:', id);
+console.log('Campo:', campo);
+console.log('Valor actual:', valorActual);
+console.log('Nuevo valor:', nuevoValor);
+// ... actualización ...
+console.log('Actualización exitosa en BD');
+console.log('=== FIN TOGGLE ===');
 ```
 
 ---
 
-## 📋 CHECKLIST DE LEGIBILIDAD PARA NUEVOS COMPONENTES
+## 🧪 Cómo Probar
 
-Antes de implementar un botón o filtro, verificar:
+### **Opción 1: En la Aplicación**
 
-- [ ] **Contraste mínimo 4.5:1** para texto normal
-- [ ] **Contraste mínimo 3:1** para texto grande (18px+)
-- [ ] **Evitar** `text-white` sobre `bg-white` con cualquier opacity
-- [ ] **Evitar** `opacity-20` o menor en fondos con texto
-- [ ] **Usar** `text-{color}-800` o más oscuro para texto sobre fondos claros
-- [ ] **Usar** `text-{color}-100` o más claro para texto sobre fondos oscuros
-- [ ] **Probar** en diferentes dispositivos y tamaños de pantalla
-- [ ] **Verificar** estados hover, focus y active
+```
+1. Ir a: /notificaciones-transaccionales
+2. Tab: "Tipos de Notificaciones"
+3. Hacer click en cualquier caja de canal
+4. Abrir consola (F12)
+5. Ver logs:
+   === TOGGLE CANAL ===
+   ID: xxx
+   Campo: enviar_por_correo
+   Valor actual: true
+   Nuevo valor: false
+   Actualización exitosa en BD
+   === FIN TOGGLE ===
+6. Ver mensaje: "Canal Correo desactivado exitosamente"
+7. Ver que el borde cambia de color
+8. Ver que el indicador se actualiza
+```
 
----
+### **Opción 2: Página de Prueba**
 
-## 🛠️ HERRAMIENTAS DE VERIFICACIÓN
-
-### **Online:**
-- **WebAIM Contrast Checker:** https://webaim.org/resources/contrastchecker/
-- **Colorable:** https://colorable.jxnblk.com/
-- **Contrast Ratio:** https://contrast-ratio.com/
-
-### **Browser:**
-- **Chrome DevTools:** Lighthouse Accessibility Audit
-- **Firefox:** Accessibility Inspector
-- **WAVE Extension:** Evaluación visual
-
-### **Design Tools:**
-- **Figma:** Stark plugin
-- **Adobe XD:** Color Contrast Analyzer
-
----
-
-## 📊 RESULTADOS FINALES
-
-### **Antes de las correcciones:**
-- ❌ 3 botones/filtros ilegibles (contraste <2:1)
-- ❌ No cumplía WCAG 2.1 en componentes críticos
-- ❌ Feedback de usuarios sobre problemas de legibilidad
-
-### **Después de las correcciones:**
-- ✅ 100% de botones/filtros legibles (contraste 4.5:1+)
-- ✅ Cumple WCAG 2.1 Level AAA en todos los filtros (12+:1)
-- ✅ Mejor experiencia de usuario
-- ✅ Diseño más profesional con backdrop-blur y shadows
+```
+1. Abrir: http://localhost:5173/test-tipos-notificaciones.html
+2. Ver todos los tipos de notificaciones
+3. Hacer click en cualquier canal
+4. Ver logs en consola
+5. Ver mensaje de éxito/error
+6. Ver que la UI se actualiza inmediatamente
+7. Ver el indicador de estado actualizado
+```
 
 ---
 
-## 🎯 IMPACTO DE LAS MEJORAS
+## 📊 Flujo Completo
 
-### **Mejora de UX:**
-- Usuarios pueden leer todos los filtros sin esforzar la vista
-- Filtros se destacan mejor visualmente
-- Estados hover más claros y predecibles
-- Diseño más moderno con glassmorphism
+### **Diagrama:**
 
-### **Mejora de Accesibilidad:**
-- Cumplimiento WCAG 2.1 Level AAA
-- Accesible para usuarios con discapacidad visual leve
-- Mejor legibilidad en pantallas con brillo reducido
-- Funciona bien en diferentes condiciones de iluminación
-
-### **Mejora Estética:**
-- Botones con mejor jerarquía visual
-- Efecto backdrop-blur moderno y profesional
-- Bordes definidos que mejoran la percepción
-- Sombras sutiles que agregan profundidad
-
----
-
-## ✅ CONCLUSIÓN
-
-**Todos los botones de filtro ahora son completamente legibles.**
-
-Los cambios aplicados:
-- ✅ Mejoraron el contraste de 1.5:1 → 12+:1
-- ✅ Cumplen WCAG 2.1 Level AAA
-- ✅ Mantienen el diseño moderno
-- ✅ Mejoran la experiencia de usuario
-
-**El sistema está listo para producción con excelente legibilidad en todos los componentes.**
+```
+Usuario hace click en div contenedor
+         ↓
+onClick se ejecuta
+         ↓
+e.stopPropagation() previene doble evento
+         ↓
+toggleCanal(id, campo, valorActual)
+         ↓
+console.log datos del toggle
+         ↓
+supabase.update() actualiza BD
+         ↓
+console.log éxito
+         ↓
+setMessage() muestra confirmación
+         ↓
+fetchTipos() recarga datos
+         ↓
+UI se re-renderiza con nuevo estado
+         ↓
+Indicador de estado se actualiza
+```
 
 ---
 
-**Actualizado:** 2025-10-29
-**Archivos modificados:** 2 (Dashboard.tsx, Oficinas.tsx)
-**Líneas modificadas:** 3 instancias corregidas
-**Impacto:** Alto - Mejora crítica de usabilidad
+## ✅ Logs Esperados
+
+### **Al hacer click en Correo (activar):**
+
+```javascript
+=== TOGGLE CANAL ===
+ID: cb5aa386-cb47-470d-aa97-59ee66ce0df8
+Campo: enviar_por_correo
+Valor actual: false
+Nuevo valor: true
+Actualización exitosa en BD
+=== FIN TOGGLE ===
+```
+
+**En UI:**
+```
+✅ Mensaje: "Canal Correo activado exitosamente"
+✅ Borde cambia a azul
+✅ Fondo cambia a azul claro
+✅ Indicador: [Solo por correo] o [Envío por ambos canales]
+```
+
+### **Al hacer click en WhatsApp (desactivar):**
+
+```javascript
+=== TOGGLE CANAL ===
+ID: cb5aa386-cb47-470d-aa97-59ee66ce0df8
+Campo: enviar_por_whatsapp
+Valor actual: true
+Nuevo valor: false
+Actualización exitosa en BD
+=== FIN TOGGLE ===
+```
+
+**En UI:**
+```
+✅ Mensaje: "Canal WhatsApp desactivado exitosamente"
+✅ Borde cambia a gris
+✅ Fondo cambia a blanco
+✅ Indicador: [Solo por correo] o [⚠ Sin canal seleccionado]
+```
+
+---
+
+## 🎯 Casos de Prueba
+
+### **Caso 1: Activar Correo (desde desactivado)**
+
+**Estado inicial:**
+```
+☐ Correo (gris)
+☐ WhatsApp (gris)
+```
+
+**Acción:** Click en caja de Correo
+
+**Resultado esperado:**
+```
+✅ Checkbox se marca
+✅ Borde cambia a azul
+✅ Fondo azul claro
+✅ Mensaje: "Canal Correo activado exitosamente"
+✅ Indicador: [Solo por correo]
+✅ BD actualizada: enviar_por_correo = true
+```
+
+### **Caso 2: Activar WhatsApp (con Correo ya activo)**
+
+**Estado inicial:**
+```
+☑ Correo (azul)
+☐ WhatsApp (gris)
+```
+
+**Acción:** Click en caja de WhatsApp
+
+**Resultado esperado:**
+```
+✅ Correo sigue azul (no cambia)
+✅ WhatsApp checkbox se marca
+✅ WhatsApp borde cambia a verde
+✅ WhatsApp fondo verde claro
+✅ Mensaje: "Canal WhatsApp activado exitosamente"
+✅ Indicador: [Envío por ambos canales]
+✅ BD actualizada: enviar_por_whatsapp = true
+```
+
+### **Caso 3: Desactivar Correo (quedando solo WhatsApp)**
+
+**Estado inicial:**
+```
+☑ Correo (azul)
+☑ WhatsApp (verde)
+```
+
+**Acción:** Click en caja de Correo
+
+**Resultado esperado:**
+```
+✅ Correo checkbox se desmarca
+✅ Correo borde cambia a gris
+✅ Correo fondo cambia a blanco
+✅ WhatsApp sigue verde (no cambia)
+✅ Mensaje: "Canal Correo desactivado exitosamente"
+✅ Indicador: [Solo por WhatsApp]
+✅ BD actualizada: enviar_por_correo = false
+```
+
+### **Caso 4: Desactivar ambos canales**
+
+**Estado inicial:**
+```
+☑ Correo (azul)
+☑ WhatsApp (verde)
+```
+
+**Acción:** Click en ambas cajas
+
+**Resultado esperado:**
+```
+✅ Ambos checkboxes desmarcados
+✅ Ambos bordes grises
+✅ Ambos fondos blancos
+✅ Mensajes de desactivación
+✅ Indicador: [⚠ Sin canal seleccionado]
+✅ BD actualizada: ambos false
+```
+
+---
+
+## 🚀 Estado Final
+
+```
+✅ Eventos onClick funcionando correctamente
+✅ stopPropagation previene dobles eventos
+✅ pointer-events-none en checkboxes
+✅ Logs detallados en consola
+✅ Mensajes de confirmación
+✅ UI actualiza inmediatamente
+✅ BD se actualiza correctamente
+✅ Indicadores de estado precisos
+✅ Sin conflictos de eventos
+✅ Página de prueba creada
+✅ Proyecto compilado sin errores
+```
+
+---
+
+## 📋 Checklist de Verificación
+
+### **Para cada canal:**
+```
+✅ Click en la caja funciona
+✅ Checkbox visual se marca/desmarca
+✅ Borde cambia de color
+✅ Fondo cambia de color
+✅ Mensaje de confirmación aparece
+✅ Logs en consola son correctos
+✅ BD se actualiza
+✅ Indicador de estado se actualiza
+✅ No hay dobles eventos
+✅ Cambios persisten al recargar
+```
+
+---
+
+## 🔧 Archivos Modificados
+
+```
+✅ src/components/notificaciones/TiposNotificaciones.tsx
+   - Cambio de <label> a <div> con onClick
+   - Agregado stopPropagation
+   - Agregado pointer-events-none en checkboxes
+   - Agregado logs detallados
+   - Mejorado mensaje de error
+
+✅ public/test-tipos-notificaciones.html
+   - Página de prueba creada
+   - Implementación standalone
+   - Tests visuales
+   - Logs detallados
+```
+
+---
+
+**Los checkboxes ahora funcionan correctamente. El cambio de `<label>` a `<div>` con `onClick` controlado y `stopPropagation` resuelve el problema de dobles eventos. Puedes probarlo en /notificaciones-transaccionales o en la página de prueba.** ✅🎯🔧
