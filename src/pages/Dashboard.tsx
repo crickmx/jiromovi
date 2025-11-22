@@ -154,99 +154,100 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex justify-center items-center py-20">
+        <div className="w-10 h-10 border-[3px] border-ios-blue border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!isAdminOrGerente) {
     return (
-      <div className="space-y-6">
-        <div className="bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 rounded-3xl shadow-strong p-8 md:p-10 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
-          <div className="relative z-10">
-            <div className="flex items-center space-x-2 mb-3">
-              <Sparkles className="w-6 h-6" />
-              <h1 className="text-3xl md:text-4xl font-display font-bold">
-                Bienvenido, {currentUser?.nombre}
-              </h1>
+      <div className="space-y-5">
+        <div className="bg-white rounded-ios-2xl shadow-ios-lg p-8 md:p-10 border border-ios-gray-200/50">
+          <div className="flex flex-col space-y-2 mb-6">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 rounded-full bg-ios-blue"></div>
+              <span className="text-[13px] font-medium text-ios-gray-600 uppercase tracking-wide">Dashboard</span>
             </div>
-            <p className="text-primary-100 text-lg mb-6">
-              Aquí puedes ver un resumen de tus actividades
+            <h1 className="text-[34px] font-bold text-ios-gray-900 tracking-tight leading-tight">
+              Hola, {currentUser?.nombre}
+            </h1>
+            <p className="text-[17px] text-ios-gray-600 leading-relaxed">
+              Resumen de tus actividades
             </p>
-            <div className="flex flex-wrap gap-3">
-              {currentUser?.url_web_multicotizador && (
-                <a
-                  href={currentUser.url_web_multicotizador}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-2 bg-white/95 backdrop-blur text-primary-700 px-5 py-2.5 rounded-xl font-semibold hover:bg-white hover:shadow-medium transition-all duration-200 hover:scale-105"
-                >
-                  <span>Multicotizador Digital</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              )}
-              {currentUser?.url_web_jiro && (
-                <a
-                  href={currentUser.url_web_jiro}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-2 bg-white/95 backdrop-blur text-primary-700 px-5 py-2.5 rounded-xl font-semibold hover:bg-white hover:shadow-medium transition-all duration-200 hover:scale-105"
-                >
-                  <span>Página web de contacto</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              )}
-            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {currentUser?.url_web_multicotizador && (
+              <a
+                href={currentUser.url_web_multicotizador}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 bg-ios-blue text-white px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-blue-dark shadow-ios transition-all duration-200 active:scale-95"
+              >
+                <span>Multicotizador Digital</span>
+                <ExternalLink className="w-4 h-4 stroke-[2]" />
+              </a>
+            )}
+            {currentUser?.url_web_jiro && (
+              <a
+                href={currentUser.url_web_jiro}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-900 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-gray-200 transition-all duration-200 active:scale-95"
+              >
+                <span>Página web de contacto</span>
+                <ExternalLink className="w-4 h-4 stroke-[2]" />
+              </a>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <a
             href="/seguros-education"
-            className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
+            className="group relative bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 overflow-hidden transition-all duration-200 hover:shadow-ios-lg active:scale-[0.98]"
           >
-            <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
+            <div className="aspect-[16/9] w-full flex items-center justify-center bg-ios-gray-50 p-8">
               <img
                 src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
                 alt="Seguros Education"
-                className="max-w-full max-h-full object-contain"
+                className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover:scale-105"
               />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
-              <h3 className="text-white text-2xl font-bold group-hover:translate-y-[-4px] transition-transform">
+            <div className="px-5 py-4 border-t border-ios-gray-200/50">
+              <h3 className="text-ios-gray-900 text-[17px] font-semibold">
                 Seguros Education
               </h3>
+              <p className="text-ios-gray-600 text-[13px] mt-1">Plataforma de capacitación</p>
             </div>
           </a>
 
           <a
             href="/multicotizador-digital"
-            className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
+            className="group relative bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 overflow-hidden transition-all duration-200 hover:shadow-ios-lg active:scale-[0.98]"
           >
-            <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
+            <div className="aspect-[16/9] w-full flex items-center justify-center bg-ios-gray-50 p-8">
               <img
                 src="https://movi.digital/wp-content/uploads/2025/02/Logo_MCD_v1-1.png"
                 alt="Multicotizador Digital"
-                className="max-w-full max-h-full object-contain"
+                className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover:scale-105"
               />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
-              <h3 className="text-white text-2xl font-bold group-hover:translate-y-[-4px] transition-transform">
+            <div className="px-5 py-4 border-t border-ios-gray-200/50">
+              <h3 className="text-ios-gray-900 text-[17px] font-semibold">
                 Multicotizador Digital
               </h3>
+              <p className="text-ios-gray-600 text-[13px] mt-1">Herramienta de cotización</p>
             </div>
           </a>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ResumenVacaciones />
           <TicketsWidget />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ProximasReservas />
           <ProximasCapacitaciones />
         </div>
@@ -255,27 +256,30 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 rounded-3xl shadow-strong p-8 md:p-10 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
-        <div className="relative z-10">
-          <div className="flex items-center space-x-2 mb-3">
-            <Sparkles className="w-6 h-6" />
-            <h1 className="text-3xl md:text-4xl font-display font-bold">
-              Bienvenido, {currentUser?.nombre}
-            </h1>
+    <div className="space-y-5">
+      <div className="bg-white rounded-ios-2xl shadow-ios-lg p-8 md:p-10 border border-ios-gray-200/50">
+        <div className="flex flex-col space-y-2 mb-6">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full bg-ios-blue"></div>
+            <span className="text-[13px] font-medium text-ios-gray-600 uppercase tracking-wide">Dashboard</span>
           </div>
-          <div className="flex flex-wrap gap-3 mt-6">
+          <h1 className="text-[34px] font-bold text-ios-gray-900 tracking-tight leading-tight">
+            Hola, {currentUser?.nombre}
+          </h1>
+          <p className="text-[17px] text-ios-gray-600 leading-relaxed">
+            Panel de administración
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
             {currentUser?.url_web_multicotizador && (
               <a
                 href={currentUser.url_web_multicotizador}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center space-x-2 bg-white/95 backdrop-blur text-primary-700 px-5 py-2.5 rounded-xl font-semibold hover:bg-white hover:shadow-medium transition-all duration-200 hover:scale-105"
+                className="flex items-center space-x-2 bg-ios-blue text-white px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-blue-dark shadow-ios transition-all duration-200 active:scale-95"
               >
                 <span>Multicotizador Digital</span>
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-4 h-4 stroke-[2]" />
               </a>
             )}
             {currentUser?.url_web_jiro && (
@@ -283,55 +287,56 @@ export function Dashboard() {
                 href={currentUser.url_web_jiro}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center space-x-2 bg-white/95 backdrop-blur text-primary-700 px-5 py-2.5 rounded-xl font-semibold hover:bg-white hover:shadow-medium transition-all duration-200 hover:scale-105"
+                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-900 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-gray-200 transition-all duration-200 active:scale-95"
               >
                 <span>Página web de contacto</span>
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-4 h-4 stroke-[2]" />
               </a>
             )}
-          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <a
           href="/seguros-education"
-          className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
+          className="group relative bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 overflow-hidden transition-all duration-200 hover:shadow-ios-lg active:scale-[0.98]"
         >
-          <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
+          <div className="aspect-[16/9] w-full flex items-center justify-center bg-ios-gray-50 p-8">
             <img
               src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
               alt="Seguros Education"
-              className="max-w-full max-h-full object-contain"
+              className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover:scale-105"
             />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
-            <h3 className="text-white text-2xl font-bold group-hover:translate-y-[-4px] transition-transform">
+          <div className="px-5 py-4 border-t border-ios-gray-200/50">
+            <h3 className="text-ios-gray-900 text-[17px] font-semibold">
               Seguros Education
             </h3>
+            <p className="text-ios-gray-600 text-[13px] mt-1">Plataforma de capacitación</p>
           </div>
         </a>
 
         <a
           href="/multicotizador-digital"
-          className="group relative bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105"
+          className="group relative bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 overflow-hidden transition-all duration-200 hover:shadow-ios-lg active:scale-[0.98]"
         >
-          <div className="aspect-[16/9] w-full flex items-center justify-center bg-white p-8">
+          <div className="aspect-[16/9] w-full flex items-center justify-center bg-ios-gray-50 p-8">
             <img
               src="https://movi.digital/wp-content/uploads/elementor/thumbs/Logo_MCD_v2-r0qhbo2naggb7667cc6dg6h629ac03clkxckswc7b4.png"
               alt="Multicotizador Digital"
-              className="max-w-full max-h-full object-contain"
+              className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover:scale-105"
             />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent flex items-end p-6">
-            <h3 className="text-white text-2xl font-bold group-hover:translate-y-[-4px] transition-transform">
+          <div className="px-5 py-4 border-t border-ios-gray-200/50">
+            <h3 className="text-ios-gray-900 text-[17px] font-semibold">
               Multicotizador Digital
             </h3>
+            <p className="text-ios-gray-600 text-[13px] mt-1">Herramienta de cotización</p>
           </div>
         </a>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TicketsWidget />
         <ProximasCapacitaciones />
       </div>
@@ -340,118 +345,120 @@ export function Dashboard() {
 
       {currentUser?.rol === 'Administrador' && <UsuariosPendientes />}
 
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${isGerente ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-6`}>
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${isGerente ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-4`}>
         <div
           onClick={() => navigate('/directorio')}
-          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white cursor-pointer hover:shadow-xl hover:scale-105 transition-all"
+          className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6 cursor-pointer hover:shadow-ios-lg active:scale-[0.98] transition-all duration-200"
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm font-medium">
+            <div className="flex-1">
+              <p className="text-ios-gray-600 text-[13px] font-medium uppercase tracking-wide">
                 {isGerente ? 'Usuarios en mi Oficina' : 'Total Usuarios'}
               </p>
-              <p className="text-4xl font-bold mt-2">{totalUsuarios}</p>
-              <p className="text-blue-100 text-sm mt-4">Ver directorio completo →</p>
+              <p className="text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{totalUsuarios}</p>
+              <p className="text-ios-blue text-[15px] mt-4 font-medium">Ver directorio →</p>
             </div>
-            <Users className="w-16 h-16 text-blue-200 opacity-50" />
+            <Users className="w-14 h-14 text-ios-blue/20 stroke-[1.5]" />
           </div>
         </div>
 
         {!isGerente && (
           <div
             onClick={() => navigate('/oficinas')}
-            className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white cursor-pointer hover:shadow-xl hover:scale-105 transition-all"
+            className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6 cursor-pointer hover:shadow-ios-lg active:scale-[0.98] transition-all duration-200"
           >
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-emerald-100 text-sm font-medium">Total Oficinas</p>
-                <p className="text-4xl font-bold mt-2">{totalOficinas}</p>
-                <p className="text-emerald-100 text-sm mt-4">Gestionar oficinas →</p>
+              <div className="flex-1">
+                <p className="text-ios-gray-600 text-[13px] font-medium uppercase tracking-wide">Total Oficinas</p>
+                <p className="text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{totalOficinas}</p>
+                <p className="text-ios-green text-[15px] mt-4 font-medium">Gestionar oficinas →</p>
               </div>
-              <Building2 className="w-16 h-16 text-emerald-200 opacity-50" />
+              <Building2 className="w-14 h-14 text-ios-green/20 stroke-[1.5]" />
             </div>
           </div>
         )}
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+        <div className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm font-medium">Próximos Cumpleaños</p>
-              <p className="text-4xl font-bold mt-2">{proximosCumpleanos.length}</p>
-              <p className="text-purple-100 text-sm mt-4">En el siguiente mes</p>
+            <div className="flex-1">
+              <p className="text-ios-gray-600 text-[13px] font-medium uppercase tracking-wide">Próximos Cumpleaños</p>
+              <p className="text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{proximosCumpleanos.length}</p>
+              <p className="text-ios-gray-600 text-[15px] mt-4">En el siguiente mes</p>
             </div>
-            <Cake className="w-16 h-16 text-purple-200 opacity-50" />
+            <Cake className="w-14 h-14 text-ios-purple/20 stroke-[1.5]" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-lg p-6 text-white">
+        <div className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-amber-100 text-sm font-medium">Aniversarios Laborales</p>
-              <p className="text-4xl font-bold mt-2">{proximosAniversarios.length}</p>
-              <p className="text-amber-100 text-sm mt-4">En el siguiente mes</p>
+            <div className="flex-1">
+              <p className="text-ios-gray-600 text-[13px] font-medium uppercase tracking-wide">Aniversarios Laborales</p>
+              <p className="text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{proximosAniversarios.length}</p>
+              <p className="text-ios-gray-600 text-[15px] mt-4">En el siguiente mes</p>
             </div>
-            <Award className="w-16 h-16 text-amber-200 opacity-50" />
+            <Award className="w-14 h-14 text-ios-orange/20 stroke-[1.5]" />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
-            <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 overflow-hidden">
+          <div className="bg-ios-gray-50 px-6 py-5 border-b border-ios-gray-200/50">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <Cake className="w-6 h-6 text-white" />
-                <h2 className="text-xl font-bold text-white">Próximos Cumpleaños</h2>
+                <div className="w-8 h-8 rounded-ios bg-ios-purple/10 flex items-center justify-center">
+                  <Cake className="w-5 h-5 text-ios-purple stroke-[1.5]" />
+                </div>
+                <h2 className="text-[20px] font-semibold text-ios-gray-900">Próximos Cumpleaños</h2>
               </div>
-              <Calendar className="w-5 h-5 text-purple-200" />
+              <Calendar className="w-5 h-5 text-ios-gray-500 stroke-[1.5]" />
             </div>
-            <div className="mt-3 flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               <select
                 value={birthdayFilter}
                 onChange={(e) => setBirthdayFilter(e.target.value as 'next_month' | 'custom')}
-                className="bg-white/90 backdrop-blur text-purple-900 font-medium rounded-lg px-3 py-1.5 text-sm border-2 border-white/50 focus:outline-none focus:ring-2 focus:ring-white focus:border-white shadow-sm"
+                className="bg-white text-ios-gray-900 font-medium rounded-ios-lg px-3 py-2 text-[15px] border border-ios-gray-300 focus:outline-none focus:border-ios-blue transition-colors"
               >
-                <option value="next_month" className="text-slate-900">Siguiente mes</option>
-                <option value="custom" className="text-slate-900">Fecha personalizada</option>
+                <option value="next_month">Siguiente mes</option>
+                <option value="custom">Fecha personalizada</option>
               </select>
               {birthdayFilter === 'custom' && (
                 <input
                   type="month"
                   value={customBirthdayDate}
                   onChange={(e) => setCustomBirthdayDate(e.target.value)}
-                  className="bg-white/90 backdrop-blur text-purple-900 font-medium rounded-lg px-3 py-1.5 text-sm border-2 border-white/50 focus:outline-none focus:ring-2 focus:ring-white focus:border-white shadow-sm"
+                  className="bg-white text-ios-gray-900 font-medium rounded-ios-lg px-3 py-2 text-[15px] border border-ios-gray-300 focus:outline-none focus:border-ios-blue transition-colors"
                 />
               )}
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             {proximosCumpleanos.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">No hay cumpleaños próximos</p>
+              <p className="text-ios-gray-500 text-center py-12 text-[15px]">No hay cumpleaños próximos</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {proximosCumpleanos.map((usuario) => (
                   <div
                     key={usuario.id}
-                    className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                    className="flex items-center justify-between p-4 bg-ios-gray-50 rounded-ios-lg hover:bg-ios-gray-100 active:scale-[0.99] transition-all duration-200 cursor-pointer"
                     onClick={() => navigate(`/perfil/${usuario.id}`)}
                   >
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-11 h-11 rounded-full bg-ios-purple flex items-center justify-center text-white font-semibold text-[15px]">
                         {usuario.nombre[0]}{usuario.apellidos[0]}
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-900">
+                        <p className="font-semibold text-ios-gray-900 text-[15px]">
                           {usuario.nombre} {usuario.apellidos}
                         </p>
-                        <p className="text-sm text-slate-500">{usuario.puesto}</p>
+                        <p className="text-[13px] text-ios-gray-600">{usuario.puesto}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-purple-600">
+                      <p className="text-[15px] font-semibold text-ios-purple">
                         {formatDate(usuario.fecha_nacimiento!)}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-[13px] text-ios-gray-600">
                         {calculateAge(usuario.fecha_nacimiento!)} años
                       </p>
                     </div>
@@ -462,41 +469,43 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4">
+        <div className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 overflow-hidden">
+          <div className="bg-ios-gray-50 px-6 py-5 border-b border-ios-gray-200/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <Award className="w-6 h-6 text-white" />
-                <h2 className="text-xl font-bold text-white">Aniversarios Laborales</h2>
+                <div className="w-8 h-8 rounded-ios bg-ios-orange/10 flex items-center justify-center">
+                  <Award className="w-5 h-5 text-ios-orange stroke-[1.5]" />
+                </div>
+                <h2 className="text-[20px] font-semibold text-ios-gray-900">Aniversarios Laborales</h2>
               </div>
-              <Calendar className="w-5 h-5 text-amber-200" />
+              <Calendar className="w-5 h-5 text-ios-gray-500 stroke-[1.5]" />
             </div>
-            <p className="text-amber-100 text-sm mt-1">Siguiente mes</p>
+            <p className="text-ios-gray-600 text-[13px] mt-2">Siguiente mes</p>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             {proximosAniversarios.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">No hay aniversarios próximos</p>
+              <p className="text-ios-gray-500 text-center py-12 text-[15px]">No hay aniversarios próximos</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {proximosAniversarios.map((usuario: any) => (
                   <div
                     key={usuario.id}
-                    className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                    className="flex items-center justify-between p-4 bg-ios-gray-50 rounded-ios-lg hover:bg-ios-gray-100 active:scale-[0.99] transition-all duration-200 cursor-pointer"
                     onClick={() => navigate(`/perfil/${usuario.id}`)}
                   >
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-11 h-11 rounded-full bg-ios-orange flex items-center justify-center text-white font-semibold text-[15px]">
                         {usuario.nombre[0]}{usuario.apellidos[0]}
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-900">
+                        <p className="font-semibold text-ios-gray-900 text-[15px]">
                           {usuario.nombre} {usuario.apellidos}
                         </p>
-                        <p className="text-sm text-slate-500">{usuario.puesto}</p>
+                        <p className="text-[13px] text-ios-gray-600">{usuario.puesto}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-amber-600">
+                      <p className="text-[15px] font-semibold text-ios-orange">
                         {formatDate(usuario.fecha_ingreso!)}
                       </p>
                       <p className="text-xs text-slate-500">
