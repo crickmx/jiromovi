@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     let numeroNormalizado = numero.replace(/[^0-9]/g, '');
 
     if (numeroNormalizado.length === 10) {
-      numeroNormalizado = '52' + numeroNormalizado;
+      numeroNormalizado = '521' + numeroNormalizado;
     }
 
     console.log('Número normalizado:', numeroNormalizado);
