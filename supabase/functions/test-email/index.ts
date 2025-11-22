@@ -44,14 +44,22 @@ Deno.serve(async (req) => {
       throw new Error('No hay configuración de correo activa');
     }
 
-    console.log('Configuración encontrada');
+    console.log('Configuración encontrada:', JSON.stringify({
+      tipo: config.tipo_integracion,
+      email: config.remitente_email,
+      tiene_resend_key: !!config.resend_api_key
+    }));
+
+    if (!config.resend_api_key) {
+      throw new Error('No hay API key de Resend configurada');
+    }
 
     let estadoEnvio = 'enviado';
     let errorMensaje = null;
     let resendId = null;
 
     try {
-      const resend = new Resend('re_hdUhQ6MB_BEiDto4R5NKZDwsaxvWMLeeW');
+      const resend = new Resend(config.resend_api_key);
 
       console.log('Enviando con Resend...');
 

@@ -59,8 +59,11 @@ Deno.serve(async (req) => {
 
     console.log('Número normalizado:', numeroNormalizado);
 
+    // channelId debe ser el ID del canal de Wazzup24 (formato: +5215588545516)
+    const channelIdFormatted = `+${config.numero_remitente}`;
+
     const wazzupPayload = {
-      channelId: config.numero_remitente,
+      channelId: channelIdFormatted,
       chatId: `${numeroNormalizado}@c.us`,
       chatType: 'whatsapp',
       text: mensaje
