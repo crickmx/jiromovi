@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Calendar, Clock, Plus, ExternalLink, Search, Filter,
   Building2, User, AlertCircle, CheckCircle, X, Copy,
   Download, Users, Tag, Edit, Trash2, Eye, EyeOff, ChevronDown,
-  ArrowLeft, Menu
+  ArrowLeft, Menu, Video
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -23,11 +23,26 @@ import {
   type SesionConRegistro,
   type SesionInsert
 } from '../lib/educationSesionesUtils';
+import {
+  obtenerEventos,
+  crearEvento,
+  actualizarEvento,
+  eliminarEvento,
+  obtenerEventoConPermisos,
+  type AulaEvento,
+  type EventoConPermisos
+} from '../lib/aulaEventosUtils';
 import { BaseModal } from '../components/BaseModal';
+import { FormularioEvento, type EventoData } from '../components/eventos/FormularioEvento';
+import { TarjetaEvento } from '../components/eventos/TarjetaEvento';
+import { type PermisosSeleccionados } from '../components/eventos/SelectorPermisos';
 
 export function SegurosEducationAulaDigital() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Estados para sesiones
   const [sesiones, setSesiones] = useState<SesionConRegistro[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -38,11 +53,33 @@ export function SegurosEducationAulaDigital() {
   const [showFilters, setShowFilters] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
+  // Estados para eventos
+  const [eventos, setEventos] = useState<AulaEvento[]>([]);
+  const [showEventoModal, setShowEventoModal] = useState(false);
+  const [eventoSeleccionado, setEventoSeleccionado] = useState<AulaEvento | null>(null);
+  const [permisosSeleccionados, setPermisosSeleccionados] = useState<PermisosSeleccionados | undefined>();
+
+  // Pestaña activa: 'sesiones' o 'eventos'
+  const [activeTab, setActiveTab] = useState<'sesiones' | 'eventos'>('eventos');
+
   const isAdmin = usuario?.rol === 'Administrador';
 
   useEffect(() => {
-    cargarSesiones();
+    cargarDatos();
+
+    // Verificar si hay un evento específico en la URL
+    const eventoId = searchParams.get('evento');
+    if (eventoId) {
+      setActiveTab('eventos');
+    }
   }, []);
+
+  const cargarDatos = async () => {
+    await Promise.all([
+      cargarSesiones(),
+      cargarEventos()
+    ]);
+  };
 
   const cargarSesiones = async () => {
     try {
@@ -101,6 +138,94 @@ export function SegurosEducationAulaDigital() {
       alert('Error al eliminar la sesión');
     }
   };
+
+  // ================ FUNCIONES PARA EVENTOS ================
+
+  const cargarEventos = async () => {
+    try {
+      const data = await obtenerEventos();
+      setEventos(data);
+    } catch (error) {
+      console.error('Error cargando eventos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCrearEvento = async (eventoData: EventoData, permisos: PermisosSeleccionados) => {
+    try {
+      await crearEvento(eventoData, permisos);
+      await cargarEventos();
+      setShowEventoModal(false);
+      alert('Evento creado exitosamente. Las notificaciones se han enviado a los usuarios autorizados.');
+    } catch (error: any) {
+      console.error('Error creando evento:', error);
+      throw new Error(error.message || 'Error al crear el evento');
+    }
+  };
+
+  const handleEditarEvento = async (eventoData: EventoData, permisos: PermisosSeleccionados) => {
+    if (!eventoSeleccionado) return;
+
+    try {
+      await actualizarEvento(eventoSeleccionado.id, eventoData, permisos);
+      await cargarEventos();
+      setShowEventoModal(false);
+      setEventoSeleccionado(null);
+      setPermisosSeleccionados(undefined);
+      alert('Evento actualizado exitosamente');
+    } catch (error: any) {
+      console.error('Error actualizando evento:', error);
+      throw new Error(error.message || 'Error al actualizar el evento');
+    }
+  };
+
+  const handleEliminarEvento = async (evento: AulaEvento) => {
+    if (!confirm(`¿Estás seguro de eliminar el evento "${evento.titulo}"?`)) return;
+
+    try {
+      await eliminarEvento(evento.id);
+      await cargarEventos();
+      alert('Evento eliminado exitosamente');
+    } catch (error) {
+      console.error('Error eliminando evento:', error);
+      alert('Error al eliminar el evento');
+    }
+  };
+
+  const handleIngresarEvento = (evento: AulaEvento) => {
+    window.open(evento.link_sesion, '_blank');
+  };
+
+  const handleAbrirEdicionEvento = async (evento: AulaEvento) => {
+    try {
+      const eventoConPermisos = await obtenerEventoConPermisos(evento.id);
+      if (!eventoConPermisos) return;
+
+      // Construir permisos actuales
+      const permisosActuales: PermisosSeleccionados = {
+        visible_para_todos: eventoConPermisos.visible_para_todos,
+        roles: [],
+        oficinas: [],
+        usuarios: []
+      };
+
+      eventoConPermisos.permisos.forEach(p => {
+        if (p.rol) permisosActuales.roles.push(p.rol);
+        if (p.oficina_id) permisosActuales.oficinas.push(p.oficina_id);
+        if (p.usuario_id) permisosActuales.usuarios.push(p.usuario_id);
+      });
+
+      setEventoSeleccionado(evento);
+      setPermisosSeleccionados(permisosActuales);
+      setShowEventoModal(true);
+    } catch (error) {
+      console.error('Error cargando permisos del evento:', error);
+      alert('Error al cargar los permisos del evento');
+    }
+  };
+
+  // ================ FIN FUNCIONES PARA EVENTOS ================
 
   const sesionesFiltradas = sesiones.filter(sesion => {
     const matchSearch = !searchTerm ||
@@ -163,17 +288,90 @@ export function SegurosEducationAulaDigital() {
               </p>
             </div>
             {isAdmin && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center space-x-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Nueva Sesión</span>
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setEventoSeleccionado(null);
+                    setPermisosSeleccionados(undefined);
+                    setShowEventoModal(true);
+                  }}
+                  className="flex items-center space-x-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition"
+                >
+                  <Video className="w-5 h-5" />
+                  <span>Nuevo Evento</span>
+                </button>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex items-center space-x-2 bg-blue-800 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-900 transition"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Nueva Sesión</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
 
+        {/* Pestañas */}
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-2 flex gap-2">
+          <button
+            onClick={() => setActiveTab('eventos')}
+            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
+              activeTab === 'eventos'
+                ? 'bg-primary-600 text-white shadow-md'
+                : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
+            }`}
+          >
+            <Video className="w-5 h-5" />
+            <span>Eventos</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('sesiones')}
+            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
+              activeTab === 'sesiones'
+                ? 'bg-primary-600 text-white shadow-md'
+                : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
+            }`}
+          >
+            <Calendar className="w-5 h-5" />
+            <span>Sesiones Programadas</span>
+          </button>
+        </div>
+
+        {/* Contenido de Eventos */}
+        {activeTab === 'eventos' && (
+          <div className="space-y-6">
+            {eventos.length === 0 ? (
+              <div className="bg-white rounded-xl border-2 border-dashed border-neutral-300 p-12 text-center">
+                <Video className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-neutral-700 mb-2">
+                  No hay eventos disponibles
+                </h3>
+                <p className="text-neutral-500">
+                  {isAdmin
+                    ? 'Crea tu primer evento para comenzar'
+                    : 'No tienes eventos programados en este momento'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {eventos.map(evento => (
+                  <TarjetaEvento
+                    key={evento.id}
+                    evento={evento}
+                    isAdmin={isAdmin}
+                    onIngresar={handleIngresarEvento}
+                    onEditar={handleAbrirEdicionEvento}
+                    onEliminar={handleEliminarEvento}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Contenido de Sesiones Programadas */}
+        {activeTab === 'sesiones' && (
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div className="flex-1 relative">
@@ -298,31 +496,47 @@ export function SegurosEducationAulaDigital() {
           </div>
         )}
       </div>
+        )}
 
-      {showCreateModal && isAdmin && (
-        <CrearSesionModal
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            setShowCreateModal(false);
-            cargarSesiones();
-          }}
-        />
-      )}
+        {/* Modales de Sesiones */}
+        {showCreateModal && isAdmin && (
+          <CrearSesionModal
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={() => {
+              setShowCreateModal(false);
+              cargarSesiones();
+            }}
+          />
+        )}
 
-      {showDetailDrawer && sesionSeleccionada && (
-        <DetalleSesionDrawer
-          sesion={sesionSeleccionada}
-          isAdmin={isAdmin}
-          onClose={() => setShowDetailDrawer(false)}
-          onEliminar={handleEliminar}
-          onEditar={() => {}}
-          onRegistrar={handleRegistrar}
-          onCancelarRegistro={handleCancelarRegistro}
-          onIngresar={handleIngresar}
-          copiedText={copiedText}
-          onCopy={handleCopy}
-        />
-      )}
+        {showDetailDrawer && sesionSeleccionada && (
+          <DetalleSesionDrawer
+            sesion={sesionSeleccionada}
+            isAdmin={isAdmin}
+            onClose={() => setShowDetailDrawer(false)}
+            onEliminar={handleEliminar}
+            onEditar={() => {}}
+            onRegistrar={handleRegistrar}
+            onCancelarRegistro={handleCancelarRegistro}
+            onIngresar={handleIngresar}
+            copiedText={copiedText}
+            onCopy={handleCopy}
+          />
+        )}
+
+        {/* Modal de Evento */}
+        {showEventoModal && (
+          <FormularioEvento
+            evento={eventoSeleccionado}
+            permisosIniciales={permisosSeleccionados}
+            onSubmit={eventoSeleccionado ? handleEditarEvento : handleCrearEvento}
+            onClose={() => {
+              setShowEventoModal(false);
+              setEventoSeleccionado(null);
+              setPermisosSeleccionados(undefined);
+            }}
+          />
+        )}
       </div>
     </div>
   );
