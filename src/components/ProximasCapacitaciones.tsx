@@ -15,6 +15,7 @@ interface Sesion {
   instructor?: { id: string; nombre_completo: string } | null;
   esta_activa: boolean;
   estado: 'programada' | 'en_vivo' | 'finalizada' | 'cancelada';
+  tipo: 'sesion' | 'evento';
 }
 
 export function ProximasCapacitaciones() {
@@ -31,7 +32,8 @@ export function ProximasCapacitaciones() {
     if (!usuario) return;
 
     try {
-      const { data, error } = await supabase
+      // Fetch sesiones del aula virtual
+      const { data: sesionesData, error: sesionesError } = await supabase
         .from('aula_virtual_sesiones')
         .select(`
           id,
@@ -45,14 +47,58 @@ export function ProximasCapacitaciones() {
         `)
         .eq('estado', 'programada')
         .gte('fecha_inicio', new Date().toISOString())
-        .order('fecha_inicio', { ascending: true })
-        .limit(5);
+        .order('fecha_inicio', { ascending: true });
 
-      if (error) throw error;
+      if (sesionesError) throw sesionesError;
 
-      setSesiones(data || []);
+      // Fetch eventos del aula digital (RLS filtra por permisos automáticamente)
+      const { data: eventosData, error: eventosError } = await supabase
+        .from('aula_eventos')
+        .select(`
+          id,
+          titulo,
+          descripcion,
+          fecha,
+          hora,
+          ponente
+        `)
+        .gte('fecha', new Date().toISOString().split('T')[0])
+        .order('fecha', { ascending: true })
+        .order('hora', { ascending: true });
+
+      if (eventosError) throw eventosError;
+
+      // Combinar sesiones y eventos
+      const sesionesFormateadas: Sesion[] = (sesionesData || []).map(s => ({
+        ...s,
+        tipo: 'sesion' as const
+      }));
+
+      const eventosFormateados: Sesion[] = (eventosData || []).map(e => {
+        // Combinar fecha y hora para crear fecha_inicio
+        const fechaInicio = `${e.fecha}T${e.hora}`;
+
+        return {
+          id: e.id,
+          titulo: e.titulo,
+          descripcion: e.descripcion,
+          fecha_inicio: fechaInicio,
+          duracion_minutos: 60, // Default duration for events
+          instructor: { id: '', nombre_completo: e.ponente },
+          esta_activa: false,
+          estado: 'programada' as const,
+          tipo: 'evento' as const
+        };
+      });
+
+      // Combinar y ordenar por fecha
+      const todas = [...sesionesFormateadas, ...eventosFormateados]
+        .sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime())
+        .slice(0, 5);
+
+      setSesiones(todas);
     } catch (error) {
-      console.error('Error fetching sesiones:', error);
+      console.error('Error fetching sesiones y eventos:', error);
     } finally {
       setLoading(false);
     }
@@ -78,7 +124,7 @@ export function ProximasCapacitaciones() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-[20px] font-bold text-ios-gray-900">Próximas Capacitaciones</h2>
-            <p className="text-[13px] text-ios-gray-600 mt-0.5">Sesiones programadas del Aula Virtual</p>
+            <p className="text-[13px] text-ios-gray-600 mt-0.5">Sesiones y eventos programados</p>
           </div>
           <Calendar className="w-5 h-5 text-ios-blue" />
         </div>
@@ -100,12 +146,21 @@ export function ProximasCapacitaciones() {
               return (
                 <div
                   key={sesion.id}
-                  onClick={() => navigate('/seguros-education/aula-virtual')}
+                  onClick={() => navigate(sesion.tipo === 'evento' ? '/seguros-education/aula-digital' : '/seguros-education/aula-virtual')}
                   className="p-4 bg-ios-gray-50 rounded-ios-lg border border-ios-gray-200/50 hover:bg-ios-gray-100 hover:border-ios-blue/30 transition-all cursor-pointer active:scale-[0.98]"
                 >
-                  <h3 className="font-semibold text-ios-gray-900 text-[15px] mb-2 line-clamp-1">
-                    {sesion.titulo}
-                  </h3>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-ios-gray-900 text-[15px] line-clamp-1 flex-1">
+                      {sesion.titulo}
+                    </h3>
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                      sesion.tipo === 'evento'
+                        ? 'bg-ios-green/10 text-ios-green'
+                        : 'bg-ios-blue/10 text-ios-blue'
+                    }`}>
+                      {sesion.tipo === 'evento' ? 'Evento' : 'Sesión'}
+                    </span>
+                  </div>
 
                   {sesion.descripcion && (
                     <p className="text-[13px] text-ios-gray-600 mb-3 line-clamp-2">
