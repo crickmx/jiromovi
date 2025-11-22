@@ -12,7 +12,7 @@ export function Layout({ children }: LayoutProps) {
   const { usuario, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
