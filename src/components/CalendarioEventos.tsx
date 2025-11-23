@@ -39,7 +39,7 @@ function DetalleEvento({ evento, onClose }: DetalleEventoProps) {
                 </div>
               )}
               <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-                {evento.tipo === 'evento' ? 'Evento Education' : 'Tarea CRM'}
+                {evento.tipo === 'evento' ? 'Seguros Education' : 'Tarea CRM'}
               </span>
             </div>
             <h3 className="text-xl font-bold text-gray-900">{evento.titulo}</h3>
@@ -243,8 +243,8 @@ export default function CalendarioEventos() {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">
             {currentDate.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
           </h2>
@@ -272,9 +272,9 @@ export default function CalendarioEventos() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-7 gap-1 mb-2">
+            <div className="grid grid-cols-7 gap-1 mb-1">
               {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
-                <div key={dia} className="text-center text-xs font-semibold text-gray-600 py-2">
+                <div key={dia} className="text-center text-xs font-semibold text-gray-600 py-1">
                   {dia}
                 </div>
               ))}
@@ -290,7 +290,7 @@ export default function CalendarioEventos() {
                 return (
                   <div
                     key={index}
-                    className={`min-h-[80px] p-2 border rounded-lg transition ${
+                    className={`min-h-[60px] p-1.5 border rounded-lg transition ${
                       dia.esDelMes
                         ? esHoy(dia.fecha)
                           ? 'bg-blue-50 border-blue-300'
@@ -298,7 +298,7 @@ export default function CalendarioEventos() {
                         : 'bg-gray-50 border-gray-100'
                     } ${tieneEventos && dia.esDelMes ? 'cursor-pointer' : ''}`}
                   >
-                    <div className={`text-sm font-medium mb-1 ${
+                    <div className={`text-xs font-medium mb-1 ${
                       dia.esDelMes
                         ? esHoy(dia.fecha)
                           ? 'text-blue-600'
@@ -309,13 +309,13 @@ export default function CalendarioEventos() {
                     </div>
 
                     {dia.esDelMes && tieneEventos && (
-                      <div className="space-y-1">
+                      <div className="space-y-0.5">
                         {eventosEducation.length > 0 && (
                           <button
                             onClick={() => setEventoSeleccionado(eventosEducation[0])}
                             className="w-full text-left"
                           >
-                            <div className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded truncate hover:bg-blue-200 transition">
+                            <div className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded truncate hover:bg-blue-200 transition">
                               {eventosEducation.length === 1 ? (
                                 eventosEducation[0].titulo.substring(0, 15) + (eventosEducation[0].titulo.length > 15 ? '...' : '')
                               ) : (
@@ -330,7 +330,7 @@ export default function CalendarioEventos() {
                             onClick={() => setEventoSeleccionado(tareasCRM[0])}
                             className="w-full text-left"
                           >
-                            <div className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded truncate hover:bg-orange-200 transition">
+                            <div className="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded truncate hover:bg-orange-200 transition">
                               {tareasCRM.length === 1 ? (
                                 tareasCRM[0].titulo.substring(0, 15) + (tareasCRM[0].titulo.length > 15 ? '...' : '')
                               ) : (
@@ -346,13 +346,13 @@ export default function CalendarioEventos() {
               })}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-center space-x-6 text-sm">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                <span className="text-gray-600">Eventos Education</span>
+            <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-center space-x-4 text-xs">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-2.5 h-2.5 bg-blue-500 rounded"></div>
+                <span className="text-gray-600">Seguros Education</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-orange-500 rounded"></div>
+              <div className="flex items-center space-x-1.5">
+                <div className="w-2.5 h-2.5 bg-orange-500 rounded"></div>
                 <span className="text-gray-600">Tareas CRM</span>
               </div>
             </div>
