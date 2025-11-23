@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
-  ArrowLeft, Menu, Video, X, LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Calculator, Palette, FileSignature, Contact, MessageSquare, Key, GraduationCap, Bell, Ticket, Briefcase
+  ArrowLeft, Menu, Video, X, LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Calculator, Palette, FileSignature, Contact, MessageSquare, Key, GraduationCap, Bell, Ticket, Briefcase, ShoppingBag
 } from 'lucide-react';
 import {
   obtenerEventos,
@@ -47,6 +47,7 @@ export function SegurosEducationAulaDigital() {
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Calculator, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
+    { path: '/store', label: 'Store', icon: ShoppingBag, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/tickets', label: 'Tickets', icon: Ticket, show: true },

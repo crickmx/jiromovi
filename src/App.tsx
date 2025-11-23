@@ -33,6 +33,9 @@ import CRMContactos from './pages/CRMContactos';
 import CRMContactoPerfil from './pages/CRMContactoPerfil';
 import CRMReportes from './pages/CRMReportes';
 import CRMConfiguracion from './pages/CRMConfiguracion';
+import Store from './pages/Store';
+import StoreCarrito from './pages/StoreCarrito';
+import StoreMisPedidos from './pages/StoreMisPedidos';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -347,6 +350,33 @@ function AppRoutes() {
             <Layout>
               <CRMConfiguracion />
             </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/store"
+        element={
+          <ProtectedRoute>
+            <Store />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/store/carrito"
+        element={
+          <ProtectedRoute>
+            <StoreCarrito />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/store/mis-pedidos"
+        element={
+          <ProtectedRoute>
+            <StoreMisPedidos />
           </ProtectedRoute>
         }
       />

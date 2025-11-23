@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key, GraduationCap, Bell, Ticket, Briefcase } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key, GraduationCap, Bell, Ticket, Briefcase, ShoppingBag } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 
 interface LayoutProps {
@@ -32,6 +32,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Calculator, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
+    { path: '/store', label: 'Store', icon: ShoppingBag, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/tickets', label: 'Tickets', icon: Ticket, show: true },
