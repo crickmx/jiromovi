@@ -197,7 +197,7 @@ export function PerfilUsuario() {
           className="flex items-center space-x-2 text-slate-600 hover:text-slate-900 transition"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span>Volver al Directorio</span>
+          <span>Volver a Usuarios</span>
         </button>
 
         {hasUnsavedChanges && (

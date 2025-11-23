@@ -361,7 +361,7 @@ export function Dashboard() {
                 {isGerente ? 'Usuarios en mi Oficina' : 'Total Usuarios'}
               </p>
               <p className="text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{totalUsuarios}</p>
-              <p className="text-ios-blue text-[15px] mt-4 font-medium">Ver directorio →</p>
+              <p className="text-ios-blue text-[15px] mt-4 font-medium">Ver usuarios →</p>
             </div>
             <Users className="w-14 h-14 text-ios-blue/20 stroke-[1.5]" />
           </div>

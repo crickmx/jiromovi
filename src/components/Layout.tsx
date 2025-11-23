@@ -37,7 +37,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/tickets', label: 'Tickets', icon: Ticket, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
-    { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
+    { path: '/directorio', label: 'Usuarios', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: false },
     { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
     { path: '/notificaciones-transaccionales', label: 'Notificaciones Transaccionales', icon: Mail, show: isAdmin },

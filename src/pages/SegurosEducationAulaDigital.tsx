@@ -52,7 +52,7 @@ export function SegurosEducationAulaDigital() {
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/tickets', label: 'Tickets', icon: Ticket, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
-    { path: '/directorio', label: 'Directorio', icon: Users, show: isAdminOrGerente },
+    { path: '/directorio', label: 'Usuarios', icon: Users, show: isAdminOrGerente },
     { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
     { path: '/notificaciones-transaccionales', label: 'Notificaciones Transaccionales', icon: Mail, show: isAdmin },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },

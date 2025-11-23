@@ -113,7 +113,7 @@ export function Directorio() {
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-white">Directorio de Usuarios</h1>
+              <h1 className="text-2xl font-bold text-white">Usuarios</h1>
               <p className="text-blue-100 mt-1">
                 {currentUser?.rol === 'Gerente'
                   ? 'Gestiona usuarios de tu oficina'
