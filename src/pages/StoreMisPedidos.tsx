@@ -23,10 +23,13 @@ export default function StoreMisPedidos() {
 
     try {
       setLoading(true);
+      console.log(`🔍 Usuario ${usuario.nombre} cargando sus propios pedidos...`);
       const data = await obtenerPedidosUsuario(usuario.id);
+      console.log(`✅ Mis pedidos: ${data.length} pedidos encontrados`);
       setPedidos(data);
     } catch (error) {
-      console.error('Error cargando pedidos:', error);
+      console.error('❌ Error cargando mis pedidos:', error);
+      alert('Error al cargar tus pedidos. Verifica la consola para más detalles.');
     } finally {
       setLoading(false);
     }

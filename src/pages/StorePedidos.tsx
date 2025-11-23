@@ -32,10 +32,13 @@ export default function StorePedidos() {
   const cargarPedidos = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Administrador cargando TODOS los pedidos del sistema...');
       const data = await obtenerTodosPedidos();
+      console.log(`✅ Pedidos cargados: ${data.length} pedidos de ${new Set(data.map(p => p.usuario_id)).size} usuarios diferentes`);
       setPedidos(data);
     } catch (error) {
-      console.error('Error cargando pedidos:', error);
+      console.error('❌ Error cargando pedidos:', error);
+      alert('Error al cargar pedidos. Verifica la consola para más detalles.');
     } finally {
       setLoading(false);
     }
@@ -107,7 +110,14 @@ export default function StorePedidos() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Gestión de Pedidos</h1>
-            <p className="text-gray-600 mt-1">Administra todos los pedidos del Store</p>
+            <p className="text-gray-600 mt-1">
+              Administra todos los pedidos del Store
+              {pedidos.length > 0 && (
+                <span className="ml-2 text-sm font-semibold text-blue-600">
+                  • {pedidos.length} pedidos de {new Set(pedidos.map(p => p.usuario_id)).size} usuarios
+                </span>
+              )}
+            </p>
           </div>
         </div>
 
