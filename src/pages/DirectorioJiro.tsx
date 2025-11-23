@@ -63,32 +63,45 @@ export function DirectorioJiro() {
           oficinas:oficina_id (nombre)
         `)
         .eq('rol', 'Empleado')
-        .eq('estado', 'Activo')
+        .ilike('estado', 'activo')
         .order('nombre', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error en query:', error);
+        throw error;
+      }
 
-      const empleadosData: Empleado[] = (data || []).map((usuario: any) => ({
-        id: usuario.id,
-        nombre: usuario.nombre || '',
-        apellidos: usuario.apellidos || '',
-        nombre_completo: usuario.nombre_completo || `${usuario.nombre} ${usuario.apellidos}`,
-        puesto: usuario.puesto || 'Sin puesto',
-        oficina: usuario.oficinas?.nombre || 'Sin oficina',
-        email_laboral: usuario.email_laboral || '',
-        celular_laboral: usuario.celular_laboral || '',
-        foto_url: usuario.foto_url,
-      }));
+      console.log('Datos obtenidos:', data);
+
+      const empleadosData: Empleado[] = (data || []).map((usuario: any) => {
+        const nombreCompleto = usuario.nombre_completo ||
+                               `${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim();
+
+        return {
+          id: usuario.id,
+          nombre: usuario.nombre || '',
+          apellidos: usuario.apellidos || '',
+          nombre_completo: nombreCompleto,
+          puesto: usuario.puesto && usuario.puesto.trim() !== '' ? usuario.puesto : 'Sin puesto',
+          oficina: usuario.oficinas?.nombre || 'Sin oficina',
+          email_laboral: usuario.email_laboral || '',
+          celular_laboral: usuario.celular_laboral || '',
+          foto_url: usuario.foto_url,
+        };
+      });
+
+      console.log('Empleados procesados:', empleadosData);
 
       setEmpleados(empleadosData);
 
-      const oficinasUnicas = [...new Set(empleadosData.map(e => e.oficina))].filter(Boolean).sort();
-      const puestosUnicos = [...new Set(empleadosData.map(e => e.puesto))].filter(Boolean).sort();
+      const oficinasUnicas = [...new Set(empleadosData.map(e => e.oficina))].filter(o => o !== 'Sin oficina').sort();
+      const puestosUnicos = [...new Set(empleadosData.map(e => e.puesto))].filter(p => p !== 'Sin puesto').sort();
 
       setOficinas(oficinasUnicas);
       setPuestos(puestosUnicos);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error cargando empleados:', error);
+      alert('Error al cargar empleados: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -97,8 +110,11 @@ export function DirectorioJiro() {
   const filtrarEmpleados = () => {
     let filtrados = [...empleados];
 
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    console.log('Filtrando empleados. Total:', empleados.length);
+    console.log('SearchTerm:', searchTerm, 'FiltroOficina:', filtroOficina, 'FiltroPuesto:', filtroPuesto);
+
+    if (searchTerm && searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase().trim();
       filtrados = filtrados.filter(emp =>
         emp.nombre.toLowerCase().includes(term) ||
         emp.apellidos.toLowerCase().includes(term) ||
@@ -108,14 +124,15 @@ export function DirectorioJiro() {
       );
     }
 
-    if (filtroOficina) {
+    if (filtroOficina && filtroOficina.trim() !== '') {
       filtrados = filtrados.filter(emp => emp.oficina === filtroOficina);
     }
 
-    if (filtroPuesto) {
+    if (filtroPuesto && filtroPuesto.trim() !== '') {
       filtrados = filtrados.filter(emp => emp.puesto === filtroPuesto);
     }
 
+    console.log('Empleados filtrados:', filtrados.length);
     setEmpleadosFiltrados(filtrados);
   };
 
