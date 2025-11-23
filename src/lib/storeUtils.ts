@@ -331,7 +331,7 @@ export async function actualizarEstatus(id: string, cambios: Partial<StoreEstatu
 // ============================================
 
 export async function obtenerPedidosUsuario(usuarioId: string) {
-  const { data, error } = await supabase
+  const { data: pedidos, error } = await supabase
     .from('store_pedidos')
     .select(`
       *,
@@ -341,7 +341,34 @@ export async function obtenerPedidosUsuario(usuarioId: string) {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data as StorePedido[];
+  if (!pedidos || pedidos.length === 0) return [];
+
+  // Obtener detalles para calcular totales
+  const pedidoIds = pedidos.map(p => p.id);
+  const { data: detalles } = await supabase
+    .from('store_pedidos_detalle')
+    .select('pedido_id, cantidad, precio_unitario')
+    .in('pedido_id', pedidoIds);
+
+  // Calcular totales
+  const totalesPorPedido = new Map<string, number>();
+  if (detalles) {
+    detalles.forEach(detalle => {
+      const total = totalesPorPedido.get(detalle.pedido_id) || 0;
+      totalesPorPedido.set(
+        detalle.pedido_id,
+        total + (detalle.cantidad * detalle.precio_unitario)
+      );
+    });
+  }
+
+  // Agregar totales a pedidos
+  const pedidosConTotal = pedidos.map(pedido => ({
+    ...pedido,
+    total: totalesPorPedido.get(pedido.id) || 0
+  }));
+
+  return pedidosConTotal as StorePedido[];
 }
 
 export async function obtenerTodosPedidos() {
@@ -382,10 +409,36 @@ export async function obtenerTodosPedidos() {
       // Continuar sin nombres de usuario
     }
 
-    // Mapear usuarios a los pedidos
+    // Obtener todos los detalles de pedidos para calcular totales
+    const pedidoIds = pedidos.map(p => p.id);
+    const { data: detalles, error: detallesError } = await supabase
+      .from('store_pedidos_detalle')
+      .select('pedido_id, cantidad, precio_unitario')
+      .in('pedido_id', pedidoIds);
+
+    if (detallesError) {
+      console.error('⚠️ Error obteniendo detalles:', detallesError);
+      // Continuar sin totales
+    }
+
+    // Calcular totales por pedido
+    const totalesPorPedido = new Map<string, number>();
+    if (detalles) {
+      detalles.forEach(detalle => {
+        const total = totalesPorPedido.get(detalle.pedido_id) || 0;
+        totalesPorPedido.set(
+          detalle.pedido_id,
+          total + (detalle.cantidad * detalle.precio_unitario)
+        );
+      });
+      console.log(`💰 Totales calculados para ${totalesPorPedido.size} pedidos`);
+    }
+
+    // Mapear usuarios y totales a los pedidos
     const pedidosConUsuarios = pedidos.map(pedido => ({
       ...pedido,
-      usuario: usuarios?.find(u => u.id === pedido.usuario_id)
+      usuario: usuarios?.find(u => u.id === pedido.usuario_id),
+      total: totalesPorPedido.get(pedido.id) || 0
     }));
 
     console.log(`✅ Pedidos cargados exitosamente: ${pedidosConUsuarios.length} pedidos`);

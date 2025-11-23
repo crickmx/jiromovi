@@ -43,10 +43,10 @@ export interface StorePedido {
   estatus_id: string;
   created_at: string;
   updated_at: string;
+  total?: number;
   estatus?: StoreEstatusPedido;
   usuario?: {
     nombre: string;
-    email: string;
   };
 }
 
