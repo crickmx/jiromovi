@@ -345,16 +345,23 @@ export async function obtenerPedidosUsuario(usuarioId: string) {
 }
 
 export async function obtenerTodosPedidos() {
+  console.log('Obteniendo todos los pedidos...');
+
   const { data, error } = await supabase
     .from('store_pedidos')
     .select(`
       *,
       estatus:store_estatus_pedidos(*),
-      usuario:usuarios(nombre, email)
+      usuario:usuarios(nombre)
     `)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error obteniendo pedidos:', error);
+    throw error;
+  }
+
+  console.log('Pedidos obtenidos:', data?.length || 0);
   return data as StorePedido[];
 }
 
@@ -364,7 +371,7 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     .select(`
       *,
       estatus:store_estatus_pedidos(*),
-      usuario:usuarios(nombre, email)
+      usuario:usuarios(nombre)
     `)
     .eq('id', pedidoId)
     .single();

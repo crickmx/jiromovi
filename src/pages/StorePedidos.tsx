@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Eye, Filter, Download, Search, Calendar } from 'lucide-react';
+import { Package, Eye, Filter, Download, Search, Calendar, ArrowLeft } from 'lucide-react';
 import { obtenerTodosPedidos } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
@@ -96,6 +96,14 @@ export default function StorePedidos() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button
+          onClick={() => navigate('/store')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-medium">Volver al Store</span>
+        </button>
+
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Gestión de Pedidos</h1>

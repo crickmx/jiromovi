@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Package, Filter, X, Settings } from 'lucide-react';
+import { ShoppingCart, Package, Filter, X, Settings, ShoppingBag, ArrowLeft } from 'lucide-react';
 import {
   obtenerProductos,
   obtenerCategorias,
@@ -74,6 +74,14 @@ export default function Store() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-medium">Volver al Dashboard</span>
+        </button>
+
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Store MOVI</h1>
@@ -82,12 +90,32 @@ export default function Store() {
 
           <div className="flex items-center gap-3">
             {isAdmin && (
+              <>
+                <button
+                  onClick={() => navigate('/store/pedidos')}
+                  className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+                >
+                  <ShoppingBag className="w-5 h-5" />
+                  <span>Gestión de Pedidos</span>
+                </button>
+
+                <button
+                  onClick={() => navigate('/store/admin')}
+                  className="flex items-center gap-2 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium shadow-sm"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span>Administrar</span>
+                </button>
+              </>
+            )}
+
+            {!isAdmin && (
               <button
-                onClick={() => navigate('/store/admin')}
-                className="flex items-center gap-2 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium shadow-sm"
+                onClick={() => navigate('/store/mis-pedidos')}
+                className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
               >
-                <Settings className="w-5 h-5" />
-                <span>Administrar</span>
+                <Package className="w-5 h-5" />
+                <span>Mis Pedidos</span>
               </button>
             )}
 
