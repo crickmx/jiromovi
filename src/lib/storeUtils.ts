@@ -463,12 +463,33 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
 
   if (pedidoError) throw pedidoError;
 
-  // Obtener usuario del pedido
-  const { data: usuario } = await supabase
+  // Obtener usuario del pedido con información completa
+  const { data: usuarioData } = await supabase
     .from('usuarios')
-    .select('nombre')
+    .select('nombre, nombre_completo, oficina_id, celular_laboral, celular_personal')
     .eq('id', pedido.usuario_id)
     .single();
+
+  // Obtener información de la oficina si existe
+  let oficinaData = null;
+  if (usuarioData?.oficina_id) {
+    const { data } = await supabase
+      .from('oficinas')
+      .select('nombre')
+      .eq('id', usuarioData.oficina_id)
+      .single();
+    oficinaData = data;
+  }
+
+  // Construir objeto usuario completo
+  const usuario = {
+    nombre: usuarioData?.nombre || '',
+    nombre_completo: usuarioData?.nombre_completo || usuarioData?.nombre || '',
+    oficina: oficinaData?.nombre || 'Sin oficina asignada',
+    telefono: usuarioData?.celular_laboral || usuarioData?.celular_personal || 'Sin teléfono',
+    celular_laboral: usuarioData?.celular_laboral,
+    celular_personal: usuarioData?.celular_personal
+  };
 
   // Agregar usuario al pedido
   const pedidoConUsuario = { ...pedido, usuario };

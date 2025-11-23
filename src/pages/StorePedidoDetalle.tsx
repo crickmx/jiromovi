@@ -211,15 +211,37 @@ export default function StorePedidoDetalle() {
                 <User className="w-5 h-5" />
                 Cliente
               </h2>
-              <div className="space-y-2 text-sm">
-                <p className="text-gray-600">
-                  <span className="font-medium text-gray-900">Nombre:</span><br />
-                  {pedido.usuario?.nombre}
-                </p>
-                <p className="text-gray-600">
-                  <span className="font-medium text-gray-900">Fecha:</span><br />
-                  {format(new Date(pedido.created_at), "d 'de' MMMM, yyyy", { locale: es })}
-                </p>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="font-medium text-gray-900 mb-1">Nombre Completo</p>
+                  <p className="text-gray-700">
+                    {pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900 mb-1">Oficina</p>
+                  <p className="text-gray-700">
+                    {pedido.usuario?.oficina || 'Sin oficina asignada'}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900 mb-1">Teléfono</p>
+                  <p className="text-gray-700">
+                    {pedido.usuario?.telefono || 'Sin teléfono'}
+                  </p>
+                  {pedido.usuario?.celular_laboral && pedido.usuario?.celular_personal &&
+                   pedido.usuario.celular_laboral !== pedido.usuario.celular_personal && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Personal: {pedido.usuario.celular_personal}
+                    </p>
+                  )}
+                </div>
+                <div className="pt-2 border-t border-gray-200">
+                  <p className="font-medium text-gray-900 mb-1">Fecha del Pedido</p>
+                  <p className="text-gray-700">
+                    {format(new Date(pedido.created_at), "d 'de' MMMM, yyyy", { locale: es })}
+                  </p>
+                </div>
               </div>
             </div>
 

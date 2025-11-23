@@ -47,6 +47,11 @@ export interface StorePedido {
   estatus?: StoreEstatusPedido;
   usuario?: {
     nombre: string;
+    nombre_completo?: string;
+    oficina?: string;
+    telefono?: string;
+    celular_laboral?: string;
+    celular_personal?: string;
   };
 }
 
