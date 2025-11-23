@@ -325,7 +325,7 @@ export function Dashboard() {
         >
           <div className="aspect-[16/9] w-full flex items-center justify-center bg-ios-gray-50 p-8">
             <img
-              src="https://movi.digital/wp-content/uploads/elementor/thumbs/Logo_MCD_v2-r0qhbo2naggb7667cc6dg6h629ac03clkxckswc7b4.png"
+              src="https://movi.digital/wp-content/uploads/2025/02/Logo_MCD_v1-1.png"
               alt="Multicotizador Digital"
               className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover:scale-105"
             />
