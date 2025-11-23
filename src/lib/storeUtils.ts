@@ -345,39 +345,82 @@ export async function obtenerPedidosUsuario(usuarioId: string) {
 }
 
 export async function obtenerTodosPedidos() {
-  console.log('Obteniendo todos los pedidos...');
+  console.log('🔍 Obteniendo todos los pedidos del sistema...');
 
-  const { data, error } = await supabase
-    .from('store_pedidos')
-    .select(`
-      *,
-      estatus:store_estatus_pedidos(*),
-      usuario:usuarios(nombre)
-    `)
-    .order('created_at', { ascending: false });
+  try {
+    // Primero obtener los pedidos con estatus
+    const { data: pedidos, error: pedidosError } = await supabase
+      .from('store_pedidos')
+      .select(`
+        *,
+        estatus:store_estatus_pedidos(*)
+      `)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error obteniendo pedidos:', error);
+    if (pedidosError) {
+      console.error('❌ Error obteniendo pedidos:', pedidosError);
+      throw pedidosError;
+    }
+
+    if (!pedidos || pedidos.length === 0) {
+      console.log('ℹ️ No hay pedidos en el sistema');
+      return [];
+    }
+
+    // Obtener IDs únicos de usuarios
+    const usuarioIds = [...new Set(pedidos.map(p => p.usuario_id))];
+    console.log(`📋 Pedidos: ${pedidos.length}, Usuarios: ${usuarioIds.length}`);
+
+    // Obtener información de los usuarios
+    const { data: usuarios, error: usuariosError } = await supabase
+      .from('usuarios')
+      .select('id, nombre')
+      .in('id', usuarioIds);
+
+    if (usuariosError) {
+      console.error('⚠️ Error obteniendo usuarios:', usuariosError);
+      // Continuar sin nombres de usuario
+    }
+
+    // Mapear usuarios a los pedidos
+    const pedidosConUsuarios = pedidos.map(pedido => ({
+      ...pedido,
+      usuario: usuarios?.find(u => u.id === pedido.usuario_id)
+    }));
+
+    console.log(`✅ Pedidos cargados exitosamente: ${pedidosConUsuarios.length} pedidos`);
+    return pedidosConUsuarios as StorePedido[];
+
+  } catch (error) {
+    console.error('❌ Error fatal en obtenerTodosPedidos:', error);
     throw error;
   }
-
-  console.log('Pedidos obtenidos:', data?.length || 0);
-  return data as StorePedido[];
 }
 
 export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedidoCompleto> {
+  // Obtener pedido con estatus
   const { data: pedido, error: pedidoError } = await supabase
     .from('store_pedidos')
     .select(`
       *,
-      estatus:store_estatus_pedidos(*),
-      usuario:usuarios(nombre)
+      estatus:store_estatus_pedidos(*)
     `)
     .eq('id', pedidoId)
     .single();
 
   if (pedidoError) throw pedidoError;
 
+  // Obtener usuario del pedido
+  const { data: usuario } = await supabase
+    .from('usuarios')
+    .select('nombre')
+    .eq('id', pedido.usuario_id)
+    .single();
+
+  // Agregar usuario al pedido
+  const pedidoConUsuario = { ...pedido, usuario };
+
+  // Obtener detalle
   const { data: detalle, error: detalleError } = await supabase
     .from('store_pedidos_detalle')
     .select(`
@@ -391,31 +434,63 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
 
   if (detalleError) throw detalleError;
 
-  const { data: notas, error: notasError } = await supabase
+  // Obtener notas con información del admin
+  const { data: notasData, error: notasError } = await supabase
     .from('store_pedidos_notas')
-    .select(`
-      *,
-      admin:usuarios(nombre)
-    `)
+    .select('*')
     .eq('pedido_id', pedidoId)
     .order('created_at', { ascending: false });
 
   if (notasError) throw notasError;
 
-  const { data: historial, error: historialError } = await supabase
+  // Obtener información de admins para las notas
+  let notas = notasData || [];
+  if (notas.length > 0) {
+    const adminIds = [...new Set(notas.map(n => n.admin_id).filter(Boolean))];
+    if (adminIds.length > 0) {
+      const { data: admins } = await supabase
+        .from('usuarios')
+        .select('id, nombre')
+        .in('id', adminIds);
+
+      notas = notas.map(nota => ({
+        ...nota,
+        admin: admins?.find(a => a.id === nota.admin_id)
+      }));
+    }
+  }
+
+  // Obtener historial con estatus
+  const { data: historialData, error: historialError } = await supabase
     .from('store_pedidos_historial')
     .select(`
       *,
-      estatus:store_estatus_pedidos(*),
-      usuario:usuarios(nombre)
+      estatus:store_estatus_pedidos(*)
     `)
     .eq('pedido_id', pedidoId)
     .order('created_at', { ascending: false });
 
   if (historialError) throw historialError;
 
+  // Obtener información de usuarios para el historial
+  let historial = historialData || [];
+  if (historial.length > 0) {
+    const usuarioIds = [...new Set(historial.map(h => h.cambiado_por).filter(Boolean))];
+    if (usuarioIds.length > 0) {
+      const { data: usuarios } = await supabase
+        .from('usuarios')
+        .select('id, nombre')
+        .in('id', usuarioIds);
+
+      historial = historial.map(h => ({
+        ...h,
+        usuario: usuarios?.find(u => u.id === h.cambiado_por)
+      }));
+    }
+  }
+
   return {
-    ...pedido,
+    ...pedidoConUsuario,
     detalle: detalle as StorePedidoDetalle[],
     notas: notas as StorePedidoNota[],
     historial: historial as StorePedidoHistorial[]
