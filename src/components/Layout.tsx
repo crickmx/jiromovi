@@ -25,7 +25,7 @@ export function Layout({ children }: LayoutProps) {
   const isAgente = usuario?.rol === 'Agente';
   const isAdminOrGerente = isAdmin || isGerente;
   const isAdminOrEmpleado = isAdmin || isEmpleado;
-  const canAccessDirectorio = isAdmin || isEmpleado || isAgente;
+  const canAccessDirectorio = isAdmin || isEmpleado || isGerente;
 
   const isNotAgent = usuario?.rol !== 'Agente';
 
