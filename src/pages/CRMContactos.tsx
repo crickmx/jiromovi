@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, Trash2, Eye, Phone, Mail } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, Edit, Trash2, Eye, Phone, Mail, ArrowLeft } from 'lucide-react';
 import { obtenerContactos, eliminarContacto } from '../lib/crmUtils';
 import { useAuth } from '../contexts/AuthContext';
 import type { CRMContacto } from '../lib/crmTypes';
@@ -8,6 +8,7 @@ import ContactoModal from '../components/crm/ContactoModal';
 
 export default function CRMContactos() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [contactos, setContactos] = useState<CRMContacto[]>([]);
   const [filteredContactos, setFilteredContactos] = useState<CRMContacto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +111,15 @@ export default function CRMContactos() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
+      <div className="mb-6">
+        <button
+          onClick={() => navigate('/mi-crm')}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          Volver a Mi CRM
+        </button>
+      </div>
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Contactos</h1>

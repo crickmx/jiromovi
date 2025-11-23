@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { CRMCampoPersonalizado, CRMEtiqueta, CRMFuenteOrigen } from '../lib/crmTypes';
 
 export default function CRMConfiguracion() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<'campos' | 'etiquetas' | 'fuentes'>('campos');
   const [campos, setCampos] = useState<CRMCampoPersonalizado[]>([]);
   const [etiquetas, setEtiquetas] = useState<CRMEtiqueta[]>([]);
@@ -134,6 +136,13 @@ export default function CRMConfiguracion() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6">
+        <button
+          onClick={() => navigate('/mi-crm')}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          Volver a Mi CRM
+        </button>
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Configuración del CRM</h1>
         <p className="text-gray-600 mt-1">Personaliza campos, etiquetas y fuentes de origen</p>
       </div>

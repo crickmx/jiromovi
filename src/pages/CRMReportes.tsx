@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Download, TrendingUp, DollarSign, FileText, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Download, TrendingUp, DollarSign, FileText, Users, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function CRMReportes() {
+  const navigate = useNavigate();
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [fuenteOrigen, setFuenteOrigen] = useState('');
@@ -78,6 +80,13 @@ Prima Total,$${reporteData.primaTotal.toLocaleString('es-MX')}`;
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6">
+        <button
+          onClick={() => navigate('/mi-crm')}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          Volver a Mi CRM
+        </button>
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Reportes y Analíticas</h1>
         <p className="text-gray-600 mt-1">Analiza el desempeño de tu CRM</p>
       </div>
