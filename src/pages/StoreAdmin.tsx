@@ -408,9 +408,10 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
       }
 
       onGuardar();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error guardando producto:', error);
-      alert('Error al guardar producto');
+      const errorMsg = error?.message || error?.error_description || 'Error desconocido';
+      alert(`Error al guardar producto: ${errorMsg}`);
     } finally {
       setGuardando(false);
     }

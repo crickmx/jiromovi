@@ -120,13 +120,20 @@ export async function obtenerProductoPorId(id: string) {
 }
 
 export async function crearProducto(producto: Omit<StoreProducto, 'id' | 'created_at' | 'categoria'>) {
+  console.log('Creando producto con datos:', producto);
+
   const { data, error } = await supabase
     .from('store_productos')
     .insert(producto)
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error creando producto:', error);
+    throw new Error(`Error al crear producto: ${error.message} (${error.code})`);
+  }
+
+  console.log('Producto creado exitosamente:', data);
   return data as StoreProducto;
 }
 
@@ -152,24 +159,38 @@ export async function eliminarProducto(id: string) {
 }
 
 export async function subirImagenProducto(file: File): Promise<string> {
-  const timestamp = Date.now();
-  const extension = file.name.split('.').pop();
-  const path = `productos/${timestamp}.${extension}`;
+  try {
+    const timestamp = Date.now();
+    const extension = file.name.split('.').pop();
+    const path = `productos/${timestamp}.${extension}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from('store-productos')
-    .upload(path, file, {
-      cacheControl: '3600',
-      upsert: false
-    });
+    console.log('Subiendo imagen:', { path, fileName: file.name, fileSize: file.size, fileType: file.type });
 
-  if (uploadError) throw uploadError;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('store-productos')
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
-  const { data } = supabase.storage
-    .from('store-productos')
-    .getPublicUrl(path);
+    if (uploadError) {
+      console.error('Error subiendo imagen:', uploadError);
+      throw new Error(`Error al subir imagen: ${uploadError.message}`);
+    }
 
-  return data.publicUrl;
+    console.log('Imagen subida exitosamente:', uploadData);
+
+    const { data } = supabase.storage
+      .from('store-productos')
+      .getPublicUrl(path);
+
+    console.log('URL pública generada:', data.publicUrl);
+
+    return data.publicUrl;
+  } catch (error: any) {
+    console.error('Error en subirImagenProducto:', error);
+    throw error;
+  }
 }
 
 // ============================================
