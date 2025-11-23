@@ -95,7 +95,7 @@ function AppRoutes() {
       <Route
         path="/directorio-jiro"
         element={
-          <ProtectedRoute requireAdminOrEmpleado>
+          <ProtectedRoute requireDirectorioAccess>
             <DirectorioJiro />
           </ProtectedRoute>
         }

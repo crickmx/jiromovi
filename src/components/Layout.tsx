@@ -22,8 +22,10 @@ export function Layout({ children }: LayoutProps) {
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const isEmpleado = usuario?.rol === 'Empleado';
+  const isAgente = usuario?.rol === 'Agente';
   const isAdminOrGerente = isAdmin || isGerente;
   const isAdminOrEmpleado = isAdmin || isEmpleado;
+  const canAccessDirectorio = isAdmin || isEmpleado || isAgente;
 
   const isNotAgent = usuario?.rol !== 'Agente';
 
@@ -36,7 +38,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/store', label: 'Store', icon: ShoppingBag, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
-    { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, show: isAdminOrEmpleado },
+    { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, show: canAccessDirectorio },
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/tickets', label: 'Tickets', icon: Ticket, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },

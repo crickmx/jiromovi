@@ -7,13 +7,15 @@ interface ProtectedRouteProps {
   requireAdmin?: boolean;
   requireAdminOrGerente?: boolean;
   requireAdminOrEmpleado?: boolean;
+  requireDirectorioAccess?: boolean;
 }
 
 export function ProtectedRoute({
   children,
   requireAdmin = false,
   requireAdminOrGerente = false,
-  requireAdminOrEmpleado = false
+  requireAdminOrEmpleado = false,
+  requireDirectorioAccess = false
 }: ProtectedRouteProps) {
   const { usuario, loading } = useAuth();
 
@@ -41,6 +43,10 @@ export function ProtectedRoute({
   }
 
   if (requireAdminOrEmpleado && usuario.rol !== 'Administrador' && usuario.rol !== 'Empleado') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireDirectorioAccess && usuario.rol !== 'Administrador' && usuario.rol !== 'Empleado' && usuario.rol !== 'Agente') {
     return <Navigate to="/dashboard" replace />;
   }
 
