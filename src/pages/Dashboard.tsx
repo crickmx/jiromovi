@@ -9,6 +9,7 @@ import { ResumenVacaciones } from '../components/ResumenVacaciones';
 import { ProximasReservas } from '../components/ProximasReservas';
 import { TicketsWidget } from '../components/TicketsWidget';
 import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
+import CalendarioEventos from '../components/CalendarioEventos';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -242,6 +243,8 @@ export function Dashboard() {
           </a>
         </div>
 
+        <CalendarioEventos />
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ResumenVacaciones />
           <TicketsWidget />
@@ -335,6 +338,8 @@ export function Dashboard() {
           </div>
         </a>
       </div>
+
+      <CalendarioEventos />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TicketsWidget />

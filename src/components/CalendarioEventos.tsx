@@ -1,0 +1,366 @@
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Users, CheckCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+
+interface CalendarioEvento {
+  id: string;
+  fecha: string;
+  tipo: 'evento' | 'tarea';
+  titulo: string;
+  descripcion?: string;
+  hora?: string;
+  ubicacion?: string;
+  contacto?: string;
+  completada?: boolean;
+}
+
+interface DetalleEventoProps {
+  evento: CalendarioEvento | null;
+  onClose: () => void;
+}
+
+function DetalleEvento({ evento, onClose }: DetalleEventoProps) {
+  if (!evento) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="flex items-center space-x-2 mb-2">
+              {evento.tipo === 'evento' ? (
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <CalendarIcon className="h-5 w-5 text-blue-600" />
+                </div>
+              ) : (
+                <div className="bg-orange-100 p-2 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-orange-600" />
+                </div>
+              )}
+              <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                {evento.tipo === 'evento' ? 'Evento Education' : 'Tarea CRM'}
+              </span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">{evento.titulo}</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center space-x-3 text-gray-600">
+            <CalendarIcon className="h-5 w-5 flex-shrink-0" />
+            <span className="text-sm">
+              {new Date(evento.fecha).toLocaleDateString('es-MX', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </span>
+          </div>
+
+          {evento.hora && (
+            <div className="flex items-center space-x-3 text-gray-600">
+              <Clock className="h-5 w-5 flex-shrink-0" />
+              <span className="text-sm">{evento.hora}</span>
+            </div>
+          )}
+
+          {evento.ubicacion && (
+            <div className="flex items-center space-x-3 text-gray-600">
+              <MapPin className="h-5 w-5 flex-shrink-0" />
+              <span className="text-sm">{evento.ubicacion}</span>
+            </div>
+          )}
+
+          {evento.contacto && (
+            <div className="flex items-center space-x-3 text-gray-600">
+              <Users className="h-5 w-5 flex-shrink-0" />
+              <span className="text-sm">{evento.contacto}</span>
+            </div>
+          )}
+
+          {evento.descripcion && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-700">{evento.descripcion}</p>
+            </div>
+          )}
+
+          {evento.tipo === 'tarea' && evento.completada !== undefined && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className={`h-5 w-5 ${evento.completada ? 'text-green-600' : 'text-gray-400'}`} />
+                <span className={`text-sm font-medium ${evento.completada ? 'text-green-600' : 'text-gray-600'}`}>
+                  {evento.completada ? 'Completada' : 'Pendiente'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function CalendarioEventos() {
+  const { usuario } = useAuth();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [eventos, setEventos] = useState<CalendarioEvento[]>([]);
+  const [eventoSeleccionado, setEventoSeleccionado] = useState<CalendarioEvento | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    cargarEventos();
+  }, [currentDate, usuario]);
+
+  const cargarEventos = async () => {
+    if (!usuario) return;
+
+    try {
+      setLoading(true);
+      const primerDia = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const ultimoDia = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+      const eventosEducation = await cargarEventosEducation(primerDia, ultimoDia);
+      const tareasCRM = await cargarTareasCRM(primerDia, ultimoDia);
+
+      setEventos([...eventosEducation, ...tareasCRM]);
+    } catch (error) {
+      console.error('Error al cargar eventos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cargarEventosEducation = async (inicio: Date, fin: Date): Promise<CalendarioEvento[]> => {
+    const { data } = await supabase
+      .from('aula_eventos')
+      .select('*')
+      .gte('fecha_evento', inicio.toISOString())
+      .lte('fecha_evento', fin.toISOString())
+      .order('fecha_evento', { ascending: true });
+
+    return (data || []).map(evento => ({
+      id: evento.id,
+      fecha: evento.fecha_evento,
+      tipo: 'evento' as const,
+      titulo: evento.titulo,
+      descripcion: evento.descripcion,
+      hora: evento.hora_inicio ? `${evento.hora_inicio} - ${evento.hora_fin || ''}`.trim() : undefined,
+      ubicacion: evento.ubicacion,
+    }));
+  };
+
+  const cargarTareasCRM = async (inicio: Date, fin: Date): Promise<CalendarioEvento[]> => {
+    const { data } = await supabase
+      .from('crm_tareas')
+      .select('*, crm_contactos(nombre_completo)')
+      .gte('fecha_vencimiento', inicio.toISOString().split('T')[0])
+      .lte('fecha_vencimiento', fin.toISOString().split('T')[0])
+      .order('fecha_vencimiento', { ascending: true });
+
+    return (data || []).map(tarea => ({
+      id: tarea.id,
+      fecha: tarea.fecha_vencimiento,
+      tipo: 'tarea' as const,
+      titulo: tarea.tipo_actividad,
+      descripcion: tarea.descripcion,
+      contacto: (tarea.crm_contactos as any)?.nombre_completo,
+      completada: tarea.completada,
+    }));
+  };
+
+  const getDiasDelMes = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const primerDia = new Date(year, month, 1);
+    const ultimoDia = new Date(year, month + 1, 0);
+    const diasPrevios = primerDia.getDay();
+
+    const dias = [];
+
+    for (let i = 0; i < diasPrevios; i++) {
+      const fecha = new Date(year, month, -diasPrevios + i + 1);
+      dias.push({ fecha, esDelMes: false });
+    }
+
+    for (let i = 1; i <= ultimoDia.getDate(); i++) {
+      dias.push({ fecha: new Date(year, month, i), esDelMes: true });
+    }
+
+    const diasRestantes = 42 - dias.length;
+    for (let i = 1; i <= diasRestantes; i++) {
+      dias.push({ fecha: new Date(year, month + 1, i), esDelMes: false });
+    }
+
+    return dias;
+  };
+
+  const getEventosDelDia = (fecha: Date) => {
+    return eventos.filter(evento => {
+      const fechaEvento = new Date(evento.fecha);
+      return (
+        fechaEvento.getDate() === fecha.getDate() &&
+        fechaEvento.getMonth() === fecha.getMonth() &&
+        fechaEvento.getFullYear() === fecha.getFullYear()
+      );
+    });
+  };
+
+  const mesAnterior = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+  };
+
+  const mesSiguiente = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+  };
+
+  const hoy = new Date();
+  const esHoy = (fecha: Date) => {
+    return (
+      fecha.getDate() === hoy.getDate() &&
+      fecha.getMonth() === hoy.getMonth() &&
+      fecha.getFullYear() === hoy.getFullYear()
+    );
+  };
+
+  const dias = getDiasDelMes();
+
+  return (
+    <>
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {currentDate.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
+          </h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={mesAnterior}
+              className="p-2 rounded-lg hover:bg-gray-100 transition"
+              title="Mes anterior"
+            >
+              <ChevronLeft className="h-5 w-5 text-gray-600" />
+            </button>
+            <button
+              onClick={mesSiguiente}
+              className="p-2 rounded-lg hover:bg-gray-100 transition"
+              title="Mes siguiente"
+            >
+              <ChevronRight className="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
+                <div key={dia} className="text-center text-xs font-semibold text-gray-600 py-2">
+                  {dia}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {dias.map((dia, index) => {
+                const eventosDelDia = getEventosDelDia(dia.fecha);
+                const tieneEventos = eventosDelDia.length > 0;
+                const eventosEducation = eventosDelDia.filter(e => e.tipo === 'evento');
+                const tareasCRM = eventosDelDia.filter(e => e.tipo === 'tarea');
+
+                return (
+                  <div
+                    key={index}
+                    className={`min-h-[80px] p-2 border rounded-lg transition ${
+                      dia.esDelMes
+                        ? esHoy(dia.fecha)
+                          ? 'bg-blue-50 border-blue-300'
+                          : 'bg-white border-gray-200 hover:bg-gray-50'
+                        : 'bg-gray-50 border-gray-100'
+                    } ${tieneEventos && dia.esDelMes ? 'cursor-pointer' : ''}`}
+                  >
+                    <div className={`text-sm font-medium mb-1 ${
+                      dia.esDelMes
+                        ? esHoy(dia.fecha)
+                          ? 'text-blue-600'
+                          : 'text-gray-900'
+                        : 'text-gray-400'
+                    }`}>
+                      {dia.fecha.getDate()}
+                    </div>
+
+                    {dia.esDelMes && tieneEventos && (
+                      <div className="space-y-1">
+                        {eventosEducation.length > 0 && (
+                          <button
+                            onClick={() => setEventoSeleccionado(eventosEducation[0])}
+                            className="w-full text-left"
+                          >
+                            <div className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded truncate hover:bg-blue-200 transition">
+                              {eventosEducation.length === 1 ? (
+                                eventosEducation[0].titulo.substring(0, 15) + (eventosEducation[0].titulo.length > 15 ? '...' : '')
+                              ) : (
+                                `${eventosEducation.length} eventos`
+                              )}
+                            </div>
+                          </button>
+                        )}
+
+                        {tareasCRM.length > 0 && (
+                          <button
+                            onClick={() => setEventoSeleccionado(tareasCRM[0])}
+                            className="w-full text-left"
+                          >
+                            <div className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded truncate hover:bg-orange-200 transition">
+                              {tareasCRM.length === 1 ? (
+                                tareasCRM[0].titulo.substring(0, 15) + (tareasCRM[0].titulo.length > 15 ? '...' : '')
+                              ) : (
+                                `${tareasCRM.length} tareas`
+                              )}
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-center space-x-6 text-sm">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                <span className="text-gray-600">Eventos Education</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                <span className="text-gray-600">Tareas CRM</span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <DetalleEvento evento={eventoSeleccionado} onClose={() => setEventoSeleccionado(null)} />
+    </>
+  );
+}
