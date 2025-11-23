@@ -18,6 +18,7 @@ import { Publicidad } from './pages/Publicidad';
 import { GestorEmails } from './pages/GestorEmails';
 import { Chat } from './pages/Chat';
 import { AccesosNacional } from './pages/AccesosNacional';
+import { DirectorioJiro } from './pages/DirectorioJiro';
 import { SegurosEducation } from './pages/SegurosEducation';
 import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
 import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
@@ -87,6 +88,15 @@ function AppRoutes() {
             <Layout>
               <Directorio />
             </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/directorio-jiro"
+        element={
+          <ProtectedRoute>
+            <DirectorioJiro />
           </ProtectedRoute>
         }
       />
