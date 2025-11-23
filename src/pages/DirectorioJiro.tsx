@@ -25,13 +25,8 @@ export function DirectorioJiro() {
   const { usuario } = useAuth();
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [empleadosFiltrados, setEmpleadosFiltrados] = useState<Empleado[]>([]);
-  const [oficinas, setOficinas] = useState<string[]>([]);
-  const [puestos, setPuestos] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [searchTerm, setSearchTerm] = useState('');
-  const [filtroOficina, setFiltroOficina] = useState('');
-  const [filtroPuesto, setFiltroPuesto] = useState('');
 
   const [selectedEmpleado, setSelectedEmpleado] = useState<Empleado | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -43,12 +38,14 @@ export function DirectorioJiro() {
   const oficinaUsuario = usuario?.oficina_id;
 
   useEffect(() => {
-    cargarEmpleados();
-  }, []);
+    if (usuario) {
+      cargarEmpleados();
+    }
+  }, [usuario, isAgente, oficinaUsuario]);
 
   useEffect(() => {
     filtrarEmpleados();
-  }, [searchTerm, filtroOficina, filtroPuesto, empleados]);
+  }, [searchTerm, empleados]);
 
   const cargarEmpleados = async () => {
     try {
@@ -73,6 +70,7 @@ export function DirectorioJiro() {
 
       // Si es Agente, solo mostrar empleados de la misma oficina
       if (isAgente && oficinaUsuario) {
+        console.log('Filtrando por oficina del Agente:', oficinaUsuario);
         query = query.eq('oficina_id', oficinaUsuario);
       }
 
@@ -84,6 +82,7 @@ export function DirectorioJiro() {
       }
 
       console.log('Datos obtenidos:', data);
+      console.log('Total de empleados cargados:', data?.length || 0);
 
       const empleadosData: Empleado[] = (data || []).map((usuario: any) => {
         const nombreCompleto = usuario.nombre_completo ||
@@ -105,12 +104,6 @@ export function DirectorioJiro() {
       console.log('Empleados procesados:', empleadosData);
 
       setEmpleados(empleadosData);
-
-      const oficinasUnicas = [...new Set(empleadosData.map(e => e.oficina))].filter(o => o !== 'Sin oficina').sort();
-      const puestosUnicos = [...new Set(empleadosData.map(e => e.puesto))].filter(p => p !== 'Sin puesto').sort();
-
-      setOficinas(oficinasUnicas);
-      setPuestos(puestosUnicos);
     } catch (error: any) {
       console.error('Error cargando empleados:', error);
       alert('Error al cargar empleados: ' + error.message);
@@ -121,9 +114,6 @@ export function DirectorioJiro() {
 
   const filtrarEmpleados = () => {
     let filtrados = [...empleados];
-
-    console.log('Filtrando empleados. Total:', empleados.length);
-    console.log('SearchTerm:', searchTerm, 'FiltroOficina:', filtroOficina, 'FiltroPuesto:', filtroPuesto);
 
     if (searchTerm && searchTerm.trim() !== '') {
       const term = searchTerm.toLowerCase().trim();
@@ -136,15 +126,6 @@ export function DirectorioJiro() {
       );
     }
 
-    if (filtroOficina && filtroOficina.trim() !== '') {
-      filtrados = filtrados.filter(emp => emp.oficina === filtroOficina);
-    }
-
-    if (filtroPuesto && filtroPuesto.trim() !== '') {
-      filtrados = filtrados.filter(emp => emp.puesto === filtroPuesto);
-    }
-
-    console.log('Empleados filtrados:', filtrados.length);
     setEmpleadosFiltrados(filtrados);
   };
 
@@ -173,12 +154,6 @@ export function DirectorioJiro() {
     setSelectedEmpleado(null);
   };
 
-  const limpiarFiltros = () => {
-    setSearchTerm('');
-    setFiltroOficina('');
-    setFiltroPuesto('');
-  };
-
   if (loading) {
     return (
       <Layout>
@@ -194,60 +169,24 @@ export function DirectorioJiro() {
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-8 shadow-lg">
           <h1 className="text-3xl font-bold text-white">Directorio JIRO</h1>
-          <p className="text-blue-100 mt-2">Encuentra y contacta a los empleados de la organización</p>
+          <p className="text-blue-100 mt-2">
+            {isAgente
+              ? 'Encuentra y contacta a los empleados de tu oficina'
+              : 'Encuentra y contacta a los empleados de la organización'
+            }
+          </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, puesto u oficina..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">Oficina</label>
-                <select
-                  value={filtroOficina}
-                  onChange={(e) => setFiltroOficina(e.target.value)}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Todas las oficinas</option>
-                  {oficinas.map(oficina => (
-                    <option key={oficina} value={oficina}>{oficina}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">Puesto</label>
-                <select
-                  value={filtroPuesto}
-                  onChange={(e) => setFiltroPuesto(e.target.value)}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Todos los puestos</option>
-                  {puestos.map(puesto => (
-                    <option key={puesto} value={puesto}>{puesto}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-end">
-                <button
-                  onClick={limpiarFiltros}
-                  className="w-full px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors font-medium"
-                >
-                  Limpiar filtros
-                </button>
-              </div>
-            </div>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, puesto u oficina..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+            />
           </div>
         </div>
 
@@ -257,7 +196,9 @@ export function DirectorioJiro() {
               <Search className="w-16 h-16 mx-auto mb-4" />
             </div>
             <p className="text-neutral-600 text-lg">No se encontraron empleados</p>
-            <p className="text-neutral-500 text-sm mt-2">Intenta ajustar los filtros de búsqueda</p>
+            <p className="text-neutral-500 text-sm mt-2">
+              {searchTerm ? 'Intenta ajustar tu búsqueda' : 'No hay empleados disponibles'}
+            </p>
           </div>
         ) : (
           <>
