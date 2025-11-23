@@ -12,7 +12,7 @@ import {
 import type { StoreCarritoItem } from '../lib/storeTypes';
 
 export default function StoreCarrito() {
-  const { user } = useAuth();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
   const [carrito, setCarrito] = useState<StoreCarritoItem[]>([]);
   const [notasUsuario, setNotasUsuario] = useState('');
@@ -25,11 +25,11 @@ export default function StoreCarrito() {
   }, []);
 
   const cargarCarrito = async () => {
-    if (!user?.id) return;
+    if (!usuario?.id) return;
 
     try {
       setLoading(true);
-      const data = await obtenerCarrito(user.id);
+      const data = await obtenerCarrito(usuario.id);
       setCarrito(data);
     } catch (error) {
       console.error('Error cargando carrito:', error);
@@ -59,11 +59,11 @@ export default function StoreCarrito() {
   };
 
   const handleRealizarPedido = async () => {
-    if (!user?.id || carrito.length === 0) return;
+    if (!usuario?.id || carrito.length === 0) return;
 
     try {
       setProcesando(true);
-      await crearPedido(user.id, carrito, notasUsuario, direccionEntrega);
+      await crearPedido(usuario.id, carrito, notasUsuario, direccionEntrega);
       alert('Pedido realizado exitosamente');
       navigate('/store/mis-pedidos');
     } catch (error) {

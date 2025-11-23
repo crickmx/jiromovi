@@ -36,6 +36,7 @@ import CRMConfiguracion from './pages/CRMConfiguracion';
 import Store from './pages/Store';
 import StoreCarrito from './pages/StoreCarrito';
 import StoreMisPedidos from './pages/StoreMisPedidos';
+import StoreAdmin from './pages/StoreAdmin';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -377,6 +378,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <StoreMisPedidos />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/store/admin"
+        element={
+          <ProtectedRoute requireAdmin>
+            <StoreAdmin />
           </ProtectedRoute>
         }
       />

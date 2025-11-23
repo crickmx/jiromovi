@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Package, Filter, X } from 'lucide-react';
+import { ShoppingCart, Package, Filter, X, Settings } from 'lucide-react';
 import {
   obtenerProductos,
   obtenerCategorias,
@@ -14,8 +14,10 @@ import { ProductoCard } from '../components/store/ProductoCard';
 import { ProductoDetalleModal } from '../components/store/ProductoDetalleModal';
 
 export default function Store() {
-  const { user } = useAuth();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
+
+  const isAdmin = usuario?.rol === 'Administrador';
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string>('');
@@ -33,7 +35,7 @@ export default function Store() {
       const [productosData, categoriasData, carritoData] = await Promise.all([
         obtenerProductos(categoriaSeleccionada || undefined),
         obtenerCategorias(),
-        user?.id ? obtenerCarrito(user.id) : Promise.resolve([])
+        usuario?.id ? obtenerCarrito(usuario.id) : Promise.resolve([])
       ]);
 
       setProductos(productosData);
@@ -47,10 +49,10 @@ export default function Store() {
   };
 
   const handleAgregarAlCarrito = async (producto: StoreProducto, cantidad: number = 1) => {
-    if (!user?.id) return;
+    if (!usuario?.id) return;
 
     try {
-      await agregarAlCarrito(user.id, producto.id, cantidad);
+      await agregarAlCarrito(usuario.id, producto.id, cantidad);
       setCantidadCarrito(prev => prev + cantidad);
       alert(`${producto.titulo} agregado al carrito`);
     } catch (error) {
@@ -78,18 +80,30 @@ export default function Store() {
             <p className="text-gray-600 mt-1">Explora nuestro catálogo de productos</p>
           </div>
 
-          <button
-            onClick={() => navigate('/store/carrito')}
-            className="relative flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
-          >
-            <ShoppingCart className="w-5 h-5" />
-            <span>Carrito</span>
-            {cantidadCarrito > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-                {cantidadCarrito}
-              </span>
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <button
+                onClick={() => navigate('/store/admin')}
+                className="flex items-center gap-2 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium shadow-sm"
+              >
+                <Settings className="w-5 h-5" />
+                <span>Administrar</span>
+              </button>
             )}
-          </button>
+
+            <button
+              onClick={() => navigate('/store/carrito')}
+              className="relative flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              <span>Carrito</span>
+              {cantidadCarrito > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                  {cantidadCarrito}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="mb-6 flex items-center gap-4 flex-wrap">

@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function StoreMisPedidos() {
-  const { user } = useAuth();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
   const [pedidos, setPedidos] = useState<StorePedido[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,11 +19,11 @@ export default function StoreMisPedidos() {
   }, []);
 
   const cargarPedidos = async () => {
-    if (!user?.id) return;
+    if (!usuario?.id) return;
 
     try {
       setLoading(true);
-      const data = await obtenerPedidosUsuario(user.id);
+      const data = await obtenerPedidosUsuario(usuario.id);
       setPedidos(data);
     } catch (error) {
       console.error('Error cargando pedidos:', error);
