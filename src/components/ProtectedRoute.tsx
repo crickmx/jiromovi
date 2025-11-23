@@ -6,12 +6,14 @@ interface ProtectedRouteProps {
   children: ReactNode;
   requireAdmin?: boolean;
   requireAdminOrGerente?: boolean;
+  requireAdminOrEmpleado?: boolean;
 }
 
 export function ProtectedRoute({
   children,
   requireAdmin = false,
-  requireAdminOrGerente = false
+  requireAdminOrGerente = false,
+  requireAdminOrEmpleado = false
 }: ProtectedRouteProps) {
   const { usuario, loading } = useAuth();
 
@@ -35,6 +37,10 @@ export function ProtectedRoute({
   }
 
   if (requireAdminOrGerente && usuario.rol !== 'Administrador' && usuario.rol !== 'Gerente') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireAdminOrEmpleado && usuario.rol !== 'Administrador' && usuario.rol !== 'Empleado') {
     return <Navigate to="/dashboard" replace />;
   }
 

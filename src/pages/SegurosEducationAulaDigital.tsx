@@ -32,7 +32,9 @@ export function SegurosEducationAulaDigital() {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
+  const isEmpleado = usuario?.rol === 'Empleado';
   const isAdminOrGerente = isAdmin || isGerente;
+  const isAdminOrEmpleado = isAdmin || isEmpleado;
   const isNotAgent = usuario?.rol !== 'Agente';
 
   const handleSignOut = async () => {
@@ -49,7 +51,7 @@ export function SegurosEducationAulaDigital() {
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/store', label: 'Store', icon: ShoppingBag, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
-    { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, show: true },
+    { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, show: isAdminOrEmpleado },
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/tickets', label: 'Tickets', icon: Ticket, show: true },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },

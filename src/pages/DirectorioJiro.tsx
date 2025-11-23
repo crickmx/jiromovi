@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Search, Mail, Phone, MapPin, Briefcase, Copy, Check, X } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 
@@ -21,6 +22,7 @@ interface Empleado {
 }
 
 export function DirectorioJiro() {
+  const { usuario } = useAuth();
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [empleadosFiltrados, setEmpleadosFiltrados] = useState<Empleado[]>([]);
   const [oficinas, setOficinas] = useState<string[]>([]);
@@ -37,6 +39,9 @@ export function DirectorioJiro() {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
 
+  const isAgente = usuario?.rol === 'Agente';
+  const oficinaUsuario = usuario?.oficina_id;
+
   useEffect(() => {
     cargarEmpleados();
   }, []);
@@ -48,7 +53,8 @@ export function DirectorioJiro() {
   const cargarEmpleados = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+
+      let query = supabase
         .from('usuarios')
         .select(`
           id,
@@ -63,8 +69,14 @@ export function DirectorioJiro() {
           oficinas:oficina_id (nombre)
         `)
         .eq('rol', 'Empleado')
-        .ilike('estado', 'activo')
-        .order('nombre', { ascending: true });
+        .ilike('estado', 'activo');
+
+      // Si es Agente, solo mostrar empleados de la misma oficina
+      if (isAgente && oficinaUsuario) {
+        query = query.eq('oficina_id', oficinaUsuario);
+      }
+
+      const { data, error } = await query.order('nombre', { ascending: true });
 
       if (error) {
         console.error('Error en query:', error);
