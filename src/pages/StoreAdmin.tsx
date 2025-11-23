@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Plus, Edit, Trash2, Eye, EyeOff, Upload, X, FolderOpen } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, Eye, EyeOff, Upload, X, FolderOpen, ShoppingBag } from 'lucide-react';
 import {
   obtenerTodosProductos,
   obtenerTodasCategorias,
@@ -136,6 +136,14 @@ export default function StoreAdmin() {
             <h1 className="text-3xl font-bold text-gray-900">Administración del Store</h1>
             <p className="text-gray-600 mt-1">Gestiona productos y categorías</p>
           </div>
+
+          <button
+            onClick={() => navigate('/store/pedidos')}
+            className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+          >
+            <ShoppingBag className="w-5 h-5" />
+            Gestión de Pedidos
+          </button>
         </div>
 
         <div className="flex items-center gap-4 mb-6">

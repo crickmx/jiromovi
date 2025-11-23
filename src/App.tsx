@@ -36,6 +36,8 @@ import CRMConfiguracion from './pages/CRMConfiguracion';
 import Store from './pages/Store';
 import StoreCarrito from './pages/StoreCarrito';
 import StoreMisPedidos from './pages/StoreMisPedidos';
+import StorePedidoDetalle from './pages/StorePedidoDetalle';
+import StorePedidos from './pages/StorePedidos';
 import StoreAdmin from './pages/StoreAdmin';
 
 function AppRoutes() {
@@ -387,6 +389,24 @@ function AppRoutes() {
         element={
           <ProtectedRoute requireAdmin>
             <StoreAdmin />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/store/pedido/:pedidoId"
+        element={
+          <ProtectedRoute>
+            <StorePedidoDetalle />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/store/pedidos"
+        element={
+          <ProtectedRoute requireAdmin>
+            <StorePedidos />
           </ProtectedRoute>
         }
       />

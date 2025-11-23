@@ -467,40 +467,40 @@ export async function crearPedido(
   return pedido as StorePedido;
 }
 
-export async function cambiarEstatusPedido(pedidoId: string, estatusId: string, adminId: string) {
-  const { data, error } = await supabase
+export async function actualizarEstatusPedido(pedidoId: string, nuevoEstatusId: string) {
+  const { data: pedido, error: pedidoError } = await supabase
     .from('store_pedidos')
-    .update({ estatus_id: estatusId })
+    .update({ estatus_id: nuevoEstatusId })
     .eq('id', pedidoId)
     .select()
     .single();
 
-  if (error) throw error;
+  if (pedidoError) throw pedidoError;
 
   const { error: historialError } = await supabase
     .from('store_pedidos_historial')
     .insert({
       pedido_id: pedidoId,
-      estatus_id: estatusId,
-      cambiado_por: adminId
+      estatus_id: nuevoEstatusId,
+      cambiado_por: (await supabase.auth.getUser()).data.user?.id
     });
 
   if (historialError) throw historialError;
 
-  return data as StorePedido;
+  return pedido as StorePedido;
 }
 
-export async function agregarNotaPedido(pedidoId: string, adminId: string, nota: string) {
+export async function agregarNotaPedido(pedidoId: string, nota: string) {
   const { data, error } = await supabase
     .from('store_pedidos_notas')
     .insert({
       pedido_id: pedidoId,
-      admin_id: adminId,
-      nota
+      nota,
+      admin_id: (await supabase.auth.getUser()).data.user?.id
     })
     .select()
     .single();
 
   if (error) throw error;
-  return data as StorePedidoNota;
+  return data;
 }
