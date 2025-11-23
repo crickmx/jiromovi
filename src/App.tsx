@@ -28,6 +28,11 @@ import { TicketDetalle } from './pages/TicketDetalle';
 import { MeetingRoom } from './pages/MeetingRoom';
 import { AulaVirtualSala } from './pages/AulaVirtualSala';
 import { NotificacionesTransaccionales } from './pages/NotificacionesTransaccionales';
+import MiCRM from './pages/MiCRM';
+import CRMContactos from './pages/CRMContactos';
+import CRMContactoPerfil from './pages/CRMContactoPerfil';
+import CRMReportes from './pages/CRMReportes';
+import CRMConfiguracion from './pages/CRMConfiguracion';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -286,6 +291,61 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <TicketDetalle />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-crm"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MiCRM />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-crm/contactos"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CRMContactos />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-crm/contactos/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CRMContactoPerfil />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-crm/reportes"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CRMReportes />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-crm/configuracion"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CRMConfiguracion />
             </Layout>
           </ProtectedRoute>
         }
