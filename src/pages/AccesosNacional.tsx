@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Plus, Edit2, Trash2, ExternalLink } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ExternalLink, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -46,6 +46,8 @@ export function AccesosNacional() {
   });
   const [sortField, setSortField] = useState<'aseguradora' | 'fecha_creacion' | 'fecha_ultima_edicion'>('aseguradora');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedAcceso, setSelectedAcceso] = useState<AccesoNacional | null>(null);
 
   const canDelete = usuario?.rol === 'Administrador';
 
@@ -128,6 +130,16 @@ export function AccesosNacional() {
       setSortField(field);
       setSortDirection('asc');
     }
+  };
+
+  const openDetailsModal = (acceso: AccesoNacional) => {
+    setSelectedAcceso(acceso);
+    setShowDetailsModal(true);
+  };
+
+  const closeDetailsModal = () => {
+    setShowDetailsModal(false);
+    setSelectedAcceso(null);
   };
 
   const openModal = (acceso?: AccesoNacional) => {
@@ -312,23 +324,11 @@ export function AccesosNacional() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
                     Contraseña
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Link
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                    Ingresar
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Creado por
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                    onClick={() => handleSort('fecha_creacion')}
-                  >
-                    Fecha Creación {sortField === 'fecha_creacion' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Última Edición
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Editado por
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                    Detalles
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-700 uppercase tracking-wider">
                     Acciones
@@ -338,7 +338,7 @@ export function AccesosNacional() {
               <tbody className="divide-y divide-neutral-200">
                 {filteredAccesos.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-neutral-500">
+                    <td colSpan={7} className="px-4 py-8 text-center text-neutral-500">
                       {searchTerm ? 'No se encontraron registros' : 'No hay accesos registrados'}
                     </td>
                   </tr>
@@ -349,7 +349,7 @@ export function AccesosNacional() {
                       <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_1}</td>
                       <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_2 || '-'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-700 font-mono">{acceso.contrasena}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-center">
                         <a
                           href={acceso.link}
                           target="_blank"
@@ -360,10 +360,15 @@ export function AccesosNacional() {
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </td>
-                      <td className="px-4 py-3 text-sm text-neutral-700">{acceso.creador_nombre}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-600">{formatDate(acceso.fecha_creacion)}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-600">{formatDate(acceso.fecha_ultima_edicion)}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-700">{acceso.editor_nombre || '-'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => openDetailsModal(acceso)}
+                          className="p-2 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100"
+                          title="Ver detalles"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
@@ -489,6 +494,70 @@ export function AccesosNacional() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDetailsModal && selectedAcceso && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+            <div className="p-6 border-b border-neutral-200 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-neutral-800">Detalles del Acceso</h2>
+              <button
+                onClick={closeDetailsModal}
+                className="text-neutral-400 hover:text-neutral-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-700 mb-1">Aseguradora</h3>
+                <p className="text-neutral-900">{selectedAcceso.aseguradora}</p>
+              </div>
+
+              <div className="border-t border-neutral-200 pt-4">
+                <h3 className="text-sm font-semibold text-neutral-700 mb-3">Información de Creación</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-neutral-600">Creado por:</span>
+                    <span className="text-sm font-medium text-neutral-900">{selectedAcceso.creador_nombre}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-neutral-600">Fecha de creación:</span>
+                    <span className="text-sm font-medium text-neutral-900">{formatDate(selectedAcceso.fecha_creacion)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {selectedAcceso.fecha_ultima_edicion && (
+                <div className="border-t border-neutral-200 pt-4">
+                  <h3 className="text-sm font-semibold text-neutral-700 mb-3">Última Edición</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-neutral-600">Editado por:</span>
+                      <span className="text-sm font-medium text-neutral-900">{selectedAcceso.editor_nombre || '-'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-neutral-600">Fecha de edición:</span>
+                      <span className="text-sm font-medium text-neutral-900">{formatDate(selectedAcceso.fecha_ultima_edicion)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-neutral-200">
+              <button
+                onClick={closeDetailsModal}
+                className="w-full px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors font-medium"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
