@@ -131,32 +131,32 @@ export function SegurosEducationAulaDigital() {
       {/* Header con navegación */}
       <header className="bg-white/80 backdrop-blur-md border-b border-neutral-200 sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => navigate('/seguros-education')}
-              className="p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-all"
-              title="Volver a Seguros Education"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-all"
-              title="Ir al menú principal"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-all"
+            title="Ir al menú principal"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
           <img
             src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
             alt="MOVI Digital Logo"
             className="h-10 object-contain"
           />
-          <div className="w-20"></div>
+          <div className="w-10"></div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Botón de regreso */}
+        <button
+          onClick={() => navigate('/seguros-education')}
+          className="flex items-center space-x-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-medium">Volver a Seguros Education</span>
+        </button>
+
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-8 text-white">
           <div className="flex items-center justify-between">
             <div>
