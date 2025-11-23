@@ -389,6 +389,26 @@ export async function obtenerUrlArchivoCRM(path: string) {
   return data.publicUrl;
 }
 
+export async function descargarArchivoCRM(path: string, nombreArchivo: string) {
+  const { data, error } = await supabase.storage.from('crm-documentos').download(path);
+
+  if (error) throw error;
+
+  const url = URL.createObjectURL(data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export async function abrirArchivoCRM(path: string) {
+  const url = obtenerUrlArchivoCRM(path);
+  window.open(url, '_blank');
+}
+
 export async function eliminarArchivoCRM(path: string) {
   const { error } = await supabase.storage.from('crm-documentos').remove([path]);
   if (error) throw error;

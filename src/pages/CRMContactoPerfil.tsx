@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Phone, Mail, Calendar, Tag, Plus, Trash2, CheckCircle, Download, ExternalLink } from 'lucide-react';
 import {
   obtenerContactoPorId,
   obtenerCotizacionesPorContacto,
@@ -11,6 +11,8 @@ import {
   eliminarPoliza,
   eliminarTarea,
   actualizarTarea,
+  descargarArchivoCRM,
+  abrirArchivoCRM,
 } from '../lib/crmUtils';
 import type { CRMContacto, CRMCotizacion, CRMPoliza, CRMTarea, TimelineItem } from '../lib/crmTypes';
 import ContactoModal from '../components/crm/ContactoModal';
@@ -299,6 +301,24 @@ export default function CRMContactoPerfil() {
                           {cot.observaciones && (
                             <p className="text-sm text-gray-600 mt-2">{cot.observaciones}</p>
                           )}
+                          {cot.archivo_url && (
+                            <div className="flex items-center gap-3 mt-3">
+                              <button
+                                onClick={() => abrirArchivoCRM(cot.archivo_url!)}
+                                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium hover:bg-blue-50 px-3 py-1.5 rounded transition"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                Abrir PDF
+                              </button>
+                              <button
+                                onClick={() => descargarArchivoCRM(cot.archivo_url!, cot.nombre_documento + '.pdf')}
+                                className="flex items-center gap-2 text-green-600 hover:text-green-800 text-sm font-medium hover:bg-green-50 px-3 py-1.5 rounded transition"
+                              >
+                                <Download className="h-4 w-4" />
+                                Descargar
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           {cot.monto_cotizado && (
@@ -351,6 +371,24 @@ export default function CRMContactoPerfil() {
                           </p>
                           {pol.observaciones && (
                             <p className="text-sm text-gray-600 mt-2">{pol.observaciones}</p>
+                          )}
+                          {pol.archivo_url && (
+                            <div className="flex items-center gap-3 mt-3">
+                              <button
+                                onClick={() => abrirArchivoCRM(pol.archivo_url!)}
+                                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium hover:bg-blue-50 px-3 py-1.5 rounded transition"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                Abrir PDF
+                              </button>
+                              <button
+                                onClick={() => descargarArchivoCRM(pol.archivo_url!, `Poliza_${pol.numero_poliza}.pdf`)}
+                                className="flex items-center gap-2 text-green-600 hover:text-green-800 text-sm font-medium hover:bg-green-50 px-3 py-1.5 rounded transition"
+                              >
+                                <Download className="h-4 w-4" />
+                                Descargar
+                              </button>
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-2">

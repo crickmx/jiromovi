@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { X, Upload } from 'lucide-react';
-import { crearPoliza, actualizarPoliza, subirArchivoCRM } from '../../lib/crmUtils';
+import { X, Upload, Download, ExternalLink } from 'lucide-react';
+import { crearPoliza, actualizarPoliza, subirArchivoCRM, descargarArchivoCRM, abrirArchivoCRM } from '../../lib/crmUtils';
 import { useAuth } from '../../contexts/AuthContext';
 import type { CRMPoliza } from '../../lib/crmTypes';
 
@@ -222,7 +222,31 @@ export default function PolizaModal({ contactoId, poliza, onClose, onSave }: Pro
               </label>
             </div>
             {poliza?.archivo_url && !archivo && (
-              <p className="text-xs text-gray-500 mt-1">Archivo actual: {poliza.archivo_url}</p>
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-700 truncate flex-1">
+                    {poliza.archivo_url.split('/').pop()}
+                  </p>
+                  <div className="flex items-center gap-2 ml-3">
+                    <button
+                      type="button"
+                      onClick={() => abrirArchivoCRM(poliza.archivo_url!)}
+                      className="text-blue-600 hover:text-blue-800 p-1.5 hover:bg-blue-50 rounded transition"
+                      title="Abrir en nueva pestaña"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => descargarArchivoCRM(poliza.archivo_url!, `Poliza_${poliza.numero_poliza}.pdf`)}
+                      className="text-green-600 hover:text-green-800 p-1.5 hover:bg-green-50 rounded transition"
+                      title="Descargar"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
