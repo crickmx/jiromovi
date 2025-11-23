@@ -9,6 +9,7 @@ import {
   DollarSign,
   Target,
   Clock,
+  Settings,
 } from 'lucide-react';
 import {
   obtenerEstadisticasDashboard,
@@ -60,8 +61,94 @@ export default function MiCRM() {
         <p className="text-gray-600 mt-1">Gestiona tus prospectos, clientes y ventas</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* SECCIÓN 1: Botones de Acceso Rápido */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Link
+          to="/mi-crm/contactos"
+          className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:scale-105"
+        >
+          <Users className="h-8 w-8 mb-3" />
+          <h3 className="text-lg font-semibold mb-1">Contactos</h3>
+          <p className="text-sm text-blue-100">Gestiona prospectos y clientes</p>
+        </Link>
+
+        <Link
+          to="/mi-crm/reportes"
+          className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:scale-105"
+        >
+          <Target className="h-8 w-8 mb-3" />
+          <h3 className="text-lg font-semibold mb-1">Reportes</h3>
+          <p className="text-sm text-purple-100">Analiza tu desempeño</p>
+        </Link>
+
+        <Link
+          to="/mi-crm/configuracion"
+          className="bg-gradient-to-br from-gray-600 to-gray-700 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:scale-105"
+        >
+          <Settings className="h-8 w-8 mb-3" />
+          <h3 className="text-lg font-semibold mb-1">Configuración</h3>
+          <p className="text-sm text-gray-100">Personaliza tu CRM</p>
+        </Link>
+      </div>
+
+      {/* SECCIÓN 2: Tareas Pendientes */}
+      <div className="mb-6">
         <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <Clock className="h-5 w-5 mr-2 text-orange-600" />
+            Tareas Pendientes
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {tareasPendientes.length === 0 ? (
+              <div className="col-span-full">
+                <p className="text-sm text-gray-500 text-center py-8">
+                  No hay tareas pendientes
+                </p>
+              </div>
+            ) : (
+              tareasPendientes.map((tarea) => (
+                <Link
+                  key={tarea.id}
+                  to={`/mi-crm/contactos/${tarea.contacto_id}`}
+                  className="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition border border-gray-200 hover:border-orange-300"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-900">
+                      {tarea.tipo_actividad}
+                    </p>
+                    <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs font-medium">
+                      Pendiente
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-2 line-clamp-2">{tarea.descripcion}</p>
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                    <span className="text-xs text-gray-500">
+                      {tarea.crm_contactos?.nombre_completo}
+                    </span>
+                    <span className="text-xs font-medium text-orange-600">
+                      {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX')}
+                    </span>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+          {tareasPendientes.length > 0 && (
+            <div className="mt-4 text-center">
+              <Link
+                to="/mi-crm/contactos"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline"
+              >
+                Ver todos los contactos →
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SECCIÓN 3: Métricas Rápidas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Contactos</p>
@@ -73,7 +160,7 @@ export default function MiCRM() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Clientes Activos</p>
@@ -85,7 +172,7 @@ export default function MiCRM() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Cotizaciones</p>
@@ -99,7 +186,7 @@ export default function MiCRM() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Pólizas Activas</p>
@@ -112,7 +199,8 @@ export default function MiCRM() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      {/* SECCIÓN 4: Embudo de Ventas y Métricas Adicionales */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Embudo de Ventas</h2>
@@ -212,75 +300,46 @@ export default function MiCRM() {
 
         <div>
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-gray-600" />
-              Tareas Pendientes
-            </h2>
-            <div className="space-y-3">
-              {tareasPendientes.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  No hay tareas pendientes
-                </p>
-              ) : (
-                tareasPendientes.map((tarea) => (
-                  <Link
-                    key={tarea.id}
-                    to={`/mi-crm/contactos/${tarea.contacto_id}`}
-                    className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-                  >
-                    <p className="text-sm font-medium text-gray-900 mb-1">
-                      {tarea.tipo_actividad}
-                    </p>
-                    <p className="text-xs text-gray-600 mb-2">{tarea.descripcion}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
-                        {tarea.crm_contactos?.nombre_completo}
-                      </span>
-                      <span className="text-xs font-medium text-orange-600">
-                        {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX')}
-                      </span>
-                    </div>
-                  </Link>
-                ))
-              )}
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Resumen Rápido</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center">
+                  <Users className="h-5 w-5 text-blue-600 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">Prospectos</span>
+                </div>
+                <span className="text-lg font-bold text-blue-600">{funnel?.prospectos || 0}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">Clientes</span>
+                </div>
+                <span className="text-lg font-bold text-green-600">{funnel?.clientes || 0}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                <div className="flex items-center">
+                  <FileText className="h-5 w-5 text-orange-600 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">Cotizaciones</span>
+                </div>
+                <span className="text-lg font-bold text-orange-600">
+                  {stats?.totalCotizaciones || 0}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                <div className="flex items-center">
+                  <Shield className="h-5 w-5 text-purple-600 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">Pólizas</span>
+                </div>
+                <span className="text-lg font-bold text-purple-600">
+                  {stats?.totalPolizas || 0}
+                </span>
+              </div>
             </div>
-            <Link
-              to="/mi-crm/contactos"
-              className="block w-full mt-4 text-center text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
-              Ver todos los contactos
-            </Link>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link
-          to="/mi-crm/contactos"
-          className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition"
-        >
-          <Users className="h-8 w-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-1">Contactos</h3>
-          <p className="text-sm text-blue-100">Gestiona prospectos y clientes</p>
-        </Link>
-
-        <Link
-          to="/mi-crm/reportes"
-          className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition"
-        >
-          <Target className="h-8 w-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-1">Reportes</h3>
-          <p className="text-sm text-purple-100">Analiza tu desempeño</p>
-        </Link>
-
-        <Link
-          to="/mi-crm/configuracion"
-          className="bg-gradient-to-br from-gray-500 to-gray-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition"
-        >
-          <FileText className="h-8 w-8 mb-3" />
-          <h3 className="text-lg font-semibold mb-1">Configuración</h3>
-          <p className="text-sm text-gray-100">Personaliza tu CRM</p>
-        </Link>
       </div>
     </div>
   );
