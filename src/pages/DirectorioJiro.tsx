@@ -58,7 +58,7 @@ export function DirectorioJiro() {
           puesto,
           email_laboral,
           celular_laboral,
-          foto_url,
+          imagen_perfil_url,
           oficina_id,
           oficinas:oficina_id (nombre)
         `)
@@ -86,7 +86,7 @@ export function DirectorioJiro() {
           oficina: usuario.oficinas?.nombre || 'Sin oficina',
           email_laboral: usuario.email_laboral || '',
           celular_laboral: usuario.celular_laboral || '',
-          foto_url: usuario.foto_url,
+          foto_url: usuario.imagen_perfil_url,
         };
       });
 
