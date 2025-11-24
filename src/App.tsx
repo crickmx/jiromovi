@@ -37,6 +37,7 @@ import CRMConfiguracion from './pages/CRMConfiguracion';
 import Comunicados from './pages/Comunicados';
 import ComunicadoDetalle from './pages/ComunicadoDetalle';
 import ComunicadoEditor from './pages/ComunicadoEditor';
+import ComunicadoCategorias from './pages/ComunicadoCategorias';
 import Store from './pages/Store';
 import StoreCarrito from './pages/StoreCarrito';
 import StoreMisPedidos from './pages/StoreMisPedidos';
@@ -333,6 +334,15 @@ function AppRoutes() {
             <Layout>
               <Comunicados />
             </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comunicados/categorias"
+        element={
+          <ProtectedRoute requireAdmin>
+            <ComunicadoCategorias />
           </ProtectedRoute>
         }
       />
