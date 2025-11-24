@@ -107,9 +107,9 @@ export default function StorePedidos() {
           <span className="font-medium">Volver al Store</span>
         </button>
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gestión de Pedidos</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Gestión de Pedidos</h1>
             <p className="text-gray-600 mt-1">
               Administra todos los pedidos del Store
               {pedidos.length > 0 && (
@@ -121,12 +121,12 @@ export default function StorePedidos() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Pedidos</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
               </div>
               <Package className="w-8 h-8 text-blue-600" />
             </div>
@@ -136,7 +136,7 @@ export default function StorePedidos() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-600 mt-1">{stats.pendientes}</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600 mt-1">{stats.pendientes}</p>
               </div>
               <Calendar className="w-8 h-8 text-yellow-600" />
             </div>
@@ -146,7 +146,7 @@ export default function StorePedidos() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Procesando</p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">{stats.procesando}</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">{stats.procesando}</p>
               </div>
               <Package className="w-8 h-8 text-blue-600" />
             </div>
@@ -156,7 +156,7 @@ export default function StorePedidos() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Entregados</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{stats.entregados}</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{stats.entregados}</p>
               </div>
               <Package className="w-8 h-8 text-green-600" />
             </div>

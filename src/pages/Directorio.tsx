@@ -110,11 +110,11 @@ export function Directorio() {
   return (
     <div>
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-          <div className="flex justify-between items-center">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">Usuarios</h1>
-              <p className="text-blue-100 mt-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-white">Usuarios</h1>
+              <p className="text-blue-100 mt-1 text-sm sm:text-base">
                 {currentUser?.rol === 'Gerente'
                   ? 'Gestiona usuarios de tu oficina'
                   : 'Administra empleados y agentes'}
@@ -125,7 +125,7 @@ export function Directorio() {
                 setSelectedUser(null);
                 setModalOpen(true);
               }}
-              className="flex items-center space-x-2 bg-white text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition"
+              className="flex items-center space-x-2 bg-white text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition w-full sm:w-auto justify-center"
             >
               <UserPlus className="w-5 h-5" />
               <span>Nuevo Usuario</span>
@@ -133,9 +133,9 @@ export function Directorio() {
           </div>
         </div>
 
-        <div className="p-6 border-b border-slate-200 bg-slate-50">
-          <div className={`grid grid-cols-1 ${currentUser?.rol === 'Gerente' ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-4`}>
-            <div className="md:col-span-2 relative">
+        <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50">
+          <div className={`grid grid-cols-1 ${currentUser?.rol === 'Gerente' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4'} gap-3 sm:gap-4`}>
+            <div className="sm:col-span-2 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
                 type="text"
@@ -182,7 +182,7 @@ export function Directorio() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[800px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -282,11 +282,11 @@ export function Directorio() {
                     <div className="flex justify-end space-x-2">
                       <button
                         onClick={() => navigate(`/usuario/${usuario.id}`)}
-                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-900 px-3 py-2 hover:bg-blue-50 rounded-lg transition"
+                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-900 px-2 lg:px-3 py-2 hover:bg-blue-50 rounded-lg transition"
                         title="Ver / Editar Usuario"
                       >
                         <Edit className="w-4 h-4" />
-                        <span className="text-sm font-medium">Ver / Editar</span>
+                        <span className="text-sm font-medium hidden lg:inline">Ver / Editar</span>
                       </button>
                       <button
                         onClick={() => handleDelete(usuario.id)}
