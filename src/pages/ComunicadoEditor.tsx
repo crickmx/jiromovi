@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye } from 'lucide-react';
+import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import {
   obtenerComunicadoPorId,
   crearComunicado,
@@ -34,6 +35,12 @@ export default function ComunicadoEditor() {
   const [adjuntos, setAdjuntos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
+  // Estados de visibilidad
+  const [tipoVisibilidad, setTipoVisibilidad] = useState<'todos' | 'rol' | 'oficina'>('todos');
+  const [rolesSeleccionados, setRolesSeleccionados] = useState<string[]>([]);
+  const [oficinasSeleccionadas, setOficinasSeleccionadas] = useState<string[]>([]);
+  const [oficinasDisponibles, setOficinasDisponibles] = useState<any[]>([]);
+
   const esAdmin = usuario?.rol === 'Administrador';
   const esEdicion = !!id;
 
@@ -52,6 +59,13 @@ export default function ComunicadoEditor() {
 
       const categoriasData = await obtenerCategoriasActivas();
       setCategorias(categoriasData);
+
+      // Cargar oficinas disponibles
+      const { data: oficinasData } = await supabase
+        .from('oficinas')
+        .select('id, nombre')
+        .order('nombre');
+      setOficinasDisponibles(oficinasData || []);
 
       if (categoriasData.length > 0 && !categoriaId) {
         setCategoriaId(categoriasData[0].id);
@@ -127,6 +141,17 @@ export default function ComunicadoEditor() {
       return;
     }
 
+    // Validar visibilidad
+    if (tipoVisibilidad === 'rol' && rolesSeleccionados.length === 0) {
+      alert('Debes seleccionar al menos un rol');
+      return;
+    }
+
+    if (tipoVisibilidad === 'oficina' && oficinasSeleccionadas.length === 0) {
+      alert('Debes seleccionar al menos una oficina');
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -172,6 +197,50 @@ export default function ComunicadoEditor() {
             tipo_mime: adjunto.type
           });
         }
+      }
+
+      // Establecer visibilidad
+      if (comunicadoId && tipoVisibilidad !== 'todos') {
+        // Eliminar visibilidad anterior si existe (para edición)
+        await supabase
+          .from('comunicados_visibilidad')
+          .delete()
+          .eq('comunicado_id', comunicadoId);
+
+        // Agregar nuevas reglas de visibilidad
+        const reglasVisibilidad = [];
+
+        if (tipoVisibilidad === 'rol') {
+          for (const rol of rolesSeleccionados) {
+            reglasVisibilidad.push({
+              comunicado_id: comunicadoId,
+              rol: rol,
+              oficina_id: null,
+              usuario_id: null
+            });
+          }
+        } else if (tipoVisibilidad === 'oficina') {
+          for (const oficinaId of oficinasSeleccionadas) {
+            reglasVisibilidad.push({
+              comunicado_id: comunicadoId,
+              rol: null,
+              oficina_id: oficinaId,
+              usuario_id: null
+            });
+          }
+        }
+
+        if (reglasVisibilidad.length > 0) {
+          await supabase
+            .from('comunicados_visibilidad')
+            .insert(reglasVisibilidad);
+        }
+      } else if (comunicadoId && tipoVisibilidad === 'todos') {
+        // Si es "todos", eliminar cualquier restricción de visibilidad
+        await supabase
+          .from('comunicados_visibilidad')
+          .delete()
+          .eq('comunicado_id', comunicadoId);
       }
 
       alert(esEdicion ? 'Comunicado actualizado exitosamente' : 'Comunicado creado exitosamente');
@@ -395,6 +464,132 @@ export default function ComunicadoEditor() {
                   Se mostrará siempre arriba
                 </span>
               </label>
+            </div>
+          </div>
+
+          {/* Control de Visibilidad */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Control de Visibilidad
+            </h3>
+
+            <div className="space-y-4">
+              {/* Tipo de visibilidad */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  ¿Quién puede ver este comunicado?
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                    <input
+                      type="radio"
+                      checked={tipoVisibilidad === 'todos'}
+                      onChange={() => setTipoVisibilidad('todos')}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <Users className="w-5 h-5 text-gray-600" />
+                    <div>
+                      <div className="font-medium text-gray-900">Todos los usuarios</div>
+                      <div className="text-sm text-gray-500">Visible para toda la organización</div>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                    <input
+                      type="radio"
+                      checked={tipoVisibilidad === 'rol'}
+                      onChange={() => setTipoVisibilidad('rol')}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <User className="w-5 h-5 text-gray-600" />
+                    <div>
+                      <div className="font-medium text-gray-900">Por roles</div>
+                      <div className="text-sm text-gray-500">Visible solo para roles específicos</div>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                    <input
+                      type="radio"
+                      checked={tipoVisibilidad === 'oficina'}
+                      onChange={() => setTipoVisibilidad('oficina')}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <Building2 className="w-5 h-5 text-gray-600" />
+                    <div>
+                      <div className="font-medium text-gray-900">Por oficinas</div>
+                      <div className="text-sm text-gray-500">Visible solo para oficinas específicas</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Selector de roles */}
+              {tipoVisibilidad === 'rol' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Selecciona los roles que pueden ver este comunicado:
+                  </label>
+                  <div className="space-y-2">
+                    {['Administrador', 'Gerente', 'Empleado', 'Agente'].map((rol) => (
+                      <label key={rol} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={rolesSeleccionados.includes(rol)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setRolesSeleccionados([...rolesSeleccionados, rol]);
+                            } else {
+                              setRolesSeleccionados(rolesSeleccionados.filter(r => r !== rol));
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded"
+                        />
+                        <span className="text-gray-700">{rol}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {rolesSeleccionados.length === 0 && (
+                    <p className="text-sm text-amber-600 mt-2">
+                      Debes seleccionar al menos un rol
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Selector de oficinas */}
+              {tipoVisibilidad === 'oficina' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Selecciona las oficinas que pueden ver este comunicado:
+                  </label>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {oficinasDisponibles.map((oficina) => (
+                      <label key={oficina.id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={oficinasSeleccionadas.includes(oficina.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setOficinasSeleccionadas([...oficinasSeleccionadas, oficina.id]);
+                            } else {
+                              setOficinasSeleccionadas(oficinasSeleccionadas.filter(o => o !== oficina.id));
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded"
+                        />
+                        <span className="text-gray-700">{oficina.nombre}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {oficinasSeleccionadas.length === 0 && (
+                    <p className="text-sm text-amber-600 mt-2">
+                      Debes seleccionar al menos una oficina
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
