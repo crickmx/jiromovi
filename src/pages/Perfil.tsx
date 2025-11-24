@@ -244,18 +244,21 @@ export function Perfil() {
             <CustomFields usuarioId={usuario.id} editable={true} />
           </div>
 
-          <div className="mt-8">
-            <CorreoIONOSFields
-              emailCuenta={formData.email_cuenta || null}
-              emailPassword={formData.email_password || null}
-              emailVerificado={formData.email_verificado || null}
-              emailUltimaVerificacion={formData.email_ultima_verificacion || null}
-              emailErrorMensaje={formData.email_error_mensaje || null}
-              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-              editable={true}
-              usuarioId={usuario.id}
-            />
-          </div>
+          {/* Configuración de correos IONOS - Oculto para todos los roles */}
+          {false && (
+            <div className="mt-8">
+              <CorreoIONOSFields
+                emailCuenta={formData.email_cuenta || null}
+                emailPassword={formData.email_password || null}
+                emailVerificado={formData.email_verificado || null}
+                emailUltimaVerificacion={formData.email_ultima_verificacion || null}
+                emailErrorMensaje={formData.email_error_mensaje || null}
+                onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+                editable={true}
+                usuarioId={usuario.id}
+              />
+            </div>
+          )}
 
           <div className="mt-8">
             <PaymentFields
