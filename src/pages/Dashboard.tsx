@@ -7,7 +7,7 @@ import type { Database } from '../lib/database.types';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
 import { ResumenVacaciones } from '../components/ResumenVacaciones';
 import { ProximasReservas } from '../components/ProximasReservas';
-import { TicketsWidget } from '../components/TicketsWidget';
+import { TramitesWidget } from '../components/TramitesWidget';
 import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
 import CalendarioEventos from '../components/CalendarioEventos';
 import { UltimoComunicado } from '../components/UltimoComunicado';
@@ -250,7 +250,7 @@ export function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ResumenVacaciones />
-          <TicketsWidget />
+          <TramitesWidget />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

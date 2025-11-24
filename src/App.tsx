@@ -24,8 +24,8 @@ import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
 import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
 import { SegurosEducationAulaDigital } from './pages/SegurosEducationAulaDigital';
 import { CentroNotificaciones } from './pages/CentroNotificaciones';
-import { Tickets } from './pages/Tickets';
-import { TicketDetalle } from './pages/TicketDetalle';
+import { Tramites } from './pages/Tramites';
+import { TramiteDetalle } from './pages/TramiteDetalle';
 import { MeetingRoom } from './pages/MeetingRoom';
 import { AulaVirtualSala } from './pages/AulaVirtualSala';
 import { NotificacionesTransaccionales } from './pages/NotificacionesTransaccionales';
@@ -295,22 +295,22 @@ function AppRoutes() {
       />
 
       <Route
-        path="/tickets"
+        path="/tramites"
         element={
           <ProtectedRoute>
             <Layout>
-              <Tickets />
+              <Tramites />
             </Layout>
           </ProtectedRoute>
         }
       />
 
       <Route
-        path="/tickets/:id"
+        path="/tramites/:id"
         element={
           <ProtectedRoute>
             <Layout>
-              <TicketDetalle />
+              <TramiteDetalle />
             </Layout>
           </ProtectedRoute>
         }
