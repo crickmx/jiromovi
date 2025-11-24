@@ -205,16 +205,16 @@ export default function ComunicadoEditor() {
         <div className="mb-6">
           <button
             onClick={() => navigate('/comunicados')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 transition text-sm"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
             Volver a Comunicados
           </button>
 
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          <h1 className="text-xl font-semibold text-gray-900">
             {esEdicion ? 'Editar Comunicado' : 'Nuevo Comunicado'}
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-sm text-gray-600 mt-1">
             Completa los campos para {esEdicion ? 'actualizar' : 'publicar'} el comunicado
           </p>
         </div>

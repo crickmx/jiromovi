@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Calendar, User, Download, Pin, Edit, Trash2, FileText } from 'lucide-react';
+import { ArrowLeft, Calendar, Download, Pin, Edit, Trash2, FileText } from 'lucide-react';
 import { obtenerComunicadoPorId, eliminarComunicado, verificarVisibilidad } from '../lib/comunicadosUtils';
 import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
 import { formatearFechaHora } from '../lib/comunicadosUtils';
@@ -120,29 +120,29 @@ export default function ComunicadoDetalle() {
     <Layout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <button
             onClick={() => navigate('/comunicados')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition text-sm"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
             Volver a Comunicados
           </button>
 
           {esAdmin && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate(`/comunicados/editar/${comunicado.id}`)}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
               >
-                <Edit className="w-4 h-4" />
+                <Edit className="w-3.5 h-3.5" />
                 Editar
               </button>
               <button
                 onClick={handleEliminar}
-                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                className="flex items-center gap-1.5 bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
                 Eliminar
               </button>
             </div>
@@ -179,30 +179,9 @@ export default function ComunicadoDetalle() {
             </div>
 
             {/* Título */}
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8">
               {comunicado.titulo}
             </h1>
-
-            {/* Autor */}
-            <div className="flex items-center gap-3 pb-6 mb-6 border-b border-gray-200">
-              {comunicado.creador?.imagen_perfil_url ? (
-                <img
-                  src={comunicado.creador.imagen_perfil_url}
-                  alt={comunicado.creador.nombre}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                  <User className="w-6 h-6 text-gray-600" />
-                </div>
-              )}
-              <div>
-                <p className="text-gray-900 font-semibold">
-                  {comunicado.creador?.nombre} {comunicado.creador?.apellidos}
-                </p>
-                <p className="text-gray-500 text-sm">Autor</p>
-              </div>
-            </div>
 
             {/* Contenido HTML */}
             <div
