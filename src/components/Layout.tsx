@@ -6,9 +6,10 @@ import { NotificationBell } from './NotificationBell';
 
 interface LayoutProps {
   children: ReactNode;
+  hideHeader?: boolean;
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, hideHeader = false }: LayoutProps) {
   const { usuario, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -147,38 +148,42 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       <div className={`flex-1 transition-all duration-300 ease-ios ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>
-        {/* Mobile Header */}
-        <header className="bg-white/90 backdrop-blur-ios border-b border-ios-gray-200/50 sticky top-0 z-30 shadow-ios lg:hidden">
-          <div className="flex items-center justify-between px-5 py-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="text-ios-gray-700 hover:text-ios-gray-900 active:bg-ios-gray-100 p-2 rounded-ios transition-all"
-              title="Abrir menú"
-            >
-              <Menu className="w-6 h-6 stroke-[1.5]" />
-            </button>
-            <img
-              src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
-              alt="MOVI Digital Logo"
-              className="h-9 object-contain"
-            />
-            <NotificationBell />
-          </div>
-        </header>
+        {!hideHeader && (
+          <>
+            {/* Mobile Header */}
+            <header className="bg-white/90 backdrop-blur-ios border-b border-ios-gray-200/50 sticky top-0 z-30 shadow-ios lg:hidden">
+              <div className="flex items-center justify-between px-5 py-4">
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="text-ios-gray-700 hover:text-ios-gray-900 active:bg-ios-gray-100 p-2 rounded-ios transition-all"
+                  title="Abrir menú"
+                >
+                  <Menu className="w-6 h-6 stroke-[1.5]" />
+                </button>
+                <img
+                  src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
+                  alt="MOVI Digital Logo"
+                  className="h-9 object-contain"
+                />
+                <NotificationBell />
+              </div>
+            </header>
 
-        {/* Desktop Header with Menu Button and Notification Bell */}
-        <header className="hidden lg:block bg-white/90 backdrop-blur-ios border-b border-ios-gray-200/50 sticky top-0 z-30 shadow-ios">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-ios-gray-700 hover:text-ios-gray-900 active:bg-ios-gray-100 p-2.5 rounded-ios-lg transition-all"
-              title={sidebarOpen ? "Cerrar menú" : "Abrir menú"}
-            >
-              <Menu className="w-6 h-6 stroke-[1.5]" />
-            </button>
-            <NotificationBell />
-          </div>
-        </header>
+            {/* Desktop Header with Menu Button and Notification Bell */}
+            <header className="hidden lg:block bg-white/90 backdrop-blur-ios border-b border-ios-gray-200/50 sticky top-0 z-30 shadow-ios">
+              <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="text-ios-gray-700 hover:text-ios-gray-900 active:bg-ios-gray-100 p-2.5 rounded-ios-lg transition-all"
+                  title={sidebarOpen ? "Cerrar menú" : "Abrir menú"}
+                >
+                  <Menu className="w-6 h-6 stroke-[1.5]" />
+                </button>
+                <NotificationBell />
+              </div>
+            </header>
+          </>
+        )}
 
         <main className={location.pathname === '/multicotizador-digital' ? 'h-screen' : 'max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-6 lg:py-8 animate-fade-in'}>
           {children}

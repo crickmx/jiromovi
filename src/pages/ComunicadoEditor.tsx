@@ -190,7 +190,7 @@ export default function ComunicadoEditor() {
 
   if (loading) {
     return (
-      <Layout>
+      <Layout hideHeader>
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
@@ -199,7 +199,7 @@ export default function ComunicadoEditor() {
   }
 
   return (
-    <Layout>
+    <Layout hideHeader>
       <div className="max-w-4xl mx-auto">
         {/* Navegación */}
         <button

@@ -64,7 +64,7 @@ export default function ComunicadoDetalle() {
 
   if (loading) {
     return (
-      <Layout>
+      <Layout hideHeader>
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
@@ -74,7 +74,7 @@ export default function ComunicadoDetalle() {
 
   if (!puedeVer) {
     return (
-      <Layout>
+      <Layout hideHeader>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -98,7 +98,7 @@ export default function ComunicadoDetalle() {
 
   if (!comunicado) {
     return (
-      <Layout>
+      <Layout hideHeader>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -117,7 +117,7 @@ export default function ComunicadoDetalle() {
   }
 
   return (
-    <Layout>
+    <Layout hideHeader>
       <div className="max-w-4xl mx-auto">
         {/* Navegación y acciones */}
         <div className="mb-4 flex items-center justify-between">
