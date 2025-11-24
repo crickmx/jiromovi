@@ -92,10 +92,10 @@ export default function Comunicados() {
 
   return (
     <Layout>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-5xl mx-auto">
         {/* Botones de acción admin */}
         {esAdmin && (
-          <div className="flex items-center gap-3 mb-6 justify-end">
+          <div className="flex items-center gap-3 mb-4 justify-end">
             <button
               onClick={() => navigate('/comunicados/categorias')}
               className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"

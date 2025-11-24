@@ -118,9 +118,9 @@ export default function ComunicadoDetalle() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto">
         {/* Navegación y acciones */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <button
             onClick={() => navigate('/comunicados')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition text-sm"

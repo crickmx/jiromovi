@@ -200,11 +200,11 @@ export default function ComunicadoEditor() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto">
         {/* Navegación */}
         <button
           onClick={() => navigate('/comunicados')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition text-sm"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           Volver
