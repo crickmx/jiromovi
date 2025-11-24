@@ -36,6 +36,7 @@ import CRMReportes from './pages/CRMReportes';
 import CRMConfiguracion from './pages/CRMConfiguracion';
 import Comunicados from './pages/Comunicados';
 import ComunicadoDetalle from './pages/ComunicadoDetalle';
+import ComunicadoEditor from './pages/ComunicadoEditor';
 import Store from './pages/Store';
 import StoreCarrito from './pages/StoreCarrito';
 import StoreMisPedidos from './pages/StoreMisPedidos';
@@ -331,6 +332,28 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Comunicados />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comunicados/nuevo"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ComunicadoEditor />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comunicados/editar/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ComunicadoEditor />
             </Layout>
           </ProtectedRoute>
         }
