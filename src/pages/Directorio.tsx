@@ -195,9 +195,6 @@ export function Directorio() {
                   Oficina
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Contacto
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Estado
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -255,10 +252,6 @@ export function Directorio() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                     {usuario.oficinas?.nombre || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-slate-900">{usuario.email_laboral || usuario.email_personal}</div>
-                    <div className="text-sm text-slate-500">{usuario.celular_laboral || usuario.celular_personal}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
