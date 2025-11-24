@@ -10,6 +10,7 @@ import { ProximasReservas } from '../components/ProximasReservas';
 import { TicketsWidget } from '../components/TicketsWidget';
 import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
 import CalendarioEventos from '../components/CalendarioEventos';
+import { UltimoComunicado } from '../components/UltimoComunicado';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -242,6 +243,8 @@ export function Dashboard() {
             </div>
           </a>
         </div>
+
+        <UltimoComunicado />
 
         <CalendarioEventos />
 

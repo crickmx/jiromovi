@@ -34,6 +34,8 @@ import CRMContactos from './pages/CRMContactos';
 import CRMContactoPerfil from './pages/CRMContactoPerfil';
 import CRMReportes from './pages/CRMReportes';
 import CRMConfiguracion from './pages/CRMConfiguracion';
+import Comunicados from './pages/Comunicados';
+import ComunicadoDetalle from './pages/ComunicadoDetalle';
 import Store from './pages/Store';
 import StoreCarrito from './pages/StoreCarrito';
 import StoreMisPedidos from './pages/StoreMisPedidos';
@@ -318,6 +320,28 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <MiCRM />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comunicados"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Comunicados />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comunicados/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ComunicadoDetalle />
             </Layout>
           </ProtectedRoute>
         }

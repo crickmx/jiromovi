@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key, GraduationCap, Bell, Ticket, Briefcase, ShoppingBag, BookUser } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key, GraduationCap, Bell, Ticket, Briefcase, ShoppingBag, BookUser, FileText } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 
 interface LayoutProps {
@@ -32,6 +32,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: '/mi-crm', label: 'Mi CRM', icon: Briefcase, show: true },
+    { path: '/comunicados', label: 'Comunicados', icon: FileText, show: true },
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Calculator, show: true },
