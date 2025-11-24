@@ -93,41 +93,25 @@ export default function Comunicados() {
   return (
     <Layout>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <h1 className="text-xl font-semibold text-gray-900">
-                Comunicados
-              </h1>
-            </div>
-            <p className="text-sm text-gray-600">
-              {esAdmin
-                ? 'Gestiona y publica comunicados institucionales'
-                : 'Mantente informado con las últimas novedades'}
-            </p>
+        {/* Botones de acción admin */}
+        {esAdmin && (
+          <div className="flex items-center gap-3 mb-6 justify-end">
+            <button
+              onClick={() => navigate('/comunicados/categorias')}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+            >
+              <Settings className="w-5 h-5" />
+              <span className="hidden sm:inline">Categorías</span>
+            </button>
+            <button
+              onClick={() => navigate('/comunicados/nuevo')}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+            >
+              <Plus className="w-5 h-5" />
+              Nuevo Comunicado
+            </button>
           </div>
-
-          {esAdmin && (
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <button
-                onClick={() => navigate('/comunicados/categorias')}
-                className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-              >
-                <Settings className="w-5 h-5" />
-                <span className="hidden sm:inline">Categorías</span>
-              </button>
-              <button
-                onClick={() => navigate('/comunicados/nuevo')}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm flex-1 sm:flex-initial justify-center"
-              >
-                <Plus className="w-5 h-5" />
-                Nuevo Comunicado
-              </button>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Lista de comunicados */}
         {comunicados.length === 0 ? (

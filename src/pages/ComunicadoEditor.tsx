@@ -201,23 +201,14 @@ export default function ComunicadoEditor() {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <button
-            onClick={() => navigate('/comunicados')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 transition text-sm"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver a Comunicados
-          </button>
-
-          <h1 className="text-xl font-semibold text-gray-900">
-            {esEdicion ? 'Editar Comunicado' : 'Nuevo Comunicado'}
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Completa los campos para {esEdicion ? 'actualizar' : 'publicar'} el comunicado
-          </p>
-        </div>
+        {/* Navegación */}
+        <button
+          onClick={() => navigate('/comunicados')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Volver
+        </button>
 
         {/* Formulario */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
