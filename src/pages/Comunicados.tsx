@@ -2,9 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Calendar, Pin, FileText, Settings } from 'lucide-react';
-import { obtenerComunicados } from '../lib/comunicadosUtils';
-import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
+import { Plus, Calendar, Pin, FileText, Settings, Filter, X } from 'lucide-react';
+import { obtenerComunicados, obtenerCategoriasActivas } from '../lib/comunicadosUtils';
+import type { ComunicadoPublicacion, ComunicadoCategoria } from '../lib/comunicadosTypes';
 import { extraerTextoPlano, formatearFecha } from '../lib/comunicadosUtils';
 
 export default function Comunicados() {
@@ -17,8 +17,28 @@ export default function Comunicados() {
   const [page, setPage] = useState(0);
   const observerTarget = useRef<HTMLDivElement>(null);
 
+  // Estados de filtros
+  const [categorias, setCategorias] = useState<ComunicadoCategoria[]>([]);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string>('');
+  const [fechaDesde, setFechaDesde] = useState<string>('');
+  const [fechaHasta, setFechaHasta] = useState<string>('');
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
   const esAdmin = usuario?.rol === 'Administrador';
   const ITEMS_PER_PAGE = 10;
+
+  // Cargar categorías
+  useEffect(() => {
+    const cargarCategorias = async () => {
+      try {
+        const data = await obtenerCategoriasActivas();
+        setCategorias(data);
+      } catch (error) {
+        console.error('Error cargando categorías:', error);
+      }
+    };
+    cargarCategorias();
+  }, []);
 
   const cargarComunicados = useCallback(async (pageNum: number) => {
     try {
@@ -29,7 +49,13 @@ export default function Comunicados() {
       }
 
       const offset = pageNum * ITEMS_PER_PAGE;
-      const data = await obtenerComunicados(ITEMS_PER_PAGE, offset);
+      const data = await obtenerComunicados(
+        ITEMS_PER_PAGE,
+        offset,
+        categoriaSeleccionada || undefined,
+        fechaDesde || undefined,
+        fechaHasta || undefined
+      );
 
       if (data.length < ITEMS_PER_PAGE) {
         setHasMore(false);
@@ -46,7 +72,7 @@ export default function Comunicados() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [categoriaSeleccionada, fechaDesde, fechaHasta]);
 
   useEffect(() => {
     cargarComunicados(0);
@@ -80,6 +106,22 @@ export default function Comunicados() {
     }
   }, [page, cargarComunicados]);
 
+  const aplicarFiltros = () => {
+    setPage(0);
+    setHasMore(true);
+    cargarComunicados(0);
+  };
+
+  const limpiarFiltros = () => {
+    setCategoriaSeleccionada('');
+    setFechaDesde('');
+    setFechaHasta('');
+    setPage(0);
+    setHasMore(true);
+  };
+
+  const hayFiltrosActivos = categoriaSeleccionada || fechaDesde || fechaHasta;
+
   if (loading) {
     return (
       <Layout hideHeader>
@@ -112,6 +154,97 @@ export default function Comunicados() {
             </button>
           </div>
         )}
+
+        {/* Barra de filtros */}
+        <div className="mb-6 bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-gray-600" />
+              <h3 className="font-semibold text-gray-900">Filtros</h3>
+              {hayFiltrosActivos && (
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                  Activos
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setMostrarFiltros(!mostrarFiltros)}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              {mostrarFiltros ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </div>
+
+          {mostrarFiltros && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Filtro de Categoría */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Categoría
+                  </label>
+                  <select
+                    value={categoriaSeleccionada}
+                    onChange={(e) => setCategoriaSeleccionada(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Todas las categorías</option>
+                    {categorias.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filtro Fecha Desde */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Desde
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => setFechaDesde(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Filtro Fecha Hasta */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hasta
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => setFechaHasta(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex items-center gap-3 justify-end pt-2">
+                {hayFiltrosActivos && (
+                  <button
+                    onClick={limpiarFiltros}
+                    className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    Limpiar filtros
+                  </button>
+                )}
+                <button
+                  onClick={aplicarFiltros}
+                  className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Lista de comunicados */}
         {comunicados.length === 0 ? (

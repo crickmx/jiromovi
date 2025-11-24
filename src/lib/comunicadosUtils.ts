@@ -64,9 +64,12 @@ export const eliminarCategoria = async (id: string) => {
 
 export const obtenerComunicados = async (
   limit: number = 10,
-  offset: number = 0
+  offset: number = 0,
+  categoriaId?: string,
+  fechaDesde?: string,
+  fechaHasta?: string
 ): Promise<ComunicadoPublicacion[]> => {
-  const { data, error } = await supabase
+  let query = supabase
     .from('comunicados_publicaciones')
     .select(`
       *,
@@ -75,7 +78,26 @@ export const obtenerComunicados = async (
       adjuntos:comunicados_adjuntos(*)
     `)
     .eq('publicado', true)
-    .lte('fecha_publicacion', new Date().toISOString())
+    .lte('fecha_publicacion', new Date().toISOString());
+
+  // Filtro de categoría
+  if (categoriaId) {
+    query = query.eq('categoria_id', categoriaId);
+  }
+
+  // Filtro de fecha desde
+  if (fechaDesde) {
+    query = query.gte('fecha_publicacion', fechaDesde);
+  }
+
+  // Filtro de fecha hasta
+  if (fechaHasta) {
+    const fechaHastaFinal = new Date(fechaHasta);
+    fechaHastaFinal.setHours(23, 59, 59, 999);
+    query = query.lte('fecha_publicacion', fechaHastaFinal.toISOString());
+  }
+
+  const { data, error } = await query
     .order('fijado', { ascending: false })
     .order('fecha_publicacion', { ascending: false })
     .range(offset, offset + limit - 1);
