@@ -108,6 +108,10 @@ export function PerfilUsuario() {
       updated_at: new Date().toISOString(),
     };
 
+    if (isAdmin && formData.rol) {
+      updateData.rol = formData.rol;
+    }
+
     const { error } = await supabase
       .from('usuarios')
       .update(updateData)
