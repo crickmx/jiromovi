@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Save, Upload, User as UserIcon } from 'lucide-react';
 import { CustomFields } from '../components/CustomFields';
-import { DocumentsSection } from '../components/DocumentsSection';
 import { PaymentFields } from '../components/PaymentFields';
 import { CorreoIONOSFields } from '../components/CorreoIONOSFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
@@ -271,10 +270,7 @@ export function Perfil() {
           </div>
 
           <div className="mt-8">
-            <DocumentsSection usuarioId={usuario.id} canEdit={true} />
-          </div>
-
-          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Expediente</h3>
             <ExpedienteSection usuarioId={usuario.id} canEdit={false} />
           </div>
 

@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Save, Upload, User as UserIcon, ArrowLeft, FileText, Briefcase, Link as LinkIcon, FolderOpen } from 'lucide-react';
 import { CustomFields } from '../components/CustomFields';
-import { DocumentsSection } from '../components/DocumentsSection';
 import { PaymentFields } from '../components/PaymentFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
 import type { Database } from '../lib/database.types';
@@ -186,7 +185,7 @@ export function PerfilUsuario() {
     { id: 'general' as const, label: 'Información General', icon: FileText },
     { id: 'laboral' as const, label: 'Datos Laborales', icon: Briefcase },
     { id: 'accesos' as const, label: 'Accesos y Enlaces', icon: LinkIcon },
-    { id: 'documentos' as const, label: 'Documentos y Expediente', icon: FolderOpen },
+    { id: 'documentos' as const, label: 'Expediente', icon: FolderOpen },
   ];
 
   return (
@@ -556,11 +555,6 @@ export function PerfilUsuario() {
 
               {activeTab === 'documentos' && (
                 <div className="space-y-8">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Documentos</h3>
-                    <DocumentsSection usuarioId={usuario.id} canEdit={true} />
-                  </div>
-
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 mb-4">Expediente</h3>
                     <ExpedienteSection usuarioId={usuario.id} canEdit={canEditExpediente} />
