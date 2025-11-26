@@ -19,6 +19,7 @@ export interface ComunicadoPublicacion {
   fijado: boolean;
   creado_por: string;
   categoria_id: string;
+  oficina_origen_id: string | null; // NULL = Admin, UUID = Gerente
   created_at: string;
   updated_at: string;
 

@@ -25,6 +25,8 @@ export default function Comunicados() {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   const esAdmin = usuario?.rol === 'Administrador';
+  const esGerente = usuario?.rol === 'Gerente';
+  const puedeCrear = esAdmin || esGerente;
   const ITEMS_PER_PAGE = 10;
 
   // Cargar categorías
@@ -135,16 +137,18 @@ export default function Comunicados() {
   return (
     <Layout hideHeader>
       <div className="max-w-5xl mx-auto">
-        {/* Botones de acción admin */}
-        {esAdmin && (
+        {/* Botones de acción */}
+        {puedeCrear && (
           <div className="flex items-center gap-3 mb-4 justify-end">
-            <button
-              onClick={() => navigate('/comunicados/categorias')}
-              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-            >
-              <Settings className="w-5 h-5" />
-              <span className="hidden sm:inline">Categorías</span>
-            </button>
+            {esAdmin && (
+              <button
+                onClick={() => navigate('/comunicados/categorias')}
+                className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                <Settings className="w-5 h-5" />
+                <span className="hidden sm:inline">Categorías</span>
+              </button>
+            )}
             <button
               onClick={() => navigate('/comunicados/nuevo')}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
@@ -261,13 +265,21 @@ export default function Comunicados() {
           </div>
         ) : (
           <div className="space-y-6">
-            {comunicados.map((comunicado) => (
-              <article
-                key={comunicado.id}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group cursor-pointer"
-                onClick={() => navigate(`/comunicados/${comunicado.id}`)}
-              >
-                <div className="flex flex-col md:flex-row">
+            {comunicados.map((comunicado) => {
+              // Verificar si fue creado por gerente (tiene oficina_origen_id)
+              const esDeGerente = !!comunicado.oficina_origen_id;
+
+              return (
+                <article
+                  key={comunicado.id}
+                  className={`bg-white rounded-xl border ${
+                    esDeGerente
+                      ? 'border-l-4 border-l-[#1D78FF] border-t-gray-200 border-r-gray-200 border-b-gray-200'
+                      : 'border-gray-200'
+                  } shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group cursor-pointer`}
+                  onClick={() => navigate(`/comunicados/${comunicado.id}`)}
+                >
+                  <div className="flex flex-col md:flex-row">
                   {/* Imagen */}
                   <div className="md:w-72 h-48 md:h-auto overflow-hidden flex-shrink-0">
                     <img
@@ -316,7 +328,8 @@ export default function Comunicados() {
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
 
             {/* Infinite scroll trigger */}
             <div ref={observerTarget} className="py-4">
