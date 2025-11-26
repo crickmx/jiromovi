@@ -23,6 +23,9 @@ export function Directorio() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
 
+  const isAdmin = currentUser?.rol === 'Administrador';
+  const isReadOnly = currentUser?.rol !== 'Administrador';
+
   useEffect(() => {
     loadData();
   }, []);
@@ -30,15 +33,10 @@ export function Directorio() {
   const loadData = async () => {
     setLoading(true);
     try {
-      let usuariosQuery = supabase
+      const usuariosQuery = supabase
         .from('usuarios')
         .select('*, oficinas(nombre)')
         .order('nombre');
-
-      const isGerente = currentUser?.rol === 'Gerente';
-      if (isGerente && currentUser?.oficina_id) {
-        usuariosQuery = usuariosQuery.eq('oficina_id', currentUser.oficina_id);
-      }
 
       const [usuariosRes, oficinasRes] = await Promise.all([
         usuariosQuery,
@@ -115,9 +113,7 @@ export function Directorio() {
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-white">Usuarios</h1>
               <p className="text-blue-100 mt-1 text-sm sm:text-base">
-                {currentUser?.rol === 'Gerente'
-                  ? 'Gestiona usuarios de tu oficina'
-                  : 'Administra empleados y agentes'}
+                Consulta el directorio de usuarios
               </p>
             </div>
             <button
@@ -134,7 +130,7 @@ export function Directorio() {
         </div>
 
         <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50">
-          <div className={`grid grid-cols-1 ${currentUser?.rol === 'Gerente' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4'} gap-3 sm:gap-4`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="sm:col-span-2 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
@@ -254,40 +250,58 @@ export function Directorio() {
                     {usuario.oficinas?.nombre || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => handleToggleActive(usuario)}
-                      className="flex items-center space-x-2"
-                    >
-                      {usuario.activo ? (
-                        <>
-                          <ToggleRight className="w-6 h-6 text-green-600" />
-                          <span className="text-sm text-green-600 font-medium">Activo</span>
-                        </>
-                      ) : (
-                        <>
-                          <ToggleLeft className="w-6 h-6 text-slate-400" />
-                          <span className="text-sm text-slate-400 font-medium">Inactivo</span>
-                        </>
-                      )}
-                    </button>
+                    {isAdmin ? (
+                      <button
+                        onClick={() => handleToggleActive(usuario)}
+                        className="flex items-center space-x-2"
+                      >
+                        {usuario.activo ? (
+                          <>
+                            <ToggleRight className="w-6 h-6 text-green-600" />
+                            <span className="text-sm text-green-600 font-medium">Activo</span>
+                          </>
+                        ) : (
+                          <>
+                            <ToggleLeft className="w-6 h-6 text-slate-400" />
+                            <span className="text-sm text-slate-400 font-medium">Inactivo</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        {usuario.activo ? (
+                          <>
+                            <ToggleRight className="w-6 h-6 text-green-600" />
+                            <span className="text-sm text-green-600 font-medium">Activo</span>
+                          </>
+                        ) : (
+                          <>
+                            <ToggleLeft className="w-6 h-6 text-slate-400" />
+                            <span className="text-sm text-slate-400 font-medium">Inactivo</span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
                       <button
                         onClick={() => navigate(`/usuario/${usuario.id}`)}
                         className="flex items-center space-x-1 text-blue-600 hover:text-blue-900 px-2 lg:px-3 py-2 hover:bg-blue-50 rounded-lg transition"
-                        title="Ver / Editar Usuario"
+                        title={isReadOnly ? "Ver Usuario" : "Ver / Editar Usuario"}
                       >
                         <Edit className="w-4 h-4" />
-                        <span className="text-sm font-medium hidden lg:inline">Ver / Editar</span>
+                        <span className="text-sm font-medium hidden lg:inline">{isReadOnly ? 'Ver' : 'Ver / Editar'}</span>
                       </button>
-                      <button
-                        onClick={() => handleDelete(usuario.id)}
-                        className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDelete(usuario.id)}
+                          className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

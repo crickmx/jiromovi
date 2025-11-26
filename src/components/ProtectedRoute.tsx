@@ -46,7 +46,7 @@ export function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requireDirectorioAccess && usuario.rol !== 'Administrador' && usuario.rol !== 'Empleado' && usuario.rol !== 'Agente') {
+  if (requireDirectorioAccess && usuario.rol !== 'Administrador' && usuario.rol !== 'Empleado' && usuario.rol !== 'Agente' && usuario.rol !== 'Gerente') {
     return <Navigate to="/dashboard" replace />;
   }
 

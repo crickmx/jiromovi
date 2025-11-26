@@ -88,7 +88,7 @@ function AppRoutes() {
       <Route
         path="/directorio"
         element={
-          <ProtectedRoute requireAdminOrGerente>
+          <ProtectedRoute requireDirectorioAccess>
             <Layout>
               <Directorio />
             </Layout>
