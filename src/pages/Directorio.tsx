@@ -24,7 +24,8 @@ export function Directorio() {
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
 
   const isAdmin = currentUser?.rol === 'Administrador';
-  const isReadOnly = currentUser?.rol !== 'Administrador';
+  const isGerente = currentUser?.rol === 'Gerente';
+  const isReadOnly = !isAdmin && !isGerente;
 
   useEffect(() => {
     loadData();
@@ -33,10 +34,15 @@ export function Directorio() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const usuariosQuery = supabase
+      let usuariosQuery = supabase
         .from('usuarios')
         .select('*, oficinas(nombre)')
         .order('nombre');
+
+      // Gerentes solo ven usuarios de su oficina
+      if (isGerente && currentUser?.oficina_id) {
+        usuariosQuery = usuariosQuery.eq('oficina_id', currentUser.oficina_id);
+      }
 
       const [usuariosRes, oficinasRes] = await Promise.all([
         usuariosQuery,
@@ -113,7 +119,7 @@ export function Directorio() {
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-white">Usuarios</h1>
               <p className="text-blue-100 mt-1 text-sm sm:text-base">
-                Consulta el directorio de usuarios
+                {isGerente ? 'Gestiona usuarios de tu oficina' : 'Consulta el directorio de usuarios'}
               </p>
             </div>
             <button

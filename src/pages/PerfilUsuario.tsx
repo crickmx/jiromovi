@@ -26,6 +26,8 @@ export function PerfilUsuario() {
 
   const canEditExpediente = currentUser?.rol === 'Administrador' || currentUser?.rol === 'Gerente';
   const isAdmin = currentUser?.rol === 'Administrador';
+  const isGerente = currentUser?.rol === 'Gerente';
+  const canEditRole = isAdmin || isGerente;
 
   useEffect(() => {
     if (id) {
@@ -387,7 +389,7 @@ export function PerfilUsuario() {
                       <select
                         value={formData.rol || 'Empleado'}
                         onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
-                        disabled={!isAdmin}
+                        disabled={!canEditRole}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                       >
                         <option value="Empleado">Empleado</option>
@@ -395,9 +397,14 @@ export function PerfilUsuario() {
                         {isAdmin && <option value="Gerente">Gerente</option>}
                         {isAdmin && <option value="Administrador">Administrador</option>}
                       </select>
-                      {!isAdmin && (
+                      {!canEditRole && (
                         <p className="text-xs text-slate-500 mt-1">
-                          Solo los Administradores pueden cambiar roles
+                          Solo los Administradores y Gerentes pueden cambiar roles
+                        </p>
+                      )}
+                      {isGerente && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Como Gerente, solo puedes asignar roles de Agente o Empleado
                         </p>
                       )}
                     </div>
