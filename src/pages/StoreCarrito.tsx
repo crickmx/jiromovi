@@ -64,6 +64,12 @@ export default function StoreCarrito() {
     try {
       setProcesando(true);
       await crearPedido(usuario.id, carrito, notasUsuario, direccionEntrega);
+
+      // Limpiar el estado local del carrito
+      setCarrito([]);
+      setNotasUsuario('');
+      setDireccionEntrega('');
+
       alert('Pedido realizado exitosamente');
       navigate('/store/mis-pedidos');
     } catch (error) {
