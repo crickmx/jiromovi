@@ -449,7 +449,7 @@ export function Dashboard() {
                   <div
                     key={usuario.id}
                     className="flex items-center justify-between p-4 bg-ios-gray-50 rounded-ios-lg hover:bg-ios-gray-100 active:scale-[0.99] transition-all duration-200 cursor-pointer"
-                    onClick={() => navigate(`/perfil/${usuario.id}`)}
+                    onClick={() => navigate(`/usuario/${usuario.id}`)}
                   >
                     <div className="flex items-center space-x-3">
                       <div className="w-11 h-11 rounded-full bg-ios-purple flex items-center justify-center text-white font-semibold text-[15px]">
@@ -499,7 +499,7 @@ export function Dashboard() {
                   <div
                     key={usuario.id}
                     className="flex items-center justify-between p-4 bg-ios-gray-50 rounded-ios-lg hover:bg-ios-gray-100 active:scale-[0.99] transition-all duration-200 cursor-pointer"
-                    onClick={() => navigate(`/perfil/${usuario.id}`)}
+                    onClick={() => navigate(`/usuario/${usuario.id}`)}
                   >
                     <div className="flex items-center space-x-3">
                       <div className="w-11 h-11 rounded-full bg-ios-orange flex items-center justify-center text-white font-semibold text-[15px]">
