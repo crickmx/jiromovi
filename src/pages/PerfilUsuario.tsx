@@ -292,6 +292,29 @@ export function PerfilUsuario() {
                 <span className="text-slate-500">Oficina:</span>
                 <p className="text-slate-900 font-medium">{oficinas.find(o => o.id === usuario.oficina_id)?.nombre || '-'}</p>
               </div>
+              {usuario.fecha_nacimiento && (
+                <div>
+                  <span className="text-slate-500">Cumpleaños:</span>
+                  <p className="text-slate-900 font-medium">
+                    {new Date(usuario.fecha_nacimiento).toLocaleDateString('es-MX', {
+                      day: 'numeric',
+                      month: 'long'
+                    })}
+                  </p>
+                </div>
+              )}
+              {usuario.fecha_ingreso && (
+                <div>
+                  <span className="text-slate-500">Aniversario Laboral:</span>
+                  <p className="text-slate-900 font-medium">
+                    {new Date(usuario.fecha_ingreso).toLocaleDateString('es-MX', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
