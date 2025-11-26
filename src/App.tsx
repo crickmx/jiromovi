@@ -164,7 +164,7 @@ function AppRoutes() {
       <Route
         path="/vacaciones"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute excludeAgente>
             <Layout>
               <Vacaciones />
             </Layout>

@@ -43,7 +43,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, show: canAccessDirectorio },
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/tramites', label: 'Trámites', icon: ClipboardList, show: true },
-    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: true },
+    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: isNotAgent },
     { path: '/directorio', label: 'Usuarios', icon: Users, show: isAdminOrGerente },
     { path: '/centro-correos', label: 'Centro de Correos', icon: Mail, show: false },
     { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
