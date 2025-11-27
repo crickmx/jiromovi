@@ -16,7 +16,6 @@ import {
   establecerVisibilidad
 } from '../lib/comunicadosUtils';
 import type { ComunicadoCategoria } from '../lib/comunicadosTypes';
-import { crearNotificacion } from '../lib/notificationHelpers';
 
 export default function ComunicadoEditor() {
   const { id } = useParams<{ id: string }>();
@@ -368,17 +367,28 @@ export default function ComunicadoEditor() {
           // Eliminar duplicados y el creador
           destinatarios = [...new Set(destinatarios)].filter(id => id !== usuario?.id);
 
-          // Crear notificaciones
+          // Crear notificaciones con WhatsApp automático
+          const linkComunicado = `${window.location.origin}/comunicados/${comunicadoId}`;
+
           for (const userId of destinatarios) {
-            await crearNotificacion({
-              user_id: userId,
-              titulo: 'Nuevo comunicado publicado',
-              mensaje: titulo,
-              modulo: 'comunicados',
-              icono: 'file-text',
-              accion_url: `/comunicados/${comunicadoId}`,
-              accion_texto: 'Ver comunicado'
-            });
+            // Obtener datos del usuario para la notificación
+            const { data: userData } = await supabase
+              .from('usuarios')
+              .select('nombre, apellidos')
+              .eq('id', userId)
+              .single();
+
+            if (userData) {
+              // Usar función RPC que envía campanita + WhatsApp
+              await supabase.rpc('enviar_notificacion_individual', {
+                p_user_id: userId,
+                p_titulo: `Nuevo comunicado: ${titulo}`,
+                p_mensaje: `Se ha publicado un nuevo comunicado que puede ser de tu interés. ${linkComunicado}`,
+                p_modulo: 'Comunicados',
+                p_accion_url: `/comunicados/${comunicadoId}`,
+                p_enviar_whatsapp: true
+              });
+            }
           }
         } catch (error) {
           console.error('Error enviando notificaciones:', error);
