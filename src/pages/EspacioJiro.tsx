@@ -389,17 +389,17 @@ export function EspacioJiro() {
                 >
                   <div className="mb-3">
                     <div className="flex items-center text-sm font-semibold text-blue-600 mb-2">
-                      <Building2 className="w-4 h-4 mr-1" />
-                      {area.oficinas?.nombre}
+                      <Building2 className="w-4 h-4 mr-1 flex-shrink-0" />
+                      <span className="break-words">{area.oficinas?.nombre}</span>
                     </div>
-                    <h3 className="font-bold text-slate-900 text-lg mb-2">{area.nombre}</h3>
+                    <h3 className="font-bold text-slate-900 text-lg mb-2 break-words">{area.nombre}</h3>
                     {area.detalles && (
-                      <p className="text-sm text-slate-600 mb-2">{area.detalles}</p>
+                      <p className="text-sm text-slate-600 mb-2 break-words">{area.detalles}</p>
                     )}
                     {area.oficinas?.domicilio && (
                       <div className="flex items-start text-sm text-slate-600 mb-2">
                         <MapPin className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" />
-                        <span>{area.oficinas.domicilio}</span>
+                        <span className="break-words overflow-wrap-anywhere">{area.oficinas.domicilio}</span>
                       </div>
                     )}
                   </div>
