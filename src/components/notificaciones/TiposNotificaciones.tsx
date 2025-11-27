@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, AlertCircle, Edit } from 'lucide-react';
+import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
 
 interface TipoNotificacion {
@@ -10,8 +10,9 @@ interface TipoNotificacion {
   descripcion: string | null;
   activo: boolean;
   es_personalizada: boolean;
-  enviar_por_correo: boolean;
-  enviar_por_whatsapp: boolean;
+  enviar_correo: boolean;
+  enviar_whatsapp: boolean;
+  enviar_notificacion: boolean;
 }
 
 interface TiposNotificacionesProps {
@@ -43,8 +44,9 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       if (data && data.length > 0) {
         console.log('Ejemplo:', {
           nombre: data[0].nombre,
-          correo: data[0].enviar_por_correo,
-          whatsapp: data[0].enviar_por_whatsapp
+          correo: data[0].enviar_correo,
+          whatsapp: data[0].enviar_whatsapp,
+          notificacion: data[0].enviar_notificacion
         });
       }
 
@@ -79,7 +81,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
     }
   };
 
-  const toggleCanal = async (id: string, campo: 'enviar_por_correo' | 'enviar_por_whatsapp', valorActual: boolean) => {
+  const toggleCanal = async (id: string, campo: 'enviar_correo' | 'enviar_whatsapp' | 'enviar_notificacion', valorActual: boolean) => {
     try {
       setMessage(null);
 
@@ -103,7 +105,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
 
       console.log('Actualización exitosa en BD');
 
-      const canalNombre = campo === 'enviar_por_correo' ? 'Correo' : 'WhatsApp';
+      const canalNombre = campo === 'enviar_correo' ? 'Correo' : campo === 'enviar_whatsapp' ? 'WhatsApp' : 'Notificación';
       setMessage({
         type: 'success',
         text: `Canal ${canalNombre} ${nuevoValor ? 'activado' : 'desactivado'} exitosamente`
@@ -139,8 +141,9 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       <div className="space-y-3">
         {tipos.map((tipo) => {
           console.log(`Render ${tipo.nombre}:`, {
-            correo: tipo.enviar_por_correo,
-            whatsapp: tipo.enviar_por_whatsapp
+            correo: tipo.enviar_correo,
+            whatsapp: tipo.enviar_whatsapp,
+            notificacion: tipo.enviar_notificacion
           });
 
           return (
@@ -189,29 +192,29 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
             <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-3">
               <h4 className="text-sm font-semibold text-neutral-700 mb-3">Canales de Envío</h4>
               <div className="flex flex-wrap gap-3">
-                {/* Correo */}
+                {/* Notificación (Campanita) */}
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleCanal(tipo.id, 'enviar_por_correo', tipo.enviar_por_correo);
+                    toggleCanal(tipo.id, 'enviar_notificacion', tipo.enviar_notificacion);
                   }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
-                    tipo.enviar_por_correo
-                      ? 'border-primary-500 bg-primary-50'
+                    tipo.enviar_notificacion
+                      ? 'border-blue-500 bg-blue-50'
                       : 'border-neutral-300 bg-white hover:border-neutral-400'
                   }`}
                 >
                   <input
                     type="checkbox"
-                    checked={tipo.enviar_por_correo}
+                    checked={tipo.enviar_notificacion}
                     onChange={(e) => {
                       e.stopPropagation();
                     }}
-                    className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500 pointer-events-none"
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 pointer-events-none"
                   />
-                  <Mail className={`w-4 h-4 ${tipo.enviar_por_correo ? 'text-primary-600' : 'text-neutral-500'}`} />
-                  <span className={`text-sm font-medium ${tipo.enviar_por_correo ? 'text-primary-700' : 'text-neutral-600'}`}>
-                    Correo Electrónico
+                  <Bell className={`w-4 h-4 ${tipo.enviar_notificacion ? 'text-blue-600' : 'text-neutral-500'}`} />
+                  <span className={`text-sm font-medium ${tipo.enviar_notificacion ? 'text-blue-700' : 'text-neutral-600'}`}>
+                    Notificación Interna
                   </span>
                 </div>
 
@@ -219,47 +222,93 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleCanal(tipo.id, 'enviar_por_whatsapp', tipo.enviar_por_whatsapp);
+                    toggleCanal(tipo.id, 'enviar_whatsapp', tipo.enviar_whatsapp);
                   }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
-                    tipo.enviar_por_whatsapp
+                    tipo.enviar_whatsapp
                       ? 'border-emerald-500 bg-emerald-50'
                       : 'border-neutral-300 bg-white hover:border-neutral-400'
                   }`}
                 >
                   <input
                     type="checkbox"
-                    checked={tipo.enviar_por_whatsapp}
+                    checked={tipo.enviar_whatsapp}
                     onChange={(e) => {
                       e.stopPropagation();
                     }}
                     className="w-4 h-4 text-emerald-600 rounded focus:ring-2 focus:ring-emerald-500 pointer-events-none"
                   />
-                  <MessageCircle className={`w-4 h-4 ${tipo.enviar_por_whatsapp ? 'text-emerald-600' : 'text-neutral-500'}`} />
-                  <span className={`text-sm font-medium ${tipo.enviar_por_whatsapp ? 'text-emerald-700' : 'text-neutral-600'}`}>
+                  <MessageCircle className={`w-4 h-4 ${tipo.enviar_whatsapp ? 'text-emerald-600' : 'text-neutral-500'}`} />
+                  <span className={`text-sm font-medium ${tipo.enviar_whatsapp ? 'text-emerald-700' : 'text-neutral-600'}`}>
                     WhatsApp
+                  </span>
+                </div>
+
+                {/* Correo */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleCanal(tipo.id, 'enviar_correo', tipo.enviar_correo);
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
+                    tipo.enviar_correo
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-neutral-300 bg-white hover:border-neutral-400'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={tipo.enviar_correo}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500 pointer-events-none"
+                  />
+                  <Mail className={`w-4 h-4 ${tipo.enviar_correo ? 'text-primary-600' : 'text-neutral-500'}`} />
+                  <span className={`text-sm font-medium ${tipo.enviar_correo ? 'text-primary-700' : 'text-neutral-600'}`}>
+                    Correo Electrónico
                   </span>
                 </div>
               </div>
 
               {/* Indicador de estado */}
               <div className="mt-3 flex items-center gap-2">
-                {tipo.enviar_por_correo && tipo.enviar_por_whatsapp && (
+                {tipo.enviar_notificacion && tipo.enviar_whatsapp && tipo.enviar_correo && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 border border-violet-200">
+                    Envío por los 3 canales
+                  </span>
+                )}
+                {tipo.enviar_notificacion && tipo.enviar_whatsapp && !tipo.enviar_correo && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-200">
+                    Notificación y WhatsApp (por defecto)
+                  </span>
+                )}
+                {tipo.enviar_notificacion && !tipo.enviar_whatsapp && tipo.enviar_correo && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                    Notificación y Correo
+                  </span>
+                )}
+                {!tipo.enviar_notificacion && tipo.enviar_whatsapp && tipo.enviar_correo && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-700 border border-teal-200">
+                    WhatsApp y Correo
+                  </span>
+                )}
+                {tipo.enviar_notificacion && !tipo.enviar_whatsapp && !tipo.enviar_correo && (
                   <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
-                    Envío por ambos canales
+                    Solo notificaciones internas
                   </span>
                 )}
-                {tipo.enviar_por_correo && !tipo.enviar_por_whatsapp && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200">
-                    Solo por correo
-                  </span>
-                )}
-                {!tipo.enviar_por_correo && tipo.enviar_por_whatsapp && (
+                {!tipo.enviar_notificacion && tipo.enviar_whatsapp && !tipo.enviar_correo && (
                   <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
                     Solo por WhatsApp
                   </span>
                 )}
-                {!tipo.enviar_por_correo && !tipo.enviar_por_whatsapp && (
+                {!tipo.enviar_notificacion && !tipo.enviar_whatsapp && tipo.enviar_correo && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200">
+                    Solo por correo
+                  </span>
+                )}
+                {!tipo.enviar_notificacion && !tipo.enviar_whatsapp && !tipo.enviar_correo && (
                   <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
                     <AlertCircle className="w-3 h-3" />
                     Sin canal seleccionado

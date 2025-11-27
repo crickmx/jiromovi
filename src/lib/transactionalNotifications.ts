@@ -25,7 +25,7 @@ export async function enviarNotificacionTransaccional(
     // Verificar que el tipo de notificación esté activo
     const { data: tipoNotif, error: tipoError } = await supabase
       .from('correo_tipos_notificacion')
-      .select('id, activo, enviar_por_correo, enviar_por_whatsapp')
+      .select('id, codigo, nombre, activo, enviar_correo, enviar_whatsapp, enviar_notificacion')
       .eq('codigo', tipo)
       .maybeSingle();
 
@@ -52,8 +52,41 @@ export async function enviarNotificacionTransaccional(
 
     let enviado = false;
 
+    // Enviar notificación interna (campanita) si está habilitado
+    if (tipoNotif.enviar_notificacion) {
+      try {
+        // Buscar el usuario por email para obtener su ID
+        const { data: usuarioData } = await supabase
+          .from('usuarios')
+          .select('id')
+          .eq('email_laboral', destinatario.email)
+          .maybeSingle();
+
+        if (usuarioData) {
+          const { error: notifError } = await supabase
+            .from('notificaciones_globales')
+            .insert({
+              tipo: tipo,
+              titulo: tipoNotif.nombre,
+              mensaje: `${datosCompletos.titulo_evento || datosCompletos.asunto || 'Nueva notificación'}`,
+              destinatario_id: usuarioData.id,
+              leido: false,
+            });
+
+          if (!notifError) {
+            console.log(`🔔 Notificación interna enviada exitosamente a ${destinatario.nombre}`);
+            enviado = true;
+          } else {
+            console.error(`❌ Error al enviar notificación interna:`, notifError);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error en envío de notificación interna:', error);
+      }
+    }
+
     // Enviar por correo si está habilitado
-    if (tipoNotif.enviar_por_correo) {
+    if (tipoNotif.enviar_correo) {
       try {
         const emailUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-correo-transaccional`;
 
@@ -85,7 +118,7 @@ export async function enviarNotificacionTransaccional(
     }
 
     // Enviar por WhatsApp si está habilitado y hay teléfono
-    if (tipoNotif.enviar_por_whatsapp && destinatario.telefono) {
+    if (tipoNotif.enviar_whatsapp && destinatario.telefono) {
       try {
         const whatsappUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-whatsapp`;
 
