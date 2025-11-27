@@ -385,21 +385,23 @@ export function EspacioJiro() {
               return (
                 <div
                   key={area.id}
-                  className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition"
+                  className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition overflow-hidden"
                 >
-                  <div className="mb-3">
-                    <div className="flex items-center text-sm font-semibold text-blue-600 mb-2">
+                  <div className="mb-3 min-w-0">
+                    <div className="flex items-center text-sm font-semibold text-blue-600 mb-2 min-w-0">
                       <Building2 className="w-4 h-4 mr-1 flex-shrink-0" />
-                      <span className="break-words">{area.oficinas?.nombre}</span>
+                      <span className="flex-1 min-w-0 break-words">{area.oficinas?.nombre}</span>
                     </div>
                     <h3 className="font-bold text-slate-900 text-lg mb-2 break-words">{area.nombre}</h3>
                     {area.detalles && (
                       <p className="text-sm text-slate-600 mb-2 break-words">{area.detalles}</p>
                     )}
                     {area.oficinas?.domicilio && (
-                      <div className="flex items-start text-sm text-slate-600 mb-2">
+                      <div className="flex items-start text-sm text-slate-600 mb-2 min-w-0">
                         <MapPin className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" />
-                        <span className="break-words overflow-wrap-anywhere">{area.oficinas.domicilio}</span>
+                        <span className="flex-1 min-w-0 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                          {area.oficinas.domicilio}
+                        </span>
                       </div>
                     )}
                   </div>
