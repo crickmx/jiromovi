@@ -16,6 +16,7 @@ export default function ComunicadoDetalle() {
   const [puedeVer, setPuedeVer] = useState(true);
 
   const esAdmin = usuario?.rol === 'Administrador';
+  const esGerente = usuario?.rol === 'Gerente';
 
   useEffect(() => {
     cargarComunicado();
@@ -129,7 +130,7 @@ export default function ComunicadoDetalle() {
             Volver
           </button>
 
-          {esAdmin && (
+          {(esAdmin || (esGerente && comunicado.creado_por === usuario?.id)) && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate(`/comunicados/editar/${comunicado.id}`)}
@@ -150,7 +151,13 @@ export default function ComunicadoDetalle() {
         </div>
 
         {/* Artículo */}
-        <article className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <article
+          className={`bg-white rounded-xl border shadow-sm overflow-hidden ${
+            comunicado.oficina_origen_id
+              ? 'border-l-4 border-l-[#1D78FF] border-t-gray-200 border-r-gray-200 border-b-gray-200'
+              : 'border-gray-200'
+          }`}
+        >
           {/* Imagen principal */}
           <div className="w-full h-64 sm:h-96 overflow-hidden">
             <img

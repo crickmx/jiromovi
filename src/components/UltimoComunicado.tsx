@@ -58,8 +58,17 @@ export function UltimoComunicado() {
     return null;
   }
 
+  // Verificar si fue creado por gerente
+  const esDeGerente = !!comunicado.oficina_origen_id;
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+    <div
+      className={`bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition-shadow ${
+        esDeGerente
+          ? 'border-l-4 border-l-[#1D78FF] border-t-gray-200 border-r-gray-200 border-b-gray-200'
+          : 'border-gray-200'
+      }`}
+    >
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-transparent">
         <div className="flex items-center justify-between">

@@ -16,6 +16,7 @@ import {
   establecerVisibilidad
 } from '../lib/comunicadosUtils';
 import type { ComunicadoCategoria } from '../lib/comunicadosTypes';
+import { crearNotificacion } from '../lib/notificationHelpers';
 
 export default function ComunicadoEditor() {
   const { id } = useParams<{ id: string }>();
@@ -282,6 +283,90 @@ export default function ComunicadoEditor() {
           await supabase
             .from('comunicados_visibilidad')
             .insert(reglasVisibilidad);
+        }
+      }
+
+      // Enviar notificaciones si es nuevo comunicado
+      if (!esEdicion && comunicadoId) {
+        try {
+          // Obtener destinatarios según las reglas de visibilidad
+          let destinatarios: string[] = [];
+
+          if (esGerente) {
+            // Para gerentes: notificar a usuarios de su oficina según roles seleccionados
+            const { data: usuariosOficina } = await supabase
+              .from('usuarios')
+              .select('id')
+              .eq('oficina_id', usuario?.oficina_id)
+              .in('rol', rolesSeleccionados)
+              .eq('estado', 'activo');
+
+            if (usuariosOficina) {
+              destinatarios = usuariosOficina.map(u => u.id);
+            }
+
+            // Agregar administradores
+            const { data: admins } = await supabase
+              .from('usuarios')
+              .select('id')
+              .eq('rol', 'Administrador')
+              .eq('estado', 'activo');
+
+            if (admins) {
+              destinatarios.push(...admins.map(a => a.id));
+            }
+          } else if (esAdmin) {
+            // Para administradores: notificar según configuración de visibilidad
+            if (tipoVisibilidad === 'todos') {
+              const { data: todosUsuarios } = await supabase
+                .from('usuarios')
+                .select('id')
+                .eq('estado', 'activo');
+
+              if (todosUsuarios) {
+                destinatarios = todosUsuarios.map(u => u.id);
+              }
+            } else if (tipoVisibilidad === 'rol') {
+              const { data: usuariosPorRol } = await supabase
+                .from('usuarios')
+                .select('id')
+                .in('rol', rolesSeleccionados)
+                .eq('estado', 'activo');
+
+              if (usuariosPorRol) {
+                destinatarios = usuariosPorRol.map(u => u.id);
+              }
+            } else if (tipoVisibilidad === 'oficina') {
+              const { data: usuariosPorOficina } = await supabase
+                .from('usuarios')
+                .select('id')
+                .in('oficina_id', oficinasSeleccionadas)
+                .eq('estado', 'activo');
+
+              if (usuariosPorOficina) {
+                destinatarios = usuariosPorOficina.map(u => u.id);
+              }
+            }
+          }
+
+          // Eliminar duplicados y el creador
+          destinatarios = [...new Set(destinatarios)].filter(id => id !== usuario?.id);
+
+          // Crear notificaciones
+          for (const userId of destinatarios) {
+            await crearNotificacion({
+              user_id: userId,
+              titulo: 'Nuevo comunicado publicado',
+              mensaje: titulo,
+              modulo: 'comunicados',
+              icono: 'file-text',
+              accion_url: `/comunicados/${comunicadoId}`,
+              accion_texto: 'Ver comunicado'
+            });
+          }
+        } catch (error) {
+          console.error('Error enviando notificaciones:', error);
+          // No bloqueamos el flujo si fallan las notificaciones
         }
       }
 
