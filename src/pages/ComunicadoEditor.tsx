@@ -423,6 +423,7 @@ export default function ComunicadoEditor() {
               Para crear comunicados necesitas tener una oficina asignada. Por favor contacta al administrador del sistema.
             </p>
             <button
+              type="button"
               onClick={() => navigate('/comunicados')}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
@@ -449,6 +450,7 @@ export default function ComunicadoEditor() {
       <div className="max-w-4xl mx-auto">
         {/* Navegación */}
         <button
+          type="button"
           onClick={() => navigate('/comunicados')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition text-sm"
         >
@@ -503,6 +505,7 @@ export default function ComunicadoEditor() {
                   className="w-full h-64 object-cover rounded-lg"
                 />
                 <button
+                  type="button"
                   onClick={() => {
                     setImagenPrincipal(null);
                     setImagenPrincipalUrl('');
@@ -570,6 +573,7 @@ export default function ComunicadoEditor() {
                   >
                     <span className="text-sm text-gray-700">{adjunto.name}</span>
                     <button
+                      type="button"
                       onClick={() => eliminarAdjuntoLocal(index)}
                       className="text-red-600 hover:text-red-700"
                     >
@@ -817,6 +821,7 @@ export default function ComunicadoEditor() {
           {/* Botones de acción */}
           <div className="flex items-center gap-3 pt-6 border-t">
             <button
+              type="button"
               onClick={handleGuardar}
               disabled={saving}
               className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -826,6 +831,7 @@ export default function ComunicadoEditor() {
             </button>
 
             <button
+              type="button"
               onClick={() => navigate('/comunicados')}
               className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
             >
