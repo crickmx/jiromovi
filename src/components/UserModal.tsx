@@ -314,7 +314,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 value={formData.rol}
                 onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
                 required
-                disabled={!isAdmin}
+                disabled={!isAdmin && !isGerente}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
               >
                 <option value="Empleado">Empleado</option>
@@ -322,9 +322,14 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 {isAdmin && <option value="Gerente">Gerente</option>}
                 {isAdmin && <option value="Administrador">Administrador</option>}
               </select>
-              {!isAdmin && (
+              {isGerente && (
                 <p className="text-xs text-slate-500 mt-1">
-                  Solo los Administradores pueden cambiar roles
+                  Puedes asignar roles: Empleado o Agente
+                </p>
+              )}
+              {!isAdmin && !isGerente && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Solo Administradores y Gerentes pueden cambiar roles
                 </p>
               )}
             </div>

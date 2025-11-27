@@ -73,6 +73,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     const isGerente = currentUserData?.rol === 'Gerente';
+    const isAdmin = currentUserData?.rol === 'Administrador';
 
     const { password, userData }: CreateUserRequest = await req.json();
 
@@ -81,6 +82,17 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Email laboral and password are required' }),
         {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Validar que Gerentes solo puedan crear Empleados o Agentes
+    if (isGerente && !['Empleado', 'Agente'].includes(userData.rol)) {
+      return new Response(
+        JSON.stringify({ error: 'Los Gerentes solo pueden crear usuarios con rol Empleado o Agente' }),
+        {
+          status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
