@@ -31,6 +31,10 @@ export interface ComunicadoPublicacion {
     apellidos: string;
     imagen_perfil_url: string | null;
   };
+  oficina_origen?: {
+    id: string;
+    nombre: string;
+  } | null;
   adjuntos?: ComunicadoAdjunto[];
   visibilidad?: ComunicadoVisibilidad[];
 }

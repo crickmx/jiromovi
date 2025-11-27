@@ -75,6 +75,7 @@ export const obtenerComunicados = async (
       *,
       categoria:comunicados_categorias(id, nombre, descripcion),
       creador:usuarios!comunicados_publicaciones_creado_por_fkey(id, nombre, apellidos, imagen_perfil_url),
+      oficina_origen:oficinas!comunicados_publicaciones_oficina_origen_id_fkey(id, nombre),
       adjuntos:comunicados_adjuntos(*)
     `)
     .eq('publicado', true)
@@ -113,6 +114,7 @@ export const obtenerComunicadoFijado = async (): Promise<ComunicadoPublicacion |
       *,
       categoria:comunicados_categorias(id, nombre, descripcion),
       creador:usuarios!comunicados_publicaciones_creado_por_fkey(id, nombre, apellidos, imagen_perfil_url),
+      oficina_origen:oficinas!comunicados_publicaciones_oficina_origen_id_fkey(id, nombre),
       adjuntos:comunicados_adjuntos(*)
     `)
     .eq('publicado', true)
@@ -131,6 +133,7 @@ export const obtenerComunicadoPorId = async (id: string): Promise<ComunicadoPubl
       *,
       categoria:comunicados_categorias(id, nombre, descripcion),
       creador:usuarios!comunicados_publicaciones_creado_por_fkey(id, nombre, apellidos, imagen_perfil_url),
+      oficina_origen:oficinas!comunicados_publicaciones_oficina_origen_id_fkey(id, nombre),
       adjuntos:comunicados_adjuntos(*),
       visibilidad:comunicados_visibilidad(*)
     `)
@@ -147,7 +150,8 @@ export const obtenerTodosComunicadosAdmin = async (): Promise<ComunicadoPublicac
     .select(`
       *,
       categoria:comunicados_categorias(id, nombre, descripcion),
-      creador:usuarios!comunicados_publicaciones_creado_por_fkey(id, nombre, apellidos, imagen_perfil_url)
+      creador:usuarios!comunicados_publicaciones_creado_por_fkey(id, nombre, apellidos, imagen_perfil_url),
+      oficina_origen:oficinas!comunicados_publicaciones_oficina_origen_id_fkey(id, nombre)
     `)
     .order('fecha_creacion', { ascending: false });
 

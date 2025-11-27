@@ -176,10 +176,10 @@ export default function ComunicadoDetalle() {
                   Destacado
                 </span>
               )}
-              {comunicado.oficina_origen_id && (
+              {comunicado.oficina_origen_id && comunicado.oficina_origen && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold border border-blue-300">
                   <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  Publicado por Gerencia
+                  {comunicado.oficina_origen.nombre}
                 </span>
               )}
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
