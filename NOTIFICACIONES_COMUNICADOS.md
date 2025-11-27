@@ -93,16 +93,18 @@ Mensaje desde www.movi.digital
 **Para Gerentes:**
 - Usuarios de su oficina según roles seleccionados
 - Todos los Administradores
+- **El creador también recibe notificación**
 
 **Para Administradores:**
 - Según visibilidad configurada:
   - **Todos:** Todos los usuarios activos
   - **Por Rol:** Usuarios con roles específicos
   - **Por Oficina:** Usuarios de oficinas específicas
+- **El creador también recibe notificación**
 
 #### 3. Sistema envía notificaciones
 
-Para cada destinatario (excepto el creador):
+Para cada destinatario (incluyendo el creador):
 
 ```typescript
 // Obtener datos del usuario
@@ -197,7 +199,7 @@ Mensaje desde www.movi.digital
 - ✅ Todos los usuarios activos reciben WhatsApp
 - ✅ Excepto el creador del comunicado
 
-**Total notificaciones:** N usuarios activos - 1 (creador)
+**Total notificaciones:** N usuarios activos (incluyendo el creador)
 
 ---
 
@@ -212,7 +214,7 @@ Mensaje desde www.movi.digital
 - ✅ Empleados de la oficina reciben notificación
 - ✅ Agentes de la oficina reciben notificación
 - ✅ Administradores reciben notificación
-- ✅ Gerente (creador) NO recibe notificación
+- ✅ Gerente (creador) también recibe notificación
 
 ---
 
@@ -236,7 +238,7 @@ Mensaje desde www.movi.digital
 
 **Antes:**
 ```typescript
-// Solo campanita, sin WhatsApp
+// Solo campanita, sin WhatsApp, excluía al creador
 await crearNotificacion({
   user_id: userId,
   titulo: 'Nuevo comunicado publicado',
@@ -246,28 +248,36 @@ await crearNotificacion({
   accion_url: `/comunicados/${comunicadoId}`,
   accion_texto: 'Ver comunicado'
 });
+
+// Excluía al creador
+destinatarios = destinatarios.filter(id => id !== usuario?.id);
 ```
 
 **Ahora:**
 ```typescript
-// Campanita + WhatsApp automático
+// Campanita + WhatsApp automático, INCLUYE al creador
 const linkComunicado = `${window.location.origin}/comunicados/${comunicadoId}`;
 
-const { data: userData } = await supabase
-  .from('usuarios')
-  .select('nombre, apellidos')
-  .eq('id', userId)
-  .single();
+// YA NO se excluye al creador
+destinatarios = [...new Set(destinatarios)];
 
-if (userData) {
-  await supabase.rpc('enviar_notificacion_individual', {
-    p_user_id: userId,
-    p_titulo: `Nuevo comunicado: ${titulo}`,
-    p_mensaje: `Se ha publicado un nuevo comunicado que puede ser de tu interés. ${linkComunicado}`,
-    p_modulo: 'Comunicados',
-    p_accion_url: `/comunicados/${comunicadoId}`,
-    p_enviar_whatsapp: true // ✅ WhatsApp activado
-  });
+for (const userId of destinatarios) {
+  const { data: userData } = await supabase
+    .from('usuarios')
+    .select('nombre, apellidos')
+    .eq('id', userId)
+    .single();
+
+  if (userData) {
+    await supabase.rpc('enviar_notificacion_individual', {
+      p_user_id: userId,
+      p_titulo: `Nuevo comunicado: ${titulo}`,
+      p_mensaje: `Se ha publicado un nuevo comunicado que puede ser de tu interés. ${linkComunicado}`,
+      p_modulo: 'Comunicados',
+      p_accion_url: `/comunicados/${comunicadoId}`,
+      p_enviar_whatsapp: true // ✅ WhatsApp activado
+    });
+  }
 }
 ```
 
@@ -277,6 +287,7 @@ if (userData) {
 - ✅ Prioriza teléfono laboral
 - ✅ Plantilla personalizada para comunicados
 - ✅ No bloquea si falla WhatsApp
+- ✅ **El creador también recibe notificación**
 
 ---
 

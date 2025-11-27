@@ -364,8 +364,8 @@ export default function ComunicadoEditor() {
             }
           }
 
-          // Eliminar duplicados y el creador
-          destinatarios = [...new Set(destinatarios)].filter(id => id !== usuario?.id);
+          // Eliminar duplicados (ahora el creador también recibe notificación)
+          destinatarios = [...new Set(destinatarios)];
 
           // Crear notificaciones con WhatsApp automático
           const linkComunicado = `${window.location.origin}/comunicados/${comunicadoId}`;
