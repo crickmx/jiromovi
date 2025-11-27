@@ -51,6 +51,7 @@ export interface ComunicadoVisibilidad {
   rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | null;
   oficina_id: string | null;
   usuario_id: string | null;
+  para_todos: boolean;
   created_at: string;
 }
 
