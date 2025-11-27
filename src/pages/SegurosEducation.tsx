@@ -191,8 +191,14 @@ export function SegurosEducation() {
       <div className="space-y-8">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white">
-          <h1 className="text-3xl font-bold mb-2">Seguros Education</h1>
-          <p className="text-primary-100">Sistema de capacitación y formación continua</p>
+          <div className="flex items-center justify-center mb-4">
+            <img
+              src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
+              alt="Seguros Education"
+              className="h-16 sm:h-20 object-contain"
+            />
+          </div>
+          <p className="text-primary-100 text-center">Sistema de capacitación y formación continua</p>
         </div>
 
         {/* Quick Access Buttons - TOP PRIORITY */}
