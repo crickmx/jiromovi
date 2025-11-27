@@ -5,9 +5,9 @@ export default {
     extend: {
       colors: {
         ios: {
-          blue: '#0A84FF',
-          'blue-dark': '#0066CC',
-          'blue-light': '#64B5F6',
+          blue: '#0050D1',
+          'blue-dark': '#003DA8',
+          'blue-light': '#3378E0',
           gray: {
             50: '#F9F9F9',
             100: '#F2F2F7',
@@ -27,16 +27,16 @@ export default {
           purple: '#AF52DE',
         },
         primary: {
-          50: '#E3F2FD',
-          100: '#BBDEFB',
-          200: '#90CAF9',
-          300: '#64B5F6',
-          400: '#42A5F5',
-          500: '#0A84FF',
-          600: '#0066CC',
-          700: '#005BB5',
-          800: '#004D99',
-          900: '#003D7A',
+          50: '#E6F0FF',
+          100: '#CCE0FF',
+          200: '#99C2FF',
+          300: '#66A3FF',
+          400: '#3378E0',
+          500: '#0050D1',
+          600: '#003DA8',
+          700: '#002F7F',
+          800: '#002157',
+          900: '#00132E',
         },
         neutral: {
           50: '#F9F9F9',

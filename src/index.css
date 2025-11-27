@@ -1,62 +1,62 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 
 :root {
-  --bs-primary: #1D4487;
-  --bs-primary-rgb: 29, 68, 135;
-  --bs-link-color: #1D4487;
-  --bs-link-hover-color: #153560;
-  --primary-color: #1D4487;
-  --primary-hover: #153560;
-  --primary-light: rgba(29, 68, 135, 0.1);
+  --bs-primary: #0050D1;
+  --bs-primary-rgb: 0, 80, 209;
+  --bs-link-color: #0050D1;
+  --bs-link-hover-color: #003DA8;
+  --primary-color: #0050D1;
+  --primary-hover: #003DA8;
+  --primary-light: rgba(0, 80, 209, 0.1);
 }
 
 .btn-primary {
-  --bs-btn-bg: #1D4487;
-  --bs-btn-border-color: #1D4487;
-  --bs-btn-hover-bg: #153560;
-  --bs-btn-hover-border-color: #153560;
-  --bs-btn-active-bg: #153560;
-  --bs-btn-active-border-color: #153560;
+  --bs-btn-bg: #0050D1;
+  --bs-btn-border-color: #0050D1;
+  --bs-btn-hover-bg: #003DA8;
+  --bs-btn-hover-border-color: #003DA8;
+  --bs-btn-active-bg: #003DA8;
+  --bs-btn-active-border-color: #003DA8;
 }
 
 .bg-primary {
-  background-color: #1D4487 !important;
+  background-color: #0050D1 !important;
 }
 
 .text-primary {
-  color: #1D4487 !important;
+  color: #0050D1 !important;
 }
 
 .border-primary {
-  border-color: #1D4487 !important;
+  border-color: #0050D1 !important;
 }
 
 .form-check-input:checked {
-  background-color: #1D4487;
-  border-color: #1D4487;
+  background-color: #0050D1;
+  border-color: #0050D1;
 }
 
 .form-control:focus,
 .form-select:focus {
-  border-color: #1D4487;
-  box-shadow: 0 0 0 0.25rem rgba(29, 68, 135, 0.25);
+  border-color: #0050D1;
+  box-shadow: 0 0 0 0.25rem rgba(0, 80, 209, 0.25);
 }
 
 .btn-outline-primary {
-  --bs-btn-color: #1D4487;
-  --bs-btn-border-color: #1D4487;
-  --bs-btn-hover-bg: #1D4487;
-  --bs-btn-hover-border-color: #1D4487;
-  --bs-btn-active-bg: #1D4487;
-  --bs-btn-active-border-color: #1D4487;
+  --bs-btn-color: #0050D1;
+  --bs-btn-border-color: #0050D1;
+  --bs-btn-hover-bg: #0050D1;
+  --bs-btn-hover-border-color: #0050D1;
+  --bs-btn-active-bg: #0050D1;
+  --bs-btn-active-border-color: #0050D1;
 }
 
 .badge.bg-primary {
-  background-color: #1D4487 !important;
+  background-color: #0050D1 !important;
 }
 
 .navbar-dark {
-  background-color: #1D4487 !important;
+  background-color: #0050D1 !important;
 }
 
 @tailwind base;
@@ -65,8 +65,8 @@
 
 @layer base {
   :root {
-    --color-primary: 29 68 135;
-    --ios-blue: #0A84FF;
+    --color-primary: 0 80 209;
+    --ios-blue: #0050D1;
     --ios-gray-50: #F9F9F9;
     --ios-gray-100: #F2F2F7;
     --ios-gray-200: #E5E5EA;
@@ -141,42 +141,42 @@
 @layer utilities {
   .bg-blue-600,
   .bg-blue-700 {
-    background-color: #1D4487 !important;
+    background-color: #0050D1 !important;
   }
 
   .hover\:bg-blue-700:hover,
   .hover\:bg-blue-900:hover {
-    background-color: #153560 !important;
+    background-color: #003DA8 !important;
   }
 
   .text-blue-600,
   .text-blue-700 {
-    color: #1D4487 !important;
+    color: #0050D1 !important;
   }
 
   .hover\:text-blue-700:hover,
   .hover\:text-blue-900:hover {
-    color: #153560 !important;
+    color: #003DA8 !important;
   }
 
   .border-blue-600 {
-    border-color: #1D4487 !important;
+    border-color: #0050D1 !important;
   }
 
   .ring-blue-500 {
-    --tw-ring-color: rgb(29 68 135 / 0.5) !important;
+    --tw-ring-color: rgb(0 80 209 / 0.5) !important;
   }
 
   .focus\:ring-blue-500:focus {
-    --tw-ring-color: rgb(29 68 135 / 0.5) !important;
+    --tw-ring-color: rgb(0 80 209 / 0.5) !important;
   }
 
   .hover\:bg-blue-50:hover {
-    background-color: rgba(29, 68, 135, 0.05) !important;
+    background-color: rgba(0, 80, 209, 0.05) !important;
   }
 
   .bg-blue-100 {
-    background-color: rgba(29, 68, 135, 0.1) !important;
+    background-color: rgba(0, 80, 209, 0.1) !important;
   }
 
   .text-blue-100 {
@@ -200,10 +200,10 @@
   }
 
   .from-blue-600 {
-    --tw-gradient-from: #1D4487 !important;
+    --tw-gradient-from: #0050D1 !important;
   }
 
   .to-blue-700 {
-    --tw-gradient-to: #153560 !important;
+    --tw-gradient-to: #003DA8 !important;
   }
 }
