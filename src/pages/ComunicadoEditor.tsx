@@ -47,6 +47,9 @@ export default function ComunicadoEditor() {
   const puedeCrear = esAdmin || esGerente;
   const esEdicion = !!id;
 
+  // Validar que Gerentes tengan oficina asignada
+  const gerenteSinOficina = esGerente && !usuario?.oficina_id;
+
   useEffect(() => {
     if (!puedeCrear) {
       navigate('/comunicados');
@@ -158,6 +161,19 @@ export default function ComunicadoEditor() {
     }
 
     // Validar visibilidad para Administradores
+    // Validación para Gerentes
+    if (esGerente) {
+      if (!usuario?.oficina_id) {
+        alert('No tienes una oficina asignada. Contacta al administrador.');
+        return;
+      }
+
+      if (rolesSeleccionados.length === 0) {
+        alert('Debes seleccionar al menos un rol (Empleado o Agente)');
+        return;
+      }
+    }
+
     if (esAdmin) {
       if (tipoVisibilidad === 'rol' && rolesSeleccionados.length === 0) {
         alert('Debes seleccionar al menos un rol');
@@ -382,6 +398,30 @@ export default function ComunicadoEditor() {
 
   if (!puedeCrear) {
     return null;
+  }
+
+  if (gerenteSinOficina) {
+    return (
+      <Layout hideHeader>
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+            <div className="text-red-600 text-5xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              Oficina no asignada
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Para crear comunicados necesitas tener una oficina asignada. Por favor contacta al administrador del sistema.
+            </p>
+            <button
+              onClick={() => navigate('/comunicados')}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Volver a Comunicados
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
   }
 
   if (loading) {
