@@ -8,18 +8,19 @@ export interface NotificationParams {
   icono?: string;
   accion_url?: string;
   accion_texto?: string;
+  enviar_whatsapp?: boolean;
 }
 
 export async function crearNotificacion(params: NotificationParams) {
   try {
-    const { error } = await supabase.from('notificaciones').insert({
-      user_id: params.user_id,
-      titulo: params.titulo,
-      mensaje: params.mensaje,
-      modulo: params.modulo,
-      icono: params.icono || 'bell',
-      accion_url: params.accion_url,
-      accion_texto: params.accion_texto || 'Ver más',
+    // Enviar notificación usando la función RPC que incluye WhatsApp
+    const { error } = await supabase.rpc('enviar_notificacion_individual', {
+      p_user_id: params.user_id,
+      p_titulo: params.titulo,
+      p_mensaje: params.mensaje,
+      p_modulo: params.modulo,
+      p_accion_url: params.accion_url || null,
+      p_enviar_whatsapp: params.enviar_whatsapp !== false, // Por defecto true
     });
 
     if (error) throw error;
@@ -41,7 +42,7 @@ export async function crearNotificacionGlobal(
     user_id?: string;
   },
   enviado_por: string,
-  enviar_whatsapp: boolean = false
+  enviar_whatsapp: boolean = true // CAMBIO: Por defecto true para enviar WhatsApp
 ) {
   try {
     const { error } = await supabase.rpc('enviar_notificacion_global', {

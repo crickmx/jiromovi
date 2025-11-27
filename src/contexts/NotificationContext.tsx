@@ -263,9 +263,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (!usuario) return;
 
     try {
-      const { error } = await supabase.from('notificaciones').insert({
-        usuario_id: usuario.id,
-        ...notification,
+      // Usar función RPC que envía notificación + WhatsApp automáticamente
+      const { error } = await supabase.rpc('enviar_notificacion_individual', {
+        p_user_id: usuario.id,
+        p_titulo: notification.titulo,
+        p_mensaje: notification.mensaje,
+        p_modulo: notification.modulo,
+        p_accion_url: notification.accion_url || null,
+        p_enviar_whatsapp: true, // Siempre enviar WhatsApp por defecto
       });
 
       if (error) throw error;
