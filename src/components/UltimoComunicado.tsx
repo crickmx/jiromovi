@@ -65,7 +65,7 @@ export function UltimoComunicado() {
     <div
       className={`bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition-shadow ${
         esDeGerente
-          ? 'border-l-4 border-l-[#1D78FF] border-t-gray-200 border-r-gray-200 border-b-gray-200'
+          ? 'border-l-4 border-l-[#0050D1] border-t-gray-200 border-r-gray-200 border-b-gray-200'
           : 'border-gray-200'
       }`}
     >
@@ -75,11 +75,14 @@ export function UltimoComunicado() {
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-blue-600" />
             <h3 className="text-lg font-semibold text-gray-900">
-              {comunicado.fijado ? 'Comunicado Destacado' : 'Último Comunicado'}
+              Último Comunicado
             </h3>
           </div>
           <button
-            onClick={() => navigate('/comunicados')}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/comunicados');
+            }}
             className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 transition-colors"
           >
             Ver todos
