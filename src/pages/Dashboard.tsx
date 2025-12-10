@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, Building2, Calendar, Cake, Award, ExternalLink, Sparkles } from 'lucide-react';
+import { Users, Building2, Calendar, Cake, Award, ExternalLink, Sparkles, TrendingUp, Upload } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
 import { ResumenVacaciones } from '../components/ResumenVacaciones';
@@ -345,6 +345,56 @@ export function Dashboard() {
       <CalendarioEventos />
 
       <UltimoComunicado />
+
+      {currentUser?.rol === 'Administrador' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div
+            onClick={() => navigate('/produccion/cargar')}
+            className="group bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6 cursor-pointer hover:shadow-ios-lg active:scale-[0.98] transition-all duration-200"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="w-10 h-10 rounded-ios bg-green-100 flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-green-600 stroke-[2]" />
+                  </div>
+                  <h3 className="text-[20px] font-semibold text-ios-gray-900">Cargar Producción</h3>
+                </div>
+                <p className="text-[15px] text-ios-gray-600 mb-4">
+                  Sube archivos Excel con datos de producción total
+                </p>
+                <p className="text-green-600 text-[15px] font-medium group-hover:translate-x-1 transition-transform">
+                  Cargar archivo →
+                </p>
+              </div>
+              <TrendingUp className="w-16 h-16 text-green-600/10 stroke-[1.5] ml-4" />
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigate('/produccion/total')}
+            className="group bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6 cursor-pointer hover:shadow-ios-lg active:scale-[0.98] transition-all duration-200"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="w-10 h-10 rounded-ios bg-blue-100 flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-blue-600 stroke-[2]" />
+                  </div>
+                  <h3 className="text-[20px] font-semibold text-ios-gray-900">Producción Total</h3>
+                </div>
+                <p className="text-[15px] text-ios-gray-600 mb-4">
+                  Consulta métricas y reportes de producción
+                </p>
+                <p className="text-blue-600 text-[15px] font-medium group-hover:translate-x-1 transition-transform">
+                  Ver reportes →
+                </p>
+              </div>
+              <TrendingUp className="w-16 h-16 text-blue-600/10 stroke-[1.5] ml-4" />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TramitesWidget />

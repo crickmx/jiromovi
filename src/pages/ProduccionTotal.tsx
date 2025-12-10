@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { TrendingUp, Download, FileDown, Filter, Calendar, Users, Building } from 'lucide-react';
+import { TrendingUp, Download, FileDown, Filter, Calendar, Users, Building, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ProductionRecord {
@@ -26,6 +27,7 @@ interface ProductionRecord {
 
 export default function ProduccionTotal() {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [records, setRecords] = useState<ProductionRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<ProductionRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -253,7 +255,18 @@ export default function ProduccionTotal() {
               </p>
             )}
           </div>
-          <TrendingUp className="w-12 h-12 text-primary-600" />
+          <div className="flex items-center space-x-3">
+            {isAdmin && (
+              <button
+                onClick={() => navigate('/produccion/cargar')}
+                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Cargar Datos</span>
+              </button>
+            )}
+            <TrendingUp className="w-12 h-12 text-primary-600" />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
