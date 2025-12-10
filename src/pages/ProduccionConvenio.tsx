@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Award, Download, Filter, Upload } from 'lucide-react';
+import { Award, Download, Filter, Upload, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ProductionRecord {
@@ -213,31 +213,41 @@ export default function ProduccionConvenio() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
-              Producción Convenio
-            </h1>
-            <p className="text-neutral-600">
-              Métrica base: Prima de convenio (solo registros en convenio)
-            </p>
-            {lastImport && (
-              <p className="text-sm text-neutral-500 mt-1">
-                Datos actualizados al: {new Date(lastImport.imported_at).toLocaleString('es-MX')}
+        <div className="mb-6">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-4 font-medium"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Regresar</span>
+          </button>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+                Producción Convenio
+              </h1>
+              <p className="text-neutral-600">
+                Métrica base: Prima de convenio (solo registros en convenio)
               </p>
-            )}
-          </div>
-          <div className="flex items-center space-x-3">
-            {isAdmin && (
-              <button
-                onClick={() => navigate('/produccion/cargar')}
-                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Cargar Datos</span>
-              </button>
-            )}
-            <Award className="w-12 h-12 text-blue-600" />
+              {lastImport && (
+                <p className="text-sm text-neutral-500 mt-1">
+                  Datos actualizados al: {new Date(lastImport.imported_at).toLocaleString('es-MX')}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center space-x-3">
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/produccion/cargar')}
+                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Cargar Datos</span>
+                </button>
+              )}
+              <Award className="w-12 h-12 text-blue-600" />
+            </div>
           </div>
         </div>
 

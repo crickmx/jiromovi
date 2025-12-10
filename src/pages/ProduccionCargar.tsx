@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, TrendingUp } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, TrendingUp, ArrowLeft } from 'lucide-react';
 
 export default function ProduccionCargar() {
   const { usuario } = useAuth();
@@ -114,16 +114,26 @@ export default function ProduccionCargar() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
-              Cargar Producción
-            </h1>
-            <p className="text-neutral-600">
-              Sube un archivo Excel con los datos de producción
-            </p>
+        <div className="mb-6">
+          <button
+            onClick={() => navigate('/produccion/total')}
+            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-4 font-medium"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Regresar</span>
+          </button>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+                Cargar Producción
+              </h1>
+              <p className="text-neutral-600">
+                Sube un archivo Excel con los datos de producción
+              </p>
+            </div>
+            <FileSpreadsheet className="w-12 h-12 text-primary-600" />
           </div>
-          <FileSpreadsheet className="w-12 h-12 text-primary-600" />
         </div>
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
