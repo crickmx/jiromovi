@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear Reglas de Negocio - Comisiones</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 2rem;
+    }
+
+    h1 {
+      color: #1a202c;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: #718096;
+      margin-bottom: 2rem;
+      font-size: 1rem;
+    }
+
+    .form-section {
+      background: #f7fafc;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-section h2 {
+      font-size: 1.25rem;
+      color: #2d3748;
+      margin-bottom: 1rem;
+    }
+
+    .button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #results {
+      margin-top: 2rem;
+    }
+
+    .result-item {
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .result-item.success {
+      background: #c6f6d5;
+      border-left: 4px solid #38a169;
+      color: #22543d;
+    }
+
+    .result-item.error {
+      background: #fed7d7;
+      border-left: 4px solid #e53e3e;
+      color: #742a2a;
+    }
+
+    .result-item.info {
+      background: #bee3f8;
+      border-left: 4px solid #3182ce;
+      color: #2c5282;
+    }
+
+    .result-item.warning {
+      background: #feebc8;
+      border-left: 4px solid #dd6b20;
+      color: #7c2d12;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    pre {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Crear Reglas de Negocio</h1>
+    <p class="subtitle">Inserta reglas predefinidas para calcular comisiones</p>
+
+    <div class="form-section">
+      <h2>Reglas Predefinidas</h2>
+      <button class="button" onclick="crearReglasBasicas()">
+        Crear Reglas Básicas de Comisiones
+      </button>
+      <p style="color: #718096; font-size: 0.9rem; margin-top: 0.5rem;">
+        Crea reglas de ejemplo para diferentes ramos y aseguradoras
+      </p>
+    </div>
+
+    <div class="form-section">
+      <h2>Verificar Reglas Existentes</h2>
+      <button class="button" onclick="verificarReglas()">
+        Ver Reglas Actuales
+      </button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://bhchvbuhfsdpjgugqzjc.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoY2h2YnVoZnNkcGpndWdxempjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA4NDA4NjIsImV4cCI6MjA0NjQxNjg2Mn0.oN-sGLY3uSKdWRTLFuhZG-_2PFPp_tWBGr_TqtFd0NM';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function showResult(message, type = 'info') {
+      const results = document.getElementById('results');
+      const div = document.createElement('div');
+      div.className = `result-item ${type}`;
+      div.innerHTML = message;
+      results.appendChild(div);
+      div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    async function crearReglasBasicas() {
+      document.getElementById('results').innerHTML = '';
+      showResult('Iniciando creación de reglas...', 'info');
+
+      const reglas = [
+        {
+          ramo: 'Autos',
+          aseguradora: 'GNP',
+          office_id: null,
+          campo_base: 'PrimaNeta',
+          tipo_calculo: '%_sobre_base',
+          porcentaje: 15,
+          monto_fijo: null,
+          minimo: null,
+          maximo: null,
+          prioridad: 10,
+          valid_from: '2024-01-01',
+          valid_to: null
+        },
+        {
+          ramo: 'Autos',
+          aseguradora: 'Qualitas',
+          office_id: null,
+          campo_base: 'PrimaNeta',
+          tipo_calculo: '%_sobre_base',
+          porcentaje: 18,
+          monto_fijo: null,
+          minimo: null,
+          maximo: null,
+          prioridad: 10,
+          valid_from: '2024-01-01',
+          valid_to: null
+        },
+        {
+          ramo: 'Vida',
+          aseguradora: 'GNP',
+          office_id: null,
+          campo_base: 'PrimaNeta',
+          tipo_calculo: '%_sobre_base',
+          porcentaje: 25,
+          monto_fijo: null,
+          minimo: null,
+          maximo: null,
+          prioridad: 10,
+          valid_from: '2024-01-01',
+          valid_to: null
+        },
+        {
+          ramo: 'Gastos Medicos',
+          aseguradora: 'AXA',
+          office_id: null,
+          campo_base: 'PrimaNeta',
+          tipo_calculo: '%_con_min_max',
+          porcentaje: 20,
+          monto_fijo: null,
+          minimo: 500,
+          maximo: 10000,
+          prioridad: 10,
+          valid_from: '2024-01-01',
+          valid_to: null
+        },
+        {
+          ramo: 'Daños',
+          aseguradora: 'Chubb',
+          office_id: null,
+          campo_base: 'PrimaNeta',
+          tipo_calculo: '%_sobre_base',
+          porcentaje: 12,
+          monto_fijo: null,
+          minimo: null,
+          maximo: null,
+          prioridad: 10,
+          valid_from: '2024-01-01',
+          valid_to: null
+        },
+        {
+          ramo: 'Autos',
+          aseguradora: 'HDI',
+          office_id: null,
+          campo_base: 'PrimaNeta',
+          tipo_calculo: '%_sobre_base',
+          porcentaje: 16,
+          monto_fijo: null,
+          minimo: null,
+          maximo: null,
+          prioridad: 10,
+          valid_from: '2024-01-01',
+          valid_to: null
+        }
+      ];
+
+      try {
+        for (const regla of reglas) {
+          showResult(`Creando regla: ${regla.ramo} - ${regla.aseguradora}...`, 'info');
+
+          const { data, error } = await supabase
+            .from('commission_business_rules')
+            .insert(regla)
+            .select()
+            .single();
+
+          if (error) {
+            if (error.code === '23505') {
+              showResult(`⚠️ Regla ya existe: ${regla.ramo} - ${regla.aseguradora}`, 'warning');
+            } else {
+              showResult(`❌ Error: ${regla.ramo} - ${regla.aseguradora}: ${error.message}`, 'error');
+            }
+          } else {
+            showResult(`✅ Creada: ${regla.ramo} - ${regla.aseguradora} (${regla.porcentaje}%)`, 'success');
+          }
+        }
+
+        showResult('✅ Proceso completado!', 'success');
+
+      } catch (error) {
+        showResult(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    async function verificarReglas() {
+      document.getElementById('results').innerHTML = '';
+      showResult('Consultando reglas...', 'info');
+
+      try {
+        const { data, error } = await supabase
+          .from('commission_business_rules')
+          .select('*')
+          .order('prioridad', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          showResult('❌ No hay reglas creadas', 'warning');
+        } else {
+          showResult(`✅ Encontradas ${data.length} reglas:`, 'success');
+
+          const table = document.createElement('div');
+          table.style.marginTop = '1rem';
+          table.innerHTML = `
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: #2d3748; color: white;">
+                  <th style="padding: 0.75rem; text-align: left;">Ramo</th>
+                  <th style="padding: 0.75rem; text-align: left;">Aseguradora</th>
+                  <th style="padding: 0.75rem; text-align: left;">Tipo</th>
+                  <th style="padding: 0.75rem; text-align: right;">Valor</th>
+                  <th style="padding: 0.75rem; text-align: center;">Prioridad</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(r => `
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.75rem;">${r.ramo}</td>
+                    <td style="padding: 0.75rem;">${r.aseguradora}</td>
+                    <td style="padding: 0.75rem;">${r.tipo_calculo}</td>
+                    <td style="padding: 0.75rem; text-align: right;">
+                      ${r.tipo_calculo === '%_sobre_base' ? r.porcentaje + '%' : ''}
+                      ${r.tipo_calculo === 'monto_fijo' ? '$' + r.monto_fijo : ''}
+                      ${r.tipo_calculo === '%_con_min_max' ? r.porcentaje + '% (' + r.minimo + '-' + r.maximo + ')' : ''}
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center;">${r.prioridad}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+
+          document.getElementById('results').appendChild(table);
+        }
+
+      } catch (error) {
+        showResult(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>
