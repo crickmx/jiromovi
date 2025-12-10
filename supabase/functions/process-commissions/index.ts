@@ -51,10 +51,13 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log('[process-commissions] Starting commission processing...');
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    console.log('[process-commissions] Reading request body...');
     const { rows, selectedWeeks, uploadedByUserId, sourceFile } = await req.json();
 
     console.log('[process-commissions] Received rows:', rows?.length || 0);
@@ -62,6 +65,15 @@ Deno.serve(async (req: Request) => {
     console.log('[process-commissions] Uploaded by:', uploadedByUserId);
     console.log('[process-commissions] Source file:', sourceFile);
 
+    if (!rows || rows.length === 0) {
+      throw new Error('No se recibieron filas para procesar');
+    }
+
+    if (!uploadedByUserId) {
+      throw new Error('No se especificó el usuario que sube el archivo');
+    }
+
+    console.log('[process-commissions] Loading commission agents...');
     const { data: agents, error: agentsError } = await supabase
       .from('commission_agents')
       .select(`
@@ -79,14 +91,19 @@ Deno.serve(async (req: Request) => {
 
     if (agentsError) {
       console.error('[process-commissions] Error loading agents:', agentsError);
-      throw new Error('No se pudieron cargar los agentes de comisiones');
+      console.error('[process-commissions] Error details:', JSON.stringify(agentsError));
+      throw new Error(`No se pudieron cargar los agentes de comisiones: ${agentsError.message}`);
     }
 
+    console.log('[process-commissions] Agents query result:', agents);
+
     if (!agents || agents.length === 0) {
-      throw new Error('No hay agentes registrados en el sistema de comisiones');
+      console.error('[process-commissions] NO AGENTS FOUND IN DATABASE!');
+      throw new Error('No hay agentes registrados en el sistema de comisiones. Por favor, registra agentes primero en Comisiones > Lote.');
     }
 
     console.log('[process-commissions] Commission agents loaded:', agents.length);
+    console.log('[process-commissions] Agent emails:', agents.map(a => a.email).join(', '));
 
     const agentsMap = new Map<string, CommissionAgent>();
     agents.forEach(agent => {
@@ -103,6 +120,7 @@ Deno.serve(async (req: Request) => {
       }
     });
 
+    console.log('[process-commissions] Filtering rows by selected weeks...');
     const filteredRows = selectedWeeks && selectedWeeks.length > 0
       ? rows.filter((row: ExcelRow) => {
           const rowDate = new Date(row.FPago);
@@ -111,11 +129,18 @@ Deno.serve(async (req: Request) => {
             const weekEnd = new Date(week.dateTo);
             return rowDate >= weekStart && rowDate <= weekEnd;
           });
+          if (!match) {
+            console.log('[process-commissions] Row filtered out:', row.FPago, 'Email:', row.EmailAgente || row.Email);
+          }
           return match;
         })
       : rows;
 
     console.log('[process-commissions] Filtered rows:', filteredRows?.length || 0);
+
+    if (filteredRows.length === 0) {
+      throw new Error('No hay filas que coincidan con las semanas seleccionadas');
+    }
 
     const batchesMap = new Map<string, ExcelRow[]>();
     filteredRows.forEach((row: ExcelRow) => {
@@ -133,10 +158,14 @@ Deno.serve(async (req: Request) => {
     const allErrors: any[] = [];
 
     for (const [weekKey, weekRows] of batchesMap.entries()) {
+      console.log(`[process-commissions] Processing batch for week key: ${weekKey}`);
+
       const firstRow = weekRows[0];
       const weekDate = new Date(firstRow.FPago);
       const weekNumber = getWeekNumber(weekDate);
       const year = weekDate.getFullYear();
+
+      console.log(`[process-commissions] Creating batch: week=${weekNumber}, year=${year}, rows=${weekRows.length}`);
 
       const { data: batch, error: batchError } = await supabase
         .from('commission_batches')
@@ -149,36 +178,51 @@ Deno.serve(async (req: Request) => {
         .select()
         .maybeSingle();
 
-      if (batchError || !batch) {
-        console.error('Error creating batch:', batchError);
+      if (batchError) {
+        console.error('[process-commissions] Error creating batch:', batchError);
+        console.error('[process-commissions] Error details:', JSON.stringify(batchError));
         allErrors.push({
           error_type: 'batch_creation_failed',
-          detalle: `No se pudo crear el lote para la semana ${weekNumber}: ${batchError?.message || 'Error desconocido'}`
+          detalle: `No se pudo crear el lote para la semana ${weekNumber}: ${batchError.message || batchError.hint || 'Error desconocido'}`
         });
         continue;
       }
 
-      console.log(`[process-commissions] Batch created for week ${weekNumber}, batch ID: ${batch.id}`);
+      if (!batch) {
+        console.error('[process-commissions] Batch creation returned no data');
+        allErrors.push({
+          error_type: 'batch_creation_failed',
+          detalle: `No se pudo crear el lote para la semana ${weekNumber}: No se recibió respuesta de la base de datos`
+        });
+        continue;
+      }
+
+      console.log(`[process-commissions] Batch created successfully for week ${weekNumber}, batch ID: ${batch.id}`);
 
       batchesCreated.push(batch);
 
       const detailsToInsert: any[] = [];
       const errorsToInsert: any[] = [];
 
+      let processedInBatch = 0;
+      let errorsInBatch = 0;
+
       for (const row of weekRows) {
         try {
-          const emailAgente = (row.EmailAgente || row.Email || '').toLowerCase();
+          const emailAgente = (row.EmailAgente || row.Email || '').toString().toLowerCase().trim();
           const agent = agentsMap.get(emailAgente);
 
           if (!agent) {
+            console.warn(`[process-commissions] Agent not found for email: ${emailAgente}`);
             errorsToInsert.push({
               batch_id: batch.id,
               error_type: 'agent_not_found',
               email_agente: row.EmailAgente || row.Email,
               poliza: row.Poliza || row.Documento,
-              detalle: `Agente no encontrado: ${row.EmailAgente || row.Email}`,
+              detalle: `Agente no encontrado: ${emailAgente}. Agentes disponibles: ${Array.from(agentsMap.keys()).join(', ')}`,
               raw_row: row
             });
+            errorsInBatch++;
             continue;
           }
 
@@ -219,7 +263,10 @@ Deno.serve(async (req: Request) => {
             raw_row: row
           });
 
+          processedInBatch++;
+
         } catch (error: any) {
+          console.error('[process-commissions] Error processing row:', error);
           errorsToInsert.push({
             batch_id: batch.id,
             error_type: 'other',
@@ -228,29 +275,56 @@ Deno.serve(async (req: Request) => {
             detalle: error.message || 'Error desconocido',
             raw_row: row
           });
+          errorsInBatch++;
         }
       }
 
+      console.log(`[process-commissions] Batch ${batch.id}: ${processedInBatch} processed, ${errorsInBatch} errors`);
+
       if (detailsToInsert.length > 0) {
+        console.log(`[process-commissions] Inserting ${detailsToInsert.length} commission details...`);
         const { error: detailsError } = await supabase
           .from('commission_details')
           .insert(detailsToInsert);
 
         if (detailsError) {
-          console.error('Error inserting details:', detailsError);
+          console.error('[process-commissions] Error inserting details:', detailsError);
+          console.error('[process-commissions] Error details:', JSON.stringify(detailsError));
+        } else {
+          console.log(`[process-commissions] Successfully inserted ${detailsToInsert.length} details`);
         }
+      } else {
+        console.warn(`[process-commissions] No details to insert for batch ${batch.id}`);
       }
 
       if (errorsToInsert.length > 0) {
+        console.log(`[process-commissions] Inserting ${errorsToInsert.length} errors...`);
         const { error: errorsError } = await supabase
           .from('commission_errors')
           .insert(errorsToInsert);
 
         if (errorsError) {
-          console.error('Error inserting errors:', errorsError);
+          console.error('[process-commissions] Error inserting errors:', errorsError);
+          console.error('[process-commissions] Error details:', JSON.stringify(errorsError));
+        } else {
+          console.log(`[process-commissions] Successfully inserted ${errorsToInsert.length} error records`);
         }
 
         allErrors.push(...errorsToInsert);
+      }
+    }
+
+    console.log('[process-commissions] Processing complete!');
+    console.log(`[process-commissions] Batches created: ${batchesCreated.length}`);
+    console.log(`[process-commissions] Total errors: ${allErrors.length}`);
+
+    if (batchesCreated.length === 0) {
+      console.error('[process-commissions] NO BATCHES WERE CREATED!');
+      if (allErrors.length > 0) {
+        console.error('[process-commissions] Errors that prevented batch creation:', JSON.stringify(allErrors, null, 2));
+        throw new Error(`No se crearon lotes. Errores: ${allErrors.map(e => e.detalle).join('; ')}`);
+      } else {
+        throw new Error('No se crearon lotes y no se registraron errores. Verifica los datos del archivo.');
       }
     }
 
@@ -258,7 +332,8 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         batchesCreated,
-        totalErrors: allErrors.length
+        totalErrors: allErrors.length,
+        errorDetails: allErrors.length > 0 ? allErrors.slice(0, 10) : []
       }),
       {
         headers: {
@@ -269,9 +344,17 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error: any) {
-    console.error('Error in process-commissions:', error);
+    console.error('[process-commissions] FATAL ERROR:', error);
+    console.error('[process-commissions] Error stack:', error.stack);
+    console.error('[process-commissions] Error name:', error.name);
+    console.error('[process-commissions] Error message:', error.message);
+
     return new Response(
-      JSON.stringify({ error: error.message || 'Error desconocido' }),
+      JSON.stringify({
+        success: false,
+        error: error.message || 'Error desconocido al procesar comisiones',
+        errorType: error.name || 'UnknownError'
+      }),
       {
         status: 500,
         headers: {
