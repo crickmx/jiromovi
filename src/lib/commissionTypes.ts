@@ -1,0 +1,142 @@
+export interface CommissionOffice {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface CommissionFiscalRegime {
+  id: string;
+  name: string;
+  iva_trasladado: number;
+  iva_retenido: number;
+  isr: number;
+  otros_json: Record<string, number>;
+  valid_from: string;
+  valid_to: string | null;
+  created_at: string;
+}
+
+export interface CommissionAgent {
+  id: string;
+  name: string;
+  email: string;
+  office_id: string | null;
+  fiscal_regime_id: string | null;
+  created_at: string;
+  office?: CommissionOffice;
+  fiscal_regime?: CommissionFiscalRegime;
+}
+
+export interface CommissionBusinessRule {
+  id: string;
+  ramo: string;
+  aseguradora: string;
+  office_id: string | null;
+  campo_base: string;
+  tipo_calculo: '%_sobre_base' | 'monto_fijo' | '%_con_min_max';
+  porcentaje: number | null;
+  monto_fijo: number | null;
+  minimo: number | null;
+  maximo: number | null;
+  prioridad: number;
+  valid_from: string;
+  valid_to: string | null;
+  created_at: string;
+}
+
+export interface CommissionBatch {
+  id: string;
+  name: string;
+  date_from: string;
+  date_to: string;
+  uploaded_by: string | null;
+  status: 'draft' | 'confirmed' | 'closed';
+  rules_version: string | null;
+  source_file: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommissionImpuestos {
+  iva_trasladado: number;
+  iva_retenido: number;
+  isr: number;
+  otros: number;
+}
+
+export interface CommissionDetail {
+  id: string;
+  batch_id: string;
+  agent_id: string;
+  ramo: string;
+  aseguradora: string;
+  office_id: string | null;
+  poliza: string;
+  prima_base: number;
+  concepto: string | null;
+  date_fpago: string;
+  commission_bruta: number;
+  impuestos_json: CommissionImpuestos;
+  commission_neta: number;
+  is_manual_adjusted: boolean;
+  adjusted_by_user_id: string | null;
+  adjusted_at: string | null;
+  adjusted_commission_bruta: number | null;
+  adjusted_impuestos_json: CommissionImpuestos | null;
+  adjusted_commission_neta: number | null;
+  adjust_reason: string | null;
+  raw_row: Record<string, any>;
+  created_at: string;
+  agent?: CommissionAgent;
+}
+
+export interface CommissionError {
+  id: string;
+  batch_id: string;
+  error_type: 'agent_not_found' | 'rule_not_found' | 'invalid_data' | 'other';
+  email_agente: string | null;
+  poliza: string | null;
+  detalle: string;
+  raw_row: Record<string, any>;
+  resolved: boolean;
+  created_at: string;
+}
+
+export interface WeekSummary {
+  weekNumber: number;
+  dateFrom: string;
+  dateTo: string;
+  count: number;
+  selected: boolean;
+}
+
+export interface BatchSummary {
+  total_bruta: number;
+  total_impuestos: number;
+  total_neta: number;
+  total_polizas: number;
+  by_ramo: Record<string, {
+    bruta: number;
+    impuestos: number;
+    neta: number;
+    count: number;
+  }>;
+  by_aseguradora: Record<string, {
+    bruta: number;
+    impuestos: number;
+    neta: number;
+    count: number;
+  }>;
+}
+
+export interface AgentSummary {
+  agent_id: string;
+  agent_name: string;
+  agent_email: string;
+  office_name: string | null;
+  regime_name: string | null;
+  total_bruta: number;
+  total_impuestos: number;
+  total_neta: number;
+  total_polizas: number;
+}

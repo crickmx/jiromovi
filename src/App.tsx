@@ -44,6 +44,9 @@ import StoreMisPedidos from './pages/StoreMisPedidos';
 import StorePedidoDetalle from './pages/StorePedidoDetalle';
 import StorePedidos from './pages/StorePedidos';
 import StoreAdmin from './pages/StoreAdmin';
+import Comisiones from './pages/Comisiones';
+import ComisionesLote from './pages/ComisionesLote';
+import MisComisiones from './pages/MisComisiones';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -474,6 +477,39 @@ function AppRoutes() {
         element={
           <ProtectedRoute requireAdmin>
             <StorePedidos />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comisiones"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <Comisiones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comisiones/lote/:id"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <ComisionesLote />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mis-comisiones"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MisComisiones />
+            </Layout>
           </ProtectedRoute>
         }
       />
