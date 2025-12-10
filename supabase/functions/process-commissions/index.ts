@@ -13,7 +13,8 @@ interface ExcelRow {
   Ramo: string;
   Aseguradora?: string;
   CiaAbreviacion?: string;
-  PrimaNeta: number;
+  Importe?: number;
+  PrimaNeta?: number;
   PorPart: number;
   Poliza?: string;
   Documento?: string;
@@ -258,7 +259,23 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          const commissionBruta = calculateCommissionBruta(row.PrimaNeta, row.PorPart);
+          const importe = row.Importe !== undefined && row.Importe !== null
+            ? row.Importe
+            : (row.PrimaNeta !== undefined && row.PrimaNeta !== null ? row.PrimaNeta : 0);
+
+          if (importe === 0) {
+            errorsToInsert.push({
+              batch_id: batch.id,
+              error_type: 'invalid_data',
+              email_agente: row.EmailAgente || row.Email,
+              poliza: row.Poliza || row.Documento,
+              detalle: 'La columna Importe o PrimaNeta es requerida y no puede estar vacía',
+              raw_row: row
+            });
+            continue;
+          }
+
+          const commissionBruta = calculateCommissionBruta(importe, row.PorPart);
           const commissionNeta = commissionBruta;
 
           detailsToInsert.push({
@@ -269,7 +286,7 @@ Deno.serve(async (req: Request) => {
             office_id: agent.office_id,
             poliza: row.Poliza || row.Documento,
             nombre_asegurado: row.NombreAsegurado || row.Asegurado || null,
-            prima_base: row.PrimaNeta,
+            prima_base: importe,
             concepto: row.Concepto || null,
             date_fpago: row.FPago,
             commission_bruta: commissionBruta,
