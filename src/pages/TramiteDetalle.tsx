@@ -67,7 +67,7 @@ export function TramiteDetalle() {
           {
             event: 'UPDATE',
             schema: 'public',
-            table: 'tramites',
+            table: 'tickets',
             filter: `id=eq.${id}`
           },
           async () => {
@@ -86,7 +86,7 @@ export function TramiteDetalle() {
     if (!id) return;
 
     const { data, error } = await supabase
-      .from('tramites')
+      .from('tickets')
       .select(`
         *,
         agente:agente_id(id, nombre_completo),
@@ -137,7 +137,7 @@ export function TramiteDetalle() {
 
     try {
       const { error } = await supabase
-        .from('tramites')
+        .from('tickets')
         .update({
           estatus_id: selectedEstatus,
           prioridad: selectedPrioridad,
@@ -171,7 +171,7 @@ export function TramiteDetalle() {
       }
 
       const { error } = await supabase
-        .from('tramites')
+        .from('tickets')
         .update({
           estatus_id: estatusCerrado.id,
           cerrado_en: new Date().toISOString(),
@@ -210,7 +210,7 @@ export function TramiteDetalle() {
       }
 
       const { error } = await supabase
-        .from('tramites')
+        .from('tickets')
         .update({
           estatus_id: estatusEnProceso.id,
           cerrado_en: null,
