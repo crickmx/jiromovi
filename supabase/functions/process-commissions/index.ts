@@ -165,15 +165,22 @@ Deno.serve(async (req: Request) => {
       const weekNumber = getWeekNumber(weekDate);
       const year = weekDate.getFullYear();
 
+      const dateFrom = getWeekStart(weekDate);
+      const dateTo = getWeekEnd(weekDate);
+      const batchName = `Semana ${weekNumber} - ${year}`;
+
       console.log(`[process-commissions] Creating batch: week=${weekNumber}, year=${year}, rows=${weekRows.length}`);
+      console.log(`[process-commissions] Date range: ${dateFrom} to ${dateTo}`);
 
       const { data: batch, error: batchError } = await supabase
         .from('commission_batches')
         .insert({
-          week_number: weekNumber,
-          year: year,
-          uploaded_by_user_id: uploadedByUserId,
-          source_file: sourceFile
+          name: batchName,
+          date_from: dateFrom,
+          date_to: dateTo,
+          uploaded_by: uploadedByUserId,
+          source_file: sourceFile,
+          status: 'draft'
         })
         .select()
         .maybeSingle();
@@ -408,4 +415,20 @@ function getWeekKey(date: Date): string {
   const year = date.getFullYear();
   const week = getWeekNumber(date);
   return `${year}-W${week.toString().padStart(2, '0')}`;
+}
+
+function getWeekStart(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  return monday.toISOString().split('T')[0];
+}
+
+function getWeekEnd(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? 0 : 7);
+  const sunday = new Date(d.setDate(diff));
+  return sunday.toISOString().split('T')[0];
 }
