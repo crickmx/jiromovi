@@ -77,6 +77,11 @@ Deno.serve(async (req: Request) => {
 
     const { rows, selectedWeeks, uploadedByUserId, sourceFile } = await req.json();
 
+    console.log('[process-commissions] Received rows:', rows?.length || 0);
+    console.log('[process-commissions] Selected weeks:', selectedWeeks?.length || 0, selectedWeeks);
+    console.log('[process-commissions] Uploaded by:', uploadedByUserId);
+    console.log('[process-commissions] Source file:', sourceFile);
+
     const { data: agents } = await supabase
       .from('commission_agents')
       .select('*, office:office_id(*), fiscal_regime:fiscal_regime_id(*)');
@@ -133,13 +138,16 @@ Deno.serve(async (req: Request) => {
     const filteredRows = selectedWeeks && selectedWeeks.length > 0
       ? rows.filter((row: ExcelRow) => {
           const rowDate = new Date(row.FPago);
-          return selectedWeeks.some((week: WeekSummary) => {
+          const match = selectedWeeks.some((week: WeekSummary) => {
             const weekStart = new Date(week.dateFrom);
             const weekEnd = new Date(week.dateTo);
             return rowDate >= weekStart && rowDate <= weekEnd;
           });
+          return match;
         })
       : rows;
+
+    console.log('[process-commissions] Filtered rows:', filteredRows?.length || 0);
 
     const batchesMap = new Map<string, ExcelRow[]>();
     filteredRows.forEach((row: ExcelRow) => {
@@ -149,6 +157,9 @@ Deno.serve(async (req: Request) => {
       }
       batchesMap.get(weekKey)!.push(row);
     });
+
+    console.log('[process-commissions] Batches to create:', batchesMap.size);
+    console.log('[process-commissions] Week keys:', Array.from(batchesMap.keys()));
 
     const batchesCreated: any[] = [];
     const allErrors: any[] = [];
