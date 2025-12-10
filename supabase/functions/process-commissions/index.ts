@@ -29,13 +29,17 @@ interface WeekSummary {
   selected: boolean;
 }
 
-interface Usuario {
+interface CommissionAgent {
   id: string;
-  nombre_completo: string;
-  email_personal: string | null;
-  email_laboral: string | null;
-  oficina_id: string | null;
-  regimen_fiscal: any;
+  name: string;
+  email: string;
+  office_id: string | null;
+  fiscal_regime: {
+    iva_trasladado: number;
+    iva_retenido: number;
+    isr: number;
+    otros_json: any;
+  } | null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -58,24 +62,44 @@ Deno.serve(async (req: Request) => {
     console.log('[process-commissions] Uploaded by:', uploadedByUserId);
     console.log('[process-commissions] Source file:', sourceFile);
 
-    const { data: usuarios, error: usuariosError } = await supabase
-      .from('usuarios')
-      .select('id, nombre_completo, email_personal, email_laboral, oficina_id, regimen_fiscal')
-      .eq('rol', 'Agente');
+    const { data: agents, error: agentsError } = await supabase
+      .from('commission_agents')
+      .select(`
+        id,
+        name,
+        email,
+        office_id,
+        fiscal_regime:commission_fiscal_regimes(
+          iva_trasladado,
+          iva_retenido,
+          isr,
+          otros_json
+        )
+      `);
 
-    if (usuariosError || !usuarios) {
-      throw new Error('No se pudieron cargar los usuarios agentes');
+    if (agentsError) {
+      console.error('[process-commissions] Error loading agents:', agentsError);
+      throw new Error('No se pudieron cargar los agentes de comisiones');
     }
 
-    console.log('[process-commissions] Usuarios (Agentes) loaded:', usuarios.length);
+    if (!agents || agents.length === 0) {
+      throw new Error('No hay agentes registrados en el sistema de comisiones');
+    }
 
-    const agentsMap = new Map<string, Usuario>();
-    usuarios.forEach(user => {
-      if (user.email_personal) {
-        agentsMap.set(user.email_personal.toLowerCase(), user);
-      }
-      if (user.email_laboral) {
-        agentsMap.set(user.email_laboral.toLowerCase(), user);
+    console.log('[process-commissions] Commission agents loaded:', agents.length);
+
+    const agentsMap = new Map<string, CommissionAgent>();
+    agents.forEach(agent => {
+      if (agent.email) {
+        agentsMap.set(agent.email.toLowerCase(), {
+          id: agent.id,
+          name: agent.name,
+          email: agent.email,
+          office_id: agent.office_id,
+          fiscal_regime: Array.isArray(agent.fiscal_regime) && agent.fiscal_regime.length > 0
+            ? agent.fiscal_regime[0]
+            : null
+        });
       }
     });
 
@@ -166,8 +190,8 @@ Deno.serve(async (req: Request) => {
 
           const commissionBruta = calculateCommissionBruta(row.PrimaNeta, row.PortPart);
 
-          const impuestos = agent.regimen_fiscal
-            ? calculateImpuestos(commissionBruta, agent.regimen_fiscal)
+          const impuestos = agent.fiscal_regime
+            ? calculateImpuestos(commissionBruta, agent.fiscal_regime)
             : { iva_trasladado: 0, iva_retenido: 0, isr: 0, otros: 0 };
 
           const commissionNeta = calculateCommissionNeta(commissionBruta, impuestos);
@@ -177,7 +201,7 @@ Deno.serve(async (req: Request) => {
             agent_id: agent.id,
             ramo: row.Ramo,
             aseguradora: row.Aseguradora || row.CiaAbreviacion,
-            office_id: agent.oficina_id,
+            office_id: agent.office_id,
             poliza: row.Poliza || row.Documento,
             prima_base: row.PrimaNeta,
             concepto: row.Concepto || null,
