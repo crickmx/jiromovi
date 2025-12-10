@@ -188,7 +188,7 @@ export default function ComisionesLote() {
           </div>
 
           <div className="flex items-center space-x-3">
-            {batch.status !== 'closed' && (
+            {batch.status !== 'closed' ? (
               <>
                 <button
                   onClick={handleCloseBatch}
@@ -205,6 +205,14 @@ export default function ComisionesLote() {
                   <span>Eliminar</span>
                 </button>
               </>
+            ) : (
+              <button
+                onClick={handleDeleteBatch}
+                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold"
+              >
+                <XCircle className="w-5 h-5" />
+                <span>Eliminar Lote</span>
+              </button>
             )}
           </div>
         </div>
@@ -396,9 +404,7 @@ export default function ComisionesLote() {
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Prima</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
-                  {batch?.status !== 'closed' && (
-                    <th className="text-center py-3 px-4 font-semibold text-neutral-700">Acciones</th>
-                  )}
+                  <th className="text-center py-3 px-4 font-semibold text-neutral-700">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -423,18 +429,16 @@ export default function ComisionesLote() {
                       <td className="py-3 px-4 text-neutral-700">{detail.aseguradora}</td>
                       <td className="py-3 px-4 text-right text-neutral-900">{formatCurrency(detail.prima_base)}</td>
                       <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(commission || 0)}</td>
-                      {batch?.status !== 'closed' && (
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => setAdjustingDetail(detail)}
-                            className="inline-flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
-                            title="Ajustar comisión"
-                          >
-                            <Wrench className="w-4 h-4" />
-                            <span>Ajustar</span>
-                          </button>
-                        </td>
-                      )}
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => setAdjustingDetail(detail)}
+                          className="inline-flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                          title="Ajustar comisión"
+                        >
+                          <Wrench className="w-4 h-4" />
+                          <span>Ajustar</span>
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
