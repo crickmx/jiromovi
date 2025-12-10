@@ -98,7 +98,6 @@ Deno.serve(async (req: Request) => {
     console.log('[process-commissions] Commission agents loaded:', agents.length);
     console.log('[process-commissions] Agent emails:', agents.map(a => a.email).join(', '));
 
-    // Load fiscal regimes separately
     console.log('[process-commissions] Loading fiscal regimes...');
     const { data: fiscalRegimes, error: regimesError } = await supabase
       .from('commission_fiscal_regimes')
@@ -260,11 +259,11 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          const importe = row.Importe !== undefined && row.Importe !== null
+          const comisionImporte = row.Importe !== undefined && row.Importe !== null
             ? row.Importe
             : (row.PrimaNeta !== undefined && row.PrimaNeta !== null ? row.PrimaNeta : 0);
 
-          if (importe === 0) {
+          if (comisionImporte === 0) {
             errorsToInsert.push({
               batch_id: batch.id,
               error_type: 'invalid_data',
@@ -276,7 +275,8 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          const commissionBruta = calculateCommissionBruta(importe, row.PorPart);
+          const primaTotal = calculatePrimaTotal(comisionImporte, row.PorPart);
+          const commissionBruta = comisionImporte;
           const commissionNeta = commissionBruta;
 
           detailsToInsert.push({
@@ -287,7 +287,7 @@ Deno.serve(async (req: Request) => {
             office_id: agent.office_id,
             poliza: row.Poliza || row.Documento,
             nombre_asegurado: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || null,
-            prima_base: importe,
+            prima_base: primaTotal,
             concepto: row.Concepto || null,
             date_fpago: row.FPago,
             commission_bruta: commissionBruta,
@@ -399,8 +399,9 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-function calculateCommissionBruta(primaNeta: number, porPart: number): number {
-  return primaNeta * (porPart / 100);
+function calculatePrimaTotal(comision: number, porPart: number): number {
+  if (porPart === 0) return 0;
+  return comision / (porPart / 100);
 }
 
 function getWeekNumber(date: Date): number {
