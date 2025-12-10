@@ -14,7 +14,7 @@ interface ExcelRow {
   Aseguradora?: string;
   CiaAbreviacion?: string;
   PrimaNeta: number;
-  PortPart: number;
+  PorPart: number;
   Poliza?: string;
   Documento?: string;
   Concepto?: string;
@@ -147,12 +147,18 @@ Deno.serve(async (req: Request) => {
           source_file: sourceFile
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (batchError || !batch) {
         console.error('Error creating batch:', batchError);
+        allErrors.push({
+          error_type: 'batch_creation_failed',
+          detalle: `No se pudo crear el lote para la semana ${weekNumber}: ${batchError?.message || 'Error desconocido'}`
+        });
         continue;
       }
+
+      console.log(`[process-commissions] Batch created for week ${weekNumber}, batch ID: ${batch.id}`);
 
       batchesCreated.push(batch);
 
@@ -176,19 +182,19 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          if (row.PortPart === undefined || row.PortPart === null) {
+          if (row.PorPart === undefined || row.PorPart === null) {
             errorsToInsert.push({
               batch_id: batch.id,
               error_type: 'invalid_data',
               email_agente: row.EmailAgente || row.Email,
               poliza: row.Poliza || row.Documento,
-              detalle: 'La columna PortPart es requerida y no puede estar vacía',
+              detalle: 'La columna PorPart es requerida y no puede estar vacía',
               raw_row: row
             });
             continue;
           }
 
-          const commissionBruta = calculateCommissionBruta(row.PrimaNeta, row.PortPart);
+          const commissionBruta = calculateCommissionBruta(row.PrimaNeta, row.PorPart);
 
           const impuestos = agent.fiscal_regime
             ? calculateImpuestos(commissionBruta, agent.fiscal_regime)
@@ -277,8 +283,8 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-function calculateCommissionBruta(primaNeta: number, portPart: number): number {
-  return primaNeta * (portPart / 100);
+function calculateCommissionBruta(primaNeta: number, porPart: number): number {
+  return primaNeta * (porPart / 100);
 }
 
 function calculateImpuestos(commissionBruta: number, regimenFiscal: any) {

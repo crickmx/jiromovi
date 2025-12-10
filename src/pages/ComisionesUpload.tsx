@@ -15,7 +15,7 @@ interface ExcelRow {
   Aseguradora?: string;
   CiaAbreviacion?: string;
   PrimaNeta: number;
-  PortPart: number;
+  PorPart: number;
   Poliza?: string;
   Documento?: string;
   Concepto?: string;
@@ -93,7 +93,7 @@ export default function ComisionesUpload() {
       const hasFPago = columns.includes('FPago');
       const hasRamo = columns.includes('Ramo');
       const hasPrimaNeta = columns.includes('PrimaNeta');
-      const hasPortPart = columns.includes('PortPart');
+      const hasPorPart = columns.includes('PorPart');
 
       const missingColumns: string[] = [];
       if (!hasFPago) missingColumns.push('FPago');
@@ -102,7 +102,7 @@ export default function ComisionesUpload() {
       if (!hasAseguradora) missingColumns.push('Aseguradora o CiaAbreviacion');
       if (!hasPrimaNeta) missingColumns.push('PrimaNeta');
       if (!hasPoliza) missingColumns.push('Poliza o Documento');
-      if (!hasPortPart) missingColumns.push('PortPart');
+      if (!hasPorPart) missingColumns.push('PorPart');
 
       if (missingColumns.length > 0) {
         console.error('[ComisionesUpload] Missing columns:', missingColumns);
@@ -118,13 +118,13 @@ export default function ComisionesUpload() {
         Ramo: row.Ramo,
         Aseguradora: row.Aseguradora || row.CiaAbreviacion || '',
         PrimaNeta: row.PrimaNeta,
-        PortPart: row.PortPart,
+        PorPart: row.PorPart,
         Poliza: row.Poliza || row.Documento || '',
         Concepto: row.Concepto || ''
       }));
 
       const validRows = normalizedRows.filter(row => {
-        if (!row.FPago || !row.EmailAgente || !row.Ramo || !row.Aseguradora || !row.PrimaNeta || !row.Poliza || row.PortPart === undefined) {
+        if (!row.FPago || !row.EmailAgente || !row.Ramo || !row.Aseguradora || !row.PrimaNeta || !row.Poliza || row.PorPart === undefined) {
           return false;
         }
 
@@ -139,8 +139,8 @@ export default function ComisionesUpload() {
           return false;
         }
 
-        if (isNaN(Number(row.PortPart))) {
-          console.warn('[ComisionesUpload] Invalid PortPart:', row.PortPart);
+        if (isNaN(Number(row.PorPart))) {
+          console.warn('[ComisionesUpload] Invalid PorPart:', row.PorPart);
           return false;
         }
 
@@ -215,7 +215,13 @@ export default function ComisionesUpload() {
 
       const result = await response.json();
 
-      alert(`Lotes creados exitosamente: ${result.batchesCreated.length}`);
+      console.log('[ComisionesUpload] Result from edge function:', result);
+
+      if (!result.batchesCreated || result.batchesCreated.length === 0) {
+        throw new Error('No se crearon lotes. Es posible que no haya agentes registrados o que las fechas no coincidan.');
+      }
+
+      alert(`Lotes creados exitosamente: ${result.batchesCreated.length}${result.totalErrors > 0 ? `\nErrores encontrados: ${result.totalErrors}` : ''}`);
       navigate('/comisiones');
 
     } catch (error: any) {
@@ -283,7 +289,7 @@ export default function ComisionesUpload() {
             <li><strong>Ramo</strong> - Ramo de seguro</li>
             <li><strong>CiaAbreviacion</strong> o <strong>Aseguradora</strong> - Nombre de la aseguradora</li>
             <li><strong>PrimaNeta</strong> - Prima neta (número)</li>
-            <li><strong>PortPart</strong> - Porcentaje de participación (número, ej: 25 para 25%)</li>
+            <li><strong>PorPart</strong> - Porcentaje de participación (número, ej: 25 para 25%)</li>
             <li><strong>Documento</strong> o <strong>Poliza</strong> - Número de póliza/documento</li>
           </ul>
           <p className="text-sm text-blue-800 mt-2">
