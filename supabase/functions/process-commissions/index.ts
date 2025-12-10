@@ -80,6 +80,11 @@ Deno.serve(async (req: Request) => {
       .from('commission_agents')
       .select('*, office:office_id(*), fiscal_regime:fiscal_regime_id(*)');
 
+    const { data: usuarios } = await supabase
+      .from('usuarios')
+      .select('id, nombre_completo, email, correo_laboral, oficina_id, rol')
+      .eq('rol', 'Agente');
+
     const { data: businessRules } = await supabase
       .from('commission_business_rules')
       .select('*')
@@ -89,9 +94,33 @@ Deno.serve(async (req: Request) => {
       throw new Error('No se pudieron cargar los datos necesarios');
     }
 
-    const agentsMap = new Map<string, Agent>(
-      agents.map((a: any) => [a.email.toLowerCase(), a])
-    );
+    console.log('[process-commissions] Agents loaded:', agents.length);
+    console.log('[process-commissions] Usuarios (Agentes) loaded:', usuarios?.length || 0);
+
+    const agentsMap = new Map<string, Agent>();
+
+    agents.forEach((a: any) => {
+      agentsMap.set(a.email.toLowerCase(), a);
+    });
+
+    if (usuarios) {
+      usuarios.forEach((u: any) => {
+        if (u.correo_laboral) {
+          const existingAgent = agentsMap.get(u.correo_laboral.toLowerCase());
+          if (!existingAgent) {
+            console.log('[process-commissions] Adding usuario as agent:', u.correo_laboral);
+          }
+        }
+        if (u.email) {
+          const existingAgent = agentsMap.get(u.email.toLowerCase());
+          if (!existingAgent) {
+            console.log('[process-commissions] Adding usuario as agent (personal email):', u.email);
+          }
+        }
+      });
+    }
+
+    console.log('[process-commissions] Total agents in map:', agentsMap.size);
 
     const batchesCreated: string[] = [];
     const allErrors: any[] = [];
@@ -141,15 +170,38 @@ Deno.serve(async (req: Request) => {
 
       for (const row of weekRows) {
         try {
-          const agent = agentsMap.get(row.EmailAgente.toLowerCase());
+          let agent = agentsMap.get(row.EmailAgente.toLowerCase());
+
+          if (!agent && usuarios) {
+            const usuarioMatch = usuarios.find((u: any) =>
+              u.correo_laboral?.toLowerCase() === row.EmailAgente.toLowerCase() ||
+              u.email?.toLowerCase() === row.EmailAgente.toLowerCase()
+            );
+
+            if (usuarioMatch) {
+              console.log('[process-commissions] Found usuario match for:', row.EmailAgente);
+
+              agent = {
+                id: usuarioMatch.id,
+                name: usuarioMatch.nombre_completo,
+                email: usuarioMatch.correo_laboral || usuarioMatch.email,
+                office_id: usuarioMatch.oficina_id,
+                fiscal_regime_id: null,
+                fiscal_regime: null
+              } as any;
+            }
+          }
 
           if (!agent) {
+            console.error('[process-commissions] Agent not found:', row.EmailAgente);
+            console.error('[process-commissions] Available emails in map:', Array.from(agentsMap.keys()).slice(0, 10));
+
             errorsToInsert.push({
               batch_id: batch.id,
               error_type: 'agent_not_found',
               email_agente: row.EmailAgente,
               poliza: row.Poliza,
-              detalle: `Agente no encontrado: ${row.EmailAgente}`,
+              detalle: `Agente no encontrado: ${row.EmailAgente}. Email: ${row.EmailAgente}`,
               raw_row: row
             });
             continue;
