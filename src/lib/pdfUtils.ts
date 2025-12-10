@@ -208,21 +208,23 @@ export async function generateCommissionPDF(
       detail.concepto || '-',
       detail.ramo,
       detail.aseguradora,
-      formatCurrency(detail.prima_base),
+      formatCurrency(detail.prima_neta),
+      formatCurrency(detail.importe_base),
+      `${detail.porcentaje_comision.toFixed(2)}%`,
       formatCurrency(commission)
     ]);
   });
 
   autoTable(doc, {
     startY: yPosition,
-    head: [['Póliza', 'Asegurado', 'Descripción', 'Ramo', 'Aseguradora', 'Prima', 'Comisión']],
+    head: [['Póliza', 'Asegurado', 'Descripción', 'Ramo', 'Aseguradora', 'Prima Neta', 'Base Com.', '% Com.', 'Comisión']],
     body: polizaRows,
     theme: 'grid',
     headStyles: { fillColor: [41, 128, 185], textColor: 255 },
     margin: { left: 15, right: 15 },
-    styles: { fontSize: 7 },
+    styles: { fontSize: 6 },
     columnStyles: {
-      2: { cellWidth: 30 }
+      2: { cellWidth: 20 }
     }
   });
 

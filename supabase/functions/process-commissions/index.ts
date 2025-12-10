@@ -259,24 +259,28 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          const comisionImporte = row.Importe !== undefined && row.Importe !== null
+          const importeBase = row.Importe !== undefined && row.Importe !== null
             ? row.Importe
-            : (row.PrimaNeta !== undefined && row.PrimaNeta !== null ? row.PrimaNeta : 0);
+            : 0;
 
-          if (comisionImporte === 0) {
+          if (importeBase === 0) {
             errorsToInsert.push({
               batch_id: batch.id,
               error_type: 'invalid_data',
               email_agente: row.EmailAgente || row.Email,
               poliza: row.Poliza || row.Documento,
-              detalle: 'La columna Importe o PrimaNeta es requerida y no puede estar vacía',
+              detalle: 'La columna Importe es requerida y no puede estar vacía',
               raw_row: row
             });
             continue;
           }
 
-          const primaTotal = calculatePrimaTotal(comisionImporte, row.PorPart);
-          const commissionBruta = comisionImporte;
+          const primaNeta = row.PrimaNeta !== undefined && row.PrimaNeta !== null
+            ? row.PrimaNeta
+            : 0;
+
+          const porcentajeComision = row.PorPart;
+          const commissionBruta = importeBase * (porcentajeComision / 100);
           const commissionNeta = commissionBruta;
 
           detailsToInsert.push({
@@ -287,7 +291,9 @@ Deno.serve(async (req: Request) => {
             office_id: agent.office_id,
             poliza: row.Poliza || row.Documento,
             nombre_asegurado: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || null,
-            prima_base: primaTotal,
+            prima_neta: primaNeta,
+            importe_base: importeBase,
+            porcentaje_comision: porcentajeComision,
             concepto: row.Concepto || null,
             date_fpago: row.FPago,
             commission_bruta: commissionBruta,
@@ -398,11 +404,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
-
-function calculatePrimaTotal(comision: number, porPart: number): number {
-  if (porPart === 0) return 0;
-  return comision / (porPart / 100);
-}
 
 function getWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));

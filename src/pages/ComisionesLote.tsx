@@ -403,7 +403,9 @@ export default function ComisionesLote() {
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Agente</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Ramo</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
-                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Prima</th>
+                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Prima Neta</th>
+                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Base Com.</th>
+                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">% Com.</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
                   <th className="text-center py-3 px-4 font-semibold text-neutral-700">Acciones</th>
                 </tr>
@@ -429,7 +431,9 @@ export default function ComisionesLote() {
                       <td className="py-3 px-4 text-neutral-700">{detail.agent?.name}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.ramo}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.aseguradora}</td>
-                      <td className="py-3 px-4 text-right text-neutral-900">{formatCurrency(detail.prima_base)}</td>
+                      <td className="py-3 px-4 text-right text-neutral-600">{formatCurrency(detail.prima_neta)}</td>
+                      <td className="py-3 px-4 text-right text-neutral-900 font-medium">{formatCurrency(detail.importe_base)}</td>
+                      <td className="py-3 px-4 text-right text-neutral-700">{detail.porcentaje_comision.toFixed(2)}%</td>
                       <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(commission || 0)}</td>
                       <td className="py-3 px-4 text-center">
                         <button

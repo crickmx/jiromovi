@@ -66,7 +66,9 @@ export interface CommissionDetail {
   office_id: string | null;
   poliza: string;
   nombre_asegurado: string | null;
-  prima_base: number;
+  prima_neta: number;
+  importe_base: number;
+  porcentaje_comision: number;
   concepto: string | null;
   date_fpago: string;
   commission_bruta: number;
