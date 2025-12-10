@@ -71,11 +71,23 @@ export default function ComisionesUpload() {
     try {
       console.log('[ComisionesUpload] Reading file...');
       const data = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<ExcelRow>(firstSheet);
+      console.log('[ComisionesUpload] File read as array buffer, size:', data.byteLength);
 
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
+      console.log('[ComisionesUpload] Workbook parsed. Sheets:', workbook.SheetNames);
+
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        setValidationError('El archivo no contiene hojas de cálculo');
+        setValidating(false);
+        return;
+      }
+
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      console.log('[ComisionesUpload] Reading first sheet:', workbook.SheetNames[0]);
+
+      const jsonData = XLSX.utils.sheet_to_json<ExcelRow>(firstSheet, { raw: false, dateNF: 'yyyy-mm-dd' });
       console.log('[ComisionesUpload] Rows found:', jsonData.length);
+      console.log('[ComisionesUpload] First row sample:', jsonData[0]);
 
       if (jsonData.length === 0) {
         setValidationError('El archivo está vacío');
@@ -112,40 +124,78 @@ export default function ComisionesUpload() {
       }
 
       console.log('[ComisionesUpload] Normalizing rows...');
-      const normalizedRows = jsonData.map(row => ({
-        FPago: row.FPago,
-        EmailAgente: row.EmailAgente || row.Email || '',
-        Ramo: row.Ramo,
-        Aseguradora: row.Aseguradora || row.CiaAbreviacion || '',
-        PrimaNeta: row.PrimaNeta,
-        PorPart: row.PorPart,
-        Poliza: row.Poliza || row.Documento || '',
-        Concepto: row.Concepto || ''
-      }));
+      const normalizedRows = jsonData.map((row, index) => {
+        let fpago = row.FPago;
 
-      const validRows = normalizedRows.filter(row => {
-        if (!row.FPago || !row.EmailAgente || !row.Ramo || !row.Aseguradora || !row.PrimaNeta || !row.Poliza || row.PorPart === undefined) {
-          return false;
+        if (typeof fpago === 'number') {
+          const excelEpoch = new Date(1900, 0, 1);
+          const daysOffset = fpago - 2;
+          const resultDate = new Date(excelEpoch.getTime() + daysOffset * 24 * 60 * 60 * 1000);
+          fpago = resultDate.toISOString().split('T')[0];
+          console.log(`[ComisionesUpload] Row ${index}: Converted Excel date ${row.FPago} to ${fpago}`);
+        } else if (typeof fpago === 'string' && fpago.includes('/')) {
+          const parts = fpago.split('/');
+          if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
+            fpago = `${year}-${month}-${day}`;
+            console.log(`[ComisionesUpload] Row ${index}: Converted date format ${row.FPago} to ${fpago}`);
+          }
         }
 
-        const testDate = new Date(row.FPago);
-        if (isNaN(testDate.getTime())) {
-          console.warn('[ComisionesUpload] Invalid date:', row.FPago);
-          return false;
-        }
-
-        if (isNaN(Number(row.PrimaNeta))) {
-          console.warn('[ComisionesUpload] Invalid PrimaNeta:', row.PrimaNeta);
-          return false;
-        }
-
-        if (isNaN(Number(row.PorPart))) {
-          console.warn('[ComisionesUpload] Invalid PorPart:', row.PorPart);
-          return false;
-        }
-
-        return true;
+        return {
+          FPago: fpago,
+          EmailAgente: row.EmailAgente || row.Email || '',
+          Ramo: row.Ramo,
+          Aseguradora: row.Aseguradora || row.CiaAbreviacion || '',
+          PrimaNeta: row.PrimaNeta,
+          PorPart: row.PorPart,
+          Poliza: row.Poliza || row.Documento || '',
+          Concepto: row.Concepto || ''
+        };
       });
+
+      const validRows: ExcelRow[] = [];
+      const invalidRows: any[] = [];
+
+      normalizedRows.forEach((row, index) => {
+        const issues: string[] = [];
+
+        if (!row.FPago) issues.push('FPago vacío');
+        if (!row.EmailAgente) issues.push('Email vacío');
+        if (!row.Ramo) issues.push('Ramo vacío');
+        if (!row.Aseguradora) issues.push('Aseguradora vacía');
+        if (!row.PrimaNeta) issues.push('PrimaNeta vacía');
+        if (!row.Poliza) issues.push('Poliza vacía');
+        if (row.PorPart === undefined || row.PorPart === null) issues.push('PorPart vacío');
+
+        if (row.FPago) {
+          const testDate = new Date(row.FPago);
+          if (isNaN(testDate.getTime())) {
+            issues.push(`Fecha inválida: ${row.FPago}`);
+          }
+        }
+
+        if (row.PrimaNeta && isNaN(Number(row.PrimaNeta))) {
+          issues.push(`PrimaNeta inválida: ${row.PrimaNeta}`);
+        }
+
+        if (row.PorPart !== undefined && row.PorPart !== null && isNaN(Number(row.PorPart))) {
+          issues.push(`PorPart inválido: ${row.PorPart}`);
+        }
+
+        if (issues.length > 0) {
+          console.warn(`[ComisionesUpload] Row ${index + 2} invalid:`, issues.join(', '));
+          invalidRows.push({ row: index + 2, issues, data: row });
+        } else {
+          validRows.push(row);
+        }
+      });
+
+      if (invalidRows.length > 0) {
+        console.warn(`[ComisionesUpload] Found ${invalidRows.length} invalid rows:`, invalidRows);
+      }
 
       console.log('[ComisionesUpload] Valid rows:', validRows.length);
 
@@ -163,9 +213,21 @@ export default function ComisionesUpload() {
       setWeeks(weekGroups);
 
       console.log('[ComisionesUpload] Validation complete!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('[ComisionesUpload] Error reading Excel:', error);
-      setValidationError('Error al leer el archivo. Asegúrate de que sea un archivo Excel válido.');
+      console.error('[ComisionesUpload] Error name:', error?.name);
+      console.error('[ComisionesUpload] Error message:', error?.message);
+      console.error('[ComisionesUpload] Error stack:', error?.stack);
+
+      let errorMessage = 'Error al leer el archivo. ';
+
+      if (error?.message) {
+        errorMessage += error.message;
+      } else {
+        errorMessage += 'Asegúrate de que sea un archivo Excel válido (.xlsx).';
+      }
+
+      setValidationError(errorMessage);
     } finally {
       setValidating(false);
     }
@@ -188,9 +250,18 @@ export default function ComisionesUpload() {
     setProcessing(true);
 
     try {
+      console.log('[ComisionesUpload] Getting authenticated user...');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No autenticado');
 
+      console.log('[ComisionesUpload] User authenticated:', user.id);
+      console.log('[ComisionesUpload] Preparing to send:', {
+        rowsCount: rows.length,
+        selectedWeeksCount: selectedWeeks.length,
+        fileName: file?.name
+      });
+
+      console.log('[ComisionesUpload] Calling edge function...');
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-commissions`,
         {
@@ -208,13 +279,22 @@ export default function ComisionesUpload() {
         }
       );
 
+      console.log('[ComisionesUpload] Response status:', response.status);
+      console.log('[ComisionesUpload] Response ok:', response.ok);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Error al procesar comisiones');
+        const errorText = await response.text();
+        console.error('[ComisionesUpload] Error response text:', errorText);
+
+        try {
+          const error = JSON.parse(errorText);
+          throw new Error(error.error || 'Error al procesar comisiones');
+        } catch (parseError) {
+          throw new Error(`Error del servidor (${response.status}): ${errorText}`);
+        }
       }
 
       const result = await response.json();
-
       console.log('[ComisionesUpload] Result from edge function:', result);
 
       if (!result.batchesCreated || result.batchesCreated.length === 0) {
@@ -225,8 +305,14 @@ export default function ComisionesUpload() {
       navigate('/comisiones');
 
     } catch (error: any) {
-      console.error('Error processing commissions:', error);
-      alert('Error al procesar las comisiones: ' + error.message);
+      console.error('[ComisionesUpload] FATAL ERROR processing commissions:', error);
+      console.error('[ComisionesUpload] Error type:', typeof error);
+      console.error('[ComisionesUpload] Error name:', error?.name);
+      console.error('[ComisionesUpload] Error message:', error?.message);
+      console.error('[ComisionesUpload] Error stack:', error?.stack);
+
+      const errorMessage = error?.message || error?.toString() || 'Error desconocido';
+      alert('Error al procesar las comisiones: ' + errorMessage);
     } finally {
       setProcessing(false);
     }
