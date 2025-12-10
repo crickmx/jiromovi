@@ -133,109 +133,105 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[process-production] Processing rows...');
-    const recordsToInsert: any[] = [];
+    const batchSize = 250;
     let processedCount = 0;
+    let skippedCount = 0;
 
-    for (const row of rows) {
-      try {
-        const fechaValue = row.FechaSimp || row.Fecha;
-        let fecha: Date;
-        if (typeof fechaValue === 'string') {
-          fecha = new Date(fechaValue);
-        } else if (fechaValue instanceof Date) {
-          fecha = fechaValue;
-        } else if (typeof fechaValue === 'number') {
-          const excelEpoch = new Date(1899, 11, 30);
-          fecha = new Date(excelEpoch.getTime() + fechaValue * 86400000);
-        } else {
-          console.warn('Invalid date format:', fechaValue);
-          continue;
-        }
+    for (let i = 0; i < rows.length; i += batchSize) {
+      const batch = rows.slice(i, i + batchSize);
+      const recordsToInsert: any[] = [];
 
-        if (isNaN(fecha.getTime())) {
-          console.warn('Invalid date:', fechaValue);
-          continue;
-        }
-
-        const anio = fecha.getFullYear();
-        const mes = fecha.getMonth() + 1;
-        const dia = fecha.getDate();
-        const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
-        const periodoAnio = anio;
-
-        const despNombre = (row.DespNombre || '').toString().trim();
-        const gerenciaNombre = (row.GerenciaNombre || '').toString().trim();
-        const regionNombre = (row['Dirección Regional'] || '').toString().trim();
-
-        if (!despNombre || !gerenciaNombre) {
-          console.warn('Missing office or management name');
-          continue;
-        }
-
-        const importePesos = parseFloat(row['IMPORTE PESOS']?.toString() || '0') || 0;
-        const primaConvenio = parseFloat(row['Prima de convenio']?.toString() || '0') || 0;
-        const primaPonderada = parseFloat(row['Prima Ponderada']?.toString() || '0') || 0;
-        const bono = parseFloat(row['Bono']?.toString() || '0') || 0;
-        const porcentajeBono = row['% BONO'] ? parseFloat(row['% BONO'].toString()) : null;
-
-        const convenioStr = (row.CONVENIO || '').toString().toLowerCase().trim();
-        const convenioFlag = convenioStr === 'si' || convenioStr === 'sí' || convenioStr === 'yes' || primaConvenio > 0;
-
-        recordsToInsert.push({
-          fecha: fecha.toISOString().split('T')[0],
-          anio,
-          mes,
-          dia,
-          periodo_mes: periodoMes,
-          periodo_anio: periodoAnio,
-          office_id: null,
-          management_id: null,
-          region_id: null,
-          desp_nombre_raw: despNombre,
-          gerencia_nombre_raw: gerenciaNombre,
-          region_raw: regionNombre || null,
-          agente_nombre: (row.VendNombre || '').toString().trim(),
-          aseguradora_nombre: (row['Nombre Compañía'] || '').toString().trim(),
-          ramo_nombre: (row['Sub Ramo'] || row.RamosNombre || '').toString().trim(),
-          subramo_nombre: null,
-          importe_pesos: importePesos,
-          prima_convenio: primaConvenio,
-          prima_ponderada: primaPonderada,
-          bono: bono,
-          convenio_flag: convenioFlag,
-          porcentaje_bono: porcentajeBono
-        });
-
-        processedCount++;
-
-        if (recordsToInsert.length >= 500) {
-          const { error: insertError } = await supabase
-            .from('production_records')
-            .insert(recordsToInsert);
-
-          if (insertError) {
-            console.error('Error inserting batch:', insertError);
+      for (const row of batch) {
+        try {
+          const fechaValue = row.FechaSimp || row.Fecha;
+          let fecha: Date;
+          if (typeof fechaValue === 'string') {
+            fecha = new Date(fechaValue);
+          } else if (fechaValue instanceof Date) {
+            fecha = fechaValue;
+          } else if (typeof fechaValue === 'number') {
+            const excelEpoch = new Date(1899, 11, 30);
+            fecha = new Date(excelEpoch.getTime() + fechaValue * 86400000);
+          } else {
+            skippedCount++;
+            continue;
           }
-          recordsToInsert.length = 0;
+
+          if (isNaN(fecha.getTime())) {
+            skippedCount++;
+            continue;
+          }
+
+          const anio = fecha.getFullYear();
+          const mes = fecha.getMonth() + 1;
+          const dia = fecha.getDate();
+          const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
+          const periodoAnio = anio;
+
+          const despNombre = (row.DespNombre || '').toString().trim();
+          const gerenciaNombre = (row.GerenciaNombre || '').toString().trim();
+          const regionNombre = (row['Dirección Regional'] || '').toString().trim();
+
+          if (!despNombre || !gerenciaNombre) {
+            skippedCount++;
+            continue;
+          }
+
+          const importePesos = parseFloat(row['IMPORTE PESOS']?.toString() || '0') || 0;
+          const primaConvenio = parseFloat(row['Prima de convenio']?.toString() || '0') || 0;
+          const primaPonderada = parseFloat(row['Prima Ponderada']?.toString() || '0') || 0;
+          const bono = parseFloat(row['Bono']?.toString() || '0') || 0;
+          const porcentajeBono = row['% BONO'] ? parseFloat(row['% BONO'].toString()) : null;
+
+          const convenioStr = (row.CONVENIO || '').toString().toLowerCase().trim();
+          const convenioFlag = convenioStr === 'si' || convenioStr === 'sí' || convenioStr === 'yes' || primaConvenio > 0;
+
+          recordsToInsert.push({
+            fecha: fecha.toISOString().split('T')[0],
+            anio,
+            mes,
+            dia,
+            periodo_mes: periodoMes,
+            periodo_anio: periodoAnio,
+            office_id: null,
+            management_id: null,
+            region_id: null,
+            desp_nombre_raw: despNombre,
+            gerencia_nombre_raw: gerenciaNombre,
+            region_raw: regionNombre || null,
+            agente_nombre: (row.VendNombre || '').toString().trim(),
+            aseguradora_nombre: (row['Nombre Compañía'] || '').toString().trim(),
+            ramo_nombre: (row['Sub Ramo'] || row.RamosNombre || '').toString().trim(),
+            subramo_nombre: null,
+            importe_pesos: importePesos,
+            prima_convenio: primaConvenio,
+            prima_ponderada: primaPonderada,
+            bono: bono,
+            convenio_flag: convenioFlag,
+            porcentaje_bono: porcentajeBono
+          });
+
+        } catch (rowError: any) {
+          skippedCount++;
+        }
+      }
+
+      if (recordsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('production_records')
+          .insert(recordsToInsert);
+
+        if (insertError) {
+          console.error('Error inserting batch:', insertError);
+          throw new Error(`Error al insertar lote: ${insertError.message}`);
         }
 
-      } catch (rowError: any) {
-        console.error('Error processing row:', rowError.message);
+        processedCount += recordsToInsert.length;
+        console.log(`[process-production] Processed batch: ${processedCount}/${rows.length}`);
       }
     }
 
-    if (recordsToInsert.length > 0) {
-      const { error: insertError } = await supabase
-        .from('production_records')
-        .insert(recordsToInsert);
-
-      if (insertError) {
-        console.error('Error inserting final batch:', insertError);
-        throw new Error(`Error al insertar registros: ${insertError.message}`);
-      }
-    }
-
-    console.log(`[process-production] Successfully processed ${processedCount} records`);
+    console.log(`[process-production] Completed. Processed: ${processedCount}, Skipped: ${skippedCount}`);
 
     if (processedCount === 0) {
       throw new Error('No se pudo procesar ningún registro del archivo. Verifica que el formato sea correcto.');
