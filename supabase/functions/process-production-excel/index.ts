@@ -8,14 +8,15 @@ const corsHeaders = {
 };
 
 interface ExcelRow {
-  Fecha: string | Date;
+  FechaSimp: string | Date;
+  Fecha?: string | Date;
   DespNombre: string;
   GerenciaNombre: string;
   'Dirección Regional'?: string;
   VendNombre: string;
   'Nombre Compañía': string;
-  RamosNombre: string;
-  'Sub Ramo'?: string;
+  'Sub Ramo': string;
+  RamosNombre?: string;
   'IMPORTE PESOS': number;
   'Prima de convenio': number;
   'Prima Ponderada': number;
@@ -103,8 +104,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const requiredColumns = [
-      'Fecha', 'DespNombre', 'GerenciaNombre', 'VendNombre',
-      'Nombre Compañía', 'RamosNombre', 'IMPORTE PESOS',
+      'FechaSimp', 'DespNombre', 'GerenciaNombre', 'VendNombre',
+      'Nombre Compañía', 'Sub Ramo', 'IMPORTE PESOS',
       'Prima de convenio', 'Prima Ponderada', 'Bono'
     ];
 
@@ -137,21 +138,22 @@ Deno.serve(async (req: Request) => {
 
     for (const row of rows) {
       try {
+        const fechaValue = row.FechaSimp || row.Fecha;
         let fecha: Date;
-        if (typeof row.Fecha === 'string') {
-          fecha = new Date(row.Fecha);
-        } else if (row.Fecha instanceof Date) {
-          fecha = row.Fecha;
-        } else if (typeof row.Fecha === 'number') {
+        if (typeof fechaValue === 'string') {
+          fecha = new Date(fechaValue);
+        } else if (fechaValue instanceof Date) {
+          fecha = fechaValue;
+        } else if (typeof fechaValue === 'number') {
           const excelEpoch = new Date(1899, 11, 30);
-          fecha = new Date(excelEpoch.getTime() + row.Fecha * 86400000);
+          fecha = new Date(excelEpoch.getTime() + fechaValue * 86400000);
         } else {
-          console.warn('Invalid date format:', row.Fecha);
+          console.warn('Invalid date format:', fechaValue);
           continue;
         }
 
         if (isNaN(fecha.getTime())) {
-          console.warn('Invalid date:', row.Fecha);
+          console.warn('Invalid date:', fechaValue);
           continue;
         }
 
@@ -194,8 +196,8 @@ Deno.serve(async (req: Request) => {
           region_raw: regionNombre || null,
           agente_nombre: (row.VendNombre || '').toString().trim(),
           aseguradora_nombre: (row['Nombre Compañía'] || '').toString().trim(),
-          ramo_nombre: (row.RamosNombre || '').toString().trim(),
-          subramo_nombre: (row['Sub Ramo'] || '').toString().trim() || null,
+          ramo_nombre: (row['Sub Ramo'] || row.RamosNombre || '').toString().trim(),
+          subramo_nombre: null,
           importe_pesos: importePesos,
           prima_convenio: primaConvenio,
           prima_ponderada: primaPonderada,

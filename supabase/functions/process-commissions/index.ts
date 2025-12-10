@@ -259,25 +259,30 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          const importeBase = row.Importe !== undefined && row.Importe !== null
-            ? row.Importe
-            : 0;
+          let importeBase = 0;
+          if (row.Importe !== undefined && row.Importe !== null && row.Importe !== '') {
+            const importeStr = row.Importe.toString().replace(/[$,]/g, '').trim();
+            importeBase = parseFloat(importeStr);
+          }
 
-          if (importeBase === 0) {
+          if (!importeBase || importeBase === 0 || isNaN(importeBase)) {
             errorsToInsert.push({
               batch_id: batch.id,
               error_type: 'invalid_data',
               email_agente: row.EmailAgente || row.Email,
               poliza: row.Poliza || row.Documento,
-              detalle: 'La columna Importe es requerida y no puede estar vacía',
+              detalle: `La columna Importe es requerida y no puede estar vacía. Valor recibido: ${row.Importe}`,
               raw_row: row
             });
+            errorsInBatch++;
             continue;
           }
 
-          const primaNeta = row.PrimaNeta !== undefined && row.PrimaNeta !== null
-            ? row.PrimaNeta
-            : 0;
+          let primaNeta = 0;
+          if (row.PrimaNeta !== undefined && row.PrimaNeta !== null && row.PrimaNeta !== '') {
+            const primaStr = row.PrimaNeta.toString().replace(/[$,]/g, '').trim();
+            primaNeta = parseFloat(primaStr) || 0;
+          }
 
           const porcentajeComision = row.PorPart;
           const commissionBruta = importeBase * (porcentajeComision / 100);
