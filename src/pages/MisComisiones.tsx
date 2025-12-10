@@ -283,21 +283,18 @@ export default function MisComisiones() {
                     </div>
 
                     <h4 className="text-lg font-bold text-neutral-900 mb-4">
-                      Detalle de Pólizas
+                      Detalle de Pólizas ({details.length})
                     </h4>
 
-                    <div className="bg-white rounded-lg overflow-hidden">
+                    <div className="hidden md:block bg-white rounded-lg overflow-hidden">
                       <table className="w-full text-sm">
                         <thead className="bg-neutral-100">
                           <tr>
-                            <th className="text-left py-3 px-4 font-semibold text-neutral-700">Póliza</th>
-                            <th className="text-left py-3 px-4 font-semibold text-neutral-700">Asegurado</th>
-                            <th className="text-left py-3 px-4 font-semibold text-neutral-700">Ramo</th>
-                            <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
-                            <th className="text-right py-3 px-4 font-semibold text-neutral-700">Prima Neta</th>
-                            <th className="text-right py-3 px-4 font-semibold text-neutral-700">Base Com.</th>
-                            <th className="text-right py-3 px-4 font-semibold text-neutral-700">% Com.</th>
-                            <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
+                            <th className="text-left py-3 px-3 font-semibold text-neutral-700">Póliza</th>
+                            <th className="text-left py-3 px-3 font-semibold text-neutral-700">Asegurado</th>
+                            <th className="text-left py-3 px-3 font-semibold text-neutral-700">Ramo / Aseg.</th>
+                            <th className="text-right py-3 px-3 font-semibold text-neutral-700">Prima Neta</th>
+                            <th className="text-right py-3 px-3 font-semibold text-neutral-700">% / Comisión</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -308,19 +305,76 @@ export default function MisComisiones() {
 
                             return (
                               <tr key={detail.id} className="border-b border-neutral-100">
-                                <td className="py-3 px-4 font-medium text-neutral-900">{detail.poliza}</td>
-                                <td className="py-3 px-4 text-neutral-700">{detail.nombre_asegurado || '-'}</td>
-                                <td className="py-3 px-4 text-neutral-700">{detail.ramo}</td>
-                                <td className="py-3 px-4 text-neutral-700">{detail.aseguradora}</td>
-                                <td className="py-3 px-4 text-right text-neutral-600">{formatCurrency(detail.prima_neta)}</td>
-                                <td className="py-3 px-4 text-right text-neutral-900 font-medium">{formatCurrency(detail.importe_base)}</td>
-                                <td className="py-3 px-4 text-right text-neutral-700">{detail.porcentaje_comision.toFixed(2)}%</td>
-                                <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(commission || 0)}</td>
+                                <td className="py-3 px-3">
+                                  <div className="font-medium text-neutral-900">{detail.poliza}</div>
+                                  {detail.concepto && (
+                                    <div className="text-xs text-neutral-500 mt-1">{detail.concepto}</div>
+                                  )}
+                                </td>
+                                <td className="py-3 px-3 text-neutral-700">{detail.nombre_asegurado || '-'}</td>
+                                <td className="py-3 px-3">
+                                  <div className="text-neutral-900 font-medium">{detail.ramo}</div>
+                                  <div className="text-xs text-neutral-600">{detail.aseguradora}</div>
+                                </td>
+                                <td className="py-3 px-3 text-right">
+                                  <div className="text-neutral-900 font-medium">{formatCurrency(detail.prima_neta)}</div>
+                                  <div className="text-xs text-neutral-600">Base: {formatCurrency(detail.importe_base)}</div>
+                                </td>
+                                <td className="py-3 px-3 text-right">
+                                  <div className="font-bold text-green-700">{formatCurrency(commission || 0)}</div>
+                                  <div className="text-xs text-neutral-600">{detail.porcentaje_comision.toFixed(2)}%</div>
+                                </td>
                               </tr>
                             );
                           })}
                         </tbody>
                       </table>
+                    </div>
+
+                    <div className="md:hidden space-y-3">
+                      {details.map(detail => {
+                        const commission = detail.is_manual_adjusted
+                          ? detail.adjusted_commission_neta
+                          : detail.commission_neta;
+
+                        return (
+                          <div key={detail.id} className="bg-white rounded-xl p-4 border border-neutral-200">
+                            <div className="mb-3">
+                              <div className="font-bold text-neutral-900 mb-1">{detail.poliza}</div>
+                              <div className="text-sm text-neutral-700">{detail.nombre_asegurado || '-'}</div>
+                              {detail.concepto && (
+                                <div className="text-xs text-neutral-500 mt-1">{detail.concepto}</div>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-neutral-200">
+                              <div>
+                                <div className="text-xs text-neutral-600 mb-1">Ramo</div>
+                                <div className="text-sm font-medium text-neutral-900">{detail.ramo}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-neutral-600 mb-1">Aseguradora</div>
+                                <div className="text-sm font-medium text-neutral-900">{detail.aseguradora}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-neutral-600 mb-1">Prima Neta</div>
+                                <div className="text-sm font-medium text-neutral-900">{formatCurrency(detail.prima_neta)}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-neutral-600 mb-1">Base Comisión</div>
+                                <div className="text-sm font-medium text-neutral-900">{formatCurrency(detail.importe_base)}</div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-xs text-neutral-600 mb-1">Comisión ({detail.porcentaje_comision.toFixed(2)}%)</div>
+                                <div className="text-xl font-bold text-green-700">{formatCurrency(commission || 0)}</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

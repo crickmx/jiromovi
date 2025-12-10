@@ -411,25 +411,22 @@ export default function ComisionesLote() {
       )}
 
       {activeTab === 'polizas' && (
-        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
+        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-4 md:p-6">
           <h3 className="text-xl font-bold text-neutral-900 mb-4">
-            Detalle por Póliza
+            Detalle por Póliza ({details.length})
           </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200">
-                  <th className="text-left py-3 px-4 font-semibold text-neutral-700">Póliza</th>
-                  <th className="text-left py-3 px-4 font-semibold text-neutral-700">Asegurado</th>
-                  <th className="text-left py-3 px-4 font-semibold text-neutral-700">Descripción</th>
-                  <th className="text-left py-3 px-4 font-semibold text-neutral-700">Agente</th>
-                  <th className="text-left py-3 px-4 font-semibold text-neutral-700">Ramo</th>
-                  <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
-                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Prima Neta</th>
-                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Base Com.</th>
-                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">% Com.</th>
-                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
-                  <th className="text-center py-3 px-4 font-semibold text-neutral-700">Acciones</th>
+                  <th className="text-left py-3 px-3 font-semibold text-neutral-700">Póliza</th>
+                  <th className="text-left py-3 px-3 font-semibold text-neutral-700">Asegurado</th>
+                  <th className="text-left py-3 px-3 font-semibold text-neutral-700">Agente</th>
+                  <th className="text-left py-3 px-3 font-semibold text-neutral-700">Ramo / Aseg.</th>
+                  <th className="text-right py-3 px-3 font-semibold text-neutral-700">Prima Neta</th>
+                  <th className="text-right py-3 px-3 font-semibold text-neutral-700">% / Comisión</th>
+                  <th className="text-center py-3 px-3 font-semibold text-neutral-700">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -439,32 +436,39 @@ export default function ComisionesLote() {
                     : detail.commission_neta;
 
                   return (
-                    <tr key={detail.id} className="border-b border-neutral-100 hover:bg-neutral-50">
-                      <td className="py-3 px-4 font-medium text-neutral-900">
-                        {detail.poliza}
+                    <tr key={detail.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
+                      <td className="py-3 px-3">
+                        <div className="font-medium text-neutral-900">{detail.poliza}</div>
                         {detail.is_manual_adjusted && (
-                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                          <span className="inline-block mt-1 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
                             Ajustado
                           </span>
                         )}
+                        {detail.concepto && (
+                          <div className="text-xs text-neutral-500 mt-1">{detail.concepto}</div>
+                        )}
                       </td>
-                      <td className="py-3 px-4 text-neutral-700">{detail.nombre_asegurado || '-'}</td>
-                      <td className="py-3 px-4 text-neutral-600 text-sm">{detail.concepto || '-'}</td>
-                      <td className="py-3 px-4 text-neutral-700">{detail.agent?.name}</td>
-                      <td className="py-3 px-4 text-neutral-700">{detail.ramo}</td>
-                      <td className="py-3 px-4 text-neutral-700">{detail.aseguradora}</td>
-                      <td className="py-3 px-4 text-right text-neutral-600">{formatCurrency(detail.prima_neta)}</td>
-                      <td className="py-3 px-4 text-right text-neutral-900 font-medium">{formatCurrency(detail.importe_base)}</td>
-                      <td className="py-3 px-4 text-right text-neutral-700">{detail.porcentaje_comision.toFixed(2)}%</td>
-                      <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(commission || 0)}</td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-3 px-3 text-neutral-700">{detail.nombre_asegurado || '-'}</td>
+                      <td className="py-3 px-3 text-neutral-700">{detail.agent?.name}</td>
+                      <td className="py-3 px-3">
+                        <div className="text-neutral-900 font-medium">{detail.ramo}</div>
+                        <div className="text-xs text-neutral-600">{detail.aseguradora}</div>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="text-neutral-900 font-medium">{formatCurrency(detail.prima_neta)}</div>
+                        <div className="text-xs text-neutral-600">Base: {formatCurrency(detail.importe_base)}</div>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="font-bold text-green-700">{formatCurrency(commission || 0)}</div>
+                        <div className="text-xs text-neutral-600">{detail.porcentaje_comision.toFixed(2)}%</div>
+                      </td>
+                      <td className="py-3 px-3 text-center">
                         <button
                           onClick={() => setAdjustingDetail(detail)}
-                          className="inline-flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                          className="inline-flex items-center justify-center p-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
                           title="Ajustar comisión"
                         >
                           <Wrench className="w-4 h-4" />
-                          <span>Ajustar</span>
                         </button>
                       </td>
                     </tr>
@@ -473,6 +477,84 @@ export default function ComisionesLote() {
               </tbody>
             </table>
           </div>
+
+          <div className="lg:hidden space-y-3">
+            {details.map(detail => {
+              const commission = detail.is_manual_adjusted
+                ? detail.adjusted_commission_neta
+                : detail.commission_neta;
+
+              return (
+                <div key={detail.id} className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="font-bold text-neutral-900 mb-1">{detail.poliza}</div>
+                      {detail.is_manual_adjusted && (
+                        <span className="inline-block text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full mb-2">
+                          Ajustado
+                        </span>
+                      )}
+                      <div className="text-sm text-neutral-700">{detail.nombre_asegurado || '-'}</div>
+                      {detail.concepto && (
+                        <div className="text-xs text-neutral-500 mt-1">{detail.concepto}</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setAdjustingDetail(detail)}
+                      className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                    >
+                      <Wrench className="w-4 h-4" />
+                      <span>Ajustar</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-neutral-200">
+                    <div>
+                      <div className="text-xs text-neutral-600 mb-1">Agente</div>
+                      <div className="text-sm font-medium text-neutral-900">{detail.agent?.name}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-neutral-600 mb-1">Ramo</div>
+                      <div className="text-sm font-medium text-neutral-900">{detail.ramo}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-neutral-600 mb-1">Aseguradora</div>
+                      <div className="text-sm font-medium text-neutral-900">{detail.aseguradora}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-neutral-600 mb-1">Prima Neta</div>
+                      <div className="text-sm font-medium text-neutral-900">{formatCurrency(detail.prima_neta)}</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs text-neutral-600 mb-1">Base Comisión</div>
+                      <div className="text-sm font-medium text-neutral-900">{formatCurrency(detail.importe_base)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-neutral-600 mb-1">Porcentaje</div>
+                      <div className="text-sm font-medium text-neutral-900">{detail.porcentaje_comision.toFixed(2)}%</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-neutral-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-neutral-700">Comisión Total</span>
+                      <span className="text-lg font-bold text-green-700">{formatCurrency(commission || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {details.length === 0 && (
+            <div className="text-center py-12">
+              <FileSpreadsheet className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+              <p className="text-neutral-500">No hay pólizas registradas en este lote</p>
+            </div>
+          )}
         </div>
       )}
 
