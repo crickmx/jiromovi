@@ -51,6 +51,8 @@ export default function ProduccionCargar() {
   const handleUpload = async () => {
     if (!file || !usuario) return;
 
+    console.log('[ProduccionCargar] Starting upload. File:', file.name, 'User:', usuario.id);
+
     setLoading(true);
     setError('');
     setSuccess(false);
@@ -60,8 +62,12 @@ export default function ProduccionCargar() {
       formData.append('file', file);
       formData.append('userId', usuario.id);
 
+      console.log('[ProduccionCargar] FormData prepared');
+
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      console.log('[ProduccionCargar] Sending request to edge function...');
 
       const response = await fetch(
         `${supabaseUrl}/functions/v1/process-production-excel`,
@@ -74,12 +80,22 @@ export default function ProduccionCargar() {
         }
       );
 
-      const data = await response.json();
+      console.log('[ProduccionCargar] Response status:', response.status);
+
+      let data;
+      try {
+        data = await response.json();
+        console.log('[ProduccionCargar] Response data:', data);
+      } catch (parseError) {
+        console.error('[ProduccionCargar] Error parsing response:', parseError);
+        throw new Error('Error al procesar la respuesta del servidor');
+      }
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Error al procesar el archivo');
       }
 
+      console.log('[ProduccionCargar] Upload successful!');
       setSuccess(true);
       setStats(data);
       setFile(null);
@@ -88,7 +104,7 @@ export default function ProduccionCargar() {
       if (fileInput) fileInput.value = '';
 
     } catch (err: any) {
-      console.error('Error uploading file:', err);
+      console.error('[ProduccionCargar] Error uploading file:', err);
       setError(err.message || 'Error al cargar el archivo');
     } finally {
       setLoading(false);

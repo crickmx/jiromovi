@@ -34,24 +34,40 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log('[process-production] Starting process...');
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    console.log('[process-production] Reading form data...');
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const userId = formData.get('userId') as string;
+
+    console.log('[process-production] FormData parsed. File:', !!file, 'UserId:', userId);
 
     if (!file) {
       throw new Error('No se proporcionó archivo');
     }
 
-    console.log('[process-production] File received:', file.name, file.size);
+    console.log('[process-production] File received:', file.name, file.size, file.type);
 
+    console.log('[process-production] Converting file to array buffer...');
     const arrayBuffer = await file.arrayBuffer();
+
+    console.log('[process-production] Parsing Excel file...');
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+    console.log('[process-production] Sheet names:', workbook.SheetNames);
+    if (workbook.SheetNames.length === 0) {
+      throw new Error('El archivo Excel no contiene hojas');
+    }
+
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
+
+    console.log('[process-production] Converting sheet to JSON...');
     const rows = XLSX.utils.sheet_to_json<ExcelRow>(sheet);
 
     console.log('[process-production] Rows parsed:', rows.length);
@@ -67,9 +83,14 @@ Deno.serve(async (req: Request) => {
     ];
 
     const firstRow = rows[0];
+    const availableColumns = Object.keys(firstRow);
+    console.log('[process-production] Available columns:', availableColumns);
+
     const missingColumns = requiredColumns.filter(col => !(col in firstRow));
 
     if (missingColumns.length > 0) {
+      console.error('[process-production] Missing columns:', missingColumns);
+      console.error('[process-production] Required columns:', requiredColumns);
       throw new Error(`Faltan columnas requeridas: ${missingColumns.join(', ')}`);
     }
 
@@ -350,6 +371,9 @@ Deno.serve(async (req: Request) => {
 
   } catch (error: any) {
     console.error('Error in process-production:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
 
     let errorMessage = 'Error desconocido al procesar el archivo';
 
@@ -366,6 +390,8 @@ Deno.serve(async (req: Request) => {
         errorMessage = `Error de base de datos: ${error.code}`;
       }
     }
+
+    console.error('[process-production] Returning error to client:', errorMessage);
 
     return new Response(
       JSON.stringify({
