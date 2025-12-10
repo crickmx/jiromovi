@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, X, Calculator, Palette, Inbox, FileSignature, Contact, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 
 interface LayoutProps {
@@ -33,6 +33,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: isAdmin ? '/comisiones' : '/mis-comisiones', label: 'Comisiones', icon: DollarSign, show: true },
+    { path: '/produccion/total', label: 'Producción', icon: TrendingUp, show: isAdminOrGerente },
     { path: '/mi-crm', label: 'Mi CRM', icon: Briefcase, show: true },
     { path: '/comunicados', label: 'Comunicados', icon: FileText, show: true },
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
@@ -79,7 +80,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               {navItems.filter(item => item.show).map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path ||
-                  (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones')));
+                  (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones'))) ||
+                  (item.label === 'Producción' && location.pathname.startsWith('/produccion'));
                 return (
                   <button
                     key={item.path}

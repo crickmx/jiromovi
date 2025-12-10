@@ -1,0 +1,348 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import * as XLSX from 'npm:xlsx@0.18.5';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+};
+
+interface ExcelRow {
+  Fecha: string | Date;
+  DespNombre: string;
+  GerenciaNombre: string;
+  'Dirección Regional'?: string;
+  VendNombre: string;
+  'Nombre Compañía': string;
+  RamosNombre: string;
+  'Sub Ramo'?: string;
+  'IMPORTE PESOS': number;
+  'Prima de convenio': number;
+  'Prima Ponderada': number;
+  Bono: number;
+  CONVENIO?: string;
+  '% BONO'?: number;
+  [key: string]: any;
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const formData = await req.formData();
+    const file = formData.get('file') as File;
+    const userId = formData.get('userId') as string;
+
+    if (!file) {
+      throw new Error('No se proporcionó archivo');
+    }
+
+    console.log('[process-production] File received:', file.name, file.size);
+
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json<ExcelRow>(sheet);
+
+    console.log('[process-production] Rows parsed:', rows.length);
+
+    if (rows.length === 0) {
+      throw new Error('El archivo está vacío');
+    }
+
+    const requiredColumns = [
+      'Fecha', 'DespNombre', 'GerenciaNombre', 'VendNombre',
+      'Nombre Compañía', 'RamosNombre', 'IMPORTE PESOS',
+      'Prima de convenio', 'Prima Ponderada', 'Bono'
+    ];
+
+    const firstRow = rows[0];
+    const missingColumns = requiredColumns.filter(col => !(col in firstRow));
+
+    if (missingColumns.length > 0) {
+      throw new Error(`Faltan columnas requeridas: ${missingColumns.join(', ')}`);
+    }
+
+    console.log('[process-production] Deleting old records...');
+    const { error: deleteError } = await supabase
+      .from('production_records')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (deleteError) {
+      console.error('Error deleting records:', deleteError);
+      throw new Error('Error al eliminar registros anteriores');
+    }
+
+    const officesCache = new Map<string, string>();
+    const managementsCache = new Map<string, string>();
+    const regionsCache = new Map<string, string>();
+
+    console.log('[process-production] Processing rows...');
+    const recordsToInsert: any[] = [];
+    let processedCount = 0;
+
+    for (const row of rows) {
+      try {
+        let fecha: Date;
+        if (typeof row.Fecha === 'string') {
+          fecha = new Date(row.Fecha);
+        } else if (row.Fecha instanceof Date) {
+          fecha = row.Fecha;
+        } else if (typeof row.Fecha === 'number') {
+          const excelEpoch = new Date(1899, 11, 30);
+          fecha = new Date(excelEpoch.getTime() + row.Fecha * 86400000);
+        } else {
+          console.warn('Invalid date format:', row.Fecha);
+          continue;
+        }
+
+        if (isNaN(fecha.getTime())) {
+          console.warn('Invalid date:', row.Fecha);
+          continue;
+        }
+
+        const anio = fecha.getFullYear();
+        const mes = fecha.getMonth() + 1;
+        const dia = fecha.getDate();
+        const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
+        const periodoAnio = anio;
+
+        const despNombre = (row.DespNombre || '').toString().trim();
+        const gerenciaNombre = (row.GerenciaNombre || '').toString().trim();
+        const regionNombre = (row['Dirección Regional'] || '').toString().trim();
+
+        if (!despNombre || !gerenciaNombre) {
+          console.warn('Missing office or management name');
+          continue;
+        }
+
+        let officeId = officesCache.get(despNombre.toLowerCase());
+        if (!officeId) {
+          const { data: existingOffice } = await supabase
+            .from('production_offices')
+            .select('id')
+            .or(`name.ilike.${despNombre},original_names.cs.["${despNombre}"]`)
+            .single();
+
+          if (existingOffice) {
+            officeId = existingOffice.id;
+          } else {
+            const { data: newOffice, error: officeError } = await supabase
+              .from('production_offices')
+              .insert({
+                name: despNombre,
+                original_names: [despNombre]
+              })
+              .select('id')
+              .single();
+
+            if (officeError || !newOffice) {
+              console.error('Error creating office:', officeError);
+              continue;
+            }
+            officeId = newOffice.id;
+          }
+          officesCache.set(despNombre.toLowerCase(), officeId);
+        }
+
+        let managementId = managementsCache.get(gerenciaNombre.toLowerCase());
+        if (!managementId) {
+          const { data: existingManagement } = await supabase
+            .from('production_managements')
+            .select('id')
+            .or(`name.ilike.${gerenciaNombre},original_names.cs.["${gerenciaNombre}"]`)
+            .single();
+
+          if (existingManagement) {
+            managementId = existingManagement.id;
+          } else {
+            const { data: newManagement, error: managementError } = await supabase
+              .from('production_managements')
+              .insert({
+                name: gerenciaNombre,
+                original_names: [gerenciaNombre]
+              })
+              .select('id')
+              .single();
+
+            if (managementError || !newManagement) {
+              console.error('Error creating management:', managementError);
+              continue;
+            }
+            managementId = newManagement.id;
+          }
+          managementsCache.set(gerenciaNombre.toLowerCase(), managementId);
+        }
+
+        let regionId: string | null = null;
+        if (regionNombre) {
+          regionId = regionsCache.get(regionNombre.toLowerCase()) || null;
+          if (!regionId) {
+            const { data: existingRegion } = await supabase
+              .from('production_regions')
+              .select('id')
+              .or(`name.ilike.${regionNombre},original_names.cs.["${regionNombre}"]`)
+              .single();
+
+            if (existingRegion) {
+              regionId = existingRegion.id;
+            } else {
+              const { data: newRegion } = await supabase
+                .from('production_regions')
+                .insert({
+                  name: regionNombre,
+                  original_names: [regionNombre]
+                })
+                .select('id')
+                .single();
+
+              if (newRegion) {
+                regionId = newRegion.id;
+              }
+            }
+            if (regionId) {
+              regionsCache.set(regionNombre.toLowerCase(), regionId);
+            }
+          }
+        }
+
+        const importePesos = parseFloat(row['IMPORTE PESOS']?.toString() || '0') || 0;
+        const primaConvenio = parseFloat(row['Prima de convenio']?.toString() || '0') || 0;
+        const primaPonderada = parseFloat(row['Prima Ponderada']?.toString() || '0') || 0;
+        const bono = parseFloat(row['Bono']?.toString() || '0') || 0;
+        const porcentajeBono = row['% BONO'] ? parseFloat(row['% BONO'].toString()) : null;
+
+        const convenioStr = (row.CONVENIO || '').toString().toLowerCase().trim();
+        const convenioFlag = convenioStr === 'si' || convenioStr === 'sí' || convenioStr === 'yes' || primaConvenio > 0;
+
+        recordsToInsert.push({
+          fecha: fecha.toISOString().split('T')[0],
+          anio,
+          mes,
+          dia,
+          periodo_mes: periodoMes,
+          periodo_anio: periodoAnio,
+          office_id: officeId,
+          management_id: managementId,
+          region_id: regionId,
+          desp_nombre_raw: despNombre,
+          gerencia_nombre_raw: gerenciaNombre,
+          region_raw: regionNombre || null,
+          agente_nombre: (row.VendNombre || '').toString().trim(),
+          aseguradora_nombre: (row['Nombre Compañía'] || '').toString().trim(),
+          ramo_nombre: (row.RamosNombre || '').toString().trim(),
+          subramo_nombre: (row['Sub Ramo'] || '').toString().trim() || null,
+          importe_pesos: importePesos,
+          prima_convenio: primaConvenio,
+          prima_ponderada: primaPonderada,
+          bono: bono,
+          convenio_flag: convenioFlag,
+          porcentaje_bono: porcentajeBono
+        });
+
+        processedCount++;
+
+        if (recordsToInsert.length >= 500) {
+          const { error: insertError } = await supabase
+            .from('production_records')
+            .insert(recordsToInsert);
+
+          if (insertError) {
+            console.error('Error inserting batch:', insertError);
+          }
+          recordsToInsert.length = 0;
+        }
+
+      } catch (rowError: any) {
+        console.error('Error processing row:', rowError.message);
+      }
+    }
+
+    if (recordsToInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from('production_records')
+        .insert(recordsToInsert);
+
+      if (insertError) {
+        console.error('Error inserting final batch:', insertError);
+      }
+    }
+
+    const { data: importLog } = await supabase
+      .from('production_import_logs')
+      .insert({
+        imported_by_user_id: userId,
+        file_name: file.name,
+        records_count: processedCount
+      })
+      .select()
+      .single();
+
+    const { data: stats } = await supabase
+      .from('production_records')
+      .select('importe_pesos, prima_convenio, prima_ponderada')
+      .then(result => {
+        if (result.data) {
+          const totalImporte = result.data.reduce((sum, r) => sum + (r.importe_pesos || 0), 0);
+          const totalConvenio = result.data.reduce((sum, r) => sum + (r.prima_convenio || 0), 0);
+          const totalPonderada = result.data.reduce((sum, r) => sum + (r.prima_ponderada || 0), 0);
+          return {
+            data: {
+              totalImporte,
+              totalConvenio,
+              totalPonderada,
+              recordsCount: result.data.length
+            }
+          };
+        }
+        return { data: null };
+      });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        recordsImported: processedCount,
+        importedAt: importLog?.imported_at,
+        stats: stats || {
+          totalImporte: 0,
+          totalConvenio: 0,
+          totalPonderada: 0,
+          recordsCount: 0
+        }
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+  } catch (error: any) {
+    console.error('Error in process-production:', error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message || 'Error desconocido'
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }
+});

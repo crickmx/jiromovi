@@ -48,6 +48,9 @@ import Comisiones from './pages/Comisiones';
 import ComisionesLote from './pages/ComisionesLote';
 import MisComisiones from './pages/MisComisiones';
 import ComisionesUpload from './pages/ComisionesUpload';
+import ProduccionTotal from './pages/ProduccionTotal';
+import ProduccionConvenio from './pages/ProduccionConvenio';
+import ProduccionCargar from './pages/ProduccionCargar';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -521,6 +524,39 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <MisComisiones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/produccion/total"
+        element={
+          <ProtectedRoute requireAdmin={false} requireGerente>
+            <Layout>
+              <ProduccionTotal />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/produccion/convenio"
+        element={
+          <ProtectedRoute requireAdmin={false} requireGerente>
+            <Layout>
+              <ProduccionConvenio />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/produccion/cargar"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <ProduccionCargar />
             </Layout>
           </ProtectedRoute>
         }
