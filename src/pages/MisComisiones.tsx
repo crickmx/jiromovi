@@ -5,6 +5,8 @@ import { DollarSign, Download, FileText, Calendar, Loader2 } from 'lucide-react'
 import type { CommissionBatch, CommissionDetail } from '../lib/commissionTypes';
 import { calculateBatchSummary, formatCurrency, formatDate } from '../lib/commissionUtils';
 import { generateCommissionPDF, downloadPDF } from '../lib/pdfUtils';
+import GraficaColumnas from '../components/comisiones/GraficaColumnas';
+import GraficaCircular from '../components/comisiones/GraficaCircular';
 
 export default function MisComisiones() {
   const { usuario } = useAuth();
@@ -218,6 +220,26 @@ export default function MisComisiones() {
 
                 {selectedBatch === batch.id && summary && (
                   <div className="border-t border-neutral-200 p-6 bg-neutral-50">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                      <GraficaColumnas
+                        title="Comisiones por Ramo"
+                        data={Object.entries(summary.by_ramo).map(([ramo, data]) => ({
+                          label: ramo,
+                          value: data.neta
+                        }))}
+                        valueFormatter={(v) => formatCurrency(v)}
+                      />
+
+                      <GraficaCircular
+                        title="Distribución por Aseguradora"
+                        data={Object.entries(summary.by_aseguradora).map(([aseg, data]) => ({
+                          label: aseg,
+                          value: data.neta
+                        }))}
+                        valueFormatter={(v) => formatCurrency(v)}
+                      />
+                    </div>
+
                     <h4 className="text-lg font-bold text-neutral-900 mb-4">
                       Desglose por Ramo
                     </h4>

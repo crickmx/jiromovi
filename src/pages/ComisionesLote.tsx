@@ -7,6 +7,8 @@ import type { CommissionBatch, CommissionDetail, CommissionError } from '../lib/
 import { calculateBatchSummary, calculateAgentSummaries, formatCurrency, formatDate } from '../lib/commissionUtils';
 import AjustarComisionModal from '../components/comisiones/AjustarComisionModal';
 import { generateCommissionPDF, downloadPDF } from '../lib/pdfUtils';
+import GraficaColumnas from '../components/comisiones/GraficaColumnas';
+import GraficaCircular from '../components/comisiones/GraficaCircular';
 
 export default function ComisionesLote() {
   const { id } = useParams<{ id: string }>();
@@ -285,6 +287,26 @@ export default function ComisionesLote() {
                 {summary.total_polizas}
               </div>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <GraficaColumnas
+              title="Comisiones por Ramo"
+              data={Object.entries(summary.by_ramo).map(([ramo, data]) => ({
+                label: ramo,
+                value: data.neta
+              }))}
+              valueFormatter={(v) => formatCurrency(v)}
+            />
+
+            <GraficaCircular
+              title="Distribución por Aseguradora"
+              data={Object.entries(summary.by_aseguradora).map(([aseg, data]) => ({
+                label: aseg,
+                value: data.neta
+              }))}
+              valueFormatter={(v) => formatCurrency(v)}
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
