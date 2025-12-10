@@ -261,7 +261,7 @@ export function Perfil() {
 
           <div className="mt-8">
             <PaymentFields
-              esquemaPagoId={formData.esquema_pago_id || ''}
+              regimenFiscalId={formData.regimen_fiscal_id || ''}
               banco={formData.banco || ''}
               clabe={formData.clabe || ''}
               onChange={(field, value) => setFormData({ ...formData, [field]: value })}

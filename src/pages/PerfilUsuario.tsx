@@ -103,7 +103,7 @@ export function PerfilUsuario() {
       equipo_celular: formData.equipo_celular,
       url_web_jiro: formData.url_web_jiro,
       url_web_multicotizador: formData.url_web_multicotizador,
-      esquema_pago_id: formData.esquema_pago_id || null,
+      regimen_fiscal_id: formData.regimen_fiscal_id || null,
       banco: formData.banco || null,
       clabe: formData.clabe || null,
       dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles ?? 0,
@@ -567,7 +567,7 @@ export function PerfilUsuario() {
 
                   <div className="mt-8">
                     <PaymentFields
-                      esquemaPagoId={formData.esquema_pago_id || ''}
+                      regimenFiscalId={formData.regimen_fiscal_id || ''}
                       banco={formData.banco || ''}
                       clabe={formData.clabe || ''}
                       onChange={(field, value) => setFormData({ ...formData, [field]: value })}

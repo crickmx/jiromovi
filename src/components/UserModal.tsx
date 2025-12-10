@@ -35,7 +35,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     extension_telefonica: '',
     url_web_jiro: '',
     url_web_multicotizador: '',
-    esquema_pago_id: '',
+    regimen_fiscal_id: '',
     banco: '',
     clabe: '',
     dias_vacaciones_disponibles: 0,
@@ -69,7 +69,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         extension_telefonica: user.extension_telefonica,
         url_web_jiro: user.url_web_jiro,
         url_web_multicotizador: user.url_web_multicotizador,
-        esquema_pago_id: user.esquema_pago_id || '',
+        regimen_fiscal_id: user.regimen_fiscal_id || '',
         banco: user.banco || '',
         clabe: user.clabe || '',
         dias_vacaciones_disponibles: user.dias_vacaciones_disponibles || 0,
@@ -108,7 +108,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           extension_telefonica: formData.extension_telefonica,
           url_web_jiro: formData.url_web_jiro,
           url_web_multicotizador: formData.url_web_multicotizador,
-          esquema_pago_id: formData.esquema_pago_id || null,
+          regimen_fiscal_id: formData.regimen_fiscal_id || null,
           banco: formData.banco,
           clabe: formData.clabe,
           dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
@@ -185,7 +185,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 extension_telefonica: formData.extension_telefonica,
                 url_web_jiro: formData.url_web_jiro,
                 url_web_multicotizador: formData.url_web_multicotizador,
-                esquema_pago_id: formData.esquema_pago_id || null,
+                regimen_fiscal_id: formData.regimen_fiscal_id || null,
                 banco: formData.banco,
                 clabe: formData.clabe,
                 dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
@@ -488,7 +488,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
 
           <div>
             <PaymentFields
-              esquemaPagoId={formData.esquema_pago_id}
+              regimenFiscalId={formData.regimen_fiscal_id}
               banco={formData.banco}
               clabe={formData.clabe}
               onChange={(field, value) => setFormData({ ...formData, [field]: value })}
