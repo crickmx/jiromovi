@@ -151,18 +151,18 @@ export default function CalendarioEventos() {
     const { data } = await supabase
       .from('aula_eventos')
       .select('*')
-      .gte('fecha_evento', inicio.toISOString())
-      .lte('fecha_evento', fin.toISOString())
-      .order('fecha_evento', { ascending: true });
+      .gte('fecha', inicio.toISOString().split('T')[0])
+      .lte('fecha', fin.toISOString().split('T')[0])
+      .order('fecha', { ascending: true });
 
     return (data || []).map(evento => ({
       id: evento.id,
-      fecha: evento.fecha_evento,
+      fecha: evento.fecha,
       tipo: 'evento' as const,
       titulo: evento.titulo,
       descripcion: evento.descripcion,
-      hora: evento.hora_inicio ? `${evento.hora_inicio} - ${evento.hora_fin || ''}`.trim() : undefined,
-      ubicacion: evento.ubicacion,
+      hora: evento.hora || undefined,
+      ubicacion: undefined,
     }));
   };
 
