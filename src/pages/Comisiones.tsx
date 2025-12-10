@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle, Settings, Users } from 'lucide-react';
+import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import type { CommissionBatch } from '../lib/commissionTypes';
 import { formatCurrency, formatDate } from '../lib/commissionUtils';
 
@@ -109,34 +109,6 @@ export default function Comisiones() {
           >
             <Plus className="w-5 h-5" />
             <span>Nuevo Lote</span>
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <button
-            onClick={() => navigate('/comisiones/reglas')}
-            className="flex items-center space-x-3 p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl hover:shadow-medium transition-all duration-200 group"
-          >
-            <div className="p-3 bg-blue-500 rounded-lg group-hover:scale-110 transition-transform">
-              <Settings className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-left">
-              <h3 className="font-bold text-neutral-900">Reglas de Negocio</h3>
-              <p className="text-sm text-neutral-600">Configura cómo se calculan las comisiones</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate('/comisiones/importar-agentes')}
-            className="flex items-center space-x-3 p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl hover:shadow-medium transition-all duration-200 group"
-          >
-            <div className="p-3 bg-green-500 rounded-lg group-hover:scale-110 transition-transform">
-              <Users className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-left">
-              <h3 className="font-bold text-neutral-900">Gestionar Agentes</h3>
-              <p className="text-sm text-neutral-600">Importa y administra agentes de comisiones</p>
-            </div>
           </button>
         </div>
 
