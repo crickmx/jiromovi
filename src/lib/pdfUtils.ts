@@ -205,6 +205,7 @@ export async function generateCommissionPDF(
     polizaRows.push([
       detail.poliza,
       detail.nombre_asegurado || '-',
+      detail.concepto || '-',
       detail.ramo,
       detail.aseguradora,
       formatCurrency(detail.prima_base),
@@ -214,12 +215,15 @@ export async function generateCommissionPDF(
 
   autoTable(doc, {
     startY: yPosition,
-    head: [['Póliza', 'Asegurado', 'Ramo', 'Aseguradora', 'Prima', 'Comisión']],
+    head: [['Póliza', 'Asegurado', 'Descripción', 'Ramo', 'Aseguradora', 'Prima', 'Comisión']],
     body: polizaRows,
     theme: 'grid',
     headStyles: { fillColor: [41, 128, 185], textColor: 255 },
     margin: { left: 15, right: 15 },
-    styles: { fontSize: 8 }
+    styles: { fontSize: 7 },
+    columnStyles: {
+      2: { cellWidth: 30 }
+    }
   });
 
   const finalY = (doc as any).lastAutoTable.finalY;

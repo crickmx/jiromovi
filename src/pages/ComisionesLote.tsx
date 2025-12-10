@@ -399,6 +399,7 @@ export default function ComisionesLote() {
                 <tr className="border-b border-neutral-200">
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Póliza</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Asegurado</th>
+                  <th className="text-left py-3 px-4 font-semibold text-neutral-700">Descripción</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Agente</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Ramo</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
@@ -424,6 +425,7 @@ export default function ComisionesLote() {
                         )}
                       </td>
                       <td className="py-3 px-4 text-neutral-700">{detail.nombre_asegurado || '-'}</td>
+                      <td className="py-3 px-4 text-neutral-600 text-sm">{detail.concepto || '-'}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.agent?.name}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.ramo}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.aseguradora}</td>
