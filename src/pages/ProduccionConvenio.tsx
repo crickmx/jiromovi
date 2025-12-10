@@ -9,9 +9,8 @@ interface ProductionRecord {
   id: string;
   fecha: string;
   periodo_mes: string;
-  office: { name: string };
-  management: { name: string };
-  region: { name: string } | null;
+  desp_nombre_raw: string;
+  gerencia_nombre_raw: string;
   region_raw: string | null;
   agente_nombre: string;
   aseguradora_nombre: string;
@@ -66,12 +65,7 @@ export default function ProduccionConvenio() {
     try {
       let query = supabase
         .from('production_records')
-        .select(`
-          *,
-          office:production_offices(name),
-          management:production_managements(name),
-          region:production_regions(name)
-        `)
+        .select('*')
         .eq('convenio_flag', true);
 
       if (usuario.rol === 'Gerente' && usuario.production_office_id) {
@@ -84,8 +78,8 @@ export default function ProduccionConvenio() {
 
       setRecords(data || []);
 
-      const uniqueOffices = [...new Set(data?.map(r => r.office?.name).filter(Boolean))] as string[];
-      const uniqueManagements = [...new Set(data?.map(r => r.management?.name).filter(Boolean))] as string[];
+      const uniqueOffices = [...new Set(data?.map(r => r.desp_nombre_raw).filter(Boolean))] as string[];
+      const uniqueManagements = [...new Set(data?.map(r => r.gerencia_nombre_raw).filter(Boolean))] as string[];
       const uniqueAgents = [...new Set(data?.map(r => r.agente_nombre).filter(Boolean))] as string[];
       const uniqueRamos = [...new Set(data?.map(r => r.ramo_nombre).filter(Boolean))] as string[];
       const uniqueAseguradoras = [...new Set(data?.map(r => r.aseguradora_nombre).filter(Boolean))] as string[];
@@ -125,13 +119,13 @@ export default function ProduccionConvenio() {
 
     if (filters.management) {
       filtered = filtered.filter(r =>
-        r.management?.name?.toLowerCase().includes(filters.management.toLowerCase())
+        r.gerencia_nombre_raw?.toLowerCase().includes(filters.management.toLowerCase())
       );
     }
 
     if (filters.office) {
       filtered = filtered.filter(r =>
-        r.office?.name?.toLowerCase().includes(filters.office.toLowerCase())
+        r.desp_nombre_raw?.toLowerCase().includes(filters.office.toLowerCase())
       );
     }
 
@@ -181,9 +175,9 @@ export default function ProduccionConvenio() {
   const exportToExcel = () => {
     const dataToExport = filteredRecords.map(r => ({
       'Fecha': r.fecha,
-      'Dirección Regional': r.region?.name || r.region_raw || '',
-      'Gerencia': r.management?.name || '',
-      'Oficina': r.office?.name || '',
+      'Dirección Regional': r.region_raw || '',
+      'Gerencia': r.gerencia_nombre_raw || '',
+      'Oficina': r.desp_nombre_raw || '',
       'Agente': r.agente_nombre,
       'Aseguradora': r.aseguradora_nombre,
       'Ramo': r.ramo_nombre,
@@ -455,11 +449,11 @@ export default function ProduccionConvenio() {
                   </td>
                   {isAdmin && (
                     <td className="px-4 py-3 text-sm text-neutral-600">
-                      {record.region?.name || record.region_raw || '-'}
+                      {record.region_raw || '-'}
                     </td>
                   )}
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.management?.name}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.office?.name}</td>
+                  <td className="px-4 py-3 text-sm text-neutral-600">{record.gerencia_nombre_raw}</td>
+                  <td className="px-4 py-3 text-sm text-neutral-600">{record.desp_nombre_raw}</td>
                   <td className="px-4 py-3 text-sm text-neutral-600">{record.agente_nombre}</td>
                   <td className="px-4 py-3 text-sm text-neutral-600">{record.aseguradora_nombre}</td>
                   <td className="px-4 py-3 text-sm text-neutral-600">{record.ramo_nombre}</td>

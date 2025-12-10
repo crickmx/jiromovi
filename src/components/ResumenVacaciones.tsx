@@ -50,7 +50,7 @@ export function ResumenVacaciones() {
       } else if (isAdmin) {
         const { data, error } = await supabase
           .from('solicitudes_vacaciones')
-          .select('*, empleado:usuarios!usuario_id(nombre_completo), oficinas(nombre)')
+          .select('*, empleado:usuarios!usuario_id(nombre_completo, oficina_id, oficinas(nombre))')
           .eq('estado', 'preaprobado')
           .order('created_at', { ascending: false })
           .limit(5);
@@ -140,10 +140,10 @@ export function ResumenVacaciones() {
             <div className="flex justify-between items-start mb-2">
               <div>
                 <h3 className="font-semibold text-slate-900">
-                  {solicitud.empleado?.nombre} {solicitud.empleado?.apellidos}
+                  {solicitud.empleado?.nombre_completo}
                 </h3>
-                {isAdmin && solicitud.oficinas && (
-                  <p className="text-sm text-slate-600">{solicitud.oficinas.nombre}</p>
+                {isAdmin && solicitud.empleado?.oficinas && (
+                  <p className="text-sm text-slate-600">{solicitud.empleado.oficinas.nombre}</p>
                 )}
               </div>
               <span className={`px-2 py-1 rounded-full text-xs font-semibold ${estadoBadge}`}>
