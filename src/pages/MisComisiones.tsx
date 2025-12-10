@@ -176,21 +176,15 @@ export default function MisComisiones() {
                       </div>
 
                       {summary && (
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                           <div className="bg-neutral-50 rounded-lg p-3">
-                            <div className="text-xs text-neutral-600 font-medium mb-1">Bruta</div>
+                            <div className="text-xs text-neutral-600 font-medium mb-1">Prima Neta</div>
                             <div className="text-lg font-bold text-neutral-900">
-                              {formatCurrency(summary.total_bruta)}
-                            </div>
-                          </div>
-                          <div className="bg-neutral-50 rounded-lg p-3">
-                            <div className="text-xs text-neutral-600 font-medium mb-1">Impuestos</div>
-                            <div className="text-lg font-bold text-red-700">
-                              -{formatCurrency(summary.total_impuestos)}
+                              {formatCurrency(details.reduce((sum, d) => sum + d.prima_neta, 0))}
                             </div>
                           </div>
                           <div className="bg-green-50 rounded-lg p-3">
-                            <div className="text-xs text-green-700 font-medium mb-1">Neta</div>
+                            <div className="text-xs text-green-700 font-medium mb-1">Comisiones</div>
                             <div className="text-lg font-bold text-green-700">
                               {formatCurrency(summary.total_neta)}
                             </div>
@@ -234,17 +228,15 @@ export default function MisComisiones() {
                           <div className="font-semibold text-neutral-900 mb-3">
                             {ramo} ({data.count} pólizas)
                           </div>
-                          <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                              <div className="text-neutral-600 mb-1">Bruta</div>
-                              <div className="font-bold text-neutral-900">{formatCurrency(data.bruta)}</div>
+                              <div className="text-neutral-600 mb-1">Prima Neta</div>
+                              <div className="font-bold text-neutral-900">
+                                {formatCurrency(details.filter(d => d.ramo === ramo).reduce((sum, d) => sum + d.prima_neta, 0))}
+                              </div>
                             </div>
                             <div>
-                              <div className="text-neutral-600 mb-1">Impuestos</div>
-                              <div className="font-bold text-red-700">-{formatCurrency(data.impuestos)}</div>
-                            </div>
-                            <div>
-                              <div className="text-neutral-600 mb-1">Neta</div>
+                              <div className="text-neutral-600 mb-1">Comisiones</div>
                               <div className="font-bold text-green-700">{formatCurrency(data.neta)}</div>
                             </div>
                           </div>
