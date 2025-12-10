@@ -34,9 +34,13 @@ export default function ComisionesUpload() {
 
   const isAdmin = usuario?.rol === 'Administrador';
 
+  console.log('[ComisionesUpload] Component loaded. User role:', usuario?.rol, 'Is admin:', isAdmin);
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
+
+    console.log('[ComisionesUpload] File selected:', selectedFile.name);
 
     if (!selectedFile.name.endsWith('.xlsx')) {
       setValidationError('Por favor selecciona un archivo Excel (.xlsx)');
@@ -48,10 +52,13 @@ export default function ComisionesUpload() {
     setValidating(true);
 
     try {
+      console.log('[ComisionesUpload] Reading file...');
       const data = await selectedFile.arrayBuffer();
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json<ExcelRow>(firstSheet);
+
+      console.log('[ComisionesUpload] Rows found:', jsonData.length);
 
       if (jsonData.length === 0) {
         setValidationError('El archivo está vacío');
@@ -61,6 +68,7 @@ export default function ComisionesUpload() {
 
       const firstRow = jsonData[0];
       const columns = Object.keys(firstRow);
+      console.log('[ComisionesUpload] Columns found:', columns);
 
       const hasEmail = columns.includes('EmailAgente') || columns.includes('Email');
       const hasAseguradora = columns.includes('Aseguradora') || columns.includes('CiaAbreviacion');
@@ -78,11 +86,13 @@ export default function ComisionesUpload() {
       if (!hasPoliza) missingColumns.push('Poliza o Documento');
 
       if (missingColumns.length > 0) {
+        console.error('[ComisionesUpload] Missing columns:', missingColumns);
         setValidationError(`Faltan las siguientes columnas: ${missingColumns.join(', ')}`);
         setValidating(false);
         return;
       }
 
+      console.log('[ComisionesUpload] Normalizing rows...');
       const normalizedRows = jsonData.map(row => ({
         FPago: row.FPago,
         EmailAgente: row.EmailAgente || row.Email || '',
@@ -93,9 +103,26 @@ export default function ComisionesUpload() {
         Concepto: row.Concepto || ''
       }));
 
-      const validRows = normalizedRows.filter(row =>
-        row.FPago && row.EmailAgente && row.Ramo && row.Aseguradora && row.PrimaNeta && row.Poliza
-      );
+      const validRows = normalizedRows.filter(row => {
+        if (!row.FPago || !row.EmailAgente || !row.Ramo || !row.Aseguradora || !row.PrimaNeta || !row.Poliza) {
+          return false;
+        }
+
+        const testDate = new Date(row.FPago);
+        if (isNaN(testDate.getTime())) {
+          console.warn('[ComisionesUpload] Invalid date:', row.FPago);
+          return false;
+        }
+
+        if (isNaN(Number(row.PrimaNeta))) {
+          console.warn('[ComisionesUpload] Invalid PrimaNeta:', row.PrimaNeta);
+          return false;
+        }
+
+        return true;
+      });
+
+      console.log('[ComisionesUpload] Valid rows:', validRows.length);
 
       if (validRows.length === 0) {
         setValidationError('No se encontraron filas válidas en el archivo');
@@ -105,11 +132,14 @@ export default function ComisionesUpload() {
 
       setRows(validRows);
 
+      console.log('[ComisionesUpload] Grouping by week...');
       const weekGroups = groupByWeek(validRows, 'FPago');
+      console.log('[ComisionesUpload] Weeks found:', weekGroups.length);
       setWeeks(weekGroups);
 
+      console.log('[ComisionesUpload] Validation complete!');
     } catch (error) {
-      console.error('Error reading Excel:', error);
+      console.error('[ComisionesUpload] Error reading Excel:', error);
       setValidationError('Error al leer el archivo. Asegúrate de que sea un archivo Excel válido.');
     } finally {
       setValidating(false);
