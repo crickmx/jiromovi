@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
@@ -34,7 +34,23 @@ export default function ComisionesUpload() {
 
   const isAdmin = usuario?.rol === 'Administrador';
 
-  console.log('[ComisionesUpload] Component loaded. User role:', usuario?.rol, 'Is admin:', isAdmin);
+  console.log('[ComisionesUpload] Component render. User:', usuario?.email_laboral, 'Role:', usuario?.rol, 'Is admin:', isAdmin);
+
+  // Detectar si el componente se desmonta inesperadamente
+  useEffect(() => {
+    console.log('[ComisionesUpload] Component mounted');
+    return () => {
+      console.log('[ComisionesUpload] Component unmounting!');
+    };
+  }, []);
+
+  // Detectar cambios en el usuario
+  useEffect(() => {
+    console.log('[ComisionesUpload] Usuario changed:', usuario?.email_laboral, 'Role:', usuario?.rol);
+    if (usuario && !isAdmin) {
+      console.error('[ComisionesUpload] User is not admin! Redirecting...');
+    }
+  }, [usuario, isAdmin]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -265,11 +281,27 @@ export default function ComisionesUpload() {
 
         {!file ? (
           <div className="border-2 border-dashed border-neutral-300 rounded-2xl p-12 text-center hover:border-primary-400 transition-colors">
-            <label className="cursor-pointer block">
+            <label
+              htmlFor="file-upload"
+              className="cursor-pointer block"
+              onClick={(e) => {
+                console.log('[ComisionesUpload] Label clicked');
+                e.stopPropagation();
+              }}
+            >
               <input
+                id="file-upload"
                 type="file"
                 accept=".xlsx"
-                onChange={handleFileSelect}
+                onChange={(e) => {
+                  console.log('[ComisionesUpload] Input onChange triggered');
+                  e.stopPropagation();
+                  handleFileSelect(e);
+                }}
+                onClick={(e) => {
+                  console.log('[ComisionesUpload] Input clicked');
+                  e.stopPropagation();
+                }}
                 className="hidden"
               />
               <Upload className="w-16 h-16 text-neutral-400 mx-auto mb-4" />

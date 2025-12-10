@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Comisiones Upload - Diagnóstico</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .section {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    .section h3 {
+      margin-top: 0;
+      color: #555;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .warning {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 10px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    pre {
+      background: #263238;
+      color: #aed581;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .log {
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    .log-entry {
+      margin: 2px 0;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .log-entry.error {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .log-entry.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .log-entry.info {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+    .log-entry.warn {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+    input[type="file"] {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Diagnóstico de Comisiones Upload</h1>
+
+    <div class="section">
+      <h3>Estado de Autenticación</h3>
+      <div id="authStatus" class="status info">Verificando...</div>
+      <div id="authDetails"></div>
+    </div>
+
+    <div class="section">
+      <h3>Permisos de Usuario</h3>
+      <div id="permissionsStatus" class="status info">Verificando...</div>
+    </div>
+
+    <div class="section">
+      <h3>Test de Carga de Archivo</h3>
+      <input type="file" id="fileInput" accept=".xlsx" />
+      <button onclick="testFileUpload()">Probar Carga</button>
+      <div id="fileTestResult"></div>
+    </div>
+
+    <div class="section">
+      <h3>Logs en Tiempo Real</h3>
+      <button onclick="clearLogs()">Limpiar Logs</button>
+      <div id="logs" class="log"></div>
+    </div>
+
+    <div class="section">
+      <h3>Acciones</h3>
+      <button onclick="checkSession()">Verificar Sesión</button>
+      <button onclick="checkUser()">Verificar Usuario</button>
+      <button onclick="testNavigation()">Probar Navegación</button>
+      <button onclick="window.location.href='/comisiones/upload'">Ir a Upload Real</button>
+    </div>
+  </div>
+
+  <script>
+    // Obtener variables de entorno
+    const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'YOUR_ANON_KEY';
+
+    // Intentar obtener de window si no están disponibles
+    const supabaseUrl = window.VITE_SUPABASE_URL || SUPABASE_URL;
+    const supabaseKey = window.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+
+    let supabase;
+    let currentUser = null;
+    let currentUsuario = null;
+
+    function addLog(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logs.appendChild(entry);
+      logs.scrollTop = logs.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+    }
+
+    async function initSupabase() {
+      try {
+        addLog('Inicializando Supabase...', 'info');
+
+        // Intentar obtener las variables del DOM
+        const urlInput = prompt('Por favor ingresa tu SUPABASE_URL:', supabaseUrl);
+        const keyInput = prompt('Por favor ingresa tu SUPABASE_ANON_KEY:', supabaseKey);
+
+        if (!urlInput || !keyInput || urlInput === 'YOUR_SUPABASE_URL' || keyInput === 'YOUR_ANON_KEY') {
+          throw new Error('Configuración de Supabase no disponible');
+        }
+
+        supabase = window.supabase.createClient(urlInput, keyInput);
+        addLog('Supabase inicializado correctamente', 'success');
+        return true;
+      } catch (error) {
+        addLog(`Error al inicializar Supabase: ${error.message}`, 'error');
+        document.getElementById('authStatus').className = 'status error';
+        document.getElementById('authStatus').textContent = 'Error: No se pudo conectar con Supabase';
+        return false;
+      }
+    }
+
+    async function checkSession() {
+      addLog('Verificando sesión...', 'info');
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (error) {
+        addLog(`Error al obtener sesión: ${error.message}`, 'error');
+        return null;
+      }
+
+      if (!session) {
+        addLog('No hay sesión activa', 'warn');
+        document.getElementById('authStatus').className = 'status warning';
+        document.getElementById('authStatus').textContent = 'No hay sesión activa. Por favor inicia sesión.';
+        return null;
+      }
+
+      currentUser = session.user;
+      addLog(`Sesión encontrada para: ${session.user.email}`, 'success');
+
+      document.getElementById('authStatus').className = 'status success';
+      document.getElementById('authStatus').textContent = `Autenticado como: ${session.user.email}`;
+      document.getElementById('authDetails').innerHTML = `<pre>${JSON.stringify(session.user, null, 2)}</pre>`;
+
+      return session;
+    }
+
+    async function checkUser() {
+      addLog('Verificando datos de usuario en tabla usuarios...', 'info');
+
+      if (!currentUser) {
+        addLog('No hay usuario autenticado', 'error');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (error) {
+        addLog(`Error al obtener usuario: ${error.message}`, 'error');
+        document.getElementById('permissionsStatus').className = 'status error';
+        document.getElementById('permissionsStatus').textContent = `Error: ${error.message}`;
+        return;
+      }
+
+      if (!data) {
+        addLog('Usuario no encontrado en tabla usuarios', 'error');
+        document.getElementById('permissionsStatus').className = 'status error';
+        document.getElementById('permissionsStatus').textContent = 'Usuario no encontrado en la base de datos';
+        return;
+      }
+
+      currentUsuario = data;
+      addLog(`Usuario encontrado: ${data.nombre} ${data.apellidos}`, 'success');
+      addLog(`Rol: ${data.rol}`, 'info');
+      addLog(`Email laboral: ${data.email_laboral}`, 'info');
+      addLog(`Activo: ${data.activo}`, 'info');
+
+      const isAdmin = data.rol === 'Administrador';
+
+      if (isAdmin) {
+        document.getElementById('permissionsStatus').className = 'status success';
+        document.getElementById('permissionsStatus').innerHTML = `
+          <strong>✓ Tienes permisos de Administrador</strong><br>
+          Rol: ${data.rol}<br>
+          Usuario: ${data.nombre} ${data.apellidos}<br>
+          Email: ${data.email_laboral}
+        `;
+        addLog('Usuario ES administrador - Puede acceder a Comisiones Upload', 'success');
+      } else {
+        document.getElementById('permissionsStatus').className = 'status error';
+        document.getElementById('permissionsStatus').innerHTML = `
+          <strong>✗ NO tienes permisos de Administrador</strong><br>
+          Rol actual: ${data.rol}<br>
+          Usuario: ${data.nombre} ${data.apellidos}<br>
+          Email: ${data.email_laboral}<br>
+          <br>
+          <em>Solo los administradores pueden acceder a la página de Comisiones Upload</em>
+        `;
+        addLog('Usuario NO es administrador - No puede acceder a Comisiones Upload', 'error');
+      }
+    }
+
+    async function testFileUpload() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files?.[0];
+
+      if (!file) {
+        addLog('No se seleccionó ningún archivo', 'warn');
+        return;
+      }
+
+      addLog(`Archivo seleccionado: ${file.name}`, 'success');
+      addLog(`Tamaño: ${(file.size / 1024).toFixed(2)} KB`, 'info');
+      addLog(`Tipo: ${file.type}`, 'info');
+
+      const resultDiv = document.getElementById('fileTestResult');
+      resultDiv.innerHTML = `
+        <div class="status success" style="margin-top: 10px;">
+          <strong>Archivo cargado exitosamente:</strong><br>
+          Nombre: ${file.name}<br>
+          Tamaño: ${(file.size / 1024).toFixed(2)} KB<br>
+          Tipo: ${file.type}
+        </div>
+      `;
+    }
+
+    async function testNavigation() {
+      addLog('Probando navegación...', 'info');
+
+      if (!currentUsuario) {
+        addLog('Primero debes verificar tu usuario', 'warn');
+        alert('Primero haz clic en "Verificar Usuario"');
+        return;
+      }
+
+      const isAdmin = currentUsuario.rol === 'Administrador';
+
+      if (!isAdmin) {
+        addLog('No eres administrador, serías redirigido al dashboard', 'warn');
+        alert('No eres administrador. En la app real serías redirigido al dashboard.');
+        return;
+      }
+
+      addLog('Eres administrador, navegación permitida', 'success');
+      alert('Eres administrador. La navegación a /comisiones/upload debería funcionar.');
+    }
+
+    // Inicializar al cargar
+    window.addEventListener('load', async () => {
+      addLog('Página cargada', 'info');
+
+      const initialized = await initSupabase();
+      if (initialized) {
+        await checkSession();
+        if (currentUser) {
+          await checkUser();
+        }
+      }
+    });
+
+    // Listener para el input de archivo
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      addLog('Input file onChange disparado', 'info');
+      const file = e.target.files?.[0];
+      if (file) {
+        addLog(`Archivo detectado: ${file.name}`, 'success');
+      }
+    });
+
+    document.getElementById('fileInput').addEventListener('click', (e) => {
+      addLog('Input file onClick disparado', 'info');
+    });
+  </script>
+</body>
+</html>
