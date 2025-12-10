@@ -272,7 +272,7 @@ export default function ComisionesLote() {
                 <DollarSign className="w-6 h-6 text-primary-600" />
               </div>
               <div className="text-3xl font-bold text-green-700">
-                {formatCurrency(summary.total_commission)}
+                {formatCurrency(summary.total_neta)}
               </div>
             </div>
 
@@ -306,7 +306,7 @@ export default function ComisionesLote() {
                       <tr key={ramo} className="border-b border-neutral-100 hover:bg-neutral-50">
                         <td className="py-3 px-4 font-medium text-neutral-900">{ramo}</td>
                         <td className="py-3 px-4 text-right text-neutral-700">{data.count}</td>
-                        <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(data.commission)}</td>
+                        <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(data.neta)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -332,7 +332,7 @@ export default function ComisionesLote() {
                       <tr key={aseg} className="border-b border-neutral-100 hover:bg-neutral-50">
                         <td className="py-3 px-4 font-medium text-neutral-900">{aseg}</td>
                         <td className="py-3 px-4 text-right text-neutral-700">{data.count}</td>
-                        <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(data.commission)}</td>
+                        <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(data.neta)}</td>
                       </tr>
                     ))}
                   </tbody>

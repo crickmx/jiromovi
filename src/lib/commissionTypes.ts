@@ -102,14 +102,20 @@ export interface WeekSummary {
 }
 
 export interface BatchSummary {
-  total_commission: number;
+  total_bruta: number;
+  total_impuestos: number;
+  total_neta: number;
   total_polizas: number;
   by_ramo: Record<string, {
-    commission: number;
+    bruta: number;
+    impuestos: number;
+    neta: number;
     count: number;
   }>;
   by_aseguradora: Record<string, {
-    commission: number;
+    bruta: number;
+    impuestos: number;
+    neta: number;
     count: number;
   }>;
 }

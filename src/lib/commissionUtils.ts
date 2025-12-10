@@ -161,29 +161,43 @@ export function calculateCommissionBruta(
 
 export function calculateBatchSummary(details: CommissionDetail[]): BatchSummary {
   const summary: BatchSummary = {
-    total_commission: 0,
+    total_bruta: 0,
+    total_impuestos: 0,
+    total_neta: 0,
     total_polizas: details.length,
     by_ramo: {},
     by_aseguradora: {}
   };
 
   details.forEach(detail => {
-    const commission = detail.is_manual_adjusted
-      ? (detail.adjusted_commission_neta || 0)
+    const bruta = detail.is_manual_adjusted && detail.adjusted_commission_bruta !== null
+      ? detail.adjusted_commission_bruta
+      : detail.commission_bruta;
+
+    const neta = detail.is_manual_adjusted && detail.adjusted_commission_neta !== null
+      ? detail.adjusted_commission_neta
       : detail.commission_neta;
 
-    summary.total_commission += commission;
+    const impuestos = bruta - neta;
+
+    summary.total_bruta += bruta;
+    summary.total_neta += neta;
+    summary.total_impuestos += impuestos;
 
     if (!summary.by_ramo[detail.ramo]) {
-      summary.by_ramo[detail.ramo] = { commission: 0, count: 0 };
+      summary.by_ramo[detail.ramo] = { bruta: 0, impuestos: 0, neta: 0, count: 0 };
     }
-    summary.by_ramo[detail.ramo].commission += commission;
+    summary.by_ramo[detail.ramo].bruta += bruta;
+    summary.by_ramo[detail.ramo].impuestos += impuestos;
+    summary.by_ramo[detail.ramo].neta += neta;
     summary.by_ramo[detail.ramo].count++;
 
     if (!summary.by_aseguradora[detail.aseguradora]) {
-      summary.by_aseguradora[detail.aseguradora] = { commission: 0, count: 0 };
+      summary.by_aseguradora[detail.aseguradora] = { bruta: 0, impuestos: 0, neta: 0, count: 0 };
     }
-    summary.by_aseguradora[detail.aseguradora].commission += commission;
+    summary.by_aseguradora[detail.aseguradora].bruta += bruta;
+    summary.by_aseguradora[detail.aseguradora].impuestos += impuestos;
+    summary.by_aseguradora[detail.aseguradora].neta += neta;
     summary.by_aseguradora[detail.aseguradora].count++;
   });
 
