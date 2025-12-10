@@ -15,6 +15,7 @@ interface ExcelRow {
   Aseguradora?: string;
   CiaAbreviacion?: string;
   PrimaNeta: number;
+  PortPart: number;
   Poliza?: string;
   Documento?: string;
   Concepto?: string;
@@ -92,6 +93,7 @@ export default function ComisionesUpload() {
       const hasFPago = columns.includes('FPago');
       const hasRamo = columns.includes('Ramo');
       const hasPrimaNeta = columns.includes('PrimaNeta');
+      const hasPortPart = columns.includes('PortPart');
 
       const missingColumns: string[] = [];
       if (!hasFPago) missingColumns.push('FPago');
@@ -100,6 +102,7 @@ export default function ComisionesUpload() {
       if (!hasAseguradora) missingColumns.push('Aseguradora o CiaAbreviacion');
       if (!hasPrimaNeta) missingColumns.push('PrimaNeta');
       if (!hasPoliza) missingColumns.push('Poliza o Documento');
+      if (!hasPortPart) missingColumns.push('PortPart');
 
       if (missingColumns.length > 0) {
         console.error('[ComisionesUpload] Missing columns:', missingColumns);
@@ -115,12 +118,13 @@ export default function ComisionesUpload() {
         Ramo: row.Ramo,
         Aseguradora: row.Aseguradora || row.CiaAbreviacion || '',
         PrimaNeta: row.PrimaNeta,
+        PortPart: row.PortPart,
         Poliza: row.Poliza || row.Documento || '',
         Concepto: row.Concepto || ''
       }));
 
       const validRows = normalizedRows.filter(row => {
-        if (!row.FPago || !row.EmailAgente || !row.Ramo || !row.Aseguradora || !row.PrimaNeta || !row.Poliza) {
+        if (!row.FPago || !row.EmailAgente || !row.Ramo || !row.Aseguradora || !row.PrimaNeta || !row.Poliza || row.PortPart === undefined) {
           return false;
         }
 
@@ -132,6 +136,11 @@ export default function ComisionesUpload() {
 
         if (isNaN(Number(row.PrimaNeta))) {
           console.warn('[ComisionesUpload] Invalid PrimaNeta:', row.PrimaNeta);
+          return false;
+        }
+
+        if (isNaN(Number(row.PortPart))) {
+          console.warn('[ComisionesUpload] Invalid PortPart:', row.PortPart);
           return false;
         }
 
@@ -266,7 +275,7 @@ export default function ComisionesUpload() {
             Formato del archivo Excel
           </h3>
           <p className="text-sm text-blue-800 mb-2">
-            El archivo debe contener las siguientes columnas (obligatorias):
+            El archivo debe contener las siguientes columnas obligatorias:
           </p>
           <ul className="text-sm text-blue-800 space-y-1 ml-4">
             <li><strong>FPago</strong> - Fecha de pago (formato fecha)</li>
@@ -274,8 +283,14 @@ export default function ComisionesUpload() {
             <li><strong>Ramo</strong> - Ramo de seguro</li>
             <li><strong>CiaAbreviacion</strong> o <strong>Aseguradora</strong> - Nombre de la aseguradora</li>
             <li><strong>PrimaNeta</strong> - Prima neta (número)</li>
+            <li><strong>PortPart</strong> - Porcentaje de participación (número, ej: 25 para 25%)</li>
             <li><strong>Documento</strong> o <strong>Poliza</strong> - Número de póliza/documento</li>
-            <li><strong>Concepto</strong> - Concepto (opcional)</li>
+          </ul>
+          <p className="text-sm text-blue-800 mt-2">
+            Columnas opcionales:
+          </p>
+          <ul className="text-sm text-blue-800 space-y-1 ml-4">
+            <li><strong>Concepto</strong> - Concepto o descripción adicional</li>
           </ul>
         </div>
 
