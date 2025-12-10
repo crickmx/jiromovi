@@ -76,18 +76,7 @@ Deno.serve(async (req: Request) => {
     console.log('[process-commissions] Loading commission agents...');
     const { data: agents, error: agentsError } = await supabase
       .from('commission_agents')
-      .select(`
-        id,
-        name,
-        email,
-        office_id,
-        fiscal_regime:commission_fiscal_regimes(
-          iva_trasladado,
-          iva_retenido,
-          isr,
-          otros_json
-        )
-      `);
+      .select('id, name, email, office_id, fiscal_regime_id');
 
     if (agentsError) {
       console.error('[process-commissions] Error loading agents:', agentsError);
@@ -105,17 +94,39 @@ Deno.serve(async (req: Request) => {
     console.log('[process-commissions] Commission agents loaded:', agents.length);
     console.log('[process-commissions] Agent emails:', agents.map(a => a.email).join(', '));
 
+    // Load fiscal regimes separately
+    console.log('[process-commissions] Loading fiscal regimes...');
+    const { data: fiscalRegimes, error: regimesError } = await supabase
+      .from('commission_fiscal_regimes')
+      .select('id, iva_trasladado, iva_retenido, isr, otros_json');
+
+    if (regimesError) {
+      console.error('[process-commissions] Error loading fiscal regimes:', regimesError);
+    }
+
+    const regimesMap = new Map();
+    if (fiscalRegimes) {
+      fiscalRegimes.forEach(regime => {
+        regimesMap.set(regime.id, {
+          iva_trasladado: regime.iva_trasladado,
+          iva_retenido: regime.iva_retenido,
+          isr: regime.isr,
+          otros_json: regime.otros_json
+        });
+      });
+    }
+    console.log('[process-commissions] Fiscal regimes loaded:', regimesMap.size);
+
     const agentsMap = new Map<string, CommissionAgent>();
     agents.forEach(agent => {
       if (agent.email) {
+        const fiscalRegime = agent.fiscal_regime_id ? regimesMap.get(agent.fiscal_regime_id) : null;
         agentsMap.set(agent.email.toLowerCase(), {
           id: agent.id,
           name: agent.name,
           email: agent.email,
           office_id: agent.office_id,
-          fiscal_regime: Array.isArray(agent.fiscal_regime) && agent.fiscal_regime.length > 0
-            ? agent.fiscal_regime[0]
-            : null
+          fiscal_regime: fiscalRegime || null
         });
       }
     });
