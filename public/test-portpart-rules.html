@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificar Reglas de Negocio con PortPart</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 2rem;
+    }
+
+    h1 {
+      color: #1a202c;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: #718096;
+      margin-bottom: 2rem;
+      font-size: 1rem;
+    }
+
+    .button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-right: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #results {
+      margin-top: 2rem;
+    }
+
+    .result-item {
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .result-item.success {
+      background: #c6f6d5;
+      border-left: 4px solid #38a169;
+      color: #22543d;
+    }
+
+    .result-item.error {
+      background: #fed7d7;
+      border-left: 4px solid #e53e3e;
+      color: #742a2a;
+    }
+
+    .result-item.info {
+      background: #bee3f8;
+      border-left: 4px solid #3182ce;
+      color: #2c5282;
+    }
+
+    .result-item.warning {
+      background: #feebc8;
+      border-left: 4px solid #dd6b20;
+      color: #7c2d12;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    th {
+      background: #2d3748;
+      color: white;
+      font-weight: 600;
+    }
+
+    tr:hover {
+      background: #f7fafc;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge.portpart {
+      background: #9f7aea;
+      color: white;
+    }
+
+    .badge.porcentaje {
+      background: #4299e1;
+      color: white;
+    }
+
+    .badge.fijo {
+      background: #48bb78;
+      color: white;
+    }
+
+    .badge.minmax {
+      background: #ed8936;
+      color: white;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 15px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Reglas de Negocio con PortPart</h1>
+    <p class="subtitle">Verificación del sistema de cálculo de comisiones usando PortPart</p>
+
+    <div>
+      <button class="button" onclick="verificarReglas()">
+        Ver Todas las Reglas
+      </button>
+      <button class="button" onclick="verificarReglasPortPart()">
+        Ver Reglas con PortPart
+      </button>
+      <button class="button" onclick="estadisticas()">
+        Ver Estadísticas
+      </button>
+      <button class="button" onclick="simularCalculo()">
+        Simular Cálculo
+      </button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://bhchvbuhfsdpjgugqzjc.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoY2h2YnVoZnNkcGpndWdxempjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA4NDA4NjIsImV4cCI6MjA0NjQxNjg2Mn0.oN-sGLY3uSKdWRTLFuhZG-_2PFPp_tWBGr_TqtFd0NM';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function showResult(message, type = 'info') {
+      const results = document.getElementById('results');
+      const div = document.createElement('div');
+      div.className = `result-item ${type}`;
+      div.innerHTML = message;
+      results.appendChild(div);
+      div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function clearResults() {
+      document.getElementById('results').innerHTML = '';
+    }
+
+    function getTipoBadge(tipo) {
+      const map = {
+        'usar_portpart': 'portpart',
+        '%_sobre_base': 'porcentaje',
+        'monto_fijo': 'fijo',
+        '%_con_min_max': 'minmax'
+      };
+      return map[tipo] || 'info';
+    }
+
+    function getTipoLabel(tipo) {
+      const map = {
+        'usar_portpart': 'Usar PortPart',
+        '%_sobre_base': '% Sobre Base',
+        'monto_fijo': 'Monto Fijo',
+        '%_con_min_max': '% Min/Max'
+      };
+      return map[tipo] || tipo;
+    }
+
+    function getValorDisplay(rule) {
+      switch (rule.tipo_calculo) {
+        case 'usar_portpart':
+          return 'Valor directo de PortPart';
+        case '%_sobre_base':
+          return `${rule.porcentaje}%`;
+        case 'monto_fijo':
+          return `$${rule.monto_fijo}`;
+        case '%_con_min_max':
+          return `${rule.porcentaje}% (${rule.minimo}-${rule.maximo})`;
+        default:
+          return '-';
+      }
+    }
+
+    async function verificarReglas() {
+      clearResults();
+      showResult('Consultando todas las reglas de negocio...', 'info');
+
+      try {
+        const { data, error } = await supabase
+          .from('commission_business_rules')
+          .select('*')
+          .order('prioridad', { ascending: false });
+
+        if (error) throw error;
+
+        showResult(`✅ Encontradas ${data.length} reglas de negocio`, 'success');
+
+        const table = document.createElement('div');
+        table.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Ramo</th>
+                <th>Aseguradora</th>
+                <th>Campo Base</th>
+                <th>Tipo de Cálculo</th>
+                <th>Valor</th>
+                <th>Prioridad</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(rule => `
+                <tr>
+                  <td>${rule.ramo}</td>
+                  <td>${rule.aseguradora}</td>
+                  <td>${rule.campo_base}</td>
+                  <td>
+                    <span class="badge ${getTipoBadge(rule.tipo_calculo)}">
+                      ${getTipoLabel(rule.tipo_calculo)}
+                    </span>
+                  </td>
+                  <td>${getValorDisplay(rule)}</td>
+                  <td><strong>${rule.prioridad}</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+
+        document.getElementById('results').appendChild(table);
+
+      } catch (error) {
+        showResult(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    async function verificarReglasPortPart() {
+      clearResults();
+      showResult('Consultando reglas que usan PortPart...', 'info');
+
+      try {
+        const { data, error } = await supabase
+          .from('commission_business_rules')
+          .select('*')
+          .eq('tipo_calculo', 'usar_portpart')
+          .order('aseguradora');
+
+        if (error) throw error;
+
+        if (data.length === 0) {
+          showResult('⚠️ No hay reglas configuradas con tipo_calculo "usar_portpart"', 'warning');
+          return;
+        }
+
+        showResult(`✅ Encontradas ${data.length} reglas usando PortPart`, 'success');
+
+        const table = document.createElement('div');
+        table.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Ramo</th>
+                <th>Aseguradora</th>
+                <th>Campo Base</th>
+                <th>Prioridad</th>
+                <th>Vigencia Desde</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(rule => `
+                <tr>
+                  <td><strong>${rule.ramo}</strong></td>
+                  <td>${rule.aseguradora}</td>
+                  <td>
+                    <span class="badge portpart">${rule.campo_base}</span>
+                  </td>
+                  <td>${rule.prioridad}</td>
+                  <td>${new Date(rule.valid_from).toLocaleDateString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+
+        document.getElementById('results').appendChild(table);
+
+      } catch (error) {
+        showResult(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    async function estadisticas() {
+      clearResults();
+      showResult('Calculando estadísticas...', 'info');
+
+      try {
+        const { data, error } = await supabase
+          .from('commission_business_rules')
+          .select('*');
+
+        if (error) throw error;
+
+        const stats = {
+          total: data.length,
+          portpart: data.filter(r => r.tipo_calculo === 'usar_portpart').length,
+          porcentaje: data.filter(r => r.tipo_calculo === '%_sobre_base').length,
+          fijo: data.filter(r => r.tipo_calculo === 'monto_fijo').length,
+          minmax: data.filter(r => r.tipo_calculo === '%_con_min_max').length
+        };
+
+        const aseguradoras = [...new Set(data.map(r => r.aseguradora))].length;
+        const ramos = [...new Set(data.map(r => r.ramo))].length;
+
+        const statsHtml = document.createElement('div');
+        statsHtml.innerHTML = `
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-value">${stats.total}</div>
+              <div class="stat-label">Total Reglas</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.portpart}</div>
+              <div class="stat-label">Reglas PortPart</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${aseguradoras}</div>
+              <div class="stat-label">Aseguradoras</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${ramos}</div>
+              <div class="stat-label">Ramos</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.porcentaje}</div>
+              <div class="stat-label">% Sobre Base</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.minmax}</div>
+              <div class="stat-label">% Min/Max</div>
+            </div>
+          </div>
+        `;
+
+        showResult('📊 Estadísticas del Sistema de Comisiones', 'success');
+        document.getElementById('results').appendChild(statsHtml);
+
+        showResult(
+          `
+          <strong>Distribución de Tipos de Cálculo:</strong><br>
+          • Usar PortPart: ${stats.portpart} (${((stats.portpart/stats.total)*100).toFixed(1)}%)<br>
+          • Porcentaje sobre base: ${stats.porcentaje} (${((stats.porcentaje/stats.total)*100).toFixed(1)}%)<br>
+          • Monto fijo: ${stats.fijo} (${((stats.fijo/stats.total)*100).toFixed(1)}%)<br>
+          • Porcentaje con min/max: ${stats.minmax} (${((stats.minmax/stats.total)*100).toFixed(1)}%)
+          `,
+          'info'
+        );
+
+      } catch (error) {
+        showResult(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    async function simularCalculo() {
+      clearResults();
+
+      const primaNeta = 10000;
+      const portPartValue = 1250;
+
+      showResult(`🧮 Simulando cálculo de comisión con:<br>• Prima Neta: $${primaNeta.toLocaleString()}<br>• Valor PortPart: $${portPartValue.toLocaleString()}`, 'info');
+
+      try {
+        const { data: reglaPortPart } = await supabase
+          .from('commission_business_rules')
+          .select('*')
+          .eq('tipo_calculo', 'usar_portpart')
+          .limit(1)
+          .single();
+
+        const { data: reglaPorcentaje } = await supabase
+          .from('commission_business_rules')
+          .select('*')
+          .eq('tipo_calculo', '%_sobre_base')
+          .limit(1)
+          .single();
+
+        if (reglaPortPart) {
+          showResult(
+            `
+            <strong>✅ Usando Regla PortPart</strong><br>
+            Ramo: ${reglaPortPart.ramo} | Aseguradora: ${reglaPortPart.aseguradora}<br>
+            <strong>Comisión Bruta: $${portPartValue.toLocaleString()}</strong><br>
+            <em>Usa el valor directo de la columna PortPart del Excel</em>
+            `,
+            'success'
+          );
+        }
+
+        if (reglaPorcentaje) {
+          const comisionCalculada = primaNeta * (reglaPorcentaje.porcentaje / 100);
+          showResult(
+            `
+            <strong>📊 Comparación: Regla % sobre Base</strong><br>
+            Ramo: ${reglaPorcentaje.ramo} | Aseguradora: ${reglaPorcentaje.aseguradora}<br>
+            Porcentaje: ${reglaPorcentaje.porcentaje}%<br>
+            <strong>Comisión Calculada: $${comisionCalculada.toLocaleString()}</strong><br>
+            <em>Diferencia: $${Math.abs(portPartValue - comisionCalculada).toLocaleString()}</em>
+            `,
+            'info'
+          );
+        }
+
+        showResult(
+          `
+          <strong>💡 Ventaja de PortPart:</strong><br>
+          • Usa el valor exacto calculado por la aseguradora<br>
+          • Incluye ajustes y condiciones especiales<br>
+          • Mayor precisión en el cálculo<br>
+          • Evita discrepancias con reportes oficiales
+          `,
+          'warning'
+        );
+
+      } catch (error) {
+        showResult(`❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>

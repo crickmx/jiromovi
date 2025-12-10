@@ -33,7 +33,7 @@ export interface CommissionBusinessRule {
   aseguradora: string;
   office_id: string | null;
   campo_base: string;
-  tipo_calculo: '%_sobre_base' | 'monto_fijo' | '%_con_min_max';
+  tipo_calculo: '%_sobre_base' | 'monto_fijo' | '%_con_min_max' | 'usar_portpart';
   porcentaje: number | null;
   monto_fijo: number | null;
   minimo: number | null;

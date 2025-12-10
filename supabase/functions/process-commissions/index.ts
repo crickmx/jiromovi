@@ -14,6 +14,7 @@ interface ExcelRow {
   Aseguradora?: string;
   CiaAbreviacion?: string;
   PrimaNeta: number;
+  PortPart?: number;
   Poliza?: string;
   Documento?: string;
   Concepto?: string;
@@ -51,7 +52,7 @@ interface BusinessRule {
   aseguradora: string;
   office_id: string | null;
   campo_base: string;
-  tipo_calculo: '%_sobre_base' | 'monto_fijo' | '%_con_min_max';
+  tipo_calculo: '%_sobre_base' | 'monto_fijo' | '%_con_min_max' | 'usar_portpart';
   porcentaje: number | null;
   monto_fijo: number | null;
   minimo: number | null;
@@ -98,61 +99,72 @@ Deno.serve(async (req: Request) => {
     console.log('[process-commissions] Usuarios (Agentes) loaded:', usuarios?.length || 0);
 
     const agentsMap = new Map<string, Agent>();
-
-    agents.forEach((a: any) => {
-      agentsMap.set(a.email.toLowerCase(), a);
+    agents.forEach(agent => {
+      agentsMap.set(agent.email.toLowerCase(), agent);
     });
 
     if (usuarios) {
-      usuarios.forEach((u: any) => {
-        if (u.email_laboral) {
-          const existingAgent = agentsMap.get(u.email_laboral.toLowerCase());
-          if (!existingAgent) {
-            console.log('[process-commissions] Adding usuario as agent:', u.email_laboral);
-          }
+      usuarios.forEach(user => {
+        const emailPersonal = user.email_personal?.toLowerCase();
+        const emailLaboral = user.email_laboral?.toLowerCase();
+
+        if (emailPersonal && !agentsMap.has(emailPersonal)) {
+          agentsMap.set(emailPersonal, {
+            id: user.id,
+            name: user.nombre_completo,
+            email: user.email_personal,
+            office_id: user.oficina_id,
+            fiscal_regime_id: null
+          });
         }
-        if (u.email_personal) {
-          const existingAgent = agentsMap.get(u.email_personal.toLowerCase());
-          if (!existingAgent) {
-            console.log('[process-commissions] Adding usuario as agent (personal email):', u.email_personal);
-          }
+
+        if (emailLaboral && !agentsMap.has(emailLaboral)) {
+          agentsMap.set(emailLaboral, {
+            id: user.id,
+            name: user.nombre_completo,
+            email: user.email_laboral,
+            office_id: user.oficina_id,
+            fiscal_regime_id: null
+          });
         }
       });
     }
 
-    console.log('[process-commissions] Total agents in map:', agentsMap.size);
+    const filteredRows = selectedWeeks && selectedWeeks.length > 0
+      ? rows.filter((row: ExcelRow) => {
+          const rowDate = new Date(row.FPago);
+          return selectedWeeks.some((week: WeekSummary) => {
+            const weekStart = new Date(week.dateFrom);
+            const weekEnd = new Date(week.dateTo);
+            return rowDate >= weekStart && rowDate <= weekEnd;
+          });
+        })
+      : rows;
 
-    const batchesCreated: string[] = [];
+    const batchesMap = new Map<string, ExcelRow[]>();
+    filteredRows.forEach((row: ExcelRow) => {
+      const weekKey = getWeekKey(new Date(row.FPago));
+      if (!batchesMap.has(weekKey)) {
+        batchesMap.set(weekKey, []);
+      }
+      batchesMap.get(weekKey)!.push(row);
+    });
+
+    const batchesCreated: any[] = [];
     const allErrors: any[] = [];
 
-    for (const week of selectedWeeks as WeekSummary[]) {
-      const rawWeekRows = (rows as ExcelRow[]).filter(row => {
-        const rowDate = new Date(row.FPago);
-        const weekStart = new Date(week.dateFrom);
-        const weekEnd = new Date(week.dateTo);
-        return rowDate >= weekStart && rowDate <= weekEnd;
-      });
-
-      const weekRows = rawWeekRows.map(row => ({
-        FPago: row.FPago,
-        EmailAgente: row.EmailAgente || row.Email || '',
-        Ramo: row.Ramo,
-        Aseguradora: row.Aseguradora || row.CiaAbreviacion || '',
-        PrimaNeta: row.PrimaNeta,
-        Poliza: row.Poliza || row.Documento || '',
-        Concepto: row.Concepto || ''
-      }));
-
-      if (weekRows.length === 0) continue;
+    for (const [weekKey, weekRows] of batchesMap.entries()) {
+      const firstRow = weekRows[0];
+      const weekDate = new Date(firstRow.FPago);
+      const weekNumber = getWeekNumber(weekDate);
+      const year = weekDate.getFullYear();
 
       const { data: batch, error: batchError } = await supabase
         .from('commission_batches')
         .insert({
-          name: `Semana ${week.weekNumber} - ${week.dateFrom}`,
-          date_from: week.dateFrom,
-          date_to: week.dateTo,
-          uploaded_by: uploadedByUserId,
-          status: 'draft',
+          week_number: weekNumber,
+          year: year,
+          uploaded_by_user_id: uploadedByUserId,
           source_file: sourceFile
         })
         .select()
@@ -163,39 +175,17 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      batchesCreated.push(batch.id);
+      batchesCreated.push(batch);
 
       const detailsToInsert: any[] = [];
       const errorsToInsert: any[] = [];
 
       for (const row of weekRows) {
         try {
-          let agent = agentsMap.get(row.EmailAgente.toLowerCase());
-
-          if (!agent && usuarios) {
-            const usuarioMatch = usuarios.find((u: any) =>
-              u.email_laboral?.toLowerCase() === row.EmailAgente.toLowerCase() ||
-              u.email_personal?.toLowerCase() === row.EmailAgente.toLowerCase()
-            );
-
-            if (usuarioMatch) {
-              console.log('[process-commissions] Found usuario match for:', row.EmailAgente);
-
-              agent = {
-                id: usuarioMatch.id,
-                name: usuarioMatch.nombre_completo,
-                email: usuarioMatch.email_laboral || usuarioMatch.email_personal,
-                office_id: usuarioMatch.oficina_id,
-                fiscal_regime_id: null,
-                fiscal_regime: null
-              } as any;
-            }
-          }
+          const emailAgente = (row.EmailAgente || row.Email || '').toLowerCase();
+          const agent = agentsMap.get(emailAgente);
 
           if (!agent) {
-            console.error('[process-commissions] Agent not found:', row.EmailAgente);
-            console.error('[process-commissions] Available emails in map:', Array.from(agentsMap.keys()).slice(0, 10));
-
             errorsToInsert.push({
               batch_id: batch.id,
               error_type: 'agent_not_found',
@@ -238,7 +228,7 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          const commissionBruta = calculateCommissionBruta(row.PrimaNeta, matchingRule);
+          const commissionBruta = calculateCommissionBruta(row, matchingRule);
           const impuestos = calculateImpuestos(commissionBruta, agent.fiscal_regime);
           const commissionNeta = calculateCommissionNeta(commissionBruta, impuestos);
 
@@ -347,7 +337,13 @@ function findBusinessRule(
   return matchingRules.sort((a, b) => b.prioridad - a.prioridad)[0];
 }
 
-function calculateCommissionBruta(primaBase: number, rule: BusinessRule): number {
+function calculateCommissionBruta(row: ExcelRow, rule: BusinessRule): number {
+  if (rule.tipo_calculo === 'usar_portpart' && row.PortPart !== undefined && row.PortPart !== null) {
+    return row.PortPart;
+  }
+
+  const primaBase = row.PrimaNeta || 0;
+
   switch (rule.tipo_calculo) {
     case '%_sobre_base':
       return primaBase * (rule.porcentaje || 0) / 100;
@@ -365,6 +361,9 @@ function calculateCommissionBruta(primaBase: number, rule: BusinessRule): number
       }
       return commission;
     }
+
+    case 'usar_portpart':
+      return row.PortPart || 0;
 
     default:
       return 0;
@@ -395,4 +394,18 @@ function calculateImpuestos(commissionBruta: number, fiscalRegime: any) {
 
 function calculateCommissionNeta(commissionBruta: number, impuestos: any): number {
   return commissionBruta + impuestos.iva_trasladado - impuestos.iva_retenido - impuestos.isr - impuestos.otros;
+}
+
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+function getWeekKey(date: Date): string {
+  const year = date.getFullYear();
+  const week = getWeekNumber(date);
+  return `${year}-W${week.toString().padStart(2, '0')}`;
 }

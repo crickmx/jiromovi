@@ -167,11 +167,13 @@ export default function ComisionesReglasNegocio() {
                         {rule.tipo_calculo === '%_sobre_base' && '% sobre base'}
                         {rule.tipo_calculo === 'monto_fijo' && 'Monto fijo'}
                         {rule.tipo_calculo === '%_con_min_max' && '% con min/max'}
+                        {rule.tipo_calculo === 'usar_portpart' && 'Usar PortPart'}
                       </td>
                       <td className="py-3 px-4 text-neutral-700">
                         {rule.tipo_calculo === '%_sobre_base' && `${rule.porcentaje}%`}
                         {rule.tipo_calculo === 'monto_fijo' && `$${rule.monto_fijo}`}
                         {rule.tipo_calculo === '%_con_min_max' && `${rule.porcentaje}% (${rule.minimo}-${rule.maximo})`}
+                        {rule.tipo_calculo === 'usar_portpart' && 'Valor de columna PortPart'}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="inline-block px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-semibold">
@@ -278,6 +280,10 @@ function ReglaModal({ rule, offices, onClose, onSuccess }: ReglaModalProps) {
     if (formData.tipo_calculo === '%_con_min_max' && (!formData.porcentaje || !formData.minimo || !formData.maximo)) {
       setError('Porcentaje, mínimo y máximo son obligatorios para este tipo de cálculo');
       return;
+    }
+
+    if (formData.tipo_calculo === 'usar_portpart' && formData.campo_base !== 'PortPart') {
+      setFormData({ ...formData, campo_base: 'PortPart' });
     }
 
     setLoading(true);
@@ -392,13 +398,21 @@ function ReglaModal({ rule, offices, onClose, onSuccess }: ReglaModalProps) {
               <label className="block text-sm font-semibold text-neutral-700 mb-2">
                 Campo Base
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.campo_base}
                 onChange={(e) => setFormData({ ...formData, campo_base: e.target.value })}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="PrimaNeta"
-              />
+                disabled={formData.tipo_calculo === 'usar_portpart'}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed"
+              >
+                <option value="PrimaNeta">Prima Neta</option>
+                <option value="PrimaTotal">Prima Total</option>
+                <option value="PortPart">PortPart</option>
+              </select>
+              {formData.tipo_calculo === 'usar_portpart' && (
+                <p className="mt-1 text-xs text-neutral-500">
+                  El campo base se establece automáticamente en PortPart
+                </p>
+              )}
             </div>
           </div>
 
@@ -408,13 +422,26 @@ function ReglaModal({ rule, offices, onClose, onSuccess }: ReglaModalProps) {
             </label>
             <select
               value={formData.tipo_calculo}
-              onChange={(e) => setFormData({ ...formData, tipo_calculo: e.target.value as any })}
+              onChange={(e) => {
+                const newTipoCalculo = e.target.value as any;
+                setFormData({
+                  ...formData,
+                  tipo_calculo: newTipoCalculo,
+                  campo_base: newTipoCalculo === 'usar_portpart' ? 'PortPart' : formData.campo_base
+                });
+              }}
               className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="%_sobre_base">Porcentaje sobre base</option>
               <option value="monto_fijo">Monto fijo</option>
               <option value="%_con_min_max">Porcentaje con mínimo y máximo</option>
+              <option value="usar_portpart">Usar valor de PortPart (Recomendado)</option>
             </select>
+            {formData.tipo_calculo === 'usar_portpart' && (
+              <p className="mt-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
+                Esta opción usa el valor directo de la columna PortPart del Excel, que contiene el porcentaje de comisión calculado por la aseguradora. Es la forma más precisa de calcular comisiones.
+              </p>
+            )}
           </div>
 
           {formData.tipo_calculo === '%_sobre_base' && (
