@@ -243,7 +243,7 @@ export default function ProduccionTotal() {
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
         <div className="mb-6">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(-1)}
             className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-4 font-medium"
           >
             <ArrowLeft className="w-5 h-5" />
