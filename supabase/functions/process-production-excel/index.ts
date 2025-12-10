@@ -129,11 +129,16 @@ Deno.serve(async (req: Request) => {
 
         let officeId = officesCache.get(despNombre.toLowerCase());
         if (!officeId) {
-          const { data: existingOffice } = await supabase
+          const { data: existingOffice, error: officeSearchError } = await supabase
             .from('production_offices')
             .select('id')
-            .or(`name.ilike.${despNombre},original_names.cs.["${despNombre}"]`)
-            .single();
+            .ilike('name', despNombre)
+            .maybeSingle();
+
+          if (officeSearchError) {
+            console.error('Error searching office:', officeSearchError);
+            continue;
+          }
 
           if (existingOffice) {
             officeId = existingOffice.id;
@@ -145,7 +150,7 @@ Deno.serve(async (req: Request) => {
                 original_names: [despNombre]
               })
               .select('id')
-              .single();
+              .maybeSingle();
 
             if (officeError || !newOffice) {
               console.error('Error creating office:', officeError);
@@ -158,11 +163,16 @@ Deno.serve(async (req: Request) => {
 
         let managementId = managementsCache.get(gerenciaNombre.toLowerCase());
         if (!managementId) {
-          const { data: existingManagement } = await supabase
+          const { data: existingManagement, error: managementSearchError } = await supabase
             .from('production_managements')
             .select('id')
-            .or(`name.ilike.${gerenciaNombre},original_names.cs.["${gerenciaNombre}"]`)
-            .single();
+            .ilike('name', gerenciaNombre)
+            .maybeSingle();
+
+          if (managementSearchError) {
+            console.error('Error searching management:', managementSearchError);
+            continue;
+          }
 
           if (existingManagement) {
             managementId = existingManagement.id;
@@ -174,7 +184,7 @@ Deno.serve(async (req: Request) => {
                 original_names: [gerenciaNombre]
               })
               .select('id')
-              .single();
+              .maybeSingle();
 
             if (managementError || !newManagement) {
               console.error('Error creating management:', managementError);
@@ -189,25 +199,27 @@ Deno.serve(async (req: Request) => {
         if (regionNombre) {
           regionId = regionsCache.get(regionNombre.toLowerCase()) || null;
           if (!regionId) {
-            const { data: existingRegion } = await supabase
+            const { data: existingRegion, error: regionSearchError } = await supabase
               .from('production_regions')
               .select('id')
-              .or(`name.ilike.${regionNombre},original_names.cs.["${regionNombre}"]`)
-              .single();
+              .ilike('name', regionNombre)
+              .maybeSingle();
 
-            if (existingRegion) {
+            if (regionSearchError) {
+              console.error('Error searching region:', regionSearchError);
+            } else if (existingRegion) {
               regionId = existingRegion.id;
             } else {
-              const { data: newRegion } = await supabase
+              const { data: newRegion, error: regionError } = await supabase
                 .from('production_regions')
                 .insert({
                   name: regionNombre,
                   original_names: [regionNombre]
                 })
                 .select('id')
-                .single();
+                .maybeSingle();
 
-              if (newRegion) {
+              if (!regionError && newRegion) {
                 regionId = newRegion.id;
               }
             }
@@ -276,7 +288,14 @@ Deno.serve(async (req: Request) => {
 
       if (insertError) {
         console.error('Error inserting final batch:', insertError);
+        throw new Error(`Error al insertar registros: ${insertError.message}`);
       }
+    }
+
+    console.log(`[process-production] Successfully processed ${processedCount} records`);
+
+    if (processedCount === 0) {
+      throw new Error('No se pudo procesar ningún registro del archivo. Verifica que el formato sea correcto.');
     }
 
     const { data: importLog } = await supabase
@@ -287,7 +306,7 @@ Deno.serve(async (req: Request) => {
         records_count: processedCount
       })
       .select()
-      .single();
+      .maybeSingle();
 
     const { data: stats } = await supabase
       .from('production_records')
@@ -331,10 +350,27 @@ Deno.serve(async (req: Request) => {
 
   } catch (error: any) {
     console.error('Error in process-production:', error);
+
+    let errorMessage = 'Error desconocido al procesar el archivo';
+
+    if (error.message) {
+      errorMessage = error.message;
+    } else if (error.code) {
+      if (error.code === 'PGRST116') {
+        errorMessage = 'Error: la tabla de producción no existe o no tiene permisos';
+      } else if (error.code === '23505') {
+        errorMessage = 'Error: registro duplicado en la base de datos';
+      } else if (error.code === '23503') {
+        errorMessage = 'Error: referencia inválida en los datos';
+      } else {
+        errorMessage = `Error de base de datos: ${error.code}`;
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Error desconocido'
+        error: errorMessage
       }),
       {
         status: 500,
