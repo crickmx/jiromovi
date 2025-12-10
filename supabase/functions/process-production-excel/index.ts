@@ -51,13 +51,39 @@ Deno.serve(async (req: Request) => {
       throw new Error('No se proporcionó archivo');
     }
 
+    if (!file.name || (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls'))) {
+      throw new Error('El archivo debe ser un archivo Excel válido (.xlsx o .xls)');
+    }
+
+    if (file.size === 0) {
+      throw new Error('El archivo está vacío');
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      throw new Error('El archivo es demasiado grande (máximo 50MB)');
+    }
+
     console.log('[process-production] File received:', file.name, file.size, file.type);
 
     console.log('[process-production] Converting file to array buffer...');
     const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
 
     console.log('[process-production] Parsing Excel file...');
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    console.log('[process-production] Buffer size:', uint8Array.length);
+
+    let workbook;
+    try {
+      workbook = XLSX.read(uint8Array, {
+        type: 'array',
+        cellDates: true,
+        cellNF: false,
+        cellText: false
+      });
+    } catch (xlsxError: any) {
+      console.error('[process-production] XLSX parsing error:', xlsxError);
+      throw new Error(`Error al leer el archivo Excel: ${xlsxError.message}. Asegúrate de que sea un archivo .xlsx o .xls válido.`);
+    }
 
     console.log('[process-production] Sheet names:', workbook.SheetNames);
     if (workbook.SheetNames.length === 0) {
