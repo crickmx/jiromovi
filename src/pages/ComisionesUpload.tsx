@@ -14,11 +14,15 @@ interface ExcelRow {
   Ramo: string;
   Aseguradora?: string;
   CiaAbreviacion?: string;
-  PrimaNeta: number;
+  Importe?: number;
+  PrimaNeta?: number;
   PorPart: number;
   Poliza?: string;
   Documento?: string;
   Concepto?: string;
+  NombreCompleto?: string;
+  NombreAsegurado?: string;
+  Asegurado?: string;
   [key: string]: any;
 }
 
@@ -104,7 +108,7 @@ export default function ComisionesUpload() {
       const hasPoliza = columns.includes('Poliza') || columns.includes('Documento');
       const hasFPago = columns.includes('FPago');
       const hasRamo = columns.includes('Ramo');
-      const hasPrimaNeta = columns.includes('PrimaNeta');
+      const hasImporte = columns.includes('Importe');
       const hasPorPart = columns.includes('PorPart');
 
       const missingColumns: string[] = [];
@@ -112,7 +116,7 @@ export default function ComisionesUpload() {
       if (!hasEmail) missingColumns.push('Email o EmailAgente');
       if (!hasRamo) missingColumns.push('Ramo');
       if (!hasAseguradora) missingColumns.push('Aseguradora o CiaAbreviacion');
-      if (!hasPrimaNeta) missingColumns.push('PrimaNeta');
+      if (!hasImporte) missingColumns.push('Importe');
       if (!hasPoliza) missingColumns.push('Poliza o Documento');
       if (!hasPorPart) missingColumns.push('PorPart');
 
@@ -149,10 +153,12 @@ export default function ComisionesUpload() {
           EmailAgente: row.EmailAgente || row.Email || '',
           Ramo: row.Ramo,
           Aseguradora: row.Aseguradora || row.CiaAbreviacion || '',
-          PrimaNeta: row.PrimaNeta,
+          Importe: row.Importe || 0,
+          PrimaNeta: row.PrimaNeta || 0,
           PorPart: row.PorPart,
           Poliza: row.Poliza || row.Documento || '',
-          Concepto: row.Concepto || ''
+          Concepto: row.Concepto || '',
+          NombreCompleto: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || ''
         };
       });
 
@@ -166,7 +172,7 @@ export default function ComisionesUpload() {
         if (!row.EmailAgente) issues.push('Email vacío');
         if (!row.Ramo) issues.push('Ramo vacío');
         if (!row.Aseguradora) issues.push('Aseguradora vacía');
-        if (!row.PrimaNeta) issues.push('PrimaNeta vacía');
+        if (!row.Importe) issues.push('Importe vacío');
         if (!row.Poliza) issues.push('Poliza vacía');
         if (row.PorPart === undefined || row.PorPart === null) issues.push('PorPart vacío');
 
@@ -374,17 +380,25 @@ export default function ComisionesUpload() {
             <li><strong>Email</strong> o <strong>EmailAgente</strong> - Email del agente</li>
             <li><strong>Ramo</strong> - Ramo de seguro</li>
             <li><strong>CiaAbreviacion</strong> o <strong>Aseguradora</strong> - Nombre de la aseguradora</li>
-            <li><strong>PrimaNeta</strong> - Prima neta (número)</li>
-            <li><strong>PorPart</strong> - Porcentaje de participación (número, ej: 25 para 25%)</li>
+            <li><strong>Importe</strong> - Base de comisión (número). Este es el valor sobre el cual se calcula la comisión.</li>
+            <li><strong>PorPart</strong> - Porcentaje de comisión (número, ej: 25 para 25%)</li>
             <li><strong>Documento</strong> o <strong>Poliza</strong> - Número de póliza/documento</li>
           </ul>
-          <p className="text-sm text-blue-800 mt-2">
+          <p className="text-sm font-semibold text-blue-900 mt-4 mb-2">
             Columnas opcionales:
           </p>
           <ul className="text-sm text-blue-800 space-y-1 ml-4">
-            <li><strong>NombreAsegurado</strong> o <strong>Asegurado</strong> - Nombre del asegurado</li>
+            <li><strong>PrimaNeta</strong> - Prima neta (solo informativo, no afecta el cálculo)</li>
+            <li><strong>NombreCompleto</strong>, <strong>NombreAsegurado</strong> o <strong>Asegurado</strong> - Nombre del asegurado</li>
             <li><strong>Concepto</strong> - Concepto o descripción adicional</li>
           </ul>
+          <p className="text-sm font-semibold text-blue-900 mt-4 mb-2">
+            Nota importante:
+          </p>
+          <p className="text-sm text-blue-800">
+            La comisión se calcula como: <strong>Comisión = Importe × (PorPart / 100)</strong>.
+            El campo PrimaNeta es solo informativo y no se usa en el cálculo.
+          </p>
         </div>
 
         {!file ? (

@@ -277,9 +277,12 @@ export default function MisComisiones() {
                         <thead className="bg-neutral-100">
                           <tr>
                             <th className="text-left py-3 px-4 font-semibold text-neutral-700">Póliza</th>
+                            <th className="text-left py-3 px-4 font-semibold text-neutral-700">Asegurado</th>
                             <th className="text-left py-3 px-4 font-semibold text-neutral-700">Ramo</th>
                             <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
-                            <th className="text-right py-3 px-4 font-semibold text-neutral-700">Prima</th>
+                            <th className="text-right py-3 px-4 font-semibold text-neutral-700">Prima Neta</th>
+                            <th className="text-right py-3 px-4 font-semibold text-neutral-700">Base Com.</th>
+                            <th className="text-right py-3 px-4 font-semibold text-neutral-700">% Com.</th>
                             <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
                           </tr>
                         </thead>
@@ -292,9 +295,12 @@ export default function MisComisiones() {
                             return (
                               <tr key={detail.id} className="border-b border-neutral-100">
                                 <td className="py-3 px-4 font-medium text-neutral-900">{detail.poliza}</td>
+                                <td className="py-3 px-4 text-neutral-700">{detail.nombre_asegurado || '-'}</td>
                                 <td className="py-3 px-4 text-neutral-700">{detail.ramo}</td>
                                 <td className="py-3 px-4 text-neutral-700">{detail.aseguradora}</td>
-                                <td className="py-3 px-4 text-right text-neutral-900">{formatCurrency(detail.prima_base)}</td>
+                                <td className="py-3 px-4 text-right text-neutral-600">{formatCurrency(detail.prima_neta)}</td>
+                                <td className="py-3 px-4 text-right text-neutral-900 font-medium">{formatCurrency(detail.importe_base)}</td>
+                                <td className="py-3 px-4 text-right text-neutral-700">{detail.porcentaje_comision.toFixed(2)}%</td>
                                 <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(commission || 0)}</td>
                               </tr>
                             );
