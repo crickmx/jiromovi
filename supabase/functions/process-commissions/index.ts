@@ -19,6 +19,7 @@ interface ExcelRow {
   Poliza?: string;
   Documento?: string;
   Concepto?: string;
+  NombreCompleto?: string;
   NombreAsegurado?: string;
   Asegurado?: string;
   [key: string]: any;
@@ -285,7 +286,7 @@ Deno.serve(async (req: Request) => {
             aseguradora: row.Aseguradora || row.CiaAbreviacion,
             office_id: agent.office_id,
             poliza: row.Poliza || row.Documento,
-            nombre_asegurado: row.NombreAsegurado || row.Asegurado || null,
+            nombre_asegurado: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || null,
             prima_base: importe,
             concepto: row.Concepto || null,
             date_fpago: row.FPago,

@@ -131,10 +131,6 @@ Deno.serve(async (req: Request) => {
       throw new Error('Error al eliminar registros anteriores');
     }
 
-    const officesCache = new Map<string, string>();
-    const managementsCache = new Map<string, string>();
-    const regionsCache = new Map<string, string>();
-
     console.log('[process-production] Processing rows...');
     const recordsToInsert: any[] = [];
     let processedCount = 0;
@@ -174,108 +170,6 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
-        let officeId = officesCache.get(despNombre.toLowerCase());
-        if (!officeId) {
-          const { data: existingOffice, error: officeSearchError } = await supabase
-            .from('production_offices')
-            .select('id')
-            .ilike('name', despNombre)
-            .maybeSingle();
-
-          if (officeSearchError) {
-            console.error('Error searching office:', officeSearchError);
-            continue;
-          }
-
-          if (existingOffice) {
-            officeId = existingOffice.id;
-          } else {
-            const { data: newOffice, error: officeError } = await supabase
-              .from('production_offices')
-              .insert({
-                name: despNombre,
-                original_names: [despNombre]
-              })
-              .select('id')
-              .maybeSingle();
-
-            if (officeError || !newOffice) {
-              console.error('Error creating office:', officeError);
-              continue;
-            }
-            officeId = newOffice.id;
-          }
-          officesCache.set(despNombre.toLowerCase(), officeId);
-        }
-
-        let managementId = managementsCache.get(gerenciaNombre.toLowerCase());
-        if (!managementId) {
-          const { data: existingManagement, error: managementSearchError } = await supabase
-            .from('production_managements')
-            .select('id')
-            .ilike('name', gerenciaNombre)
-            .maybeSingle();
-
-          if (managementSearchError) {
-            console.error('Error searching management:', managementSearchError);
-            continue;
-          }
-
-          if (existingManagement) {
-            managementId = existingManagement.id;
-          } else {
-            const { data: newManagement, error: managementError } = await supabase
-              .from('production_managements')
-              .insert({
-                name: gerenciaNombre,
-                original_names: [gerenciaNombre]
-              })
-              .select('id')
-              .maybeSingle();
-
-            if (managementError || !newManagement) {
-              console.error('Error creating management:', managementError);
-              continue;
-            }
-            managementId = newManagement.id;
-          }
-          managementsCache.set(gerenciaNombre.toLowerCase(), managementId);
-        }
-
-        let regionId: string | null = null;
-        if (regionNombre) {
-          regionId = regionsCache.get(regionNombre.toLowerCase()) || null;
-          if (!regionId) {
-            const { data: existingRegion, error: regionSearchError } = await supabase
-              .from('production_regions')
-              .select('id')
-              .ilike('name', regionNombre)
-              .maybeSingle();
-
-            if (regionSearchError) {
-              console.error('Error searching region:', regionSearchError);
-            } else if (existingRegion) {
-              regionId = existingRegion.id;
-            } else {
-              const { data: newRegion, error: regionError } = await supabase
-                .from('production_regions')
-                .insert({
-                  name: regionNombre,
-                  original_names: [regionNombre]
-                })
-                .select('id')
-                .maybeSingle();
-
-              if (!regionError && newRegion) {
-                regionId = newRegion.id;
-              }
-            }
-            if (regionId) {
-              regionsCache.set(regionNombre.toLowerCase(), regionId);
-            }
-          }
-        }
-
         const importePesos = parseFloat(row['IMPORTE PESOS']?.toString() || '0') || 0;
         const primaConvenio = parseFloat(row['Prima de convenio']?.toString() || '0') || 0;
         const primaPonderada = parseFloat(row['Prima Ponderada']?.toString() || '0') || 0;
@@ -292,9 +186,9 @@ Deno.serve(async (req: Request) => {
           dia,
           periodo_mes: periodoMes,
           periodo_anio: periodoAnio,
-          office_id: officeId,
-          management_id: managementId,
-          region_id: regionId,
+          office_id: null,
+          management_id: null,
+          region_id: null,
           desp_nombre_raw: despNombre,
           gerencia_nombre_raw: gerenciaNombre,
           region_raw: regionNombre || null,
