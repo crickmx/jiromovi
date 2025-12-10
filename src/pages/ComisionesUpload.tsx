@@ -9,11 +9,14 @@ import { supabase } from '../lib/supabase';
 
 interface ExcelRow {
   FPago: string;
-  EmailAgente: string;
+  EmailAgente?: string;
+  Email?: string;
   Ramo: string;
-  Aseguradora: string;
+  Aseguradora?: string;
+  CiaAbreviacion?: string;
   PrimaNeta: number;
-  Poliza: string;
+  Poliza?: string;
+  Documento?: string;
   Concepto?: string;
   [key: string]: any;
 }
@@ -50,17 +53,29 @@ export default function ComisionesUpload() {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json<ExcelRow>(firstSheet);
 
-      const requiredColumns = ['FPago', 'EmailAgente', 'Ramo', 'Aseguradora', 'PrimaNeta', 'Poliza'];
-      const missingColumns: string[] = [];
-
-      if (jsonData.length > 0) {
-        const firstRow = jsonData[0];
-        requiredColumns.forEach(col => {
-          if (!(col in firstRow)) {
-            missingColumns.push(col);
-          }
-        });
+      if (jsonData.length === 0) {
+        setValidationError('El archivo está vacío');
+        setValidating(false);
+        return;
       }
+
+      const firstRow = jsonData[0];
+      const columns = Object.keys(firstRow);
+
+      const hasEmail = columns.includes('EmailAgente') || columns.includes('Email');
+      const hasAseguradora = columns.includes('Aseguradora') || columns.includes('CiaAbreviacion');
+      const hasPoliza = columns.includes('Poliza') || columns.includes('Documento');
+      const hasFPago = columns.includes('FPago');
+      const hasRamo = columns.includes('Ramo');
+      const hasPrimaNeta = columns.includes('PrimaNeta');
+
+      const missingColumns: string[] = [];
+      if (!hasFPago) missingColumns.push('FPago');
+      if (!hasEmail) missingColumns.push('Email o EmailAgente');
+      if (!hasRamo) missingColumns.push('Ramo');
+      if (!hasAseguradora) missingColumns.push('Aseguradora o CiaAbreviacion');
+      if (!hasPrimaNeta) missingColumns.push('PrimaNeta');
+      if (!hasPoliza) missingColumns.push('Poliza o Documento');
 
       if (missingColumns.length > 0) {
         setValidationError(`Faltan las siguientes columnas: ${missingColumns.join(', ')}`);
@@ -68,8 +83,18 @@ export default function ComisionesUpload() {
         return;
       }
 
-      const validRows = jsonData.filter(row =>
-        row.FPago && row.EmailAgente && row.Ramo && row.Aseguradora && row.PrimaNeta
+      const normalizedRows = jsonData.map(row => ({
+        FPago: row.FPago,
+        EmailAgente: row.EmailAgente || row.Email || '',
+        Ramo: row.Ramo,
+        Aseguradora: row.Aseguradora || row.CiaAbreviacion || '',
+        PrimaNeta: row.PrimaNeta,
+        Poliza: row.Poliza || row.Documento || '',
+        Concepto: row.Concepto || ''
+      }));
+
+      const validRows = normalizedRows.filter(row =>
+        row.FPago && row.EmailAgente && row.Ramo && row.Aseguradora && row.PrimaNeta && row.Poliza
       );
 
       if (validRows.length === 0) {
@@ -199,11 +224,11 @@ export default function ComisionesUpload() {
           </p>
           <ul className="text-sm text-blue-800 space-y-1 ml-4">
             <li><strong>FPago</strong> - Fecha de pago (formato fecha)</li>
-            <li><strong>EmailAgente</strong> - Email del agente</li>
+            <li><strong>Email</strong> o <strong>EmailAgente</strong> - Email del agente</li>
             <li><strong>Ramo</strong> - Ramo de seguro</li>
-            <li><strong>Aseguradora</strong> - Nombre de la aseguradora</li>
+            <li><strong>CiaAbreviacion</strong> o <strong>Aseguradora</strong> - Nombre de la aseguradora</li>
             <li><strong>PrimaNeta</strong> - Prima neta (número)</li>
-            <li><strong>Poliza</strong> - Número de póliza</li>
+            <li><strong>Documento</strong> o <strong>Poliza</strong> - Número de póliza/documento</li>
             <li><strong>Concepto</strong> - Concepto (opcional)</li>
           </ul>
         </div>

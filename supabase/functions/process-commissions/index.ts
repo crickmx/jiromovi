@@ -8,11 +8,14 @@ const corsHeaders = {
 
 interface ExcelRow {
   FPago: string;
-  EmailAgente: string;
+  EmailAgente?: string;
+  Email?: string;
   Ramo: string;
-  Aseguradora: string;
+  Aseguradora?: string;
+  CiaAbreviacion?: string;
   PrimaNeta: number;
-  Poliza: string;
+  Poliza?: string;
+  Documento?: string;
   Concepto?: string;
   [key: string]: any;
 }
@@ -94,12 +97,22 @@ Deno.serve(async (req: Request) => {
     const allErrors: any[] = [];
 
     for (const week of selectedWeeks as WeekSummary[]) {
-      const weekRows = (rows as ExcelRow[]).filter(row => {
+      const rawWeekRows = (rows as ExcelRow[]).filter(row => {
         const rowDate = new Date(row.FPago);
         const weekStart = new Date(week.dateFrom);
         const weekEnd = new Date(week.dateTo);
         return rowDate >= weekStart && rowDate <= weekEnd;
       });
+
+      const weekRows = rawWeekRows.map(row => ({
+        FPago: row.FPago,
+        EmailAgente: row.EmailAgente || row.Email || '',
+        Ramo: row.Ramo,
+        Aseguradora: row.Aseguradora || row.CiaAbreviacion || '',
+        PrimaNeta: row.PrimaNeta,
+        Poliza: row.Poliza || row.Documento || '',
+        Concepto: row.Concepto || ''
+      }));
 
       if (weekRows.length === 0) continue;
 
