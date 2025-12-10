@@ -180,8 +180,8 @@
       try {
         const { data, error } = await supabase
           .from('usuarios')
-          .select('id, nombre_completo, email, correo_laboral, rol, oficina_id')
-          .or('email.eq.cdcjimenez@gmail.com,correo_laboral.eq.cdcjimenez@gmail.com');
+          .select('id, nombre_completo, email_personal, email_laboral, rol, oficina_id')
+          .or('email_personal.eq.cdcjimenez@gmail.com,email_laboral.eq.cdcjimenez@gmail.com');
 
         if (error) throw error;
 
@@ -193,8 +193,8 @@
 
           const { data: similarData } = await supabase
             .from('usuarios')
-            .select('id, nombre_completo, email, correo_laboral, rol')
-            .or('email.ilike.%cdcjimenez%,correo_laboral.ilike.%cdcjimenez%');
+            .select('id, nombre_completo, email_personal, email_laboral, rol')
+            .or('email_personal.ilike.%cdcjimenez%,email_laboral.ilike.%cdcjimenez%');
 
           if (similarData && similarData.length > 0) {
             showResult(`ℹ️ Usuarios similares encontrados: ${similarData.length}`, 'info');
@@ -213,7 +213,7 @@
       try {
         const { data, error } = await supabase
           .from('usuarios')
-          .select('id, nombre_completo, email, correo_laboral, oficina_id')
+          .select('id, nombre_completo, email_personal, email_laboral, oficina_id')
           .eq('rol', 'Agente');
 
         if (error) throw error;

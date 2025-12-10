@@ -82,7 +82,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: usuarios } = await supabase
       .from('usuarios')
-      .select('id, nombre_completo, email, correo_laboral, oficina_id, rol')
+      .select('id, nombre_completo, email_personal, email_laboral, oficina_id, rol')
       .eq('rol', 'Agente');
 
     const { data: businessRules } = await supabase
@@ -105,16 +105,16 @@ Deno.serve(async (req: Request) => {
 
     if (usuarios) {
       usuarios.forEach((u: any) => {
-        if (u.correo_laboral) {
-          const existingAgent = agentsMap.get(u.correo_laboral.toLowerCase());
+        if (u.email_laboral) {
+          const existingAgent = agentsMap.get(u.email_laboral.toLowerCase());
           if (!existingAgent) {
-            console.log('[process-commissions] Adding usuario as agent:', u.correo_laboral);
+            console.log('[process-commissions] Adding usuario as agent:', u.email_laboral);
           }
         }
-        if (u.email) {
-          const existingAgent = agentsMap.get(u.email.toLowerCase());
+        if (u.email_personal) {
+          const existingAgent = agentsMap.get(u.email_personal.toLowerCase());
           if (!existingAgent) {
-            console.log('[process-commissions] Adding usuario as agent (personal email):', u.email);
+            console.log('[process-commissions] Adding usuario as agent (personal email):', u.email_personal);
           }
         }
       });
@@ -174,8 +174,8 @@ Deno.serve(async (req: Request) => {
 
           if (!agent && usuarios) {
             const usuarioMatch = usuarios.find((u: any) =>
-              u.correo_laboral?.toLowerCase() === row.EmailAgente.toLowerCase() ||
-              u.email?.toLowerCase() === row.EmailAgente.toLowerCase()
+              u.email_laboral?.toLowerCase() === row.EmailAgente.toLowerCase() ||
+              u.email_personal?.toLowerCase() === row.EmailAgente.toLowerCase()
             );
 
             if (usuarioMatch) {
@@ -184,7 +184,7 @@ Deno.serve(async (req: Request) => {
               agent = {
                 id: usuarioMatch.id,
                 name: usuarioMatch.nombre_completo,
-                email: usuarioMatch.correo_laboral || usuarioMatch.email,
+                email: usuarioMatch.email_laboral || usuarioMatch.email_personal,
                 office_id: usuarioMatch.oficina_id,
                 fiscal_regime_id: null,
                 fiscal_regime: null
