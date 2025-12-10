@@ -3,7 +3,6 @@ import type {
   CommissionAgent,
   CommissionBusinessRule,
   CommissionFiscalRegime,
-  CommissionImpuestos,
   CommissionDetail,
   WeekSummary,
   BatchSummary,
@@ -159,103 +158,32 @@ export function calculateCommissionBruta(
   }
 }
 
-export function calculateImpuestos(
-  commissionBruta: number,
-  fiscalRegime: CommissionFiscalRegime
-): CommissionImpuestos {
-  const iva_trasladado = commissionBruta * fiscalRegime.iva_trasladado;
-  const iva_retenido = commissionBruta * fiscalRegime.iva_retenido;
-  const isr = commissionBruta * fiscalRegime.isr;
-
-  let otros = 0;
-  if (fiscalRegime.otros_json) {
-    Object.values(fiscalRegime.otros_json).forEach(rate => {
-      if (typeof rate === 'number') {
-        otros += commissionBruta * rate;
-      }
-    });
-  }
-
-  return {
-    iva_trasladado,
-    iva_retenido,
-    isr,
-    otros
-  };
-}
-
-export function calculateCommissionNeta(
-  commissionBruta: number,
-  impuestos: CommissionImpuestos
-): number {
-  return commissionBruta + impuestos.iva_trasladado - impuestos.iva_retenido - impuestos.isr - impuestos.otros;
-}
-
-export function reverseCalculateFromNeta(
-  netaDeseada: number,
-  fiscalRegime: CommissionFiscalRegime
-): { bruta: number; impuestos: CommissionImpuestos; neta: number } {
-  let otrosRate = 0;
-  if (fiscalRegime.otros_json) {
-    Object.values(fiscalRegime.otros_json).forEach(rate => {
-      if (typeof rate === 'number') {
-        otrosRate += rate;
-      }
-    });
-  }
-
-  const factor = 1 + fiscalRegime.iva_trasladado - fiscalRegime.iva_retenido - fiscalRegime.isr - otrosRate;
-  const nuevaBruta = netaDeseada / factor;
-
-  const impuestos = calculateImpuestos(nuevaBruta, fiscalRegime);
-  const neta = calculateCommissionNeta(nuevaBruta, impuestos);
-
-  return { bruta: nuevaBruta, impuestos, neta };
-}
 
 export function calculateBatchSummary(details: CommissionDetail[]): BatchSummary {
   const summary: BatchSummary = {
-    total_bruta: 0,
-    total_impuestos: 0,
-    total_neta: 0,
+    total_commission: 0,
     total_polizas: details.length,
     by_ramo: {},
     by_aseguradora: {}
   };
 
   details.forEach(detail => {
-    const bruta = detail.is_manual_adjusted
-      ? (detail.adjusted_commission_bruta || 0)
-      : detail.commission_bruta;
-
-    const impuestos = detail.is_manual_adjusted
-      ? (detail.adjusted_impuestos_json || detail.impuestos_json)
-      : detail.impuestos_json;
-
-    const neta = detail.is_manual_adjusted
+    const commission = detail.is_manual_adjusted
       ? (detail.adjusted_commission_neta || 0)
       : detail.commission_neta;
 
-    const totalImpuestos = (impuestos.iva_retenido || 0) + (impuestos.isr || 0) + (impuestos.otros || 0);
-
-    summary.total_bruta += bruta;
-    summary.total_impuestos += totalImpuestos;
-    summary.total_neta += neta;
+    summary.total_commission += commission;
 
     if (!summary.by_ramo[detail.ramo]) {
-      summary.by_ramo[detail.ramo] = { bruta: 0, impuestos: 0, neta: 0, count: 0 };
+      summary.by_ramo[detail.ramo] = { commission: 0, count: 0 };
     }
-    summary.by_ramo[detail.ramo].bruta += bruta;
-    summary.by_ramo[detail.ramo].impuestos += totalImpuestos;
-    summary.by_ramo[detail.ramo].neta += neta;
+    summary.by_ramo[detail.ramo].commission += commission;
     summary.by_ramo[detail.ramo].count++;
 
     if (!summary.by_aseguradora[detail.aseguradora]) {
-      summary.by_aseguradora[detail.aseguradora] = { bruta: 0, impuestos: 0, neta: 0, count: 0 };
+      summary.by_aseguradora[detail.aseguradora] = { commission: 0, count: 0 };
     }
-    summary.by_aseguradora[detail.aseguradora].bruta += bruta;
-    summary.by_aseguradora[detail.aseguradora].impuestos += totalImpuestos;
-    summary.by_aseguradora[detail.aseguradora].neta += neta;
+    summary.by_aseguradora[detail.aseguradora].commission += commission;
     summary.by_aseguradora[detail.aseguradora].count++;
   });
 
@@ -268,19 +196,9 @@ export function calculateAgentSummaries(details: CommissionDetail[]): AgentSumma
   details.forEach(detail => {
     if (!detail.agent) return;
 
-    const bruta = detail.is_manual_adjusted
-      ? (detail.adjusted_commission_bruta || 0)
-      : detail.commission_bruta;
-
-    const impuestos = detail.is_manual_adjusted
-      ? (detail.adjusted_impuestos_json || detail.impuestos_json)
-      : detail.impuestos_json;
-
-    const neta = detail.is_manual_adjusted
+    const commission = detail.is_manual_adjusted
       ? (detail.adjusted_commission_neta || 0)
       : detail.commission_neta;
-
-    const totalImpuestos = (impuestos.iva_retenido || 0) + (impuestos.isr || 0) + (impuestos.otros || 0);
 
     if (!agentMap.has(detail.agent_id)) {
       agentMap.set(detail.agent_id, {
@@ -289,17 +207,13 @@ export function calculateAgentSummaries(details: CommissionDetail[]): AgentSumma
         agent_email: detail.agent.email,
         office_name: detail.agent.office?.name || null,
         regime_name: detail.agent.fiscal_regime?.name || null,
-        total_bruta: 0,
-        total_impuestos: 0,
-        total_neta: 0,
+        total_commission: 0,
         total_polizas: 0
       });
     }
 
     const agentSummary = agentMap.get(detail.agent_id)!;
-    agentSummary.total_bruta += bruta;
-    agentSummary.total_impuestos += totalImpuestos;
-    agentSummary.total_neta += neta;
+    agentSummary.total_commission += commission;
     agentSummary.total_polizas++;
   });
 

@@ -382,6 +382,7 @@ export default function ComisionesUpload() {
             Columnas opcionales:
           </p>
           <ul className="text-sm text-blue-800 space-y-1 ml-4">
+            <li><strong>NombreAsegurado</strong> o <strong>Asegurado</strong> - Nombre del asegurado</li>
             <li><strong>Concepto</strong> - Concepto o descripción adicional</li>
           </ul>
         </div>

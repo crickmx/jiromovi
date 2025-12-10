@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, DollarSign, AlertCircle } from 'lucide-react';
-import type { CommissionDetail, CommissionFiscalRegime } from '../../lib/commissionTypes';
-import { formatCurrency, reverseCalculateFromNeta } from '../../lib/commissionUtils';
+import type { CommissionDetail } from '../../lib/commissionTypes';
+import { formatCurrency } from '../../lib/commissionUtils';
 import { supabase } from '../../lib/supabase';
 
 interface AjustarComisionModalProps {
@@ -45,21 +45,10 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No autenticado');
 
-      if (!detail.agent?.fiscal_regime) {
-        throw new Error('El agente no tiene régimen fiscal asignado');
-      }
-
-      const { bruta, impuestos } = reverseCalculateFromNeta(
-        netaValue,
-        detail.agent.fiscal_regime as CommissionFiscalRegime
-      );
-
       const { error: updateError } = await supabase
         .from('commission_details')
         .update({
           is_manual_adjusted: true,
-          adjusted_commission_bruta: bruta,
-          adjusted_impuestos_json: impuestos,
           adjusted_commission_neta: netaValue,
           adjust_reason: reason,
           adjusted_by_user_id: user.id,
@@ -143,35 +132,10 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
             <h3 className="font-semibold text-blue-900 mb-3">
               Comisión Actual
             </h3>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <div className="text-blue-700 mb-1">Bruta</div>
-                <div className="font-bold text-blue-900">
-                  {formatCurrency(
-                    detail.is_manual_adjusted
-                      ? detail.adjusted_commission_bruta || 0
-                      : detail.commission_bruta
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="text-blue-700 mb-1">Impuestos</div>
-                <div className="font-bold text-red-700">
-                  {formatCurrency(
-                    (() => {
-                      const imp = detail.is_manual_adjusted
-                        ? detail.adjusted_impuestos_json || detail.impuestos_json
-                        : detail.impuestos_json;
-                      return (imp.iva_retenido || 0) + (imp.isr || 0) + (imp.otros || 0);
-                    })()
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="text-blue-700 mb-1">Neta</div>
-                <div className="font-bold text-green-700">
-                  {formatCurrency(currentNeta)}
-                </div>
+            <div className="flex justify-between items-center">
+              <div className="text-blue-700">Comisión:</div>
+              <div className="font-bold text-green-700 text-2xl">
+                {formatCurrency(currentNeta)}
               </div>
             </div>
           </div>
@@ -194,7 +158,7 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
 
           <div>
             <label className="block text-sm font-semibold text-neutral-700 mb-2">
-              Nueva Comisión Neta
+              Nueva Comisión
             </label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
@@ -208,7 +172,7 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
               />
             </div>
             <p className="text-xs text-neutral-600 mt-1">
-              El sistema recalculará automáticamente la comisión bruta e impuestos según el régimen fiscal del agente
+              Ingresa el nuevo monto de comisión para esta póliza
             </p>
           </div>
 

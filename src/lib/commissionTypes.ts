@@ -57,13 +57,6 @@ export interface CommissionBatch {
   updated_at: string;
 }
 
-export interface CommissionImpuestos {
-  iva_trasladado: number;
-  iva_retenido: number;
-  isr: number;
-  otros: number;
-}
-
 export interface CommissionDetail {
   id: string;
   batch_id: string;
@@ -72,17 +65,15 @@ export interface CommissionDetail {
   aseguradora: string;
   office_id: string | null;
   poliza: string;
+  nombre_asegurado: string | null;
   prima_base: number;
   concepto: string | null;
   date_fpago: string;
   commission_bruta: number;
-  impuestos_json: CommissionImpuestos;
   commission_neta: number;
   is_manual_adjusted: boolean;
   adjusted_by_user_id: string | null;
   adjusted_at: string | null;
-  adjusted_commission_bruta: number | null;
-  adjusted_impuestos_json: CommissionImpuestos | null;
   adjusted_commission_neta: number | null;
   adjust_reason: string | null;
   raw_row: Record<string, any>;
@@ -111,20 +102,14 @@ export interface WeekSummary {
 }
 
 export interface BatchSummary {
-  total_bruta: number;
-  total_impuestos: number;
-  total_neta: number;
+  total_commission: number;
   total_polizas: number;
   by_ramo: Record<string, {
-    bruta: number;
-    impuestos: number;
-    neta: number;
+    commission: number;
     count: number;
   }>;
   by_aseguradora: Record<string, {
-    bruta: number;
-    impuestos: number;
-    neta: number;
+    commission: number;
     count: number;
   }>;
 }
@@ -135,8 +120,6 @@ export interface AgentSummary {
   agent_email: string;
   office_name: string | null;
   regime_name: string | null;
-  total_bruta: number;
-  total_impuestos: number;
-  total_neta: number;
+  total_commission: number;
   total_polizas: number;
 }

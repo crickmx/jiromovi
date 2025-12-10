@@ -257,65 +257,79 @@ export default function ComisionesLote() {
 
       {activeTab === 'resumen' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-neutral-600 font-medium">Comisión Bruta</span>
+                <span className="text-neutral-600 font-medium">Comisión Total</span>
                 <DollarSign className="w-6 h-6 text-primary-600" />
               </div>
-              <div className="text-3xl font-bold text-neutral-900">
-                {formatCurrency(summary.total_bruta)}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-neutral-600 font-medium">Impuestos</span>
-                <FileSpreadsheet className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="text-3xl font-bold text-neutral-900">
-                {formatCurrency(summary.total_impuestos)}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-neutral-600 font-medium">Comisión Neta</span>
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
               <div className="text-3xl font-bold text-green-700">
-                {formatCurrency(summary.total_neta)}
+                {formatCurrency(summary.total_commission)}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-neutral-600 font-medium">Total Pólizas</span>
+                <FileSpreadsheet className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="text-3xl font-bold text-neutral-900">
+                {summary.total_polizas}
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-            <h3 className="text-xl font-bold text-neutral-900 mb-4">
-              Comisiones por Ramo
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-neutral-200">
-                    <th className="text-left py-3 px-4 font-semibold text-neutral-700">Ramo</th>
-                    <th className="text-right py-3 px-4 font-semibold text-neutral-700">Pólizas</th>
-                    <th className="text-right py-3 px-4 font-semibold text-neutral-700">Bruta</th>
-                    <th className="text-right py-3 px-4 font-semibold text-neutral-700">Impuestos</th>
-                    <th className="text-right py-3 px-4 font-semibold text-neutral-700">Neta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(summary.by_ramo).map(([ramo, data]) => (
-                    <tr key={ramo} className="border-b border-neutral-100 hover:bg-neutral-50">
-                      <td className="py-3 px-4 font-medium text-neutral-900">{ramo}</td>
-                      <td className="py-3 px-4 text-right text-neutral-700">{data.count}</td>
-                      <td className="py-3 px-4 text-right text-neutral-900">{formatCurrency(data.bruta)}</td>
-                      <td className="py-3 px-4 text-right text-red-700">{formatCurrency(data.impuestos)}</td>
-                      <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(data.neta)}</td>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
+              <h3 className="text-xl font-bold text-neutral-900 mb-4">
+                Comisiones por Ramo
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-neutral-200">
+                      <th className="text-left py-3 px-4 font-semibold text-neutral-700">Ramo</th>
+                      <th className="text-right py-3 px-4 font-semibold text-neutral-700">Pólizas</th>
+                      <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {Object.entries(summary.by_ramo).map(([ramo, data]) => (
+                      <tr key={ramo} className="border-b border-neutral-100 hover:bg-neutral-50">
+                        <td className="py-3 px-4 font-medium text-neutral-900">{ramo}</td>
+                        <td className="py-3 px-4 text-right text-neutral-700">{data.count}</td>
+                        <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(data.commission)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
+              <h3 className="text-xl font-bold text-neutral-900 mb-4">
+                Comisiones por Aseguradora
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-neutral-200">
+                      <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
+                      <th className="text-right py-3 px-4 font-semibold text-neutral-700">Pólizas</th>
+                      <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(summary.by_aseguradora).map(([aseg, data]) => (
+                      <tr key={aseg} className="border-b border-neutral-100 hover:bg-neutral-50">
+                        <td className="py-3 px-4 font-medium text-neutral-900">{aseg}</td>
+                        <td className="py-3 px-4 text-right text-neutral-700">{data.count}</td>
+                        <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(data.commission)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -332,11 +346,8 @@ export default function ComisionesLote() {
                 <tr className="border-b border-neutral-200">
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Agente</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Oficina</th>
-                  <th className="text-left py-3 px-4 font-semibold text-neutral-700">Régimen</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Pólizas</th>
-                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Bruta</th>
-                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Impuestos</th>
-                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Neta</th>
+                  <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
                   <th className="text-center py-3 px-4 font-semibold text-neutral-700">PDF</th>
                 </tr>
               </thead>
@@ -345,11 +356,8 @@ export default function ComisionesLote() {
                   <tr key={agent.agent_id} className="border-b border-neutral-100 hover:bg-neutral-50">
                     <td className="py-3 px-4 font-medium text-neutral-900">{agent.agent_name}</td>
                     <td className="py-3 px-4 text-neutral-700">{agent.office_name || '-'}</td>
-                    <td className="py-3 px-4 text-neutral-700">{agent.regime_name || '-'}</td>
                     <td className="py-3 px-4 text-right text-neutral-700">{agent.total_polizas}</td>
-                    <td className="py-3 px-4 text-right text-neutral-900">{formatCurrency(agent.total_bruta)}</td>
-                    <td className="py-3 px-4 text-right text-red-700">{formatCurrency(agent.total_impuestos)}</td>
-                    <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(agent.total_neta)}</td>
+                    <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(agent.total_commission)}</td>
                     <td className="py-3 px-4 text-center">
                       <button
                         onClick={() => handleDownloadAgentPDF(agent.agent_id)}
@@ -382,6 +390,7 @@ export default function ComisionesLote() {
               <thead>
                 <tr className="border-b border-neutral-200">
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Póliza</th>
+                  <th className="text-left py-3 px-4 font-semibold text-neutral-700">Asegurado</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Agente</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Ramo</th>
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
@@ -408,6 +417,7 @@ export default function ComisionesLote() {
                           </span>
                         )}
                       </td>
+                      <td className="py-3 px-4 text-neutral-700">{detail.nombre_asegurado || '-'}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.agent?.name}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.ramo}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.aseguradora}</td>

@@ -18,6 +18,8 @@ interface ExcelRow {
   Poliza?: string;
   Documento?: string;
   Concepto?: string;
+  NombreAsegurado?: string;
+  Asegurado?: string;
   [key: string]: any;
 }
 
@@ -257,12 +259,7 @@ Deno.serve(async (req: Request) => {
           }
 
           const commissionBruta = calculateCommissionBruta(row.PrimaNeta, row.PorPart);
-
-          const impuestos = agent.fiscal_regime
-            ? calculateImpuestos(commissionBruta, agent.fiscal_regime)
-            : { iva_trasladado: 0, iva_retenido: 0, isr: 0, otros: 0 };
-
-          const commissionNeta = calculateCommissionNeta(commissionBruta, impuestos);
+          const commissionNeta = commissionBruta;
 
           detailsToInsert.push({
             batch_id: batch.id,
@@ -271,11 +268,11 @@ Deno.serve(async (req: Request) => {
             aseguradora: row.Aseguradora || row.CiaAbreviacion,
             office_id: agent.office_id,
             poliza: row.Poliza || row.Documento,
+            nombre_asegurado: row.NombreAsegurado || row.Asegurado || null,
             prima_base: row.PrimaNeta,
             concepto: row.Concepto || null,
             date_fpago: row.FPago,
             commission_bruta: commissionBruta,
-            impuestos_json: impuestos,
             commission_neta: commissionNeta,
             is_manual_adjusted: false,
             raw_row: row
@@ -386,32 +383,6 @@ Deno.serve(async (req: Request) => {
 
 function calculateCommissionBruta(primaNeta: number, porPart: number): number {
   return primaNeta * (porPart / 100);
-}
-
-function calculateImpuestos(commissionBruta: number, regimenFiscal: any) {
-  const iva_trasladado = commissionBruta * (regimenFiscal.iva_trasladado || 0);
-  const iva_retenido = commissionBruta * (regimenFiscal.iva_retenido || 0);
-  const isr = commissionBruta * (regimenFiscal.isr || 0);
-
-  let otros = 0;
-  if (regimenFiscal.otros_json) {
-    Object.values(regimenFiscal.otros_json).forEach((rate: any) => {
-      if (typeof rate === 'number') {
-        otros += commissionBruta * rate;
-      }
-    });
-  }
-
-  return {
-    iva_trasladado,
-    iva_retenido,
-    isr,
-    otros
-  };
-}
-
-function calculateCommissionNeta(commissionBruta: number, impuestos: any): number {
-  return commissionBruta + impuestos.iva_trasladado - impuestos.iva_retenido - impuestos.isr - impuestos.otros;
 }
 
 function getWeekNumber(date: Date): number {
