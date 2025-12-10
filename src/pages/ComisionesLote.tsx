@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, FileSpreadsheet, DollarSign, Users, AlertCircle, Edit2, XCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, DollarSign, Users, AlertCircle, Edit2, XCircle, CheckCircle, Wrench, Download, Loader2 } from 'lucide-react';
 import type { CommissionBatch, CommissionDetail, CommissionError } from '../lib/commissionTypes';
 import { calculateBatchSummary, calculateAgentSummaries, formatCurrency, formatDate } from '../lib/commissionUtils';
+import AjustarComisionModal from '../components/comisiones/AjustarComisionModal';
+import { generateCommissionPDF, downloadPDF } from '../lib/pdfUtils';
 
 export default function ComisionesLote() {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +17,8 @@ export default function ComisionesLote() {
   const [errors, setErrors] = useState<CommissionError[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumen' | 'agentes' | 'polizas' | 'errores'>('resumen');
+  const [adjustingDetail, setAdjustingDetail] = useState<CommissionDetail | null>(null);
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -84,6 +88,31 @@ export default function ComisionesLote() {
       console.error(error);
     } else {
       navigate('/comisiones');
+    }
+  };
+
+  const handleDownloadAgentPDF = async (agentId: string) => {
+    if (!batch) return;
+
+    const agentDetails = details.filter(d => d.agent_id === agentId);
+
+    if (agentDetails.length === 0) {
+      alert('No hay datos para este agente');
+      return;
+    }
+
+    setGeneratingPDF(agentId);
+
+    try {
+      const pdfBlob = await generateCommissionPDF(agentDetails, batch);
+      const agentName = agentDetails[0].agent?.name || 'Agente';
+      const fileName = `Comisiones_${batch.name.replace(/\s+/g, '_')}_${agentName.replace(/\s+/g, '_')}.pdf`;
+      downloadPDF(pdfBlob, fileName);
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      alert('Error al generar el PDF: ' + error.message);
+    } finally {
+      setGeneratingPDF(null);
     }
   };
 
@@ -308,6 +337,7 @@ export default function ComisionesLote() {
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Bruta</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Impuestos</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Neta</th>
+                  <th className="text-center py-3 px-4 font-semibold text-neutral-700">PDF</th>
                 </tr>
               </thead>
               <tbody>
@@ -320,6 +350,20 @@ export default function ComisionesLote() {
                     <td className="py-3 px-4 text-right text-neutral-900">{formatCurrency(agent.total_bruta)}</td>
                     <td className="py-3 px-4 text-right text-red-700">{formatCurrency(agent.total_impuestos)}</td>
                     <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(agent.total_neta)}</td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={() => handleDownloadAgentPDF(agent.agent_id)}
+                        disabled={generatingPDF === agent.agent_id}
+                        className="inline-flex items-center space-x-1 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Descargar PDF"
+                      >
+                        {generatingPDF === agent.agent_id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -343,6 +387,9 @@ export default function ComisionesLote() {
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Prima</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
+                  {batch?.status !== 'closed' && (
+                    <th className="text-center py-3 px-4 font-semibold text-neutral-700">Acciones</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -353,12 +400,31 @@ export default function ComisionesLote() {
 
                   return (
                     <tr key={detail.id} className="border-b border-neutral-100 hover:bg-neutral-50">
-                      <td className="py-3 px-4 font-medium text-neutral-900">{detail.poliza}</td>
+                      <td className="py-3 px-4 font-medium text-neutral-900">
+                        {detail.poliza}
+                        {detail.is_manual_adjusted && (
+                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                            Ajustado
+                          </span>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-neutral-700">{detail.agent?.name}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.ramo}</td>
                       <td className="py-3 px-4 text-neutral-700">{detail.aseguradora}</td>
                       <td className="py-3 px-4 text-right text-neutral-900">{formatCurrency(detail.prima_base)}</td>
                       <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(commission || 0)}</td>
+                      {batch?.status !== 'closed' && (
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => setAdjustingDetail(detail)}
+                            className="inline-flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                            title="Ajustar comisión"
+                          >
+                            <Wrench className="w-4 h-4" />
+                            <span>Ajustar</span>
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -398,6 +464,17 @@ export default function ComisionesLote() {
             ))}
           </div>
         </div>
+      )}
+
+      {adjustingDetail && (
+        <AjustarComisionModal
+          detail={adjustingDetail}
+          onClose={() => setAdjustingDetail(null)}
+          onSuccess={() => {
+            loadBatch();
+            setAdjustingDetail(null);
+          }}
+        />
       )}
     </div>
   );

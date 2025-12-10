@@ -47,6 +47,9 @@ import StoreAdmin from './pages/StoreAdmin';
 import Comisiones from './pages/Comisiones';
 import ComisionesLote from './pages/ComisionesLote';
 import MisComisiones from './pages/MisComisiones';
+import ComisionesUpload from './pages/ComisionesUpload';
+import ComisionesReglasNegocio from './pages/ComisionesReglasNegocio';
+import ComisionesImportarAgentes from './pages/ComisionesImportarAgentes';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -498,6 +501,39 @@ function AppRoutes() {
           <ProtectedRoute requireAdmin>
             <Layout>
               <ComisionesLote />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comisiones/upload"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <ComisionesUpload />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comisiones/reglas"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <ComisionesReglasNegocio />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comisiones/importar-agentes"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <ComisionesImportarAgentes />
             </Layout>
           </ProtectedRoute>
         }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { DollarSign, Download, FileText, Calendar } from 'lucide-react';
+import { DollarSign, Download, FileText, Calendar, Loader2 } from 'lucide-react';
 import type { CommissionBatch, CommissionDetail } from '../lib/commissionTypes';
 import { calculateBatchSummary, formatCurrency, formatDate } from '../lib/commissionUtils';
+import { generateCommissionPDF, downloadPDF } from '../lib/pdfUtils';
 
 export default function MisComisiones() {
   const { usuario } = useAuth();
@@ -11,6 +12,7 @@ export default function MisComisiones() {
   const [batchDetails, setBatchDetails] = useState<Map<string, CommissionDetail[]>>(new Map());
   const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
 
   useEffect(() => {
     loadCommissions();
@@ -75,6 +77,29 @@ export default function MisComisiones() {
     const details = batchDetails.get(batchId);
     if (!details || details.length === 0) return null;
     return calculateBatchSummary(details);
+  };
+
+  const handleDownloadPDF = async (batchId: string) => {
+    const batch = batches.find(b => b.id === batchId);
+    const details = batchDetails.get(batchId);
+
+    if (!batch || !details || details.length === 0) {
+      alert('No hay datos para generar el PDF');
+      return;
+    }
+
+    setGeneratingPDF(batchId);
+
+    try {
+      const pdfBlob = await generateCommissionPDF(details, batch);
+      const fileName = `Comisiones_${batch.name.replace(/\s+/g, '_')}_${usuario?.nombre_completo?.replace(/\s+/g, '_')}.pdf`;
+      downloadPDF(pdfBlob, fileName);
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      alert('Error al generar el PDF: ' + error.message);
+    } finally {
+      setGeneratingPDF(null);
+    }
   };
 
   if (loading) {
@@ -177,12 +202,22 @@ export default function MisComisiones() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        alert('Funcionalidad de descarga de PDF próximamente');
+                        handleDownloadPDF(batch.id);
                       }}
-                      className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold ml-4"
+                      disabled={generatingPDF === batch.id}
+                      className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold ml-4 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Download className="w-5 h-5" />
-                      <span>PDF</span>
+                      {generatingPDF === batch.id ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>Generando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-5 h-5" />
+                          <span>PDF</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
