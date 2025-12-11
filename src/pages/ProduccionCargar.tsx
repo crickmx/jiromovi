@@ -1,18 +1,48 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, ArrowLeft } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, ArrowLeft, Link as LinkIcon, RefreshCw } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+type UploadMode = 'excel' | 'sheets';
 
 export default function ProduccionCargar() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<UploadMode>('sheets');
   const [file, setFile] = useState<File | null>(null);
+  const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d/1FladEQiSlbwHQoBKGtPMq5WI-MSXYPm2HcfUZsEadbk/edit?usp=sharing');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const [config, setConfig] = useState<any>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadConfig();
+    }
+  }, [isAdmin]);
+
+  const loadConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from('production_config')
+        .select('*')
+        .maybeSingle();
+
+      if (data) {
+        setConfig(data);
+        if (data.google_sheet_url) {
+          setSheetUrl(data.google_sheet_url);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading config:', err);
+    }
+  };
 
   useEffect(() => {
     if (success) {
@@ -121,6 +151,53 @@ export default function ProduccionCargar() {
     }
   };
 
+  const handleSyncGoogleSheets = async () => {
+    if (!sheetUrl || !usuario) return;
+
+    console.log('[ProduccionCargar] Starting Google Sheets sync. URL:', sheetUrl);
+
+    setLoading(true);
+    setError('');
+    setSuccess(false);
+
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/sync-google-sheets`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sheetUrl: sheetUrl.trim(),
+            userId: usuario.id
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Error al sincronizar Google Sheets');
+      }
+
+      console.log('[ProduccionCargar] Sync successful!');
+      setSuccess(true);
+      setStats(data);
+      await loadConfig();
+
+    } catch (err: any) {
+      console.error('[ProduccionCargar] Error syncing Google Sheets:', err);
+      setError(err.message || 'Error al sincronizar Google Sheets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
@@ -139,11 +216,36 @@ export default function ProduccionCargar() {
                 Cargar Producción
               </h1>
               <p className="text-neutral-600">
-                Sube un archivo Excel con los datos de producción
+                Sincroniza desde Google Sheets o sube un archivo Excel
               </p>
             </div>
             <FileSpreadsheet className="w-12 h-12 text-primary-600" />
           </div>
+        </div>
+
+        <div className="flex space-x-2 mb-6 bg-neutral-100 p-1 rounded-xl">
+          <button
+            onClick={() => setMode('sheets')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all ${
+              mode === 'sheets'
+                ? 'bg-white text-primary-600 shadow-sm'
+                : 'text-neutral-600 hover:text-neutral-900'
+            }`}
+          >
+            <LinkIcon className="w-5 h-5" />
+            <span>Google Sheets</span>
+          </button>
+          <button
+            onClick={() => setMode('excel')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all ${
+              mode === 'excel'
+                ? 'bg-white text-primary-600 shadow-sm'
+                : 'text-neutral-600 hover:text-neutral-900'
+            }`}
+          >
+            <Upload className="w-5 h-5" />
+            <span>Archivo Excel</span>
+          </button>
         </div>
 
         <div className="space-y-3 mb-6">
@@ -179,40 +281,96 @@ export default function ProduccionCargar() {
           </div>
         </div>
 
-        <div className="border-2 border-dashed border-neutral-300 rounded-2xl p-8 text-center hover:border-primary-500 transition-colors">
-          <Upload className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
+{mode === 'sheets' ? (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <LinkIcon className="w-8 h-8 text-green-600" />
+                <div>
+                  <h3 className="text-lg font-bold text-green-900">
+                    Sincronizar desde Google Sheets
+                  </h3>
+                  <p className="text-sm text-green-700">
+                    Configura el enlace de tu hoja de cálculo de Google
+                  </p>
+                </div>
+              </div>
 
-          <label
-            htmlFor="file-upload"
-            className="inline-flex items-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 transition-colors font-semibold cursor-pointer"
-          >
-            <Upload className="w-5 h-5" />
-            <span>Seleccionar archivo Excel</span>
-          </label>
+              {config?.last_sync_at && (
+                <div className="bg-white/70 rounded-lg p-3 mb-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-neutral-600">Última sincronización:</span>
+                    <span className="font-semibold text-neutral-900">
+                      {new Date(config.last_sync_at).toLocaleString('es-MX', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
+              )}
 
-          <input
-            id="file-upload"
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleFileChange}
-            className="hidden"
-          />
+              <div className="space-y-3">
+                <label className="block">
+                  <span className="text-sm font-semibold text-neutral-700 mb-2 block">
+                    URL de Google Sheets
+                  </span>
+                  <input
+                    type="text"
+                    value={sheetUrl}
+                    onChange={(e) => setSheetUrl(e.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    className="w-full px-4 py-3 border-2 border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  />
+                </label>
 
-          {file && (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <p className="text-sm font-medium text-blue-900">
-                Archivo seleccionado: {file.name}
-              </p>
-              <p className="text-xs text-blue-700 mt-1">
-                Tamaño: {(file.size / 1024 / 1024).toFixed(2)} MB
-              </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>Importante:</strong> Asegúrate de que el Google Sheet esté compartido como "Cualquier persona con el enlace puede ver"
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
+        ) : (
+          <div className="border-2 border-dashed border-neutral-300 rounded-2xl p-8 text-center hover:border-primary-500 transition-colors">
+            <Upload className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
 
-          <p className="text-sm text-neutral-500 mt-4">
-            Formatos aceptados: .xlsx, .xls
-          </p>
-        </div>
+            <label
+              htmlFor="file-upload"
+              className="inline-flex items-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 transition-colors font-semibold cursor-pointer"
+            >
+              <Upload className="w-5 h-5" />
+              <span>Seleccionar archivo Excel</span>
+            </label>
+
+            <input
+              id="file-upload"
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
+            {file && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <p className="text-sm font-medium text-blue-900">
+                  Archivo seleccionado: {file.name}
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Tamaño: {(file.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+            )}
+
+            <p className="text-sm text-neutral-500 mt-4">
+              Formatos aceptados: .xlsx, .xls
+            </p>
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
@@ -231,9 +389,17 @@ export default function ProduccionCargar() {
             <div className="flex items-center space-x-2 mb-4">
               <CheckCircle className="w-6 h-6 text-green-600" />
               <h3 className="text-lg font-bold text-green-900">
-                Archivo procesado exitosamente
+                {mode === 'sheets' ? 'Sincronización completada' : 'Archivo procesado exitosamente'}
               </h3>
             </div>
+
+            {stats.skippedCount > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>Nota:</strong> Se omitieron {stats.skippedCount} registros por datos inválidos o incompletos.
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <div className="bg-white rounded-lg p-4">
@@ -272,7 +438,19 @@ export default function ProduccionCargar() {
           </div>
         )}
 
-        {file && !loading && !success && (
+{mode === 'sheets' && sheetUrl && !loading && !success && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={handleSyncGoogleSheets}
+              className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-xl hover:shadow-lg transition-all duration-200 hover:scale-105 font-semibold text-lg"
+            >
+              <RefreshCw className="w-6 h-6" />
+              <span>Sincronizar Google Sheets</span>
+            </button>
+          </div>
+        )}
+
+        {mode === 'excel' && file && !loading && !success && (
           <div className="mt-6 flex justify-center">
             <button
               onClick={handleUpload}
@@ -288,15 +466,46 @@ export default function ProduccionCargar() {
           <div className="mt-6 text-center">
             <div className="inline-block w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-neutral-600 font-medium">
-              Procesando archivo... Esto puede tomar varios minutos.
+              {mode === 'sheets' ? 'Sincronizando desde Google Sheets...' : 'Procesando archivo...'} Esto puede tomar varios minutos.
             </p>
           </div>
         )}
       </div>
 
+{mode === 'sheets' && (
+        <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6 mb-6">
+          <h2 className="text-xl font-bold text-neutral-900 mb-4">
+            Cómo configurar tu Google Sheet
+          </h2>
+
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <h3 className="font-semibold text-green-900 mb-2">Paso 1: Compartir el documento</h3>
+              <ol className="text-sm text-green-800 space-y-1 list-decimal list-inside">
+                <li>Abre tu Google Sheet</li>
+                <li>Haz clic en "Compartir" en la esquina superior derecha</li>
+                <li>En "Acceso general", selecciona "Cualquier persona con el enlace"</li>
+                <li>Asegúrate de que el rol sea "Lector"</li>
+                <li>Copia el enlace y pégalo arriba</li>
+              </ol>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <h3 className="font-semibold text-blue-900 mb-2">Paso 2: Estructura de datos</h3>
+              <p className="text-sm text-blue-800 mb-2">
+                Tu Google Sheet debe tener las mismas columnas que se requieren para un archivo Excel (ver abajo).
+              </p>
+              <p className="text-sm text-blue-800">
+                La primera fila debe contener los encabezados de las columnas y los datos deben empezar en la segunda fila.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
         <h2 className="text-xl font-bold text-neutral-900 mb-4">
-          Estructura del Archivo Excel
+          Estructura de Datos Requerida
         </h2>
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
@@ -308,6 +517,7 @@ export default function ProduccionCargar() {
               </p>
               <p className="text-xs text-blue-800">
                 El sistema busca las columnas sin importar mayúsculas/minúsculas, pero los nombres deben coincidir exactamente.
+                Aplica tanto para Excel como para Google Sheets.
               </p>
             </div>
           </div>
