@@ -272,9 +272,9 @@ export default function ProduccionCargar() {
                   Límites del sistema
                 </h3>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Tamaño máximo de archivo: 10 MB</li>
-                  <li>• Máximo de registros: 10,000 por archivo</li>
-                  <li>• Si tu archivo excede estos límites, divídelo en partes más pequeñas</li>
+                  <li>• Tamaño máximo de archivo Excel: 10 MB</li>
+                  <li>• Sin límite de registros para Google Sheets</li>
+                  <li>• El procesamiento de grandes volúmenes puede tomar varios minutos</li>
                 </ul>
               </div>
             </div>

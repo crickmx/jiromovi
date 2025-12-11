@@ -97,9 +97,7 @@ Deno.serve(async (req: Request) => {
       throw new Error('El Google Sheet no contiene datos válidos');
     }
 
-    if (rows.length > 10000) {
-      throw new Error(`El Google Sheet contiene ${rows.length} registros. El límite es 10,000 registros. Por favor, reduce el número de filas.`);
-    }
+    console.log(`[sync-google-sheets] Processing ${rows.length} records...`);
 
     const requiredColumns = [
       'FechaSimp', 'DespNombre', 'GerenciaNombre', 'VendNombre',
@@ -134,7 +132,7 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[sync-google-sheets] Processing rows...');
-    const batchSize = 100;
+    const batchSize = 500;
     let processedCount = 0;
     let skippedCount = 0;
 

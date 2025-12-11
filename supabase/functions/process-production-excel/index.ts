@@ -79,8 +79,7 @@ Deno.serve(async (req: Request) => {
         type: 'array',
         cellDates: true,
         cellNF: false,
-        cellText: false,
-        sheetRows: 10000
+        cellText: false
       });
     } catch (xlsxError: any) {
       console.error('[process-production] XLSX parsing error:', xlsxError);
@@ -104,9 +103,7 @@ Deno.serve(async (req: Request) => {
       throw new Error('El archivo está vacío');
     }
 
-    if (rows.length > 10000) {
-      throw new Error(`El archivo contiene ${rows.length} registros. El límite es 10,000 registros por archivo. Por favor, divide el archivo en partes más pequeñas.`);
-    }
+    console.log(`[process-production] Processing ${rows.length} records...`);
 
     const requiredColumns = [
       'FechaSimp', 'DespNombre', 'GerenciaNombre', 'VendNombre',
@@ -144,7 +141,7 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[process-production] Processing rows...');
-    const batchSize = 100;
+    const batchSize = 500;
     let processedCount = 0;
     let skippedCount = 0;
 
