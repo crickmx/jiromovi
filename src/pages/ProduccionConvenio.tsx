@@ -62,13 +62,19 @@ export default function ProduccionConvenio() {
   }, [records, filters]);
 
   const loadData = async () => {
-    if (!usuario) return;
+    if (!usuario) {
+      console.log('[ProduccionConvenio] No hay usuario');
+      return;
+    }
 
+    console.log('[ProduccionConvenio] Iniciando carga de datos...');
     setLoading(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-production-sheets?convenio_only=true`;
+
+      console.log('[ProduccionConvenio] Llamando a:', apiUrl);
 
       const headers = {
         'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -77,16 +83,31 @@ export default function ProduccionConvenio() {
 
       const response = await fetch(apiUrl, { headers });
 
+      console.log('[ProduccionConvenio] Response status:', response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al obtener datos de Google Sheets');
+        const errorText = await response.text();
+        console.error('[ProduccionConvenio] Error response:', errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.error || 'Error al obtener datos de Google Sheets');
+        } catch (e) {
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
       }
 
       const result = await response.json();
+      console.log('[ProduccionConvenio] Result:', { success: result.success, total: result.total, hasRecords: !!result.records });
 
       if (!result.success) {
         throw new Error(result.error || 'Error desconocido');
       }
+
+      if (!result.records || !Array.isArray(result.records)) {
+        throw new Error('No se recibieron registros del servidor');
+      }
+
+      console.log('[ProduccionConvenio] Procesando', result.records.length, 'registros...');
 
       let processedData = result.records.map((record: any) => ({
         id: `${record.fecha}-${record.agente_nombre}-${Math.random()}`,
@@ -97,6 +118,8 @@ export default function ProduccionConvenio() {
         porcentaje_bono: record.porcentaje_bono ? Number(record.porcentaje_bono) : null,
       }));
 
+      console.log('[ProduccionConvenio] Datos procesados:', processedData.length);
+
       if (usuario.rol === 'Gerente' && usuario.production_office_id) {
         const { data: office } = await supabase
           .from('oficinas')
@@ -105,11 +128,14 @@ export default function ProduccionConvenio() {
           .maybeSingle();
 
         if (office) {
+          const beforeFilter = processedData.length;
           processedData = processedData.filter((r: any) => r.desp_nombre_raw === office.nombre);
+          console.log('[ProduccionConvenio] Filtrado por oficina:', beforeFilter, '→', processedData.length);
         }
       }
 
       setRecords(processedData);
+      console.log('[ProduccionConvenio] Records establecidos en state:', processedData.length);
 
       const uniqueOffices = [...new Set(processedData.map((r: any) => r.desp_nombre_raw).filter(Boolean))] as string[];
       const uniqueManagements = [...new Set(processedData.map((r: any) => r.gerencia_nombre_raw).filter(Boolean))] as string[];
@@ -125,9 +151,11 @@ export default function ProduccionConvenio() {
 
       setLastImport({ imported_at: result.fetched_at });
 
-    } catch (error) {
-      console.error('Error loading production data:', error);
-      alert('Error al cargar los datos de producción. Verifica que el link de Google Sheets esté configurado correctamente.');
+      console.log('[ProduccionConvenio] Carga completada exitosamente');
+
+    } catch (error: any) {
+      console.error('[ProduccionConvenio] Error completo:', error);
+      alert('Error al cargar los datos de producción:\n\n' + error.message + '\n\nAbre la consola del navegador (F12) para más detalles.');
     } finally {
       setLoading(false);
     }
