@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, TrendingUp, ArrowLeft } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, ArrowLeft } from 'lucide-react';
 
 export default function ProduccionCargar() {
   const { usuario } = useAuth();
@@ -13,6 +13,16 @@ export default function ProduccionCargar() {
   const [stats, setStats] = useState<any>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        navigate('/produccion/total');
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [success, navigate]);
 
   if (!isAdmin) {
     return (
@@ -204,7 +214,7 @@ export default function ProduccionCargar() {
               </h3>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm text-neutral-600 mb-1">Registros</p>
                 <p className="text-2xl font-bold text-neutral-900">
@@ -228,28 +238,15 @@ export default function ProduccionCargar() {
 
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm text-neutral-600 mb-1">Prima Ponderada</p>
-                <p className="text-2xl font-bold text-purple-600">
+                <p className="text-2xl font-bold text-orange-600">
                   ${(stats.stats?.totalPonderada || 0).toLocaleString()}
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 flex space-x-3">
-              <button
-                onClick={() => navigate('/produccion/total')}
-                className="flex-1 flex items-center justify-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 transition-colors font-semibold"
-              >
-                <TrendingUp className="w-5 h-5" />
-                <span>Ver Producción Total</span>
-              </button>
-
-              <button
-                onClick={() => navigate('/produccion/convenio')}
-                className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-semibold"
-              >
-                <TrendingUp className="w-5 h-5" />
-                <span>Ver Producción Convenio</span>
-              </button>
+            <div className="flex items-center justify-center space-x-2 text-sm text-green-700 bg-white rounded-lg p-3">
+              <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
+              <span>Redirigiendo a Producción Total en 3 segundos...</span>
             </div>
           </div>
         )}
