@@ -3,6 +3,100 @@ import autoTable from 'jspdf-autotable';
 import type { CommissionDetail, CommissionBatch } from './commissionTypes';
 import { formatCurrency, formatDate } from './commissionUtils';
 
+export type DesgloseFiscal = {
+  retContable: number;
+  costoDispersion: number;
+  iva: number;
+  retIsr: number;
+  retIva: number;
+  totalAPagar: number;
+};
+
+export interface ResumenPorRamo {
+  ramo: string;
+  primaTotal: number;
+  comisionNeta: number;
+}
+
+export function calcularDesgloseFiscal(params: {
+  regimenFiscal: string;
+  resumenPorRamo: ResumenPorRamo[];
+  totalComisionNeta: number;
+  resicoIsrRate?: number;
+  resicoIvaRate?: number;
+  resicoRetIvaRate?: number;
+}): DesgloseFiscal {
+  const {
+    regimenFiscal,
+    resumenPorRamo,
+    totalComisionNeta,
+    resicoIsrRate = 0.0125,
+    resicoIvaRate = 0,
+    resicoRetIvaRate = 0,
+  } = params;
+
+  const regimenUpper = regimenFiscal.toUpperCase();
+
+  if (regimenUpper === 'ASIMILADOS' || regimenUpper.includes('ASIMILADO')) {
+    const baseVida = resumenPorRamo
+      .filter(r => r.ramo.toLowerCase() === 'vida')
+      .reduce((sum, r) => sum + r.comisionNeta, 0);
+
+    const retContable = baseVida * 0.16;
+
+    const costoDispersion = retContable * 0.10;
+
+    const iva = 0;
+
+    const retIsr = 0;
+    const retIva = 0;
+
+    const totalAPagar = totalComisionNeta - retContable - costoDispersion - retIsr - retIva + iva;
+
+    return {
+      retContable,
+      costoDispersion,
+      iva,
+      retIsr,
+      retIva,
+      totalAPagar,
+    };
+  }
+
+  if (regimenUpper === 'RESICO' || regimenUpper.includes('RESICO')) {
+    const baseFiscal = totalComisionNeta;
+
+    const retIsr = baseFiscal * resicoIsrRate;
+
+    const iva = baseFiscal * resicoIvaRate;
+
+    const retIva = baseFiscal * resicoRetIvaRate;
+
+    const retContable = 0;
+    const costoDispersion = 0;
+
+    const totalAPagar = baseFiscal - retContable - costoDispersion - retIsr - retIva + iva;
+
+    return {
+      retContable,
+      costoDispersion,
+      iva,
+      retIsr,
+      retIva,
+      totalAPagar,
+    };
+  }
+
+  return {
+    retContable: 0,
+    costoDispersion: 0,
+    iva: 0,
+    retIsr: 0,
+    retIva: 0,
+    totalAPagar: totalComisionNeta,
+  };
+}
+
 async function loadImageAsBase64(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -466,42 +560,65 @@ export async function generateOrdenDePagoPDF(
     yPosition += 2;
   }
 
+  const resumenPorRamo: ResumenPorRamo[] = [];
+  ramoMap.forEach((data, ramo) => {
+    resumenPorRamo.push({
+      ramo,
+      primaTotal: data.primaTotal,
+      comisionNeta: data.comisionNeta,
+    });
+  });
+
+  const regimenFiscal = agent.fiscal_regime?.name || 'HONORARIOS';
+
+  const desgloseFiscal = calcularDesgloseFiscal({
+    regimenFiscal,
+    resumenPorRamo,
+    totalComisionNeta,
+  });
+
   const availableSpace = pageHeight - yPosition - 8;
 
   if (availableSpace > 18) {
-    doc.setDrawColor(200);
-    doc.setFillColor(245, 248, 250);
-    doc.rect(marginLeft, yPosition, contentWidth, Math.min(availableSpace, 35), 'FD');
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 51, 102);
+    doc.text('Desglose Fiscal', marginLeft, yPosition);
 
     yPosition += 4;
 
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 51, 102);
-    doc.text('Desglose Fiscal (según régimen)', marginLeft + 2, yPosition);
+    const desgloseFiscalRows = [
+      ['Ret. Contable', formatCurrency(desgloseFiscal.retContable)],
+      ['Costo Dispersión', formatCurrency(desgloseFiscal.costoDispersion)],
+      ['IVA', formatCurrency(desgloseFiscal.iva)],
+      ['Ret ISR', formatCurrency(desgloseFiscal.retIsr)],
+      ['Ret IVA', formatCurrency(desgloseFiscal.retIva)],
+      [
+        { content: 'Total a pagar', styles: { fontStyle: 'bold' } },
+        { content: formatCurrency(desgloseFiscal.totalAPagar), styles: { fontStyle: 'bold', textColor: [0, 128, 0] } }
+      ]
+    ];
 
-    yPosition += 5;
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Concepto', 'Importe']],
+      body: desgloseFiscalRows,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 7 },
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      margin: { left: marginLeft, right: marginRight },
+      columnStyles: {
+        0: { cellWidth: contentWidth * 0.6 },
+        1: { cellWidth: contentWidth * 0.4, halign: 'right' }
+      }
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 3;
 
     doc.setFontSize(7);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(60);
-    doc.text(`Régimen: ${agent.fiscal_regime?.name || 'No especificado'}`, marginLeft + 2, yPosition);
-
-    yPosition += 5;
-
-    doc.setFontSize(6);
-    doc.setTextColor(80);
-    doc.setFont(undefined, 'italic');
-    const placeholderText = 'Este espacio está reservado para el desglose fiscal específico según el régimen de este agente (RESICO, Honorarios o Asimilados). Las fórmulas y montos serán integrados posteriormente.';
-    const lines = doc.splitTextToSize(placeholderText, contentWidth - 4);
-    let lineCount = 0;
-    lines.forEach((line: string) => {
-      if (yPosition < pageHeight - 8 && lineCount < 4) {
-        doc.text(line, marginLeft + 2, yPosition);
-        yPosition += 3;
-        lineCount++;
-      }
-    });
+    doc.text(`Régimen fiscal: ${regimenFiscal}`, marginLeft, yPosition);
   }
 
   const pdfBlob = doc.output('blob');
