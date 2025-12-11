@@ -387,6 +387,30 @@ export default function ProduccionTotal() {
     ].filter(d => d.value > 0);
   }, [filteredRecords]);
 
+  const chartDataByYear = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [currentYear, currentYear - 1, currentYear - 2];
+    const useImporte = records.some(r => r.importe_pesos > 0);
+
+    const yearlyData = years.map(year => {
+      const yearRecords = records.filter(r => {
+        const recordYear = new Date(r.fecha).getFullYear();
+        return recordYear === year;
+      });
+
+      const total = yearRecords.reduce((sum, r) =>
+        sum + (useImporte ? r.importe_pesos : r.prima_convenio), 0
+      );
+
+      return {
+        label: year.toString(),
+        value: total
+      };
+    });
+
+    return yearlyData.reverse();
+  }, [records]);
+
   const kpis = calculateKPIs();
   const formatCurrency = (v: number) => `$${v.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
@@ -716,6 +740,14 @@ export default function ProduccionTotal() {
                   size={220}
                 />
               </div>
+
+              <GraficaColumnas
+                data={chartDataByYear}
+                title="Comparación por Año"
+                valueFormatter={formatCurrency}
+                height={280}
+                color="#3b82f6"
+              />
 
               <GraficaColumnas
                 data={chartDataByOfficeOrAgent}

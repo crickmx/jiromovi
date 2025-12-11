@@ -340,6 +340,29 @@ export default function ProduccionConvenio() {
       .slice(0, 8);
   }, [filteredRecords]);
 
+  const chartDataByYear = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [currentYear, currentYear - 1, currentYear - 2];
+
+    const yearlyData = years.map(year => {
+      const yearRecords = records.filter(r => {
+        const recordYear = new Date(r.fecha).getFullYear();
+        return recordYear === year;
+      });
+
+      const total = yearRecords.reduce((sum, r) =>
+        sum + r.prima_convenio, 0
+      );
+
+      return {
+        label: year.toString(),
+        value: total
+      };
+    });
+
+    return yearlyData.reverse();
+  }, [records]);
+
   const kpis = calculateKPIs();
   const formatCurrency = (v: number) => `$${v.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
@@ -600,6 +623,14 @@ export default function ProduccionConvenio() {
                   size={220}
                 />
               </div>
+
+              <GraficaColumnas
+                data={chartDataByYear}
+                title="Comparación por Año"
+                valueFormatter={formatCurrency}
+                height={280}
+                color="#3b82f6"
+              />
 
               <GraficaColumnasAgrupadas
                 data={chartDataComparativo}
