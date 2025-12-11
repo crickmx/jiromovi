@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Settings, ArrowLeft, Save, Link as LinkIcon, Check, AlertCircle } from 'lucide-react';
+import { Settings, ArrowLeft, Save, Link as LinkIcon, Check, AlertCircle, Building } from 'lucide-react';
 
 interface GoogleSheetsConfig {
   id: string;
@@ -11,6 +11,23 @@ interface GoogleSheetsConfig {
   activo: boolean;
   created_at: string;
   updated_at: string;
+}
+
+interface Oficina {
+  id: string;
+  nombre: string;
+}
+
+interface OfficeMapping {
+  id: string;
+  oficina_id: string;
+  excel_office_name: string;
+}
+
+interface OfficeMappingEdit {
+  oficina_id: string;
+  oficina_nombre: string;
+  excel_office_name: string;
 }
 
 export default function ProduccionConfiguracion() {
@@ -22,12 +39,20 @@ export default function ProduccionConfiguracion() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  const [oficinas, setOficinas] = useState<Oficina[]>([]);
+  const [mappings, setMappings] = useState<OfficeMappingEdit[]>([]);
+  const [savingMappings, setSavingMappings] = useState(false);
+  const [excelOfficeNames, setExcelOfficeNames] = useState<string[]>([]);
+
   useEffect(() => {
     if (usuario?.rol !== 'Administrador') {
       navigate('/produccion/total');
       return;
     }
     loadConfig();
+    loadOffices();
+    loadMappings();
+    loadExcelOfficeNames();
   }, [usuario, navigate]);
 
   const loadConfig = async () => {
@@ -101,6 +126,121 @@ export default function ProduccionConfiguracion() {
       setMessage({ type: 'error', text: 'Error al guardar la configuración: ' + error.message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const loadOffices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('oficinas')
+        .select('id, nombre')
+        .order('nombre');
+
+      if (error) throw error;
+      setOficinas(data || []);
+    } catch (error: any) {
+      console.error('Error loading offices:', error);
+    }
+  };
+
+  const loadMappings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('production_office_mapping')
+        .select('id, oficina_id, excel_office_name, oficinas(nombre)');
+
+      if (error) throw error;
+
+      const mappingsData: OfficeMappingEdit[] = (data || []).map((m: any) => ({
+        oficina_id: m.oficina_id,
+        oficina_nombre: m.oficinas?.nombre || '',
+        excel_office_name: m.excel_office_name
+      }));
+
+      setMappings(mappingsData);
+    } catch (error: any) {
+      console.error('Error loading mappings:', error);
+    }
+  };
+
+  const loadExcelOfficeNames = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-production-sheets`;
+
+      const headers = {
+        'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, { headers });
+
+      if (!response.ok) {
+        console.error('Error fetching production data');
+        return;
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.records) {
+        const uniqueNames = [...new Set(result.records.map((r: any) => r.desp_nombre_raw).filter(Boolean))] as string[];
+        setExcelOfficeNames(uniqueNames.sort());
+      }
+    } catch (error: any) {
+      console.error('Error loading Excel office names:', error);
+    }
+  };
+
+  const handleMappingChange = (oficina_id: string, excel_name: string) => {
+    setMappings(prev => {
+      const exists = prev.find(m => m.oficina_id === oficina_id);
+      if (exists) {
+        return prev.map(m =>
+          m.oficina_id === oficina_id
+            ? { ...m, excel_office_name: excel_name }
+            : m
+        );
+      } else {
+        const oficina = oficinas.find(o => o.id === oficina_id);
+        return [...prev, {
+          oficina_id,
+          oficina_nombre: oficina?.nombre || '',
+          excel_office_name: excel_name
+        }];
+      }
+    });
+  };
+
+  const handleSaveMappings = async () => {
+    setSavingMappings(true);
+    try {
+      await supabase
+        .from('production_office_mapping')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      const mappingsToInsert = mappings
+        .filter(m => m.excel_office_name.trim() !== '')
+        .map(m => ({
+          oficina_id: m.oficina_id,
+          excel_office_name: m.excel_office_name
+        }));
+
+      if (mappingsToInsert.length > 0) {
+        const { error } = await supabase
+          .from('production_office_mapping')
+          .insert(mappingsToInsert);
+
+        if (error) throw error;
+      }
+
+      setMessage({ type: 'success', text: 'Mapeo de oficinas guardado exitosamente' });
+      loadMappings();
+    } catch (error: any) {
+      console.error('Error saving mappings:', error);
+      setMessage({ type: 'error', text: 'Error al guardar el mapeo: ' + error.message });
+    } finally {
+      setSavingMappings(false);
     }
   };
 
@@ -256,6 +396,91 @@ export default function ProduccionConfiguracion() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="mt-4 sm:mt-6 bg-white rounded-2xl sm:rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 sm:px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur flex-shrink-0">
+              <Building className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-white">Mapeo de Oficinas</h2>
+              <p className="text-xs sm:text-sm text-green-100">Relaciona las oficinas del sistema con las del Excel</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-6">
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-blue-800">
+              Los nombres de las oficinas en el Excel pueden no coincidir exactamente con los nombres en la plataforma.
+              Aquí puedes indicar manualmente qué oficina del sistema corresponde a cada oficina del Excel.
+            </p>
+          </div>
+
+          {excelOfficeNames.length === 0 ? (
+            <div className="text-center py-8 text-neutral-500">
+              <Building className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Configura primero la conexión a Google Sheets para cargar los nombres de oficinas del Excel</p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {oficinas.map((oficina) => {
+                  const mapping = mappings.find(m => m.oficina_id === oficina.id);
+                  return (
+                    <div key={oficina.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">
+                          Oficina en Sistema:
+                        </label>
+                        <p className="text-sm font-medium text-neutral-900 truncate">
+                          {oficina.nombre}
+                        </p>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">
+                          Oficina en Excel:
+                        </label>
+                        <select
+                          value={mapping?.excel_office_name || ''}
+                          onChange={(e) => handleMappingChange(oficina.id, e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        >
+                          <option value="">-- Sin mapear --</option>
+                          {excelOfficeNames.map((name) => (
+                            <option key={name} value={name}>{name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 sm:mt-6 flex items-center justify-end">
+                <button
+                  onClick={handleSaveMappings}
+                  disabled={savingMappings}
+                  className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {savingMappings ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Guardar Mapeo</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

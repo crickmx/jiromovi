@@ -132,26 +132,46 @@ export default function ProduccionConvenio() {
       console.log('[ProduccionConvenio] Datos procesados:', processedData.length);
 
       if (usuario.rol === 'Gerente' && usuario.oficina_id) {
-        const { data: office } = await supabase
-          .from('oficinas')
-          .select('nombre')
-          .eq('id', usuario.oficina_id)
+        const { data: mapping } = await supabase
+          .from('production_office_mapping')
+          .select('excel_office_name, oficinas(nombre)')
+          .eq('oficina_id', usuario.oficina_id)
           .maybeSingle();
 
-        console.log('[ProduccionConvenio] Gerente detectado - Oficina:', office?.nombre);
+        console.log('[ProduccionConvenio] Gerente detectado - Oficina:', mapping?.oficinas?.nombre, 'Mapeo Excel:', mapping?.excel_office_name);
 
-        if (office) {
+        if (mapping && mapping.excel_office_name) {
           const beforeFilter = processedData.length;
           processedData = processedData.filter((r: any) => {
-            const matches = r.desp_nombre_raw === office.nombre;
+            const matches = r.desp_nombre_raw === mapping.excel_office_name;
             if (!matches) {
-              console.log('[ProduccionConvenio] Registro filtrado:', r.desp_nombre_raw, '!==', office.nombre);
+              console.log('[ProduccionConvenio] Registro filtrado:', r.desp_nombre_raw, '!==', mapping.excel_office_name);
             }
             return matches;
           });
-          console.log('[ProduccionConvenio] Filtrado por oficina:', beforeFilter, '→', processedData.length);
+          console.log('[ProduccionConvenio] Filtrado por oficina (con mapeo):', beforeFilter, '→', processedData.length);
         } else {
-          console.warn('[ProduccionConvenio] No se encontró oficina para el gerente');
+          const { data: office } = await supabase
+            .from('oficinas')
+            .select('nombre')
+            .eq('id', usuario.oficina_id)
+            .maybeSingle();
+
+          console.log('[ProduccionConvenio] Sin mapeo, usando nombre directo:', office?.nombre);
+
+          if (office) {
+            const beforeFilter = processedData.length;
+            processedData = processedData.filter((r: any) => {
+              const matches = r.desp_nombre_raw === office.nombre;
+              if (!matches) {
+                console.log('[ProduccionConvenio] Registro filtrado:', r.desp_nombre_raw, '!==', office.nombre);
+              }
+              return matches;
+            });
+            console.log('[ProduccionConvenio] Filtrado por oficina (sin mapeo):', beforeFilter, '→', processedData.length);
+          } else {
+            console.warn('[ProduccionConvenio] No se encontró oficina ni mapeo para el gerente');
+          }
         }
       }
 
