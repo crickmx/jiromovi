@@ -34,15 +34,26 @@ export default function ProduccionConvenio() {
   const [loading, setLoading] = useState(true);
   const [lastImport, setLastImport] = useState<any>(null);
 
-  const [filters, setFilters] = useState({
-    dateFrom: '',
-    dateTo: '',
-    management: '',
-    office: '',
-    agent: '',
-    ramo: '',
-    subramo: '',
-    aseguradora: '',
+  const getDefaultDates = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const dateFrom = `${year}-01-01`;
+    const dateTo = now.toISOString().split('T')[0];
+    return { dateFrom, dateTo };
+  };
+
+  const [filters, setFilters] = useState(() => {
+    const { dateFrom, dateTo } = getDefaultDates();
+    return {
+      dateFrom,
+      dateTo,
+      management: '',
+      office: '',
+      agent: '',
+      ramo: '',
+      subramo: '',
+      aseguradora: '',
+    };
   });
 
   const [offices, setOffices] = useState<string[]>([]);

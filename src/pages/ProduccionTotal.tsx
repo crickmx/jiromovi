@@ -38,17 +38,28 @@ export default function ProduccionTotal() {
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 50;
 
-  const [filters, setFilters] = useState({
-    dateFrom: '',
-    dateTo: '',
-    region: '',
-    management: '',
-    office: '',
-    agent: '',
-    ramo: '',
-    subramo: '',
-    aseguradora: '',
-    convenio: 'all',
+  const getDefaultDates = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const dateFrom = `${year}-01-01`;
+    const dateTo = now.toISOString().split('T')[0];
+    return { dateFrom, dateTo };
+  };
+
+  const [filters, setFilters] = useState(() => {
+    const { dateFrom, dateTo } = getDefaultDates();
+    return {
+      dateFrom,
+      dateTo,
+      region: '',
+      management: '',
+      office: '',
+      agent: '',
+      ramo: '',
+      subramo: '',
+      aseguradora: '',
+      convenio: 'all',
+    };
   });
 
   const [offices, setOffices] = useState<string[]>([]);
