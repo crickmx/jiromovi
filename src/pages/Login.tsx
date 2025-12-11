@@ -60,21 +60,37 @@ export function Login() {
     setSuccess('');
     setLoading(true);
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    if (resetError) {
-      setError('Error al enviar el correo de recuperación. Verifica el correo ingresado.');
-    } else {
+      const response = await fetch(`${supabaseUrl}/functions/v1/reset-password-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Error al enviar el correo');
+      }
+
       setSuccess('Se ha enviado un correo con instrucciones para recuperar tu contraseña.');
       setResetEmail('');
       setTimeout(() => {
         setShowForgotPassword(false);
         setSuccess('');
       }, 3000);
+    } catch (err: any) {
+      console.error('Error al solicitar recuperación:', err);
+      setError('Error al enviar el correo de recuperación. Por favor, intenta de nuevo.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
