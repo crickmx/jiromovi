@@ -47,6 +47,14 @@ function formatDate(dateStr: string): string {
   }).format(date);
 }
 
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -156,10 +164,7 @@ Deno.serve(async (req: Request) => {
 
     console.log("Template found:", template.name, "Active:", template.is_active);
 
-    const weekNumber = Math.ceil(
-      (new Date(batch.date_from).getTime() - new Date(new Date(batch.date_from).getFullYear(), 0, 1).getTime()) /
-      (7 * 24 * 60 * 60 * 1000)
-    );
+    const weekNumber = getWeekNumber(new Date(batch.date_from));
 
     const results = [];
 
@@ -190,7 +195,7 @@ Deno.serve(async (req: Request) => {
       const inappTitle = renderTemplate(template.inapp_title_template, context);
       const inappBody = renderTemplate(template.inapp_body_template, context);
 
-      console.log(`  Templates rendered:`)
+      console.log(`  Templates rendered:`);
       console.log(`    - Email subject: ${emailSubject?.substring(0, 50)}...`);
       console.log(`    - WhatsApp: ${whatsappBody?.substring(0, 50)}...`);
       console.log(`    - InApp title: ${inappTitle}`);
