@@ -34,6 +34,7 @@ export default function ProduccionTotal() {
   const [filteredRecords, setFilteredRecords] = useState<ProductionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastImport, setLastImport] = useState<any>(null);
+  const [showFilters, setShowFilters] = useState(true);
 
   const [filters, setFilters] = useState({
     dateFrom: '',
@@ -323,255 +324,280 @@ export default function ProduccionTotal() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="mb-6">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+        <div className="mb-4 sm:mb-6">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-4 font-medium"
+            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-3 sm:mb-4 font-medium text-sm sm:text-base"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Regresar</span>
           </button>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">
                 Producción Total
               </h1>
-              <p className="text-neutral-600">
+              <p className="text-sm sm:text-base text-neutral-600">
                 Métrica base: IMPORTE PESOS
               </p>
               {lastImport && (
-                <p className="text-sm text-neutral-500 mt-1">
-                  Datos actualizados al: {new Date(lastImport.imported_at).toLocaleString('es-MX')}
+                <p className="text-xs sm:text-sm text-neutral-500 mt-1">
+                  Datos actualizados: {new Date(lastImport.imported_at).toLocaleDateString('es-MX')}
                 </p>
               )}
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {isAdmin && (
                 <button
                   onClick={() => navigate('/produccion/cargar')}
-                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  className="flex items-center space-x-2 bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm sm:text-base"
                 >
                   <Upload className="w-4 h-4" />
-                  <span>Cargar Datos</span>
+                  <span className="hidden sm:inline">Cargar Datos</span>
+                  <span className="sm:hidden">Cargar</span>
                 </button>
               )}
-              <TrendingUp className="w-12 h-12 text-primary-600" />
+              <TrendingUp className="w-10 h-10 sm:w-12 sm:h-12 text-primary-600 flex-shrink-0" />
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-            <p className="text-sm text-green-700 mb-1">Producción Total</p>
-            <p className="text-2xl font-bold text-green-900">
-              ${kpis.totalImporte.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-green-200">
+            <p className="text-xs sm:text-sm text-green-700 mb-1 font-medium">Producción Total</p>
+            <p className="text-lg sm:text-2xl font-bold text-green-900 truncate">
+              ${(kpis.totalImporte / 1000000).toFixed(1)}M
+            </p>
+            <p className="text-xs text-green-600 mt-0.5 hidden sm:block">
+              ${kpis.totalImporte.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-            <p className="text-sm text-blue-700 mb-1">Registros</p>
-            <p className="text-2xl font-bold text-blue-900">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-blue-200">
+            <p className="text-xs sm:text-sm text-blue-700 mb-1 font-medium">Registros</p>
+            <p className="text-lg sm:text-2xl font-bold text-blue-900">
               {kpis.recordsCount.toLocaleString()}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-            <p className="text-sm text-purple-700 mb-1">Prima Convenio</p>
-            <p className="text-2xl font-bold text-purple-900">
-              ${kpis.totalConvenio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+          <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-teal-200">
+            <p className="text-xs sm:text-sm text-teal-700 mb-1 font-medium">Prima Convenio</p>
+            <p className="text-lg sm:text-2xl font-bold text-teal-900 truncate">
+              ${(kpis.totalConvenio / 1000000).toFixed(1)}M
+            </p>
+            <p className="text-xs text-teal-600 mt-0.5 hidden sm:block">
+              ${kpis.totalConvenio.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
-            <p className="text-sm text-orange-700 mb-1">Prima Ponderada</p>
-            <p className="text-2xl font-bold text-orange-900">
-              ${kpis.totalPonderada.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-orange-200">
+            <p className="text-xs sm:text-sm text-orange-700 mb-1 font-medium">Prima Ponderada</p>
+            <p className="text-lg sm:text-2xl font-bold text-orange-900 truncate">
+              ${(kpis.totalPonderada / 1000000).toFixed(1)}M
+            </p>
+            <p className="text-xs text-orange-600 mt-0.5 hidden sm:block">
+              ${kpis.totalPonderada.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
         </div>
 
-        <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
-          <div className="flex items-center space-x-2 mb-4">
-            <Filter className="w-5 h-5 text-neutral-600" />
-            <h3 className="font-semibold text-neutral-900">Filtros</h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Fecha Desde
-              </label>
-              <input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+        <div className="bg-neutral-50 rounded-xl p-3 sm:p-4 border border-neutral-200">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center justify-between w-full mb-3 sm:mb-4"
+          >
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-600" />
+              <h3 className="font-semibold text-neutral-900 text-sm sm:text-base">Filtros</h3>
+              <span className="text-xs text-neutral-500">
+                ({Object.values(filters).filter(v => v && v !== 'all').length} activos)
+              </span>
             </div>
+            <span className="text-neutral-600 text-sm sm:text-base">
+              {showFilters ? '−' : '+'}
+            </span>
+          </button>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Fecha Hasta
-              </label>
-              <input
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-
-            {isAdmin && (
+          {showFilters && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Dirección Regional
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                  Fecha Desde
+                </label>
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                  Fecha Hasta
+                </label>
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              {isAdmin && (
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                    Dirección Regional
+                  </label>
+                  <select
+                    value={filters.region}
+                    onChange={(e) => setFilters({ ...filters, region: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="">Todas</option>
+                    {regions.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                  Gerencia
                 </label>
                 <select
-                  value={filters.region}
-                  onChange={(e) => setFilters({ ...filters, region: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  value={filters.management}
+                  onChange={(e) => setFilters({ ...filters, management: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="">Todas</option>
-                  {regions.map(r => (
+                  {managements.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                  Oficina
+                </label>
+                <select
+                  value={filters.office}
+                  onChange={(e) => setFilters({ ...filters, office: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">Todas</option>
+                  {offices.map(o => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                  Agente
+                </label>
+                <select
+                  value={filters.agent}
+                  onChange={(e) => setFilters({ ...filters, agent: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">Todos</option>
+                  {agents.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                  Ramo
+                </label>
+                <select
+                  value={filters.ramo}
+                  onChange={(e) => setFilters({ ...filters, ramo: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">Todos</option>
+                  {ramos.map(r => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
               </div>
-            )}
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Gerencia
-              </label>
-              <select
-                value={filters.management}
-                onChange={(e) => setFilters({ ...filters, management: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="">Todas</option>
-                {managements.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                  Aseguradora
+                </label>
+                <select
+                  value={filters.aseguradora}
+                  onChange={(e) => setFilters({ ...filters, aseguradora: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">Todas</option>
+                  {aseguradoras.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                  Convenio
+                </label>
+                <select
+                  value={filters.convenio}
+                  onChange={(e) => setFilters({ ...filters, convenio: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="all">Todos</option>
+                  <option value="with">Con convenio</option>
+                  <option value="without">Sin convenio</option>
+                </select>
+              </div>
             </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Oficina
-              </label>
-              <select
-                value={filters.office}
-                onChange={(e) => setFilters({ ...filters, office: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          {showFilters && (
+            <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button
+                onClick={() => setFilters({
+                  dateFrom: '',
+                  dateTo: '',
+                  region: '',
+                  management: '',
+                  office: '',
+                  agent: '',
+                  ramo: '',
+                  subramo: '',
+                  aseguradora: '',
+                  convenio: 'all',
+                })}
+                className="w-full sm:w-auto px-4 py-2 text-sm border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium"
               >
-                <option value="">Todas</option>
-                {offices.map(o => (
-                  <option key={o} value={o}>{o}</option>
-                ))}
-              </select>
-            </div>
+                Limpiar
+              </button>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Agente
-              </label>
-              <select
-                value={filters.agent}
-                onChange={(e) => setFilters({ ...filters, agent: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              <button
+                onClick={exportToExcel}
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium sm:ml-auto"
               >
-                <option value="">Todos</option>
-                {agents.map(a => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
+                <Download className="w-4 h-4" />
+                <span>Exportar</span>
+              </button>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Ramo
-              </label>
-              <select
-                value={filters.ramo}
-                onChange={(e) => setFilters({ ...filters, ramo: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="">Todos</option>
-                {ramos.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Aseguradora
-              </label>
-              <select
-                value={filters.aseguradora}
-                onChange={(e) => setFilters({ ...filters, aseguradora: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="">Todas</option>
-                {aseguradoras.map(a => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Convenio
-              </label>
-              <select
-                value={filters.convenio}
-                onChange={(e) => setFilters({ ...filters, convenio: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="all">Todos</option>
-                <option value="with">Con convenio</option>
-                <option value="without">Sin convenio</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-4 flex justify-end space-x-3">
-            <button
-              onClick={() => setFilters({
-                dateFrom: '',
-                dateTo: '',
-                region: '',
-                management: '',
-                office: '',
-                agent: '',
-                ramo: '',
-                subramo: '',
-                aseguradora: '',
-                convenio: 'all',
-              })}
-              className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium"
-            >
-              Limpiar Filtros
-            </button>
-
-            <button
-              onClick={exportToExcel}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-            >
-              <Download className="w-4 h-4" />
-              <span>Exportar Excel</span>
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
-      {filteredRecords.length > 0 && (
+      {filteredRecords.length > 0 ? (
         <>
-          <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-4 sm:mb-6">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-neutral-900 mb-4 sm:mb-6">
               Análisis de Producción
             </h2>
 
@@ -616,11 +642,30 @@ export default function ProduccionTotal() {
             </div>
           </div>
         </>
+      ) : (
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-8 sm:p-12">
+          <div className="text-center">
+            <TrendingUp className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+              No hay datos para mostrar
+            </h3>
+            <p className="text-neutral-600 mb-4">
+              Ajusta los filtros para ver registros de producción
+            </p>
+            <button
+              onClick={() => setShowFilters(true)}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            >
+              <Filter className="w-4 h-4" />
+              <span>Mostrar Filtros</span>
+            </button>
+          </div>
+        </div>
       )}
 
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-          <h2 className="text-lg sm:text-xl font-bold text-neutral-900">
+          <h2 className="text-base sm:text-lg md:text-xl font-bold text-neutral-900">
             Registros de Producción
           </h2>
           <span className="text-xs sm:text-sm text-neutral-600">
@@ -628,65 +673,68 @@ export default function ProduccionTotal() {
           </span>
         </div>
 
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200">
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Fecha</th>
-                {isAdmin && <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Región</th>}
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Gerencia</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Oficina</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Agente</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Ramo</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Aseguradora</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-700">Importe</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-700">Convenio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecords.slice(0, 100).map((record) => (
-                <tr key={record.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-neutral-600">
-                    {new Date(record.fecha).toLocaleDateString('es-MX')}
-                  </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3 text-sm text-neutral-600">
-                      {record.region_raw || '-'}
-                    </td>
-                  )}
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.gerencia_nombre_raw}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.desp_nombre_raw}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.agente_nombre}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.ramo_nombre}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.aseguradora_nombre}</td>
-                  <td className="px-4 py-3 text-sm text-right font-medium text-green-600">
-                    ${record.importe_pesos.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {record.convenio_flag ? (
-                      <span className="inline-flex px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                        Sí
-                      </span>
-                    ) : (
-                      <span className="inline-flex px-2 py-1 bg-neutral-100 text-neutral-600 rounded-full text-xs font-medium">
-                        No
-                      </span>
-                    )}
-                  </td>
+        <div className="overflow-x-auto -mx-4 sm:mx-0 rounded-lg">
+          <div className="inline-block min-w-full align-middle">
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-neutral-50 border-b border-neutral-200">
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Fecha</th>
+                  {isAdmin && <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Región</th>}
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Gerencia</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Oficina</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Agente</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Ramo</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Aseguradora</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Importe</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Convenio</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredRecords.slice(0, 100).map((record) => (
+                  <tr key={record.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 whitespace-nowrap">
+                      {new Date(record.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 whitespace-nowrap">
+                        {record.region_raw || '-'}
+                      </td>
+                    )}
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 max-w-[150px] truncate">{record.gerencia_nombre_raw}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 max-w-[150px] truncate">{record.desp_nombre_raw}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 max-w-[150px] truncate">{record.agente_nombre}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 whitespace-nowrap">{record.ramo_nombre}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 max-w-[120px] truncate">{record.aseguradora_nombre}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-medium text-green-600 whitespace-nowrap">
+                      ${record.importe_pesos.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                      {record.convenio_flag ? (
+                        <span className="inline-flex px-2 py-0.5 sm:py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                          Sí
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2 py-0.5 sm:py-1 bg-neutral-100 text-neutral-600 rounded-full text-xs font-medium">
+                          No
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {filteredRecords.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-neutral-500">No hay registros que coincidan con los filtros</p>
+            <div className="text-center py-8 sm:py-12">
+              <p className="text-sm sm:text-base text-neutral-500">No hay registros que coincidan con los filtros</p>
             </div>
           )}
 
           {filteredRecords.length > 100 && (
-            <div className="mt-4 text-center text-sm text-neutral-600">
-              Mostrando 100 de {filteredRecords.length} registros. Usa los filtros o exporta a Excel para ver todos.
+            <div className="mt-4 text-center text-xs sm:text-sm text-neutral-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="font-medium">Mostrando 100 de {filteredRecords.length} registros</p>
+              <p className="mt-1 text-xs">Usa los filtros o exporta a Excel para ver todos los datos</p>
             </div>
           )}
         </div>
