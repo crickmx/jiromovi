@@ -249,16 +249,16 @@ export default function ProduccionCargar() {
         </div>
 
         <div className="space-y-3 mb-6">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
             <div className="flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="font-semibold text-yellow-900 mb-1">
-                  Importante
+                <h3 className="font-semibold text-blue-900 mb-1">
+                  Sincronización Incremental
                 </h3>
-                <p className="text-sm text-yellow-800">
-                  Al cargar un nuevo archivo se eliminarán todos los datos de producción anteriores
-                  y se reemplazarán por los nuevos. Esta acción no se puede deshacer.
+                <p className="text-sm text-blue-800">
+                  El sistema detecta automáticamente registros duplicados y solo agrega información nueva.
+                  Los datos existentes se mantienen intactos y no se eliminan.
                 </p>
               </div>
             </div>
@@ -393,6 +393,14 @@ export default function ProduccionCargar() {
               </h3>
             </div>
 
+            {stats.duplicateCount > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Sincronización incremental:</strong> Se encontraron {stats.duplicateCount} registros que ya existían en la base de datos (no se duplicaron).
+                </p>
+              </div>
+            )}
+
             {stats.skippedCount > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-yellow-800">
@@ -403,8 +411,8 @@ export default function ProduccionCargar() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <div className="bg-white rounded-lg p-4">
-                <p className="text-sm text-neutral-600 mb-1">Registros</p>
-                <p className="text-2xl font-bold text-neutral-900">
+                <p className="text-sm text-neutral-600 mb-1">Nuevos Registros</p>
+                <p className="text-2xl font-bold text-green-600">
                   {stats.recordsImported?.toLocaleString() || 0}
                 </p>
               </div>

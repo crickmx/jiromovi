@@ -129,21 +129,26 @@ Deno.serve(async (req: Request) => {
       throw new Error(detailedMessage);
     }
 
-    console.log('[process-production] Deleting old records...');
-    const { error: deleteError } = await supabase
+    console.log('[process-production] Loading existing records for comparison...');
+    const { data: existingRecords } = await supabase
       .from('production_records')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
+      .select('fecha, desp_nombre_raw, gerencia_nombre_raw, agente_nombre, aseguradora_nombre, ramo_nombre, importe_pesos, id');
 
-    if (deleteError) {
-      console.error('Error deleting records:', deleteError);
-      throw new Error('Error al eliminar registros anteriores');
+    const existingRecordsMap = new Map<string, string>();
+    if (existingRecords) {
+      existingRecords.forEach(rec => {
+        const key = `${rec.fecha}|${rec.desp_nombre_raw}|${rec.gerencia_nombre_raw}|${rec.agente_nombre}|${rec.aseguradora_nombre}|${rec.ramo_nombre}|${rec.importe_pesos}`;
+        existingRecordsMap.set(key, rec.id);
+      });
     }
+    console.log('[process-production] Found', existingRecordsMap.size, 'existing records');
 
     console.log('[process-production] Processing rows...');
-    const batchSize = 500;
+    const batchSize = 100;
     let processedCount = 0;
     let skippedCount = 0;
+    let newCount = 0;
+    const skipReasons: { [key: string]: number } = {};
 
     for (let i = 0; i < rows.length; i += batchSize) {
       const batch = rows.slice(i, i + batchSize);
@@ -216,8 +221,21 @@ Deno.serve(async (req: Request) => {
           const convenioStr = (getColumnValue(['CONVENIO', 'convenio']) || '').toString().toLowerCase().trim();
           const convenioFlag = convenioStr === 'si' || convenioStr === 'sí' || convenioStr === 'yes' || primaConvenio > 0;
 
+          const fechaStr = fecha.toISOString().split('T')[0];
+          const agenteNombre = (getColumnValue(['VendNombre', 'vendnombre', 'vendedor']) || '').toString().trim();
+          const aseguradoraNombre = (getColumnValue(['Nombre Compañía', 'nombre compañia', 'nombre compania', 'compañia']) || '').toString().trim();
+          const ramoNombre = (getColumnValue(['Sub Ramo', 'sub ramo', 'subramo', 'RamosNombre', 'ramos']) || '').toString().trim();
+
+          const recordKey = `${fechaStr}|${despNombre}|${gerenciaNombre}|${agenteNombre}|${aseguradoraNombre}|${ramoNombre}|${importePesos}`;
+
+          if (existingRecordsMap.has(recordKey)) {
+            skipReasons['Ya existe'] = (skipReasons['Ya existe'] || 0) + 1;
+            skippedCount++;
+            continue;
+          }
+
           recordsToInsert.push({
-            fecha: fecha.toISOString().split('T')[0],
+            fecha: fechaStr,
             anio,
             mes,
             dia,
@@ -229,9 +247,9 @@ Deno.serve(async (req: Request) => {
             desp_nombre_raw: despNombre,
             gerencia_nombre_raw: gerenciaNombre,
             region_raw: regionNombre || null,
-            agente_nombre: (getColumnValue(['VendNombre', 'vendnombre', 'vendedor']) || '').toString().trim(),
-            aseguradora_nombre: (getColumnValue(['Nombre Compañía', 'nombre compañia', 'nombre compania', 'compañia']) || '').toString().trim(),
-            ramo_nombre: (getColumnValue(['Sub Ramo', 'sub ramo', 'subramo', 'RamosNombre', 'ramos']) || '').toString().trim(),
+            agente_nombre: agenteNombre,
+            aseguradora_nombre: aseguradoraNombre,
+            ramo_nombre: ramoNombre,
             subramo_nombre: null,
             importe_pesos: importePesos,
             prima_convenio: primaConvenio,
@@ -241,8 +259,11 @@ Deno.serve(async (req: Request) => {
             porcentaje_bono: porcentajeBono
           });
 
+          newCount++;
+
         } catch (rowError: any) {
           console.error('[process-production] Error processing row:', rowError.message);
+          skipReasons['Error al procesar'] = (skipReasons['Error al procesar'] || 0) + 1;
           skippedCount++;
         }
       }
@@ -264,9 +285,10 @@ Deno.serve(async (req: Request) => {
       recordsToInsert.length = 0;
     }
 
-    console.log(`[process-production] Completed. Processed: ${processedCount}, Skipped: ${skippedCount}`);
+    console.log(`[process-production] Completed. New records: ${newCount}, Already existed: ${skipReasons['Ya existe'] || 0}, Errors: ${skipReasons['Error al procesar'] || 0}`);
 
-    if (processedCount === 0) {
+    const errorCount = skipReasons['Error al procesar'] || 0;
+    if (newCount === 0 && errorCount === rows.length) {
       throw new Error('No se pudo procesar ningún registro del archivo. Verifica que el formato sea correcto.');
     }
 
@@ -275,7 +297,7 @@ Deno.serve(async (req: Request) => {
       .insert({
         imported_by_user_id: userId,
         file_name: file.name,
-        records_count: processedCount
+        records_count: newCount
       })
       .select()
       .maybeSingle();
@@ -303,7 +325,9 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        recordsImported: processedCount,
+        recordsImported: newCount,
+        duplicateCount: skipReasons['Ya existe'] || 0,
+        skippedCount: errorCount,
         importedAt: importLog?.imported_at,
         stats: stats || {
           totalImporte: 0,
