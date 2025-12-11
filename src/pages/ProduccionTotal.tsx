@@ -679,12 +679,9 @@ export default function ProduccionTotal() {
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-200">
                   <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Fecha</th>
-                  {isAdmin && <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Región</th>}
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Gerencia</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Oficina</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Agente</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Ramo</th>
-                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Aseguradora</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 min-w-[140px] sm:min-w-[180px]">Ubicación</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 min-w-[120px]">Agente</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 min-w-[140px] sm:min-w-[180px]">Producto</th>
                   <th className="px-3 sm:px-4 py-2 sm:py-3 text-right text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Importe</th>
                   <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Convenio</th>
                 </tr>
@@ -692,29 +689,51 @@ export default function ProduccionTotal() {
               <tbody>
                 {filteredRecords.slice(0, 100).map((record) => (
                   <tr key={record.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 whitespace-nowrap">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 font-medium whitespace-nowrap">
                       {new Date(record.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                     </td>
-                    {isAdmin && (
-                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 whitespace-nowrap">
-                        {record.region_raw || '-'}
-                      </td>
-                    )}
-                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 max-w-[150px] truncate">{record.gerencia_nombre_raw}</td>
-                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 max-w-[150px] truncate">{record.desp_nombre_raw}</td>
-                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 max-w-[150px] truncate">{record.agente_nombre}</td>
-                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 whitespace-nowrap">{record.ramo_nombre}</td>
-                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600 max-w-[120px] truncate">{record.aseguradora_nombre}</td>
-                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-medium text-green-600 whitespace-nowrap">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3">
+                      <div className="flex flex-col space-y-0.5">
+                        {isAdmin && record.region_raw && (
+                          <span className="text-[10px] sm:text-xs text-neutral-500 font-medium uppercase tracking-wide">
+                            {record.region_raw}
+                          </span>
+                        )}
+                        <span className="text-xs sm:text-sm text-neutral-900 font-medium line-clamp-1">
+                          {record.desp_nombre_raw}
+                        </span>
+                        <span className="text-[10px] sm:text-xs text-neutral-600 line-clamp-1">
+                          {record.gerencia_nombre_raw}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 font-medium">
+                      <div className="line-clamp-2 max-w-[140px] sm:max-w-none">
+                        {record.agente_nombre}
+                      </div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3">
+                      <div className="flex flex-col space-y-0.5">
+                        <span className="text-xs sm:text-sm text-neutral-900 font-medium line-clamp-1">
+                          {record.aseguradora_nombre}
+                        </span>
+                        <span className="text-[10px] sm:text-xs text-neutral-600">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700 font-medium">
+                            {record.ramo_nombre}
+                          </span>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-semibold text-green-700 whitespace-nowrap">
                       ${record.importe_pesos.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>
                     <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
                       {record.convenio_flag ? (
-                        <span className="inline-flex px-2 py-0.5 sm:py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                        <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold">
                           Sí
                         </span>
                       ) : (
-                        <span className="inline-flex px-2 py-0.5 sm:py-1 bg-neutral-100 text-neutral-600 rounded-full text-xs font-medium">
+                        <span className="inline-flex items-center px-2 py-1 bg-neutral-100 text-neutral-600 rounded-lg text-xs font-medium">
                           No
                         </span>
                       )}
