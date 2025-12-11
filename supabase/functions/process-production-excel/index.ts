@@ -60,8 +60,8 @@ Deno.serve(async (req: Request) => {
       throw new Error('El archivo está vacío');
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      throw new Error('El archivo es demasiado grande (máximo 50MB)');
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('El archivo es demasiado grande (máximo 10MB). Por favor, divide el archivo en partes más pequeñas.');
     }
 
     console.log('[process-production] File received:', file.name, file.size, file.type);
@@ -79,7 +79,8 @@ Deno.serve(async (req: Request) => {
         type: 'array',
         cellDates: true,
         cellNF: false,
-        cellText: false
+        cellText: false,
+        sheetRows: 10000
       });
     } catch (xlsxError: any) {
       console.error('[process-production] XLSX parsing error:', xlsxError);
@@ -101,6 +102,10 @@ Deno.serve(async (req: Request) => {
 
     if (rows.length === 0) {
       throw new Error('El archivo está vacío');
+    }
+
+    if (rows.length > 10000) {
+      throw new Error(`El archivo contiene ${rows.length} registros. El límite es 10,000 registros por archivo. Por favor, divide el archivo en partes más pequeñas.`);
     }
 
     const requiredColumns = [
@@ -139,7 +144,7 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[process-production] Processing rows...');
-    const batchSize = 250;
+    const batchSize = 100;
     let processedCount = 0;
     let skippedCount = 0;
 
@@ -258,6 +263,8 @@ Deno.serve(async (req: Request) => {
         processedCount += recordsToInsert.length;
         console.log(`[process-production] Processed batch: ${processedCount}/${rows.length}`);
       }
+
+      recordsToInsert.length = 0;
     }
 
     console.log(`[process-production] Completed. Processed: ${processedCount}, Skipped: ${skippedCount}`);

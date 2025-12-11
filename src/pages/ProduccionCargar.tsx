@@ -146,17 +146,35 @@ export default function ProduccionCargar() {
           </div>
         </div>
 
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-          <div className="flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-semibold text-yellow-900 mb-1">
-                Importante
-              </h3>
-              <p className="text-sm text-yellow-800">
-                Al cargar un nuevo archivo se eliminarán todos los datos de producción anteriores
-                y se reemplazarán por los nuevos. Esta acción no se puede deshacer.
-              </p>
+        <div className="space-y-3 mb-6">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-yellow-900 mb-1">
+                  Importante
+                </h3>
+                <p className="text-sm text-yellow-800">
+                  Al cargar un nuevo archivo se eliminarán todos los datos de producción anteriores
+                  y se reemplazarán por los nuevos. Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-blue-900 mb-1">
+                  Límites del sistema
+                </h3>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Tamaño máximo de archivo: 10 MB</li>
+                  <li>• Máximo de registros: 10,000 por archivo</li>
+                  <li>• Si tu archivo excede estos límites, divídelo en partes más pequeñas</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
