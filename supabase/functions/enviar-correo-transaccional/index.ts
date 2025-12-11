@@ -92,8 +92,15 @@ Deno.serve(async (req) => {
 
       console.log('Enviando correo con Resend...');
 
+      let fromEmail = config.remitente_email || 'onboarding@resend.dev';
+
+      if (!fromEmail.includes('resend.dev')) {
+        console.log('Usando dominio verificado de Resend: onboarding@resend.dev');
+        fromEmail = 'onboarding@resend.dev';
+      }
+
       const { data, error } = await resend.emails.send({
-        from: `${config.remitente_nombre} <${config.remitente_email}>`,
+        from: `${config.remitente_nombre || 'MOVI Digital'} <${fromEmail}>`,
         to: [destinatario],
         subject: asunto,
         html: cuerpo,

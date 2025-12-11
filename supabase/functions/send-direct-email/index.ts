@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY') || 're_hdUhQ6MB_BEiDto4R5NKZDwsaxvWMLeeW';
     const resend = new Resend(resendApiKey);
 
-    const fromAddress = from_email || 'notificaciones@jiro.mx';
+    const fromAddress = from_email || 'onboarding@resend.dev';
     const fromName = from_name || 'MOVI Digital';
 
     console.log('Sending email via Resend...');
