@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
           office:office_id(name),
           usuario:usuario_id(
             email_laboral,
-            email,
+            email_personal,
             celular_laboral,
             celular_personal
           )
@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
       const agentId = detail.agent_id;
       if (!agentMap.has(agentId)) {
         const usuario = detail.agent?.usuario;
-        const email = usuario?.email_laboral || usuario?.email || "";
+        const email = usuario?.email_laboral || usuario?.email_personal || "";
         const phone = usuario?.celular_laboral || usuario?.celular_personal || null;
 
         agentMap.set(agentId, {
