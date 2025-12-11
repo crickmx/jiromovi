@@ -71,53 +71,89 @@ function parseCSV(csvText: string): any[] {
   return records;
 }
 
+function parseMoneyValue(value: string): number {
+  if (!value) return 0;
+  const str = value.toString().replace(/[$,]/g, '').trim();
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
+
+function parsePercentValue(value: string): number | null {
+  if (!value) return null;
+  const str = value.toString().replace(/%/g, '').trim();
+  const num = parseFloat(str);
+  return isNaN(num) ? null : num;
+}
+
+function parseDateDMY(dateStr: string): Date | null {
+  if (!dateStr) return null;
+
+  const parts = dateStr.trim().split('/');
+  if (parts.length !== 3) return null;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+  if (day < 1 || day > 31) return null;
+  if (month < 1 || month > 12) return null;
+
+  const fecha = new Date(year, month - 1, day);
+
+  if (isNaN(fecha.getTime())) return null;
+
+  return fecha;
+}
+
 function transformRecord(row: any): ProductionRecord | null {
   try {
     const fechaValue = row['FechaSimp'] || row['Fecha'] || row['fechasimp'] || row['fecha'];
     if (!fechaValue) return null;
-    
-    let fecha: Date;
+
+    let fecha: Date | null = null;
+
     if (typeof fechaValue === 'string') {
-      fecha = new Date(fechaValue);
+      fecha = parseDateDMY(fechaValue);
+
+      if (!fecha) {
+        fecha = new Date(fechaValue);
+      }
     } else if (fechaValue instanceof Date) {
       fecha = fechaValue;
     } else if (typeof fechaValue === 'number') {
       const excelEpoch = new Date(1899, 11, 30);
       fecha = new Date(excelEpoch.getTime() + fechaValue * 86400000);
-    } else {
-      return null;
     }
-    
-    if (isNaN(fecha.getTime())) return null;
-    
+
+    if (!fecha || isNaN(fecha.getTime())) return null;
+
     const anio = fecha.getFullYear();
     const mes = fecha.getMonth() + 1;
     const dia = fecha.getDate();
     const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
     const periodoAnio = anio;
-    
+
     const despNombre = (row['DespNombre'] || row['despnombre'] || '').toString().trim();
     const gerenciaNombre = (row['GerenciaNombre'] || row['gerencianombre'] || '').toString().trim();
     const regionNombre = (row['Dirección Regional'] || row['direccion regional'] || row['region'] || '').toString().trim();
-    
+
     if (!despNombre || !gerenciaNombre) return null;
-    
-    const importePesos = parseFloat((row['IMPORTE PESOS'] || row['importe pesos'] || row['importe'] || '0').toString()) || 0;
-    const primaConvenio = parseFloat((row['Prima de convenio'] || row['prima de convenio'] || row['prima convenio'] || '0').toString()) || 0;
-    const primaPonderada = parseFloat((row['Prima Ponderada'] || row['prima ponderada'] || '0').toString()) || 0;
-    const bono = parseFloat((row['Bono'] || row['bono'] || '0').toString()) || 0;
-    const porcentajeBono = row['% BONO'] || row['porcentaje bono'] || row['porciento bono']
-      ? parseFloat(row['% BONO'] || row['porcentaje bono'] || row['porciento bono'])
-      : null;
-    
+
+    const importePesos = parseMoneyValue(row['IMPORTE PESOS'] || row['importe pesos'] || row['importe'] || '0');
+    const primaConvenio = parseMoneyValue(row['Prima de convenio'] || row['prima de convenio'] || row['prima convenio'] || '0');
+    const primaPonderada = parseMoneyValue(row['Prima Ponderada'] || row['prima ponderada'] || '0');
+    const bono = parseMoneyValue(row['Bono'] || row['bono'] || '0');
+    const porcentajeBono = parsePercentValue(row['% BONO'] || row['porcentaje bono'] || row['porciento bono'] || '');
+
     const convenioStr = (row['CONVENIO'] || row['convenio'] || '').toString().toLowerCase().trim();
     const convenioFlag = convenioStr === 'si' || convenioStr === 'sí' || convenioStr === 'yes' || primaConvenio > 0;
-    
+
     const fechaStr = fecha.toISOString().split('T')[0];
     const agenteNombre = (row['VendNombre'] || row['vendnombre'] || row['vendedor'] || '').toString().trim();
     const aseguradoraNombre = (row['Nombre Compañía'] || row['nombre compañia'] || row['nombre compania'] || row['compañia'] || '').toString().trim();
     const ramoNombre = (row['Sub Ramo'] || row['sub ramo'] || row['subramo'] || row['RamosNombre'] || row['ramos'] || '').toString().trim();
-    
+
     return {
       fecha: fechaStr,
       anio,
