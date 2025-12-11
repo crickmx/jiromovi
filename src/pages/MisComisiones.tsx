@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { DollarSign, Download, FileText, Calendar, Loader2 } from 'lucide-react';
 import type { CommissionBatch, CommissionDetail } from '../lib/commissionTypes';
 import { calculateBatchSummary, formatCurrency, formatDate } from '../lib/commissionUtils';
-import { generateCommissionPDF, generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
+import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
 
@@ -91,29 +91,6 @@ export default function MisComisiones() {
     }
 
     setGeneratingPDF(batchId);
-
-    try {
-      const pdfBlob = await generateCommissionPDF(details, batch);
-      const fileName = `Comisiones_${batch.name.replace(/\s+/g, '_')}_${usuario?.nombre_completo?.replace(/\s+/g, '_')}.pdf`;
-      downloadPDF(pdfBlob, fileName);
-    } catch (error: any) {
-      console.error('Error generating PDF:', error);
-      alert('Error al generar el PDF: ' + error.message);
-    } finally {
-      setGeneratingPDF(null);
-    }
-  };
-
-  const handleDownloadOrdenDePago = async (batchId: string) => {
-    const batch = batches.find(b => b.id === batchId);
-    const details = batchDetails.get(batchId);
-
-    if (!batch || !details || details.length === 0) {
-      alert('No hay datos para generar el PDF');
-      return;
-    }
-
-    setGeneratingPDF(`orden_${batchId}`);
 
     try {
       const pdfBlob = await generateOrdenDePagoPDF(details, batch);
@@ -218,48 +195,26 @@ export default function MisComisiones() {
                       )}
                     </div>
 
-                    <div className="flex flex-col space-y-2 ml-4">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownloadOrdenDePago(batch.id);
-                        }}
-                        disabled={generatingPDF === `orden_${batch.id}`}
-                        className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                      >
-                        {generatingPDF === `orden_${batch.id}` ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span className="text-sm">Generando...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-5 h-5" />
-                            <span className="text-sm">Orden de Pago</span>
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownloadPDF(batch.id);
-                        }}
-                        disabled={generatingPDF === batch.id}
-                        className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                      >
-                        {generatingPDF === batch.id ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span className="text-sm">Generando...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-5 h-5" />
-                            <span className="text-sm">Comprobante</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadPDF(batch.id);
+                      }}
+                      disabled={generatingPDF === batch.id}
+                      className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold ml-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {generatingPDF === batch.id ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>Generando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-5 h-5" />
+                          <span>PDF</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
 

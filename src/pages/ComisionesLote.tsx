@@ -6,7 +6,7 @@ import { ArrowLeft, FileSpreadsheet, DollarSign, Users, AlertCircle, Edit2, XCir
 import type { CommissionBatch, CommissionDetail, CommissionError } from '../lib/commissionTypes';
 import { calculateBatchSummary, calculateAgentSummaries, formatCurrency, formatDate } from '../lib/commissionUtils';
 import AjustarComisionModal from '../components/comisiones/AjustarComisionModal';
-import { generateCommissionPDF, generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
+import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
 
@@ -93,31 +93,6 @@ export default function ComisionesLote() {
     }
   };
 
-  const handleDownloadAgentPDF = async (agentId: string) => {
-    if (!batch) return;
-
-    const agentDetails = details.filter(d => d.agent_id === agentId);
-
-    if (agentDetails.length === 0) {
-      alert('No hay datos para este agente');
-      return;
-    }
-
-    setGeneratingPDF(agentId);
-
-    try {
-      const pdfBlob = await generateCommissionPDF(agentDetails, batch);
-      const agentName = agentDetails[0].agent?.name || 'Agente';
-      const fileName = `Comisiones_${batch.name.replace(/\s+/g, '_')}_${agentName.replace(/\s+/g, '_')}.pdf`;
-      downloadPDF(pdfBlob, fileName);
-    } catch (error: any) {
-      console.error('Error generating PDF:', error);
-      alert('Error al generar el PDF: ' + error.message);
-    } finally {
-      setGeneratingPDF(null);
-    }
-  };
-
   const handleDownloadOrdenDePago = async (agentId: string) => {
     if (!batch) return;
 
@@ -128,7 +103,7 @@ export default function ComisionesLote() {
       return;
     }
 
-    setGeneratingPDF(`orden_${agentId}`);
+    setGeneratingPDF(agentId);
 
     try {
       const pdfBlob = await generateOrdenDePagoPDF(agentDetails, batch);
@@ -403,7 +378,7 @@ export default function ComisionesLote() {
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Oficina</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Pólizas</th>
                   <th className="text-right py-3 px-4 font-semibold text-neutral-700">Comisión</th>
-                  <th className="text-center py-3 px-4 font-semibold text-neutral-700">Acciones</th>
+                  <th className="text-center py-3 px-4 font-semibold text-neutral-700">PDF</th>
                 </tr>
               </thead>
               <tbody>
@@ -413,35 +388,20 @@ export default function ComisionesLote() {
                     <td className="py-3 px-4 text-neutral-700">{agent.office_name || '-'}</td>
                     <td className="py-3 px-4 text-right text-neutral-700">{agent.total_polizas}</td>
                     <td className="py-3 px-4 text-right font-bold text-green-700">{formatCurrency(agent.total_commission)}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-center space-x-2">
-                        <button
-                          onClick={() => handleDownloadOrdenDePago(agent.agent_id)}
-                          disabled={generatingPDF === `orden_${agent.agent_id}`}
-                          className="inline-flex items-center space-x-1 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Descargar Orden de Pago"
-                        >
-                          {generatingPDF === `orden_${agent.agent_id}` ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Download className="w-4 h-4" />
-                          )}
-                          <span className="hidden xl:inline">Orden de Pago</span>
-                        </button>
-                        <button
-                          onClick={() => handleDownloadAgentPDF(agent.agent_id)}
-                          disabled={generatingPDF === agent.agent_id}
-                          className="inline-flex items-center space-x-1 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Descargar Comprobante"
-                        >
-                          {generatingPDF === agent.agent_id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Download className="w-4 h-4" />
-                          )}
-                          <span className="hidden xl:inline">Comprobante</span>
-                        </button>
-                      </div>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={() => handleDownloadOrdenDePago(agent.agent_id)}
+                        disabled={generatingPDF === agent.agent_id}
+                        className="inline-flex items-center space-x-1 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Descargar Orden de Pago"
+                      >
+                        {generatingPDF === agent.agent_id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        <span className="hidden lg:inline">Orden de Pago</span>
+                      </button>
                     </td>
                   </tr>
                 ))}

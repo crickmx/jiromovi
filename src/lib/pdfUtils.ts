@@ -269,66 +269,63 @@ export async function generateOrdenDePagoPDF(
   }
 
   const doc = new jsPDF({
-    orientation: 'landscape',
+    orientation: 'portrait',
     unit: 'mm',
     format: 'a4'
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const marginLeft = 15;
-  const marginRight = 15;
+  const marginLeft = 12;
+  const marginRight = 12;
   const contentWidth = pageWidth - marginLeft - marginRight;
-  let yPosition = 20;
+  let yPosition = 15;
 
-  doc.setFontSize(20);
+  doc.setFontSize(18);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
   doc.text('ORDEN DE PAGO', pageWidth / 2, yPosition, { align: 'center' });
-
-  yPosition += 12;
-
-  doc.setDrawColor(200);
-  doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-
-  yPosition += 8;
-
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(0);
-
-  const col1X = marginLeft;
-  const col2X = pageWidth / 2 + 10;
-
-  doc.setFont(undefined, 'bold');
-  doc.text('Nombre del Agente:', col1X, yPosition);
-  doc.setFont(undefined, 'normal');
-  doc.text(agent.name, col1X + 40, yPosition);
-
-  doc.setFont(undefined, 'bold');
-  doc.text('Número de Semana:', col2X, yPosition);
-  doc.setFont(undefined, 'normal');
-  const weekNumber = Math.ceil((new Date(batch.date_from).getTime() - new Date(new Date(batch.date_from).getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
-  doc.text(`Semana ${weekNumber}`, col2X + 40, yPosition);
-
-  yPosition += 6;
-
-  doc.setFont(undefined, 'bold');
-  doc.text('Oficina:', col1X, yPosition);
-  doc.setFont(undefined, 'normal');
-  doc.text(agent.office?.name || 'N/A', col1X + 40, yPosition);
-
-  doc.setFont(undefined, 'bold');
-  doc.text('Periodo:', col2X, yPosition);
-  doc.setFont(undefined, 'normal');
-  doc.text(`${formatDate(batch.date_from)} al ${formatDate(batch.date_to)}`, col2X + 40, yPosition);
 
   yPosition += 10;
 
   doc.setDrawColor(200);
   doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
 
+  yPosition += 7;
+
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0);
+  doc.text('Agente:', marginLeft, yPosition);
+  doc.setFont(undefined, 'normal');
+  doc.text(agent.name, marginLeft + 18, yPosition);
+
+  yPosition += 5;
+
+  doc.setFont(undefined, 'bold');
+  doc.text('Oficina:', marginLeft, yPosition);
+  doc.setFont(undefined, 'normal');
+  doc.text(agent.office?.name || 'N/A', marginLeft + 18, yPosition);
+
+  yPosition += 5;
+
+  const weekNumber = Math.ceil((new Date(batch.date_from).getTime() - new Date(new Date(batch.date_from).getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+  doc.setFont(undefined, 'bold');
+  doc.text('Semana:', marginLeft, yPosition);
+  doc.setFont(undefined, 'normal');
+  doc.text(`${weekNumber}`, marginLeft + 18, yPosition);
+
+  doc.setFont(undefined, 'bold');
+  doc.text('Periodo:', marginLeft + 45, yPosition);
+  doc.setFont(undefined, 'normal');
+  doc.text(`${formatDate(batch.date_from)} al ${formatDate(batch.date_to)}`, marginLeft + 61, yPosition);
+
   yPosition += 8;
+
+  doc.setDrawColor(200);
+  doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+
+  yPosition += 7;
 
   const ramoMap = new Map<string, { primaTotal: number; comisionNeta: number }>();
   let primaGravada = 0;
@@ -360,12 +357,12 @@ export async function generateOrdenDePagoPDF(
     }
   });
 
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('Total de comisiones por ramo', marginLeft, yPosition);
+  doc.text('Resumen por Ramo', marginLeft, yPosition);
 
-  yPosition += 5;
+  yPosition += 4;
 
   const ramoRows: any[] = [];
   ramoMap.forEach((data, ramo) => {
@@ -386,40 +383,33 @@ export async function generateOrdenDePagoPDF(
     head: [['Ramo', 'Prima Total', 'Comisión Neta']],
     body: ramoRows,
     theme: 'grid',
-    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 9 },
-    styles: { fontSize: 8, cellPadding: 2 },
-    margin: { left: marginLeft, right: pageWidth - marginLeft - 65 },
-    tableWidth: 65
+    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 8 },
+    styles: { fontSize: 7, cellPadding: 1.5 },
+    margin: { left: marginLeft, right: marginRight }
   });
 
-  const ramoTableFinalY = (doc as any).lastAutoTable.finalY;
+  yPosition = (doc as any).lastAutoTable.finalY + 6;
 
-  const primaBoxX = pageWidth - marginRight - 60;
-  const primaBoxY = yPosition;
-
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0);
-  doc.text('Prima Gravada:', primaBoxX, primaBoxY + 5);
+  doc.text('Prima Gravada:', marginLeft, yPosition);
   doc.setFont(undefined, 'normal');
-  doc.text(formatCurrency(primaGravada), primaBoxX + 30, primaBoxY + 5);
+  doc.text(formatCurrency(primaGravada), marginLeft + 35, yPosition);
 
   doc.setFont(undefined, 'bold');
-  doc.text('Prima No Gravada:', primaBoxX, primaBoxY + 11);
+  doc.text('Prima No Gravada:', marginLeft + 80, yPosition);
   doc.setFont(undefined, 'normal');
-  doc.text(formatCurrency(primaNoGravada), primaBoxX + 30, primaBoxY + 11);
+  doc.text(formatCurrency(primaNoGravada), marginLeft + 115, yPosition);
 
-  doc.setDrawColor(200);
-  doc.rect(primaBoxX - 2, primaBoxY, 58, 15);
+  yPosition += 6;
 
-  yPosition = Math.max(ramoTableFinalY, primaBoxY + 15) + 8;
-
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('Desglose por póliza', marginLeft, yPosition);
+  doc.text('Desglose de Pólizas', marginLeft, yPosition);
 
-  yPosition += 5;
+  yPosition += 4;
 
   const maxPolizas = 30;
   const polizasToShow = agentDetails.slice(0, maxPolizas);
@@ -443,77 +433,75 @@ export async function generateOrdenDePagoPDF(
 
   autoTable(doc, {
     startY: yPosition,
-    head: [['Póliza', 'Ramo', 'Aseguradora', 'Contratante', 'Prima', 'Comisión Neta']],
+    head: [['Póliza', 'Ramo', 'Aseguradora', 'Contratante', 'Prima', 'Comisión']],
     body: polizaRows,
     theme: 'grid',
-    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 8 },
-    styles: { fontSize: 7, cellPadding: 1.5 },
+    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 7 },
+    styles: { fontSize: 6, cellPadding: 1 },
     margin: { left: marginLeft, right: marginRight },
     columnStyles: {
-      0: { cellWidth: 30 },
-      1: { cellWidth: 25 },
-      2: { cellWidth: 40 },
-      3: { cellWidth: 50 },
-      4: { cellWidth: 25, halign: 'right' },
-      5: { cellWidth: 25, halign: 'right' }
+      0: { cellWidth: 28 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 40 },
+      4: { cellWidth: 22, halign: 'right' },
+      5: { cellWidth: 22, halign: 'right' }
     }
   });
 
   const polizaTableFinalY = (doc as any).lastAutoTable.finalY;
 
+  yPosition = polizaTableFinalY + 4;
+
   if (hasMorePolizas) {
-    yPosition = polizaTableFinalY + 3;
-    doc.setFontSize(7);
-    doc.setTextColor(150);
+    doc.setFontSize(6);
+    doc.setTextColor(120);
     doc.setFont(undefined, 'italic');
-    doc.text(
-      `Nota: Se muestran solo ${maxPolizas} pólizas. Existen ${agentDetails.length - maxPolizas} pólizas adicionales en este periodo.`,
-      marginLeft,
-      yPosition
-    );
+    const noteText = `Nota: Se muestran solo ${maxPolizas} pólizas. Existen ${agentDetails.length - maxPolizas} pólizas adicionales en este periodo.`;
+    const noteLines = doc.splitTextToSize(noteText, contentWidth);
+    noteLines.forEach((line: string) => {
+      doc.text(line, marginLeft, yPosition);
+      yPosition += 3;
+    });
+    yPosition += 2;
   }
 
-  const desgloseFiscalBoxY = polizaTableFinalY + (hasMorePolizas ? 6 : 3);
-  const availableHeight = pageHeight - desgloseFiscalBoxY - 10;
+  const availableSpace = pageHeight - yPosition - 8;
 
-  if (availableHeight > 20) {
-    doc.setFontSize(11);
+  if (availableSpace > 18) {
+    doc.setDrawColor(200);
+    doc.setFillColor(245, 248, 250);
+    doc.rect(marginLeft, yPosition, contentWidth, Math.min(availableSpace, 35), 'FD');
+
+    yPosition += 4;
+
+    doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(0, 51, 102);
-    doc.text('Desglose Fiscal (según régimen)', marginLeft, desgloseFiscalBoxY + 5);
+    doc.text('Desglose Fiscal (según régimen)', marginLeft + 2, yPosition);
 
-    yPosition = desgloseFiscalBoxY + 12;
-    doc.setFontSize(9);
+    yPosition += 5;
+
+    doc.setFontSize(7);
     doc.setFont(undefined, 'normal');
+    doc.setTextColor(60);
+    doc.text(`Régimen: ${agent.fiscal_regime?.name || 'No especificado'}`, marginLeft + 2, yPosition);
+
+    yPosition += 5;
+
+    doc.setFontSize(6);
     doc.setTextColor(80);
-    doc.text(`Régimen fiscal del agente: ${agent.fiscal_regime?.name || 'No especificado'}`, marginLeft + 2, yPosition);
-
-    yPosition += 6;
-    doc.setFontSize(8);
-    doc.setTextColor(100);
     doc.setFont(undefined, 'italic');
-    const placeholderText = 'Este espacio está reservado para el desglose fiscal específico según el régimen de este agente';
-    const lines = doc.splitTextToSize(placeholderText, contentWidth - 10);
+    const placeholderText = 'Este espacio está reservado para el desglose fiscal específico según el régimen de este agente (RESICO, Honorarios o Asimilados). Las fórmulas y montos serán integrados posteriormente.';
+    const lines = doc.splitTextToSize(placeholderText, contentWidth - 4);
+    let lineCount = 0;
     lines.forEach((line: string) => {
-      if (yPosition < pageHeight - 10) {
+      if (yPosition < pageHeight - 8 && lineCount < 4) {
         doc.text(line, marginLeft + 2, yPosition);
-        yPosition += 4;
+        yPosition += 3;
+        lineCount++;
       }
     });
-
-    yPosition += 2;
-    const secondLine = '(RESICO, Honorarios o Asimilados). Las fórmulas y montos serán integrados posteriormente.';
-    const lines2 = doc.splitTextToSize(secondLine, contentWidth - 10);
-    lines2.forEach((line: string) => {
-      if (yPosition < pageHeight - 10) {
-        doc.text(line, marginLeft + 2, yPosition);
-        yPosition += 4;
-      }
-    });
-
-    doc.setDrawColor(200);
-    doc.setFillColor(250, 250, 250);
-    doc.rect(marginLeft, desgloseFiscalBoxY, contentWidth, Math.min(availableHeight, yPosition - desgloseFiscalBoxY + 2), 'FD');
   }
 
   const pdfBlob = doc.output('blob');
