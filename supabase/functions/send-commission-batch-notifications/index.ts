@@ -89,10 +89,14 @@ Deno.serve(async (req: Request) => {
         agent:agent_id(
           id,
           name,
-          email,
-          phone_number,
           usuario_id,
-          office:office_id(name)
+          office:office_id(name),
+          usuario:usuario_id(
+            email_laboral,
+            email,
+            celular_laboral,
+            celular_personal
+          )
         )
       `)
       .eq("batch_id", batchId);
@@ -109,11 +113,15 @@ Deno.serve(async (req: Request) => {
     for (const detail of details || []) {
       const agentId = detail.agent_id;
       if (!agentMap.has(agentId)) {
+        const usuario = detail.agent?.usuario;
+        const email = usuario?.email_laboral || usuario?.email || "";
+        const phone = usuario?.celular_laboral || usuario?.celular_personal || null;
+
         agentMap.set(agentId, {
           agent_id: agentId,
           agent_name: detail.agent?.name || "Agente",
-          agent_email: detail.agent?.email || "",
-          agent_phone: detail.agent?.phone_number || null,
+          agent_email: email,
+          agent_phone: phone,
           agent_usuario_id: detail.agent?.usuario_id || null,
           office_name: detail.agent?.office?.name || "Sin oficina",
           total_commission: 0,

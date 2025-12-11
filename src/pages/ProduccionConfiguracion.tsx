@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Settings, ArrowLeft, Save, Link as LinkIcon, Check, AlertCircle, Building } from 'lucide-react';
+import { Settings, Save, Link as LinkIcon, Check, AlertCircle, Building } from 'lucide-react';
 
 interface GoogleSheetsConfig {
   id: string;
@@ -257,16 +257,6 @@ export default function ProduccionConfiguracion() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6">
-      <div className="mb-4 sm:mb-6">
-        <button
-          onClick={() => navigate('/produccion/total')}
-          className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
-          Volver a Producción
-        </button>
-      </div>
-
       <div className="bg-white rounded-2xl sm:rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 py-4">
           <div className="flex items-center gap-3">

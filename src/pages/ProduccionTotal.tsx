@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { TrendingUp, Download, FileDown, Filter, Calendar, Users, Building, Settings, ArrowLeft } from 'lucide-react';
+import { TrendingUp, Download, FileDown, Filter, Calendar, Users, Building, Settings } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
@@ -465,14 +465,6 @@ export default function ProduccionTotal() {
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
       <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
         <div className="mb-4 sm:mb-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-3 sm:mb-4 font-medium text-sm sm:text-base"
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>Regresar</span>
-          </button>
-
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex-1">
               <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">

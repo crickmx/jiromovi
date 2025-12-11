@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, ArrowLeft, Link as LinkIcon, RefreshCw } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, Link as LinkIcon, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type UploadMode = 'excel' | 'sheets';
@@ -202,14 +202,6 @@ export default function ProduccionCargar() {
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
       <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
         <div className="mb-4 sm:mb-6">
-          <button
-            onClick={() => navigate('/produccion/total')}
-            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-3 sm:mb-4 font-medium text-sm sm:text-base"
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>Regresar</span>
-          </button>
-
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">
