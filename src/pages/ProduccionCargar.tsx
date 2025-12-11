@@ -198,9 +198,12 @@ export default function ProduccionCargar() {
 
         {error && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-sm font-medium text-red-900">{error}</p>
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-red-900 mb-1">Error al procesar el archivo</p>
+                <p className="text-sm text-red-800 whitespace-pre-wrap">{error}</p>
+              </div>
             </div>
           </div>
         )}
@@ -278,74 +281,90 @@ export default function ProduccionCargar() {
           Estructura del Archivo Excel
         </h2>
 
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+          <div className="flex items-start space-x-2">
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-blue-900 mb-1">
+                Nombres de columnas exactos
+              </p>
+              <p className="text-xs text-blue-800">
+                El sistema busca las columnas sin importar mayúsculas/minúsculas, pero los nombres deben coincidir exactamente.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-neutral-50 rounded-xl p-4">
           <p className="text-sm font-semibold text-neutral-700 mb-3">
-            El archivo debe contener las siguientes columnas:
+            Columnas requeridas (obligatorias):
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">Fecha</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm mb-4">
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">FechaSimp</code>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">DespNombre</span>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">DespNombre</code>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">GerenciaNombre</span>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">GerenciaNombre</code>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-neutral-400 rounded-full"></div>
-              <span className="text-neutral-600">Dirección Regional</span>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">VendNombre</code>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">VendNombre</span>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">Nombre Compañía</code>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">Nombre Compañía</span>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">Sub Ramo</code>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">RamosNombre</span>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">IMPORTE PESOS</code>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-neutral-400 rounded-full"></div>
-              <span className="text-neutral-600">Sub Ramo</span>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">Prima de convenio</code>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">IMPORTE PESOS</span>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">Prima Ponderada</code>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">Prima de convenio</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">Prima Ponderada</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-              <span className="text-neutral-700">Bono</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-neutral-400 rounded-full"></div>
-              <span className="text-neutral-600">CONVENIO</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-neutral-400 rounded-full"></div>
-              <span className="text-neutral-600">% BONO</span>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-800">Bono</code>
             </div>
           </div>
 
-          <p className="text-xs text-neutral-500 mt-3">
-            <span className="text-primary-600">●</span> Obligatorio
-            <span className="ml-4 text-neutral-400">●</span> Opcional
+          <p className="text-sm font-semibold text-neutral-700 mb-2 mt-4">
+            Columnas opcionales:
           </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-neutral-400 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-600">Dirección Regional</code>
+            </div>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-neutral-400 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-600">RamosNombre</code>
+            </div>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-neutral-400 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-600">CONVENIO</code>
+            </div>
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
+              <div className="w-2 h-2 bg-neutral-400 rounded-full flex-shrink-0"></div>
+              <code className="text-xs font-mono text-neutral-600">% BONO</code>
+            </div>
+          </div>
         </div>
       </div>
     </div>

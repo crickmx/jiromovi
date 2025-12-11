@@ -113,12 +113,18 @@ Deno.serve(async (req: Request) => {
     const availableColumns = Object.keys(firstRow);
     console.log('[process-production] Available columns:', availableColumns);
 
-    const missingColumns = requiredColumns.filter(col => !(col in firstRow));
+    const missingColumns = requiredColumns.filter(col => {
+      const colLower = col.toLowerCase();
+      return !availableColumns.some(ac => ac.toLowerCase() === colLower);
+    });
 
     if (missingColumns.length > 0) {
       console.error('[process-production] Missing columns:', missingColumns);
       console.error('[process-production] Required columns:', requiredColumns);
-      throw new Error(`Faltan columnas requeridas: ${missingColumns.join(', ')}`);
+      console.error('[process-production] Available columns:', availableColumns);
+
+      const detailedMessage = `Faltan columnas requeridas:\n${missingColumns.join(', ')}\n\nColumnas encontradas en el archivo:\n${availableColumns.join(', ')}\n\nVerifica que los nombres de las columnas coincidan exactamente con los requeridos.`;
+      throw new Error(detailedMessage);
     }
 
     console.log('[process-production] Deleting old records...');
@@ -143,7 +149,24 @@ Deno.serve(async (req: Request) => {
 
       for (const row of batch) {
         try {
-          const fechaValue = row.FechaSimp || row.Fecha;
+          const getColumnValue = (columnNames: string[]): any => {
+            for (const name of columnNames) {
+              const exactMatch = row[name];
+              if (exactMatch !== undefined) return exactMatch;
+
+              const key = Object.keys(row).find(k => k.toLowerCase() === name.toLowerCase());
+              if (key) return row[key];
+            }
+            return null;
+          };
+
+          const fechaValue = getColumnValue(['FechaSimp', 'Fecha', 'fechasimp', 'fecha']);
+          if (!fechaValue) {
+            console.log('[process-production] Skipping row: No date value');
+            skippedCount++;
+            continue;
+          }
+
           let fecha: Date;
           if (typeof fechaValue === 'string') {
             fecha = new Date(fechaValue);
@@ -153,11 +176,13 @@ Deno.serve(async (req: Request) => {
             const excelEpoch = new Date(1899, 11, 30);
             fecha = new Date(excelEpoch.getTime() + fechaValue * 86400000);
           } else {
+            console.log('[process-production] Skipping row: Invalid date type', typeof fechaValue);
             skippedCount++;
             continue;
           }
 
           if (isNaN(fecha.getTime())) {
+            console.log('[process-production] Skipping row: Invalid date', fechaValue);
             skippedCount++;
             continue;
           }
@@ -168,22 +193,25 @@ Deno.serve(async (req: Request) => {
           const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
           const periodoAnio = anio;
 
-          const despNombre = (row.DespNombre || '').toString().trim();
-          const gerenciaNombre = (row.GerenciaNombre || '').toString().trim();
-          const regionNombre = (row['Dirección Regional'] || '').toString().trim();
+          const despNombre = (getColumnValue(['DespNombre', 'despnombre']) || '').toString().trim();
+          const gerenciaNombre = (getColumnValue(['GerenciaNombre', 'gerencianombre']) || '').toString().trim();
+          const regionNombre = (getColumnValue(['Dirección Regional', 'direccion regional', 'region']) || '').toString().trim();
 
           if (!despNombre || !gerenciaNombre) {
+            console.log('[process-production] Skipping row: Missing desp or gerencia', { despNombre, gerenciaNombre });
             skippedCount++;
             continue;
           }
 
-          const importePesos = parseFloat(row['IMPORTE PESOS']?.toString() || '0') || 0;
-          const primaConvenio = parseFloat(row['Prima de convenio']?.toString() || '0') || 0;
-          const primaPonderada = parseFloat(row['Prima Ponderada']?.toString() || '0') || 0;
-          const bono = parseFloat(row['Bono']?.toString() || '0') || 0;
-          const porcentajeBono = row['% BONO'] ? parseFloat(row['% BONO'].toString()) : null;
+          const importePesos = parseFloat(getColumnValue(['IMPORTE PESOS', 'importe pesos', 'importe'])?.toString() || '0') || 0;
+          const primaConvenio = parseFloat(getColumnValue(['Prima de convenio', 'prima de convenio', 'prima convenio'])?.toString() || '0') || 0;
+          const primaPonderada = parseFloat(getColumnValue(['Prima Ponderada', 'prima ponderada'])?.toString() || '0') || 0;
+          const bono = parseFloat(getColumnValue(['Bono', 'bono'])?.toString() || '0') || 0;
+          const porcentajeBono = getColumnValue(['% BONO', 'porcentaje bono', 'porciento bono'])
+            ? parseFloat(getColumnValue(['% BONO', 'porcentaje bono', 'porciento bono']).toString())
+            : null;
 
-          const convenioStr = (row.CONVENIO || '').toString().toLowerCase().trim();
+          const convenioStr = (getColumnValue(['CONVENIO', 'convenio']) || '').toString().toLowerCase().trim();
           const convenioFlag = convenioStr === 'si' || convenioStr === 'sí' || convenioStr === 'yes' || primaConvenio > 0;
 
           recordsToInsert.push({
@@ -199,9 +227,9 @@ Deno.serve(async (req: Request) => {
             desp_nombre_raw: despNombre,
             gerencia_nombre_raw: gerenciaNombre,
             region_raw: regionNombre || null,
-            agente_nombre: (row.VendNombre || '').toString().trim(),
-            aseguradora_nombre: (row['Nombre Compañía'] || '').toString().trim(),
-            ramo_nombre: (row['Sub Ramo'] || row.RamosNombre || '').toString().trim(),
+            agente_nombre: (getColumnValue(['VendNombre', 'vendnombre', 'vendedor']) || '').toString().trim(),
+            aseguradora_nombre: (getColumnValue(['Nombre Compañía', 'nombre compañia', 'nombre compania', 'compañia']) || '').toString().trim(),
+            ramo_nombre: (getColumnValue(['Sub Ramo', 'sub ramo', 'subramo', 'RamosNombre', 'ramos']) || '').toString().trim(),
             subramo_nombre: null,
             importe_pesos: importePesos,
             prima_convenio: primaConvenio,
@@ -212,6 +240,7 @@ Deno.serve(async (req: Request) => {
           });
 
         } catch (rowError: any) {
+          console.error('[process-production] Error processing row:', rowError.message);
           skippedCount++;
         }
       }
