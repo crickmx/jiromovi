@@ -40,8 +40,8 @@ Deno.serve(async (req: Request) => {
 
     const { data: usuario, error: usuarioError } = await supabaseAdmin
       .from('usuarios')
-      .select('id, nombre_completo, email, email_laboral')
-      .or(`email.eq.${email},email_laboral.eq.${email}`)
+      .select('id, nombre_completo, correo_electronico, correo_electronico_laboral')
+      .or(`correo_electronico.eq.${email},correo_electronico_laboral.eq.${email}`)
       .maybeSingle();
 
     if (usuarioError) {

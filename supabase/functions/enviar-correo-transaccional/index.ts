@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     let resendId = null;
 
     try {
-      const resendApiKey = config.resend_api_key || Deno.env.get('RESEND_API_KEY');
+      const resendApiKey = Deno.env.get('RESEND_API_KEY') || config.resend_api_key;
 
       if (!resendApiKey) {
         throw new Error('RESEND_API_KEY no está configurada');
