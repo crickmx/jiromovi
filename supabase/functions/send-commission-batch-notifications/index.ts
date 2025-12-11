@@ -219,7 +219,7 @@ Deno.serve(async (req: Request) => {
       if (agentData.agent_email && emailSubject && emailBody) {
         console.log(`  → Sending email to ${agentData.agent_email}...`);
         try {
-          const emailResponse = await fetch(`${supabaseUrl}/functions/v1/enviar-correo-transaccional`, {
+          const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-direct-email`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -236,7 +236,8 @@ Deno.serve(async (req: Request) => {
             const errorText = await emailResponse.text();
             console.error(`  ✗ Email failed (${emailResponse.status}):`, errorText);
           } else {
-            console.log(`  ✓ Email sent`);
+            const emailResult = await emailResponse.json();
+            console.log(`  ✓ Email sent. Resend ID: ${emailResult.resend_id}`);
           }
         } catch (emailErr) {
           console.error(`  ✗ Email exception:`, emailErr);
@@ -248,7 +249,7 @@ Deno.serve(async (req: Request) => {
       if (agentData.agent_phone && whatsappBody) {
         console.log(`  → Sending WhatsApp to ${agentData.agent_phone}...`);
         try {
-          const whatsappResponse = await fetch(`${supabaseUrl}/functions/v1/enviar-whatsapp`, {
+          const whatsappResponse = await fetch(`${supabaseUrl}/functions/v1/send-direct-whatsapp`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -264,7 +265,8 @@ Deno.serve(async (req: Request) => {
             const errorText = await whatsappResponse.text();
             console.error(`  ✗ WhatsApp failed (${whatsappResponse.status}):`, errorText);
           } else {
-            console.log(`  ✓ WhatsApp sent`);
+            const whatsappResult = await whatsappResponse.json();
+            console.log(`  ✓ WhatsApp sent to ${whatsappResult.normalized_phone}`);
           }
         } catch (whatsappErr) {
           console.error(`  ✗ WhatsApp exception:`, whatsappErr);
