@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { CommissionDetail, CommissionBatch } from './commissionTypes';
-import { formatCurrency, formatDate } from './commissionUtils';
+import { formatCurrency, formatDate, getWeekNumber } from './commissionUtils';
 import {
   calcularDesgloseFiscal as calcularDesgloseFiscalCore,
   normalizarRegimenFiscal,
@@ -316,7 +316,7 @@ export async function generateOrdenDePagoPDF(
 
   yPosition += 5;
 
-  const weekNumber = Math.ceil((new Date(batch.date_from).getTime() - new Date(new Date(batch.date_from).getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+  const weekNumber = getWeekNumber(new Date(batch.date_from));
   doc.setFont(undefined, 'bold');
   doc.text('Semana:', marginLeft, yPosition);
   doc.setFont(undefined, 'normal');
