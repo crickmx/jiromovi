@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 interface DataPoint {
   label: string;
@@ -21,6 +21,45 @@ export default function GraficaLinea({
   color = '#3b82f6'
 }: GraficaLineaProps) {
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const formatLabel = (label: string) => {
+    if (!isMobile) return label;
+
+    if (label.includes('-')) {
+      const [year, month] = label.split('-');
+      const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      return months[parseInt(month) - 1] || label;
+    }
+
+    return label.length > 6 ? label.substring(0, 6) : label;
+  };
+
+  const formatYAxisLabel = (label: string) => {
+    if (!isMobile) return label;
+
+    if (label.startsWith('$')) {
+      const numStr = label.replace(/[$,]/g, '');
+      const num = parseFloat(numStr);
+
+      if (num >= 1000000) {
+        return `$${(num / 1000000).toFixed(1)}M`;
+      } else if (num >= 1000) {
+        return `$${(num / 1000).toFixed(0)}K`;
+      }
+    }
+
+    return label;
+  };
 
   const { maxValue, minValue, points, pathD, yAxisLabels } = useMemo(() => {
     if (data.length === 0) {
@@ -55,7 +94,7 @@ export default function GraficaLinea({
       return `L ${point.x} ${point.y}`;
     }).join(' ');
 
-    const steps = 5;
+    const steps = isMobile ? 4 : 5;
     const stepValue = (chartMax - chartMin) / steps;
     const axisLabels = Array.from({ length: steps + 1 }, (_, i) => {
       const value = chartMin + stepValue * (steps - i);
@@ -72,7 +111,7 @@ export default function GraficaLinea({
       pathD: path,
       yAxisLabels: axisLabels
     };
-  }, [data, valueFormatter]);
+  }, [data, valueFormatter, isMobile]);
 
   if (data.length === 0) {
     return (
@@ -87,21 +126,23 @@ export default function GraficaLinea({
 
   const gradientId = `gradient-${title.replace(/\s+/g, '-')}`;
 
-  return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-6">
-      <h3 className="text-base sm:text-lg font-bold text-neutral-900 mb-4 sm:mb-6">{title}</h3>
+  const chartHeight = isMobile ? height * 0.85 : height;
 
-      <div className="flex gap-3">
-        <div className="flex flex-col justify-between" style={{ height: `${height}px` }}>
+  return (
+    <div className="bg-white rounded-xl border border-neutral-200 p-3 sm:p-6">
+      <h3 className="text-sm sm:text-base md:text-lg font-bold text-neutral-900 mb-3 sm:mb-4 md:mb-6">{title}</h3>
+
+      <div className="flex gap-2 sm:gap-3">
+        <div className="flex flex-col justify-between flex-shrink-0" style={{ height: `${chartHeight}px` }}>
           {yAxisLabels.map((label, index) => (
-            <div key={index} className="text-xs text-neutral-500 font-medium text-right pr-2 -mt-2 first:mt-0">
-              {label.label}
+            <div key={index} className="text-[10px] sm:text-xs text-neutral-500 font-medium text-right pr-1 sm:pr-2 -mt-2 first:mt-0 whitespace-nowrap">
+              {formatYAxisLabel(label.label)}
             </div>
           ))}
         </div>
 
-        <div className="flex-1 border-l border-b border-neutral-200 pl-2">
-          <div className="relative" style={{ height: `${height}px` }}>
+        <div className="flex-1 border-l border-b border-neutral-200 pl-2 sm:pl-3 overflow-hidden">
+          <div className="relative" style={{ height: `${chartHeight}px` }}>
             <svg
               viewBox="0 0 100 100"
               className="w-full h-full"
@@ -134,13 +175,14 @@ export default function GraficaLinea({
                   <circle
                     cx={point.x}
                     cy={point.y}
-                    r={hoveredPoint === index ? "2.5" : "1.8"}
+                    r={hoveredPoint === index ? (isMobile ? "3" : "2.5") : (isMobile ? "2.2" : "1.8")}
                     fill="white"
                     stroke={color}
-                    strokeWidth="0.8"
+                    strokeWidth={isMobile ? "1" : "0.8"}
                     className="cursor-pointer transition-all duration-200"
                     onMouseEnter={() => setHoveredPoint(index)}
                     onMouseLeave={() => setHoveredPoint(null)}
+                    onClick={() => setHoveredPoint(hoveredPoint === index ? null : index)}
                   />
                 </g>
               ))}
@@ -149,21 +191,21 @@ export default function GraficaLinea({
             {points.map((point, index) => (
               <div
                 key={index}
-                className="absolute"
+                className="absolute pointer-events-none sm:pointer-events-auto"
                 style={{
                   left: `${point.x}%`,
                   top: `${point.y}%`,
                   transform: 'translate(-50%, -50%)',
                   zIndex: hoveredPoint === index ? 20 : 10
                 }}
-                onMouseEnter={() => setHoveredPoint(index)}
-                onMouseLeave={() => setHoveredPoint(null)}
+                onMouseEnter={() => !isMobile && setHoveredPoint(index)}
+                onMouseLeave={() => !isMobile && setHoveredPoint(null)}
               >
                 {hoveredPoint === index && (
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-3 py-2 bg-neutral-900 text-white text-xs rounded-lg whitespace-nowrap shadow-xl animate-in fade-in duration-200">
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 sm:mb-3 px-2 sm:px-3 py-1.5 sm:py-2 bg-neutral-900 text-white text-[11px] sm:text-xs rounded-lg whitespace-nowrap shadow-xl animate-in fade-in duration-200 pointer-events-auto">
                     <div className="font-semibold">{point.label}</div>
-                    <div className="text-xs opacity-90">{valueFormatter(point.value)}</div>
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                    <div className="text-[10px] sm:text-xs opacity-90">{valueFormatter(point.value)}</div>
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-0.5 sm:-mt-1">
                       <div className="w-2 h-2 bg-neutral-900 rotate-45"></div>
                     </div>
                   </div>
@@ -172,17 +214,18 @@ export default function GraficaLinea({
             ))}
           </div>
 
-          <div className="mt-4 overflow-x-auto">
-            <div className="flex items-center justify-between text-xs text-neutral-600 min-w-max sm:min-w-0">
+          <div className="mt-3 sm:mt-4 overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+            <div className="flex items-center justify-between text-[10px] sm:text-xs text-neutral-600 min-w-max sm:min-w-0 gap-1">
               {data.map((item, index) => {
-                const showLabel = data.length <= 12 || index % Math.ceil(data.length / 12) === 0;
+                const labelsToShow = isMobile ? 6 : 12;
+                const showLabel = data.length <= labelsToShow || index % Math.ceil(data.length / labelsToShow) === 0;
 
                 return showLabel ? (
                   <div
                     key={index}
-                    className="text-center px-1 flex-1"
+                    className="text-center px-0.5 sm:px-1 flex-1"
                   >
-                    <div className="truncate">{item.label}</div>
+                    <div className="truncate font-medium">{formatLabel(item.label)}</div>
                   </div>
                 ) : null;
               })}
