@@ -16,21 +16,82 @@ function extractSpreadsheetId(url: string): string | null {
 }
 
 function parseCSV(csvText: string): RowData[] {
-  const lines = csvText.split('\n').filter(line => line.trim());
+  const lines: string[] = [];
+  let currentLine = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < csvText.length; i++) {
+    const char = csvText[i];
+    const nextChar = csvText[i + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        currentLine += '"';
+        i++;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === '\n' && !insideQuotes) {
+      if (currentLine.trim()) {
+        lines.push(currentLine);
+      }
+      currentLine = '';
+    } else if (char === '\r' && nextChar === '\n' && !insideQuotes) {
+      if (currentLine.trim()) {
+        lines.push(currentLine);
+      }
+      currentLine = '';
+      i++;
+    } else {
+      currentLine += char;
+    }
+  }
+
+  if (currentLine.trim()) {
+    lines.push(currentLine);
+  }
+
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  function parseLine(line: string): string[] {
+    const values: string[] = [];
+    let currentValue = '';
+    let insideQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        if (insideQuotes && nextChar === '"') {
+          currentValue += '"';
+          i++;
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === ',' && !insideQuotes) {
+        values.push(currentValue.trim());
+        currentValue = '';
+      } else {
+        currentValue += char;
+      }
+    }
+    values.push(currentValue.trim());
+    return values;
+  }
+
+  const headers = parseLine(lines[0]);
   const rows: RowData[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    const values = parseLine(lines[i]);
     const row: RowData = {};
 
     headers.forEach((header, index) => {
       const value = values[index] || '';
       if (value === '') {
         row[header] = null;
-      } else if (!isNaN(Number(value)) && value !== '') {
+      } else if (!isNaN(Number(value)) && value !== '' && !value.includes('/') && !value.includes('-')) {
         row[header] = Number(value);
       } else {
         row[header] = value;
@@ -135,6 +196,7 @@ Deno.serve(async (req: Request) => {
     const batchSize = 500;
     let processedCount = 0;
     let skippedCount = 0;
+    const skipReasons: { [key: string]: number } = {};
 
     for (let i = 0; i < rows.length; i += batchSize) {
       const batch = rows.slice(i, i + batchSize);
@@ -155,24 +217,42 @@ Deno.serve(async (req: Request) => {
 
           const fechaValue = getColumnValue(['FechaSimp', 'Fecha', 'fechasimp', 'fecha']);
           if (!fechaValue) {
+            skipReasons['Sin fecha'] = (skipReasons['Sin fecha'] || 0) + 1;
             skippedCount++;
             continue;
           }
 
           let fecha: Date;
           if (typeof fechaValue === 'string') {
-            fecha = new Date(fechaValue);
+            if (fechaValue.includes('/')) {
+              const parts = fechaValue.split('/');
+              if (parts.length === 3) {
+                const day = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1;
+                const year = parseInt(parts[2]);
+                fecha = new Date(year, month, day);
+              } else {
+                fecha = new Date(fechaValue);
+              }
+            } else if (fechaValue.includes('-')) {
+              fecha = new Date(fechaValue);
+            } else {
+              fecha = new Date(fechaValue);
+            }
           } else if (fechaValue instanceof Date) {
             fecha = fechaValue;
           } else if (typeof fechaValue === 'number') {
             const excelEpoch = new Date(1899, 11, 30);
             fecha = new Date(excelEpoch.getTime() + fechaValue * 86400000);
           } else {
+            skipReasons['Formato de fecha inválido'] = (skipReasons['Formato de fecha inválido'] || 0) + 1;
             skippedCount++;
             continue;
           }
 
           if (isNaN(fecha.getTime())) {
+            console.log('[sync-google-sheets] Invalid date:', fechaValue);
+            skipReasons['Fecha inválida'] = (skipReasons['Fecha inválida'] || 0) + 1;
             skippedCount++;
             continue;
           }
@@ -188,6 +268,7 @@ Deno.serve(async (req: Request) => {
           const regionNombre = (getColumnValue(['Dirección Regional', 'direccion regional', 'region']) || '').toString().trim();
 
           if (!despNombre || !gerenciaNombre) {
+            skipReasons['Sin despacho o gerencia'] = (skipReasons['Sin despacho o gerencia'] || 0) + 1;
             skippedCount++;
             continue;
           }
@@ -230,6 +311,7 @@ Deno.serve(async (req: Request) => {
 
         } catch (rowError: any) {
           console.error('[sync-google-sheets] Error processing row:', rowError.message);
+          skipReasons['Error al procesar'] = (skipReasons['Error al procesar'] || 0) + 1;
           skippedCount++;
         }
       }
@@ -252,9 +334,14 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`[sync-google-sheets] Completed. Processed: ${processedCount}, Skipped: ${skippedCount}`);
+    console.log('[sync-google-sheets] Skip reasons:', skipReasons);
 
     if (processedCount === 0) {
-      throw new Error('No se pudo procesar ningún registro. Verifica el formato de los datos.');
+      const reasonsText = Object.entries(skipReasons)
+        .map(([reason, count]) => `- ${reason}: ${count} registros`)
+        .join('\n');
+
+      throw new Error(`No se pudo procesar ningún registro. Total de registros en el archivo: ${rows.length}\n\nRazones de omisión:\n${reasonsText}\n\nVerifica que:\n1. Las columnas tengan los nombres exactos requeridos\n2. Los datos de fecha estén en un formato válido (DD/MM/YYYY o YYYY-MM-DD)\n3. Los campos DespNombre y GerenciaNombre no estén vacíos`);
     }
 
     await supabase
