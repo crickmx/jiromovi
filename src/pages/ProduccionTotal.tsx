@@ -140,17 +140,27 @@ export default function ProduccionTotal() {
 
       console.log('[ProduccionTotal] Datos procesados:', processedData.length);
 
-      if (usuario.rol === 'Gerente' && usuario.production_office_id) {
+      if (usuario.rol === 'Gerente' && usuario.oficina_id) {
         const { data: office } = await supabase
           .from('oficinas')
           .select('nombre')
-          .eq('id', usuario.production_office_id)
+          .eq('id', usuario.oficina_id)
           .maybeSingle();
+
+        console.log('[ProduccionTotal] Gerente detectado - Oficina:', office?.nombre);
 
         if (office) {
           const beforeFilter = processedData.length;
-          processedData = processedData.filter((r: any) => r.desp_nombre_raw === office.nombre);
+          processedData = processedData.filter((r: any) => {
+            const matches = r.desp_nombre_raw === office.nombre;
+            if (!matches) {
+              console.log('[ProduccionTotal] Registro filtrado:', r.desp_nombre_raw, '!==', office.nombre);
+            }
+            return matches;
+          });
           console.log('[ProduccionTotal] Filtrado por oficina:', beforeFilter, '→', processedData.length);
+        } else {
+          console.warn('[ProduccionTotal] No se encontró oficina para el gerente');
         }
       }
 
