@@ -60,7 +60,10 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    console.log("=== START: Commission Batch Notifications ===");
+
     const { batchId }: RequestBody = await req.json();
+    console.log("Batch ID:", batchId);
 
     if (!batchId) {
       throw new Error("batchId is required");
@@ -73,8 +76,11 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (batchError || !batch) {
+      console.error("Batch error:", batchError);
       throw new Error("Batch not found");
     }
+
+    console.log("Batch found:", batch.name);
 
     const { data: details, error: detailsError } = await supabase
       .from("commission_details")
@@ -92,8 +98,11 @@ Deno.serve(async (req: Request) => {
       .eq("batch_id", batchId);
 
     if (detailsError) {
+      console.error("Details error:", detailsError);
       throw new Error("Error fetching commission details");
     }
+
+    console.log(`Found ${details?.length || 0} commission details`);
 
     const agentMap = new Map<string, CommissionAgent>();
 
@@ -118,6 +127,8 @@ Deno.serve(async (req: Request) => {
       agentData.total_commission += commission;
     }
 
+    console.log(`Processing ${agentMap.size} unique agents`);
+
     const { data: template, error: templateError } = await supabase
       .from("transactional_notification_templates")
       .select("*")
@@ -126,8 +137,16 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (templateError || !template) {
+      console.error("Template error:", templateError);
+      console.log("Available templates check...");
+      const { data: allTemplates } = await supabase
+        .from("transactional_notification_templates")
+        .select("event_key, name, is_active");
+      console.log("All templates:", allTemplates);
       throw new Error("Template not found or inactive");
     }
+
+    console.log("Template found:", template.name, "Active:", template.is_active);
 
     const weekNumber = Math.ceil(
       (new Date(batch.date_from).getTime() - new Date(new Date(batch.date_from).getFullYear(), 0, 1).getTime()) /
@@ -136,7 +155,15 @@ Deno.serve(async (req: Request) => {
 
     const results = [];
 
+    console.log(`\n=== Starting notifications for ${agentMap.size} agents ===\n`);
+
     for (const [agentId, agentData] of agentMap.entries()) {
+      console.log(`\nProcessing agent: ${agentData.agent_name}`);
+      console.log(`  Email: ${agentData.agent_email}`);
+      console.log(`  Phone: ${agentData.agent_phone}`);
+      console.log(`  Usuario ID: ${agentData.agent_usuario_id}`);
+      console.log(`  Total commission: ${agentData.total_commission}`);
+
       const ordenDePagoUrl = `${supabaseUrl.replace('/v1', '')}/comisiones/lote/${batchId}`;
 
       const context = {
@@ -155,7 +182,13 @@ Deno.serve(async (req: Request) => {
       const inappTitle = renderTemplate(template.inapp_title_template, context);
       const inappBody = renderTemplate(template.inapp_body_template, context);
 
+      console.log(`  Templates rendered:`)
+      console.log(`    - Email subject: ${emailSubject?.substring(0, 50)}...`);
+      console.log(`    - WhatsApp: ${whatsappBody?.substring(0, 50)}...`);
+      console.log(`    - InApp title: ${inappTitle}`);
+
       if (agentData.agent_usuario_id) {
+        console.log(`  → Sending in-app notification...`);
         const { error: notifError } = await supabase
           .from("notifications")
           .insert({
@@ -167,11 +200,16 @@ Deno.serve(async (req: Request) => {
           });
 
         if (notifError) {
-          console.error(`Error creating in-app notification for ${agentData.agent_name}:`, notifError);
+          console.error(`  ✗ In-app notification failed:`, notifError);
+        } else {
+          console.log(`  ✓ In-app notification sent`);
         }
+      } else {
+        console.log(`  ⊘ No usuario_id, skipping in-app notification`);
       }
 
       if (agentData.agent_email && emailSubject && emailBody) {
+        console.log(`  → Sending email to ${agentData.agent_email}...`);
         try {
           const emailResponse = await fetch(`${supabaseUrl}/functions/v1/enviar-correo-transaccional`, {
             method: "POST",
@@ -187,14 +225,20 @@ Deno.serve(async (req: Request) => {
           });
 
           if (!emailResponse.ok) {
-            console.error(`Error sending email to ${agentData.agent_email}`);
+            const errorText = await emailResponse.text();
+            console.error(`  ✗ Email failed (${emailResponse.status}):`, errorText);
+          } else {
+            console.log(`  ✓ Email sent`);
           }
         } catch (emailErr) {
-          console.error(`Exception sending email to ${agentData.agent_email}:`, emailErr);
+          console.error(`  ✗ Email exception:`, emailErr);
         }
+      } else {
+        console.log(`  ⊘ No email or missing template, skipping email`);
       }
 
       if (agentData.agent_phone && whatsappBody) {
+        console.log(`  → Sending WhatsApp to ${agentData.agent_phone}...`);
         try {
           const whatsappResponse = await fetch(`${supabaseUrl}/functions/v1/enviar-whatsapp`, {
             method: "POST",
@@ -209,11 +253,16 @@ Deno.serve(async (req: Request) => {
           });
 
           if (!whatsappResponse.ok) {
-            console.error(`Error sending WhatsApp to ${agentData.agent_phone}`);
+            const errorText = await whatsappResponse.text();
+            console.error(`  ✗ WhatsApp failed (${whatsappResponse.status}):`, errorText);
+          } else {
+            console.log(`  ✓ WhatsApp sent`);
           }
         } catch (whatsappErr) {
-          console.error(`Exception sending WhatsApp to ${agentData.agent_phone}:`, whatsappErr);
+          console.error(`  ✗ WhatsApp exception:`, whatsappErr);
         }
+      } else {
+        console.log(`  ⊘ No phone or missing template, skipping WhatsApp`);
       }
 
       results.push({
@@ -226,6 +275,11 @@ Deno.serve(async (req: Request) => {
         },
       });
     }
+
+    console.log(`\n=== SUMMARY ===`);
+    console.log(`Total agents processed: ${results.length}`);
+    console.log(`Batch ID: ${batchId}`);
+    console.log(`=== END ===\n`);
 
     return new Response(
       JSON.stringify({

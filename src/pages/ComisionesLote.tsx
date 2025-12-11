@@ -74,8 +74,6 @@ export default function ComisionesLote() {
       return;
     }
 
-    alert('Lote cerrado exitosamente. Enviando notificaciones a los agentes...');
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
@@ -90,14 +88,38 @@ export default function ComisionesLote() {
         }
       );
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Notificaciones enviadas:', result);
+      const result = await response.json();
+      console.log('Respuesta de notificaciones:', result);
+
+      if (response.ok && result.success) {
+        alert(
+          `✅ Lote cerrado exitosamente!\n\n` +
+          `📧 Notificaciones enviadas a ${result.agents_notified} agentes.\n\n` +
+          `Detalles:\n${result.results.map((r: any) =>
+            `- ${r.agent_name}: ` +
+            `${r.notifications_sent.in_app ? '✓ App' : '✗ App'}, ` +
+            `${r.notifications_sent.email ? '✓ Email' : '✗ Email'}, ` +
+            `${r.notifications_sent.whatsapp ? '✓ WhatsApp' : '✗ WhatsApp'}`
+          ).join('\n')}`
+        );
       } else {
-        console.error('Error enviando notificaciones');
+        console.error('Error en respuesta:', result);
+        alert(
+          `⚠️ Lote cerrado, pero hubo un problema al enviar notificaciones:\n\n` +
+          `${result.error || 'Error desconocido'}\n\n` +
+          `Revisa la consola para más detalles.`
+        );
       }
-    } catch (notifError) {
+    } catch (notifError: any) {
       console.error('Error al enviar notificaciones:', notifError);
+      alert(
+        `⚠️ Lote cerrado, pero no se pudieron enviar las notificaciones:\n\n` +
+        `${notifError.message}\n\n` +
+        `Verifica:\n` +
+        `1. Que la plantilla esté activa en Notificaciones Transaccionales\n` +
+        `2. Que los agentes tengan email y teléfono registrados\n` +
+        `3. Que la configuración SMTP y WhatsApp sea correcta`
+      );
     }
 
     loadBatch();
