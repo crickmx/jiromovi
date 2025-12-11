@@ -144,31 +144,47 @@ export async function crearEvento(
   if (errorUsuarios) {
     console.error('Error obteniendo usuarios autorizados:', errorUsuarios);
   } else if (usuariosAutorizados && usuariosAutorizados.length > 0) {
-    // Enviar notificaciones por TODOS los canales (correo, WhatsApp, campanita)
     const linkEvento = `/seguros-education-aula-digital?evento=${eventoCreado.id}`;
+    const usuarioIds = usuariosAutorizados.map((u: any) => u.usuario_id);
 
-    for (const usuario of usuariosAutorizados) {
-      try {
-        await supabase.rpc('enviar_notificacion_completa', {
-          p_tipo_codigo: 'nuevo_evento',
-          p_user_id: usuario.usuario_id,
-          p_titulo: `Nuevo evento: ${evento.titulo}`,
-          p_mensaje: `Se ha programado un nuevo evento en Aula Digital.`,
-          p_modulo: 'Seguros Education',
-          p_datos_adicionales: {
-            titulo_evento: evento.titulo,
-            descripcion_evento: evento.descripcion,
-            ponente: evento.ponente,
-            fecha_evento: evento.fecha,
-            hora_evento: evento.hora,
-            link_evento: linkEvento,
-            link_sesion: evento.link_sesion
-          },
-          p_accion_url: linkEvento
-        });
-      } catch (error) {
-        console.error(`Error enviando notificación a usuario ${usuario.usuario_id}:`, error);
+    // Usar el nuevo motor centralizado de notificaciones
+    try {
+      const { data: result, error: notifyError } = await supabase.rpc('notify', {
+        p_event_code: 'nuevo_evento',
+        p_user_ids: usuarioIds,
+        p_payload: {
+          titulo_evento: evento.titulo,
+          descripcion_evento: evento.descripcion,
+          ponente: evento.ponente,
+          fecha_evento: evento.fecha,
+          hora_evento: evento.hora,
+          link_evento: linkEvento,
+          link_sesion: evento.link_sesion,
+          modulo: 'Seguros Education'
+        },
+        p_entity_id: eventoCreado.id
+      });
+
+      if (notifyError) {
+        console.error('Error al crear jobs de notificación:', notifyError);
+      } else {
+        console.log('Notificaciones programadas:', result);
       }
+
+      // Ejecutar dispatcher (sin bloquear)
+      const supabaseUrl = (window as any).__SUPABASE_URL__ || import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = (window as any).__SUPABASE_ANON_KEY__ || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      fetch(`${supabaseUrl}/functions/v1/notification-dispatcher`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`
+        }
+      }).catch(err => console.warn('Dispatcher no pudo ejecutarse:', err));
+
+    } catch (error) {
+      console.error('Error enviando notificaciones:', error);
     }
   }
 

@@ -364,27 +364,39 @@ export default function ComunicadoEditor() {
             }
           }
 
-          // Eliminar duplicados (ahora el creador también recibe notificación)
+          // Eliminar duplicados
           destinatarios = [...new Set(destinatarios)];
 
-          // Crear notificaciones con WhatsApp automático
-          const linkComunicado = `${window.location.origin}/comunicados/${comunicadoId}`;
+          if (destinatarios.length > 0) {
+            const linkComunicado = `${window.location.origin}/comunicados/${comunicadoId}`;
 
-          for (const userId of destinatarios) {
-            // Usar función RPC que envía por TODOS los canales configurados
-            await supabase.rpc('enviar_notificacion_completa', {
-              p_tipo_codigo: 'nuevo_comunicado',
-              p_user_id: userId,
-              p_titulo: `Nuevo comunicado: ${titulo}`,
-              p_mensaje: `Se ha publicado un nuevo comunicado que puede ser de tu interés.`,
-              p_modulo: 'Comunicados',
-              p_datos_adicionales: {
+            // Usar el nuevo motor centralizado de notificaciones
+            const { data: result, error: notifyError } = await supabase.rpc('notify', {
+              p_event_code: 'nuevo_comunicado',
+              p_user_ids: destinatarios,
+              p_payload: {
                 titulo_comunicado: titulo,
                 link_comunicado: linkComunicado,
-                categoria: categoriaId ? categoriaId : 'General'
+                categoria: categoriaId ? categoriaId : 'General',
+                modulo: 'Comunicados'
               },
-              p_accion_url: `/comunicados/${comunicadoId}`
+              p_entity_id: comunicadoId
             });
+
+            if (notifyError) {
+              console.error('Error al crear jobs de notificación:', notifyError);
+            } else {
+              console.log('Notificaciones programadas:', result);
+            }
+
+            // Ejecutar dispatcher inmediatamente (sin esperar respuesta)
+            fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notification-dispatcher`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+              }
+            }).catch(err => console.warn('Dispatcher no pudo ejecutarse:', err));
           }
         } catch (error) {
           console.error('Error enviando notificaciones:', error);
