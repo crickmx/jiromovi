@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell } from 'lucide-react';
+import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell, Save, X } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
+import type { TransactionalNotificationTemplate } from '../../lib/transactionalNotificationTypes';
+import { AVAILABLE_PLACEHOLDERS } from '../../lib/transactionalNotificationTypes';
 
 interface TipoNotificacion {
   id: string;
@@ -21,12 +23,16 @@ interface TiposNotificacionesProps {
 
 export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const [tipos, setTipos] = useState<TipoNotificacion[]>([]);
+  const [transactionalTemplates, setTransactionalTemplates] = useState<TransactionalNotificationTemplate[]>([]);
+  const [editingTransactional, setEditingTransactional] = useState<TransactionalNotificationTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [editingTipo, setEditingTipo] = useState<{ id: string, nombre: string } | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchTipos();
+    fetchTransactionalTemplates();
   }, []);
 
   const fetchTipos = async () => {
@@ -39,22 +45,26 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
 
       if (error) throw error;
 
-      console.log('=== TIPOS CARGADOS ===');
-      console.log('Total:', data?.length);
-      if (data && data.length > 0) {
-        console.log('Ejemplo:', {
-          nombre: data[0].nombre,
-          correo: data[0].enviar_correo,
-          whatsapp: data[0].enviar_whatsapp,
-          notificacion: data[0].enviar_notificacion
-        });
-      }
-
       setTipos(data || []);
     } catch (error) {
       console.error('Error al cargar tipos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTransactionalTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transactional_notification_templates')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+
+      setTransactionalTemplates(data || []);
+    } catch (error) {
+      console.error('Error al cargar plantillas transaccionales:', error);
     }
   };
 
@@ -84,26 +94,14 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const toggleCanal = async (id: string, campo: 'enviar_correo' | 'enviar_whatsapp' | 'enviar_notificacion', valorActual: boolean) => {
     try {
       setMessage(null);
-
       const nuevoValor = !valorActual;
-
-      console.log('=== TOGGLE CANAL ===');
-      console.log('ID:', id);
-      console.log('Campo:', campo);
-      console.log('Valor actual:', valorActual);
-      console.log('Nuevo valor:', nuevoValor);
 
       const { error } = await supabase
         .from('correo_tipos_notificacion')
         .update({ [campo]: nuevoValor })
         .eq('id', id);
 
-      if (error) {
-        console.error('Error de Supabase:', error);
-        throw error;
-      }
-
-      console.log('Actualización exitosa en BD');
+      if (error) throw error;
 
       const canalNombre = campo === 'enviar_correo' ? 'Correo' : campo === 'enviar_whatsapp' ? 'WhatsApp' : 'Notificación';
       setMessage({
@@ -113,11 +111,67 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
 
       await fetchTipos();
       onUpdate();
-
-      console.log('=== FIN TOGGLE ===');
     } catch (error: any) {
       console.error('Error al actualizar canal:', error);
       setMessage({ type: 'error', text: 'Error al actualizar el canal: ' + error.message });
+    }
+  };
+
+  const toggleTransactionalActive = async (id: string, isActive: boolean) => {
+    try {
+      setMessage(null);
+      const { error } = await supabase
+        .from('transactional_notification_templates')
+        .update({ is_active: !isActive })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setMessage({
+        type: 'success',
+        text: `Plantilla ${!isActive ? 'activada' : 'desactivada'} exitosamente`
+      });
+
+      await fetchTransactionalTemplates();
+      onUpdate();
+    } catch (error: any) {
+      console.error('Error al actualizar plantilla:', error);
+      setMessage({ type: 'error', text: 'Error al actualizar la plantilla' });
+    }
+  };
+
+  const handleSaveTransactional = async () => {
+    if (!editingTransactional) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('transactional_notification_templates')
+        .update({
+          email_subject_template: editingTransactional.email_subject_template,
+          email_body_template: editingTransactional.email_body_template,
+          whatsapp_body_template: editingTransactional.whatsapp_body_template,
+          inapp_title_template: editingTransactional.inapp_title_template,
+          inapp_body_template: editingTransactional.inapp_body_template,
+          is_active: editingTransactional.is_active
+        })
+        .eq('id', editingTransactional.id);
+
+      if (error) throw error;
+
+      setMessage({
+        type: 'success',
+        text: 'Plantilla guardada exitosamente'
+      });
+
+      await fetchTransactionalTemplates();
+      setEditingTransactional(null);
+      onUpdate();
+    } catch (error: any) {
+      console.error('Error al guardar plantilla:', error);
+      setMessage({ type: 'error', text: 'Error al guardar la plantilla' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -126,7 +180,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {message && (
         <div className={`flex items-center gap-2 p-4 rounded-lg ${
           message.type === 'success'
@@ -138,14 +192,204 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         </div>
       )}
 
-      <div className="space-y-3">
-        {tipos.map((tipo) => {
-          console.log(`Render ${tipo.nombre}:`, {
-            correo: tipo.enviar_correo,
-            whatsapp: tipo.enviar_whatsapp,
-            notificacion: tipo.enviar_notificacion
-          });
+      {/* Plantillas Transaccionales (Comisiones) */}
+      {transactionalTemplates.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+            <h3 className="text-lg font-bold text-neutral-900">Plantillas Transaccionales</h3>
+            <span className="px-2 py-1 bg-primary-100 text-primary-700 text-xs font-semibold rounded-full">
+              Automáticas
+            </span>
+          </div>
 
+          {transactionalTemplates.map((template) => (
+            <div key={template.id}>
+              {editingTransactional?.id === template.id ? (
+                <div className="bg-white rounded-lg border-2 border-primary-500 shadow-lg p-6 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-neutral-900">{template.name}</h3>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={handleSaveTransactional}
+                        disabled={saving}
+                        className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>Guardar</span>
+                      </button>
+                      <button
+                        onClick={() => setEditingTransactional(null)}
+                        className="flex items-center space-x-2 px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                        <span>Cancelar</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-blue-900 mb-2">Variables disponibles:</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {AVAILABLE_PLACEHOLDERS[template.event_key as keyof typeof AVAILABLE_PLACEHOLDERS]?.map(ph => (
+                        <code key={ph.key} className="bg-white px-2 py-1 rounded text-blue-700">
+                          {`{{${ph.key}}}`}
+                        </code>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="flex items-center space-x-2 mb-2 text-sm font-semibold text-neutral-900">
+                        <Mail className="w-4 h-4 text-primary-600" />
+                        <span>Asunto del Correo</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTransactional.email_subject_template || ''}
+                        onChange={(e) => setEditingTransactional({
+                          ...editingTransactional,
+                          email_subject_template: e.target.value
+                        })}
+                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center space-x-2 mb-2 text-sm font-semibold text-neutral-900">
+                        <Mail className="w-4 h-4 text-primary-600" />
+                        <span>Cuerpo del Correo (HTML)</span>
+                      </label>
+                      <textarea
+                        value={editingTransactional.email_body_template || ''}
+                        onChange={(e) => setEditingTransactional({
+                          ...editingTransactional,
+                          email_body_template: e.target.value
+                        })}
+                        rows={8}
+                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center space-x-2 mb-2 text-sm font-semibold text-neutral-900">
+                        <MessageCircle className="w-4 h-4 text-green-600" />
+                        <span>Mensaje de WhatsApp</span>
+                      </label>
+                      <textarea
+                        value={editingTransactional.whatsapp_body_template || ''}
+                        onChange={(e) => setEditingTransactional({
+                          ...editingTransactional,
+                          whatsapp_body_template: e.target.value
+                        })}
+                        rows={6}
+                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center space-x-2 mb-2 text-sm font-semibold text-neutral-900">
+                        <Bell className="w-4 h-4 text-yellow-600" />
+                        <span>Título Notificación Interna</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTransactional.inapp_title_template || ''}
+                        onChange={(e) => setEditingTransactional({
+                          ...editingTransactional,
+                          inapp_title_template: e.target.value
+                        })}
+                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center space-x-2 mb-2 text-sm font-semibold text-neutral-900">
+                        <Bell className="w-4 h-4 text-yellow-600" />
+                        <span>Cuerpo Notificación Interna</span>
+                      </label>
+                      <textarea
+                        value={editingTransactional.inapp_body_template || ''}
+                        onChange={(e) => setEditingTransactional({
+                          ...editingTransactional,
+                          inapp_body_template: e.target.value
+                        })}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg border border-neutral-200 hover:border-neutral-300 transition-colors">
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                        <Mail className="w-5 h-5 text-primary-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-neutral-800">{template.name}</h3>
+                        <p className="text-sm text-neutral-600 mt-1">Event: {template.event_key}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {template.email_subject_template && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                              <Mail className="w-3 h-3" />
+                              Email
+                            </span>
+                          )}
+                          {template.whatsapp_body_template && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                              <MessageCircle className="w-3 h-3" />
+                              WhatsApp
+                            </span>
+                          )}
+                          {template.inapp_title_template && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
+                              <Bell className="w-3 h-3" />
+                              InApp
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setEditingTransactional({ ...template })}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-100 text-primary-700 hover:bg-primary-200 transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Editar Plantilla
+                      </button>
+                      <button
+                        onClick={() => toggleTransactionalActive(template.id, template.is_active)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                          template.is_active
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300'
+                        }`}
+                      >
+                        <Power className="w-4 h-4" />
+                        {template.is_active ? 'Activa' : 'Inactiva'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tipos de Notificaciones Regulares */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
+          <h3 className="text-lg font-bold text-neutral-900">Notificaciones Programadas</h3>
+        </div>
+
+        {tipos.map((tipo) => {
           return (
           <div
             key={tipo.id}
