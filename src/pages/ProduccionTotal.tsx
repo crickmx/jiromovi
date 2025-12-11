@@ -78,7 +78,7 @@ export default function ProduccionTotal() {
       let query = supabase
         .from('production_records')
         .select('*')
-        .range(0, 199999);
+        .range(0, 299999);
 
       if (usuario.rol === 'Gerente' && usuario.production_office_id) {
         query = query.eq('office_id', usuario.production_office_id);
@@ -197,8 +197,10 @@ export default function ProduccionTotal() {
     const totalPonderada = filteredRecords.reduce((sum, r) => sum + (r.prima_ponderada || 0), 0);
     const totalBono = filteredRecords.reduce((sum, r) => sum + (r.bono || 0), 0);
 
+    const metricaPrincipal = totalImporte > 0 ? totalImporte : totalConvenio;
+
     const uniqueAgents = new Set(filteredRecords.map(r => r.agente_nombre));
-    const avgPerAgent = uniqueAgents.size > 0 ? totalImporte / uniqueAgents.size : 0;
+    const avgPerAgent = uniqueAgents.size > 0 ? metricaPrincipal / uniqueAgents.size : 0;
 
     const withConvenio = filteredRecords.filter(r => r.convenio_flag).length;
     const withoutConvenio = filteredRecords.length - withConvenio;
@@ -208,6 +210,7 @@ export default function ProduccionTotal() {
       totalConvenio,
       totalPonderada,
       totalBono,
+      metricaPrincipal,
       recordsCount: filteredRecords.length,
       avgPerAgent,
       withConvenio,
@@ -240,10 +243,11 @@ export default function ProduccionTotal() {
   };
 
   const chartDataByRamo = useMemo(() => {
+    const useImporte = filteredRecords.some(r => r.importe_pesos > 0);
     const grouped = filteredRecords.reduce((acc, r) => {
       const ramo = r.ramo_nombre;
       if (!acc[ramo]) acc[ramo] = 0;
-      acc[ramo] += r.importe_pesos;
+      acc[ramo] += useImporte ? r.importe_pesos : r.prima_convenio;
       return acc;
     }, {} as Record<string, number>);
 
@@ -253,10 +257,11 @@ export default function ProduccionTotal() {
   }, [filteredRecords]);
 
   const chartDataByAseguradora = useMemo(() => {
+    const useImporte = filteredRecords.some(r => r.importe_pesos > 0);
     const grouped = filteredRecords.reduce((acc, r) => {
       const aseg = r.aseguradora_nombre;
       if (!acc[aseg]) acc[aseg] = 0;
-      acc[aseg] += r.importe_pesos;
+      acc[aseg] += useImporte ? r.importe_pesos : r.prima_convenio;
       return acc;
     }, {} as Record<string, number>);
 
@@ -273,11 +278,12 @@ export default function ProduccionTotal() {
   }, [filteredRecords]);
 
   const chartDataByOfficeOrAgent = useMemo(() => {
+    const useImporte = filteredRecords.some(r => r.importe_pesos > 0);
     if (isAdmin) {
       const grouped = filteredRecords.reduce((acc, r) => {
         const office = r.desp_nombre_raw;
         if (!acc[office]) acc[office] = 0;
-        acc[office] += r.importe_pesos;
+        acc[office] += useImporte ? r.importe_pesos : r.prima_convenio;
         return acc;
       }, {} as Record<string, number>);
 
@@ -288,7 +294,7 @@ export default function ProduccionTotal() {
       const grouped = filteredRecords.reduce((acc, r) => {
         const agent = r.agente_nombre;
         if (!acc[agent]) acc[agent] = 0;
-        acc[agent] += r.importe_pesos;
+        acc[agent] += useImporte ? r.importe_pesos : r.prima_convenio;
         return acc;
       }, {} as Record<string, number>);
 
@@ -299,10 +305,11 @@ export default function ProduccionTotal() {
   }, [filteredRecords, isAdmin]);
 
   const chartDataByMonth = useMemo(() => {
+    const useImporte = filteredRecords.some(r => r.importe_pesos > 0);
     const grouped = filteredRecords.reduce((acc, r) => {
       const month = r.periodo_mes || r.fecha.substring(0, 7);
       if (!acc[month]) acc[month] = 0;
-      acc[month] += r.importe_pesos;
+      acc[month] += useImporte ? r.importe_pesos : r.prima_convenio;
       return acc;
     }, {} as Record<string, number>);
 
@@ -312,12 +319,13 @@ export default function ProduccionTotal() {
   }, [filteredRecords]);
 
   const chartDataConvenioVsNoConvenio = useMemo(() => {
+    const useImporte = filteredRecords.some(r => r.importe_pesos > 0);
     const withConvenio = filteredRecords
       .filter(r => r.convenio_flag)
-      .reduce((sum, r) => sum + r.importe_pesos, 0);
+      .reduce((sum, r) => sum + (useImporte ? r.importe_pesos : r.prima_convenio), 0);
     const withoutConvenio = filteredRecords
       .filter(r => !r.convenio_flag)
-      .reduce((sum, r) => sum + r.importe_pesos, 0);
+      .reduce((sum, r) => sum + (useImporte ? r.importe_pesos : r.prima_convenio), 0);
 
     return [
       { label: 'Con Convenio', value: withConvenio },
@@ -363,7 +371,7 @@ export default function ProduccionTotal() {
                 Producción Total
               </h1>
               <p className="text-sm sm:text-base text-neutral-600">
-                Métrica base: IMPORTE PESOS
+                Métrica base: {kpis.totalImporte > 0 ? 'IMPORTE PESOS' : 'PRIMA CONVENIO'}
               </p>
               {lastImport && (
                 <p className="text-xs sm:text-sm text-neutral-500 mt-1">
@@ -391,10 +399,10 @@ export default function ProduccionTotal() {
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-green-200">
             <p className="text-xs sm:text-sm text-green-700 mb-1 font-medium">Producción Total</p>
             <p className="text-lg sm:text-2xl font-bold text-green-900 truncate">
-              ${(kpis.totalImporte / 1000000).toFixed(1)}M
+              ${(kpis.metricaPrincipal / 1000000).toFixed(1)}M
             </p>
             <p className="text-xs text-green-600 mt-0.5 hidden sm:block">
-              ${kpis.totalImporte.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              ${kpis.metricaPrincipal.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
 
@@ -627,7 +635,7 @@ export default function ProduccionTotal() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <GraficaColumnas
                   data={chartDataByRamo}
-                  title="Producción por Ramo (Importe Pesos)"
+                  title={`Producción por Ramo (${kpis.totalImporte > 0 ? 'Importe Pesos' : 'Prima Convenio'})`}
                   valueFormatter={formatCurrency}
                   height={240}
                 />
@@ -747,7 +755,7 @@ export default function ProduccionTotal() {
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-semibold text-green-700 whitespace-nowrap">
-                      ${record.importe_pesos.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      ${(record.importe_pesos > 0 ? record.importe_pesos : record.prima_convenio).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>
                     <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
                       {record.convenio_flag ? (

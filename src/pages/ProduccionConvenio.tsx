@@ -71,7 +71,7 @@ export default function ProduccionConvenio() {
         .from('production_records')
         .select('*')
         .eq('convenio_flag', true)
-        .range(0, 199999);
+        .range(0, 299999);
 
       if (usuario.rol === 'Gerente' && usuario.production_office_id) {
         query = query.eq('office_id', usuario.production_office_id);
