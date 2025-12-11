@@ -172,7 +172,7 @@ Deno.serve(async (req: Request) => {
       console.log(`  Usuario ID: ${agentData.agent_usuario_id}`);
       console.log(`  Total commission: ${agentData.total_commission}`);
 
-      const ordenDePagoUrl = `${supabaseUrl.replace('/v1', '')}/comisiones/lote/${batchId}`;
+      const ordenDePagoUrl = `/mis-comisiones`;
 
       const context = {
         agent_name: agentData.agent_name,
