@@ -38,7 +38,6 @@ Deno.serve(async (req: Request) => {
 
     console.log('Procesando solicitud de recuperación para:', email);
 
-    // Buscar usuario en la tabla usuarios
     const { data: usuario, error: usuarioError } = await supabaseAdmin
       .from('usuarios')
       .select('id, nombre_completo, email, email_laboral')
@@ -49,7 +48,6 @@ Deno.serve(async (req: Request) => {
       console.error('Error al buscar usuario:', usuarioError);
     }
 
-    // Verificar si el email existe en auth.users
     const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (authError) {
@@ -60,7 +58,6 @@ Deno.serve(async (req: Request) => {
     const authUser = authUsers.users.find(u => u.email === email);
 
     if (!authUser) {
-      // No revelar si el email existe o no por seguridad
       console.log('Email no encontrado en auth:', email);
       return new Response(
         JSON.stringify({ 
@@ -73,7 +70,6 @@ Deno.serve(async (req: Request) => {
 
     console.log('Usuario encontrado en auth:', authUser.id);
 
-    // Generar token de recuperación
     const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email: email,
@@ -86,10 +82,8 @@ Deno.serve(async (req: Request) => {
 
     console.log('Link de recuperación generado');
 
-    // Construir URL de reset con el token
     const resetUrl = resetData.properties.action_link;
     
-    // Enviar correo usando el sistema transaccional
     const emailData = {
       tipo: 'password_reset',
       destinatario: email,
