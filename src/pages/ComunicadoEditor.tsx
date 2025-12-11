@@ -371,24 +371,20 @@ export default function ComunicadoEditor() {
           const linkComunicado = `${window.location.origin}/comunicados/${comunicadoId}`;
 
           for (const userId of destinatarios) {
-            // Obtener datos del usuario para la notificación
-            const { data: userData } = await supabase
-              .from('usuarios')
-              .select('nombre, apellidos')
-              .eq('id', userId)
-              .single();
-
-            if (userData) {
-              // Usar función RPC que envía campanita + WhatsApp
-              await supabase.rpc('enviar_notificacion_individual', {
-                p_user_id: userId,
-                p_titulo: `Nuevo comunicado: ${titulo}`,
-                p_mensaje: `Se ha publicado un nuevo comunicado que puede ser de tu interés. ${linkComunicado}`,
-                p_modulo: 'Comunicados',
-                p_accion_url: `/comunicados/${comunicadoId}`,
-                p_enviar_whatsapp: true
-              });
-            }
+            // Usar función RPC que envía por TODOS los canales configurados
+            await supabase.rpc('enviar_notificacion_completa', {
+              p_tipo_codigo: 'nuevo_comunicado',
+              p_user_id: userId,
+              p_titulo: `Nuevo comunicado: ${titulo}`,
+              p_mensaje: `Se ha publicado un nuevo comunicado que puede ser de tu interés.`,
+              p_modulo: 'Comunicados',
+              p_datos_adicionales: {
+                titulo_comunicado: titulo,
+                link_comunicado: linkComunicado,
+                categoria: categoriaId ? categoriaId : 'General'
+              },
+              p_accion_url: `/comunicados/${comunicadoId}`
+            });
           }
         } catch (error) {
           console.error('Error enviando notificaciones:', error);
