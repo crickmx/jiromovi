@@ -54,20 +54,43 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('notificaciones')
-        .select('*')
-        .eq('usuario_id', usuario.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
 
-      if (error) {
-        console.error('Error fetching notifications:', error);
-        setNotifications([]);
-        return;
-      }
+      const [notificacionesResult, transactionalResult] = await Promise.all([
+        supabase
+          .from('notificaciones')
+          .select('*')
+          .eq('usuario_id', usuario.id)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', usuario.id)
+          .order('created_at', { ascending: false })
+          .limit(50)
+      ]);
 
-      setNotifications(data || []);
+      const notificacionesData = notificacionesResult.data || [];
+      const transactionalData = transactionalResult.data || [];
+
+      const transactionalMapped = transactionalData.map(n => ({
+        id: n.id,
+        titulo: n.title,
+        mensaje: n.body,
+        modulo: 'Comisiones',
+        accion_url: n.link_url,
+        accion_texto: 'Ver',
+        leida: n.is_read,
+        created_at: n.created_at,
+        tipo: 'transaccional',
+        prioridad: 'normal'
+      }));
+
+      const allNotifications = [...notificacionesData, ...transactionalMapped].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setNotifications(allNotifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       setNotifications([]);
@@ -93,12 +116,39 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           const newNotification = payload.new as Notification;
           setNotifications((prev) => [newNotification, ...prev]);
 
-          // Show browser notification if enabled
           if (pushEnabled && 'Notification' in window && Notification.permission === 'granted') {
             showBrowserNotification(newNotification);
           }
+          playNotificationSound();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${usuario.id}`,
+        },
+        (payload) => {
+          const newNotif = payload.new as any;
+          const mapped: Notification = {
+            id: newNotif.id,
+            titulo: newNotif.title,
+            mensaje: newNotif.body,
+            modulo: 'Comisiones',
+            accion_url: newNotif.link_url,
+            accion_texto: 'Ver',
+            leida: newNotif.is_read,
+            created_at: newNotif.created_at,
+            tipo: 'transaccional',
+            prioridad: 'normal'
+          };
+          setNotifications((prev) => [mapped, ...prev]);
 
-          // Play sound
+          if (pushEnabled && 'Notification' in window && Notification.permission === 'granted') {
+            showBrowserNotification(mapped);
+          }
           playNotificationSound();
         }
       )
@@ -114,6 +164,33 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           const updatedNotification = payload.new as Notification;
           setNotifications((prev) =>
             prev.map((n) => (n.id === updatedNotification.id ? updatedNotification : n))
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${usuario.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          const mapped: Notification = {
+            id: updated.id,
+            titulo: updated.title,
+            mensaje: updated.body,
+            modulo: 'Comisiones',
+            accion_url: updated.link_url,
+            accion_texto: 'Ver',
+            leida: updated.is_read,
+            created_at: updated.created_at,
+            tipo: 'transaccional',
+            prioridad: 'normal'
+          };
+          setNotifications((prev) =>
+            prev.map((n) => (n.id === mapped.id ? mapped : n))
           );
         }
       )
@@ -184,21 +261,34 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const markAsRead = async (id: string) => {
     try {
-      // Actualización optimista del estado local
+      const notification = notifications.find(n => n.id === id);
+
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, leida: true } : n))
       );
 
-      const { error } = await supabase
-        .from('notificaciones')
-        .update({ leida: true })
-        .eq('id', id)
-        .eq('usuario_id', usuario?.id);
+      if (notification?.tipo === 'transaccional') {
+        const { error } = await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', id)
+          .eq('user_id', usuario?.id);
 
-      if (error) {
-        console.error('Error marking notification as read:', error);
-        // Revertir cambio optimista si falla
-        fetchNotifications();
+        if (error) {
+          console.error('Error marking transactional notification as read:', error);
+          fetchNotifications();
+        }
+      } else {
+        const { error } = await supabase
+          .from('notificaciones')
+          .update({ leida: true })
+          .eq('id', id)
+          .eq('usuario_id', usuario?.id);
+
+        if (error) {
+          console.error('Error marking notification as read:', error);
+          fetchNotifications();
+        }
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -210,22 +300,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (!usuario) return;
 
     try {
-      // Actualización optimista del estado local
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, leida: true }))
       );
 
-      const { error } = await supabase
-        .from('notificaciones')
-        .update({ leida: true })
-        .eq('usuario_id', usuario.id)
-        .eq('leida', false);
+      await Promise.all([
+        supabase
+          .from('notificaciones')
+          .update({ leida: true })
+          .eq('usuario_id', usuario.id)
+          .eq('leida', false),
+        supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', usuario.id)
+          .eq('is_read', false)
+      ]);
 
-      if (error) {
-        console.error('Error marking all as read:', error);
-        // Revertir cambio optimista si falla
-        fetchNotifications();
-      }
     } catch (error) {
       console.error('Error marking all as read:', error);
       fetchNotifications();
@@ -234,21 +325,34 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const deleteNotification = async (id: string) => {
     try {
-      // Actualización optimista del estado local
       const notificationToDelete = notifications.find(n => n.id === id);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
 
-      const { error } = await supabase
-        .from('notificaciones')
-        .delete()
-        .eq('id', id)
-        .eq('usuario_id', usuario?.id);
+      if (notificationToDelete?.tipo === 'transaccional') {
+        const { error } = await supabase
+          .from('notifications')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', usuario?.id);
 
-      if (error) {
-        console.error('Error deleting notification:', error);
-        // Revertir cambio optimista si falla
-        if (notificationToDelete) {
-          setNotifications((prev) => [notificationToDelete, ...prev]);
+        if (error) {
+          console.error('Error deleting transactional notification:', error);
+          if (notificationToDelete) {
+            setNotifications((prev) => [notificationToDelete, ...prev]);
+          }
+        }
+      } else {
+        const { error } = await supabase
+          .from('notificaciones')
+          .delete()
+          .eq('id', id)
+          .eq('usuario_id', usuario?.id);
+
+        if (error) {
+          console.error('Error deleting notification:', error);
+          if (notificationToDelete) {
+            setNotifications((prev) => [notificationToDelete, ...prev]);
+          }
         }
       }
     } catch (error) {

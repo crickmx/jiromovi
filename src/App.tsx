@@ -29,6 +29,7 @@ import { TramiteDetalle } from './pages/TramiteDetalle';
 import { MeetingRoom } from './pages/MeetingRoom';
 import { AulaVirtualSala } from './pages/AulaVirtualSala';
 import { NotificacionesTransaccionales } from './pages/NotificacionesTransaccionales';
+import ConfiguracionNotificacionesTransaccionales from './pages/ConfiguracionNotificacionesTransaccionales';
 import MiCRM from './pages/MiCRM';
 import CRMContactos from './pages/CRMContactos';
 import CRMContactoPerfil from './pages/CRMContactoPerfil';
@@ -151,6 +152,17 @@ function AppRoutes() {
           <ProtectedRoute requireAdmin>
             <Layout>
               <NotificacionesTransaccionales />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/configuracion/plantillas-notificaciones"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <ConfiguracionNotificacionesTransaccionales />
             </Layout>
           </ProtectedRoute>
         }

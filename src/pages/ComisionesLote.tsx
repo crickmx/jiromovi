@@ -71,10 +71,36 @@ export default function ComisionesLote() {
     if (error) {
       alert('Error al cerrar el lote');
       console.error(error);
-    } else {
-      alert('Lote cerrado exitosamente');
-      loadBatch();
+      return;
     }
+
+    alert('Lote cerrado exitosamente. Enviando notificaciones a los agentes...');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-commission-batch-notifications`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ batchId: batch.id })
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Notificaciones enviadas:', result);
+      } else {
+        console.error('Error enviando notificaciones');
+      }
+    } catch (notifError) {
+      console.error('Error al enviar notificaciones:', notifError);
+    }
+
+    loadBatch();
   };
 
   const handleDeleteBatch = async () => {
