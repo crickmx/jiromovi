@@ -137,10 +137,13 @@ Deno.serve(async (req: Request) => {
     console.log('[process-commissions] Filtering rows by selected weeks...');
     const filteredRows = selectedWeeks && selectedWeeks.length > 0
       ? rows.filter((row: ExcelRow) => {
-          const rowDate = new Date(row.FPago);
+          const [y, m, d] = row.FPago.split('-').map(Number);
+          const rowDate = new Date(y, m - 1, d);
           const match = selectedWeeks.some((week: WeekSummary) => {
-            const weekStart = new Date(week.dateFrom);
-            const weekEnd = new Date(week.dateTo);
+            const [wy1, wm1, wd1] = week.dateFrom.split('-').map(Number);
+            const [wy2, wm2, wd2] = week.dateTo.split('-').map(Number);
+            const weekStart = new Date(wy1, wm1 - 1, wd1);
+            const weekEnd = new Date(wy2, wm2 - 1, wd2);
             return rowDate >= weekStart && rowDate <= weekEnd;
           });
           if (!match) {
@@ -158,7 +161,9 @@ Deno.serve(async (req: Request) => {
 
     const batchesMap = new Map<string, ExcelRow[]>();
     filteredRows.forEach((row: ExcelRow) => {
-      const weekKey = getWeekKey(new Date(row.FPago));
+      const [y, m, d] = row.FPago.split('-').map(Number);
+      const rowDate = new Date(y, m - 1, d);
+      const weekKey = getWeekKey(rowDate);
       if (!batchesMap.has(weekKey)) {
         batchesMap.set(weekKey, []);
       }
@@ -175,15 +180,15 @@ Deno.serve(async (req: Request) => {
       console.log(`[process-commissions] Processing batch for week key: ${weekKey}`);
 
       const firstRow = weekRows[0];
-      const weekDate = new Date(firstRow.FPago);
+      const [year, month, day] = firstRow.FPago.split('-').map(Number);
+      const weekDate = new Date(year, month - 1, day);
       const weekNumber = getWeekNumber(weekDate);
-      const year = weekDate.getFullYear();
 
       const dateFrom = getWeekStart(weekDate);
       const dateTo = getWeekEnd(weekDate);
-      const batchName = `Semana ${weekNumber} - ${year}`;
+      const batchName = `Semana ${weekNumber} - ${weekDate.getFullYear()}`;
 
-      console.log(`[process-commissions] Creating batch: week=${weekNumber}, year=${year}, rows=${weekRows.length}`);
+      console.log(`[process-commissions] Creating batch: week=${weekNumber}, year=${weekDate.getFullYear()}, rows=${weekRows.length}`);
       console.log(`[process-commissions] Date range: ${dateFrom} to ${dateTo}`);
 
       const { data: batch, error: batchError } = await supabase
@@ -200,130 +205,110 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (batchError) {
-        console.error('[process-commissions] Error creating batch:', batchError);
+        console.error(`[process-commissions] Error creating batch for week ${weekKey}:`, batchError);
         console.error('[process-commissions] Error details:', JSON.stringify(batchError));
-        allErrors.push({
-          error_type: 'batch_creation_failed',
-          detalle: `No se pudo crear el lote para la semana ${weekNumber}: ${batchError.message || batchError.hint || 'Error desconocido'}`
-        });
-        continue;
+        throw new Error(`Error al crear el lote: ${batchError.message}`);
       }
 
       if (!batch) {
-        console.error('[process-commissions] Batch creation returned no data');
-        allErrors.push({
-          error_type: 'batch_creation_failed',
-          detalle: `No se pudo crear el lote para la semana ${weekNumber}: No se recibió respuesta de la base de datos`
-        });
-        continue;
+        console.error('[process-commissions] Batch was not created (null result)');
+        throw new Error('El lote no se pudo crear');
       }
 
-      console.log(`[process-commissions] Batch created successfully for week ${weekNumber}, batch ID: ${batch.id}`);
+      console.log(`[process-commissions] Batch created: ID=${batch.id}, name=${batch.name}`);
 
-      batchesCreated.push(batch);
+      const { data: businessRules, error: rulesError } = await supabase
+        .from('commission_business_rules')
+        .select('*')
+        .order('prioridad', { ascending: false });
+
+      if (rulesError) {
+        console.error('[process-commissions] Error loading business rules:', rulesError);
+        throw new Error(`Error al cargar reglas de negocio: ${rulesError.message}`);
+      }
+
+      console.log(`[process-commissions] Business rules loaded: ${businessRules?.length || 0}`);
 
       const detailsToInsert: any[] = [];
       const errorsToInsert: any[] = [];
 
-      let processedInBatch = 0;
-      let errorsInBatch = 0;
-
       for (const row of weekRows) {
-        try {
-          const emailAgente = (row.EmailAgente || row.Email || '').toString().toLowerCase().trim();
-          const agent = agentsMap.get(emailAgente);
+        const email = (row.EmailAgente || row.Email || '').toLowerCase().trim();
+        const agent = agentsMap.get(email);
 
-          if (!agent) {
-            console.warn(`[process-commissions] Agent not found for email: ${emailAgente}`);
-            errorsToInsert.push({
-              batch_id: batch.id,
-              error_type: 'agent_not_found',
-              email_agente: row.EmailAgente || row.Email,
-              poliza: row.Poliza || row.Documento,
-              detalle: `Agente no encontrado: ${emailAgente}. Agentes disponibles: ${Array.from(agentsMap.keys()).join(', ')}`,
-              raw_row: row
-            });
-            errorsInBatch++;
-            continue;
-          }
-
-          if (row.PorPart === undefined || row.PorPart === null) {
-            errorsToInsert.push({
-              batch_id: batch.id,
-              error_type: 'invalid_data',
-              email_agente: row.EmailAgente || row.Email,
-              poliza: row.Poliza || row.Documento,
-              detalle: 'La columna PorPart es requerida y no puede estar vacía',
-              raw_row: row
-            });
-            continue;
-          }
-
-          let importeBase = 0;
-          if (row.Importe !== undefined && row.Importe !== null && row.Importe !== '') {
-            const importeStr = row.Importe.toString().replace(/[$,]/g, '').trim();
-            importeBase = parseFloat(importeStr);
-          }
-
-          if (!importeBase || importeBase === 0 || isNaN(importeBase)) {
-            errorsToInsert.push({
-              batch_id: batch.id,
-              error_type: 'invalid_data',
-              email_agente: row.EmailAgente || row.Email,
-              poliza: row.Poliza || row.Documento,
-              detalle: `La columna Importe es requerida y no puede estar vacía. Valor recibido: ${row.Importe}`,
-              raw_row: row
-            });
-            errorsInBatch++;
-            continue;
-          }
-
-          let primaNeta = 0;
-          if (row.PrimaNeta !== undefined && row.PrimaNeta !== null && row.PrimaNeta !== '') {
-            const primaStr = row.PrimaNeta.toString().replace(/[$,]/g, '').trim();
-            primaNeta = parseFloat(primaStr) || 0;
-          }
-
-          const porcentajeComision = row.PorPart;
-          const commissionBruta = importeBase * (porcentajeComision / 100);
-          const commissionNeta = commissionBruta;
-
-          detailsToInsert.push({
-            batch_id: batch.id,
-            agent_id: agent.id,
-            ramo: row.Ramo,
-            aseguradora: row.Aseguradora || row.CiaAbreviacion,
-            office_id: agent.office_id,
-            poliza: row.Poliza || row.Documento,
-            nombre_asegurado: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || null,
-            prima_neta: primaNeta,
-            importe_base: importeBase,
-            porcentaje_comision: porcentajeComision,
-            concepto: row.Concepto || null,
-            date_fpago: row.FPago,
-            commission_bruta: commissionBruta,
-            commission_neta: commissionNeta,
-            is_manual_adjusted: false,
-            raw_row: row
-          });
-
-          processedInBatch++;
-
-        } catch (error: any) {
-          console.error('[process-commissions] Error processing row:', error);
+        if (!agent) {
+          console.warn(`[process-commissions] Agent not found for email: ${email}`);
           errorsToInsert.push({
             batch_id: batch.id,
-            error_type: 'other',
-            email_agente: row.EmailAgente || row.Email,
-            poliza: row.Poliza || row.Documento,
-            detalle: error.message || 'Error desconocido',
-            raw_row: row
+            fila_excel: JSON.stringify(row),
+            tipo_error: 'agent_not_found',
+            detalle: `No se encontró el agente con email: ${email}`,
+            resolved: false
           });
-          errorsInBatch++;
+          continue;
         }
-      }
 
-      console.log(`[process-commissions] Batch ${batch.id}: ${processedInBatch} processed, ${errorsInBatch} errors`);
+        const ramo = row.Ramo;
+        const aseguradora = row.Aseguradora || row.CiaAbreviacion || '';
+        const primaNeta = Number(row.PrimaNeta || row.Importe || 0);
+        const porcentajeBase = Number(row.PorPart || 0);
+
+        const matchingRule = findBusinessRule(businessRules || [], ramo, aseguradora, agent.office_id);
+
+        let porcentajeComision = porcentajeBase;
+        let tipoCalculo = 'directo';
+        let importeBase = primaNeta;
+        let ruleApplied = null;
+
+        if (matchingRule) {
+          tipoCalculo = matchingRule.tipo_calculo;
+          ruleApplied = matchingRule.id;
+
+          if (tipoCalculo === 'porcentaje_fijo') {
+            porcentajeComision = matchingRule.valor_calculo;
+            importeBase = primaNeta;
+          } else if (tipoCalculo === 'escalas') {
+            const escalasConfig = matchingRule.escalas_config || [];
+            let escalaMatch = null;
+            for (const escala of escalasConfig) {
+              if (primaNeta >= escala.desde && primaNeta <= escala.hasta) {
+                escalaMatch = escala;
+                break;
+              }
+            }
+            if (escalaMatch) {
+              porcentajeComision = escalaMatch.porcentaje;
+              importeBase = primaNeta;
+            }
+          } else if (tipoCalculo === 'multiplicador') {
+            importeBase = primaNeta * matchingRule.valor_calculo;
+            porcentajeComision = porcentajeBase;
+          } else {
+            importeBase = primaNeta;
+            porcentajeComision = porcentajeBase;
+          }
+        }
+
+        const commission = (importeBase * porcentajeComision) / 100;
+
+        detailsToInsert.push({
+          batch_id: batch.id,
+          agent_id: agent.id,
+          poliza: row.Poliza || row.Documento || '',
+          ramo,
+          aseguradora,
+          prima_neta: primaNeta,
+          porcentaje_base,
+          porcentaje_comision: porcentajeComision,
+          commission_bruta: commission,
+          commission_neta: commission,
+          business_rule_id: ruleApplied,
+          tipo_calculo: tipoCalculo,
+          importe_base: importeBase,
+          concepto: row.Concepto || '',
+          nombre_asegurado: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || ''
+        });
+      }
 
       if (detailsToInsert.length > 0) {
         console.log(`[process-commissions] Inserting ${detailsToInsert.length} commission details...`);
@@ -332,17 +317,15 @@ Deno.serve(async (req: Request) => {
           .insert(detailsToInsert);
 
         if (detailsError) {
-          console.error('[process-commissions] Error inserting details:', detailsError);
+          console.error('[process-commissions] Error inserting commission details:', detailsError);
           console.error('[process-commissions] Error details:', JSON.stringify(detailsError));
-        } else {
-          console.log(`[process-commissions] Successfully inserted ${detailsToInsert.length} details`);
+          throw new Error(`Error al insertar detalles de comisiones: ${detailsError.message}`);
         }
-      } else {
-        console.warn(`[process-commissions] No details to insert for batch ${batch.id}`);
+        console.log(`[process-commissions] Successfully inserted ${detailsToInsert.length} commission details`);
       }
 
       if (errorsToInsert.length > 0) {
-        console.log(`[process-commissions] Inserting ${errorsToInsert.length} errors...`);
+        console.log(`[process-commissions] Inserting ${errorsToInsert.length} error records...`);
         const { error: errorsError } = await supabase
           .from('commission_errors')
           .insert(errorsToInsert);
@@ -438,4 +421,25 @@ function getWeekEnd(date: Date): string {
   const diff = d.getDate() - day + (day === 0 ? 0 : 7);
   const sunday = new Date(d.setDate(diff));
   return sunday.toISOString().split('T')[0];
+}
+
+function findBusinessRule(
+  rules: any[],
+  ramo: string,
+  aseguradora: string,
+  officeId: string | null
+): any | null {
+  const matchingRules = rules.filter(rule => {
+    const ramoMatch = rule.ramo.toLowerCase() === ramo.toLowerCase();
+    const asegMatch = rule.aseguradora.toLowerCase() === aseguradora.toLowerCase();
+    const officeMatch = !rule.office_id || rule.office_id === officeId;
+    return ramoMatch && asegMatch && officeMatch;
+  });
+
+  if (matchingRules.length === 0) {
+    return null;
+  }
+
+  matchingRules.sort((a, b) => b.prioridad - a.prioridad);
+  return matchingRules[0];
 }

@@ -316,7 +316,9 @@ export async function generateOrdenDePagoPDF(
 
   yPosition += 5;
 
-  const weekNumber = getWeekNumber(new Date(batch.date_from));
+  const [year, month, day] = batch.date_from.split('-').map(Number);
+  const dateFromLocal = new Date(year, month - 1, day);
+  const weekNumber = getWeekNumber(dateFromLocal);
   doc.setFont(undefined, 'bold');
   doc.text('Semana:', marginLeft, yPosition);
   doc.setFont(undefined, 'normal');
