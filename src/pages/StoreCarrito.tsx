@@ -96,18 +96,18 @@ export default function StoreCarrito() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <button
           onClick={() => navigate('/store')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 sm:mb-6 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium">Volver al catálogo</span>
         </button>
 
-        <div className="flex items-center gap-3 mb-8">
-          <ShoppingCart className="w-8 h-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Mi Carrito</h1>
+        <div className="flex items-center gap-3 mb-6 sm:mb-8">
+          <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mi Carrito</h1>
         </div>
 
         {carrito.length === 0 ? (
@@ -126,54 +126,62 @@ export default function StoreCarrito() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-4">
+            <div className="lg:col-span-2 space-y-3 sm:space-y-4">
               {carrito.map(item => (
-                <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="flex gap-4">
+                <div key={item.id} className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4">
+                  <div className="flex gap-3 sm:gap-4">
                     <img
                       src={item.producto!.imagen_url}
                       alt={item.producto!.titulo}
-                      className="w-24 h-24 object-cover rounded-lg"
+                      className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg flex-shrink-0"
                     />
 
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 truncate">
                         {item.producto!.titulo}
                       </h3>
-                      <p className="text-sm text-gray-600 mb-3">
+                      <p className="text-sm text-gray-600 mb-2 sm:mb-3">
                         ${item.producto!.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </p>
 
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleActualizarCantidad(item.id, item.cantidad - 1)}
-                          disabled={item.cantidad <= 1}
-                          className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleActualizarCantidad(item.id, item.cantidad - 1)}
+                            disabled={item.cantidad <= 1}
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+                          >
+                            <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </button>
 
-                        <span className="text-lg font-medium text-gray-900 w-8 text-center">
-                          {item.cantidad}
-                        </span>
+                          <span className="text-base sm:text-lg font-medium text-gray-900 w-7 sm:w-8 text-center">
+                            {item.cantidad}
+                          </span>
 
-                        <button
-                          onClick={() => handleActualizarCantidad(item.id, item.cantidad + 1)}
-                          className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
+                          <button
+                            onClick={() => handleActualizarCantidad(item.id, item.cantidad + 1)}
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                          >
+                            <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </button>
+                        </div>
 
                         <button
                           onClick={() => handleEliminar(item.id)}
                           className="ml-auto text-red-600 hover:text-red-700 transition-colors"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
+                      </div>
+
+                      <div className="mt-2 sm:hidden">
+                        <p className="text-base font-bold text-gray-900">
+                          ${(item.producto!.precio * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right hidden sm:block">
                       <p className="text-lg font-bold text-gray-900">
                         ${(item.producto!.precio * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </p>
@@ -184,8 +192,8 @@ export default function StoreCarrito() {
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl border border-gray-200 p-6 sticky top-4">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Resumen del Pedido</h2>
+              <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 lg:sticky lg:top-4">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Resumen del Pedido</h2>
 
                 <div className="space-y-4 mb-6">
                   <div>
@@ -233,7 +241,7 @@ export default function StoreCarrito() {
                 <button
                   onClick={handleRealizarPedido}
                   disabled={procesando}
-                  className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-blue-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {procesando ? 'Procesando...' : 'Realizar Pedido'}
                 </button>

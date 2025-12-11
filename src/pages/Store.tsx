@@ -73,38 +73,40 @@ export default function Store() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <button
           onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 sm:mb-6 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium">Volver al Dashboard</span>
         </button>
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Store MOVI</h1>
-            <p className="text-gray-600 mt-1">Explora nuestro catálogo de productos</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Store MOVI</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Explora nuestro catálogo de productos</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {isAdmin && (
               <>
                 <button
                   onClick={() => navigate('/store/pedidos')}
-                  className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+                  className="flex items-center gap-2 bg-green-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
                 >
-                  <ShoppingBag className="w-5 h-5" />
-                  <span>Gestión de Pedidos</span>
+                  <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Gestión de Pedidos</span>
+                  <span className="sm:hidden">Pedidos</span>
                 </button>
 
                 <button
                   onClick={() => navigate('/store/admin')}
-                  className="flex items-center gap-2 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium shadow-sm"
+                  className="flex items-center gap-2 bg-gray-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
                 >
-                  <Settings className="w-5 h-5" />
-                  <span>Administrar</span>
+                  <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Administrar</span>
+                  <span className="sm:hidden">Admin</span>
                 </button>
               </>
             )}
@@ -112,21 +114,21 @@ export default function Store() {
             {!isAdmin && (
               <button
                 onClick={() => navigate('/store/mis-pedidos')}
-                className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+                className="flex items-center gap-2 bg-green-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
               >
-                <Package className="w-5 h-5" />
+                <Package className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>Mis Pedidos</span>
               </button>
             )}
 
             <button
               onClick={() => navigate('/store/carrito')}
-              className="relative flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+              className="relative flex items-center gap-2 bg-blue-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
             >
-              <ShoppingCart className="w-5 h-5" />
+              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Carrito</span>
               {cantidadCarrito > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center">
                   {cantidadCarrito}
                 </span>
               )}
@@ -134,36 +136,38 @@ export default function Store() {
           </div>
         </div>
 
-        <div className="mb-6 flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2 text-gray-700">
-            <Filter className="w-5 h-5" />
-            <span className="font-medium">Categorías:</span>
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 text-gray-700 mb-3">
+            <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="font-medium text-sm sm:text-base">Categorías:</span>
           </div>
 
-          <button
-            onClick={() => setCategoriaSeleccionada('')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              !categoriaSeleccionada
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Todas
-          </button>
-
-          {categorias.map(categoria => (
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              key={categoria.id}
-              onClick={() => setCategoriaSeleccionada(categoria.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                categoriaSeleccionada === categoria.id
+              onClick={() => setCategoriaSeleccionada('')}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
+                !categoriaSeleccionada
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {categoria.nombre}
+              Todas
             </button>
-          ))}
+
+            {categorias.map(categoria => (
+              <button
+                key={categoria.id}
+                onClick={() => setCategoriaSeleccionada(categoria.id)}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
+                  categoriaSeleccionada === categoria.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {categoria.nombre}
+              </button>
+            ))}
+          </div>
         </div>
 
         {productos.length === 0 ? (

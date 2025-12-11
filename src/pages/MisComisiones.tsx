@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { DollarSign, Download, FileText, Calendar, Loader2 } from 'lucide-react';
+import { DollarSign, Download, FileText, Calendar, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { CommissionBatch, CommissionDetail } from '../lib/commissionTypes';
 import { calculateBatchSummary, formatCurrency, formatDate } from '../lib/commissionUtils';
 import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
@@ -13,6 +13,8 @@ export default function MisComisiones() {
   const [batches, setBatches] = useState<CommissionBatch[]>([]);
   const [batchDetails, setBatchDetails] = useState<Map<string, CommissionDetail[]>>(new Map());
   const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
+  const [expandedPolicies, setExpandedPolicies] = useState<Set<string>>(new Set());
+  const [showAllPolicies, setShowAllPolicies] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
 
@@ -287,96 +289,102 @@ export default function MisComisiones() {
                       ))}
                     </div>
 
-                    <h4 className="text-lg font-bold text-neutral-900 mb-4">
-                      Detalle de Pólizas ({details.length})
-                    </h4>
-
-                    <div className="hidden md:block bg-white rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead className="bg-neutral-100">
-                          <tr>
-                            <th className="text-left py-3 px-3 font-semibold text-neutral-700">Póliza</th>
-                            <th className="text-left py-3 px-3 font-semibold text-neutral-700">Asegurado</th>
-                            <th className="text-left py-3 px-3 font-semibold text-neutral-700">Ramo / Aseg.</th>
-                            <th className="text-right py-3 px-3 font-semibold text-neutral-700">Prima Neta</th>
-                            <th className="text-right py-3 px-3 font-semibold text-neutral-700">% / Comisión</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {details.map(detail => {
-                            const commission = detail.is_manual_adjusted
-                              ? detail.adjusted_commission_neta
-                              : detail.commission_neta;
-
-                            return (
-                              <tr key={detail.id} className="border-b border-neutral-100">
-                                <td className="py-3 px-3">
-                                  <div className="font-medium text-neutral-900">{detail.poliza}</div>
-                                  {detail.concepto && (
-                                    <div className="text-xs text-neutral-500 mt-1">{detail.concepto}</div>
-                                  )}
-                                </td>
-                                <td className="py-3 px-3 text-neutral-700">{detail.nombre_asegurado || '-'}</td>
-                                <td className="py-3 px-3">
-                                  <div className="text-neutral-900 font-medium">{detail.ramo}</div>
-                                  <div className="text-xs text-neutral-600">{detail.aseguradora}</div>
-                                </td>
-                                <td className="py-3 px-3 text-right">
-                                  <div className="text-neutral-900 font-medium">{formatCurrency(detail.prima_neta)}</div>
-                                  <div className="text-xs text-neutral-600">Base: {formatCurrency(detail.importe_base)}</div>
-                                </td>
-                                <td className="py-3 px-3 text-right">
-                                  <div className="font-bold text-green-700">{formatCurrency(commission || 0)}</div>
-                                  <div className="text-xs text-neutral-600">{detail.porcentaje_comision.toFixed(2)}%</div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-bold text-neutral-900">
+                        Detalle de Pólizas ({details.length})
+                      </h4>
+                      {details.length > 5 && (
+                        <button
+                          onClick={() => setShowAllPolicies(showAllPolicies === batch.id ? null : batch.id)}
+                          className="text-sm text-primary-600 hover:text-primary-700 font-semibold flex items-center space-x-1"
+                        >
+                          {showAllPolicies === batch.id ? (
+                            <>
+                              <span>Mostrar menos</span>
+                              <ChevronDown className="w-4 h-4" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Mostrar todas</span>
+                              <ChevronRight className="w-4 h-4" />
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
 
-                    <div className="md:hidden space-y-3">
-                      {details.map(detail => {
+                    <div className="space-y-2">
+                      {(showAllPolicies === batch.id ? details : details.slice(0, 5)).map(detail => {
                         const commission = detail.is_manual_adjusted
                           ? detail.adjusted_commission_neta
                           : detail.commission_neta;
+                        const isExpanded = expandedPolicies.has(detail.id);
 
                         return (
-                          <div key={detail.id} className="bg-white rounded-xl p-4 border border-neutral-200">
-                            <div className="mb-3">
-                              <div className="font-bold text-neutral-900 mb-1">{detail.poliza}</div>
-                              <div className="text-sm text-neutral-700">{detail.nombre_asegurado || '-'}</div>
-                              {detail.concepto && (
-                                <div className="text-xs text-neutral-500 mt-1">{detail.concepto}</div>
-                              )}
+                          <div key={detail.id} className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+                            <div
+                              onClick={() => {
+                                const newExpanded = new Set(expandedPolicies);
+                                if (isExpanded) {
+                                  newExpanded.delete(detail.id);
+                                } else {
+                                  newExpanded.add(detail.id);
+                                }
+                                setExpandedPolicies(newExpanded);
+                              }}
+                              className="p-3 cursor-pointer hover:bg-neutral-50 transition-colors"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                                    )}
+                                    <div className="font-semibold text-neutral-900 truncate">{detail.poliza}</div>
+                                  </div>
+                                  <div className="ml-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600">
+                                    <span className="truncate">{detail.nombre_asegurado || 'Sin asegurado'}</span>
+                                    <span className="text-neutral-400">•</span>
+                                    <span>{detail.ramo}</span>
+                                  </div>
+                                </div>
+                                <div className="text-right ml-3 flex-shrink-0">
+                                  <div className="font-bold text-green-700 text-sm">
+                                    {formatCurrency(commission || 0)}
+                                  </div>
+                                  <div className="text-xs text-neutral-500">
+                                    {detail.porcentaje_comision.toFixed(2)}%
+                                  </div>
+                                </div>
+                              </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-neutral-200">
-                              <div>
-                                <div className="text-xs text-neutral-600 mb-1">Ramo</div>
-                                <div className="text-sm font-medium text-neutral-900">{detail.ramo}</div>
+                            {isExpanded && (
+                              <div className="border-t border-neutral-200 p-3 bg-neutral-50">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                                  <div>
+                                    <div className="text-xs text-neutral-600 mb-1">Aseguradora</div>
+                                    <div className="font-medium text-neutral-900">{detail.aseguradora}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-neutral-600 mb-1">Prima Neta</div>
+                                    <div className="font-medium text-neutral-900">{formatCurrency(detail.prima_neta)}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-neutral-600 mb-1">Base Comisión</div>
+                                    <div className="font-medium text-neutral-900">{formatCurrency(detail.importe_base)}</div>
+                                  </div>
+                                  {detail.concepto && (
+                                    <div className="col-span-2 sm:col-span-3">
+                                      <div className="text-xs text-neutral-600 mb-1">Concepto</div>
+                                      <div className="text-sm text-neutral-700">{detail.concepto}</div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div>
-                                <div className="text-xs text-neutral-600 mb-1">Aseguradora</div>
-                                <div className="text-sm font-medium text-neutral-900">{detail.aseguradora}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-neutral-600 mb-1">Prima Neta</div>
-                                <div className="text-sm font-medium text-neutral-900">{formatCurrency(detail.prima_neta)}</div>
-                              </div>
-                              <div>
-                                <div className="text-xs text-neutral-600 mb-1">Base Comisión</div>
-                                <div className="text-sm font-medium text-neutral-900">{formatCurrency(detail.importe_base)}</div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-xs text-neutral-600 mb-1">Comisión ({detail.porcentaje_comision.toFixed(2)}%)</div>
-                                <div className="text-xl font-bold text-green-700">{formatCurrency(commission || 0)}</div>
-                              </div>
-                            </div>
+                            )}
                           </div>
                         );
                       })}

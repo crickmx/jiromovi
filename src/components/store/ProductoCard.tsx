@@ -21,7 +21,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         />
       </div>
 
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         <div className="mb-2">
           {producto.categoria && (
             <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
@@ -31,27 +31,27 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         </div>
 
         <h3
-          className="text-lg font-semibold text-gray-900 mb-2 cursor-pointer hover:text-blue-600 transition-colors line-clamp-2"
+          className="text-base sm:text-lg font-semibold text-gray-900 mb-2 cursor-pointer hover:text-blue-600 transition-colors line-clamp-2"
           onClick={() => onVerDetalle(producto)}
         >
           {producto.titulo}
         </h3>
 
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+        <p className="text-sm text-gray-600 mb-3 sm:mb-4 line-clamp-2">
           {producto.descripcion}
         </p>
 
-        <div className="flex items-center justify-between">
-          <p className="text-2xl font-bold text-gray-900">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+          <p className="text-xl sm:text-2xl font-bold text-gray-900">
             ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
           </p>
 
           <button
             onClick={() => onAgregar(producto)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base"
           >
             <ShoppingCart className="w-4 h-4" />
-            Agregar
+            <span>Agregar</span>
           </button>
         </div>
       </div>
