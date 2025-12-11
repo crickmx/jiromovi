@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     let resendId = null;
 
     try {
-      const resendApiKey = Deno.env.get('RESEND_API_KEY');
+      const resendApiKey = config.resend_api_key || Deno.env.get('RESEND_API_KEY');
 
       if (!resendApiKey) {
         throw new Error('RESEND_API_KEY no está configurada');
@@ -98,16 +98,10 @@ Deno.serve(async (req) => {
 
       console.log('Enviando correo con Resend...');
 
-      let fromEmail = config.remitente_email || 'onboarding@resend.dev';
+      const fromEmail = config.remitente_email;
       const fromName = config.remitente_nombre || 'MOVI Digital';
 
-      if (config.tipo_integracion === 'resend' && config.dominio_verificado) {
-        fromEmail = `noreply@${config.dominio_verificado}`;
-        console.log('Usando dominio verificado de Resend:', fromEmail);
-      } else if (!fromEmail.includes('@')) {
-        console.log('Usando dominio de desarrollo de Resend');
-        fromEmail = 'onboarding@resend.dev';
-      }
+      console.log('Usando remitente configurado:', `${fromName} <${fromEmail}>`);
 
       const { data, error } = await resend.emails.send({
         from: `${fromName} <${fromEmail}>`,
