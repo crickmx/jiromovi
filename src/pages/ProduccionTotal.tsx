@@ -77,7 +77,8 @@ export default function ProduccionTotal() {
     try {
       let query = supabase
         .from('production_records')
-        .select('*');
+        .select('*')
+        .range(0, 199999);
 
       if (usuario.rol === 'Gerente' && usuario.production_office_id) {
         query = query.eq('office_id', usuario.production_office_id);
