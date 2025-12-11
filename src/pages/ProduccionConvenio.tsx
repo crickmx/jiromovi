@@ -375,115 +375,125 @@ export default function ProduccionConvenio() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="mb-6">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+        <div className="mb-4 sm:mb-6">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-4 font-medium"
+            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-3 sm:mb-4 font-medium text-sm sm:text-base"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Regresar</span>
           </button>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">
                 Producción Convenio
               </h1>
-              <p className="text-neutral-600">
+              <p className="text-sm sm:text-base text-neutral-600">
                 Métrica base: Prima de convenio (solo registros en convenio)
               </p>
               {lastImport && (
-                <p className="text-sm text-neutral-500 mt-1">
-                  Datos actualizados al: {new Date(lastImport.imported_at).toLocaleString('es-MX')}
+                <p className="text-xs sm:text-sm text-neutral-500 mt-1">
+                  Datos actualizados: {new Date(lastImport.imported_at).toLocaleDateString('es-MX')}
                 </p>
               )}
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {isAdmin && (
                 <button
                   onClick={() => navigate('/produccion/configuracion')}
-                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base"
                 >
                   <Settings className="w-4 h-4" />
-                  <span>Configuración</span>
+                  <span className="hidden sm:inline">Configuración</span>
+                  <span className="sm:hidden">Config</span>
                 </button>
               )}
-              <Award className="w-12 h-12 text-blue-600" />
+              <Award className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 flex-shrink-0" />
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-            <p className="text-sm text-blue-700 mb-1">Prima Convenio</p>
-            <p className="text-2xl font-bold text-blue-900">
-              ${kpis.totalConvenio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-blue-200">
+            <p className="text-xs sm:text-sm text-blue-700 mb-1 font-medium">Prima Convenio</p>
+            <p className="text-lg sm:text-2xl font-bold text-blue-900 truncate">
+              ${(kpis.totalConvenio / 1000000).toFixed(1)}M
+            </p>
+            <p className="text-xs text-blue-600 mt-0.5 hidden sm:block">
+              ${kpis.totalConvenio.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-            <p className="text-sm text-purple-700 mb-1">Prima Ponderada</p>
-            <p className="text-2xl font-bold text-purple-900">
-              ${kpis.totalPonderada.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+          <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-teal-200">
+            <p className="text-xs sm:text-sm text-teal-700 mb-1 font-medium">Prima Ponderada</p>
+            <p className="text-lg sm:text-2xl font-bold text-teal-900 truncate">
+              ${(kpis.totalPonderada / 1000000).toFixed(1)}M
+            </p>
+            <p className="text-xs text-teal-600 mt-0.5 hidden sm:block">
+              ${kpis.totalPonderada.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
-            <p className="text-sm text-orange-700 mb-1">Bono Total</p>
-            <p className="text-2xl font-bold text-orange-900">
-              ${kpis.totalBono.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-orange-200">
+            <p className="text-xs sm:text-sm text-orange-700 mb-1 font-medium">Bono Total</p>
+            <p className="text-lg sm:text-2xl font-bold text-orange-900 truncate">
+              ${(kpis.totalBono / 1000000).toFixed(1)}M
+            </p>
+            <p className="text-xs text-orange-600 mt-0.5 hidden sm:block">
+              ${kpis.totalBono.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-            <p className="text-sm text-green-700 mb-1">Registros</p>
-            <p className="text-2xl font-bold text-green-900">
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-green-200">
+            <p className="text-xs sm:text-sm text-green-700 mb-1 font-medium">Registros</p>
+            <p className="text-lg sm:text-2xl font-bold text-green-900">
               {kpis.recordsCount.toLocaleString()}
             </p>
           </div>
         </div>
 
-        <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
-          <div className="flex items-center space-x-2 mb-4">
-            <Filter className="w-5 h-5 text-neutral-600" />
-            <h3 className="font-semibold text-neutral-900">Filtros</h3>
+        <div className="bg-neutral-50 rounded-xl p-3 sm:p-4 border border-neutral-200">
+          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+            <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-600" />
+            <h3 className="font-semibold text-neutral-900 text-sm sm:text-base">Filtros</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Fecha Desde
               </label>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Fecha Hasta
               </label>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Gerencia
               </label>
               <select
                 value={filters.management}
                 onChange={(e) => setFilters({ ...filters, management: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 <option value="">Todas</option>
                 {managements.map(m => (
@@ -493,13 +503,13 @@ export default function ProduccionConvenio() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Oficina
               </label>
               <select
                 value={filters.office}
                 onChange={(e) => setFilters({ ...filters, office: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 <option value="">Todas</option>
                 {offices.map(o => (
@@ -509,13 +519,13 @@ export default function ProduccionConvenio() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Agente
               </label>
               <select
                 value={filters.agent}
                 onChange={(e) => setFilters({ ...filters, agent: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 <option value="">Todos</option>
                 {agents.map(a => (
@@ -525,13 +535,13 @@ export default function ProduccionConvenio() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Ramo
               </label>
               <select
                 value={filters.ramo}
                 onChange={(e) => setFilters({ ...filters, ramo: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 <option value="">Todos</option>
                 {ramos.map(r => (
@@ -541,13 +551,13 @@ export default function ProduccionConvenio() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
                 Aseguradora
               </label>
               <select
                 value={filters.aseguradora}
                 onChange={(e) => setFilters({ ...filters, aseguradora: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 <option value="">Todas</option>
                 {aseguradoras.map(a => (
@@ -557,7 +567,7 @@ export default function ProduccionConvenio() {
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end space-x-3">
+          <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={() => setFilters({
                 dateFrom: '',
@@ -569,17 +579,17 @@ export default function ProduccionConvenio() {
                 subramo: '',
                 aseguradora: '',
               })}
-              className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium"
+              className="w-full sm:w-auto px-4 py-2 text-sm border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium"
             >
-              Limpiar Filtros
+              Limpiar
             </button>
 
             <button
               onClick={exportToExcel}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium sm:ml-auto"
             >
               <Download className="w-4 h-4" />
-              <span>Exportar Excel</span>
+              <span>Exportar</span>
             </button>
           </div>
         </div>
@@ -647,9 +657,9 @@ export default function ProduccionConvenio() {
         </>
       )}
 
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-          <h2 className="text-lg sm:text-xl font-bold text-neutral-900">
+          <h2 className="text-base sm:text-lg md:text-xl font-bold text-neutral-900">
             Registros en Convenio
           </h2>
           <span className="text-xs sm:text-sm text-neutral-600">
@@ -657,60 +667,74 @@ export default function ProduccionConvenio() {
           </span>
         </div>
 
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200">
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Fecha</th>
-                {isAdmin && <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Región</th>}
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Gerencia</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Oficina</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Agente</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Aseguradora</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Ramo</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-700">Prima Convenio</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-700">Prima Ponderada</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-700">Bono</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecords.slice(0, 100).map((record) => (
-                <tr key={record.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-neutral-600">
-                    {new Date(record.fecha).toLocaleDateString('es-MX')}
-                  </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3 text-sm text-neutral-600">
-                      {record.region_raw || '-'}
-                    </td>
-                  )}
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.gerencia_nombre_raw}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.desp_nombre_raw}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.agente_nombre}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.aseguradora_nombre}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{record.ramo_nombre}</td>
-                  <td className="px-4 py-3 text-sm text-right font-medium text-blue-600">
-                    ${record.prima_convenio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right font-medium text-purple-600">
-                    ${record.prima_ponderada.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right font-medium text-orange-600">
-                    ${record.bono.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                  </td>
+        <div className="overflow-x-auto -mx-4 sm:mx-0 rounded-lg">
+          <div className="inline-block min-w-full align-middle">
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-neutral-50 border-b border-neutral-200">
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Fecha</th>
+                  {isAdmin && <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 min-w-[100px]">Región</th>}
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 min-w-[140px] sm:min-w-[180px]">Gerencia</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 min-w-[140px] sm:min-w-[180px]">Oficina</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 min-w-[120px]">Agente</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 min-w-[140px]">Aseguradora</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-neutral-700 min-w-[100px]">Ramo</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Prima Conv.</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Prima Pond.</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right text-xs sm:text-sm font-semibold text-neutral-700 whitespace-nowrap">Bono</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredRecords.slice(0, 100).map((record) => (
+                  <tr key={record.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 font-medium whitespace-nowrap">
+                      {new Date(record.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600">
+                        <div className="line-clamp-1">{record.region_raw || '-'}</div>
+                      </td>
+                    )}
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600">
+                      <div className="line-clamp-2">{record.gerencia_nombre_raw}</div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 font-medium">
+                      <div className="line-clamp-2">{record.desp_nombre_raw}</div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600">
+                      <div className="line-clamp-2 max-w-[140px] sm:max-w-none">{record.agente_nombre}</div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600">
+                      <div className="line-clamp-2">{record.aseguradora_nombre}</div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700 font-medium">
+                        {record.ramo_nombre}
+                      </span>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-semibold text-blue-700 whitespace-nowrap">
+                      ${record.prima_convenio.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-semibold text-teal-700 whitespace-nowrap">
+                      ${record.prima_ponderada.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-semibold text-orange-700 whitespace-nowrap">
+                      ${record.bono.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {filteredRecords.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-neutral-500">No hay registros en convenio que coincidan con los filtros</p>
+            <div className="text-center py-8 sm:py-12">
+              <p className="text-sm sm:text-base text-neutral-500">No hay registros en convenio que coincidan con los filtros</p>
             </div>
           )}
 
           {filteredRecords.length > 100 && (
-            <div className="mt-4 text-center text-sm text-neutral-600">
+            <div className="mt-4 text-center text-xs sm:text-sm text-neutral-600 px-2">
               Mostrando 100 de {filteredRecords.length} registros. Usa los filtros o exporta a Excel para ver todos.
             </div>
           )}

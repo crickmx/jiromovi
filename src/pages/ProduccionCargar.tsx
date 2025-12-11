@@ -199,64 +199,65 @@ export default function ProduccionCargar() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="mb-6">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+        <div className="mb-4 sm:mb-6">
           <button
             onClick={() => navigate('/produccion/total')}
-            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-4 font-medium"
+            className="flex items-center space-x-2 text-neutral-600 hover:text-primary-600 transition-colors mb-3 sm:mb-4 font-medium text-sm sm:text-base"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Regresar</span>
           </button>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">
                 Cargar Producción
               </h1>
-              <p className="text-neutral-600">
+              <p className="text-sm sm:text-base text-neutral-600">
                 Sincroniza desde Google Sheets o sube un archivo Excel
               </p>
             </div>
-            <FileSpreadsheet className="w-12 h-12 text-primary-600" />
+            <FileSpreadsheet className="w-10 h-10 sm:w-12 sm:h-12 text-primary-600 flex-shrink-0" />
           </div>
         </div>
 
-        <div className="flex space-x-2 mb-6 bg-neutral-100 p-1 rounded-xl">
+        <div className="flex gap-2 mb-4 sm:mb-6 bg-neutral-100 p-1 rounded-xl">
           <button
             onClick={() => setMode('sheets')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold transition-all text-sm sm:text-base ${
               mode === 'sheets'
                 ? 'bg-white text-primary-600 shadow-sm'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
-            <LinkIcon className="w-5 h-5" />
+            <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Google Sheets</span>
           </button>
           <button
             onClick={() => setMode('excel')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold transition-all text-sm sm:text-base ${
               mode === 'excel'
                 ? 'bg-white text-primary-600 shadow-sm'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
-            <Upload className="w-5 h-5" />
-            <span>Archivo Excel</span>
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Archivo Excel</span>
+            <span className="sm:hidden">Excel</span>
           </button>
         </div>
 
-        <div className="space-y-3 mb-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="flex items-start space-x-3">
-              <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-blue-900 mb-1">
+        <div className="space-y-3 mb-4 sm:mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-blue-900 mb-1 text-sm sm:text-base">
                   Sincronización Incremental
                 </h3>
-                <p className="text-sm text-blue-800">
+                <p className="text-xs sm:text-sm text-blue-800">
                   El sistema detecta automáticamente registros duplicados y solo agrega información nueva.
                   Los datos existentes se mantienen intactos y no se eliminan.
                 </p>
@@ -264,14 +265,14 @@ export default function ProduccionCargar() {
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-blue-900 mb-1">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-blue-900 mb-1 text-sm sm:text-base">
                   Límites del sistema
                 </h3>
-                <ul className="text-sm text-blue-800 space-y-1">
+                <ul className="text-xs sm:text-sm text-blue-800 space-y-1">
                   <li>• Tamaño máximo de archivo Excel: 1000 MB</li>
                   <li>• Sin límite de registros para Google Sheets</li>
                   <li>• El procesamiento de grandes volúmenes puede tomar varios minutos</li>
@@ -447,33 +448,34 @@ export default function ProduccionCargar() {
         )}
 
 {mode === 'sheets' && sheetUrl && !loading && !success && (
-          <div className="mt-6 flex justify-center">
+          <div className="mt-4 sm:mt-6 flex justify-center px-4">
             <button
               onClick={handleSyncGoogleSheets}
-              className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-xl hover:shadow-lg transition-all duration-200 hover:scale-105 font-semibold text-lg"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:shadow-lg transition-all duration-200 hover:scale-105 font-semibold text-base sm:text-lg w-full sm:w-auto"
             >
-              <RefreshCw className="w-6 h-6" />
-              <span>Sincronizar Google Sheets</span>
+              <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="hidden sm:inline">Sincronizar Google Sheets</span>
+              <span className="sm:hidden">Sincronizar</span>
             </button>
           </div>
         )}
 
         {mode === 'excel' && file && !loading && !success && (
-          <div className="mt-6 flex justify-center">
+          <div className="mt-4 sm:mt-6 flex justify-center px-4">
             <button
               onClick={handleUpload}
-              className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-8 py-4 rounded-xl hover:shadow-lg transition-all duration-200 hover:scale-105 font-semibold text-lg"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:shadow-lg transition-all duration-200 hover:scale-105 font-semibold text-base sm:text-lg w-full sm:w-auto"
             >
-              <Upload className="w-6 h-6" />
+              <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>Procesar Archivo</span>
             </button>
           </div>
         )}
 
         {loading && (
-          <div className="mt-6 text-center">
-            <div className="inline-block w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-neutral-600 font-medium">
+          <div className="mt-4 sm:mt-6 text-center px-4">
+            <div className="inline-block w-10 h-10 sm:w-12 sm:h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
+            <p className="text-sm sm:text-base text-neutral-600 font-medium">
               {mode === 'sheets' ? 'Sincronizando desde Google Sheets...' : 'Procesando archivo...'} Esto puede tomar varios minutos.
             </p>
           </div>
@@ -481,15 +483,15 @@ export default function ProduccionCargar() {
       </div>
 
 {mode === 'sheets' && (
-        <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6 mb-6">
-          <h2 className="text-xl font-bold text-neutral-900 mb-4">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
             Cómo configurar tu Google Sheet
           </h2>
 
-          <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <h3 className="font-semibold text-green-900 mb-2">Paso 1: Compartir el documento</h3>
-              <ol className="text-sm text-green-800 space-y-1 list-decimal list-inside">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+              <h3 className="font-semibold text-green-900 mb-2 text-sm sm:text-base">Paso 1: Compartir el documento</h3>
+              <ol className="text-xs sm:text-sm text-green-800 space-y-1 list-decimal list-inside">
                 <li>Abre tu Google Sheet</li>
                 <li>Haz clic en "Compartir" en la esquina superior derecha</li>
                 <li>En "Acceso general", selecciona "Cualquier persona con el enlace"</li>
@@ -498,12 +500,12 @@ export default function ProduccionCargar() {
               </ol>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">Paso 2: Estructura de datos</h3>
-              <p className="text-sm text-blue-800 mb-2">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+              <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">Paso 2: Estructura de datos</h3>
+              <p className="text-xs sm:text-sm text-blue-800 mb-2">
                 Tu Google Sheet debe tener las mismas columnas que se requieren para un archivo Excel (ver abajo).
               </p>
-              <p className="text-sm text-blue-800">
+              <p className="text-xs sm:text-sm text-blue-800">
                 La primera fila debe contener los encabezados de las columnas y los datos deben empezar en la segunda fila.
               </p>
             </div>
@@ -511,19 +513,19 @@ export default function ProduccionCargar() {
         </div>
       )}
 
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <h2 className="text-xl font-bold text-neutral-900 mb-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
           Estructura de Datos Requerida
         </h2>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-          <div className="flex items-start space-x-2">
-            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-blue-900 mb-1">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">
                 Nombres de columnas exactos
               </p>
-              <p className="text-xs text-blue-800">
+              <p className="text-[10px] sm:text-xs text-blue-800">
                 El sistema busca las columnas sin importar mayúsculas/minúsculas, pero los nombres deben coincidir exactamente.
                 Aplica tanto para Excel como para Google Sheets.
               </p>
@@ -531,12 +533,12 @@ export default function ProduccionCargar() {
           </div>
         </div>
 
-        <div className="bg-neutral-50 rounded-xl p-4">
-          <p className="text-sm font-semibold text-neutral-700 mb-3">
+        <div className="bg-neutral-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
+          <p className="text-xs sm:text-sm font-semibold text-neutral-700 mb-2 sm:mb-3">
             Columnas requeridas (obligatorias):
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm mb-3 sm:mb-4">
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
               <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">FechaSimp</code>
