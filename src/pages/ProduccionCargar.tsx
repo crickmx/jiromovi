@@ -272,7 +272,7 @@ export default function ProduccionCargar() {
                   Límites del sistema
                 </h3>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Tamaño máximo de archivo Excel: 10 MB</li>
+                  <li>• Tamaño máximo de archivo Excel: 1000 MB</li>
                   <li>• Sin límite de registros para Google Sheets</li>
                   <li>• El procesamiento de grandes volúmenes puede tomar varios minutos</li>
                 </ul>

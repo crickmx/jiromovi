@@ -60,8 +60,8 @@ Deno.serve(async (req: Request) => {
       throw new Error('El archivo está vacío');
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      throw new Error('El archivo es demasiado grande (máximo 10MB). Por favor, divide el archivo en partes más pequeñas.');
+    if (file.size > 1000 * 1024 * 1024) {
+      throw new Error('El archivo es demasiado grande (máximo 1000MB). Por favor, divide el archivo en partes más pequeñas.');
     }
 
     console.log('[process-production] File received:', file.name, file.size, file.type);
