@@ -80,7 +80,15 @@ export default function ProduccionConvenio() {
 
       if (error) throw error;
 
-      setRecords(data || []);
+      const processedData = (data || []).map(record => ({
+        ...record,
+        prima_convenio: Number(record.prima_convenio) || 0,
+        prima_ponderada: Number(record.prima_ponderada) || 0,
+        bono: Number(record.bono) || 0,
+        porcentaje_bono: record.porcentaje_bono ? Number(record.porcentaje_bono) : null,
+      }));
+
+      setRecords(processedData);
 
       const uniqueOffices = [...new Set(data?.map(r => r.desp_nombre_raw).filter(Boolean))] as string[];
       const uniqueManagements = [...new Set(data?.map(r => r.gerencia_nombre_raw).filter(Boolean))] as string[];
