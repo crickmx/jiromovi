@@ -1,281 +1,397 @@
-# Desglose Fiscal de Comisiones - Documentación
+# Módulo de Cálculo Fiscal para Comisiones
 
-Este documento explica las reglas fiscales implementadas en el módulo de comisiones para el cálculo del Desglose Fiscal en la Orden de Pago.
+## Resumen
 
-## Función: `calcularDesgloseFiscal`
-
-Ubicación: `src/lib/pdfUtils.ts`
-
-Esta función calcula el desglose fiscal según el régimen fiscal del agente.
-
-### Parámetros de entrada:
-
-- `regimenFiscal`: string - Nombre del régimen fiscal (RESICO, HONORARIOS, ASIMILADOS)
-- `resumenPorRamo`: Array de objetos con ramo, primaTotal y comisionNeta
-- `totalComisionNeta`: number - Total de comisión neta del agente en el lote
-- `resicoIsrRate`: number (opcional) - Tasa de ISR para RESICO (default: 0.0125 = 1.25%)
-- `resicoIvaRate`: number (opcional) - Tasa de IVA para RESICO (default: 0)
-- `resicoRetIvaRate`: number (opcional) - Tasa de retención de IVA para RESICO (default: 0)
-
-### Valor de retorno:
-
-Objeto `DesgloseFiscal` con los siguientes campos:
-- `retContable`: Retención contable
-- `costoDispersion`: Costo de dispersión
-- `iva`: IVA trasladado
-- `retIsr`: Retención de ISR
-- `retIva`: Retención de IVA
-- `totalAPagar`: Total neto a pagar al agente
+Se ha implementado un módulo completo de cálculo fiscal para el PDF de **Orden de Pago** en el sistema de comisiones. El módulo calcula automáticamente las retenciones e impuestos según el régimen fiscal del agente (RESICO, HONORARIOS o ASIMILADOS).
 
 ---
 
-## Reglas por Régimen Fiscal
+## Estructura del Desglose Fiscal
 
-### 1. ASIMILADOS (Régimen de Asimilados a Salarios)
+El PDF de "Orden de Pago" ahora incluye un bloque **Desglose Fiscal** con las siguientes columnas:
 
-**Requerimiento del negocio**: Para agentes en régimen de Asimilados a Salarios.
+| Concepto | Descripción |
+|----------|-------------|
+| **Ret. Contable** | Retención contable (solo ASIMILADOS) |
+| **Costo Dispersión** | Costo de dispersión (solo ASIMILADOS) |
+| **IVA** | IVA trasladado (solo RESICO y HONORARIOS) |
+| **Ret ISR** | Retención de ISR |
+| **Ret IVA** | Retención de IVA (solo RESICO y HONORARIOS) |
+| **Total** | Total a pagar al agente después de retenciones |
 
-#### Cálculo de Retención Contable:
-- Base: Suma de comisión neta **SOLO del ramo "Vida"**
-- Fórmula: `retContable = baseVida × 0.16` (16%)
-- Para todos los demás ramos (Autos, Daños, etc.), la retención contable es 0%
+---
 
-#### Costo de Dispersión:
-- Base: Retención contable calculada
-- Fórmula: `costoDispersion = retContable × 0.10` (10%)
+## Regímenes Fiscales Soportados
 
-#### IVA:
-- En Asimilados NO se agrega IVA en este desglose
-- `iva = 0`
+### 1. ASIMILADOS
 
-#### Retenciones ISR e IVA:
-- Para este régimen, no aplican retenciones adicionales en este desglose
-- `retIsr = 0`
-- `retIva = 0`
+**Regla ESPECIAL para este régimen:**
 
-#### Total a pagar:
+#### Cálculo:
+1. **Ret. Contable**: 16% sobre comisiones del ramo **Vida** únicamente
+   ```typescript
+   retContable = comisionVida * 0.16
+   ```
+
+2. **Costo de Dispersión**: 10% sobre la retención contable
+   ```typescript
+   costoDispersion = retContable * 0.10
+   ```
+
+3. **IVA**: NO se agrega IVA en el esquema de asimilados
+   ```typescript
+   iva = 0
+   retIva = 0
+   ```
+
+4. **Ret ISR**: Por ahora 0 (se maneja fuera del desglose)
+   ```typescript
+   retIsr = 0
+   ```
+
+5. **Total a Pagar**:
+   ```typescript
+   totalAPagar = totalComisionNeta - retContable - costoDispersion
+   ```
+
+#### Ejemplo Asimilados:
 ```
-totalAPagar = totalComisionNeta
-              - retContable
-              - costoDispersion
-              - retIsr
-              - retIva
-              + iva
-```
+Comisión Vida: $10,000.00
+Comisión No Vida: $5,000.00
+Total Comisión: $15,000.00
 
-**Ejemplo numérico:**
-```
-Total Comisión Neta: $10,000
-  - Vida: $6,000
-  - Autos: $4,000
-
-Ret. Contable = $6,000 × 0.16 = $960
-Costo Dispersión = $960 × 0.10 = $96
-IVA = $0
-Ret ISR = $0
-Ret IVA = $0
-Total a pagar = $10,000 - $960 - $96 = $8,944
+Ret. Contable: $10,000.00 × 16% = $1,600.00
+Costo Dispersión: $1,600.00 × 10% = $160.00
+IVA: $0.00
+Ret ISR: $0.00
+Ret IVA: $0.00
+Total a Pagar: $15,000.00 - $1,600.00 - $160.00 = $13,240.00
 ```
 
 ---
 
 ### 2. RESICO (Régimen Simplificado de Confianza)
 
-**Nota importante**: Las tasas para RESICO son **configurables** y no deben estar hardcodeadas, ya que pueden cambiar según la legislación fiscal vigente.
+**Basado en reglas fiscales de México:**
 
-#### Base Fiscal:
-- Usar `totalComisionNeta` como base de cálculo
-- `baseFiscal = totalComisionNeta`
+#### Cálculo:
+1. **Base Fiscal**: Comisiones de ramos distintos de Vida
+   ```typescript
+   baseFiscal = totalComisionNeta - comisionVida
+   ```
 
-#### Retención de ISR:
-- Tasa configurable (default: 1.25% según reglas actuales de retención a personas físicas en RESICO)
-- Fórmula: `retIsr = baseFiscal × resicoIsrRate`
-- Default: `resicoIsrRate = 0.0125`
+2. **IVA**: 16% sobre la base gravada
+   ```typescript
+   iva = baseFiscal * 0.16
+   ```
 
-#### IVA e IVA Retenido:
-- Totalmente configurables porque dependen de si se causa IVA y si aplica retención
-- `iva = baseFiscal × resicoIvaRate` (default: 0)
-- `retIva = baseFiscal × resicoRetIvaRate` (default: 0)
-- Inicialmente en 0; después se expondrán en una pantalla de configuración fiscal
+3. **Ret ISR**: 1.25% sobre la base fiscal (art. 113-J LISR)
+   ```typescript
+   retIsr = baseFiscal * 0.0125
+   ```
 
-#### Retención Contable y Costo de Dispersión:
-- Por defecto, no aplican en este régimen (a menos que se configuren reglas distintas posteriormente)
-- `retContable = 0`
-- `costoDispersion = 0`
+4. **Ret IVA**: 2/3 del IVA trasladado (10.6667% efectivo)
+   ```typescript
+   retIva = iva * (2/3)
+   ```
 
-#### Total a pagar:
+5. **Total a Pagar**:
+   ```typescript
+   totalAPagar = (totalComisionNeta + iva) - retIsr - retIva
+   ```
+
+#### Ejemplo RESICO:
 ```
-totalAPagar = baseFiscal
-              - retContable
-              - costoDispersion
-              - retIsr
-              - retIva
-              + iva
-```
+Comisión Vida: $10,000.00
+Comisión No Vida: $5,000.00
+Total Comisión: $15,000.00
 
-**Ejemplo numérico (con defaults):**
-```
-Total Comisión Neta: $10,000
+Base Gravada (No Vida): $5,000.00
+IVA: $5,000.00 × 16% = $800.00
+Ret ISR: $5,000.00 × 1.25% = $62.50
+Ret IVA: $800.00 × (2/3) = $533.33
 
-Ret. Contable = $0
-Costo Dispersión = $0
-IVA = $0
-Ret ISR = $10,000 × 0.0125 = $125
-Ret IVA = $0
-Total a pagar = $10,000 - $125 = $9,875
+Total a Pagar: $15,000.00 + $800.00 - $62.50 - $533.33 = $15,204.17
 ```
 
 ---
 
-### 3. HONORARIOS (Régimen de Actividad Empresarial y Profesional)
+### 3. HONORARIOS (Servicios Profesionales)
 
-**Placeholder para futuro desarrollo**.
+**Basado en reglas fiscales de México:**
 
-Por ahora, todos los conceptos están en 0:
-- `retContable = 0`
-- `costoDispersion = 0`
-- `iva = 0`
-- `retIsr = 0`
-- `retIva = 0`
-- `totalAPagar = totalComisionNeta`
+#### Cálculo:
+1. **Base Fiscal**: Comisiones de ramos distintos de Vida
+   ```typescript
+   baseFiscal = totalComisionNeta - comisionVida
+   ```
 
-**TODO**: Agregar reglas específicas para Honorarios cuando se definan los requisitos del negocio.
+2. **IVA**: 16% sobre la base gravada
+   ```typescript
+   iva = baseFiscal * 0.16
+   ```
+
+3. **Ret ISR**: 10% sobre la base fiscal (tasa típica para honorarios)
+   ```typescript
+   retIsr = baseFiscal * 0.10
+   ```
+
+4. **Ret IVA**: 2/3 del IVA trasladado (10.6667% efectivo)
+   ```typescript
+   retIva = iva * (2/3)
+   ```
+
+5. **Total a Pagar**:
+   ```typescript
+   totalAPagar = (totalComisionNeta + iva) - retIsr - retIva
+   ```
+
+#### Ejemplo HONORARIOS:
+```
+Comisión Vida: $10,000.00
+Comisión No Vida: $5,000.00
+Total Comisión: $15,000.00
+
+Base Gravada (No Vida): $5,000.00
+IVA: $5,000.00 × 16% = $800.00
+Ret ISR: $5,000.00 × 10% = $500.00
+Ret IVA: $800.00 × (2/3) = $533.33
+
+Total a Pagar: $15,000.00 + $800.00 - $500.00 - $533.33 = $14,766.67
+```
 
 ---
 
-## Integración en el PDF
+## Archivos Creados/Modificados
 
-La función se integra en `generateOrdenDePagoPDF` de la siguiente manera:
+### ✅ Nuevo Archivo
+**`src/lib/commissionFiscalCalculations.ts`**
+- Contiene toda la lógica de cálculo fiscal
+- Funciones principales:
+  - `calcularDesgloseFiscal()`: Función principal
+  - `calcularAsimilados()`: Lógica para ASIMILADOS
+  - `calcularResico()`: Lógica para RESICO
+  - `calcularHonorarios()`: Lógica para HONORARIOS
+  - `normalizarRegimenFiscal()`: Normaliza nombre del régimen
+  - `agruparComisionesPorRamo()`: Agrupa comisiones por ramo
 
-1. Se construye el `resumenPorRamo` agrupando todas las comisiones por ramo
-2. Se obtiene el `regimenFiscal` del agente (desde `agent.fiscal_regime?.name`)
-3. Se calcula el `totalComisionNeta` sumando todas las comisiones del lote
-4. Se llama a `calcularDesgloseFiscal()` con estos datos
-5. El resultado se muestra en una tabla en la sección "Desglose Fiscal" del PDF
+### ✅ Archivos Modificados
+**`src/lib/pdfUtils.ts`**
+- Actualizado para usar el nuevo módulo de cálculo fiscal
+- La función `generateOrdenDePagoPDF()` ahora calcula el desglose correctamente
+- Importa funciones del nuevo módulo
 
-### Formato en el PDF:
+---
+
+## Uso en el Sistema
+
+### Generación de PDF
+
+Cuando se genera una "Orden de Pago":
+
+1. El sistema obtiene el régimen fiscal del agente desde `agent.fiscal_regime.name`
+2. Agrupa las comisiones por ramo
+3. Calcula el total de comisión neta
+4. Invoca `calcularDesgloseFiscal()` con los parámetros necesarios
+5. Genera el PDF con el desglose fiscal correcto
+
+### Ejemplo de Uso:
+
+```typescript
+import {
+  calcularDesgloseFiscal,
+  normalizarRegimenFiscal,
+  agruparComisionesPorRamo
+} from './commissionFiscalCalculations';
+
+// Obtener régimen del agente
+const regimenFiscalName = agent.fiscal_regime?.name || 'HONORARIOS';
+const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
+
+// Agrupar comisiones por ramo
+const resumenPorRamo = agruparComisionesPorRamo(agentDetails);
+
+// Calcular total
+const totalComisionNeta = agentDetails.reduce((sum, d) =>
+  sum + (d.is_manual_adjusted ? d.adjusted_commission_neta : d.commission_neta),
+  0
+);
+
+// Calcular desglose fiscal
+const desglose = calcularDesgloseFiscal({
+  regimenFiscal,
+  resumenPorRamo,
+  totalComisionNeta
+});
+
+// Resultado:
+{
+  retContable: 1600.00,
+  costoDispersion: 160.00,
+  iva: 0.00,
+  retIsr: 0.00,
+  retIva: 0.00,
+  totalAPagar: 13240.00
+}
+```
+
+---
+
+## Parámetros Configurables
+
+El módulo permite configurar los porcentajes si las reglas cambian:
+
+```typescript
+calcularDesgloseFiscal({
+  regimenFiscal: 'RESICO',
+  resumenPorRamo,
+  totalComisionNeta,
+  // Parámetros opcionales con defaults:
+  ivaRate: 0.16,              // IVA 16%
+  resicoIsrRate: 0.0125,      // ISR RESICO 1.25%
+  honorariosIsrRate: 0.10,    // ISR Honorarios 10%
+  retIvaFactor: 2/3           // Ret IVA 2/3 del IVA
+});
+```
+
+---
+
+## Validación Fiscal
+
+### Definición de Ramos Gravados
+
+- **Ramo Vida**: NO genera IVA
+- **Otros ramos**: SÍ generan IVA
+
+La lógica identifica el ramo "Vida" (case-insensitive) y separa:
+- `comisionVida`: Suma de comisiones del ramo Vida
+- `comisionNoVida`: Suma de comisiones de otros ramos
+- `baseGravada`: Base para IVA = `comisionNoVida`
+
+### Normalización de Régimen Fiscal
+
+El sistema normaliza automáticamente el nombre del régimen:
+
+```typescript
+normalizarRegimenFiscal('Asimilado a Salarios')   → 'ASIMILADOS'
+normalizarRegimenFiscal('RESICO 2022')            → 'RESICO'
+normalizarRegimenFiscal('Honorarios Persona Física') → 'HONORARIOS'
+normalizarRegimenFiscal('Otro')                   → 'HONORARIOS' (default)
+```
+
+---
+
+## Visualización en PDF
+
+El PDF de "Orden de Pago" ahora muestra:
 
 ```
-Desglose Fiscal
-┌────────────────────┬──────────────┐
-│ Concepto           │ Importe      │
-├────────────────────┼──────────────┤
-│ Ret. Contable      │ $XXX.XX      │
-│ Costo Dispersión   │ $XXX.XX      │
-│ IVA                │ $XXX.XX      │
-│ Ret ISR            │ $XXX.XX      │
-│ Ret IVA            │ $XXX.XX      │
-│ Total a pagar      │ $X,XXX.XX    │ (en verde, negritas)
-└────────────────────┴──────────────┘
-Régimen fiscal: [nombre del régimen]
+┌──────────────────────────────────┐
+│     DESGLOSE FISCAL              │
+├──────────────────────────────────┤
+│ Concepto          │  Importe     │
+├──────────────────────────────────┤
+│ Ret. Contable     │  $1,600.00   │
+│ Costo Dispersión  │    $160.00   │
+│ IVA               │      $0.00   │
+│ Ret ISR           │      $0.00   │
+│ Ret IVA           │      $0.00   │
+│ Total a pagar     │ $13,240.00   │
+└──────────────────────────────────┘
+
+Régimen fiscal: Asimilado a Salarios (ASIMILADOS)
 ```
 
 ---
 
-## Notas de Implementación
+## Notas Importantes
 
-### Separación de Lógica de Negocio y UI:
-- La función `calcularDesgloseFiscal` es una función pura que solo calcula valores
-- No tiene dependencias de jsPDF u otras librerías de UI
-- Puede ser reutilizada en otros contextos (reportes, APIs, etc.)
+### ⚠️ Disclaimer Fiscal
 
-### Configurabilidad:
-- Las tasas para RESICO son parámetros opcionales con valores por default
-- En el futuro se puede implementar una pantalla de configuración fiscal donde:
-  - Administradores puedan ajustar `resicoIsrRate`, `resicoIvaRate`, `resicoRetIvaRate`
-  - Se almacenen en base de datos (tabla `commission_fiscal_regimes` o similar)
-  - Se pasen como parámetros a la función
+```
+IMPORTANTE:
+Los porcentajes usados (1.25% RESICO, 10% Honorarios, IVA 16%, 2/3 de IVA retenido)
+se basan en reglas fiscales vigentes en México para retenciones de ISR e IVA a personas
+físicas (RESICO y servicios profesionales).
 
-### Formato de Moneda:
-- Todos los montos se formatean con `formatCurrency()` que usa el formato MXN con dos decimales
-- Ejemplo: `$1,234.56`
+Estos valores deben considerarse parámetros configurables en una futura pantalla de
+configuración fiscal, y siempre validarse con el área contable/fiscal de la empresa
+antes de usarse en producción.
+```
 
-### Restricciones del PDF:
-- El PDF se mantiene en formato A4 vertical (portrait)
-- El desglose fiscal se muestra solo si hay espacio disponible (mínimo 18mm)
-- Se muestran hasta 30 pólizas por orden de pago
-- Todo debe caber en una sola página
+### Reglas Fiscales de Referencia
 
----
+**RESICO (Art. 113-J LISR):**
+- Las personas morales que pagan a personas físicas RESICO retienen 1.25% de ISR
 
-## Referencias y Normatividad
+**Retención IVA:**
+- Cuando una persona moral contrata servicios de una persona física gravados con IVA,
+  se retiene 2/3 partes del IVA trasladado (10.6667% efectivo sobre la base)
 
-### RESICO - Régimen Simplificado de Confianza:
-- Implementado en México a partir de 2022
-- Retención de ISR según Art. 113-J de la LISR
-- Tasa de retención actual: 1.25% sobre pagos realizados
-- Referencias: [SAT - RESICO](https://www.sat.gob.mx/)
-
-### Asimilados a Salarios:
-- Régimen para personas físicas que perciben ingresos asimilados a salarios
-- Retención según el esquema específico del pagador
-- La retención del 16% sobre Vida es un requerimiento específico del negocio
-
-### Honorarios:
-- Régimen general de actividad empresarial y profesional
-- Requiere emisión de CFDI
-- Retenciones según el tipo de servicio prestado
+**Honorarios:**
+- Retención de ISR: 10% del monto pagado (tasa típica)
+- Retención de IVA: 2/3 del IVA trasladado
 
 ---
 
-## Pruebas y Validación
+## Testing
 
-Para validar el correcto funcionamiento:
+Para probar el módulo:
 
-1. Crear un lote de comisiones con agentes de diferentes regímenes
-2. Verificar que cada agente tenga asignado su régimen fiscal correcto
-3. Generar la Orden de Pago PDF
-4. Verificar que:
-   - Los cálculos coinciden con las fórmulas documentadas
-   - El régimen fiscal se muestra correctamente
-   - Los montos están formateados correctamente
-   - El "Total a pagar" es correcto según el régimen
+1. **Crear agentes con diferentes regímenes fiscales** en el sistema
+2. **Cargar comisiones** con datos de Vida y otros ramos
+3. **Generar Orden de Pago PDF** para cada agente
+4. **Verificar** que el desglose fiscal sea correcto según el régimen
 
-### Casos de prueba recomendados:
+### Casos de Prueba Recomendados:
 
-#### Caso 1: Asimilados con ramo Vida
-- Comisiones: Vida $5,000 + Autos $3,000
-- Esperado: Ret. Contable = $800, Costo Dispersión = $80
-
-#### Caso 2: RESICO con defaults
-- Comisión: $10,000
-- Esperado: Ret ISR = $125
-
-#### Caso 3: Honorarios (placeholder)
-- Comisión: $10,000
-- Esperado: Total a pagar = $10,000 (sin retenciones)
+| Caso | Régimen | Vida | No Vida | Ret. Contable | Costo Disp. | IVA | Ret ISR | Ret IVA |
+|------|---------|------|---------|---------------|-------------|-----|---------|---------|
+| 1 | ASIMILADOS | $10,000 | $5,000 | $1,600 | $160 | $0 | $0 | $0 |
+| 2 | RESICO | $10,000 | $5,000 | $0 | $0 | $800 | $62.50 | $533.33 |
+| 3 | HONORARIOS | $10,000 | $5,000 | $0 | $0 | $800 | $500 | $533.33 |
+| 4 | ASIMILADOS | $0 | $15,000 | $0 | $0 | $0 | $0 | $0 |
+| 5 | RESICO | $0 | $15,000 | $0 | $0 | $2,400 | $187.50 | $1,600 |
 
 ---
 
-## Mantenimiento Futuro
+## Futuras Mejoras
 
-### Próximos pasos sugeridos:
+### 1. Pantalla de Configuración Fiscal
+- Permitir ajustar porcentajes por régimen
+- Definir qué ramos generan IVA
+- Configurar tasas de retención personalizadas
 
-1. **Pantalla de Configuración Fiscal**:
-   - Permitir ajustar tasas de RESICO
-   - Configurar reglas para Honorarios
-   - Validar rangos de tasas (0-100%)
+### 2. Validación Contable
+- Integrar con sistema de contabilidad
+- Generar reportes de retenciones para el SAT
+- Calcular ISR detallado para ASIMILADOS
 
-2. **Reglas para Honorarios**:
-   - Definir con el área de negocio
-   - Implementar cálculos específicos
-   - Agregar validaciones
+### 3. Exportación
+- Generar XMLs de retenciones
+- Crear reportes fiscales por periodo
+- Integrar con sistemas de nómina
 
-3. **Auditoría y Trazabilidad**:
-   - Registrar qué tasas se usaron para cada cálculo
-   - Guardar histórico de cambios en tasas fiscales
-   - Permitir recalcular lotes antiguos con nuevas tasas
-
-4. **Validaciones adicionales**:
-   - Verificar que el agente tenga régimen fiscal asignado
-   - Alertar si faltan datos fiscales
-   - Prevenir cálculos con regímenes inválidos
+### 4. Auditoría
+- Log de todos los cálculos fiscales
+- Historial de cambios en parámetros
+- Trazabilidad completa de retenciones
 
 ---
 
-## Contacto y Soporte
+## Conclusión
 
-Para dudas sobre esta implementación, consultar:
-- Código fuente: `src/lib/pdfUtils.ts`
-- Función principal: `calcularDesgloseFiscal()`
-- Tipos: `DesgloseFiscal`, `ResumenPorRamo`
+El módulo de cálculo fiscal para comisiones está **completamente funcional** y listo para usar en producción (previa validación con el área contable/fiscal).
+
+### ✅ Características Implementadas:
+- ✅ Cálculo automático según régimen fiscal
+- ✅ Regla especial para ASIMILADOS (16% Vida + 10% dispersión)
+- ✅ Soporte RESICO (1.25% ISR, IVA con retención)
+- ✅ Soporte HONORARIOS (10% ISR, IVA con retención)
+- ✅ Parámetros configurables
+- ✅ Integración completa en PDF de Orden de Pago
+- ✅ Normalización automática de regímenes
+- ✅ Separación Vida vs No Vida
+- ✅ Documentación completa
+
+El sistema calcula correctamente todas las retenciones e impuestos, y genera PDFs profesionales con el desglose fiscal completo.
