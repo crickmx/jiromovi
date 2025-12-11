@@ -50,7 +50,7 @@ export interface CommissionBatch {
   date_from: string;
   date_to: string;
   uploaded_by: string | null;
-  status: 'draft' | 'confirmed' | 'closed';
+  status: 'draft' | 'closed';
   rules_version: string | null;
   source_file: string | null;
   created_at: string;

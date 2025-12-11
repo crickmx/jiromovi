@@ -11,7 +11,7 @@ export default function Comisiones() {
   const navigate = useNavigate();
   const [batches, setBatches] = useState<CommissionBatch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'draft' | 'confirmed' | 'closed'>('all');
+  const [filter, setFilter] = useState<'all' | 'draft' | 'closed'>('all');
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -132,16 +132,6 @@ export default function Comisiones() {
             }`}
           >
             Borradores
-          </button>
-          <button
-            onClick={() => setFilter('confirmed')}
-            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-              filter === 'confirmed'
-                ? 'bg-primary-600 text-white'
-                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-            }`}
-          >
-            Confirmados
           </button>
           <button
             onClick={() => setFilter('closed')}
