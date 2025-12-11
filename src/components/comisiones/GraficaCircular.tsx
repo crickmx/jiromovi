@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 interface DataPoint {
   label: string;
@@ -19,6 +19,7 @@ export default function GraficaCircular({
   valueFormatter = (v) => v.toLocaleString(),
   size = 280
 }: GraficaCircularProps) {
+  const [hoveredSegment, setHoveredSegment] = useState<number | null>(null);
   const colors = [
     '#3b82f6',
     '#10b981',
@@ -93,8 +94,13 @@ export default function GraficaCircular({
                   <path
                     d={segment.path}
                     fill={segment.color}
-                    className="transition-all duration-300 hover:opacity-80 cursor-pointer hover:scale-105"
-                    style={{ transformOrigin: '50% 50%' }}
+                    className="transition-all duration-300 hover:opacity-80 cursor-pointer"
+                    style={{
+                      transformOrigin: '50% 50%',
+                      transform: hoveredSegment === index ? 'scale(1.05)' : 'scale(1)'
+                    }}
+                    onMouseEnter={() => setHoveredSegment(index)}
+                    onMouseLeave={() => setHoveredSegment(null)}
                   />
                 </g>
               ))}
@@ -102,7 +108,17 @@ export default function GraficaCircular({
               <circle cx="50" cy="50" r="20" fill="white" />
             </svg>
 
-            <div className="absolute inset-0 flex items-center justify-center flex-col">
+            {hoveredSegment !== null && (
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-20">
+                <div className="bg-neutral-900 text-white px-3 py-2 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in duration-200">
+                  <div className="font-semibold text-xs">{segments[hoveredSegment].label}</div>
+                  <div className="text-xs opacity-90">{valueFormatter(segments[hoveredSegment].value)}</div>
+                  <div className="text-xs opacity-75">{segments[hoveredSegment].percentage}%</div>
+                </div>
+              </div>
+            )}
+
+            <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
               <div className="text-lg sm:text-2xl font-bold text-neutral-900 text-center px-2">
                 {valueFormatter(total)}
               </div>
