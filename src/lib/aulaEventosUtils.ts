@@ -144,14 +144,32 @@ export async function crearEvento(
   if (errorUsuarios) {
     console.error('Error obteniendo usuarios autorizados:', errorUsuarios);
   } else if (usuariosAutorizados && usuariosAutorizados.length > 0) {
-    // Enviar notificación a todos los usuarios autorizados
-    await crearNotificacionGlobal(
-      'Nuevo evento en Aula Digital',
-      `Se ha programado un nuevo evento: ${evento.titulo}`,
-      'evento',
-      `/seguros-education-aula-digital?evento=${eventoCreado.id}`,
-      usuariosAutorizados.map((u: any) => u.usuario_id)
-    );
+    // Enviar notificaciones por TODOS los canales (correo, WhatsApp, campanita)
+    const linkEvento = `/seguros-education-aula-digital?evento=${eventoCreado.id}`;
+
+    for (const usuario of usuariosAutorizados) {
+      try {
+        await supabase.rpc('enviar_notificacion_completa', {
+          p_tipo_codigo: 'nuevo_evento',
+          p_user_id: usuario.usuario_id,
+          p_titulo: `Nuevo evento: ${evento.titulo}`,
+          p_mensaje: `Se ha programado un nuevo evento en Aula Digital.`,
+          p_modulo: 'Seguros Education',
+          p_datos_adicionales: {
+            titulo_evento: evento.titulo,
+            descripcion_evento: evento.descripcion,
+            ponente: evento.ponente,
+            fecha_evento: evento.fecha,
+            hora_evento: evento.hora,
+            link_evento: linkEvento,
+            link_sesion: evento.link_sesion
+          },
+          p_accion_url: linkEvento
+        });
+      } catch (error) {
+        console.error(`Error enviando notificación a usuario ${usuario.usuario_id}:`, error);
+      }
+    }
   }
 
   return eventoCreado.id;
