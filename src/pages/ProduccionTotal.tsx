@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { TrendingUp, Download, FileDown, Filter, Calendar, Users, Building, Upload, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import GraficaColumnas from '../components/comisiones/GraficaColumnas';
+import GraficaCircular from '../components/comisiones/GraficaCircular';
+import GraficaLinea from '../components/produccion/GraficaLinea';
 
 interface ProductionRecord {
   id: string;
@@ -222,7 +225,94 @@ export default function ProduccionTotal() {
     XLSX.writeFile(wb, `Produccion_Total_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  const chartDataByRamo = useMemo(() => {
+    const grouped = filteredRecords.reduce((acc, r) => {
+      const ramo = r.ramo_nombre;
+      if (!acc[ramo]) acc[ramo] = 0;
+      acc[ramo] += r.importe_pesos;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(grouped)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [filteredRecords]);
+
+  const chartDataByAseguradora = useMemo(() => {
+    const grouped = filteredRecords.reduce((acc, r) => {
+      const aseg = r.aseguradora_nombre;
+      if (!acc[aseg]) acc[aseg] = 0;
+      acc[aseg] += r.importe_pesos;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const sorted = Object.entries(grouped)
+      .sort(([, a], [, b]) => b - a);
+
+    if (sorted.length > 10) {
+      const top10 = sorted.slice(0, 10);
+      const others = sorted.slice(10).reduce((sum, [, val]) => sum + val, 0);
+      return [...top10.map(([label, value]) => ({ label, value })), { label: 'Otras', value: others }];
+    }
+
+    return sorted.map(([label, value]) => ({ label, value }));
+  }, [filteredRecords]);
+
+  const chartDataByOfficeOrAgent = useMemo(() => {
+    if (isAdmin) {
+      const grouped = filteredRecords.reduce((acc, r) => {
+        const office = r.desp_nombre_raw;
+        if (!acc[office]) acc[office] = 0;
+        acc[office] += r.importe_pesos;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return Object.entries(grouped)
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
+    } else {
+      const grouped = filteredRecords.reduce((acc, r) => {
+        const agent = r.agente_nombre;
+        if (!acc[agent]) acc[agent] = 0;
+        acc[agent] += r.importe_pesos;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return Object.entries(grouped)
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
+    }
+  }, [filteredRecords, isAdmin]);
+
+  const chartDataByMonth = useMemo(() => {
+    const grouped = filteredRecords.reduce((acc, r) => {
+      const month = r.periodo_mes || r.fecha.substring(0, 7);
+      if (!acc[month]) acc[month] = 0;
+      acc[month] += r.importe_pesos;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(grouped)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filteredRecords]);
+
+  const chartDataConvenioVsNoConvenio = useMemo(() => {
+    const withConvenio = filteredRecords
+      .filter(r => r.convenio_flag)
+      .reduce((sum, r) => sum + r.importe_pesos, 0);
+    const withoutConvenio = filteredRecords
+      .filter(r => !r.convenio_flag)
+      .reduce((sum, r) => sum + r.importe_pesos, 0);
+
+    return [
+      { label: 'Con Convenio', value: withConvenio },
+      { label: 'Sin Convenio', value: withoutConvenio }
+    ].filter(d => d.value > 0);
+  }, [filteredRecords]);
+
   const kpis = calculateKPIs();
+  const formatCurrency = (v: number) => `$${v.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   if (loading) {
     return (
@@ -477,6 +567,48 @@ export default function ProduccionTotal() {
           </div>
         </div>
       </div>
+
+      {filteredRecords.length > 0 && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <GraficaColumnas
+              data={chartDataByRamo}
+              title="Producción por Ramo (Importe Pesos)"
+              valueFormatter={formatCurrency}
+              height={280}
+            />
+            <GraficaColumnas
+              data={chartDataByAseguradora}
+              title="Producción por Aseguradora (Top 10)"
+              valueFormatter={formatCurrency}
+              height={280}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <GraficaLinea
+              data={chartDataByMonth}
+              title="Producción en el Tiempo"
+              valueFormatter={formatCurrency}
+              height={280}
+              color="#10b981"
+            />
+            <GraficaCircular
+              data={chartDataConvenioVsNoConvenio}
+              title="Producción con Convenio vs Sin Convenio"
+              valueFormatter={formatCurrency}
+              size={240}
+            />
+          </div>
+
+          <GraficaColumnas
+            data={chartDataByOfficeOrAgent}
+            title={isAdmin ? "Producción por Oficina" : "Producción por Agente"}
+            valueFormatter={formatCurrency}
+            height={280}
+          />
+        </div>
+      )}
 
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
         <div className="flex items-center justify-between mb-4">

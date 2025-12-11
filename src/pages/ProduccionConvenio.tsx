@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Award, Download, Filter, Upload, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import GraficaColumnas from '../components/comisiones/GraficaColumnas';
+import GraficaCircular from '../components/comisiones/GraficaCircular';
+import GraficaLinea from '../components/produccion/GraficaLinea';
+import GraficaColumnasAgrupadas from '../components/produccion/GraficaColumnasAgrupadas';
 
 interface ProductionRecord {
   id: string;
@@ -194,7 +198,88 @@ export default function ProduccionConvenio() {
     XLSX.writeFile(wb, `Produccion_Convenio_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  const chartDataByAseguradora = useMemo(() => {
+    const grouped = filteredRecords.reduce((acc, r) => {
+      const aseg = r.aseguradora_nombre;
+      if (!acc[aseg]) acc[aseg] = 0;
+      acc[aseg] += r.prima_convenio;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(grouped)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [filteredRecords]);
+
+  const chartDataByRamo = useMemo(() => {
+    const grouped = filteredRecords.reduce((acc, r) => {
+      const ramo = r.ramo_nombre;
+      if (!acc[ramo]) acc[ramo] = 0;
+      acc[ramo] += r.prima_convenio;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(grouped)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [filteredRecords]);
+
+  const chartDataByMonth = useMemo(() => {
+    const grouped = filteredRecords.reduce((acc, r) => {
+      const month = r.periodo_mes || r.fecha.substring(0, 7);
+      if (!acc[month]) acc[month] = 0;
+      acc[month] += r.prima_convenio;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(grouped)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filteredRecords]);
+
+  const chartDataBono = useMemo(() => {
+    if (isAdmin) {
+      const grouped = filteredRecords.reduce((acc, r) => {
+        const office = r.desp_nombre_raw;
+        if (!acc[office]) acc[office] = 0;
+        acc[office] += r.bono;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return Object.entries(grouped)
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
+    } else {
+      const grouped = filteredRecords.reduce((acc, r) => {
+        const agent = r.agente_nombre;
+        if (!acc[agent]) acc[agent] = 0;
+        acc[agent] += r.bono;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return Object.entries(grouped)
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
+    }
+  }, [filteredRecords, isAdmin]);
+
+  const chartDataComparativo = useMemo(() => {
+    const grouped = filteredRecords.reduce((acc, r) => {
+      const aseg = r.aseguradora_nombre;
+      if (!acc[aseg]) acc[aseg] = { value1: 0, value2: 0 };
+      acc[aseg].value1 += r.prima_convenio;
+      acc[aseg].value2 += r.prima_ponderada;
+      return acc;
+    }, {} as Record<string, { value1: number; value2: number }>);
+
+    return Object.entries(grouped)
+      .map(([label, { value1, value2 }]) => ({ label, value1, value2 }))
+      .sort((a, b) => b.value1 - a.value1)
+      .slice(0, 8);
+  }, [filteredRecords]);
+
   const kpis = calculateKPIs();
+  const formatCurrency = (v: number) => `$${v.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   if (loading) {
     return (
@@ -414,6 +499,52 @@ export default function ProduccionConvenio() {
           </div>
         </div>
       </div>
+
+      {filteredRecords.length > 0 && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <GraficaColumnas
+              data={chartDataByAseguradora}
+              title="Prima de Convenio por Aseguradora"
+              valueFormatter={formatCurrency}
+              height={280}
+            />
+            <GraficaColumnas
+              data={chartDataByRamo}
+              title="Prima de Convenio por Ramo"
+              valueFormatter={formatCurrency}
+              height={280}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <GraficaLinea
+              data={chartDataByMonth}
+              title="Prima de Convenio en el Tiempo"
+              valueFormatter={formatCurrency}
+              height={280}
+              color="#3b82f6"
+            />
+            <GraficaCircular
+              data={chartDataBono}
+              title={isAdmin ? "Distribución de Bono por Oficina" : "Distribución de Bono por Agente"}
+              valueFormatter={formatCurrency}
+              size={240}
+            />
+          </div>
+
+          <GraficaColumnasAgrupadas
+            data={chartDataComparativo}
+            title="Comparativo Prima Convenio vs Prima Ponderada (Top 8 Aseguradoras)"
+            series1Label="Prima Convenio"
+            series2Label="Prima Ponderada"
+            series1Color="#3b82f6"
+            series2Color="#9ca3af"
+            valueFormatter={formatCurrency}
+            height={280}
+          />
+        </div>
+      )}
 
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
         <div className="flex items-center justify-between mb-4">
