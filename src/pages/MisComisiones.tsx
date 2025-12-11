@@ -58,7 +58,12 @@ export default function MisComisiones() {
             agent:agent_id(
               *,
               office:office_id(*),
-              fiscal_regime:fiscal_regime_id(*)
+              fiscal_regime:fiscal_regime_id(*),
+              usuario:usuario_id(
+                id,
+                regimen_fiscal_id,
+                regimen_fiscal:regimen_fiscal_id(*)
+              )
             )
           `)
           .eq('batch_id', batch.id)

@@ -481,7 +481,7 @@ export async function generateOrdenDePagoPDF(
     });
   });
 
-  const regimenFiscalName = agent.fiscal_regime?.name || 'HONORARIOS';
+  const regimenFiscalName = agent.usuario?.regimen_fiscal?.name || agent.fiscal_regime?.name || 'HONORARIOS';
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
   const desgloseFiscal = calcularDesgloseFiscalCore({

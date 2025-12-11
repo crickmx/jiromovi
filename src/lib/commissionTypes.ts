@@ -22,9 +22,15 @@ export interface CommissionAgent {
   email: string;
   office_id: string | null;
   fiscal_regime_id: string | null;
+  usuario_id: string | null;
   created_at: string;
   office?: CommissionOffice;
   fiscal_regime?: CommissionFiscalRegime;
+  usuario?: {
+    id: string;
+    regimen_fiscal_id: string | null;
+    regimen_fiscal?: CommissionFiscalRegime;
+  };
 }
 
 export interface CommissionBusinessRule {
