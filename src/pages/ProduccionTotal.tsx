@@ -35,6 +35,8 @@ export default function ProduccionTotal() {
   const [loading, setLoading] = useState(true);
   const [lastImport, setLastImport] = useState<any>(null);
   const [showFilters, setShowFilters] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 50;
 
   const [filters, setFilters] = useState({
     dateFrom: '',
@@ -64,6 +66,7 @@ export default function ProduccionTotal() {
 
   useEffect(() => {
     applyFilters();
+    setCurrentPage(1);
   }, [records, filters]);
 
   const loadData = async () => {
@@ -314,6 +317,15 @@ export default function ProduccionTotal() {
 
   const kpis = calculateKPIs();
   const formatCurrency = (v: number) => `$${v.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+  const totalPages = Math.ceil(filteredRecords.length / recordsPerPage);
+  const startIndex = (currentPage - 1) * recordsPerPage;
+  const endIndex = startIndex + recordsPerPage;
+  const paginatedRecords = filteredRecords.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
 
   if (loading) {
     return (
@@ -687,7 +699,7 @@ export default function ProduccionTotal() {
                 </tr>
               </thead>
               <tbody>
-                {filteredRecords.slice(0, 100).map((record) => (
+                {paginatedRecords.map((record) => (
                   <tr key={record.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                     <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 font-medium whitespace-nowrap">
                       {new Date(record.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' })}
@@ -750,10 +762,76 @@ export default function ProduccionTotal() {
             </div>
           )}
 
-          {filteredRecords.length > 100 && (
-            <div className="mt-4 text-center text-xs sm:text-sm text-neutral-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="font-medium">Mostrando 100 de {filteredRecords.length} registros</p>
-              <p className="mt-1 text-xs">Usa los filtros o exporta a Excel para ver todos los datos</p>
+          {filteredRecords.length > recordsPerPage && (
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 px-2">
+              <div className="text-xs sm:text-sm text-neutral-600">
+                Mostrando <span className="font-semibold">{startIndex + 1}</span> a{' '}
+                <span className="font-semibold">{Math.min(endIndex, filteredRecords.length)}</span> de{' '}
+                <span className="font-semibold">{filteredRecords.length}</span> registros
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => goToPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                >
+                  Primera
+                </button>
+
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                >
+                  Anterior
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => goToPage(pageNum)}
+                        className={`w-8 h-8 text-sm rounded-lg font-medium transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-primary-600 text-white'
+                            : 'border border-neutral-300 hover:bg-neutral-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                >
+                  Siguiente
+                </button>
+
+                <button
+                  onClick={() => goToPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                >
+                  Última
+                </button>
+              </div>
             </div>
           )}
         </div>
