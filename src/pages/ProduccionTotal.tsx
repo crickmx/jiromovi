@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { TrendingUp, Download, FileDown, Filter, Calendar, Users, Building, Upload, ArrowLeft } from 'lucide-react';
+import { TrendingUp, Download, FileDown, Filter, Calendar, Users, Building, Settings, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
@@ -75,20 +75,29 @@ export default function ProduccionTotal() {
     setLoading(true);
 
     try {
-      let query = supabase
-        .from('production_records')
-        .select('*')
-        .range(0, 299999);
+      const { data: { session } } = await supabase.auth.getSession();
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-production-sheets`;
 
-      if (usuario.rol === 'Gerente' && usuario.production_office_id) {
-        query = query.eq('office_id', usuario.production_office_id);
+      const headers = {
+        'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, { headers });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al obtener datos de Google Sheets');
       }
 
-      const { data, error } = await query;
+      const result = await response.json();
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Error desconocido');
+      }
 
-      const processedData = (data || []).map(record => ({
+      let processedData = result.records.map((record: any) => ({
+        id: `${record.fecha}-${record.agente_nombre}-${Math.random()}`,
         ...record,
         importe_pesos: Number(record.importe_pesos) || 0,
         prima_convenio: Number(record.prima_convenio) || 0,
@@ -97,14 +106,26 @@ export default function ProduccionTotal() {
         porcentaje_bono: record.porcentaje_bono ? Number(record.porcentaje_bono) : null,
       }));
 
+      if (usuario.rol === 'Gerente' && usuario.production_office_id) {
+        const { data: office } = await supabase
+          .from('oficinas')
+          .select('nombre')
+          .eq('id', usuario.production_office_id)
+          .maybeSingle();
+
+        if (office) {
+          processedData = processedData.filter((r: any) => r.desp_nombre_raw === office.nombre);
+        }
+      }
+
       setRecords(processedData);
 
-      const uniqueOffices = [...new Set(data?.map(r => r.desp_nombre_raw).filter(Boolean))] as string[];
-      const uniqueManagements = [...new Set(data?.map(r => r.gerencia_nombre_raw).filter(Boolean))] as string[];
-      const uniqueRegions = [...new Set(data?.map(r => r.region_raw).filter(Boolean))] as string[];
-      const uniqueAgents = [...new Set(data?.map(r => r.agente_nombre).filter(Boolean))] as string[];
-      const uniqueRamos = [...new Set(data?.map(r => r.ramo_nombre).filter(Boolean))] as string[];
-      const uniqueAseguradoras = [...new Set(data?.map(r => r.aseguradora_nombre).filter(Boolean))] as string[];
+      const uniqueOffices = [...new Set(processedData.map((r: any) => r.desp_nombre_raw).filter(Boolean))] as string[];
+      const uniqueManagements = [...new Set(processedData.map((r: any) => r.gerencia_nombre_raw).filter(Boolean))] as string[];
+      const uniqueRegions = [...new Set(processedData.map((r: any) => r.region_raw).filter(Boolean))] as string[];
+      const uniqueAgents = [...new Set(processedData.map((r: any) => r.agente_nombre).filter(Boolean))] as string[];
+      const uniqueRamos = [...new Set(processedData.map((r: any) => r.ramo_nombre).filter(Boolean))] as string[];
+      const uniqueAseguradoras = [...new Set(processedData.map((r: any) => r.aseguradora_nombre).filter(Boolean))] as string[];
 
       setOffices(uniqueOffices.sort());
       setManagements(uniqueManagements.sort());
@@ -113,17 +134,11 @@ export default function ProduccionTotal() {
       setRamos(uniqueRamos.sort());
       setAseguradoras(uniqueAseguradoras.sort());
 
-      const { data: lastLog } = await supabase
-        .from('production_import_logs')
-        .select('*')
-        .order('imported_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      setLastImport(lastLog);
+      setLastImport({ imported_at: result.fetched_at });
 
     } catch (error) {
       console.error('Error loading production data:', error);
+      alert('Error al cargar los datos de producción. Verifica que el link de Google Sheets esté configurado correctamente.');
     } finally {
       setLoading(false);
     }
@@ -382,11 +397,11 @@ export default function ProduccionTotal() {
             <div className="flex items-center gap-2 sm:gap-3">
               {isAdmin && (
                 <button
-                  onClick={() => navigate('/produccion/cargar')}
-                  className="flex items-center space-x-2 bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm sm:text-base"
+                  onClick={() => navigate('/produccion/configuracion')}
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base"
                 >
-                  <Upload className="w-4 h-4" />
-                  <span className="hidden sm:inline">Cargar Datos</span>
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">Configuración</span>
                   <span className="sm:hidden">Cargar</span>
                 </button>
               )}

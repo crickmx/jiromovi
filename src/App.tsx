@@ -50,7 +50,7 @@ import MisComisiones from './pages/MisComisiones';
 import ComisionesUpload from './pages/ComisionesUpload';
 import ProduccionTotal from './pages/ProduccionTotal';
 import ProduccionConvenio from './pages/ProduccionConvenio';
-import ProduccionCargar from './pages/ProduccionCargar';
+import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -552,11 +552,11 @@ function AppRoutes() {
       />
 
       <Route
-        path="/produccion/cargar"
+        path="/produccion/configuracion"
         element={
           <ProtectedRoute requireAdmin>
             <Layout>
-              <ProduccionCargar />
+              <ProduccionConfiguracion />
             </Layout>
           </ProtectedRoute>
         }
