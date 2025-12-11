@@ -24,17 +24,19 @@ export default function GraficaCircular({
     '#10b981',
     '#eab308',
     '#ef4444',
-    '#8b5cf6',
-    '#ec4899',
-    '#6366f1',
-    '#06b6d4',
+    '#14b8a6',
     '#f97316',
-    '#14b8a6'
+    '#06b6d4',
+    '#10b981',
+    '#f59e0b',
+    '#0ea5e9'
   ];
 
   const total = useMemo(() => data.reduce((sum, item) => sum + item.value, 0), [data]);
 
   const segments = useMemo(() => {
+    if (data.length === 0) return [];
+
     let currentAngle = -90;
 
     return data.map((item, index) => {
@@ -67,48 +69,61 @@ export default function GraficaCircular({
     });
   }, [data, total, colors]);
 
-  const radius = size / 2;
-  const center = radius;
+  if (data.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-bold text-neutral-900 mb-4">{title}</h3>
+        <div className="flex items-center justify-center h-48 text-neutral-500 text-sm">
+          No hay datos para mostrar
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-6">
-      <h3 className="text-lg font-bold text-neutral-900 mb-6">{title}</h3>
+    <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-6">
+      <h3 className="text-base sm:text-lg font-bold text-neutral-900 mb-4 sm:mb-6">{title}</h3>
 
-      <div className="flex flex-col lg:flex-row items-center gap-8">
-        <div className="relative" style={{ width: size, height: size }}>
-          <svg viewBox="0 0 100 100" className="transform -rotate-0">
-            {segments.map((segment, index) => (
-              <g key={index}>
-                <path
-                  d={segment.path}
-                  fill={segment.color}
-                  className="transition-all duration-300 hover:opacity-80 cursor-pointer"
-                  style={{ transformOrigin: '50% 50%' }}
-                />
-              </g>
-            ))}
+      <div className="flex flex-col items-center gap-6 sm:gap-8">
+        <div className="relative w-full max-w-[240px] sm:max-w-none" style={{ maxWidth: `${size}px` }}>
+          <div className="relative w-full" style={{ paddingBottom: '100%' }}>
+            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
+              {segments.map((segment, index) => (
+                <g key={index}>
+                  <path
+                    d={segment.path}
+                    fill={segment.color}
+                    className="transition-all duration-300 hover:opacity-80 cursor-pointer hover:scale-105"
+                    style={{ transformOrigin: '50% 50%' }}
+                  />
+                </g>
+              ))}
 
-            <circle cx="50" cy="50" r="20" fill="white" />
-          </svg>
+              <circle cx="50" cy="50" r="20" fill="white" />
+            </svg>
 
-          <div className="absolute inset-0 flex items-center justify-center flex-col">
-            <div className="text-2xl font-bold text-neutral-900">
-              {valueFormatter(total)}
+            <div className="absolute inset-0 flex items-center justify-center flex-col">
+              <div className="text-lg sm:text-2xl font-bold text-neutral-900 text-center px-2">
+                {valueFormatter(total)}
+              </div>
+              <div className="text-xs sm:text-sm text-neutral-600">Total</div>
             </div>
-            <div className="text-sm text-neutral-600">Total</div>
           </div>
         </div>
 
-        <div className="flex-1 space-y-3">
+        <div className="w-full space-y-2 sm:space-y-3 max-h-64 overflow-y-auto">
           {segments.map((segment, index) => (
-            <div key={index} className="flex items-center justify-between p-3 rounded-lg hover:bg-neutral-50 transition-colors">
-              <div className="flex items-center space-x-3 flex-1">
+            <div
+              key={index}
+              className="flex items-center justify-between p-2 sm:p-3 rounded-lg hover:bg-neutral-50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
                 <div
-                  className="w-4 h-4 rounded-full flex-shrink-0"
+                  className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
                   style={{ backgroundColor: segment.color }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-neutral-900 truncate">
+                  <div className="text-xs sm:text-sm font-medium text-neutral-900 truncate">
                     {segment.label}
                   </div>
                   <div className="text-xs text-neutral-600">
@@ -116,7 +131,7 @@ export default function GraficaCircular({
                   </div>
                 </div>
               </div>
-              <div className="text-sm font-semibold text-neutral-900 ml-4">
+              <div className="text-xs sm:text-sm font-semibold text-neutral-900 ml-2 sm:ml-4 flex-shrink-0">
                 {valueFormatter(segment.value)}
               </div>
             </div>

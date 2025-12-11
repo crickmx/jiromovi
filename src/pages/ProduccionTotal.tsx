@@ -569,58 +569,66 @@ export default function ProduccionTotal() {
       </div>
 
       {filteredRecords.length > 0 && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GraficaColumnas
-              data={chartDataByRamo}
-              title="Producción por Ramo (Importe Pesos)"
-              valueFormatter={formatCurrency}
-              height={280}
-            />
-            <GraficaColumnas
-              data={chartDataByAseguradora}
-              title="Producción por Aseguradora (Top 10)"
-              valueFormatter={formatCurrency}
-              height={280}
-            />
-          </div>
+        <>
+          <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-4 sm:mb-6">
+              Análisis de Producción
+            </h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GraficaLinea
-              data={chartDataByMonth}
-              title="Producción en el Tiempo"
-              valueFormatter={formatCurrency}
-              height={280}
-              color="#10b981"
-            />
-            <GraficaCircular
-              data={chartDataConvenioVsNoConvenio}
-              title="Producción con Convenio vs Sin Convenio"
-              valueFormatter={formatCurrency}
-              size={240}
-            />
-          </div>
+            <div className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <GraficaColumnas
+                  data={chartDataByRamo}
+                  title="Producción por Ramo (Importe Pesos)"
+                  valueFormatter={formatCurrency}
+                  height={240}
+                />
+                <GraficaColumnas
+                  data={chartDataByAseguradora}
+                  title="Producción por Aseguradora (Top 10)"
+                  valueFormatter={formatCurrency}
+                  height={240}
+                />
+              </div>
 
-          <GraficaColumnas
-            data={chartDataByOfficeOrAgent}
-            title={isAdmin ? "Producción por Oficina" : "Producción por Agente"}
-            valueFormatter={formatCurrency}
-            height={280}
-          />
-        </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <GraficaLinea
+                  data={chartDataByMonth}
+                  title="Producción en el Tiempo"
+                  valueFormatter={formatCurrency}
+                  height={240}
+                  color="#10b981"
+                />
+                <GraficaCircular
+                  data={chartDataConvenioVsNoConvenio}
+                  title="Convenio vs Sin Convenio"
+                  valueFormatter={formatCurrency}
+                  size={220}
+                />
+              </div>
+
+              <GraficaColumnas
+                data={chartDataByOfficeOrAgent}
+                title={isAdmin ? "Producción por Oficina" : "Producción por Agente"}
+                valueFormatter={formatCurrency}
+                height={240}
+              />
+            </div>
+          </div>
+        </>
       )}
 
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-neutral-900">
+      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+          <h2 className="text-lg sm:text-xl font-bold text-neutral-900">
             Registros de Producción
           </h2>
-          <span className="text-sm text-neutral-600">
-            {filteredRecords.length} registros
+          <span className="text-xs sm:text-sm text-neutral-600">
+            {filteredRecords.length} {filteredRecords.length === 1 ? 'registro' : 'registros'}
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="w-full">
             <thead>
               <tr className="bg-neutral-50 border-b border-neutral-200">

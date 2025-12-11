@@ -501,62 +501,70 @@ export default function ProduccionConvenio() {
       </div>
 
       {filteredRecords.length > 0 && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GraficaColumnas
-              data={chartDataByAseguradora}
-              title="Prima de Convenio por Aseguradora"
-              valueFormatter={formatCurrency}
-              height={280}
-            />
-            <GraficaColumnas
-              data={chartDataByRamo}
-              title="Prima de Convenio por Ramo"
-              valueFormatter={formatCurrency}
-              height={280}
-            />
-          </div>
+        <>
+          <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-4 sm:mb-6">
+              Análisis de Convenios
+            </h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GraficaLinea
-              data={chartDataByMonth}
-              title="Prima de Convenio en el Tiempo"
-              valueFormatter={formatCurrency}
-              height={280}
-              color="#3b82f6"
-            />
-            <GraficaCircular
-              data={chartDataBono}
-              title={isAdmin ? "Distribución de Bono por Oficina" : "Distribución de Bono por Agente"}
-              valueFormatter={formatCurrency}
-              size={240}
-            />
-          </div>
+            <div className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <GraficaColumnas
+                  data={chartDataByAseguradora}
+                  title="Prima de Convenio por Aseguradora"
+                  valueFormatter={formatCurrency}
+                  height={240}
+                />
+                <GraficaColumnas
+                  data={chartDataByRamo}
+                  title="Prima de Convenio por Ramo"
+                  valueFormatter={formatCurrency}
+                  height={240}
+                />
+              </div>
 
-          <GraficaColumnasAgrupadas
-            data={chartDataComparativo}
-            title="Comparativo Prima Convenio vs Prima Ponderada (Top 8 Aseguradoras)"
-            series1Label="Prima Convenio"
-            series2Label="Prima Ponderada"
-            series1Color="#3b82f6"
-            series2Color="#9ca3af"
-            valueFormatter={formatCurrency}
-            height={280}
-          />
-        </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <GraficaLinea
+                  data={chartDataByMonth}
+                  title="Prima de Convenio en el Tiempo"
+                  valueFormatter={formatCurrency}
+                  height={240}
+                  color="#3b82f6"
+                />
+                <GraficaCircular
+                  data={chartDataBono}
+                  title={isAdmin ? "Distribución de Bono por Oficina" : "Distribución de Bono por Agente"}
+                  valueFormatter={formatCurrency}
+                  size={220}
+                />
+              </div>
+
+              <GraficaColumnasAgrupadas
+                data={chartDataComparativo}
+                title="Comparativo Prima Convenio vs Prima Ponderada (Top 8)"
+                series1Label="Prima Convenio"
+                series2Label="Prima Ponderada"
+                series1Color="#3b82f6"
+                series2Color="#9ca3af"
+                valueFormatter={formatCurrency}
+                height={240}
+              />
+            </div>
+          </div>
+        </>
       )}
 
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-neutral-900">
+      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+          <h2 className="text-lg sm:text-xl font-bold text-neutral-900">
             Registros en Convenio
           </h2>
-          <span className="text-sm text-neutral-600">
-            {filteredRecords.length} registros
+          <span className="text-xs sm:text-sm text-neutral-600">
+            {filteredRecords.length} {filteredRecords.length === 1 ? 'registro' : 'registros'}
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="w-full">
             <thead>
               <tr className="bg-neutral-50 border-b border-neutral-200">

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 interface DataPoint {
   label: string;
@@ -20,6 +20,8 @@ export default function GraficaLinea({
   height = 300,
   color = '#3b82f6'
 }: GraficaLineaProps) {
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+
   const { maxValue, minValue, points, pathD } = useMemo(() => {
     if (data.length === 0) {
       return { maxValue: 0, minValue: 0, points: [], pathD: '' };
@@ -63,18 +65,20 @@ export default function GraficaLinea({
 
   if (data.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
-        <h3 className="text-lg font-bold text-neutral-900 mb-6">{title}</h3>
-        <div className="flex items-center justify-center h-64 text-neutral-500">
+      <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-bold text-neutral-900 mb-4">{title}</h3>
+        <div className="flex items-center justify-center h-48 text-neutral-500 text-sm">
           No hay datos para mostrar
         </div>
       </div>
     );
   }
 
+  const gradientId = `gradient-${title.replace(/\s+/g, '-')}`;
+
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-6">
-      <h3 className="text-lg font-bold text-neutral-900 mb-6">{title}</h3>
+    <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-6">
+      <h3 className="text-base sm:text-lg font-bold text-neutral-900 mb-4 sm:mb-6">{title}</h3>
 
       <div className="relative" style={{ height: `${height}px` }}>
         <svg
@@ -83,7 +87,7 @@ export default function GraficaLinea({
           preserveAspectRatio="none"
         >
           <defs>
-            <linearGradient id={`gradient-${title}`} x1="0" x2="0" y1="0" y2="1">
+            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor={color} stopOpacity="0.3" />
               <stop offset="100%" stopColor={color} stopOpacity="0.05" />
             </linearGradient>
@@ -91,16 +95,17 @@ export default function GraficaLinea({
 
           <path
             d={`${pathD} L 100 100 L 0 100 Z`}
-            fill={`url(#gradient-${title})`}
+            fill={`url(#${gradientId})`}
           />
 
           <path
             d={pathD}
             fill="none"
             stroke={color}
-            strokeWidth="0.5"
+            strokeWidth="0.8"
             strokeLinecap="round"
             strokeLinejoin="round"
+            className="drop-shadow-sm"
           />
 
           {points.map((point, index) => (
@@ -108,11 +113,13 @@ export default function GraficaLinea({
               <circle
                 cx={point.x}
                 cy={point.y}
-                r="1.5"
+                r={hoveredPoint === index ? "2.5" : "1.8"}
                 fill="white"
                 stroke={color}
-                strokeWidth="0.5"
-                className="cursor-pointer hover:r-2 transition-all"
+                strokeWidth="0.8"
+                className="cursor-pointer transition-all duration-200"
+                onMouseEnter={() => setHoveredPoint(index)}
+                onMouseLeave={() => setHoveredPoint(null)}
               />
             </g>
           ))}
@@ -121,31 +128,44 @@ export default function GraficaLinea({
         {points.map((point, index) => (
           <div
             key={index}
-            className="absolute group"
+            className="absolute"
             style={{
               left: `${point.x}%`,
               top: `${point.y}%`,
-              transform: 'translate(-50%, -50%)'
+              transform: 'translate(-50%, -50%)',
+              zIndex: hoveredPoint === index ? 20 : 10
             }}
+            onMouseEnter={() => setHoveredPoint(index)}
+            onMouseLeave={() => setHoveredPoint(null)}
           >
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-neutral-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 shadow-lg">
-              <div className="font-semibold">{point.label}</div>
-              <div>{valueFormatter(point.value)}</div>
-            </div>
+            {hoveredPoint === index && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-3 py-2 bg-neutral-900 text-white text-xs rounded-lg whitespace-nowrap shadow-xl animate-in fade-in duration-200">
+                <div className="font-semibold">{point.label}</div>
+                <div className="text-xs opacity-90">{valueFormatter(point.value)}</div>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                  <div className="w-2 h-2 bg-neutral-900 rotate-45"></div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-xs text-neutral-600 overflow-x-auto">
-        {data.map((item, index) => (
-          <div
-            key={index}
-            className="text-center min-w-0 flex-shrink-0 px-1"
-            style={{ width: `${100 / data.length}%` }}
-          >
-            <div className="truncate">{item.label}</div>
-          </div>
-        ))}
+      <div className="mt-4 overflow-x-auto">
+        <div className="flex items-center justify-between text-xs text-neutral-600 min-w-max sm:min-w-0">
+          {data.map((item, index) => {
+            const showLabel = data.length <= 12 || index % Math.ceil(data.length / 12) === 0;
+
+            return showLabel ? (
+              <div
+                key={index}
+                className="text-center px-1 flex-1"
+              >
+                <div className="truncate">{item.label}</div>
+              </div>
+            ) : null;
+          })}
+        </div>
       </div>
     </div>
   );
