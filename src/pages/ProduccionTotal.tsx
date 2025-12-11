@@ -157,9 +157,9 @@ export default function ProduccionTotal() {
       setRecords(processedData);
       console.log('[ProduccionTotal] Records establecidos en state:', processedData.length);
 
-      const uniqueOffices = [...new Set(processedData.map((r: any) => r.desp_nombre_raw).filter(Boolean))] as string[];
+      const uniqueOffices = isAdmin ? [...new Set(processedData.map((r: any) => r.desp_nombre_raw).filter(Boolean))] as string[] : [];
       const uniqueManagements = [...new Set(processedData.map((r: any) => r.gerencia_nombre_raw).filter(Boolean))] as string[];
-      const uniqueRegions = [...new Set(processedData.map((r: any) => r.region_raw).filter(Boolean))] as string[];
+      const uniqueRegions = isAdmin ? [...new Set(processedData.map((r: any) => r.region_raw).filter(Boolean))] as string[] : [];
       const uniqueAgents = [...new Set(processedData.map((r: any) => r.agente_nombre).filter(Boolean))] as string[];
       const uniqueRamos = [...new Set(processedData.map((r: any) => r.ramo_nombre).filter(Boolean))] as string[];
       const uniqueAseguradoras = [...new Set(processedData.map((r: any) => r.aseguradora_nombre).filter(Boolean))] as string[];
@@ -206,7 +206,7 @@ export default function ProduccionTotal() {
       );
     }
 
-    if (filters.office) {
+    if (filters.office && isAdmin) {
       filtered = filtered.filter(r =>
         r.desp_nombre_raw?.toLowerCase().includes(filters.office.toLowerCase())
       );
@@ -556,21 +556,39 @@ export default function ProduccionTotal() {
               </div>
 
               {isAdmin && (
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
-                    Dirección Regional
-                  </label>
-                  <select
-                    value={filters.region}
-                    onChange={(e) => setFilters({ ...filters, region: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="">Todas</option>
-                    {regions.map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                      Dirección Regional
+                    </label>
+                    <select
+                      value={filters.region}
+                      onChange={(e) => setFilters({ ...filters, region: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">Todas</option>
+                      {regions.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+                      Oficina
+                    </label>
+                    <select
+                      value={filters.office}
+                      onChange={(e) => setFilters({ ...filters, office: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">Todas</option>
+                      {offices.map(o => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               <div>
@@ -585,22 +603,6 @@ export default function ProduccionTotal() {
                   <option value="">Todas</option>
                   {managements.map(m => (
                     <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
-                  Oficina
-                </label>
-                <select
-                  value={filters.office}
-                  onChange={(e) => setFilters({ ...filters, office: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">Todas</option>
-                  {offices.map(o => (
-                    <option key={o} value={o}>{o}</option>
                   ))}
                 </select>
               </div>
