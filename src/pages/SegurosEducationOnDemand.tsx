@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2 } from 'lucide-react';
+import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, Edit2 } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 
 interface Category {
@@ -47,6 +47,7 @@ export function SegurosEducationOnDemand() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -203,6 +204,11 @@ export function SegurosEducationOnDemand() {
   };
 
   const handleUploadLesson = async () => {
+    if (editingLesson) {
+      await handleUpdateLesson();
+      return;
+    }
+
     if (!videoFile || !formData.titulo || !formData.categoria_id) {
       showToast('Complete todos los campos requeridos', 'error');
       return;
@@ -277,6 +283,120 @@ export function SegurosEducationOnDemand() {
     }
   };
 
+  const handleUpdateLesson = async () => {
+    if (!editingLesson || !formData.titulo || !formData.categoria_id) {
+      showToast('Complete todos los campos requeridos', 'error');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadProgress(10);
+
+      let videoUrl = editingLesson.video_url;
+      let thumbnailUrl = editingLesson.miniatura_url;
+      let duration = editingLesson.duracion;
+
+      if (videoFile) {
+        const videoFileName = `${Date.now()}-${videoFile.name}`;
+        const { error: videoError } = await supabase.storage
+          .from('seguros-videos')
+          .upload(videoFileName, videoFile);
+
+        if (videoError) throw videoError;
+
+        const { data: videoPublicUrl } = supabase.storage
+          .from('seguros-videos')
+          .getPublicUrl(videoFileName);
+
+        videoUrl = videoPublicUrl.publicUrl;
+        duration = Math.floor(await getVideoDuration(videoFile));
+      }
+      setUploadProgress(50);
+
+      if (thumbnailFile) {
+        const thumbFileName = `${Date.now()}-${thumbnailFile.name}`;
+        const { error: thumbError } = await supabase.storage
+          .from('seguros-thumbnails')
+          .upload(thumbFileName, thumbnailFile);
+
+        if (thumbError) throw thumbError;
+
+        const { data: thumbPublicUrl } = supabase.storage
+          .from('seguros-thumbnails')
+          .getPublicUrl(thumbFileName);
+
+        thumbnailUrl = thumbPublicUrl.publicUrl;
+      }
+      setUploadProgress(70);
+
+      const { error: updateError } = await supabase
+        .from('seguros_lessons')
+        .update({
+          titulo: formData.titulo,
+          descripcion: formData.descripcion,
+          categoria_id: formData.categoria_id || null,
+          video_url: videoUrl,
+          miniatura_url: thumbnailUrl,
+          duracion: duration,
+          oficinas_asignadas: formData.oficinas_asignadas,
+        })
+        .eq('id', editingLesson.id);
+
+      if (updateError) throw updateError;
+      setUploadProgress(100);
+
+      showToast('Lección actualizada exitosamente', 'success');
+      setShowUploadModal(false);
+      resetForm();
+      setEditingLesson(null);
+      fetchData();
+    } catch (error: any) {
+      console.error('Error updating lesson:', error);
+      showToast('Error al actualizar lección: ' + error.message, 'error');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleEditLesson = (lesson: Lesson, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingLesson(lesson);
+    setFormData({
+      titulo: lesson.titulo,
+      descripcion: lesson.descripcion || '',
+      categoria_id: lesson.categoria?.id || '',
+      oficinas_asignadas: [],
+    });
+    setShowUploadModal(true);
+  };
+
+  const handleDeleteLesson = async (lesson: Lesson, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de eliminar la lección "${lesson.titulo}"? Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('seguros_lessons')
+        .delete()
+        .eq('id', lesson.id);
+
+      if (error) throw error;
+
+      showToast('Lección eliminada exitosamente', 'success');
+      fetchData();
+    } catch (error: any) {
+      console.error('Error deleting lesson:', error);
+      showToast('Error al eliminar lección: ' + error.message, 'error');
+    }
+  };
+
   const getVideoDuration = (file: File): Promise<number> => {
     return new Promise((resolve) => {
       const video = document.createElement('video');
@@ -298,6 +418,7 @@ export function SegurosEducationOnDemand() {
     });
     setVideoFile(null);
     setThumbnailFile(null);
+    setEditingLesson(null);
   };
 
   const handleLessonClick = (lesson: Lesson) => {
@@ -514,16 +635,36 @@ export function SegurosEducationOnDemand() {
 
                 {/* Content */}
                 <div className="p-4">
-                  <div className="flex items-center gap-2 text-[11px] mb-2">
-                    {lesson.categoria && (
-                      <span className="px-2 py-1 bg-ios-blue/10 text-ios-blue rounded-ios font-semibold">
-                        {lesson.categoria.nombre}
+                  <div className="flex items-center justify-between gap-2 text-[11px] mb-2">
+                    <div className="flex items-center gap-2">
+                      {lesson.categoria && (
+                        <span className="px-2 py-1 bg-ios-blue/10 text-ios-blue rounded-ios font-semibold">
+                          {lesson.categoria.nombre}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 text-ios-gray-600">
+                        <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
+                        {formatDuration(lesson.duracion)}
                       </span>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => handleEditLesson(lesson, e)}
+                          className="p-1.5 text-ios-blue hover:bg-ios-blue/10 rounded-ios transition-colors"
+                          title="Editar lección"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 stroke-[2]" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteLesson(lesson, e)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-ios transition-colors"
+                          title="Eliminar lección"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
+                        </button>
+                      </div>
                     )}
-                    <span className="flex items-center gap-1 text-ios-gray-600">
-                      <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
-                      {formatDuration(lesson.duracion)}
-                    </span>
                   </div>
 
                   <h3 className="font-semibold text-ios-gray-900 mb-2 line-clamp-2 group-hover:text-ios-blue transition-colors text-[15px]">
@@ -636,7 +777,9 @@ export function SegurosEducationOnDemand() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full my-8">
             <div className="p-6 border-b border-neutral-200">
-              <h2 className="text-xl font-bold text-neutral-800">Subir Nueva Lección</h2>
+              <h2 className="text-xl font-bold text-neutral-800">
+                {editingLesson ? 'Editar Lección' : 'Subir Nueva Lección'}
+              </h2>
             </div>
 
             <div className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
@@ -735,7 +878,8 @@ export function SegurosEducationOnDemand() {
 
               <div>
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                  Video <span className="text-red-500">*</span>
+                  Video {!editingLesson && <span className="text-red-500">*</span>}
+                  {editingLesson && <span className="text-neutral-500 text-xs">(opcional - dejar vacío para mantener el video actual)</span>}
                 </label>
                 <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
                   <input
@@ -748,7 +892,7 @@ export function SegurosEducationOnDemand() {
                   <label htmlFor="video-upload" className="cursor-pointer">
                     <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
                     <p className="text-sm text-neutral-600">
-                      {videoFile ? videoFile.name : 'Click para subir video (MP4, WebM, MOV)'}
+                      {videoFile ? videoFile.name : editingLesson ? 'Click para cambiar el video (MP4, WebM, MOV)' : 'Click para subir video (MP4, WebM, MOV)'}
                     </p>
                   </label>
                 </div>
@@ -804,10 +948,10 @@ export function SegurosEducationOnDemand() {
               </button>
               <button
                 onClick={handleUploadLesson}
-                disabled={uploading || !videoFile || !formData.titulo || !formData.categoria_id}
+                disabled={uploading || (!editingLesson && !videoFile) || !formData.titulo || !formData.categoria_id}
                 className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {uploading ? 'Subiendo...' : 'Subir Lección'}
+                {uploading ? (editingLesson ? 'Actualizando...' : 'Subiendo...') : (editingLesson ? 'Actualizar Lección' : 'Subir Lección')}
               </button>
             </div>
           </div>
