@@ -122,33 +122,33 @@ export default function MisComisiones() {
   const myBatches = batches.filter(batch => batchDetails.has(batch.id));
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">
               Mis Comisiones
             </h1>
-            <p className="text-neutral-600">
+            <p className="text-sm sm:text-base text-neutral-600">
               Consulta tus comisiones pagadas y genera tus recibos
             </p>
           </div>
-          <DollarSign className="w-12 h-12 text-primary-600" />
+          <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 text-primary-600 flex-shrink-0" />
         </div>
       </div>
 
       {myBatches.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-12 text-center">
-          <DollarSign className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-neutral-700 mb-2">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center">
+          <DollarSign className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
+          <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
             No hay comisiones disponibles
           </h3>
-          <p className="text-neutral-500">
+          <p className="text-sm sm:text-base text-neutral-500">
             Tus comisiones aparecerán aquí una vez que sean procesadas y cerradas
           </p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3 sm:gap-4">
           {myBatches.map(batch => {
             const summary = getBatchSummary(batch.id);
             const details = batchDetails.get(batch.id) || [];
@@ -156,45 +156,45 @@ export default function MisComisiones() {
             return (
               <div
                 key={batch.id}
-                className="bg-white rounded-2xl shadow-soft border border-neutral-200 overflow-hidden"
+                className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden"
               >
                 <div
                   onClick={() => setSelectedBatch(selectedBatch === batch.id ? null : batch.id)}
-                  className="p-6 cursor-pointer hover:bg-neutral-50 transition-colors"
+                  className="p-4 sm:p-6 cursor-pointer hover:bg-neutral-50 transition-colors active:bg-neutral-100"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <FileText className="w-6 h-6 text-primary-600" />
-                        <h3 className="text-xl font-bold text-neutral-900">
+                      <div className="flex items-start space-x-2 sm:space-x-3 mb-3">
+                        <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 flex-shrink-0 mt-0.5" />
+                        <h3 className="text-lg sm:text-xl font-bold text-neutral-900 break-words flex-1">
                           {batch.name}
                         </h3>
                       </div>
 
-                      <div className="flex flex-wrap gap-4 text-sm text-neutral-600 mb-4">
+                      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-neutral-600 mb-4">
                         <span className="flex items-center space-x-1">
-                          <Calendar className="w-4 h-4" />
+                          <Calendar className="w-4 h-4 flex-shrink-0" />
                           <span className="font-medium">Periodo:</span>
                           <span>{formatDate(batch.date_from)} - {formatDate(batch.date_to)}</span>
                         </span>
                         <span className="flex items-center space-x-1">
-                          <FileText className="w-4 h-4" />
+                          <FileText className="w-4 h-4 flex-shrink-0" />
                           <span className="font-medium">Pólizas:</span>
                           <span>{details.length}</span>
                         </span>
                       </div>
 
                       {summary && (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
                           <div className="bg-neutral-50 rounded-lg p-3">
                             <div className="text-xs text-neutral-600 font-medium mb-1">Prima Neta</div>
-                            <div className="text-lg font-bold text-neutral-900">
+                            <div className="text-base sm:text-lg font-bold text-neutral-900 break-words">
                               {formatCurrency(details.reduce((sum, d) => sum + d.prima_neta, 0))}
                             </div>
                           </div>
                           <div className="bg-green-50 rounded-lg p-3">
                             <div className="text-xs text-green-700 font-medium mb-1">Comisiones</div>
-                            <div className="text-lg font-bold text-green-700">
+                            <div className="text-base sm:text-lg font-bold text-green-700 break-words">
                               {formatCurrency(summary.total_neta)}
                             </div>
                           </div>
@@ -208,17 +208,17 @@ export default function MisComisiones() {
                         handleDownloadPDF(batch.id);
                       }}
                       disabled={generatingPDF === batch.id}
-                      className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold ml-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] w-full active:scale-[0.98]"
                     >
                       {generatingPDF === batch.id ? (
                         <>
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Generando...</span>
+                          <span>Generando PDF...</span>
                         </>
                       ) : (
                         <>
                           <Download className="w-5 h-5" />
-                          <span>PDF</span>
+                          <span>Descargar Orden de Pago (PDF)</span>
                         </>
                       )}
                     </button>
@@ -226,8 +226,8 @@ export default function MisComisiones() {
                 </div>
 
                 {selectedBatch === batch.id && summary && (
-                  <div className="border-t border-neutral-200 p-6 bg-neutral-50">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  <div className="border-t border-neutral-200 p-4 sm:p-6 bg-neutral-50">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                       <GraficaColumnas
                         title="Comisiones por Ramo"
                         data={Object.entries(summary.by_ramo).map(([ramo, data]) => ({
@@ -235,6 +235,7 @@ export default function MisComisiones() {
                           value: data.neta
                         }))}
                         valueFormatter={(v) => formatCurrency(v)}
+                        height={220}
                       />
 
                       <GraficaCircular
@@ -244,34 +245,35 @@ export default function MisComisiones() {
                           value: data.neta
                         }))}
                         valueFormatter={(v) => formatCurrency(v)}
+                        size={200}
                       />
                     </div>
 
-                    <h4 className="text-lg font-bold text-neutral-900 mb-4">
+                    <h4 className="text-base sm:text-lg font-bold text-neutral-900 mb-3 sm:mb-4">
                       Desglose por Ramo
                     </h4>
 
-                    <div className="space-y-4 mb-6">
+                    <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                       {Object.entries(summary.by_ramo).map(([ramo, data]) => (
-                        <div key={ramo} className="bg-white rounded-lg p-4">
-                          <div className="font-semibold text-neutral-900 mb-3">
+                        <div key={ramo} className="bg-white rounded-lg p-3 sm:p-4">
+                          <div className="text-sm sm:text-base font-semibold text-neutral-900 mb-2 sm:mb-3">
                             {ramo} ({data.count} pólizas)
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                             <div>
                               <div className="text-neutral-600 mb-1">Prima Neta</div>
-                              <div className="font-bold text-neutral-900">
+                              <div className="font-bold text-neutral-900 break-words">
                                 {formatCurrency(details.filter(d => d.ramo === ramo).reduce((sum, d) => sum + d.prima_neta, 0))}
                               </div>
                             </div>
                             <div>
                               <div className="text-neutral-600 mb-1">Comisiones</div>
-                              <div className="font-bold text-green-700">{formatCurrency(data.neta)}</div>
+                              <div className="font-bold text-green-700 break-words">{formatCurrency(data.neta)}</div>
                             </div>
                           </div>
 
-                          <div className="mt-4 border-t border-neutral-100 pt-4">
-                            <div className="text-sm font-medium text-neutral-700 mb-2">
+                          <div className="mt-3 sm:mt-4 border-t border-neutral-100 pt-3 sm:pt-4">
+                            <div className="text-xs sm:text-sm font-medium text-neutral-700 mb-2">
                               Aseguradoras:
                             </div>
                             {Object.entries(summary.by_aseguradora)
@@ -279,9 +281,9 @@ export default function MisComisiones() {
                                 return details.some(d => d.ramo === ramo && d.aseguradora === aseg);
                               })
                               .map(([aseg, asegData]) => (
-                                <div key={aseg} className="flex justify-between text-sm py-1">
-                                  <span className="text-neutral-700">{aseg}</span>
-                                  <span className="font-semibold text-green-700">{formatCurrency(asegData.neta)}</span>
+                                <div key={aseg} className="flex justify-between text-xs sm:text-sm py-1 gap-2">
+                                  <span className="text-neutral-700 truncate">{aseg}</span>
+                                  <span className="font-semibold text-green-700 flex-shrink-0">{formatCurrency(asegData.neta)}</span>
                                 </div>
                               ))}
                           </div>
@@ -289,14 +291,14 @@ export default function MisComisiones() {
                       ))}
                     </div>
 
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-bold text-neutral-900">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
+                      <h4 className="text-base sm:text-lg font-bold text-neutral-900">
                         Detalle de Pólizas ({details.length})
                       </h4>
                       {details.length > 5 && (
                         <button
                           onClick={() => setShowAllPolicies(showAllPolicies === batch.id ? null : batch.id)}
-                          className="text-sm text-primary-600 hover:text-primary-700 font-semibold flex items-center space-x-1"
+                          className="text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-semibold flex items-center space-x-1 self-start sm:self-auto min-h-[44px] sm:min-h-0"
                         >
                           {showAllPolicies === batch.id ? (
                             <>
@@ -332,26 +334,26 @@ export default function MisComisiones() {
                                 }
                                 setExpandedPolicies(newExpanded);
                               }}
-                              className="p-3 cursor-pointer hover:bg-neutral-50 transition-colors"
+                              className="p-3 cursor-pointer hover:bg-neutral-50 transition-colors active:bg-neutral-100 min-h-[44px] flex items-center"
                             >
-                              <div className="flex items-start justify-between">
+                              <div className="flex items-start justify-between w-full gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center space-x-2 mb-1">
+                                  <div className="flex items-start space-x-2 mb-1">
                                     {isExpanded ? (
-                                      <ChevronDown className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                                      <ChevronDown className="w-4 h-4 text-neutral-400 flex-shrink-0 mt-0.5" />
                                     ) : (
-                                      <ChevronRight className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                                      <ChevronRight className="w-4 h-4 text-neutral-400 flex-shrink-0 mt-0.5" />
                                     )}
-                                    <div className="font-semibold text-neutral-900 truncate">{detail.poliza}</div>
+                                    <div className="text-sm sm:text-base font-semibold text-neutral-900 break-words">{detail.poliza}</div>
                                   </div>
-                                  <div className="ml-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600">
+                                  <div className="ml-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-y-0.5 sm:gap-x-3 sm:gap-y-1 text-xs text-neutral-600">
                                     <span className="truncate">{detail.nombre_asegurado || 'Sin asegurado'}</span>
-                                    <span className="text-neutral-400">•</span>
-                                    <span>{detail.ramo}</span>
+                                    <span className="hidden sm:inline text-neutral-400">•</span>
+                                    <span className="truncate">{detail.ramo}</span>
                                   </div>
                                 </div>
-                                <div className="text-right ml-3 flex-shrink-0">
-                                  <div className="font-bold text-green-700 text-sm">
+                                <div className="text-right flex-shrink-0">
+                                  <div className="font-bold text-green-700 text-sm sm:text-base whitespace-nowrap">
                                     {formatCurrency(commission || 0)}
                                   </div>
                                   <div className="text-xs text-neutral-500">
@@ -363,10 +365,10 @@ export default function MisComisiones() {
 
                             {isExpanded && (
                               <div className="border-t border-neutral-200 p-3 bg-neutral-50">
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
                                   <div>
                                     <div className="text-xs text-neutral-600 mb-1">Aseguradora</div>
-                                    <div className="font-medium text-neutral-900">{detail.aseguradora}</div>
+                                    <div className="font-medium text-neutral-900 break-words">{detail.aseguradora}</div>
                                   </div>
                                   <div>
                                     <div className="text-xs text-neutral-600 mb-1">Prima Neta</div>
@@ -377,9 +379,9 @@ export default function MisComisiones() {
                                     <div className="font-medium text-neutral-900">{formatCurrency(detail.importe_base)}</div>
                                   </div>
                                   {detail.concepto && (
-                                    <div className="col-span-2 sm:col-span-3">
+                                    <div className="col-span-1 sm:col-span-3">
                                       <div className="text-xs text-neutral-600 mb-1">Concepto</div>
-                                      <div className="text-sm text-neutral-700">{detail.concepto}</div>
+                                      <div className="text-xs sm:text-sm text-neutral-700 break-words">{detail.concepto}</div>
                                     </div>
                                   )}
                                 </div>

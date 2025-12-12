@@ -902,20 +902,22 @@ export default function ProduccionTotal() {
                 <button
                   onClick={() => goToPage(1)}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                  className="px-3 py-2.5 text-xs sm:text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium min-h-[44px]"
                 >
-                  Primera
+                  <span className="hidden sm:inline">Primera</span>
+                  <span className="sm:hidden">&#8676;</span>
                 </button>
 
                 <button
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                  className="px-3 py-2.5 text-xs sm:text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium min-h-[44px]"
                 >
-                  Anterior
+                  <span className="hidden sm:inline">Anterior</span>
+                  <span className="sm:hidden">&#8592;</span>
                 </button>
 
-                <div className="flex items-center gap-1">
+                <div className="hidden sm:flex items-center gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum: number;
                     if (totalPages <= 5) {
@@ -932,7 +934,7 @@ export default function ProduccionTotal() {
                       <button
                         key={pageNum}
                         onClick={() => goToPage(pageNum)}
-                        className={`w-8 h-8 text-sm rounded-lg font-medium transition-colors ${
+                        className={`min-w-[44px] min-h-[44px] text-sm rounded-lg font-medium transition-colors ${
                           currentPage === pageNum
                             ? 'bg-primary-600 text-white'
                             : 'border border-neutral-300 hover:bg-neutral-50'
@@ -947,17 +949,19 @@ export default function ProduccionTotal() {
                 <button
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                  className="px-3 py-2.5 text-xs sm:text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium min-h-[44px]"
                 >
-                  Siguiente
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <span className="sm:hidden">&#8594;</span>
                 </button>
 
                 <button
                   onClick={() => goToPage(totalPages)}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                  className="px-3 py-2.5 text-xs sm:text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium min-h-[44px]"
                 >
-                  Última
+                  <span className="hidden sm:inline">Última</span>
+                  <span className="sm:hidden">&#8677;</span>
                 </button>
               </div>
             </div>
