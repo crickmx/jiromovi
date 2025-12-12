@@ -276,30 +276,30 @@ export function AccesosNacional() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-800">Accesos Nacional</h1>
-            <p className="text-neutral-600 mt-1">Credenciales compartidas de acceso nacional</p>
+      <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+          <div className="flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-neutral-800">Accesos Nacional</h1>
+            <p className="text-sm sm:text-base text-neutral-600 mt-1">Credenciales compartidas de acceso nacional</p>
           </div>
           <button
             onClick={() => openModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors min-h-[44px] w-full sm:w-auto text-sm sm:text-base font-semibold"
           >
             <Plus className="w-4 h-4" />
             Agregar Acceso
           </button>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-3 sm:p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" />
             <input
               type="text"
-              placeholder="Buscar por Aseguradora, Usuario 1 o Usuario 2..."
+              placeholder="Buscar por Aseguradora, Usuario..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px]"
             />
           </div>
         </div>
@@ -354,7 +354,7 @@ export function AccesosNacional() {
                           href={acceso.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors"
+                          className="inline-flex items-center gap-1 px-3 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors min-h-[44px]"
                         >
                           Ingresar
                           <ExternalLink className="w-3 h-3" />
@@ -363,7 +363,7 @@ export function AccesosNacional() {
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => openDetailsModal(acceso)}
-                          className="p-2 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100"
+                          className="p-2.5 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100 min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
                           title="Ver detalles"
                         >
                           <Eye className="w-5 h-5" />
@@ -373,7 +373,7 @@ export function AccesosNacional() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => openModal(acceso)}
-                            className="p-1 text-neutral-600 hover:text-primary-600 transition-colors"
+                            className="p-2.5 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100 min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
                             title="Editar"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -381,7 +381,7 @@ export function AccesosNacional() {
                           {canDelete && (
                             <button
                               onClick={() => handleDelete(acceso)}
-                              className="p-1 text-neutral-600 hover:text-red-600 transition-colors"
+                              className="p-2.5 text-neutral-600 hover:text-red-600 transition-colors rounded-lg hover:bg-neutral-100 min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
                               title="Eliminar"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -478,17 +478,17 @@ export function AccesosNacional() {
                 <p className="text-xs text-neutral-500 mt-1">Debe comenzar con http:// o https://</p>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors"
+                  className="px-4 py-2.5 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors min-h-[44px] font-semibold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors min-h-[44px] font-semibold"
                 >
                   {editingAcceso ? 'Guardar Cambios' : 'Agregar Acceso'}
                 </button>

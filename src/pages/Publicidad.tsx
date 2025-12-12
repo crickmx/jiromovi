@@ -182,21 +182,21 @@ export function Publicidad() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">
               Publicidad
             </h1>
-            <p className="text-neutral-600">
+            <p className="text-sm sm:text-base text-neutral-600">
               Crea diseños personalizados con tu logo y texto
             </p>
           </div>
           {isAdmin && (
             <button
               onClick={() => setShowNuevaPlantillaModal(true)}
-              className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
+              className="flex items-center justify-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 sm:px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px] w-full sm:w-auto"
             >
               <Plus className="w-5 h-5" />
               <span>Nueva Plantilla</span>
@@ -204,45 +204,45 @@ export function Publicidad() {
           )}
         </div>
 
-        <div className="flex space-x-2 border-b border-neutral-200">
+        <div className="flex overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 space-x-2 sm:space-x-2 border-b border-neutral-200 scrollbar-hide">
           <button
             onClick={() => setActiveTab('biblioteca')}
-            className={`px-6 py-3 font-semibold transition-all ${
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
               activeTab === 'biblioteca'
                 ? 'text-primary-600 border-b-2 border-primary-600'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
             <div className="flex items-center space-x-2">
-              <Palette className="w-5 h-5" />
-              <span>Biblioteca</span>
+              <Palette className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">Biblioteca</span>
             </div>
           </button>
           <button
             onClick={() => setActiveTab('mis-disenos')}
-            className={`px-6 py-3 font-semibold transition-all ${
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
               activeTab === 'mis-disenos'
                 ? 'text-primary-600 border-b-2 border-primary-600'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
             <div className="flex items-center space-x-2">
-              <Image className="w-5 h-5" />
-              <span>Mis Diseños</span>
+              <Image className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">Mis Diseños</span>
             </div>
           </button>
           {isAdmin && (
             <button
               onClick={() => setActiveTab('admin')}
-              className={`px-6 py-3 font-semibold transition-all ${
+              className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
                 activeTab === 'admin'
                   ? 'text-primary-600 border-b-2 border-primary-600'
                   : 'text-neutral-600 hover:text-neutral-900'
               }`}
             >
               <div className="flex items-center space-x-2">
-                <Edit className="w-5 h-5" />
-                <span>Gestión</span>
+                <Edit className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-sm sm:text-base">Gestión</span>
               </div>
             </button>
           )}
@@ -250,38 +250,40 @@ export function Publicidad() {
       </div>
 
       {activeTab === 'biblioteca' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+        <div className="space-y-4 sm:space-y-6">
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4 sm:w-5 sm:h-5" />
                 <input
                   type="text"
                   placeholder="Buscar plantillas..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                  className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all min-h-[44px]"
                 />
               </div>
-              <select
-                value={selectedCategoria}
-                onChange={(e) => setSelectedCategoria(e.target.value)}
-                className="px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-              >
-                <option value="todas">Todas las categorías</option>
-                {categorias.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-                ))}
-              </select>
-              <select
-                value={selectedTipo}
-                onChange={(e) => setSelectedTipo(e.target.value)}
-                className="px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-              >
-                <option value="todos">Todos los tipos</option>
-                <option value="imagen">Imágenes</option>
-                <option value="video">Videos</option>
-              </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <select
+                  value={selectedCategoria}
+                  onChange={(e) => setSelectedCategoria(e.target.value)}
+                  className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all min-h-[44px]"
+                >
+                  <option value="todas">Todas las categorías</option>
+                  {categorias.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedTipo}
+                  onChange={(e) => setSelectedTipo(e.target.value)}
+                  className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all min-h-[44px]"
+                >
+                  <option value="todos">Todos los tipos</option>
+                  <option value="imagen">Imágenes</option>
+                  <option value="video">Videos</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -290,21 +292,21 @@ export function Publicidad() {
               <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : filteredPlantillas.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-12 text-center">
-              <Palette className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-neutral-700 mb-2">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center">
+              <Palette className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
+              <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
                 No hay plantillas disponibles
               </h3>
-              <p className="text-neutral-500">
+              <p className="text-sm sm:text-base text-neutral-500">
                 {isAdmin ? 'Crea tu primera plantilla para comenzar' : 'Próximamente habrá plantillas disponibles'}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredPlantillas.map(plantilla => (
                 <div
                   key={plantilla.id}
-                  className="bg-white rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 group"
+                  className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 active:scale-[0.98]"
                 >
                   <div className="relative aspect-video bg-neutral-100">
                     {plantilla.miniatura_url ? (
@@ -316,14 +318,14 @@ export function Publicidad() {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         {plantilla.tipo === 'imagen' ? (
-                          <Image className="w-16 h-16 text-neutral-300" />
+                          <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
                         ) : (
-                          <Video className="w-16 h-16 text-neutral-300" />
+                          <Video className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
                         )}
                       </div>
                     )}
-                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 flex items-center justify-between">
+                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
                         plantilla.tipo === 'imagen'
                           ? 'bg-blue-100 text-blue-700'
                           : 'bg-purple-100 text-purple-700'
@@ -336,7 +338,7 @@ export function Publicidad() {
                             e.stopPropagation();
                             handleEliminarPlantilla(plantilla);
                           }}
-                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-200 shadow-lg"
+                          className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-200 shadow-lg min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95"
                           title="Eliminar plantilla"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -344,19 +346,19 @@ export function Publicidad() {
                       )}
                     </div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-neutral-900 mb-1">{plantilla.titulo}</h3>
+                  <div className="p-3 sm:p-4">
+                    <h3 className="text-base sm:text-lg font-semibold text-neutral-900 mb-1 line-clamp-1">{plantilla.titulo}</h3>
                     {plantilla.descripcion && (
-                      <p className="text-sm text-neutral-600 mb-3 line-clamp-2">{plantilla.descripcion}</p>
+                      <p className="text-xs sm:text-sm text-neutral-600 mb-2 sm:mb-3 line-clamp-2">{plantilla.descripcion}</p>
                     )}
                     {plantilla.publicidad_categorias && (
-                      <span className="inline-block px-2 py-1 bg-neutral-100 text-neutral-700 text-xs rounded-lg mb-3">
+                      <span className="inline-block px-2 py-1 bg-neutral-100 text-neutral-700 text-xs rounded-lg mb-2 sm:mb-3">
                         {plantilla.publicidad_categorias.nombre}
                       </span>
                     )}
                     <button
                       onClick={() => handleUsarPlantilla(plantilla)}
-                      className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
+                      className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 sm:py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold text-sm sm:text-base min-h-[44px] active:scale-95"
                     >
                       Usar este diseño
                     </button>
@@ -369,8 +371,8 @@ export function Publicidad() {
       )}
 
       {activeTab === 'mis-disenos' && (
-        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-          <h2 className="text-2xl font-display font-bold text-neutral-900 mb-6">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+          <h2 className="text-xl sm:text-2xl font-display font-bold text-neutral-900 mb-4 sm:mb-6">
             Mis Diseños Personalizados
           </h2>
           {loading ? (
@@ -378,27 +380,27 @@ export function Publicidad() {
               <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : disenos.length === 0 ? (
-            <div className="text-center py-12">
-              <Image className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-neutral-700 mb-2">
+            <div className="text-center py-8 sm:py-12">
+              <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
+              <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
                 No tienes diseños personalizados
               </h3>
-              <p className="text-neutral-500 mb-6">
+              <p className="text-sm sm:text-base text-neutral-500 mb-4 sm:mb-6">
                 Crea tu primer diseño desde la biblioteca
               </p>
               <button
                 onClick={() => setActiveTab('biblioteca')}
-                className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
+                className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-5 sm:px-6 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px]"
               >
                 Ir a la Biblioteca
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {disenos.map(diseno => (
                 <div
                   key={diseno.id}
-                  className="bg-white rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200"
+                  className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 active:scale-[0.98]"
                 >
                   <div className="relative aspect-video bg-neutral-100">
                     {diseno.archivo_resultante_url ? (
@@ -409,15 +411,15 @@ export function Publicidad() {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Image className="w-16 h-16 text-neutral-300" />
+                        <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
                       </div>
                     )}
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-neutral-900 mb-1">
+                  <div className="p-3 sm:p-4">
+                    <h3 className="text-base sm:text-lg font-semibold text-neutral-900 mb-1 line-clamp-1">
                       {diseno.publicidad_plantillas?.titulo || 'Diseño'}
                     </h3>
-                    <p className="text-sm text-neutral-600 mb-3">
+                    <p className="text-xs sm:text-sm text-neutral-600 mb-3">
                       {new Date(diseno.created_at).toLocaleDateString('es-MX', {
                         day: 'numeric',
                         month: 'long',
@@ -427,16 +429,16 @@ export function Publicidad() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleDescargarDiseno(diseno.archivo_resultante_url || '', diseno.publicidad_plantillas?.titulo || 'Diseño')}
-                        className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
+                        className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 sm:py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold text-sm sm:text-base min-h-[44px] active:scale-95"
                       >
                         Descargar
                       </button>
                       <button
                         onClick={() => handleEliminarDiseno(diseno)}
-                        className="p-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all duration-200 hover:scale-105"
+                        className="p-2.5 sm:p-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all duration-200 hover:scale-105 min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95"
                         title="Eliminar diseño"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
                     </div>
                   </div>
