@@ -6,9 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
-const WAZZUP24_API_KEY = 'aeaecead58f14a3286b37e4d0b81dc3a';
-const WAZZUP24_CHANNEL = '5215588545516';
-const WAZZUP24_API_URL = 'https://api.wazzup24.com/v3/messages';
+const WAZZUP24_API_URL = 'https://api.wazzup24.com/v3/message';
 
 interface NotificationJob {
   id: string;
@@ -360,6 +358,16 @@ async function processWhatsAppNotification(
     whatsappMessage = `Hola ${user.nombre},\n\n${job.payload.titulo || 'Nueva notificación'}\n\n${job.payload.mensaje || ''}`;
   }
 
+  const { data: whatsappConfig } = await supabase
+    .from('whatsapp_configuracion')
+    .select('api_key, channel_id_uuid')
+    .eq('activo', true)
+    .single();
+
+  if (!whatsappConfig || !whatsappConfig.api_key || !whatsappConfig.channel_id_uuid) {
+    throw new Error('Configuración de WhatsApp no encontrada o incompleta');
+  }
+
   const normalizedPhone = phone.startsWith('+52') ? phone.replace('+52', '52') : phone.replace(/[^0-9]/g, '');
 
   const startTime = Date.now();
@@ -367,11 +375,11 @@ async function processWhatsAppNotification(
   const response = await fetch(WAZZUP24_API_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${WAZZUP24_API_KEY}`,
+      'Authorization': `Bearer ${whatsappConfig.api_key}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      channelId: WAZZUP24_CHANNEL,
+      channelId: whatsappConfig.channel_id_uuid,
       chatId: normalizedPhone + '@c.us',
       chatType: 'whatsapp',
       text: whatsappMessage
