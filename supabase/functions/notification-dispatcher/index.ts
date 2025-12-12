@@ -10,18 +10,16 @@ const WAZZUP24_API_URL = 'https://api.wazzup24.com/v3/message';
 
 interface NotificationJob {
   id: string;
+  event_code: string;
   user_id: string;
-  event_catalog_id: string;
-  notification_type_code: string;
-  payload: any;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  retry_count: number;
-  scheduled_at: string;
-  processed_at?: string;
-  error_message?: string;
+  channel: 'in_app' | 'email' | 'whatsapp';
+  status: string;
+  payload: Record<string, any>;
+  attempt_count: number;
+  max_attempts: number;
 }
 
-interface User {
+interface UserData {
   id: string;
   nombre: string;
   apellidos: string;
@@ -33,21 +31,11 @@ interface User {
 }
 
 interface EventCatalog {
-  id: string;
   event_code: string;
   event_name: string;
-  description: string;
-  default_priority: string;
-  default_channels: string[];
-}
-
-interface NotificationTemplate {
-  id: string;
-  email_subject?: string;
-  email_body_html?: string;
-  whatsapp_template?: string;
-  in_app_title?: string;
-  in_app_message?: string;
+  template_in_app: any;
+  template_email: any;
+  template_whatsapp: any;
 }
 
 Deno.serve(async (req) => {
@@ -67,15 +55,12 @@ Deno.serve(async (req) => {
 
     console.log('🚀 Notification Dispatcher iniciado');
 
-    const now = new Date().toISOString();
-
     const { data: pendingJobs, error: jobsError } = await supabase
-      .from('transactional_notification_queue')
+      .from('notification_jobs')
       .select('*')
       .eq('status', 'pending')
-      .lte('scheduled_at', now)
-      .order('scheduled_at', { ascending: true })
-      .limit(50);
+      .order('created_at', { ascending: true })
+      .limit(100);
 
     if (jobsError) {
       console.error('❌ Error obteniendo trabajos pendientes:', jobsError);
@@ -96,10 +81,10 @@ Deno.serve(async (req) => {
 
     for (const job of pendingJobs as NotificationJob[]) {
       try {
-        console.log(`\n📝 Procesando trabajo ${job.id}`);
+        console.log(`\n📝 Procesando job ${job.id} - Canal: ${job.channel} - Evento: ${job.event_code}`);
 
         await supabase
-          .from('transactional_notification_queue')
+          .from('notification_jobs')
           .update({ status: 'processing' })
           .eq('id', job.id);
 
@@ -107,107 +92,101 @@ Deno.serve(async (req) => {
           .from('usuarios')
           .select('id, nombre, apellidos, nombre_completo, email_laboral, email_personal, celular_laboral, celular_personal')
           .eq('id', job.user_id)
-          .single();
+          .maybeSingle();
 
         if (userError || !user) {
           throw new Error(`Usuario no encontrado: ${job.user_id}`);
         }
 
         const { data: eventCatalog, error: eventError } = await supabase
-          .from('transactional_event_catalog')
+          .from('notification_events_catalog')
           .select('*')
-          .eq('id', job.event_catalog_id)
-          .single();
-
-        if (eventError || !eventCatalog) {
-          throw new Error(`Evento no encontrado en catálogo: ${job.event_catalog_id}`);
-        }
-
-        const { data: template, error: templateError } = await supabase
-          .from('transactional_notification_templates')
-          .select('*')
-          .eq('event_catalog_id', job.event_catalog_id)
+          .eq('event_code', job.event_code)
           .eq('active', true)
           .maybeSingle();
 
-        if (templateError) {
-          console.warn('⚠️ Error obteniendo plantilla:', templateError);
+        if (eventError || !eventCatalog) {
+          throw new Error(`Evento no encontrado o inactivo: ${job.event_code}`);
         }
 
-        const channels = eventCatalog.default_channels || [];
-        console.log(`📡 Canales a procesar:`, channels);
+        let providerMessageId: string | null = null;
+        let success = false;
 
-        const results: any = {};
-
-        if (channels.includes('in_app')) {
+        if (job.channel === 'in_app') {
           console.log('  📱 Procesando notificación in-app');
-          try {
-            const inAppResult = await processInAppNotification(supabase, user, job, template);
-            results.in_app = inAppResult;
-          } catch (error: any) {
-            console.error('  ❌ Error en notificación in-app:', error.message);
-            results.in_app = { error: error.message };
-          }
-        }
-
-        if (channels.includes('email')) {
+          providerMessageId = await processInAppNotification(supabase, user, job, eventCatalog);
+          success = true;
+        } else if (job.channel === 'email') {
           console.log('  📧 Procesando notificación por email');
-          try {
-            const emailResult = await processEmailNotification(supabase, user, job, template);
-            results.email = emailResult;
-          } catch (error: any) {
-            console.error('  ❌ Error en email:', error.message);
-            results.email = { error: error.message };
-          }
-        }
-
-        if (channels.includes('whatsapp')) {
+          providerMessageId = await processEmailNotification(supabase, user, job, eventCatalog);
+          success = true;
+        } else if (job.channel === 'whatsapp') {
           console.log('  📱 Procesando notificación por WhatsApp');
-          try {
-            const whatsappResult = await processWhatsAppNotification(supabase, user, job, template);
-            results.whatsapp = whatsappResult;
-          } catch (error: any) {
-            console.error('  ❌ Error en WhatsApp:', error.message);
-            results.whatsapp = { error: error.message };
-          }
+          providerMessageId = await processWhatsAppNotification(supabase, user, job, eventCatalog);
+          success = true;
         }
 
         await supabase
-          .from('transactional_notification_queue')
+          .from('notification_jobs')
           .update({
-            status: 'completed',
-            processed_at: new Date().toISOString(),
-            error_message: null
+            status: 'sent',
+            provider_message_id: providerMessageId,
+            sent_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           })
           .eq('id', job.id);
 
+        await supabase
+          .from('notification_delivery_attempts')
+          .insert({
+            job_id: job.id,
+            attempt_number: job.attempt_count + 1,
+            status: 'sent',
+            attempted_at: new Date().toISOString()
+          });
+
         processed++;
-        console.log(`✅ Trabajo ${job.id} completado exitosamente`);
+        console.log(`✅ Job ${job.id} completado exitosamente`);
 
       } catch (error: any) {
-        console.error(`❌ Error procesando trabajo ${job.id}:`, error.message);
-        
-        const retryCount = job.retry_count + 1;
-        const maxRetries = 3;
+        console.error(`❌ Error procesando job ${job.id}:`, error.message);
 
-        if (retryCount >= maxRetries) {
+        const attemptCount = job.attempt_count + 1;
+        const maxAttempts = job.max_attempts || 3;
+
+        await supabase
+          .from('notification_delivery_attempts')
+          .insert({
+            job_id: job.id,
+            attempt_number: attemptCount,
+            status: 'failed',
+            error_message: error.message,
+            attempted_at: new Date().toISOString()
+          });
+
+        if (attemptCount >= maxAttempts) {
           await supabase
-            .from('transactional_notification_queue')
+            .from('notification_jobs')
             .update({
               status: 'failed',
-              error_message: error.message,
-              retry_count: retryCount
+              last_error: error.message,
+              attempt_count: attemptCount,
+              updated_at: new Date().toISOString()
             })
             .eq('id', job.id);
           failed++;
         } else {
+          const nextRetryMinutes = Math.pow(2, attemptCount);
+          const nextRetryAt = new Date(Date.now() + nextRetryMinutes * 60000).toISOString();
+
           await supabase
-            .from('transactional_notification_queue')
+            .from('notification_jobs')
             .update({
               status: 'pending',
-              error_message: error.message,
-              retry_count: retryCount,
-              scheduled_at: new Date(Date.now() + (retryCount * 60000)).toISOString()
+              last_error: error.message,
+              attempt_count: attemptCount,
+              next_retry_at: nextRetryAt,
+              updated_at: new Date().toISOString()
             })
             .eq('id', job.id);
         }
@@ -245,83 +224,84 @@ Deno.serve(async (req) => {
 
 async function processInAppNotification(
   supabase: any,
-  user: User,
+  user: UserData,
   job: NotificationJob,
-  template: NotificationTemplate | null
-): Promise<{ notification_id: string }> {
-  console.log('  📱 Procesando notificación in-app');
+  event: EventCatalog
+): Promise<string> {
+  const template = event.template_in_app || {};
 
-  const title = template?.in_app_title || job.payload.title || 'Nueva notificación';
-  const message = template?.in_app_message || job.payload.message || '';
+  let titulo = template.titulo || 'Nueva notificación';
+  let mensaje = template.mensaje || '';
+  let accionUrl = template.accion_url || null;
 
-  let finalTitle = title;
-  let finalMessage = message;
+  Object.keys(job.payload).forEach(key => {
+    const value = job.payload[key];
+    titulo = titulo.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    mensaje = mensaje.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    if (accionUrl) {
+      accionUrl = accionUrl.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    }
+  });
 
-  if (job.payload) {
-    Object.keys(job.payload).forEach(key => {
-      const value = job.payload[key];
-      finalTitle = finalTitle.replace(new RegExp(`{{${key}}}`, 'g'), value);
-      finalMessage = finalMessage.replace(new RegExp(`{{${key}}}`, 'g'), value);
-    });
-  }
+  titulo = titulo.replace(/{{nombre}}/g, user.nombre || '');
+  mensaje = mensaje.replace(/{{nombre}}/g, user.nombre || '');
 
-  const { data: notification, error } = await supabase
+  const { data, error } = await supabase
     .from('notificaciones')
     .insert({
       usuario_id: user.id,
-      titulo: finalTitle,
-      mensaje: finalMessage,
-      tipo: job.payload.priority || 'info',
-      modulo: job.payload.module || 'Sistema',
-      accion_url: job.payload.action_url || null,
+      titulo,
+      mensaje,
+      tipo: 'info',
+      modulo: job.payload.modulo || event.module || 'Sistema',
+      accion_url: accionUrl,
       leida: false,
-      prioridad: job.payload.priority || 'normal'
+      prioridad: 'normal'
     })
     .select('id')
     .single();
 
   if (error) throw error;
 
-  console.log(`  ✓ Notificación in-app creada: ${notification.id}`);
-
-  await supabase
-    .from('transactional_notification_logs')
-    .insert({
-      queue_id: job.id,
-      channel: 'in_app',
-      status: 'sent',
-      sent_at: new Date().toISOString()
-    });
-
-  return { notification_id: notification.id };
+  console.log(`  ✓ Notificación in-app creada: ${data.id}`);
+  return data.id;
 }
 
 async function processEmailNotification(
   supabase: any,
-  user: User,
+  user: UserData,
   job: NotificationJob,
-  template: NotificationTemplate | null
-): Promise<{ message_id?: string }> {
-  console.log('  📧 Procesando notificación por email');
-
+  event: EventCatalog
+): Promise<string> {
   const email = user.email_laboral || user.email_personal;
   if (!email) {
     throw new Error('Usuario no tiene email configurado');
   }
 
-  const subject = template?.email_subject || job.payload.subject || 'Notificación MOVI Digital';
-  const body = template?.email_body_html || job.payload.message || '';
+  const template = event.template_email || {};
+  let asunto = template.asunto || 'Notificación MOVI Digital';
 
-  let finalSubject = subject;
-  let finalBody = body;
+  const { data: plantilla } = await supabase
+    .from('correo_plantillas')
+    .select('html_plantilla')
+    .eq('tipo_notificacion_id', (await supabase
+      .from('correo_tipos_notificacion')
+      .select('id')
+      .eq('codigo', job.event_code)
+      .maybeSingle()
+    )?.data?.id)
+    .maybeSingle();
 
-  if (job.payload) {
-    Object.keys(job.payload).forEach(key => {
-      const value = job.payload[key];
-      finalSubject = finalSubject.replace(new RegExp(`{{${key}}}`, 'g'), value);
-      finalBody = finalBody.replace(new RegExp(`{{${key}}}`, 'g'), value);
-    });
-  }
+  let cuerpoHtml = plantilla?.html_plantilla || '<p>{{mensaje}}</p>';
+
+  Object.keys(job.payload).forEach(key => {
+    const value = job.payload[key];
+    asunto = asunto.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    cuerpoHtml = cuerpoHtml.replace(new RegExp(`{{${key}}}`, 'g'), value);
+  });
+
+  cuerpoHtml = cuerpoHtml.replace(/{{nombre}}/g, user.nombre || '');
+  asunto = asunto.replace(/{{nombre}}/g, user.nombre || '');
 
   const startTime = Date.now();
 
@@ -335,8 +315,8 @@ async function processEmailNotification(
       },
       body: JSON.stringify({
         to: email,
-        subject: finalSubject,
-        html: finalBody
+        subject: asunto,
+        html: cuerpoHtml
       })
     }
   );
@@ -345,19 +325,17 @@ async function processEmailNotification(
   const result = await response.json();
 
   await supabase
-    .from('transactional_notification_logs')
+    .from('notification_provider_logs')
     .insert({
-      queue_id: job.id,
-      channel: 'email',
-      status: response.ok ? 'sent' : 'failed',
+      job_id: job.id,
       provider: 'resend',
-      provider_message_id: result.messageId || null,
-      request_payload: { email, subject: finalSubject },
+      provider_message_id: result.resend_id || null,
+      request_payload: { email, subject: asunto },
       response_payload: result,
       http_status: response.status,
-      response_time_ms: responseTime,
-      sent_at: response.ok ? new Date().toISOString() : null,
-      error_message: response.ok ? null : result.error
+      success: response.ok,
+      error_message: response.ok ? null : result.error,
+      response_time_ms: responseTime
     });
 
   if (!response.ok) {
@@ -365,34 +343,39 @@ async function processEmailNotification(
   }
 
   console.log(`  ✓ Email enviado a ${email}`);
-  return { message_id: result.messageId };
+  return result.resend_id || result.id || '';
 }
 
 async function processWhatsAppNotification(
   supabase: any,
-  user: User,
+  user: UserData,
   job: NotificationJob,
-  template: NotificationTemplate | null
-): Promise<{ provider_message_id?: string }> {
-  console.log('  📱 Procesando notificación por WhatsApp');
-
+  event: EventCatalog
+): Promise<string> {
   const phone = user.celular_laboral || user.celular_personal;
   if (!phone) {
     throw new Error('Usuario no tiene teléfono configurado');
   }
 
-  const message = template?.whatsapp_template || job.payload.message || '';
+  const { data: plantilla } = await supabase
+    .from('correo_plantillas')
+    .select('whatsapp_plantilla')
+    .eq('tipo_notificacion_id', (await supabase
+      .from('correo_tipos_notificacion')
+      .select('id')
+      .eq('codigo', job.event_code)
+      .maybeSingle()
+    )?.data?.id)
+    .maybeSingle();
 
-  let finalMessage = message;
+  let mensaje = plantilla?.whatsapp_plantilla || '{{nombre}}, tienes una nueva notificación en MOVI Digital.';
 
-  if (job.payload) {
-    Object.keys(job.payload).forEach(key => {
-      const value = job.payload[key];
-      finalMessage = finalMessage.replace(new RegExp(`{{${key}}}`, 'g'), value);
-    });
-  }
+  Object.keys(job.payload).forEach(key => {
+    const value = job.payload[key];
+    mensaje = mensaje.replace(new RegExp(`{{${key}}}`, 'g'), value);
+  });
 
-  finalMessage += '\n\n---\n📱 *MOVI Digital*\nTu plataforma de gestión integral';
+  mensaje = mensaje.replace(/{{nombre}}/g, user.nombre || '');
 
   const { data: whatsappConfig } = await supabase
     .from('whatsapp_configuracion')
@@ -405,12 +388,11 @@ async function processWhatsAppNotification(
   }
 
   let normalizedPhone = phone.replace(/[^0-9]/g, '');
-
   if (normalizedPhone.length === 10) {
     normalizedPhone = '521' + normalizedPhone;
   }
 
-  console.log(`  📱 Número normalizado: ${normalizedPhone} (original: ${phone})`);
+  console.log(`  📱 Enviando a: ${normalizedPhone}`);
 
   const startTime = Date.now();
 
@@ -424,7 +406,7 @@ async function processWhatsAppNotification(
       channelId: whatsappConfig.channel_id_uuid,
       chatId: normalizedPhone + '@c.us',
       chatType: 'whatsapp',
-      text: finalMessage
+      text: mensaje
     })
   });
 
@@ -432,19 +414,17 @@ async function processWhatsAppNotification(
   const result = await response.json().catch(() => ({}));
 
   await supabase
-    .from('transactional_notification_logs')
+    .from('notification_provider_logs')
     .insert({
-      queue_id: job.id,
-      channel: 'whatsapp',
-      status: response.ok ? 'sent' : 'failed',
+      job_id: job.id,
       provider: 'wazzup24',
       provider_message_id: result.messageId || null,
-      request_payload: { phone: normalizedPhone, message: finalMessage },
+      request_payload: { phone: normalizedPhone, message: mensaje },
       response_payload: result,
       http_status: response.status,
-      response_time_ms: responseTime,
-      sent_at: response.ok ? new Date().toISOString() : null,
-      error_message: response.ok ? null : JSON.stringify(result)
+      success: response.ok,
+      error_message: response.ok ? null : JSON.stringify(result),
+      response_time_ms: responseTime
     });
 
   if (!response.ok) {
@@ -452,5 +432,5 @@ async function processWhatsAppNotification(
   }
 
   console.log(`  ✓ WhatsApp enviado a ${normalizedPhone}`);
-  return { provider_message_id: result.messageId };
+  return result.messageId || '';
 }
