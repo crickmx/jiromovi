@@ -26,8 +26,8 @@ interface UserData {
   nombre: string;
   apellidos: string;
   nombre_completo: string;
-  correo_electronico_laboral: string | null;
-  correo_electronico: string | null;
+  email_laboral: string | null;
+  email_personal: string | null;
   celular_laboral: string | null;
   celular_personal: string | null;
 }
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
 
         const { data: user, error: userError } = await supabaseClient
           .from('usuarios')
-          .select('id, nombre, apellidos, nombre_completo, correo_electronico_laboral, correo_electronico, celular_laboral, celular_personal')
+          .select('id, nombre, apellidos, nombre_completo, email_laboral, email_personal, celular_laboral, celular_personal')
           .eq('id', job.user_id)
           .single();
 
@@ -271,7 +271,7 @@ async function processEmailNotification(
 ): Promise<{ provider_message_id?: string }> {
   console.log('  📧 Procesando notificación por email');
 
-  const email = user.correo_electronico_laboral || user.correo_electronico;
+  const email = user.email_laboral || user.email_personal;
   if (!email) {
     throw new Error('Usuario no tiene email configurado');
   }
