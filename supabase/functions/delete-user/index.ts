@@ -85,22 +85,34 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { error: deleteUserError } = await supabaseAdmin
-      .from('usuarios')
-      .delete()
-      .eq('id', userId);
+    const { data: deleteResult, error: rpcError } = await supabaseAdmin
+      .rpc('safe_delete_user', { user_id_to_delete: userId });
 
-    if (deleteUserError) {
-      console.error('Error deleting from usuarios table:', deleteUserError);
+    if (rpcError) {
+      console.error('Error calling safe_delete_user function:', rpcError);
+      return new Response(
+        JSON.stringify({
+          error: 'Error al eliminar usuario de la base de datos',
+          details: rpcError.message
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
-      let errorMessage = 'Error al eliminar usuario de la base de datos';
+    if (!deleteResult || !deleteResult.success) {
+      console.error('Delete function returned error:', deleteResult);
 
-      if (deleteUserError.message.includes('foreign key') || deleteUserError.code === '23503') {
-        errorMessage = 'No se puede eliminar este usuario porque tiene registros asociados (comunicados, cursos, notificaciones, etc.). Primero debes reasignar o eliminar esos registros.';
-      }
+      const errorMessage = deleteResult?.error || 'Error desconocido al eliminar usuario';
+      const errorDetails = deleteResult?.detail || '';
 
       return new Response(
-        JSON.stringify({ error: errorMessage, details: deleteUserError.message }),
+        JSON.stringify({
+          error: errorMessage,
+          details: errorDetails
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -111,11 +123,26 @@ Deno.serve(async (req: Request) => {
     const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (deleteAuthError) {
-      console.error('Error deleting auth user (user already deleted from usuarios):', deleteAuthError);
+      console.error('Error deleting auth user:', deleteAuthError);
+      return new Response(
+        JSON.stringify({
+          error: 'Usuario eliminado de la base de datos pero error al eliminar de autenticación',
+          details: deleteAuthError.message,
+          partialSuccess: true
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'Usuario eliminado correctamente' }),
+      JSON.stringify({
+        success: true,
+        message: 'Usuario eliminado correctamente',
+        details: deleteResult
+      }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
