@@ -341,6 +341,21 @@ export async function deleteBatch(batchId: string) {
   };
 }
 
+export interface ValidationError {
+  severity: 'blocking' | 'warning';
+  code: string;
+  message: string;
+  count: number;
+  affectedRows: number[];
+  examples: Array<{
+    row_index: number;
+    poliza?: string;
+    vendor_name?: string;
+    vendor_email?: string;
+    document_id?: string;
+  }>;
+}
+
 export interface BatchConversionValidation {
   can_convert: boolean;
   errors: string[];
@@ -348,6 +363,7 @@ export interface BatchConversionValidation {
   summary: {
     total_documents: number;
     unmatched_documents?: number;
+    assigned_documents?: number;
     total_agents: number;
     weeks: Array<{
       week_number: number;
@@ -356,6 +372,29 @@ export interface BatchConversionValidation {
       document_count: number;
       agent_count: number;
     }>;
+  };
+}
+
+export interface DetailedBatchConversionValidation {
+  canConvert: boolean;
+  blockingErrorsCount: number;
+  warningsCount: number;
+  errors: ValidationError[];
+  summary: {
+    total_documents: number;
+    matched_documents: number;
+    unmatched_documents: number;
+    missing_dates: number;
+    empty_vendor: number;
+    total_agents: number;
+    weeks: Array<{
+      week_number: number;
+      week_start: string;
+      week_end: string;
+      document_count: number;
+      agent_count: number;
+    }>;
+    has_no_date_documents: boolean;
   };
 }
 
@@ -384,6 +423,35 @@ export async function validateBatchForConversion(
   }
 
   return data as BatchConversionValidation;
+}
+
+export async function validateBatchForConversionDetailed(
+  batchId: string
+): Promise<DetailedBatchConversionValidation> {
+  const { data: session } = await supabase.auth.getSession();
+
+  if (!session?.session?.access_token) {
+    throw new Error('No hay sesión activa');
+  }
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-batch-conversion/${batchId}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.session.access_token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Error al validar batch');
+  }
+
+  const result = await response.json();
+  return result as DetailedBatchConversionValidation;
 }
 
 export async function convertBatchToCommissions(

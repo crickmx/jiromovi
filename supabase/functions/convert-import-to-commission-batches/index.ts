@@ -97,27 +97,105 @@ Deno.serve(async (req: Request) => {
     }
 
     const weekGroups: Record<string, WeekGroup> = {};
+    const noDateGroup: any[] = [];
 
     for (const doc of documents) {
       const docData = doc.document_data || {};
-      const dateField = docData.fecha_fpago || docData.fecha || docData.date || new Date().toISOString();
+      const dateField = docData.fecha_fpago || docData.fecha || docData.date;
 
-      const weekInfo = getWeekInfo(dateField);
-      const key = `${weekInfo.week_number}-${weekInfo.period_start}`;
-
-      if (!weekGroups[key]) {
-        weekGroups[key] = {
-          week_number: weekInfo.week_number,
-          period_start: weekInfo.period_start,
-          period_end: weekInfo.period_end,
-          documents: [],
-        };
+      if (!dateField || dateField === '') {
+        noDateGroup.push(doc);
+        continue;
       }
 
-      weekGroups[key].documents.push(doc);
+      try {
+        const weekInfo = getWeekInfo(dateField);
+        const key = `${weekInfo.week_number}-${weekInfo.period_start}`;
+
+        if (!weekGroups[key]) {
+          weekGroups[key] = {
+            week_number: weekInfo.week_number,
+            period_start: weekInfo.period_start,
+            period_end: weekInfo.period_end,
+            documents: [],
+          };
+        }
+
+        weekGroups[key].documents.push(doc);
+      } catch (error) {
+        console.error("Error parsing date for document:", doc.document_id, error);
+        noDateGroup.push(doc);
+      }
     }
 
     const createdBatchIds: string[] = [];
+
+    if (noDateGroup.length > 0) {
+      const noDateBatchName = "Sin fecha (pendiente de revisión)";
+
+      const { data: noDateCommissionBatch, error: noDateCreateError } = await supabase
+        .from("commission_batches")
+        .insert({
+          name: noDateBatchName,
+          date_from: null,
+          date_to: null,
+          uploaded_by: user.id,
+          status: "draft",
+          source_type: "excel_import",
+          source_id: batchId,
+          week_number: 0,
+          period_start: null,
+          period_end: null,
+          converted_from_import_at: new Date().toISOString(),
+          converted_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (!noDateCreateError && noDateCommissionBatch) {
+        createdBatchIds.push(noDateCommissionBatch.id);
+
+        const noDateCommissionItems = noDateGroup.map((doc) => {
+          const docData = doc.document_data || {};
+
+          return {
+            batch_id: noDateCommissionBatch.id,
+            agent_id: null,
+            movi_user_id: doc.movi_user_id,
+            vendor_email_raw: doc.vendor_email_raw,
+            vendor_email_norm: doc.vendor_email_norm,
+            vendor_name_raw: doc.vendor_name_raw,
+            vendor_name_norm: doc.vendor_name_norm,
+            vendor_key: doc.vendor_key,
+            match_method: doc.match_method,
+            pending_assignment: doc.is_unmatched || !doc.movi_user_id,
+            pending_date: true,
+            ramo: docData.ramo || docData.branch || "N/A",
+            aseguradora: docData.aseguradora || docData.insurer || "N/A",
+            poliza: docData.poliza || docData.policy || doc.document_id,
+            prima_base: parseFloat(docData.prima_neta || docData.net_premium || "0") || 0,
+            prima_neta: parseFloat(docData.prima_neta || docData.net_premium || "0") || 0,
+            importe_base: parseFloat(docData.importe_base || docData.base_amount || docData.prima_neta || "0") || 0,
+            concepto: docData.concepto || docData.concept || null,
+            date_fpago: null,
+            commission_bruta: parseFloat(docData.comision_bruta || docData.gross_commission || "0") || 0,
+            commission_neta: parseFloat(docData.comision_neta || docData.net_commission || "0") || 0,
+            porcentaje_comision: parseFloat(docData.porcentaje || docData.percentage || "0") || 0,
+            porcentaje_base: parseFloat(docData.porcentaje_base || docData.base_percentage || "0") || 0,
+            nombre_asegurado: docData.nombre_asegurado || docData.insured_name || null,
+            raw_row: docData,
+          };
+        });
+
+        const { error: noDateItemsError } = await supabase
+          .from("commission_details")
+          .insert(noDateCommissionItems);
+
+        if (noDateItemsError) {
+          console.error("Error inserting no-date commission items:", noDateItemsError);
+        }
+      }
+    }
 
     for (const [, group] of Object.entries(weekGroups)) {
       const batchName = `Semana ${group.week_number} (${group.period_start} a ${group.period_end})`;
@@ -198,12 +276,27 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", batchId);
 
+    const weekBatchesCreated = Object.keys(weekGroups).length;
+    const hasNoDateBatch = noDateGroup.length > 0;
+
+    let message = `Se crearon ${createdBatchIds.length} lote(s) de comisiones exitosamente.`;
+
+    if (hasNoDateBatch && weekBatchesCreated > 0) {
+      message = `Convertido. Se crearon ${weekBatchesCreated} lote(s) por semana y 1 lote especial "Sin fecha" con ${noDateGroup.length} documento(s).`;
+    } else if (hasNoDateBatch) {
+      message = `Se creó 1 lote especial "Sin fecha" con ${noDateGroup.length} documento(s) que requieren revisión.`;
+    } else if (weekBatchesCreated > 0) {
+      message = `Se crearon ${weekBatchesCreated} lote(s) por semana exitosamente.`;
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Successfully created ${createdBatchIds.length} commission batch(es)`,
+        message: message,
         commission_batch_ids: createdBatchIds,
-        weeks_created: Object.keys(weekGroups).length,
+        weeks_created: weekBatchesCreated,
+        no_date_documents: noDateGroup.length,
+        has_no_date_batch: hasNoDateBatch,
       }),
       {
         status: 200,
