@@ -62,7 +62,7 @@ export default function MiCRM() {
       </div>
 
       {/* SECCIÓN 1: Botones de Acceso Rápido */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Link
           to="/mi-crm/contactos"
           className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:scale-105"
@@ -70,6 +70,15 @@ export default function MiCRM() {
           <Users className="h-8 w-8 mb-3" />
           <h3 className="text-lg font-semibold mb-1">Contactos</h3>
           <p className="text-sm text-blue-100">Gestiona prospectos y clientes</p>
+        </Link>
+
+        <Link
+          to="/mi-crm/tareas"
+          className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:scale-105"
+        >
+          <CheckCircle className="h-8 w-8 mb-3" />
+          <h3 className="text-lg font-semibold mb-1">Tareas</h3>
+          <p className="text-sm text-orange-100">Organiza tus actividades</p>
         </Link>
 
         <Link
@@ -136,10 +145,10 @@ export default function MiCRM() {
           {tareasPendientes.length > 0 && (
             <div className="mt-4 text-center">
               <Link
-                to="/mi-crm/contactos"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                to="/mi-crm/tareas"
+                className="text-sm text-orange-600 hover:text-orange-700 font-medium hover:underline"
               >
-                Ver todos los contactos →
+                Ver todas las tareas →
               </Link>
             </div>
           )}

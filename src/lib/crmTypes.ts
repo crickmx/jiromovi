@@ -15,6 +15,10 @@ export type EstatusCotizacion =
 
 export type TipoActividad = 'Llamada' | 'Email' | 'Reunión' | 'Otro';
 
+export type EstatusTarea = 'Pendiente' | 'En Proceso' | 'Completada';
+
+export type PrioridadTarea = 'Alta' | 'Media' | 'Baja';
+
 export type TipoCampoPersonalizado = 'Texto' | 'Número' | 'Fecha' | 'Selector';
 
 export interface CRMContacto {
@@ -66,16 +70,20 @@ export interface CRMPoliza {
 
 export interface CRMTarea {
   id: string;
-  contacto_id: string;
+  contacto_id?: string;
   descripcion: string;
   tipo_actividad: TipoActividad;
   fecha_vencimiento: string;
+  estatus: EstatusTarea;
+  prioridad: PrioridadTarea;
   completada: boolean;
   fecha_completado?: string;
-  asignado_a?: string;
-  creado_por?: string;
+  creado_por: string;
   creado_en: string;
   actualizado_en: string;
+  crm_contactos?: {
+    nombre_completo: string;
+  };
 }
 
 export interface CRMNota {

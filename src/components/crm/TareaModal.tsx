@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Flag } from 'lucide-react';
 import { crearTarea, actualizarTarea } from '../../lib/crmUtils';
 import { useAuth } from '../../contexts/AuthContext';
-import type { CRMTarea } from '../../lib/crmTypes';
+import type { CRMTarea, EstatusTarea, PrioridadTarea } from '../../lib/crmTypes';
 
 interface Props {
-  contactoId: string;
+  contactoId?: string;
   tarea?: CRMTarea;
   onClose: () => void;
   onSave: () => void;
@@ -21,6 +21,8 @@ export default function TareaModal({ contactoId, tarea, onClose, onSave }: Props
     fecha_vencimiento: tarea?.fecha_vencimiento
       ? new Date(tarea.fecha_vencimiento).toISOString().slice(0, 16)
       : '',
+    prioridad: (tarea?.prioridad || 'Media') as PrioridadTarea,
+    estatus: (tarea?.estatus || 'Pendiente') as EstatusTarea,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,13 +32,17 @@ export default function TareaModal({ contactoId, tarea, onClose, onSave }: Props
     try {
       setLoading(true);
 
-      const data = {
-        contacto_id: contactoId,
+      const data: any = {
         descripcion: formData.descripcion,
         tipo_actividad: formData.tipo_actividad as any,
         fecha_vencimiento: formData.fecha_vencimiento,
-        asignado_a: user.id,
+        prioridad: formData.prioridad,
+        estatus: formData.estatus,
       };
+
+      if (contactoId) {
+        data.contacto_id = contactoId;
+      }
 
       if (tarea) {
         await actualizarTarea(tarea.id, data);
@@ -66,20 +72,53 @@ export default function TareaModal({ contactoId, tarea, onClose, onSave }: Props
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tipo de Actividad *
+              </label>
+              <select
+                value={formData.tipo_actividad}
+                onChange={(e) => setFormData({ ...formData, tipo_actividad: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                required
+              >
+                <option value="Llamada">Llamada</option>
+                <option value="Email">Email</option>
+                <option value="Reunión">Reunión</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                <Flag className="h-4 w-4" />
+                Prioridad *
+              </label>
+              <select
+                value={formData.prioridad}
+                onChange={(e) => setFormData({ ...formData, prioridad: e.target.value as PrioridadTarea })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                required
+              >
+                <option value="Alta">Alta</option>
+                <option value="Media">Media</option>
+                <option value="Baja">Baja</option>
+              </select>
+            </div>
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tipo de Actividad *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Estatus *</label>
             <select
-              value={formData.tipo_actividad}
-              onChange={(e) => setFormData({ ...formData, tipo_actividad: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.estatus}
+              onChange={(e) => setFormData({ ...formData, estatus: e.target.value as EstatusTarea })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               required
             >
-              <option value="Llamada">Llamada</option>
-              <option value="Email">Email</option>
-              <option value="Reunión">Reunión</option>
-              <option value="Otro">Otro</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En Proceso">En Proceso</option>
+              <option value="Completada">Completada</option>
             </select>
           </div>
 
@@ -88,7 +127,7 @@ export default function TareaModal({ contactoId, tarea, onClose, onSave }: Props
             <textarea
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               rows={4}
               required
               placeholder="Describe la tarea a realizar..."
@@ -103,7 +142,7 @@ export default function TareaModal({ contactoId, tarea, onClose, onSave }: Props
               type="datetime-local"
               value={formData.fecha_vencimiento}
               onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               required
             />
           </div>

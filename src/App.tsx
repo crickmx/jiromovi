@@ -32,6 +32,7 @@ import { NotificacionesTransaccionales } from './pages/NotificacionesTransaccion
 import MiCRM from './pages/MiCRM';
 import CRMContactos from './pages/CRMContactos';
 import CRMContactoPerfil from './pages/CRMContactoPerfil';
+import CRMTareas from './pages/CRMTareas';
 import CRMReportes from './pages/CRMReportes';
 import CRMConfiguracion from './pages/CRMConfiguracion';
 import Comunicados from './pages/Comunicados';
@@ -404,6 +405,17 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <CRMContactoPerfil />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-crm/tareas"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CRMTareas />
             </Layout>
           </ProtectedRoute>
         }
