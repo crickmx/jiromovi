@@ -70,7 +70,7 @@ export interface Database {
           url_web_jiro: string
           url_web_multicotizador: string
           imagen_perfil_url: string
-          esquema_pago_id: string | null
+          regimen_fiscal_id: string | null
           banco: string
           clabe: string
           activo: boolean
@@ -94,7 +94,7 @@ export interface Database {
           url_web_jiro?: string
           url_web_multicotizador?: string
           imagen_perfil_url?: string
-          esquema_pago_id?: string | null
+          regimen_fiscal_id?: string | null
           banco?: string
           clabe?: string
           activo?: boolean
@@ -118,7 +118,7 @@ export interface Database {
           url_web_jiro?: string
           url_web_multicotizador?: string
           imagen_perfil_url?: string
-          esquema_pago_id?: string | null
+          regimen_fiscal_id?: string | null
           banco?: string
           clabe?: string
           activo?: boolean

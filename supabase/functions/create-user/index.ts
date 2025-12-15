@@ -23,9 +23,10 @@ interface CreateUserRequest {
     extension_telefonica?: string;
     url_web_jiro?: string;
     url_web_multicotizador?: string;
-    esquema_pago_id?: string | null;
+    regimen_fiscal_id?: string | null;
     banco?: string;
     clabe?: string;
+    dias_vacaciones_disponibles?: number;
   };
 }
 
@@ -87,7 +88,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validar que Gerentes solo puedan crear Empleados o Agentes
     if (isGerente && !['Empleado', 'Agente'].includes(userData.rol)) {
       return new Response(
         JSON.stringify({ error: 'Los Gerentes solo pueden crear usuarios con rol Empleado o Agente' }),
@@ -140,9 +140,10 @@ Deno.serve(async (req: Request) => {
       extension_telefonica: userData.extension_telefonica || '',
       url_web_jiro: userData.url_web_jiro || '',
       url_web_multicotizador: userData.url_web_multicotizador || '',
-      esquema_pago_id: userData.esquema_pago_id || null,
+      regimen_fiscal_id: userData.regimen_fiscal_id || null,
       banco: userData.banco || '',
       clabe: userData.clabe || '',
+      dias_vacaciones_disponibles: userData.dias_vacaciones_disponibles || 0,
       estado: isGerente ? 'registrado' : 'activo',
     });
 
@@ -157,7 +158,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Enviar notificación de bienvenida al nuevo usuario
     try {
       const welcomeResponse = await fetch(
         `${supabaseUrl}/functions/v1/enviar-correo-transaccional`,
@@ -189,7 +189,6 @@ Deno.serve(async (req: Request) => {
         console.log('Welcome email sent successfully');
       }
 
-      // Enviar por WhatsApp si tiene número
       if (userData.celular_personal || userData.celular_laboral) {
         const whatsappResponse = await fetch(
           `${supabaseUrl}/functions/v1/enviar-whatsapp`,
