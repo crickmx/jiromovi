@@ -179,27 +179,47 @@ export function Dashboard() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {currentUser?.url_web_multicotizador && (
+            {currentUser?.url_web_multicotizador ? (
               <a
                 href={currentUser.url_web_multicotizador}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Abrir Multicotizador Digital"
                 className="flex items-center space-x-2 bg-ios-blue text-white px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-blue-dark shadow-ios transition-all duration-200 active:scale-95"
               >
                 <span>Multicotizador Digital</span>
                 <ExternalLink className="w-4 h-4 stroke-[2]" />
               </a>
+            ) : (
+              <div
+                title="URL no configurada"
+                aria-label="Multicotizador Digital - URL no configurada"
+                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] cursor-not-allowed opacity-60"
+              >
+                <span>Multicotizador Digital</span>
+                <ExternalLink className="w-4 h-4 stroke-[2]" />
+              </div>
             )}
-            {currentUser?.url_web_jiro && (
+            {currentUser?.url_web_jiro ? (
               <a
                 href={currentUser.url_web_jiro}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Abrir Página Web de Contacto"
                 className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-900 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-gray-200 transition-all duration-200 active:scale-95"
               >
                 <span>Página web de contacto</span>
                 <ExternalLink className="w-4 h-4 stroke-[2]" />
               </a>
+            ) : (
+              <div
+                title="URL no configurada"
+                aria-label="Página Web de Contacto - URL no configurada"
+                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] cursor-not-allowed opacity-60"
+              >
+                <span>Página web de contacto</span>
+                <ExternalLink className="w-4 h-4 stroke-[2]" />
+              </div>
             )}
           </div>
         </div>
@@ -277,27 +297,47 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-            {currentUser?.url_web_multicotizador && (
+            {currentUser?.url_web_multicotizador ? (
               <a
                 href={currentUser.url_web_multicotizador}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Abrir Multicotizador Digital"
                 className="flex items-center space-x-2 bg-ios-blue text-white px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-blue-dark shadow-ios transition-all duration-200 active:scale-95"
               >
                 <span>Multicotizador Digital</span>
                 <ExternalLink className="w-4 h-4 stroke-[2]" />
               </a>
+            ) : (
+              <div
+                title="URL no configurada"
+                aria-label="Multicotizador Digital - URL no configurada"
+                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] cursor-not-allowed opacity-60"
+              >
+                <span>Multicotizador Digital</span>
+                <ExternalLink className="w-4 h-4 stroke-[2]" />
+              </div>
             )}
-            {currentUser?.url_web_jiro && (
+            {currentUser?.url_web_jiro ? (
               <a
                 href={currentUser.url_web_jiro}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Abrir Página Web de Contacto"
                 className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-900 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-gray-200 transition-all duration-200 active:scale-95"
               >
                 <span>Página web de contacto</span>
                 <ExternalLink className="w-4 h-4 stroke-[2]" />
               </a>
+            ) : (
+              <div
+                title="URL no configurada"
+                aria-label="Página Web de Contacto - URL no configurada"
+                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] cursor-not-allowed opacity-60"
+              >
+                <span>Página web de contacto</span>
+                <ExternalLink className="w-4 h-4 stroke-[2]" />
+              </div>
             )}
         </div>
       </div>
