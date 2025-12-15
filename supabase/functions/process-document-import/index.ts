@@ -20,6 +20,7 @@ interface ParsedExcel {
     detectedColumns: {
       emailAgente?: string;
       vendNombre?: string;
+      fPago?: string;
     };
   };
 }
@@ -88,7 +89,7 @@ function parseExcelUnified(fileBuffer: ArrayBuffer): ParsedExcel {
     }
   }
 
-  const detectedColumns: { emailAgente?: string; vendNombre?: string } = {};
+  const detectedColumns: { emailAgente?: string; vendNombre?: string; fPago?: string } = {};
 
   if (headersNormalizedMap['emailagente']) {
     detectedColumns.emailAgente = headersNormalizedMap['emailagente'];
@@ -96,6 +97,11 @@ function parseExcelUnified(fileBuffer: ArrayBuffer): ParsedExcel {
 
   if (headersNormalizedMap['vendnombre']) {
     detectedColumns.vendNombre = headersNormalizedMap['vendnombre'];
+  }
+
+  // REGLA DE ORO: FPago es la única fecha válida para comisiones
+  if (headersNormalizedMap['fpago']) {
+    detectedColumns.fPago = headersNormalizedMap['fpago'];
   }
 
   const rows = jsonData.map(row => {
@@ -247,6 +253,7 @@ Deno.serve(async (req: Request) => {
     console.log(`[Import] Total filas leídas: ${parsed.totalRowsRead}`);
     console.log(`[Import] EmailAgente detectado: ${parsed.debugInfo.detectedColumns.emailAgente || 'NO'}`);
     console.log(`[Import] VendNombre detectado: ${parsed.debugInfo.detectedColumns.vendNombre || 'NO'}`);
+    console.log(`[Import] FPago detectado: ${parsed.debugInfo.detectedColumns.fPago || 'NO - Se crearán en lote "Sin fecha"}`);
 
     if (!parsed.debugInfo.detectedColumns.vendNombre) {
       return new Response(

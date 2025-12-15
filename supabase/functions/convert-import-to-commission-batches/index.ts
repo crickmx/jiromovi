@@ -101,15 +101,19 @@ Deno.serve(async (req: Request) => {
 
     for (const doc of documents) {
       const docData = doc.document_data || {};
-      const dateField = docData.fecha_fpago || docData.fecha || docData.date;
 
-      if (!dateField || dateField === '') {
+      // REGLA DE ORO: FPago es la única fecha válida para comisiones.
+      // Si no existe o no parsea, el documento va a "Sin fecha".
+      // Nunca se bloquea la conversión por fecha.
+      const fpagoField = docData.FPago;
+
+      if (!fpagoField || fpagoField === '') {
         noDateGroup.push(doc);
         continue;
       }
 
       try {
-        const weekInfo = getWeekInfo(dateField);
+        const weekInfo = getWeekInfo(fpagoField);
         const key = `${weekInfo.week_number}-${weekInfo.period_start}`;
 
         if (!weekGroups[key]) {
@@ -123,7 +127,7 @@ Deno.serve(async (req: Request) => {
 
         weekGroups[key].documents.push(doc);
       } catch (error) {
-        console.error("Error parsing date for document:", doc.document_id, error);
+        console.error("Error parsing FPago for document:", doc.document_id, error);
         noDateGroup.push(doc);
       }
     }
@@ -131,7 +135,7 @@ Deno.serve(async (req: Request) => {
     const createdBatchIds: string[] = [];
 
     if (noDateGroup.length > 0) {
-      const noDateBatchName = "Sin fecha (pendiente de revisión)";
+      const noDateBatchName = "Sin fecha (FPago no definido)";
 
       const { data: noDateCommissionBatch, error: noDateCreateError } = await supabase
         .from("commission_batches")
@@ -247,7 +251,7 @@ Deno.serve(async (req: Request) => {
           prima_neta: parseFloat(docData.prima_neta || docData.net_premium || "0") || 0,
           importe_base: parseFloat(docData.importe_base || docData.base_amount || docData.prima_neta || "0") || 0,
           concepto: docData.concepto || docData.concept || null,
-          date_fpago: docData.fecha_fpago || docData.payment_date || group.period_start,
+          date_fpago: docData.FPago || group.period_start,
           commission_bruta: parseFloat(docData.comision_bruta || docData.gross_commission || "0") || 0,
           commission_neta: parseFloat(docData.comision_neta || docData.net_commission || "0") || 0,
           porcentaje_comision: parseFloat(docData.porcentaje || docData.percentage || "0") || 0,

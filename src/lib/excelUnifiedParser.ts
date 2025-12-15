@@ -12,6 +12,7 @@ export interface ParsedExcel {
     detectedColumns: {
       emailAgente?: string;
       vendNombre?: string;
+      fPago?: string;
     };
   };
 }
@@ -80,7 +81,7 @@ export function parseExcelUnified(fileBuffer: ArrayBuffer): ParsedExcel {
     }
   }
 
-  const detectedColumns: { emailAgente?: string; vendNombre?: string } = {};
+  const detectedColumns: { emailAgente?: string; vendNombre?: string; fPago?: string } = {};
 
   if (headersNormalizedMap['emailagente']) {
     detectedColumns.emailAgente = headersNormalizedMap['emailagente'];
@@ -88,6 +89,10 @@ export function parseExcelUnified(fileBuffer: ArrayBuffer): ParsedExcel {
 
   if (headersNormalizedMap['vendnombre']) {
     detectedColumns.vendNombre = headersNormalizedMap['vendnombre'];
+  }
+
+  if (headersNormalizedMap['fpago']) {
+    detectedColumns.fPago = headersNormalizedMap['fpago'];
   }
 
   const rows = jsonData.map(row => {
@@ -146,6 +151,7 @@ export function debugParseResults(parsed: ParsedExcel): string {
   lines.push('Columnas clave detectadas:');
   lines.push(`  - EmailAgente: ${parsed.debugInfo.detectedColumns.emailAgente || 'NO ENCONTRADA'}`);
   lines.push(`  - VendNombre: ${parsed.debugInfo.detectedColumns.vendNombre || 'NO ENCONTRADA'}`);
+  lines.push(`  - FPago: ${parsed.debugInfo.detectedColumns.fPago || 'NO ENCONTRADA - Se crearán en lote "Sin fecha"'}`);
   lines.push('');
 
   const emptyVendorCount = parsed.rows.filter(row => {
