@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('id', userId)
         .eq('activo', true)
+        .eq('is_deleted', false)
         .maybeSingle();
 
       if (error) {

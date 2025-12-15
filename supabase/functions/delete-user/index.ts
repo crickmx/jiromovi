@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface DeleteUserRequest {
   userId: string;
+  reason?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -49,13 +50,13 @@ Deno.serve(async (req: Request) => {
 
     const { data: currentUserData } = await supabaseAdmin
       .from('usuarios')
-      .select('rol')
+      .select('rol, is_deleted')
       .eq('id', currentUser.id)
       .maybeSingle();
 
-    if (currentUserData?.rol !== 'Administrador') {
+    if (!currentUserData || currentUserData.rol !== 'Administrador' || currentUserData.is_deleted === true) {
       return new Response(
-        JSON.stringify({ error: 'Solo los Administradores pueden eliminar usuarios' }),
+        JSON.stringify({ error: 'Solo los Administradores activos pueden eliminar usuarios' }),
         {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -63,11 +64,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { userId }: DeleteUserRequest = await req.json();
+    const { userId, reason }: DeleteUserRequest = await req.json();
 
     if (!userId) {
       return new Response(
-        JSON.stringify({ error: 'userId is required' }),
+        JSON.stringify({ error: 'userId es requerido' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -75,24 +76,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (userId === currentUser.id) {
-      return new Response(
-        JSON.stringify({ error: 'No puedes eliminarte a ti mismo' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
+    // Call the soft delete function
     const { data: deleteResult, error: rpcError } = await supabaseAdmin
-      .rpc('safe_delete_user', { user_id_to_delete: userId });
+      .rpc('safe_delete_user', {
+        user_id_to_delete: userId,
+        deleted_by_admin_id: currentUser.id,
+        deletion_reason: reason || null
+      });
 
     if (rpcError) {
       console.error('Error calling safe_delete_user function:', rpcError);
       return new Response(
         JSON.stringify({
-          error: 'Error al eliminar usuario de la base de datos',
+          error: 'Error al eliminar usuario',
           details: rpcError.message
         }),
         {
@@ -107,22 +103,24 @@ Deno.serve(async (req: Request) => {
 
       const errorMessage = deleteResult?.error || 'Error desconocido al eliminar usuario';
 
-      let detailedError = {
+      let detailedError: any = {
         error: errorMessage,
-        error_code: deleteResult?.error_code,
-        sqlstate: deleteResult?.sqlstate,
-        message: deleteResult?.message,
-        detail: deleteResult?.detail,
-        hint: deleteResult?.hint,
-        context: deleteResult?.context
+        error_code: deleteResult?.error_code
       };
 
-      // Remove undefined fields
-      Object.keys(detailedError).forEach(key => {
-        if (detailedError[key] === undefined) {
-          delete detailedError[key];
-        }
-      });
+      if (deleteResult?.error_code === 'LAST_ADMIN') {
+        detailedError.message = 'No se puede eliminar el último administrador activo del sistema';
+      } else if (deleteResult?.error_code === 'CANNOT_DELETE_SELF') {
+        detailedError.message = 'No puedes eliminarte a ti mismo';
+      } else if (deleteResult?.error_code === 'USER_ALREADY_DELETED') {
+        detailedError.message = 'Este usuario ya está eliminado';
+      } else if (deleteResult?.error_code === 'USER_NOT_FOUND') {
+        detailedError.message = 'Usuario no encontrado';
+      }
+
+      // Add any additional details
+      if (deleteResult?.message) detailedError.details = deleteResult.message;
+      if (deleteResult?.sqlstate) detailedError.sqlstate = deleteResult.sqlstate;
 
       return new Response(
         JSON.stringify(detailedError),
@@ -133,27 +131,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-
-    if (deleteAuthError) {
-      console.error('Error deleting auth user:', deleteAuthError);
-      return new Response(
-        JSON.stringify({
-          error: 'Usuario eliminado de la base de datos pero error al eliminar de autenticación',
-          details: deleteAuthError.message,
-          partialSuccess: true
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+    // Revoke all sessions for the deleted user
+    try {
+      const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(userId, 'global');
+      if (signOutError) {
+        console.warn('Warning: Could not revoke sessions for deleted user:', signOutError.message);
+      }
+    } catch (signOutErr) {
+      console.warn('Warning: Error revoking sessions:', signOutErr);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Usuario eliminado correctamente',
+        message: 'Usuario eliminado correctamente. Acceso revocado.',
+        deletion_type: 'soft_delete',
+        info: 'El usuario ya no puede iniciar sesión. Sus datos históricos se conservan.',
         details: deleteResult
       }),
       {
@@ -164,7 +157,10 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('Error in delete-user function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: 'Error interno del servidor',
+        message: error.message
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

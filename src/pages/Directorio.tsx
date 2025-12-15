@@ -22,6 +22,9 @@ export function Directorio() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<Usuario | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const isAdmin = currentUser?.rol === 'Administrador';
   const isGerente = currentUser?.rol === 'Gerente';
@@ -37,6 +40,7 @@ export function Directorio() {
       let usuariosQuery = supabase
         .from('usuarios')
         .select('*, oficinas(nombre)')
+        .eq('is_deleted', false)
         .order('nombre');
 
       // Gerentes solo ven usuarios de su oficina
@@ -58,8 +62,17 @@ export function Directorio() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')) {
+  const handleDeleteClick = (usuario: Usuario) => {
+    setUserToDelete(usuario);
+    setDeleteConfirmText('');
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+
+    if (deleteConfirmText !== 'ELIMINAR') {
+      alert('Debes escribir "ELIMINAR" para confirmar');
       return;
     }
 
@@ -79,16 +92,23 @@ export function Directorio() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ userId: id }),
+          body: JSON.stringify({
+            userId: userToDelete.id,
+            reason: 'Eliminado desde el directorio por administrador'
+          }),
         }
       );
 
       const result = await response.json();
 
       if (!response.ok) {
-        alert(result.error || 'Error al eliminar usuario');
+        const errorMsg = result.message || result.error || 'Error al eliminar usuario';
+        alert(errorMsg);
       } else {
-        alert('Usuario eliminado correctamente');
+        alert('Usuario eliminado correctamente. El usuario ya no puede iniciar sesión.');
+        setDeleteModalOpen(false);
+        setUserToDelete(null);
+        setDeleteConfirmText('');
         loadData();
       }
     } catch (error) {
@@ -327,9 +347,9 @@ export function Directorio() {
                       </button>
                       {isAdmin && (
                         <button
-                          onClick={() => handleDelete(usuario.id)}
+                          onClick={() => handleDeleteClick(usuario)}
                           className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition"
-                          title="Eliminar"
+                          title="Eliminar usuario"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -363,6 +383,95 @@ export function Directorio() {
             loadData();
           }}
         />
+      )}
+
+      {deleteModalOpen && userToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start space-x-4 mb-6">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                  Eliminar Usuario
+                </h3>
+                <p className="text-sm text-slate-600 mb-4">
+                  Esta acción bloqueará el acceso del usuario al sistema.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-4 mb-6">
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-semibold text-slate-700">Nombre:</span>{' '}
+                  <span className="text-slate-900">{userToDelete.nombre} {userToDelete.apellidos}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Email:</span>{' '}
+                  <span className="text-slate-900">{userToDelete.email_laboral || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Rol:</span>{' '}
+                  <span className="text-slate-900">{userToDelete.rol}</span>
+                </div>
+                {userToDelete.oficinas && (
+                  <div>
+                    <span className="font-semibold text-slate-700">Oficina:</span>{' '}
+                    <span className="text-slate-900">{userToDelete.oficinas.nombre}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <h4 className="font-semibold text-yellow-900 mb-2 text-sm">Importante:</h4>
+              <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
+                <li>El usuario NO podrá iniciar sesión</li>
+                <li>Se conservan todos sus datos históricos</li>
+                <li>No se eliminarán sus registros en comisiones, pedidos, etc.</li>
+                <li>Esta acción se registrará en el log de auditoría</li>
+              </ul>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Escribe <span className="font-bold text-red-600">ELIMINAR</span> para confirmar:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                placeholder="ELIMINAR"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setUserToDelete(null);
+                  setDeleteConfirmText('');
+                }}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleteConfirmText !== 'ELIMINAR'}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Eliminar Usuario
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
