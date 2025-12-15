@@ -87,15 +87,16 @@ export function Directorio() {
 
 
   const filteredUsuarios = usuarios.filter((usuario) => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
       searchTerm === '' ||
-      usuario.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      usuario.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      usuario.email_personal.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      usuario.email_laboral.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      usuario.celular_personal.includes(searchTerm) ||
-      usuario.celular_laboral.includes(searchTerm) ||
-      usuario.username.toLowerCase().includes(searchTerm.toLowerCase());
+      (usuario.nombre || '').toLowerCase().includes(searchLower) ||
+      (usuario.apellidos || '').toLowerCase().includes(searchLower) ||
+      (usuario.email_personal || '').toLowerCase().includes(searchLower) ||
+      (usuario.email_laboral || '').toLowerCase().includes(searchLower) ||
+      (usuario.celular_personal || '').includes(searchTerm) ||
+      (usuario.celular_laboral || '').includes(searchTerm) ||
+      (usuario.username || '').toLowerCase().includes(searchLower);
 
     const matchesRol = filterRol === '' || usuario.rol === filterRol;
     const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;
