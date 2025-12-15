@@ -7,58 +7,32 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-interface WeekGroup {
-  week_number: number;
-  period_start: string;
-  period_end: string;
-  documents: any[];
-}
+// ============================================================================
+// SERVICIO DE INGESTA UNIFICADO (Deno version)
+// Mismo que commissionIngestionService.ts pero compatible con Deno
+// ============================================================================
 
-interface ConversionResult {
-  success: boolean;
-  createdBatches?: Array<{
-    id: string;
-    week_number: number;
-    period_start: string | null;
-    period_end: string | null;
-    display_name: string;
-    items: number;
-  }>;
-  totalSourceItems?: number;
-  totalInsertedItems?: number;
-  conversion_job_id?: string;
-  code?: string;
-  message?: string;
-  details?: any;
-  db?: {
-    code?: string;
-    message?: string;
-    constraint?: string;
-    detail?: string;
-  };
-}
-
-interface ValidationError {
-  row_index: number;
-  vendor_name?: string;
-  vendor_email?: string;
-  poliza?: string;
-  field: string;
-  reason: string;
-  value?: any;
+interface StandardCommissionRow {
+  fpago: string;
+  agent_email: string;
+  ramo: string;
+  aseguradora: string;
+  importe_base: number;
+  porcentaje: number;
+  poliza: string;
+  comision_calculada: number;
+  prima_neta_info?: number;
+  nombre_asegurado?: string;
+  concepto?: string;
 }
 
 function normalizeNumeric(value: any): number {
   if (value === null || value === undefined || value === '') return 0;
-
-  if (typeof value === 'number') return value;
+  if (typeof value === 'number') return isNaN(value) ? 0 : value;
 
   if (typeof value === 'string') {
-    // Remover símbolos de moneda, comas, espacios
-    const cleaned = value.replace(/[$,\s]/g, '').trim();
-
+    const cleaned = value.replace(/[$,\s%]/g, '').trim();
     if (cleaned === '' || cleaned === '-') return 0;
-
     const parsed = parseFloat(cleaned);
     return isNaN(parsed) ? 0 : parsed;
   }
@@ -68,88 +42,249 @@ function normalizeNumeric(value: any): number {
 
 function normalizeText(value: any, defaultValue: string = ''): string {
   if (value === null || value === undefined) return defaultValue;
-  return String(value).trim() || defaultValue;
+  const str = String(value).trim();
+  return str || defaultValue;
 }
 
-function validateCommissionItem(item: any, index: number): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  // Validar campos requeridos
-  if (!item.batch_id) {
-    errors.push({
-      row_index: index,
-      field: 'batch_id',
-      reason: 'Batch ID es requerido',
-      vendor_name: item.vendor_name_raw,
-      poliza: item.poliza
-    });
-  }
-
-  // Validar que ramo no esté vacío después de normalización
-  const ramo = normalizeText(item.ramo, 'N/A');
-  if (ramo === '') {
-    errors.push({
-      row_index: index,
-      field: 'ramo',
-      reason: 'Ramo es requerido',
-      vendor_name: item.vendor_name_raw,
-      poliza: item.poliza
-    });
-  }
-
-  // Validar que aseguradora no esté vacía
-  const aseguradora = normalizeText(item.aseguradora, 'N/A');
-  if (aseguradora === '') {
-    errors.push({
-      row_index: index,
-      field: 'aseguradora',
-      reason: 'Aseguradora es requerida',
-      vendor_name: item.vendor_name_raw,
-      poliza: item.poliza
-    });
-  }
-
-  // Validar que póliza no esté vacía
-  const poliza = normalizeText(item.poliza, 'N/A');
-  if (poliza === '') {
-    errors.push({
-      row_index: index,
-      field: 'poliza',
-      reason: 'Póliza es requerida',
-      vendor_name: item.vendor_name_raw
-    });
-  }
-
-  return errors;
+function normalizeEmail(value: any): string {
+  if (!value) return '';
+  return String(value).trim().toLowerCase();
 }
 
-function normalizeCommissionItem(doc: any, batchId: string): any {
+function normalizeDate(value: any): string | null {
+  if (!value) return null;
+
+  if (typeof value === 'number') {
+    const excelEpoch = new Date(1900, 0, 1);
+    const daysOffset = value - 2;
+    const resultDate = new Date(excelEpoch.getTime() + daysOffset * 24 * 60 * 60 * 1000);
+    return resultDate.toISOString().split('T')[0];
+  }
+
+  if (typeof value === 'string') {
+    if (value.includes('/')) {
+      const parts = value.split('/');
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+      }
+    }
+
+    if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return value;
+    }
+
+    try {
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Mapea columnas con sinónimos (versión simplificada)
+ * Retorna un mapa de: standardKey => nombreOriginal
+ */
+function mapColumns(data: Record<string, any>): Record<string, string> {
+  const mapped: Record<string, string> = {};
+
+  // Normalizar keys del objeto
+  const keys = Object.keys(data);
+  const normalizedKeys = new Map<string, string>();
+
+  for (const key of keys) {
+    const norm = key.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_.]/g, '');
+    normalizedKeys.set(norm, key);
+  }
+
+  // Mapear con sinónimos
+  const synonymMap = [
+    { standard: 'fpago', variants: ['fpago', 'fecha', 'fechapago'] },
+    { standard: 'email', variants: ['email', 'emailagente', 'mail', 'correo'] },
+    { standard: 'ramo', variants: ['ramo', 'branch'] },
+    { standard: 'aseguradora', variants: ['aseguradora', 'ciaabreviacion', 'cia', 'compania'] },
+    { standard: 'importe', variants: ['importe', 'importebase', 'base', 'monto'] },
+    { standard: 'porpart', variants: ['porpart', 'porcentaje', 'percentage'] },
+    { standard: 'poliza', variants: ['poliza', 'documento', 'policy'] },
+    { standard: 'primaneta', variants: ['primaneta', 'prima'] },
+    { standard: 'nombreasegurado', variants: ['nombreasegurado', 'asegurado', 'nombrecompleto'] },
+    { standard: 'concepto', variants: ['concepto', 'descripcion'] }
+  ];
+
+  for (const { standard, variants } of synonymMap) {
+    for (const variant of variants) {
+      if (normalizedKeys.has(variant)) {
+        mapped[standard] = normalizedKeys.get(variant)!;
+        break;
+      }
+    }
+  }
+
+  return mapped;
+}
+
+/**
+ * Parsea una fila de documento importado al modelo estándar
+ * REGLA DE ORO: Comisión = Importe × (PorPart / 100)
+ * CRÍTICO: NO usar prima_neta como base de cálculo
+ */
+function parseImportedDocument(doc: any): {
+  row: StandardCommissionRow | null;
+  errors: string[];
+} {
+  const errors: string[] = [];
   const docData = doc.document_data || {};
 
+  // Mapear columnas del documento
+  const mapped = mapColumns(docData);
+
+  console.log('[ParseDoc] Mapped columns:', mapped);
+  console.log('[ParseDoc] Document data keys:', Object.keys(docData));
+
+  // Extraer valores usando mapeo
+  const fpagoRaw = mapped.fpago ? docData[mapped.fpago] : null;
+  const emailRaw = mapped.email ? docData[mapped.email] : doc.vendor_email_raw;
+  const ramoRaw = mapped.ramo ? docData[mapped.ramo] : null;
+  const aseguradoraRaw = mapped.aseguradora ? docData[mapped.aseguradora] : null;
+  const importeRaw = mapped.importe ? docData[mapped.importe] : null;
+  const porpartRaw = mapped.porpart ? docData[mapped.porpart] : null;
+  const polizaRaw = mapped.poliza ? docData[mapped.poliza] : doc.document_id;
+
+  const primaNetaRaw = mapped.primaneta ? docData[mapped.primaneta] : null;
+  const nombreAseguradoRaw = mapped.nombreasegurado ? docData[mapped.nombreasegurado] : null;
+  const conceptoRaw = mapped.concepto ? docData[mapped.concepto] : null;
+
+  console.log('[ParseDoc] Raw values:', {
+    fpagoRaw,
+    emailRaw,
+    ramoRaw,
+    aseguradoraRaw,
+    importeRaw,
+    porpartRaw,
+    polizaRaw
+  });
+
+  // Normalizar
+  const fpago = normalizeDate(fpagoRaw);
+  const agent_email = normalizeEmail(emailRaw);
+  const ramo = normalizeText(ramoRaw);
+  const aseguradora = normalizeText(aseguradoraRaw);
+  const importe_base = normalizeNumeric(importeRaw);
+  const porcentaje = normalizeNumeric(porpartRaw);
+  const poliza = normalizeText(polizaRaw);
+
+  const prima_neta_info = primaNetaRaw ? normalizeNumeric(primaNetaRaw) : undefined;
+  const nombre_asegurado = nombreAseguradoRaw ? normalizeText(nombreAseguradoRaw) : undefined;
+  const concepto = conceptoRaw ? normalizeText(conceptoRaw) : undefined;
+
+  console.log('[ParseDoc] Normalized values:', {
+    fpago,
+    agent_email,
+    ramo,
+    aseguradora,
+    importe_base,
+    porcentaje,
+    poliza
+  });
+
+  // Validar campos obligatorios
+  if (!fpago) {
+    errors.push(`FPago inválido o vacío: ${fpagoRaw}`);
+  }
+
+  if (!agent_email || agent_email === '') {
+    errors.push(`Email vacío o inválido: ${emailRaw}`);
+  }
+
+  if (!ramo || ramo === '') {
+    errors.push(`Ramo vacío: ${ramoRaw}`);
+  }
+
+  if (!aseguradora || aseguradora === '') {
+    errors.push(`Aseguradora vacía: ${aseguradoraRaw}`);
+  }
+
+  if (!importe_base || importe_base <= 0) {
+    errors.push(`Importe vacío o inválido (debe ser > 0): ${importeRaw}`);
+  }
+
+  if (porcentaje === undefined || porcentaje === null) {
+    errors.push(`PorPart vacío o inválido: ${porpartRaw}`);
+  }
+
+  if (!poliza || poliza === '') {
+    errors.push(`Póliza vacía: ${polizaRaw}`);
+  }
+
+  if (errors.length > 0) {
+    console.error('[ParseDoc] Validation errors:', errors);
+    return { row: null, errors };
+  }
+
+  // CÁLCULO CORRECTO: Comisión = Importe × (PorPart / 100)
+  const comision_calculada = importe_base * (porcentaje / 100);
+
+  console.log('[ParseDoc] Calculated commission:', {
+    importe_base,
+    porcentaje,
+    formula: `${importe_base} × (${porcentaje} / 100)`,
+    result: comision_calculada
+  });
+
   return {
-    batch_id: batchId,
-    agent_id: null,
-    movi_user_id: doc.movi_user_id || null,
-    vendor_email_raw: normalizeText(doc.vendor_email_raw, ''),
-    vendor_email_norm: normalizeText(doc.vendor_email_norm, ''),
-    vendor_name_raw: normalizeText(doc.vendor_name_raw, ''),
-    vendor_name_norm: normalizeText(doc.vendor_name_norm, ''),
-    vendor_key: normalizeText(doc.vendor_key, 'unknown'),
-    match_method: normalizeText(doc.match_method, 'none'),
-    pending_assignment: doc.is_unmatched || !doc.movi_user_id,
-    ramo: normalizeText(docData.ramo || docData.branch, 'N/A'),
-    aseguradora: normalizeText(docData.aseguradora || docData.insurer, 'N/A'),
-    poliza: normalizeText(docData.poliza || docData.policy || doc.document_id, 'N/A'),
-    prima_neta: normalizeNumeric(docData.prima_neta || docData.net_premium),
-    importe_base: normalizeNumeric(docData.importe_base || docData.base_amount || docData.prima_neta),
-    concepto: normalizeText(docData.concepto || docData.concept, null),
-    date_fpago: docData.FPago || null,
-    commission_bruta: normalizeNumeric(docData.comision_bruta || docData.gross_commission),
-    commission_neta: normalizeNumeric(docData.comision_neta || docData.net_commission),
-    porcentaje_comision: normalizeNumeric(docData.porcentaje || docData.percentage),
-    porcentaje_base: normalizeNumeric(docData.porcentaje_base || docData.base_percentage),
-    nombre_asegurado: normalizeText(docData.nombre_asegurado || docData.insured_name, null),
-    raw_row: docData,
+    row: {
+      fpago: fpago!,
+      agent_email: agent_email!,
+      ramo: ramo!,
+      aseguradora: aseguradora!,
+      importe_base,
+      porcentaje,
+      poliza: poliza!,
+      comision_calculada,
+      prima_neta_info,
+      nombre_asegurado,
+      concepto
+    },
+    errors: []
+  };
+}
+
+// ============================================================================
+// FUNCIONES AUXILIARES
+// ============================================================================
+
+function getWeekInfo(dateStr: string): {
+  week_number: number;
+  period_start: string;
+  period_end: string;
+} {
+  const date = new Date(dateStr);
+  const dayOfWeek = date.getDay();
+  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+  const monday = new Date(date);
+  monday.setDate(date.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  const oneJan = new Date(date.getFullYear(), 0, 1);
+  const weekNumber = Math.ceil((((date.getTime() - oneJan.getTime()) / 86400000) + oneJan.getDay() + 1) / 7);
+
+  return {
+    week_number: weekNumber,
+    period_start: monday.toISOString().split('T')[0],
+    period_end: sunday.toISOString().split('T')[0],
   };
 }
 
@@ -173,9 +308,6 @@ async function insertItemsInChunks(
       if (error) {
         console.error(`[Insert] Chunk ${i}-${i + chunk.length} failed:`, error);
 
-        // Si el chunk falla, intentar insertar uno por uno para identificar la fila problemática
-        console.log(`[Insert] Intentando inserción individual para identificar fila problemática...`);
-
         for (let j = 0; j < chunk.length; j++) {
           const singleItem = chunk[j];
           try {
@@ -191,14 +323,8 @@ async function insertItemsInChunks(
                 error: {
                   code: singleError.code,
                   message: singleError.message,
-                  details: singleError.details,
-                  hint: singleError.hint
+                  details: singleError.details
                 }
-              });
-              console.error(`[Insert] Row ${i + j} failed:`, {
-                poliza: singleItem.poliza,
-                vendor: singleItem.vendor_name_raw,
-                error: singleError
               });
             } else {
               insertedCount++;
@@ -207,10 +333,7 @@ async function insertItemsInChunks(
             errors.push({
               row_index: i + j,
               item: singleItem,
-              error: {
-                message: individualError.message,
-                stack: individualError.stack
-              }
+              error: { message: individualError.message }
             });
           }
         }
@@ -222,75 +345,17 @@ async function insertItemsInChunks(
       errors.push({
         chunk_start: i,
         chunk_end: i + chunk.length,
-        error: {
-          message: chunkError.message,
-          stack: chunkError.stack
-        }
+        error: { message: chunkError.message }
       });
     }
   }
 
-  return {
-    success: errors.length === 0,
-    insertedCount,
-    errors
-  };
+  return { success: errors.length === 0, insertedCount, errors };
 }
 
-function extractDatabaseError(error: any): { code: string; message: string; constraint?: string; detail?: string } {
-  // Extraer información del error de PostgreSQL
-  const pgError = {
-    code: error.code || 'UNKNOWN',
-    message: error.message || 'Unknown database error',
-    constraint: error.constraint || undefined,
-    detail: error.details || error.detail || undefined
-  };
-
-  // Mapear códigos de error de PostgreSQL a mensajes amigables
-  const errorMap: Record<string, string> = {
-    '23502': 'NOT_NULL_VIOLATION',
-    '23503': 'FOREIGN_KEY_VIOLATION',
-    '23505': 'UNIQUE_VIOLATION',
-    '23514': 'CHECK_VIOLATION',
-    '22P02': 'INVALID_TEXT_REPRESENTATION',
-    '22003': 'NUMERIC_VALUE_OUT_OF_RANGE',
-    '42P01': 'UNDEFINED_TABLE',
-    '42703': 'UNDEFINED_COLUMN'
-  };
-
-  const mappedCode = errorMap[pgError.code] || pgError.code;
-
-  return {
-    code: mappedCode,
-    message: pgError.message,
-    constraint: pgError.constraint,
-    detail: pgError.detail
-  };
-}
-
-function getWeekInfo(dateStr: string): { week_number: number; period_start: string; period_end: string } {
-  const date = new Date(dateStr);
-
-  const dayOfWeek = date.getDay();
-  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-
-  const monday = new Date(date);
-  monday.setDate(date.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-
-  const oneJan = new Date(date.getFullYear(), 0, 1);
-  const weekNumber = Math.ceil((((date.getTime() - oneJan.getTime()) / 86400000) + oneJan.getDay() + 1) / 7);
-
-  return {
-    week_number: weekNumber,
-    period_start: monday.toISOString().split('T')[0],
-    period_end: sunday.toISOString().split('T')[0],
-  };
-}
+// ============================================================================
+// HANDLER PRINCIPAL
+// ============================================================================
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -324,7 +389,9 @@ Deno.serve(async (req: Request) => {
       throw new Error("Batch ID is required");
     }
 
-    // VALIDACIÓN 1: Verificar que el batch existe
+    console.log(`[Conversion] Starting conversion for batch ${batchId}`);
+
+    // Verificar que el batch existe
     const { data: importBatch, error: batchError } = await supabase
       .from("document_import_batches")
       .select("*")
@@ -332,36 +399,29 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (batchError || !importBatch) {
-      const result: ConversionResult = {
+      return new Response(JSON.stringify({
         success: false,
         code: "BATCH_NOT_FOUND",
-        message: "El lote de importación no existe",
-        details: { batchId }
-      };
-      return new Response(JSON.stringify(result), {
+        message: "El lote de importación no existe"
+      }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    // VALIDACIÓN 2: Verificar que no fue convertido previamente
+    // Verificar que no fue convertido
     if (importBatch.converted_to_commissions) {
-      const result: ConversionResult = {
+      return new Response(JSON.stringify({
         success: false,
         code: "ALREADY_CONVERTED",
-        message: "Este lote ya fue convertido anteriormente",
-        details: {
-          batchId,
-          commission_batch_ids: importBatch.commission_batch_ids
-        }
-      };
-      return new Response(JSON.stringify(result), {
+        message: "Este lote ya fue convertido anteriormente"
+      }), {
         status: 409,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    // VALIDACIÓN 3: Contar items de origen (CRÍTICO: debe ser > 0)
+    // Contar documentos de origen
     const { count: sourceCount, error: countError } = await supabase
       .from("imported_documents")
       .select("*", { count: 'exact', head: true })
@@ -372,24 +432,19 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!sourceCount || sourceCount === 0) {
-      const result: ConversionResult = {
+      return new Response(JSON.stringify({
         success: false,
         code: "NO_SOURCE_ITEMS",
-        message: "No hay documentos para convertir. El batch está vacío o no se guardó correctamente.",
-        details: {
-          batchId,
-          totalSourceItems: 0
-        }
-      };
-      return new Response(JSON.stringify(result), {
+        message: "No hay documentos para convertir"
+      }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    console.log(`[Conversion] Iniciando conversión de batch ${batchId} con ${sourceCount} items`);
+    console.log(`[Conversion] Found ${sourceCount} documents to convert`);
 
-    // CREAR CONVERSION JOB para auditoría
+    // Crear job de conversión
     const { data: conversionJob, error: jobError } = await supabase
       .from("conversion_jobs")
       .insert({
@@ -403,12 +458,10 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (jobError || !conversionJob) {
-      console.error("Error creating conversion job:", jobError);
       throw new Error("Failed to create conversion job");
     }
 
     conversionJobId = conversionJob.id;
-    console.log(`[Conversion] Job created: ${conversionJobId}`);
 
     // Obtener todos los documentos
     const { data: documents, error: docsError } = await supabase
@@ -420,22 +473,64 @@ Deno.serve(async (req: Request) => {
       throw new Error("Failed to fetch documents");
     }
 
-    // REGLA DE ORO: FPago es la única fecha válida para comisiones.
-    // Agrupar por semana usando FPago
-    const weekGroups: Record<string, WeekGroup> = {};
-    const noDateGroup: any[] = [];
+    console.log(`[Conversion] Processing ${documents.length} documents...`);
 
-    for (const doc of documents) {
-      const docData = doc.document_data || {};
-      const fpagoField = docData.FPago;
+    // Parsear documentos al modelo estándar
+    const parsedRows: StandardCommissionRow[] = [];
+    const parseErrors: any[] = [];
 
-      if (!fpagoField || fpagoField === '') {
-        noDateGroup.push(doc);
-        continue;
+    for (let i = 0; i < documents.length; i++) {
+      const doc = documents[i];
+      const { row, errors } = parseImportedDocument(doc);
+
+      if (row) {
+        parsedRows.push(row);
+      } else {
+        parseErrors.push({
+          document_id: doc.document_id,
+          vendor_email: doc.vendor_email_raw,
+          errors
+        });
+        console.error(`[Conversion] Parse error for doc ${doc.document_id}:`, errors);
       }
+    }
 
+    console.log(`[Conversion] Parsed ${parsedRows.length} valid rows, ${parseErrors.length} errors`);
+
+    if (parsedRows.length === 0) {
+      await supabase
+        .from("conversion_jobs")
+        .update({
+          status: "failed",
+          finished_at: new Date().toISOString(),
+          duration_ms: Date.now() - startTime,
+          error_code: "ALL_ROWS_INVALID",
+          error_message: "Ninguna fila pudo ser parseada. Revisa que el Excel tenga las columnas correctas.",
+          conversion_report: { parse_errors: parseErrors.slice(0, 10) }
+        })
+        .eq("id", conversionJobId);
+
+      return new Response(JSON.stringify({
+        success: false,
+        code: "ALL_ROWS_INVALID",
+        message: "Ninguna fila es válida. Revisa que el archivo tenga las columnas obligatorias: FPago, Email, Ramo, Aseguradora, Importe, PorPart, Poliza",
+        details: {
+          totalSourceItems: sourceCount,
+          parseErrors: parseErrors.slice(0, 5)
+        }
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // Agrupar por semana usando FPago
+    const weekGroups: Record<string, { week_number: number; period_start: string; period_end: string; rows: StandardCommissionRow[] }> = {};
+    const noDateRows: StandardCommissionRow[] = [];
+
+    for (const row of parsedRows) {
       try {
-        const weekInfo = getWeekInfo(fpagoField);
+        const weekInfo = getWeekInfo(row.fpago);
         const key = `${weekInfo.week_number}-${weekInfo.period_start}`;
 
         if (!weekGroups[key]) {
@@ -443,42 +538,31 @@ Deno.serve(async (req: Request) => {
             week_number: weekInfo.week_number,
             period_start: weekInfo.period_start,
             period_end: weekInfo.period_end,
-            documents: [],
+            rows: []
           };
         }
 
-        weekGroups[key].documents.push(doc);
+        weekGroups[key].rows.push(row);
       } catch (error) {
-        console.error("Error parsing FPago for document:", doc.document_id, error);
-        noDateGroup.push(doc);
+        console.error(`[Conversion] Error parsing week for fpago ${row.fpago}:`, error);
+        noDateRows.push(row);
       }
     }
 
-    const createdBatches: Array<{
-      id: string;
-      week_number: number;
-      period_start: string | null;
-      period_end: string | null;
-      display_name: string;
-      items: number;
-    }> = [];
+    console.log(`[Conversion] Grouped into ${Object.keys(weekGroups).length} weeks, ${noDateRows.length} without date`);
+
+    const createdBatches: any[] = [];
     const createdBatchIds: string[] = [];
     let totalInsertedItems = 0;
-    const allValidationErrors: any[] = [];
-    const allInsertErrors: any[] = [];
 
-    // CREAR LOTES - Solo si tienen items (anti-lotes-vacíos)
+    // Crear lote "Sin fecha" si hay
+    if (noDateRows.length > 0) {
+      console.log(`[Conversion] Creating no-date batch with ${noDateRows.length} items`);
 
-    // 1. Crear lote "Sin fecha" si hay documentos sin FPago
-    if (noDateGroup.length > 0) {
-      console.log(`[Conversion] Creando lote "Sin fecha" con ${noDateGroup.length} items`);
-
-      const noDateBatchName = "Sin fecha (FPago no definido)";
-
-      const { data: noDateCommissionBatch, error: noDateCreateError } = await supabase
+      const { data: noDateBatch, error: createError } = await supabase
         .from("commission_batches")
         .insert({
-          name: noDateBatchName,
+          name: "Sin fecha (FPago no definido)",
           date_from: null,
           date_to: null,
           uploaded_by: user.id,
@@ -486,83 +570,69 @@ Deno.serve(async (req: Request) => {
           source_type: "excel_import",
           source_id: batchId,
           week_number: 0,
-          period_start: null,
-          period_end: null,
           converted_from_import_at: new Date().toISOString(),
-          converted_by: user.id,
+          converted_by: user.id
         })
         .select()
         .single();
 
-      if (noDateCreateError || !noDateCommissionBatch) {
-        console.error("Error creating no-date commission batch:", noDateCreateError);
-        const dbError = extractDatabaseError(noDateCreateError);
-        throw new Error(`DB_INSERT_FAILED: ${dbError.message} (${dbError.code})`);
+      if (createError || !noDateBatch) {
+        throw new Error(`Failed to create no-date batch: ${createError?.message}`);
       }
 
-      createdBatchIds.push(noDateCommissionBatch.id);
+      createdBatchIds.push(noDateBatch.id);
 
-      // Normalizar items
-      const noDateCommissionItems = noDateGroup.map((doc, index) =>
-        normalizeCommissionItem(doc, noDateCommissionBatch.id)
-      );
+      // Preparar items para inserción
+      const itemsToInsert = noDateRows.map(row => ({
+        batch_id: noDateBatch.id,
+        agent_id: null,
+        poliza: row.poliza,
+        nombre_asegurado: row.nombre_asegurado || null,
+        ramo: row.ramo,
+        aseguradora: row.aseguradora,
+        prima_neta: row.prima_neta_info || 0,
+        importe_base: row.importe_base,
+        porcentaje_comision: row.porcentaje,
+        concepto: row.concepto || null,
+        date_fpago: row.fpago,
+        commission_bruta: row.comision_calculada,
+        commission_neta: row.comision_calculada,
+        vendor_email_raw: row.agent_email,
+        vendor_email_norm: row.agent_email,
+        vendor_name_raw: '',
+        vendor_name_norm: '',
+        vendor_key: row.agent_email,
+        match_method: 'email',
+        pending_assignment: true,
+        raw_row: {}
+      }));
 
-      // Pre-validar items
-      noDateCommissionItems.forEach((item, index) => {
-        const errors = validateCommissionItem(item, index);
-        if (errors.length > 0) {
-          allValidationErrors.push(...errors);
-        }
-      });
-
-      // Insertar en chunks
-      const insertResult = await insertItemsInChunks(supabase, noDateCommissionItems);
-
-      if (!insertResult.success) {
-        allInsertErrors.push(...insertResult.errors);
-        console.error(`[Conversion] Errores en inserción de lote "Sin fecha":`, insertResult.errors);
-      }
-
+      const insertResult = await insertItemsInChunks(supabase, itemsToInsert);
       totalInsertedItems += insertResult.insertedCount;
 
-      createdBatches.push({
-        id: noDateCommissionBatch.id,
-        week_number: 0,
-        period_start: null,
-        period_end: null,
-        display_name: noDateBatchName,
-        items: insertResult.insertedCount
-      });
-
-      // CRÍTICO: Si no se insertó ningún item, eliminar el batch
       if (insertResult.insertedCount === 0) {
-        console.warn(`[Conversion] Eliminando lote "Sin fecha" porque no se insertaron items`);
-        await supabase
-          .from("commission_batches")
-          .delete()
-          .eq("id", noDateCommissionBatch.id);
-
-        // Remover de la lista de batches creados
-        createdBatches.pop();
-        createdBatchIds.pop();
+        await supabase.from("commission_batches").delete().eq("id", noDateBatch.id);
       } else {
-        console.log(`[Conversion] Lote "Sin fecha" creado con ${insertResult.insertedCount} items (${insertResult.errors.length} errores)`);
+        createdBatches.push({
+          id: noDateBatch.id,
+          week_number: 0,
+          period_start: null,
+          period_end: null,
+          display_name: "Sin fecha (FPago no definido)",
+          items: insertResult.insertedCount
+        });
       }
     }
 
-    // 2. Crear lotes por semana
+    // Crear lotes por semana
     for (const [key, group] of Object.entries(weekGroups)) {
-      // ANTI-LOTES-VACÍOS: Saltar si no hay items
-      if (group.documents.length === 0) {
-        console.log(`[Conversion] Saltando grupo vacío para semana ${group.week_number}`);
-        continue;
-      }
+      if (group.rows.length === 0) continue;
 
-      console.log(`[Conversion] Creando lote para semana ${group.week_number} con ${group.documents.length} items`);
+      console.log(`[Conversion] Creating batch for week ${group.week_number} with ${group.rows.length} items`);
 
       const batchName = `Semana ${group.week_number} (${group.period_start} a ${group.period_end})`;
 
-      const { data: commissionBatch, error: createError } = await supabase
+      const { data: weekBatch, error: createError } = await supabase
         .from("commission_batches")
         .insert({
           name: batchName,
@@ -576,130 +646,81 @@ Deno.serve(async (req: Request) => {
           period_start: group.period_start,
           period_end: group.period_end,
           converted_from_import_at: new Date().toISOString(),
-          converted_by: user.id,
+          converted_by: user.id
         })
         .select()
         .single();
 
-      if (createError || !commissionBatch) {
-        console.error("Error creating commission batch:", createError);
-        const dbError = extractDatabaseError(createError);
-        throw new Error(`DB_INSERT_FAILED: Failed to create batch for week ${group.week_number}: ${dbError.message} (${dbError.code})`);
+      if (createError || !weekBatch) {
+        throw new Error(`Failed to create batch for week ${group.week_number}: ${createError?.message}`);
       }
 
-      createdBatchIds.push(commissionBatch.id);
+      createdBatchIds.push(weekBatch.id);
 
-      // Normalizar items
-      const commissionItems = group.documents.map((doc) =>
-        normalizeCommissionItem(doc, commissionBatch.id)
-      );
+      const itemsToInsert = group.rows.map(row => ({
+        batch_id: weekBatch.id,
+        agent_id: null,
+        poliza: row.poliza,
+        nombre_asegurado: row.nombre_asegurado || null,
+        ramo: row.ramo,
+        aseguradora: row.aseguradora,
+        prima_neta: row.prima_neta_info || 0,
+        importe_base: row.importe_base,
+        porcentaje_comision: row.porcentaje,
+        concepto: row.concepto || null,
+        date_fpago: row.fpago,
+        commission_bruta: row.comision_calculada,
+        commission_neta: row.comision_calculada,
+        vendor_email_raw: row.agent_email,
+        vendor_email_norm: row.agent_email,
+        vendor_name_raw: '',
+        vendor_name_norm: '',
+        vendor_key: row.agent_email,
+        match_method: 'email',
+        pending_assignment: true,
+        raw_row: {}
+      }));
 
-      // Pre-validar items
-      commissionItems.forEach((item, index) => {
-        const errors = validateCommissionItem(item, index);
-        if (errors.length > 0) {
-          allValidationErrors.push(...errors.map(e => ({ ...e, week_number: group.week_number })));
-        }
-      });
-
-      // Insertar en chunks
-      const insertResult = await insertItemsInChunks(supabase, commissionItems);
-
-      if (!insertResult.success) {
-        allInsertErrors.push(...insertResult.errors.map(e => ({ ...e, week_number: group.week_number })));
-        console.error(`[Conversion] Errores en inserción de semana ${group.week_number}:`, insertResult.errors);
-      }
-
+      const insertResult = await insertItemsInChunks(supabase, itemsToInsert);
       totalInsertedItems += insertResult.insertedCount;
 
-      createdBatches.push({
-        id: commissionBatch.id,
-        week_number: group.week_number,
-        period_start: group.period_start,
-        period_end: group.period_end,
-        display_name: batchName,
-        items: insertResult.insertedCount
-      });
-
-      // CRÍTICO: Si no se insertó ningún item, eliminar el batch
       if (insertResult.insertedCount === 0) {
-        console.warn(`[Conversion] Eliminando lote semana ${group.week_number} porque no se insertaron items`);
-        await supabase
-          .from("commission_batches")
-          .delete()
-          .eq("id", commissionBatch.id);
-
-        // Remover de la lista de batches creados
-        createdBatches.pop();
-        createdBatchIds.pop();
+        await supabase.from("commission_batches").delete().eq("id", weekBatch.id);
       } else {
-        console.log(`[Conversion] Lote semana ${group.week_number} creado con ${insertResult.insertedCount} items (${insertResult.errors.length} errores)`);
+        createdBatches.push({
+          id: weekBatch.id,
+          week_number: group.week_number,
+          period_start: group.period_start,
+          period_end: group.period_end,
+          display_name: batchName,
+          items: insertResult.insertedCount
+        });
       }
     }
 
-    // VALIDACIÓN FINAL CRÍTICA: Debe haber al menos 1 lote con items
     if (createdBatches.length === 0 || totalInsertedItems === 0) {
-      console.error("NO_ITEMS_CONVERTED: No se crearon lotes o todos quedaron vacíos");
-      console.error("Resumen:", {
-        totalSourceItems: sourceCount,
-        weekGroupsCount: Object.keys(weekGroups).length,
-        noDateGroupCount: noDateGroup.length,
-        createdBatchesCount: createdBatches.length,
-        totalInsertedItems,
-        allValidationErrorsCount: allValidationErrors.length,
-        allInsertErrorsCount: allInsertErrors.length
-      });
-
-      // Guardar errores de validación e inserción en el job
       await supabase
         .from("conversion_jobs")
         .update({
           status: "failed",
           finished_at: new Date().toISOString(),
           duration_ms: Date.now() - startTime,
-          error_code: "NO_ITEMS_CONVERTED",
-          error_message: "No se pudieron insertar items en los lotes. Revisa los logs para más detalles.",
-          conversion_report: {
-            summary: {
-              totalSourceItems: sourceCount,
-              weekGroupsCount: Object.keys(weekGroups).length,
-              noDateGroupCount: noDateGroup.length,
-              createdBatchesAttempted: createdBatchIds.length,
-              actualBatchesWithItems: createdBatches.length,
-              totalInsertedItems
-            },
-            validation_errors: allValidationErrors,
-            insert_errors: allInsertErrors
-          }
+          error_code: "NO_ITEMS_INSERTED",
+          error_message: "No se pudieron insertar items en los lotes"
         })
         .eq("id", conversionJobId);
 
-      const result: ConversionResult = {
+      return new Response(JSON.stringify({
         success: false,
-        code: "NO_ITEMS_CONVERTED",
-        message: "No se pudieron insertar documentos en los lotes. Es posible que los datos tengan errores de formato o campos requeridos vacíos.",
-        details: {
-          totalSourceItems: sourceCount,
-          totalInsertedItems: 0,
-          validation_errors_count: allValidationErrors.length,
-          insert_errors_count: allInsertErrors.length,
-          sample_errors: allInsertErrors.slice(0, 5)
-        },
-        conversion_job_id: conversionJobId
-      };
-
-      return new Response(JSON.stringify(result), {
+        code: "NO_ITEMS_INSERTED",
+        message: "No se pudieron insertar documentos en los lotes"
+      }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    // Si hay errores de inserción pero sí se insertó algo, reportarlo
-    if (allInsertErrors.length > 0) {
-      console.warn(`[Conversion] Conversión parcial: ${totalInsertedItems} items insertados, ${allInsertErrors.length} errores`);
-    }
-
-    console.log(`[Conversion] Conversión exitosa: ${createdBatches.length} lotes, ${totalInsertedItems} items`);
+    console.log(`[Conversion] Success: ${createdBatches.length} batches, ${totalInsertedItems} items`);
 
     // Marcar batch como convertido
     await supabase
@@ -708,18 +729,17 @@ Deno.serve(async (req: Request) => {
         converted_to_commissions: true,
         converted_at: new Date().toISOString(),
         converted_by: user.id,
-        commission_batch_ids: createdBatchIds,
+        commission_batch_ids: createdBatchIds
       })
       .eq("id", batchId);
 
-    // Actualizar conversion job como success
-    const duration = Date.now() - startTime;
+    // Actualizar job
     await supabase
       .from("conversion_jobs")
       .update({
         status: "success",
         finished_at: new Date().toISOString(),
-        duration_ms: duration,
+        duration_ms: Date.now() - startTime,
         total_inserted_items: totalInsertedItems,
         created_batch_count: createdBatches.length,
         created_batch_ids: createdBatchIds,
@@ -727,32 +747,21 @@ Deno.serve(async (req: Request) => {
           batches: createdBatches,
           summary: {
             sourceCount,
+            parsedCount: parsedRows.length,
             insertedCount: totalInsertedItems,
-            verified: true
-          },
-          validation_errors: allValidationErrors,
-          insert_errors: allInsertErrors
+            parseErrorsCount: parseErrors.length
+          }
         }
       })
       .eq("id", conversionJobId);
 
-    // Respuesta de éxito (puede ser parcial si hay errores)
-    const result: ConversionResult = {
+    return new Response(JSON.stringify({
       success: true,
       createdBatches,
       totalSourceItems: sourceCount,
       totalInsertedItems,
-      conversion_job_id: conversionJobId,
-      ...(allInsertErrors.length > 0 && {
-        details: {
-          warning: "Conversión parcial: algunos items no pudieron ser insertados",
-          errors_count: allInsertErrors.length,
-          validation_errors_count: allValidationErrors.length
-        }
-      })
-    };
-
-    return new Response(JSON.stringify(result), {
+      conversion_job_id: conversionJobId
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
@@ -760,12 +769,6 @@ Deno.serve(async (req: Request) => {
   } catch (error: any) {
     console.error("[Conversion] Error:", error);
 
-    const duration = Date.now() - startTime;
-
-    // Extraer error de base de datos si aplica
-    const dbError = extractDatabaseError(error);
-
-    // Actualizar conversion job como failed
     if (conversionJobId) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -776,33 +779,19 @@ Deno.serve(async (req: Request) => {
         .update({
           status: "failed",
           finished_at: new Date().toISOString(),
-          duration_ms: duration,
-          error_code: dbError.code,
-          error_message: dbError.message,
+          duration_ms: Date.now() - startTime,
+          error_code: "UNKNOWN",
+          error_message: error.message,
           error_stack: error.stack
         })
         .eq("id", conversionJobId);
     }
 
-    const result: ConversionResult = {
+    return new Response(JSON.stringify({
       success: false,
-      code: dbError.code,
-      message: error.message || "Error desconocido al convertir el lote",
-      details: {
-        error: error.toString(),
-        ...(dbError.constraint && { constraint: dbError.constraint }),
-        ...(dbError.detail && { detail: dbError.detail })
-      },
-      db: {
-        code: dbError.code,
-        message: dbError.message,
-        constraint: dbError.constraint,
-        detail: dbError.detail
-      },
-      conversion_job_id: conversionJobId || undefined
-    };
-
-    return new Response(JSON.stringify(result), {
+      code: "INTERNAL_ERROR",
+      message: error.message || "Error desconocido al convertir el lote"
+    }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
