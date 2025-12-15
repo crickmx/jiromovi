@@ -17,12 +17,14 @@ import { supabase } from '../lib/supabase';
 import {
   getAllBatches,
   getUnmatchedVendorGroups,
+  getMatchedVendorGroups,
   getBatchById,
   deleteBatch,
   getBatchStatusLabel,
 } from '../lib/documentImportUtils';
 import type { DocumentImportBatch } from '../lib/documentImportTypes';
 import VendedoresNoReconocidosTable from '../components/documentImport/VendedoresNoReconocidosTable';
+import VendedoresReconocidosTable from '../components/documentImport/VendedoresReconocidosTable';
 import ConvertirLoteModal from '../components/documentImport/ConvertirLoteModal';
 
 export default function DocumentosImportar() {
@@ -35,6 +37,7 @@ export default function DocumentosImportar() {
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const [selectedBatch, setSelectedBatch] = useState<DocumentImportBatch | null>(null);
   const [unmatchedGroups, setUnmatchedGroups] = useState<any[]>([]);
+  const [matchedGroups, setMatchedGroups] = useState<any[]>([]);
   const [diagnostics, setDiagnostics] = useState<any>(null);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [conversionResult, setConversionResult] = useState<any>(null);
@@ -124,6 +127,10 @@ export default function DocumentosImportar() {
             const groups = await getUnmatchedVendorGroups(batchData.id);
             setUnmatchedGroups(groups);
           }
+          if (batchData.records_matched > 0) {
+            const matched = await getMatchedVendorGroups(batchData.id);
+            setMatchedGroups(matched);
+          }
         }
       }
     } catch (error: any) {
@@ -137,11 +144,21 @@ export default function DocumentosImportar() {
 
   const handleViewBatch = async (batch: DocumentImportBatch) => {
     setSelectedBatch(batch);
+
+    // Cargar vendedores no reconocidos
     if (batch.records_unmatched > 0) {
       const groups = await getUnmatchedVendorGroups(batch.id);
       setUnmatchedGroups(groups);
     } else {
       setUnmatchedGroups([]);
+    }
+
+    // Cargar vendedores reconocidos
+    if (batch.records_matched > 0) {
+      const matched = await getMatchedVendorGroups(batch.id);
+      setMatchedGroups(matched);
+    } else {
+      setMatchedGroups([]);
     }
   };
 
@@ -151,11 +168,21 @@ export default function DocumentosImportar() {
     const batchData = await getBatchById(selectedBatch.id);
     if (batchData) {
       setSelectedBatch(batchData);
+
+      // Recargar vendedores no reconocidos
       if (batchData.records_unmatched > 0) {
         const groups = await getUnmatchedVendorGroups(batchData.id);
         setUnmatchedGroups(groups);
       } else {
         setUnmatchedGroups([]);
+      }
+
+      // Recargar vendedores reconocidos
+      if (batchData.records_matched > 0) {
+        const matched = await getMatchedVendorGroups(batchData.id);
+        setMatchedGroups(matched);
+      } else {
+        setMatchedGroups([]);
       }
 
       await loadBatches();
@@ -499,6 +526,18 @@ export default function DocumentosImportar() {
               </div>
             )}
           </>
+        )}
+
+        {selectedBatch.records_matched > 0 && !conversionResult && (
+          <VendedoresReconocidosTable
+            groups={matchedGroups}
+            batchId={selectedBatch.id}
+            onRefresh={handleRefreshBatch}
+          />
+        )}
+
+        {selectedBatch.records_matched > 0 && selectedBatch.records_unmatched > 0 && !conversionResult && (
+          <div className="my-6"></div>
         )}
 
         {selectedBatch.records_unmatched > 0 && !conversionResult && (

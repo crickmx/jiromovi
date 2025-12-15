@@ -63,3 +63,26 @@ export interface AssignVendorResponse {
   updated_count: number;
   mapping_saved: boolean;
 }
+
+export interface MatchedVendorGroup {
+  movi_user_id: string;
+  user_name: string;
+  user_email: string;
+  document_count: number;
+  vendor_names_detected: string[];
+  vendor_emails_detected: string[];
+  example_documents: any[];
+}
+
+export interface ReassignUserRequest {
+  batch_id: string;
+  old_user_id: string;
+  new_user_id: string;
+  save_mapping: boolean;
+}
+
+export interface ReassignUserResponse {
+  success: boolean;
+  updated_count: number;
+  mapping_saved: boolean;
+}

@@ -5,6 +5,9 @@ import type {
   UnmatchedVendorGroup,
   AssignVendorRequest,
   AssignVendorResponse,
+  MatchedVendorGroup,
+  ReassignUserRequest,
+  ReassignUserResponse,
 } from './documentImportTypes';
 
 export function normalizeEmail(email: string | null | undefined): string | null {
@@ -160,6 +163,65 @@ export async function assignVendorToUser(
 
   if (!data || data.length === 0) {
     throw new Error('No se recibió respuesta de la asignación');
+  }
+
+  const result = Array.isArray(data) ? data[0] : data;
+
+  if (result.error) {
+    throw new Error(result.error);
+  }
+
+  return {
+    success: true,
+    updated_count: result.updated_count || 0,
+    mapping_saved: result.mapping_saved || false,
+  };
+}
+
+export async function getMatchedVendorGroups(
+  batchId: string
+): Promise<MatchedVendorGroup[]> {
+  const { data, error } = await supabase.rpc('get_matched_vendors_by_name', {
+    p_batch_id: batchId,
+  });
+
+  if (error) {
+    console.error('Error al obtener vendedores reconocidos:', error);
+    return [];
+  }
+
+  if (!data || !Array.isArray(data)) {
+    return [];
+  }
+
+  return data.map((group: any) => ({
+    movi_user_id: group.movi_user_id,
+    user_name: group.user_name || 'Sin nombre',
+    user_email: group.user_email || 'Sin email',
+    document_count: Number(group.document_count),
+    vendor_names_detected: group.vendor_names_detected || [],
+    vendor_emails_detected: group.vendor_emails_detected || [],
+    example_documents: group.example_documents || [],
+  }));
+}
+
+export async function reassignUserDocuments(
+  request: ReassignUserRequest
+): Promise<ReassignUserResponse> {
+  const { data, error } = await supabase.rpc('reassign_user_documents', {
+    p_batch_id: request.batch_id,
+    p_old_user_id: request.old_user_id,
+    p_new_user_id: request.new_user_id,
+    p_save_mapping: request.save_mapping,
+  });
+
+  if (error) {
+    console.error('Error al reasignar documentos:', error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error('No se recibió respuesta de la reasignación');
   }
 
   const result = Array.isArray(data) ? data[0] : data;
