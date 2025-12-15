@@ -102,7 +102,29 @@ export function Directorio() {
       const result = await response.json();
 
       if (!response.ok) {
-        const errorMsg = result.message || result.error || 'Error al eliminar usuario';
+        console.error('Delete user error response:', result);
+
+        let errorMsg = 'Error al eliminar usuario';
+
+        if (result.error_code === 'LAST_ADMIN') {
+          errorMsg = 'No se puede eliminar el último administrador activo del sistema';
+        } else if (result.error_code === 'CANNOT_DELETE_SELF') {
+          errorMsg = 'No puedes eliminarte a ti mismo';
+        } else if (result.error_code === 'USER_ALREADY_DELETED') {
+          errorMsg = 'Este usuario ya está eliminado';
+        } else if (result.error_code === 'USER_NOT_FOUND') {
+          errorMsg = 'Usuario no encontrado';
+        } else if (result.message) {
+          errorMsg = result.message;
+        } else if (result.error) {
+          errorMsg = result.error;
+        }
+
+        if (result.details) {
+          console.error('Error details:', result.details);
+          errorMsg += '\n\nDetalles técnicos: ' + result.details;
+        }
+
         alert(errorMsg);
       } else {
         alert('Usuario eliminado correctamente. El usuario ya no puede iniciar sesión.');
@@ -111,9 +133,10 @@ export function Directorio() {
         setDeleteConfirmText('');
         loadData();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al eliminar usuario:', error);
-      alert('Error al eliminar usuario');
+      const errorMsg = error.message || 'Error de conexión al eliminar usuario';
+      alert(errorMsg);
     }
   };
 
