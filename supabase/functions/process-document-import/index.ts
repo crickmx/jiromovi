@@ -190,6 +190,8 @@ Deno.serve(async (req: Request) => {
       const vendorEmailRaw = row[columnMapping.vendor_email || 'correo'] || row['Correo'] || row['Email'] || null;
       const vendorNameRaw = row[columnMapping.vendor_name || 'nombre'] || row['Nombre'] || row['Vendedor'] || null;
 
+      const vendorEmailNorm = normalizeEmail(vendorEmailRaw);
+      const vendorNameNorm = normalizeName(vendorNameRaw);
       const vendorKey = calculateVendorKey(vendorEmailRaw, vendorNameRaw);
 
       const userMatch = await findMoviUserForVendor(
@@ -204,6 +206,8 @@ Deno.serve(async (req: Request) => {
         document_id: String(documentId),
         vendor_email_raw: vendorEmailRaw,
         vendor_name_raw: vendorNameRaw,
+        vendor_email_norm: vendorEmailNorm,
+        vendor_name_norm: vendorNameNorm,
         vendor_key: vendorKey,
         movi_user_id: userMatch.user_id,
         match_method: userMatch.method,

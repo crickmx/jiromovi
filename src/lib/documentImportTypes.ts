@@ -26,6 +26,8 @@ export interface ImportedDocument {
   document_id: string;
   vendor_email_raw: string | null;
   vendor_name_raw: string | null;
+  vendor_email_norm: string | null;
+  vendor_name_norm: string | null;
   vendor_key: string;
   movi_user_id: string | null;
   match_method: MatchMethod;
@@ -43,6 +45,8 @@ export interface UnmatchedVendorGroup {
   sample_documents: string[];
   vendor_email_raw?: string;
   vendor_name_raw?: string;
+  emails_detected?: string[];
+  example_documents?: any[];
 }
 
 export interface AssignVendorRequest {

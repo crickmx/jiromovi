@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Search, User, CheckCircle } from 'lucide-react';
+import { X, Search, User, CheckCircle, FileText, Mail } from 'lucide-react';
 import { searchMoviUsers, assignVendorToUser } from '../../lib/documentImportUtils';
 import type { UnmatchedVendorGroup } from '../../lib/documentImportTypes';
 
@@ -66,6 +66,18 @@ export default function AsignarVendedorModal({
       });
 
       if (result.success) {
+        const mappingMessage = result.mapping_saved
+          ? ' El mapeo ha sido guardado para futuras importaciones.'
+          : '';
+
+        alert(
+          `Asignación completada exitosamente.\n\n` +
+          `Vendedor: ${group.vendor_name_raw || group.display_value}\n` +
+          `Usuario MOVI: ${selectedUser.nombre_completo}\n` +
+          `Documentos actualizados: ${result.updated_count}` +
+          mappingMessage
+        );
+
         onSuccess();
       }
     } catch (error) {
@@ -95,46 +107,84 @@ export default function AsignarVendedorModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-semibold text-blue-900 mb-2">Información del vendedor</h3>
-            <div className="space-y-1 text-sm">
-              <p>
-                <span className="font-medium">Tipo:</span>{' '}
-                {group.type === 'email' ? 'Email' : group.type === 'name' ? 'Nombre' : 'Desconocido'}
-              </p>
-              {group.vendor_email_raw && (
-                <p>
-                  <span className="font-medium">Email detectado:</span> {group.vendor_email_raw}
-                </p>
+          <div className="mb-6 p-5 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg">
+            <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Vendedor detectado: {group.vendor_name_raw || group.display_value}
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="bg-white p-3 rounded-lg shadow-sm">
+                <p className="text-xs text-gray-600 mb-1">Documentos en este grupo</p>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                  <span className="text-2xl font-bold text-gray-900">{group.document_count}</span>
+                </div>
+              </div>
+
+              {group.emails_detected && group.emails_detected.length > 0 && (
+                <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <p className="text-xs text-gray-600 mb-1">Emails detectados</p>
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-blue-600" />
+                    <span className="text-2xl font-bold text-gray-900">{group.emails_detected.length}</span>
+                  </div>
+                </div>
               )}
-              {group.vendor_name_raw && (
-                <p>
-                  <span className="font-medium">Nombre detectado:</span> {group.vendor_name_raw}
-                </p>
-              )}
-              <p>
-                <span className="font-medium">Documentos afectados:</span> {group.document_count}
-              </p>
             </div>
 
-            {group.sample_documents.length > 0 && (
-              <div className="mt-3">
-                <p className="font-medium text-sm text-blue-900 mb-1">Documentos de ejemplo:</p>
+            {group.emails_detected && group.emails_detected.length > 0 && (
+              <div className="mb-4 bg-white p-3 rounded-lg shadow-sm">
+                <p className="font-medium text-sm text-gray-700 mb-2">Emails encontrados:</p>
                 <div className="flex flex-wrap gap-2">
-                  {group.sample_documents.slice(0, 5).map((doc, idx) => (
+                  {group.emails_detected.map((email, idx) => (
                     <span
                       key={idx}
-                      className="px-2 py-1 bg-white border border-blue-300 rounded text-xs text-blue-800"
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 border border-blue-300 rounded text-xs text-blue-800"
                     >
-                      {doc}
+                      <Mail className="h-3 w-3" />
+                      {email}
                     </span>
                   ))}
-                  {group.sample_documents.length > 5 && (
-                    <span className="px-2 py-1 text-xs text-blue-600">
-                      +{group.sample_documents.length - 5} más
-                    </span>
-                  )}
                 </div>
+              </div>
+            )}
+
+            {group.example_documents && group.example_documents.length > 0 && (
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <p className="font-medium text-sm text-gray-700 mb-3">
+                  Preview de documentos (máximo 10):
+                </p>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {group.example_documents.slice(0, 10).map((doc: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-start justify-between p-2 bg-gray-50 border border-gray-200 rounded text-xs"
+                    >
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{doc.document_id}</p>
+                        {doc.document_data && (
+                          <div className="mt-1 text-gray-600 space-y-0.5">
+                            {doc.document_data.aseguradora && (
+                              <p>Aseguradora: {doc.document_data.aseguradora}</p>
+                            )}
+                            {doc.document_data.ramo && (
+                              <p>Ramo: {doc.document_data.ramo}</p>
+                            )}
+                            {doc.document_data.prima && (
+                              <p>Prima: ${Number(doc.document_data.prima).toLocaleString()}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {group.document_count > 10 && (
+                  <p className="text-center text-xs text-gray-500 mt-2">
+                    +{group.document_count - 10} documentos más serán actualizados
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -207,17 +257,25 @@ export default function AsignarVendedorModal({
             </div>
           )}
 
-          <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-lg">
-            <input
-              type="checkbox"
-              id="saveMapping"
-              checked={saveMapping}
-              onChange={(e) => setSaveMapping(e.target.checked)}
-              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="saveMapping" className="text-sm text-gray-700 cursor-pointer">
-              Guardar este mapeo para futuros eventos (recomendado)
-            </label>
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="saveMapping"
+                checked={saveMapping}
+                onChange={(e) => setSaveMapping(e.target.checked)}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+              />
+              <div className="flex-1">
+                <label htmlFor="saveMapping" className="text-sm font-medium text-gray-900 cursor-pointer block mb-1">
+                  Recordar esta asignación para futuros lotes
+                </label>
+                <p className="text-xs text-gray-600">
+                  Cuando se active, el sistema recordará que documentos con el nombre "{group.vendor_name_raw || group.display_value}"
+                  pertenecen a este usuario MOVI. En futuras importaciones, estos documentos se asignarán automáticamente.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -237,12 +295,12 @@ export default function AsignarVendedorModal({
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Asignando...
+                Asignando {group.document_count} documentos...
               </>
             ) : (
               <>
                 <CheckCircle className="h-5 w-5" />
-                Asignar
+                Asignar y actualizar {group.document_count} documentos
               </>
             )}
           </button>

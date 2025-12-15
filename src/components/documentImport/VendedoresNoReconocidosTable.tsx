@@ -74,16 +74,19 @@ export default function VendedoresNoReconocidosTable({
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tipo
+                  Vendedor (Nombre)
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Información detectada
+                  # Documentos
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Documentos
+                  Emails detectados
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ejemplos
+                  Ejemplos de documentos
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Estado
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acciones
@@ -95,38 +98,18 @@ export default function VendedoresNoReconocidosTable({
                 <tr key={group.vendor_key} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {group.type === 'email' ? (
-                        <>
-                          <Mail className="h-5 w-5 text-blue-600" />
-                          <span className="text-sm font-medium text-gray-900">Email</span>
-                        </>
-                      ) : group.type === 'name' ? (
-                        <>
-                          <User className="h-5 w-5 text-purple-600" />
-                          <span className="text-sm font-medium text-gray-900">Nombre</span>
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle className="h-5 w-5 text-gray-400" />
-                          <span className="text-sm font-medium text-gray-500">Desconocido</span>
-                        </>
-                      )}
+                      <User className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {getVendorGroupLabel(group)}
+                        </p>
+                        {group.display_value !== getVendorGroupLabel(group) && (
+                          <p className="text-xs text-gray-500">
+                            Normalizado: {group.display_value}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-gray-900 font-medium">
-                      {getVendorGroupLabel(group)}
-                    </p>
-                    {group.vendor_email_raw && group.type === 'email' && (
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Normalizado: {group.display_value}
-                      </p>
-                    )}
-                    {group.vendor_name_raw && group.type === 'name' && (
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Normalizado: {group.display_value}
-                      </p>
-                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -135,6 +118,28 @@ export default function VendedoresNoReconocidosTable({
                         {group.document_count}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {group.emails_detected && group.emails_detected.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {group.emails_detected.slice(0, 2).map((email, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700"
+                          >
+                            <Mail className="h-3 w-3" />
+                            {email}
+                          </span>
+                        ))}
+                        {group.emails_detected.length > 2 && (
+                          <span className="px-2 py-1 text-xs text-gray-500">
+                            +{group.emails_detected.length - 2} más
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">Sin email</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
@@ -148,10 +153,15 @@ export default function VendedoresNoReconocidosTable({
                       ))}
                       {group.sample_documents.length > 3 && (
                         <span className="px-2 py-1 text-xs text-gray-500">
-                          +{group.sample_documents.length - 3}
+                          +{group.sample_documents.length - 3} más
                         </span>
                       )}
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                      Pendiente
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <button
@@ -159,7 +169,7 @@ export default function VendedoresNoReconocidosTable({
                       className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
                     >
                       <UserPlus className="h-4 w-4" />
-                      Asignar usuario
+                      Asignar usuario MOVI
                     </button>
                   </td>
                 </tr>
