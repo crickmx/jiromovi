@@ -14,6 +14,7 @@ interface MoviUser {
   id: string;
   nombre_completo: string;
   email: string;
+  rol?: string;
 }
 
 export default function AsignarVendedorModal({
@@ -263,6 +264,13 @@ export default function AsignarVendedorModal({
                           <div>
                             <p className="font-medium text-gray-900">{user.nombre_completo}</p>
                             <p className="text-sm text-gray-600">{user.email}</p>
+                            {user.rol && (
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                                  {user.rol}
+                                </span>
+                              </p>
+                            )}
                           </div>
                         </div>
                         {selectedUser?.id === user.id && (
@@ -296,6 +304,13 @@ export default function AsignarVendedorModal({
                 <div>
                   <p className="font-medium text-gray-900">{selectedUser.nombre_completo}</p>
                   <p className="text-sm text-gray-600">{selectedUser.email}</p>
+                  {selectedUser.rol && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      <span className="inline-block px-2 py-0.5 bg-green-200 text-green-900 rounded">
+                        {selectedUser.rol}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

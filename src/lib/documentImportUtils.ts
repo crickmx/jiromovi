@@ -178,7 +178,8 @@ export async function assignVendorToUser(
 export async function getAllMoviUsers() {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre_completo, email, oficina_id')
+    .select('id, nombre_completo, email_laboral, email_personal, oficina_id, rol')
+    .eq('activo', true)
     .order('nombre_completo', { ascending: true });
 
   if (error) {
@@ -186,7 +187,12 @@ export async function getAllMoviUsers() {
     return [];
   }
 
-  return data || [];
+  return (data || []).map(user => ({
+    id: user.id,
+    nombre_completo: user.nombre_completo,
+    email: user.email_laboral || user.email_personal || 'Sin email',
+    rol: user.rol
+  }));
 }
 
 export async function searchMoviUsers(query: string) {
@@ -198,9 +204,10 @@ export async function searchMoviUsers(query: string) {
 
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre_completo, email, oficina_id')
+    .select('id, nombre_completo, email_laboral, email_personal, oficina_id, rol')
+    .eq('activo', true)
     .or(
-      `nombre_completo.ilike.%${normalizedQuery}%,email.ilike.%${normalizedQuery}%`
+      `nombre_completo.ilike.%${normalizedQuery}%,email_laboral.ilike.%${normalizedQuery}%,email_personal.ilike.%${normalizedQuery}%`
     )
     .order('nombre_completo', { ascending: true })
     .limit(100);
@@ -210,7 +217,12 @@ export async function searchMoviUsers(query: string) {
     return [];
   }
 
-  return data || [];
+  return (data || []).map(user => ({
+    id: user.id,
+    nombre_completo: user.nombre_completo,
+    email: user.email_laboral || user.email_personal || 'Sin email',
+    rol: user.rol
+  }));
 }
 
 export function getVendorGroupLabel(group: UnmatchedVendorGroup): string {
