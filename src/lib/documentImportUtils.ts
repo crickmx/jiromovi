@@ -104,7 +104,7 @@ export async function getDocumentsByBatchId(batchId: string): Promise<ImportedDo
 export async function getUnmatchedVendorGroups(
   batchId: string
 ): Promise<UnmatchedVendorGroup[]> {
-  const { data, error } = await supabase.rpc('get_unmatched_vendor_groups_by_name', {
+  const { data, error } = await supabase.rpc('get_unmatched_vendor_groups_all', {
     p_batch_id: batchId,
   });
 
@@ -117,18 +117,38 @@ export async function getUnmatchedVendorGroups(
     return [];
   }
 
-  return data.map((group: any) => ({
-    vendor_key: group.vendor_name_norm,
-    type: 'name' as const,
-    display_value: group.vendor_name_raw || group.vendor_name_norm,
-    document_count: Number(group.document_count),
-    sample_documents: group.example_documents
-      ? group.example_documents.slice(0, 10).map((doc: any) => doc.document_id)
-      : [],
-    vendor_name_raw: group.vendor_name_raw,
-    emails_detected: group.emails_detected || [],
-    example_documents: group.example_documents || [],
-  }));
+  return data.map((group: any) => {
+    const groupingType = group.grouping_type || 'unknown';
+
+    let displayValue = '';
+    if (groupingType === 'name' && group.vendor_name_raw) {
+      displayValue = group.vendor_name_raw;
+    } else if (groupingType === 'email' && group.vendor_email_raw) {
+      displayValue = group.vendor_email_raw;
+    } else {
+      displayValue = 'Sin información';
+    }
+
+    const emailsDetected = group.example_documents
+      ? [...new Set(group.example_documents
+          .map((doc: any) => doc.vendor_email_raw)
+          .filter((email: string) => email && email.trim()))]
+      : [];
+
+    return {
+      vendor_key: group.vendor_key,
+      type: groupingType === 'name' ? 'name' : groupingType === 'email' ? 'email' : 'unknown',
+      display_value: displayValue,
+      document_count: Number(group.document_count),
+      sample_documents: group.example_documents
+        ? group.example_documents.slice(0, 10).map((doc: any) => doc.document_id)
+        : [],
+      vendor_name_raw: group.vendor_name_raw || undefined,
+      vendor_email_raw: group.vendor_email_raw || undefined,
+      emails_detected: emailsDetected,
+      example_documents: group.example_documents || [],
+    };
+  });
 }
 
 export async function assignVendorToUser(
@@ -137,9 +157,9 @@ export async function assignVendorToUser(
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData?.session?.user?.id;
 
-  const { data, error } = await supabase.rpc('assign_vendor_group_by_name', {
+  const { data, error } = await supabase.rpc('assign_vendor_by_key', {
     p_batch_id: request.batch_id,
-    p_vendor_name_norm: request.vendor_key,
+    p_vendor_key: request.vendor_key,
     p_movi_user_id: request.movi_user_id,
     p_save_mapping: request.save_mapping,
     p_created_by: userId || null,
@@ -195,13 +215,13 @@ export function getVendorGroupLabel(group: UnmatchedVendorGroup): string {
 
 export async function getDocumentsByVendorGroup(
   batchId: string,
-  vendorNameNorm: string,
+  vendorKey: string,
   limit: number = 10,
   offset: number = 0
 ) {
-  const { data, error } = await supabase.rpc('get_documents_by_vendor_group', {
+  const { data, error } = await supabase.rpc('get_documents_by_vendor_key', {
     p_batch_id: batchId,
-    p_vendor_name_norm: vendorNameNorm,
+    p_vendor_key: vendorKey,
     p_limit: limit,
     p_offset: offset,
   });

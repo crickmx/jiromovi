@@ -72,7 +72,8 @@ export default function AsignarVendedorModal({
 
         alert(
           `Asignación completada exitosamente.\n\n` +
-          `Vendedor: ${group.vendor_name_raw || group.display_value}\n` +
+          `Vendedor: ${group.display_value}\n` +
+          `Tipo: ${group.type === 'name' ? 'Nombre' : group.type === 'email' ? 'Email' : 'Desconocido'}\n` +
           `Usuario MOVI: ${selectedUser.nombre_completo}\n` +
           `Documentos actualizados: ${result.updated_count}` +
           mappingMessage
@@ -109,8 +110,14 @@ export default function AsignarVendedorModal({
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-6 p-5 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg">
             <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Vendedor detectado: {group.vendor_name_raw || group.display_value}
+              {group.type === 'name' ? (
+                <User className="h-5 w-5" />
+              ) : group.type === 'email' ? (
+                <Mail className="h-5 w-5" />
+              ) : (
+                <FileText className="h-5 w-5" />
+              )}
+              Vendedor detectado: {group.display_value}
             </h3>
 
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -271,8 +278,14 @@ export default function AsignarVendedorModal({
                   Recordar esta asignación para futuros lotes
                 </label>
                 <p className="text-xs text-gray-600">
-                  Cuando se active, el sistema recordará que documentos con el nombre "{group.vendor_name_raw || group.display_value}"
-                  pertenecen a este usuario MOVI. En futuras importaciones, estos documentos se asignarán automáticamente.
+                  {group.type === 'name' ? (
+                    `Cuando se active, el sistema recordará que documentos con el nombre "${group.display_value}" pertenecen a este usuario MOVI.`
+                  ) : group.type === 'email' ? (
+                    `Cuando se active, el sistema recordará que documentos con el email "${group.display_value}" pertenecen a este usuario MOVI.`
+                  ) : (
+                    `Cuando se active, el sistema recordará esta asignación para documentos similares.`
+                  )}
+                  {' '}En futuras importaciones, estos documentos se asignarán automáticamente.
                 </p>
               </div>
             </div>
