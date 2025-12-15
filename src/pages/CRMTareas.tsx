@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Search,
   User,
+  ArrowLeft,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -171,6 +172,14 @@ export default function CRMTareas() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6">
+        <button
+          onClick={() => navigate('/mi-crm')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="font-medium">Volver a Mi CRM</span>
+        </button>
+
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Mis Tareas</h1>
