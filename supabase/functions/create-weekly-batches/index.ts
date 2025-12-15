@@ -60,25 +60,46 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Sesión no encontrada: ${sessionError?.message || 'null'}`);
     }
 
+    // Permitir crear lotes si:
+    // - status es 'ready' (hay más items para convertir)
+    // - status NO es 'batches_created' (completamente terminado sin pendientes)
     if (session.status === 'batches_created') {
-      throw new Error('Esta sesión ya tiene lotes creados');
+      throw new Error('Esta sesión ya completó la conversión de todos los lotes. No hay más items pendientes.');
     }
 
+    // SOLO cargar items RECONOCIDOS (con usuario asignado) que NO hayan sido convertidos
+    // Los pendientes se quedan en staging para asignación posterior
     const { data: items, error: itemsError } = await supabase
       .from('commission_items_staging')
       .select('*')
       .eq('staging_session_id', stagingSessionId)
+      .eq('pending_assignment', false)
+      .not('movi_user_id', 'is', null)
+      .is('batch_id', null)  // Solo items NO convertidos aún
       .order('date_fpago', { ascending: true });
 
     if (itemsError) {
       throw new Error(`Error al cargar items: ${itemsError.message}`);
     }
 
+    // Contar los pendientes que quedan en staging
+    const { count: pendingCount } = await supabase
+      .from('commission_items_staging')
+      .select('*', { count: 'exact', head: true })
+      .eq('staging_session_id', stagingSessionId)
+      .eq('pending_assignment', true);
+
     if (!items || items.length === 0) {
+      if (pendingCount && pendingCount > 0) {
+        throw new Error(`No hay items reconocidos para convertir en lotes. ${pendingCount} items quedan pendientes de asignación. Asigna los vendedores pendientes primero.`);
+      }
       throw new Error('No hay items para procesar');
     }
 
-    console.log('[create-weekly-batches] Found', items.length, 'items to process');
+    console.log('[create-weekly-batches] Found', items.length, 'recognized items to process');
+    if (pendingCount && pendingCount > 0) {
+      console.log('[create-weekly-batches] Note:', pendingCount, 'pending items remain in staging');
+    }
 
     const weekMap = new Map<string, any[]>();
 
@@ -236,16 +257,27 @@ Deno.serve(async (req: Request) => {
       batchIds.push(batch.id);
     }
 
+    // Actualizar status de la sesión
+    // Si hay pendientes, mantener la sesión abierta para seguir asignando
+    const finalStatus = (pendingCount && pendingCount > 0) ? 'ready' : 'batches_created';
+
+    // Acumular los batch_ids con los anteriores (si existen)
+    const existingBatchIds = session.batches_created || [];
+    const allBatchIds = [...existingBatchIds, ...batchIds];
+
     await supabase
       .from('commission_staging_sessions')
       .update({
-        status: 'batches_created',
-        batches_created: batchIds,
+        status: finalStatus,
+        batches_created: allBatchIds,
         batches_created_at: new Date().toISOString(),
       })
       .eq('id', stagingSessionId);
 
     console.log('[create-weekly-batches] Complete! Created', batchesCreated.length, 'batches');
+    if (pendingCount && pendingCount > 0) {
+      console.log('[create-weekly-batches] Warning:', pendingCount, 'items remain pending assignment');
+    }
 
     return new Response(
       JSON.stringify({
@@ -253,8 +285,12 @@ Deno.serve(async (req: Request) => {
         batchesCreated,
         summary: {
           total_batches: batchesCreated.length,
-          total_items: items.length,
+          total_items_converted: items.length,
+          pending_items_remaining: pendingCount || 0,
         },
+        warning: (pendingCount && pendingCount > 0)
+          ? `Se crearon ${batchesCreated.length} lotes con ${items.length} documentos reconocidos. ${pendingCount} documentos quedan pendientes de asignación.`
+          : null,
       }),
       {
         status: 200,
