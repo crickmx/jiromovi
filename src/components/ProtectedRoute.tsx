@@ -23,7 +23,10 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { usuario, loading } = useAuth();
 
+  console.log('[ProtectedRoute] Rendering, loading:', loading, 'usuario:', usuario?.id, usuario?.rol);
+
   if (loading) {
+    console.log('[ProtectedRoute] Still loading, showing spinner');
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
@@ -35,10 +38,12 @@ export function ProtectedRoute({
   }
 
   if (!usuario) {
+    console.log('[ProtectedRoute] No usuario, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
   if (requireAdmin && usuario.rol !== 'Administrador') {
+    console.log('[ProtectedRoute] Admin required but user is', usuario.rol, '- redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -62,5 +67,6 @@ export function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
+  console.log('[ProtectedRoute] All checks passed, rendering children');
   return <>{children}</>;
 }
