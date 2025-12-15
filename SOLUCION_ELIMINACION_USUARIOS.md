@@ -31,6 +31,8 @@ Se actualizaron todas las foreign keys problemáticas:
 **Migraciones aplicadas:**
 1. `fix_user_deletion_foreign_keys.sql` - Constraints iniciales
 2. `fix_remaining_no_action_constraints.sql` - Constraints restantes
+3. `fix_usuarios_regimen_fiscal_fkey.sql` - Fix constraint de régimen fiscal
+4. `improve_safe_delete_user_error_handling.sql` - Mejora manejo de errores
 
 **Tablas actualizadas (ahora usan SET NULL):**
 - `notificaciones_globales.enviado_por`
@@ -45,6 +47,7 @@ Se actualizaron todas las foreign keys problemáticas:
 - `crm_tareas.creado_por`
 - `expediente_usuario.subido_por`
 - `production_google_sheets_config.configurado_por_user_id`
+- `usuarios.regimen_fiscal_id`
 
 ### 3. Edge Function Actualizada
 
@@ -52,10 +55,16 @@ Se actualizaron todas las foreign keys problemáticas:
 
 **Cambios implementados:**
 - Usa la función `safe_delete_user` de base de datos
-- Mejor manejo de errores con mensajes específicos
+- Manejo de errores detallado con información completa:
+  - SQLSTATE del error
+  - Mensaje de error
+  - Detalles adicionales
+  - Hints de PostgreSQL
+  - Contexto de la excepción
 - Validaciones de seguridad mejoradas
 - Eliminación en dos pasos: base de datos primero, auth después
 - Manejo de casos de éxito parcial
+- Logging completo de errores
 
 **Flujo de eliminación:**
 1. Valida que el usuario actual sea Administrador
@@ -86,6 +95,8 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
 ```
 
 **Resultado esperado:** 0 filas (sin constraints problemáticas)
+
+**Estado actual:** ✅ VERIFICADO - No hay constraints problemáticas
 
 ## Uso en el Frontend
 

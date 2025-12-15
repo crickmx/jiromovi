@@ -103,16 +103,29 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!deleteResult || !deleteResult.success) {
-      console.error('Delete function returned error:', deleteResult);
+      console.error('Delete function returned error:', JSON.stringify(deleteResult, null, 2));
 
       const errorMessage = deleteResult?.error || 'Error desconocido al eliminar usuario';
-      const errorDetails = deleteResult?.detail || '';
+
+      let detailedError = {
+        error: errorMessage,
+        error_code: deleteResult?.error_code,
+        sqlstate: deleteResult?.sqlstate,
+        message: deleteResult?.message,
+        detail: deleteResult?.detail,
+        hint: deleteResult?.hint,
+        context: deleteResult?.context
+      };
+
+      // Remove undefined fields
+      Object.keys(detailedError).forEach(key => {
+        if (detailedError[key] === undefined) {
+          delete detailedError[key];
+        }
+      });
 
       return new Response(
-        JSON.stringify({
-          error: errorMessage,
-          details: errorDetails
-        }),
+        JSON.stringify(detailedError),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
