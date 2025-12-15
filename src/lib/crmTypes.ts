@@ -23,6 +23,7 @@ export interface CRMContacto {
   nombre_completo: string;
   celular: string;
   email?: string;
+  fecha_nacimiento?: string;
   estatus: EstatusContacto;
   fuente_origen?: string;
   etiquetas_segmentacion: string[];

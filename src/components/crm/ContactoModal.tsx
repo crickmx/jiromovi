@@ -28,6 +28,7 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
     nombre_completo: '',
     celular: '',
     email: '',
+    fecha_nacimiento: '',
     estatus: 'Prospecto',
     fuente_origen: '',
     etiquetas_segmentacion: [] as string[],
@@ -42,6 +43,7 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
         nombre_completo: contacto.nombre_completo,
         celular: contacto.celular,
         email: contacto.email || '',
+        fecha_nacimiento: (contacto as any).fecha_nacimiento || '',
         estatus: contacto.estatus,
         fuente_origen: contacto.fuente_origen || '',
         etiquetas_segmentacion: contacto.etiquetas_segmentacion || [],
@@ -175,6 +177,24 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
               />
             </div>
           </div>
+
+          {formData.tipo_contacto === 'Persona' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Fecha de Nacimiento
+              </label>
+              <input
+                type="date"
+                value={formData.fecha_nacimiento}
+                onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                max={new Date().toISOString().split('T')[0]}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                📅 Se generará un recordatorio automático en tu calendario el día del cumpleaños
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Fuente de Origen</label>

@@ -413,3 +413,40 @@ export async function eliminarArchivoCRM(path: string) {
   const { error } = await supabase.storage.from('crm-documentos').remove([path]);
   if (error) throw error;
 }
+
+export function esCumpleanosHoy(fecha_nacimiento?: string): boolean {
+  if (!fecha_nacimiento) return false;
+
+  const today = new Date();
+  const birthDate = new Date(fecha_nacimiento);
+
+  return (
+    birthDate.getDate() === today.getDate() &&
+    birthDate.getMonth() === today.getMonth()
+  );
+}
+
+export function formatearFechaNacimiento(fecha_nacimiento?: string): string {
+  if (!fecha_nacimiento) return '';
+
+  const birthDate = new Date(fecha_nacimiento);
+  const day = birthDate.getDate();
+  const month = birthDate.getMonth() + 1;
+
+  return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}`;
+}
+
+export function calcularEdad(fecha_nacimiento?: string): number | null {
+  if (!fecha_nacimiento) return null;
+
+  const today = new Date();
+  const birthDate = new Date(fecha_nacimiento);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+
+  return age;
+}

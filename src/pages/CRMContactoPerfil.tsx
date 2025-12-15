@@ -13,6 +13,9 @@ import {
   actualizarTarea,
   descargarArchivoCRM,
   abrirArchivoCRM,
+  esCumpleanosHoy,
+  formatearFechaNacimiento,
+  calcularEdad,
 } from '../lib/crmUtils';
 import type { CRMContacto, CRMCotizacion, CRMPoliza, CRMTarea, TimelineItem } from '../lib/crmTypes';
 import ContactoModal from '../components/crm/ContactoModal';
@@ -198,6 +201,24 @@ export default function CRMContactoPerfil() {
                 <Calendar className="h-4 w-4 mr-2" />
                 Creado: {new Date(contacto.fecha_creacion).toLocaleDateString('es-MX')}
               </div>
+              {contacto.fecha_nacimiento && contacto.tipo_contacto === 'Persona' && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center text-gray-600">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Cumpleaños: {formatearFechaNacimiento(contacto.fecha_nacimiento)}
+                    {calcularEdad(contacto.fecha_nacimiento) && (
+                      <span className="ml-1 text-sm">
+                        ({calcularEdad(contacto.fecha_nacimiento)} años)
+                      </span>
+                    )}
+                  </div>
+                  {esCumpleanosHoy(contacto.fecha_nacimiento) && (
+                    <span className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-semibold flex items-center gap-1 animate-pulse">
+                      🎂 ¡Hoy!
+                    </span>
+                  )}
+                </div>
+              )}
               {contacto.fuente_origen && (
                 <div className="text-sm text-gray-600">
                   Fuente: <span className="font-medium">{contacto.fuente_origen}</span>
