@@ -46,6 +46,19 @@ Esta función:
 - Muestra edad calculada
 - Badge animado "🎂 ¡Hoy!" cuando es el cumpleaños del contacto
 
+**Calendario Dashboard**:
+- Eventos aparecen automáticamente en el calendario principal
+- Color rosa distintivo (#ec4899)
+- Etiqueta: "Cumpleaños / Aniversario"
+- Modal con botón "Ver Contacto en Mi CRM"
+- Navegación directa al perfil del contacto
+- Leyenda visual en la parte inferior del calendario
+
+**Notificaciones Internas (Campanita)**:
+- Título: "🎂 Cumpleaños hoy"
+- Mensaje: "Hoy es el cumpleaños de [Nombre]. ¡Escríbele o llámale!"
+- Deep link directo al perfil del contacto en Mi CRM
+
 ---
 
 ## Configuración del Cron Job
@@ -310,8 +323,27 @@ WHERE tipo_contacto = 'Persona'
 ✅ Sistema completamente funcional
 ✅ Sin duplicados
 ✅ Respeta permisos y privacidad
-✅ UI mejorada con indicadores visuales
+✅ UI mejorada con indicadores visuales en perfil del contacto
+✅ **Integración completa con Calendario del Dashboard**
+✅ Eventos de cumpleaños con etiqueta "Cumpleaños / Aniversario"
+✅ Navegación directa desde calendario a perfil del contacto
 ✅ Edge Function desplegado y listo
 ⚠️ **Falta**: Configurar cron job para ejecución diaria automática
 
 **Acción Requerida**: Configurar un cron job usando una de las opciones mencionadas arriba para que el sistema funcione completamente automático.
+
+## ¿Cómo se ve en el Calendario?
+
+Cuando un contacto de Mi CRM cumple años:
+
+1. **En el calendario del Dashboard**: Aparece un evento rosa con el título "🎂 Cumpleaños: [Nombre del Contacto]"
+2. **Al hacer clic**: Se abre un modal mostrando:
+   - Icono de pastel (Cake)
+   - Etiqueta: "Cumpleaños / Aniversario"
+   - Título del evento
+   - Descripción del cumpleaños
+   - Botón rosa: "Ver Contacto en Mi CRM"
+3. **Click en el botón**: Navega directamente al perfil completo del contacto en Mi CRM
+4. **Leyenda del calendario**: Punto rosa con texto "Cumpleaños / Aniversario"
+
+Todo está integrado y funciona de manera fluida entre módulos.

@@ -1,27 +1,37 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Users, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Users, CheckCircle, Cake } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 interface CalendarioEvento {
   id: string;
   fecha: string;
-  tipo: 'evento' | 'tarea';
+  tipo: 'evento' | 'tarea' | 'cumpleanos';
   titulo: string;
   descripcion?: string;
   hora?: string;
   ubicacion?: string;
   contacto?: string;
   completada?: boolean;
+  deep_link?: string;
 }
 
 interface DetalleEventoProps {
   evento: CalendarioEvento | null;
   onClose: () => void;
+  onNavigate?: (url: string) => void;
 }
 
-function DetalleEvento({ evento, onClose }: DetalleEventoProps) {
+function DetalleEvento({ evento, onClose, onNavigate }: DetalleEventoProps) {
   if (!evento) return null;
+
+  const handleActionClick = () => {
+    if (evento.deep_link && onNavigate) {
+      onNavigate(evento.deep_link);
+      onClose();
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -33,13 +43,17 @@ function DetalleEvento({ evento, onClose }: DetalleEventoProps) {
                 <div className="bg-blue-100 p-2 rounded-lg">
                   <CalendarIcon className="h-5 w-5 text-blue-600" />
                 </div>
+              ) : evento.tipo === 'cumpleanos' ? (
+                <div className="bg-pink-100 p-2 rounded-lg">
+                  <Cake className="h-5 w-5 text-pink-600" />
+                </div>
               ) : (
                 <div className="bg-orange-100 p-2 rounded-lg">
                   <CheckCircle className="h-5 w-5 text-orange-600" />
                 </div>
               )}
               <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-                {evento.tipo === 'evento' ? 'Seguros Education' : 'Tarea CRM'}
+                {evento.tipo === 'evento' ? 'Seguros Education' : evento.tipo === 'cumpleanos' ? 'Cumpleaños / Aniversario' : 'Tarea CRM'}
               </span>
             </div>
             <h3 className="text-xl font-bold text-gray-900">{evento.titulo}</h3>
@@ -106,12 +120,23 @@ function DetalleEvento({ evento, onClose }: DetalleEventoProps) {
           )}
         </div>
 
-        <button
-          onClick={onClose}
-          className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          Cerrar
-        </button>
+        <div className="mt-6 space-y-2">
+          {evento.deep_link && (
+            <button
+              onClick={handleActionClick}
+              className="w-full bg-pink-600 text-white py-2 rounded-lg hover:bg-pink-700 transition flex items-center justify-center gap-2"
+            >
+              <Cake className="h-4 w-4" />
+              Ver Contacto en Mi CRM
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="w-full bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700 transition"
+          >
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -119,6 +144,7 @@ function DetalleEvento({ evento, onClose }: DetalleEventoProps) {
 
 export default function CalendarioEventos() {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [eventos, setEventos] = useState<CalendarioEvento[]>([]);
   const [eventoSeleccionado, setEventoSeleccionado] = useState<CalendarioEvento | null>(null);
@@ -138,8 +164,9 @@ export default function CalendarioEventos() {
 
       const eventosEducation = await cargarEventosEducation(primerDia, ultimoDia);
       const tareasCRM = await cargarTareasCRM(primerDia, ultimoDia);
+      const cumpleanos = await cargarCumpleanos(primerDia, ultimoDia);
 
-      setEventos([...eventosEducation, ...tareasCRM]);
+      setEventos([...eventosEducation, ...tareasCRM, ...cumpleanos]);
     } catch (error) {
       console.error('Error al cargar eventos:', error);
     } finally {
@@ -182,6 +209,25 @@ export default function CalendarioEventos() {
       descripcion: tarea.descripcion,
       contacto: (tarea.crm_contactos as any)?.nombre_completo,
       completada: tarea.completada,
+    }));
+  };
+
+  const cargarCumpleanos = async (inicio: Date, fin: Date): Promise<CalendarioEvento[]> => {
+    const { data } = await supabase
+      .from('dashboard_calendar_events')
+      .select('*')
+      .eq('tipo_evento', 'cumpleanos')
+      .gte('fecha_inicio', inicio.toISOString())
+      .lte('fecha_inicio', fin.toISOString())
+      .order('fecha_inicio', { ascending: true });
+
+    return (data || []).map(evento => ({
+      id: evento.id,
+      fecha: evento.fecha_inicio.split('T')[0],
+      tipo: 'cumpleanos' as const,
+      titulo: evento.titulo,
+      descripcion: evento.descripcion || undefined,
+      deep_link: (evento.metadata as any)?.deep_link,
     }));
   };
 
@@ -287,6 +333,8 @@ export default function CalendarioEventos() {
                 const eventosEducation = eventosDelDia.filter(e => e.tipo === 'evento');
                 const tareasCRM = eventosDelDia.filter(e => e.tipo === 'tarea');
 
+                const cumpleanos = eventosDelDia.filter(e => e.tipo === 'cumpleanos');
+
                 return (
                   <div
                     key={index}
@@ -310,6 +358,21 @@ export default function CalendarioEventos() {
 
                     {dia.esDelMes && tieneEventos && (
                       <div className="space-y-0.5">
+                        {cumpleanos.length > 0 && (
+                          <button
+                            onClick={() => setEventoSeleccionado(cumpleanos[0])}
+                            className="w-full text-left"
+                          >
+                            <div className="bg-pink-100 text-pink-700 text-[10px] px-1.5 py-0.5 rounded truncate hover:bg-pink-200 transition">
+                              {cumpleanos.length === 1 ? (
+                                cumpleanos[0].titulo.substring(0, 15) + (cumpleanos[0].titulo.length > 15 ? '...' : '')
+                              ) : (
+                                `${cumpleanos.length} cumpleaños`
+                              )}
+                            </div>
+                          </button>
+                        )}
+
                         {eventosEducation.length > 0 && (
                           <button
                             onClick={() => setEventoSeleccionado(eventosEducation[0])}
@@ -346,7 +409,11 @@ export default function CalendarioEventos() {
               })}
             </div>
 
-            <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-center space-x-4 text-xs">
+            <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-center space-x-4 text-xs flex-wrap gap-2">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-2.5 h-2.5 bg-pink-500 rounded"></div>
+                <span className="text-gray-600">Cumpleaños / Aniversario</span>
+              </div>
               <div className="flex items-center space-x-1.5">
                 <div className="w-2.5 h-2.5 bg-blue-500 rounded"></div>
                 <span className="text-gray-600">Seguros Education</span>
@@ -360,7 +427,11 @@ export default function CalendarioEventos() {
         )}
       </div>
 
-      <DetalleEvento evento={eventoSeleccionado} onClose={() => setEventoSeleccionado(null)} />
+      <DetalleEvento
+        evento={eventoSeleccionado}
+        onClose={() => setEventoSeleccionado(null)}
+        onNavigate={navigate}
+      />
     </>
   );
 }
