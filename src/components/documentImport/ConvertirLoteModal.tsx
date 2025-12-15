@@ -76,7 +76,18 @@ export default function ConvertirLoteModal({
       const result = await convertBatchToCommissions(batchId);
 
       console.log('[ConvertirLoteModal] Conversión exitosa:', result);
+
+      // VALIDACIÓN: Verificar que tenemos batches y items
+      if (!result.createdBatches || result.createdBatches.length === 0) {
+        throw new Error('NO_ITEMS_CONVERTED: No se crearon lotes. Los documentos no pudieron ser convertidos.');
+      }
+
+      if (!result.totalInsertedItems || result.totalInsertedItems === 0) {
+        throw new Error('NO_ITEMS_CONVERTED: No se insertaron documentos en los lotes.');
+      }
+
       setConversionResult(result);
+      setConverting(false);
 
       // Llamar a onSuccess para actualizar la lista de batches
       onSuccess(result);
@@ -156,7 +167,7 @@ export default function ConvertirLoteModal({
   const warnings = validation?.errors.filter((e) => e.severity === 'warning') || [];
 
   // PANTALLA DE RESULTADO EXITOSO
-  if (conversionResult && !converting) {
+  if (conversionResult && !converting && conversionResult.createdBatches && conversionResult.createdBatches.length > 0) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -181,7 +192,7 @@ export default function ConvertirLoteModal({
                     Lotes creados exitosamente
                   </p>
                   <p className="text-sm text-green-700 mt-1">
-                    Se crearon {conversionResult.createdBatches?.length || 0} lote(s) con un total de {conversionResult.totalInsertedItems || 0} documentos.
+                    Se crearon {conversionResult.createdBatches.length} lote(s) con un total de {conversionResult.totalInsertedItems || 0} documentos.
                   </p>
                 </div>
               </div>
@@ -190,7 +201,7 @@ export default function ConvertirLoteModal({
             <div className="mb-6">
               <h3 className="font-semibold text-gray-900 mb-3">Lotes Creados</h3>
               <div className="space-y-3">
-                {conversionResult.createdBatches?.map((batch, idx) => (
+                {conversionResult.createdBatches.map((batch, idx) => (
                   <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -308,7 +319,7 @@ export default function ConvertirLoteModal({
                 </div>
               </div>
 
-              {errorDetails?.details?.errors_count && errorDetails.details.errors_count > 0 && (
+              {(errorDetails?.details?.errors_count > 0 || errorDetails?.details?.insert_errors_count > 0) && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-3">
                     <Info className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
@@ -317,9 +328,23 @@ export default function ConvertirLoteModal({
                         Errores de inserción detectados
                       </p>
                       <p className="text-sm text-orange-700 mt-1">
-                        {errorDetails.details.errors_count} fila(s) no pudieron ser insertadas.
-                        Revisa los logs del servidor para más detalles.
+                        {errorDetails.details.errors_count || errorDetails.details.insert_errors_count || 0} fila(s) no pudieron ser insertadas.
                       </p>
+
+                      {errorDetails.details.sample_errors && errorDetails.details.sample_errors.length > 0 && (
+                        <div className="mt-3 bg-white rounded-lg p-3 border border-orange-200">
+                          <p className="text-xs font-semibold text-orange-900 mb-2">Ejemplos de errores:</p>
+                          <div className="space-y-2">
+                            {errorDetails.details.sample_errors.slice(0, 3).map((err: any, idx: number) => (
+                              <div key={idx} className="text-xs text-orange-800 border-l-2 border-orange-300 pl-2">
+                                {err.item?.poliza && <p className="font-mono">Póliza: {err.item.poliza}</p>}
+                                {err.item?.vendor_name_raw && <p>Vendedor: {err.item.vendor_name_raw}</p>}
+                                <p className="text-red-600">Error: {err.error?.message || 'Desconocido'}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

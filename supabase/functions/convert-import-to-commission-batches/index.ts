@@ -534,7 +534,20 @@ Deno.serve(async (req: Request) => {
         items: insertResult.insertedCount
       });
 
-      console.log(`[Conversion] Lote "Sin fecha" creado con ${insertResult.insertedCount} items (${insertResult.errors.length} errores)`);
+      // CRÍTICO: Si no se insertó ningún item, eliminar el batch
+      if (insertResult.insertedCount === 0) {
+        console.warn(`[Conversion] Eliminando lote "Sin fecha" porque no se insertaron items`);
+        await supabase
+          .from("commission_batches")
+          .delete()
+          .eq("id", noDateCommissionBatch.id);
+
+        // Remover de la lista de batches creados
+        createdBatches.pop();
+        createdBatchIds.pop();
+      } else {
+        console.log(`[Conversion] Lote "Sin fecha" creado con ${insertResult.insertedCount} items (${insertResult.errors.length} errores)`);
+      }
     }
 
     // 2. Crear lotes por semana
@@ -608,12 +621,34 @@ Deno.serve(async (req: Request) => {
         items: insertResult.insertedCount
       });
 
-      console.log(`[Conversion] Lote semana ${group.week_number} creado con ${insertResult.insertedCount} items (${insertResult.errors.length} errores)`);
+      // CRÍTICO: Si no se insertó ningún item, eliminar el batch
+      if (insertResult.insertedCount === 0) {
+        console.warn(`[Conversion] Eliminando lote semana ${group.week_number} porque no se insertaron items`);
+        await supabase
+          .from("commission_batches")
+          .delete()
+          .eq("id", commissionBatch.id);
+
+        // Remover de la lista de batches creados
+        createdBatches.pop();
+        createdBatchIds.pop();
+      } else {
+        console.log(`[Conversion] Lote semana ${group.week_number} creado con ${insertResult.insertedCount} items (${insertResult.errors.length} errores)`);
+      }
     }
 
     // VALIDACIÓN FINAL CRÍTICA: Debe haber al menos 1 lote con items
     if (createdBatches.length === 0 || totalInsertedItems === 0) {
       console.error("NO_ITEMS_CONVERTED: No se crearon lotes o todos quedaron vacíos");
+      console.error("Resumen:", {
+        totalSourceItems: sourceCount,
+        weekGroupsCount: Object.keys(weekGroups).length,
+        noDateGroupCount: noDateGroup.length,
+        createdBatchesCount: createdBatches.length,
+        totalInsertedItems,
+        allValidationErrorsCount: allValidationErrors.length,
+        allInsertErrorsCount: allInsertErrors.length
+      });
 
       // Guardar errores de validación e inserción en el job
       await supabase
@@ -623,15 +658,40 @@ Deno.serve(async (req: Request) => {
           finished_at: new Date().toISOString(),
           duration_ms: Date.now() - startTime,
           error_code: "NO_ITEMS_CONVERTED",
-          error_message: "No se pudieron insertar items en los lotes",
+          error_message: "No se pudieron insertar items en los lotes. Revisa los logs para más detalles.",
           conversion_report: {
+            summary: {
+              totalSourceItems: sourceCount,
+              weekGroupsCount: Object.keys(weekGroups).length,
+              noDateGroupCount: noDateGroup.length,
+              createdBatchesAttempted: createdBatchIds.length,
+              actualBatchesWithItems: createdBatches.length,
+              totalInsertedItems
+            },
             validation_errors: allValidationErrors,
             insert_errors: allInsertErrors
           }
         })
         .eq("id", conversionJobId);
 
-      throw new Error("NO_ITEMS_CONVERTED");
+      const result: ConversionResult = {
+        success: false,
+        code: "NO_ITEMS_CONVERTED",
+        message: "No se pudieron insertar documentos en los lotes. Es posible que los datos tengan errores de formato o campos requeridos vacíos.",
+        details: {
+          totalSourceItems: sourceCount,
+          totalInsertedItems: 0,
+          validation_errors_count: allValidationErrors.length,
+          insert_errors_count: allInsertErrors.length,
+          sample_errors: allInsertErrors.slice(0, 5)
+        },
+        conversion_job_id: conversionJobId
+      };
+
+      return new Response(JSON.stringify(result), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     // Si hay errores de inserción pero sí se insertó algo, reportarlo
