@@ -63,6 +63,9 @@ export default function DocumentosImportar() {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     const file = e.target.files?.[0];
     if (file) {
       if (
@@ -72,6 +75,7 @@ export default function DocumentosImportar() {
         setSelectedFile(file);
       } else {
         alert('Por favor selecciona un archivo Excel (.xlsx o .xls)');
+        e.target.value = '';
       }
     }
   };
@@ -593,18 +597,19 @@ export default function DocumentosImportar() {
         <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-8">
           <div className="text-center">
             <FileSpreadsheet className="h-10 h-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
-            <label className="cursor-pointer">
+            <label htmlFor="file-upload" className="cursor-pointer">
               <span className="text-sm sm:text-base text-blue-600 hover:text-blue-700 font-medium">
                 Selecciona un archivo
               </span>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileSelect}
-                className="hidden"
-                disabled={loading}
-              />
             </label>
+            <input
+              id="file-upload"
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileSelect}
+              className="hidden"
+              disabled={loading}
+            />
             <p className="text-xs sm:text-sm text-gray-500 mt-2">o arrastra y suelta aquí</p>
           </div>
 
