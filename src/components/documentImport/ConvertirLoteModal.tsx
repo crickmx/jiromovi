@@ -10,6 +10,8 @@ import {
   ChevronUp,
   Download,
   Info,
+  ArrowRight,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   validateBatchForConversionDetailed,
@@ -19,6 +21,7 @@ import {
   type ConversionResult,
   type ValidationError,
 } from '../../lib/documentImportUtils';
+import { useNavigate } from 'react-router-dom';
 
 interface ConvertirLoteModalProps {
   batchId: string;
@@ -33,11 +36,14 @@ export default function ConvertirLoteModal({
   onClose,
   onSuccess,
 }: ConvertirLoteModalProps) {
+  const navigate = useNavigate();
   const [validation, setValidation] = useState<DetailedBatchConversionValidation | null>(null);
   const [loading, setLoading] = useState(true);
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<any>(null);
   const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
+  const [conversionResult, setConversionResult] = useState<ConversionResult | null>(null);
 
   useEffect(() => {
     loadValidation();
@@ -50,7 +56,9 @@ export default function ConvertirLoteModal({
       const data = await validateBatchForConversionDetailed(batchId);
       setValidation(data);
     } catch (err: any) {
+      console.error('[ConvertirLoteModal] Error al validar:', err);
       setError(err.message || 'Error al validar el batch');
+      setErrorDetails(err);
     } finally {
       setLoading(false);
     }
@@ -62,11 +70,28 @@ export default function ConvertirLoteModal({
     try {
       setConverting(true);
       setError(null);
+      setErrorDetails(null);
+
+      console.log('[ConvertirLoteModal] Iniciando conversión...');
       const result = await convertBatchToCommissions(batchId);
+
+      console.log('[ConvertirLoteModal] Conversión exitosa:', result);
+      setConversionResult(result);
+
+      // Llamar a onSuccess para actualizar la lista de batches
       onSuccess(result);
     } catch (err: any) {
-      setError(err.message || 'Error al convertir el batch');
-    } finally {
+      console.error('[ConvertirLoteModal] Error en conversión:', err);
+
+      // Mostrar error detallado sin cerrar el modal
+      setError(err.message || 'Error desconocido al convertir el lote');
+      setErrorDetails({
+        code: err.code,
+        details: err.details,
+        conversion_job_id: err.conversion_job_id
+      });
+
+      // NO cerramos el modal, permitimos que el usuario vea el error
       setConverting(false);
     }
   }
@@ -106,9 +131,109 @@ export default function ConvertirLoteModal({
     document.body.removeChild(link);
   }
 
+  function handleNavigateToBatch(batchId: string) {
+    onClose();
+    navigate(`/comisiones/lote/${batchId}`);
+  }
+
+  function handleCloseSuccess() {
+    onClose();
+  }
+
   const blockingErrors = validation?.errors.filter((e) => e.severity === 'blocking') || [];
   const warnings = validation?.errors.filter((e) => e.severity === 'warning') || [];
 
+  // PANTALLA DE RESULTADO EXITOSO
+  if (conversionResult && !converting) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between z-10">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+              Conversión Completada
+            </h2>
+            <button
+              onClick={handleCloseSuccess}
+              className="text-gray-400 hover:text-gray-600 transition p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="p-4 sm:p-6">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-green-900 text-lg">
+                    Lotes creados exitosamente
+                  </p>
+                  <p className="text-sm text-green-700 mt-1">
+                    Se crearon {conversionResult.createdBatches?.length || 0} lote(s) con un total de {conversionResult.totalInsertedItems || 0} documentos.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="font-semibold text-gray-900 mb-3">Lotes Creados</h3>
+              <div className="space-y-3">
+                {conversionResult.createdBatches?.map((batch, idx) => (
+                  <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Calendar className="h-4 w-4 text-gray-500" />
+                          <span className="font-semibold text-gray-900">
+                            {batch.display_name}
+                          </span>
+                        </div>
+                        {batch.period_start && batch.period_end && (
+                          <p className="text-sm text-gray-600 mb-1">
+                            Periodo: {formatWeekPeriod(batch.period_start, batch.period_end)}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-600">
+                          <FileText className="h-3 w-3 inline mr-1" />
+                          {batch.items} documentos
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleNavigateToBatch(batch.id)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium min-h-[44px]"
+                      >
+                        Abrir lote
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {conversionResult.conversion_job_id && (
+              <div className="bg-gray-50 rounded-lg p-3 mb-6">
+                <p className="text-xs text-gray-500">
+                  ID de trabajo: {conversionResult.conversion_job_id}
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                onClick={handleCloseSuccess}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition font-semibold min-h-[44px]"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // PANTALLA DE VALIDACIÓN Y CONVERSIÓN
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -118,7 +243,8 @@ export default function ConvertirLoteModal({
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            disabled={converting}
+            className="text-gray-400 hover:text-gray-600 transition p-2 min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-50"
           >
             <X className="h-6 w-6" />
           </button>
@@ -130,15 +256,42 @@ export default function ConvertirLoteModal({
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
           ) : error ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-semibold text-red-900">Error</p>
-                  <p className="text-sm text-red-700 mt-1">{error}</p>
+            <>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-red-900">Error al convertir</p>
+                    <p className="text-sm text-red-700 mt-1">{error}</p>
+                    {errorDetails?.code && (
+                      <p className="text-xs text-red-600 mt-2 font-mono bg-red-100 p-2 rounded">
+                        Código: {errorDetails.code}
+                      </p>
+                    )}
+                    {errorDetails?.conversion_job_id && (
+                      <p className="text-xs text-red-600 mt-1">
+                        ID de trabajo: {errorDetails.conversion_job_id}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+
+              <div className="flex flex-col sm:flex-row justify-end gap-3">
+                <button
+                  onClick={onClose}
+                  className="w-full sm:w-auto px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition font-semibold min-h-[44px]"
+                >
+                  Cerrar
+                </button>
+                <button
+                  onClick={loadValidation}
+                  className="w-full sm:w-auto px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-semibold min-h-[44px]"
+                >
+                  Reintentar
+                </button>
+              </div>
+            </>
           ) : validation && !validation.canConvert ? (
             <>
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">

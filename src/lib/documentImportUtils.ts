@@ -474,12 +474,27 @@ export async function convertBatchToCommissions(
     }
   );
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Error al convertir batch');
+  const result = await response.json();
+
+  // Manejar respuestas de error estructuradas
+  if (!response.ok || !result.success) {
+    const errorMessage = result.message || result.error || 'Error desconocido al convertir batch';
+    const error: any = new Error(errorMessage);
+    error.code = result.code;
+    error.details = result.details;
+    error.conversion_job_id = result.conversion_job_id;
+    throw error;
   }
 
-  const result = await response.json();
+  // Validar que tenemos datos válidos
+  if (!result.createdBatches || result.createdBatches.length === 0) {
+    throw new Error('NO_ITEMS_CONVERTED: No se crearon lotes. Verifica que el archivo tenga datos válidos.');
+  }
+
+  if (result.totalInsertedItems === 0) {
+    throw new Error('NO_ITEMS_CONVERTED: No se insertaron items en los lotes.');
+  }
+
   return result as ConversionResult;
 }
 
