@@ -32,6 +32,7 @@ export default function DocumentosImportar() {
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const [selectedBatch, setSelectedBatch] = useState<DocumentImportBatch | null>(null);
   const [unmatchedGroups, setUnmatchedGroups] = useState<any[]>([]);
+  const [diagnostics, setDiagnostics] = useState<any>(null);
 
   useEffect(() => {
     if (usuario?.rol !== 'Administrador') {
@@ -106,6 +107,10 @@ export default function DocumentosImportar() {
         setUploadProgress('');
         setSelectedFile(null);
         await loadBatches();
+
+        if (result.diagnostics) {
+          setDiagnostics(result.diagnostics);
+        }
 
         const batchData = await getBatchById(result.batch.id);
         if (batchData) {
@@ -280,6 +285,93 @@ export default function DocumentosImportar() {
             </p>
           </div>
         </div>
+
+        {diagnostics && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+            <h3 className="text-lg font-semibold text-blue-900 mb-4">Diagnóstico de importación</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-sm font-medium text-blue-900 mb-2">Columnas detectadas:</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Vendedor:</span>{' '}
+                    {diagnostics.vendor_column_detected ? (
+                      <span className="text-green-700 font-semibold">{diagnostics.vendor_column_detected}</span>
+                    ) : (
+                      <span className="text-red-700 font-semibold">No detectada</span>
+                    )}
+                  </p>
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Email:</span>{' '}
+                    {diagnostics.email_column_detected ? (
+                      <span className="text-green-700 font-semibold">{diagnostics.email_column_detected}</span>
+                    ) : (
+                      <span className="text-orange-700 font-semibold">No detectada (opcional)</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-blue-900 mb-2">Calidad de datos:</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Registros sin vendedor:</span>{' '}
+                    {diagnostics.empty_vendor_count > 0 ? (
+                      <span className={diagnostics.empty_vendor_count > selectedBatch.records_total * 0.5 ? 'text-red-700 font-semibold' : 'text-orange-700'}>
+                        {diagnostics.empty_vendor_count}
+                      </span>
+                    ) : (
+                      <span className="text-green-700">0</span>
+                    )}
+                  </p>
+                  {diagnostics.empty_vendor_count > selectedBatch.records_total * 0.5 && (
+                    <p className="text-xs text-red-700 font-medium">
+                      Alerta: Más del 50% de registros sin vendedor
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {diagnostics.sample_vendor_names && diagnostics.sample_vendor_names.length > 0 && (
+              <div className="mb-3">
+                <p className="text-sm font-medium text-blue-900 mb-2">
+                  Muestra de vendedores detectados (top 5):
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {diagnostics.sample_vendor_names.map((name: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 bg-white border border-blue-300 rounded-lg text-sm text-blue-900"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {diagnostics.sample_emails && diagnostics.sample_emails.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-blue-900 mb-2">
+                  Muestra de emails detectados (top 5):
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {diagnostics.sample_emails.map((email: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 bg-white border border-blue-300 rounded-lg text-sm text-blue-900"
+                    >
+                      {email}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {selectedBatch.records_unmatched > 0 && (
           <VendedoresNoReconocidosTable

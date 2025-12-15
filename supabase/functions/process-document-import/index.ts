@@ -12,6 +12,16 @@ interface ExcelRow {
   [key: string]: any;
 }
 
+function normalizeHeader(header: string | null | undefined): string {
+  if (!header || typeof header !== 'string') return '';
+
+  let normalized = header.trim().toLowerCase();
+  normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  normalized = normalized.replace(/\s+/g, '');
+
+  return normalized;
+}
+
 function normalizeEmail(email: string | null | undefined): string | null {
   if (!email || typeof email !== 'string' || !email.trim()) return null;
   return email.trim().toLowerCase();
@@ -156,6 +166,28 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const headerMap: Record<string, string> = {};
+    if (rows.length > 0) {
+      Object.keys(rows[0]).forEach((key) => {
+        const normalized = normalizeHeader(key);
+        headerMap[normalized] = key;
+      });
+    }
+
+    const VEND_NOMBRE_COL = headerMap['vendnombre'] ||
+                            headerMap['nombre'] ||
+                            headerMap['vendedor'] ||
+                            columnMapping.vendor_name || null;
+
+    const EMAIL_AGENTE_COL = headerMap['emailagente'] ||
+                             headerMap['email'] ||
+                             headerMap['correo'] ||
+                             columnMapping.vendor_email || null;
+
+    const POLIZA_COL = headerMap['poliza'] ||
+                       headerMap['documento'] ||
+                       columnMapping.document_id || null;
+
     const { data: batch, error: batchError } = await supabase
       .from('document_import_batches')
       .insert({
@@ -186,9 +218,9 @@ Deno.serve(async (req: Request) => {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
 
-      const documentId = row[columnMapping.document_id || 'poliza'] || row['Poliza'] || row['poliza'] || `DOC-${i + 1}`;
-      const vendorEmailRaw = row[columnMapping.vendor_email || 'correo'] || row['Correo'] || row['Email'] || null;
-      const vendorNameRaw = row[columnMapping.vendor_name || 'nombre'] || row['Nombre'] || row['Vendedor'] || null;
+      const documentId = POLIZA_COL ? row[POLIZA_COL] : `DOC-${i + 1}`;
+      const vendorNameRaw = VEND_NOMBRE_COL ? String(row[VEND_NOMBRE_COL] ?? '').trim() : '';
+      const vendorEmailRaw = EMAIL_AGENTE_COL ? String(row[EMAIL_AGENTE_COL] ?? '').trim() : '';
 
       const vendorEmailNorm = normalizeEmail(vendorEmailRaw);
       const vendorNameNorm = normalizeName(vendorNameRaw);
@@ -196,16 +228,16 @@ Deno.serve(async (req: Request) => {
 
       const userMatch = await findMoviUserForVendor(
         adminSupabase,
-        vendorEmailRaw,
-        vendorNameRaw
+        vendorEmailRaw || null,
+        vendorNameRaw || null
       );
 
       documents.push({
         batch_id: batch.id,
         source_row_index: i + 1,
         document_id: String(documentId),
-        vendor_email_raw: vendorEmailRaw,
-        vendor_name_raw: vendorNameRaw,
+        vendor_email_raw: vendorEmailRaw || null,
+        vendor_name_raw: vendorNameRaw || null,
         vendor_email_norm: vendorEmailNorm,
         vendor_name_norm: vendorNameNorm,
         vendor_key: vendorKey,
@@ -251,10 +283,21 @@ Deno.serve(async (req: Request) => {
       .eq('id', batch.id)
       .single();
 
+    const emptyVendorCount = documents.filter(d => !d.vendor_name_raw || d.vendor_name_raw.trim() === '').length;
+    const uniqueVendorNames = [...new Set(documents.map(d => d.vendor_name_raw).filter(n => n && n.trim()))].slice(0, 5);
+    const uniqueEmails = [...new Set(documents.map(d => d.vendor_email_raw).filter(e => e && e.trim()))].slice(0, 5);
+
     return new Response(
       JSON.stringify({
         success: true,
         batch: updatedBatch,
+        diagnostics: {
+          vendor_column_detected: VEND_NOMBRE_COL,
+          email_column_detected: EMAIL_AGENTE_COL,
+          empty_vendor_count: emptyVendorCount,
+          sample_vendor_names: uniqueVendorNames,
+          sample_emails: uniqueEmails,
+        },
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

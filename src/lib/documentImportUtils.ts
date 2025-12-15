@@ -104,7 +104,7 @@ export async function getDocumentsByBatchId(batchId: string): Promise<ImportedDo
 export async function getUnmatchedVendorGroups(
   batchId: string
 ): Promise<UnmatchedVendorGroup[]> {
-  const { data, error } = await supabase.rpc('get_unmatched_vendor_groups_all', {
+  const { data, error } = await supabase.rpc('get_unmatched_vendors_by_name', {
     p_batch_id: batchId,
   });
 
@@ -118,33 +118,21 @@ export async function getUnmatchedVendorGroups(
   }
 
   return data.map((group: any) => {
-    const groupingType = group.grouping_type || 'unknown';
-
-    let displayValue = '';
-    if (groupingType === 'name' && group.vendor_name_raw) {
-      displayValue = group.vendor_name_raw;
-    } else if (groupingType === 'email' && group.vendor_email_raw) {
-      displayValue = group.vendor_email_raw;
-    } else {
-      displayValue = 'Sin información';
-    }
-
-    const emailsDetected = group.example_documents
-      ? [...new Set(group.example_documents
-          .map((doc: any) => doc.vendor_email_raw)
-          .filter((email: string) => email && email.trim()))]
-      : [];
+    const displayValue = group.vendor_display_name || 'Sin información';
+    const vendorNameNorm = group.vendor_name_norm || 'unknown';
+    const emailsDetected = group.emails_detected || [];
+    const isUnknown = vendorNameNorm === 'unknown';
 
     return {
-      vendor_key: group.vendor_key,
-      type: groupingType === 'name' ? 'name' : groupingType === 'email' ? 'email' : 'unknown',
+      vendor_key: vendorNameNorm,
+      type: isUnknown ? 'unknown' : 'name',
       display_value: displayValue,
       document_count: Number(group.document_count),
       sample_documents: group.example_documents
         ? group.example_documents.slice(0, 10).map((doc: any) => doc.document_id)
         : [],
-      vendor_name_raw: group.vendor_name_raw || undefined,
-      vendor_email_raw: group.vendor_email_raw || undefined,
+      vendor_name_raw: displayValue,
+      vendor_email_raw: emailsDetected.length > 0 ? emailsDetected[0] : undefined,
       emails_detected: emailsDetected,
       example_documents: group.example_documents || [],
     };
@@ -157,9 +145,9 @@ export async function assignVendorToUser(
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData?.session?.user?.id;
 
-  const { data, error } = await supabase.rpc('assign_vendor_by_key', {
+  const { data, error } = await supabase.rpc('assign_vendor_by_name', {
     p_batch_id: request.batch_id,
-    p_vendor_key: request.vendor_key,
+    p_vendor_name_norm: request.vendor_key,
     p_movi_user_id: request.movi_user_id,
     p_save_mapping: request.save_mapping,
     p_created_by: userId || null,
