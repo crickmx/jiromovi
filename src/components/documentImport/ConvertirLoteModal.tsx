@@ -85,11 +85,23 @@ export default function ConvertirLoteModal({
 
       // Mostrar error detallado sin cerrar el modal
       setError(err.message || 'Error desconocido al convertir el lote');
-      setErrorDetails({
+
+      // Capturar detalles completos del error incluyendo info de DB
+      const errorDetailsObj: any = {
         code: err.code,
         details: err.details,
         conversion_job_id: err.conversion_job_id
-      });
+      };
+
+      // Si hay info de DB en el error, incluirla
+      if (err.db) {
+        errorDetailsObj.details = {
+          ...errorDetailsObj.details,
+          db: err.db
+        };
+      }
+
+      setErrorDetails(errorDetailsObj);
 
       // NO cerramos el modal, permitimos que el usuario vea el error
       setConverting(false);
@@ -263,16 +275,67 @@ export default function ConvertirLoteModal({
                   <div className="flex-1">
                     <p className="font-semibold text-red-900">Error al convertir</p>
                     <p className="text-sm text-red-700 mt-1">{error}</p>
+
                     {errorDetails?.code && (
-                      <p className="text-xs text-red-600 mt-2 font-mono bg-red-100 p-2 rounded">
-                        Código: {errorDetails.code}
-                      </p>
+                      <div className="mt-3 space-y-2">
+                        <div className="bg-red-100 p-3 rounded-lg">
+                          <p className="text-xs font-semibold text-red-900 mb-1">Código de error:</p>
+                          <p className="text-sm font-mono text-red-800">{errorDetails.code}</p>
+                        </div>
+
+                        {errorDetails.details?.db?.constraint && (
+                          <div className="bg-red-100 p-3 rounded-lg">
+                            <p className="text-xs font-semibold text-red-900 mb-1">Constraint violado:</p>
+                            <p className="text-sm font-mono text-red-800">{errorDetails.details.db.constraint}</p>
+                          </div>
+                        )}
+
+                        {errorDetails.details?.db?.detail && (
+                          <div className="bg-red-100 p-3 rounded-lg">
+                            <p className="text-xs font-semibold text-red-900 mb-1">Detalle técnico:</p>
+                            <p className="text-sm text-red-800">{errorDetails.details.db.detail}</p>
+                          </div>
+                        )}
+                      </div>
                     )}
+
                     {errorDetails?.conversion_job_id && (
-                      <p className="text-xs text-red-600 mt-1">
-                        ID de trabajo: {errorDetails.conversion_job_id}
+                      <p className="text-xs text-gray-600 mt-3 font-mono">
+                        Job ID: {errorDetails.conversion_job_id}
                       </p>
                     )}
+                  </div>
+                </div>
+              </div>
+
+              {errorDetails?.details?.errors_count && errorDetails.details.errors_count > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-orange-900">
+                        Errores de inserción detectados
+                      </p>
+                      <p className="text-sm text-orange-700 mt-1">
+                        {errorDetails.details.errors_count} fila(s) no pudieron ser insertadas.
+                        Revisa los logs del servidor para más detalles.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-blue-900">Posibles soluciones:</p>
+                    <ul className="text-sm text-blue-800 mt-2 space-y-1 list-disc list-inside">
+                      <li>Verifica que todos los datos requeridos estén presentes</li>
+                      <li>Revisa que no haya duplicados en el archivo</li>
+                      <li>Confirma que los campos numéricos tengan formato válido</li>
+                      <li>Asegúrate de que las fechas estén en formato correcto</li>
+                    </ul>
                   </div>
                 </div>
               </div>

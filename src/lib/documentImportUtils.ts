@@ -483,6 +483,7 @@ export async function convertBatchToCommissions(
     error.code = result.code;
     error.details = result.details;
     error.conversion_job_id = result.conversion_job_id;
+    error.db = result.db; // Información de base de datos (código, constraint, etc)
     throw error;
   }
 
