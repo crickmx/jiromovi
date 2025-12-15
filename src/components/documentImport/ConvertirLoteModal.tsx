@@ -90,14 +90,14 @@ export default function ConvertirLoteModal({
             </div>
           ) : validation && !validation.can_convert ? (
             <>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-semibold text-yellow-900">
+                    <p className="font-semibold text-red-900">
                       No se puede convertir el batch
                     </p>
-                    <p className="text-sm text-yellow-700 mt-1">
+                    <p className="text-sm text-red-700 mt-1">
                       Corrige los siguientes problemas antes de continuar:
                     </p>
                   </div>
@@ -116,7 +116,7 @@ export default function ConvertirLoteModal({
               <div className="flex justify-end">
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  className="w-full sm:w-auto px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition font-semibold min-h-[44px]"
                 >
                   Cerrar
                 </button>
@@ -139,14 +139,14 @@ export default function ConvertirLoteModal({
               </div>
 
               {validation.warnings && validation.warnings.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 sm:mb-6">
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <p className="font-semibold text-yellow-900 mb-2">Advertencias</p>
+                      <p className="font-semibold text-blue-900 mb-2">Información importante</p>
                       <div className="space-y-1">
                         {validation.warnings.map((warning, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-sm text-yellow-800">
+                          <div key={idx} className="flex items-start gap-2 text-sm text-blue-800">
                             <span className="font-bold">•</span>
                             <span>{warning}</span>
                           </div>
@@ -163,17 +163,24 @@ export default function ConvertirLoteModal({
                   <div className="bg-gray-50 rounded-xl p-4">
                     <div className="flex items-center gap-2 text-gray-600 mb-2">
                       <FileText className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-xs sm:text-sm">Documentos a convertir</span>
+                      <span className="text-xs sm:text-sm">Total documentos</span>
                     </div>
                     <p className="text-xl sm:text-2xl font-bold text-gray-900">
                       {validation.summary.total_documents}
                     </p>
-                    {validation.summary.unmatched_documents !== undefined &&
-                     validation.summary.unmatched_documents > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {validation.summary.unmatched_documents} sin asignar
-                      </p>
-                    )}
+                    <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                      {validation.summary.assigned_documents !== undefined && (
+                        <p className="text-green-600 font-medium">
+                          {validation.summary.assigned_documents} asignados
+                        </p>
+                      )}
+                      {validation.summary.unmatched_documents !== undefined &&
+                       validation.summary.unmatched_documents > 0 && (
+                        <p className="text-orange-600 font-medium">
+                          {validation.summary.unmatched_documents} pendientes
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="bg-gray-50 rounded-xl p-4">
@@ -244,14 +251,18 @@ export default function ConvertirLoteModal({
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4 sm:mb-6">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1 text-sm text-yellow-800">
                     <p className="font-semibold mb-1">Importante</p>
                     <p>
                       Esta acción creará lotes de comisiones por semana y no se puede deshacer.
-                      Los lotes creados seguirán el flujo normal de comisiones.
+                      {validation.summary.unmatched_documents && validation.summary.unmatched_documents > 0 ? (
+                        <> Los documentos sin asignar estarán disponibles en el lote para asignarles usuarios antes de cerrarlo.</>
+                      ) : (
+                        <> Los lotes creados seguirán el flujo normal de comisiones.</>
+                      )}
                     </p>
                   </div>
                 </div>

@@ -447,20 +447,6 @@ export default function DocumentosImportar() {
 
         {!conversionResult && (
           <>
-            {selectedBatch.status === 'needs_mapping' && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-semibold text-yellow-900">Pendiente de asignación</p>
-                    <p className="text-sm text-yellow-700 mt-1">
-                      Debes asignar todos los vendedores antes de poder convertir a lotes de comisiones.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {selectedBatch.status === 'ready_to_convert' && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -469,7 +455,15 @@ export default function DocumentosImportar() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-green-900">Listo para convertir</p>
                       <p className="text-sm text-green-700 mt-1">
-                        Todos los documentos tienen usuarios asignados. Puedes convertir este lote en lotes de comisiones por semana.
+                        {selectedBatch.records_unmatched > 0 ? (
+                          <>
+                            Hay {selectedBatch.records_unmatched} documentos sin asignación. Podrás asignarlos dentro del lote después de convertir.
+                          </>
+                        ) : (
+                          <>
+                            Todos los documentos tienen usuarios asignados. Puedes convertir este lote en lotes de comisiones por semana.
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>

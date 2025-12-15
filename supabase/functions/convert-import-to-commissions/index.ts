@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Obtener todos los documentos del batch
+    // Obtener TODOS los documentos del batch (incluyendo los sin usuario asignado)
     const { data: documents, error: docsError } = await supabase
       .from("imported_documents")
       .select(`
@@ -103,8 +103,7 @@ Deno.serve(async (req: Request) => {
           email_personal
         )
       `)
-      .eq("batch_id", batch_id)
-      .eq("is_unmatched", false);
+      .eq("batch_id", batch_id);
 
     if (docsError || !documents || documents.length === 0) {
       return new Response(
@@ -193,31 +192,49 @@ Deno.serve(async (req: Request) => {
       for (const doc of weekGroup.documents) {
         const docData = doc.document_data || {};
 
-        // Buscar o crear commission_agent basado en el movi_user
-        const { data: existingAgent } = await supabase
-          .from("commission_agents")
-          .select("id")
-          .eq("email", doc.movi_user?.email_laboral || doc.movi_user?.email_personal)
-          .maybeSingle();
+        let agentId = null;
+        let pendingAssignment = false;
+        let assignmentStatus = "assigned";
+        let vendorGroupKey = null;
 
-        let agentId = existingAgent?.id;
-
-        if (!agentId && doc.movi_user) {
-          const { data: newAgent } = await supabase
+        // Si tiene usuario asignado, buscar o crear commission_agent
+        if (doc.movi_user_id && doc.movi_user) {
+          const { data: existingAgent } = await supabase
             .from("commission_agents")
-            .insert({
-              email: doc.movi_user.email_laboral || doc.movi_user.email_personal,
-              name: doc.movi_user.nombre_completo,
-            })
-            .select()
-            .single();
+            .select("id")
+            .eq("email", doc.movi_user?.email_laboral || doc.movi_user?.email_personal)
+            .maybeSingle();
 
-          agentId = newAgent?.id;
-        }
+          agentId = existingAgent?.id;
 
-        if (!agentId) {
-          console.error("No se pudo crear/encontrar agente para:", doc.movi_user);
-          continue;
+          if (!agentId) {
+            const { data: newAgent } = await supabase
+              .from("commission_agents")
+              .insert({
+                email: doc.movi_user.email_laboral || doc.movi_user.email_personal,
+                name: doc.movi_user.nombre_completo,
+              })
+              .select()
+              .single();
+
+            agentId = newAgent?.id;
+          }
+        } else {
+          // Documento SIN usuario asignado
+          pendingAssignment = true;
+          assignmentStatus = "unassigned";
+
+          // Generar vendor_group_key para poder agrupar después
+          const vendorEmail = doc.vendor_email_norm || docData.email_vendedor;
+          const vendorName = doc.vendor_name_norm || docData.vendedor || docData.nombre_vendedor;
+
+          if (vendorEmail) {
+            vendorGroupKey = `email:${vendorEmail.toLowerCase().trim()}`;
+          } else if (vendorName) {
+            vendorGroupKey = `name:${vendorName.toLowerCase().trim()}`;
+          } else {
+            vendorGroupKey = `unknown:${doc.id}`;
+          }
         }
 
         // Calcular valores para comisión
@@ -229,7 +246,7 @@ Deno.serve(async (req: Request) => {
 
         commissionDetails.push({
           batch_id: commissionBatch.id,
-          agent_id: agentId,
+          agent_id: agentId, // puede ser null
           ramo: docData.ramo || "Sin especificar",
           aseguradora: docData.aseguradora || docData.aseguradora_abreviacion || "Sin especificar",
           poliza: docData.poliza || docData.documento || doc.document_id,
@@ -243,6 +260,12 @@ Deno.serve(async (req: Request) => {
           impuestos_json: {},
           commission_neta: comisionNeta,
           raw_row: docData,
+          // Nuevos campos para manejo de pendientes
+          pending_assignment: pendingAssignment,
+          assignment_status: assignmentStatus,
+          vendor_group_key: vendorGroupKey,
+          vendor_name_raw: doc.vendor_name_raw || docData.vendedor || null,
+          vendor_email_raw: doc.vendor_email_raw || docData.email_vendedor || null,
         });
       }
 
@@ -257,12 +280,20 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      // Contar documentos pendientes en este lote
+      const { count: pendingCount } = await supabase
+        .from("commission_details")
+        .select("*", { count: "exact", head: true })
+        .eq("batch_id", commissionBatch.id)
+        .eq("pending_assignment", true);
+
       createdBatches.push({
         id: commissionBatch.id,
         week_number: weekGroup.week_number,
         period_start: weekGroup.week_start,
         period_end: weekGroup.week_end,
         document_count: weekGroup.documents.length,
+        pending_count: pendingCount || 0,
       });
     }
 
