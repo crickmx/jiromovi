@@ -278,3 +278,101 @@ export async function deleteBatch(batchId: string) {
     documents_deleted: result.documents_deleted,
   };
 }
+
+export interface BatchConversionValidation {
+  can_convert: boolean;
+  errors: string[];
+  warnings: string[];
+  summary: {
+    total_documents: number;
+    total_agents: number;
+    weeks: Array<{
+      week_number: number;
+      week_start: string;
+      week_end: string;
+      document_count: number;
+      agent_count: number;
+    }>;
+  };
+}
+
+export interface ConversionResult {
+  success: boolean;
+  message: string;
+  batches: Array<{
+    id: string;
+    week_number: number;
+    period_start: string;
+    period_end: string;
+    document_count: number;
+  }>;
+}
+
+export async function validateBatchForConversion(
+  batchId: string
+): Promise<BatchConversionValidation> {
+  const { data, error } = await supabase.rpc('validate_batch_for_conversion', {
+    batch_id_param: batchId,
+  });
+
+  if (error) {
+    console.error('Error al validar batch para conversión:', error);
+    throw error;
+  }
+
+  return data as BatchConversionValidation;
+}
+
+export async function convertBatchToCommissions(
+  batchId: string
+): Promise<ConversionResult> {
+  const { data: session } = await supabase.auth.getSession();
+
+  if (!session?.session?.access_token) {
+    throw new Error('No hay sesión activa');
+  }
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convert-import-to-commissions`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.session.access_token}`,
+      },
+      body: JSON.stringify({ batch_id: batchId }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Error al convertir batch');
+  }
+
+  const result = await response.json();
+  return result as ConversionResult;
+}
+
+export function getBatchStatusLabel(status: string): { text: string; color: string } {
+  const statusMap: Record<string, { text: string; color: string }> = {
+    uploaded: { text: 'Cargado', color: 'blue' },
+    needs_mapping: { text: 'Pendiente de asignación', color: 'yellow' },
+    ready_to_convert: { text: 'Listo para convertir', color: 'green' },
+    converted: { text: 'Convertido', color: 'purple' },
+    error: { text: 'Error', color: 'red' },
+  };
+
+  return statusMap[status] || { text: status, color: 'gray' };
+}
+
+export function formatWeekPeriod(weekStart: string, weekEnd: string): string {
+  const start = new Date(weekStart);
+  const end = new Date(weekEnd);
+
+  const formatter = new Intl.DateTimeFormat('es-MX', {
+    day: 'numeric',
+    month: 'short',
+  });
+
+  return `${formatter.format(start)} - ${formatter.format(end)}`;
+}

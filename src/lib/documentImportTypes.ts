@@ -6,10 +6,12 @@ export interface DocumentImportBatch {
   records_total: number;
   records_matched: number;
   records_unmatched: number;
-  status: 'processing' | 'completed' | 'failed' | 'partial';
+  status: 'uploaded' | 'needs_mapping' | 'ready_to_convert' | 'converted' | 'error' | 'processing' | 'completed' | 'failed' | 'partial';
   metadata: Record<string, any>;
   created_at: string;
   updated_at: string;
+  converted_at?: string | null;
+  conversion_summary?: Record<string, any>;
 }
 
 export type MatchMethod =

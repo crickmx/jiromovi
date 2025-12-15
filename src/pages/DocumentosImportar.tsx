@@ -10,6 +10,7 @@ import {
   Users,
   FileText,
   Trash2,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -18,9 +19,11 @@ import {
   getUnmatchedVendorGroups,
   getBatchById,
   deleteBatch,
+  getBatchStatusLabel,
 } from '../lib/documentImportUtils';
 import type { DocumentImportBatch } from '../lib/documentImportTypes';
 import VendedoresNoReconocidosTable from '../components/documentImport/VendedoresNoReconocidosTable';
+import ConvertirLoteModal from '../components/documentImport/ConvertirLoteModal';
 
 export default function DocumentosImportar() {
   const { usuario } = useAuth();
@@ -33,6 +36,8 @@ export default function DocumentosImportar() {
   const [selectedBatch, setSelectedBatch] = useState<DocumentImportBatch | null>(null);
   const [unmatchedGroups, setUnmatchedGroups] = useState<any[]>([]);
   const [diagnostics, setDiagnostics] = useState<any>(null);
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [conversionResult, setConversionResult] = useState<any>(null);
 
   useEffect(() => {
     if (usuario?.rol !== 'Administrador') {
@@ -180,6 +185,13 @@ export default function DocumentosImportar() {
       console.error('Error al eliminar batch:', error);
       alert(error.message || 'Error al eliminar el lote. Por favor intenta de nuevo.');
     }
+  };
+
+  const handleConversionSuccess = async (result: any) => {
+    setConversionResult(result);
+    setShowConvertModal(false);
+    await loadBatches();
+    await handleRefreshBatch();
   };
 
   const getStatusBadge = (status: string) => {
@@ -373,11 +385,142 @@ export default function DocumentosImportar() {
           </div>
         )}
 
-        {selectedBatch.records_unmatched > 0 && (
+        {conversionResult && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-green-900 mb-2">
+                  Conversión completada
+                </h3>
+                <p className="text-sm text-green-800 mb-4">{conversionResult.message}</p>
+
+                <div className="bg-white border border-green-200 rounded-lg overflow-hidden">
+                  <table className="min-w-full">
+                    <thead className="bg-green-100">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-green-900 uppercase">
+                          Semana
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-green-900 uppercase">
+                          Periodo
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-green-900 uppercase">
+                          Documentos
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-green-900 uppercase">
+                          Acción
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-green-100">
+                      {conversionResult.batches.map((batch: any) => (
+                        <tr key={batch.id}>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            Semana {batch.week_number}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {new Date(batch.period_start).toLocaleDateString('es-MX')} -{' '}
+                            {new Date(batch.period_end).toLocaleDateString('es-MX')}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {batch.document_count}
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => navigate(`/comisiones-lote?batch=${batch.id}`)}
+                              className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                            >
+                              Abrir lote
+                              <ArrowRight className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!conversionResult && (
+          <>
+            {selectedBatch.status === 'needs_mapping' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-yellow-900">Pendiente de asignación</p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      Debes asignar todos los vendedores antes de poder convertir a lotes de comisiones.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedBatch.status === 'ready_to_convert' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-start gap-3 flex-1">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-green-900">Listo para convertir</p>
+                      <p className="text-sm text-green-700 mt-1">
+                        Todos los documentos tienen usuarios asignados. Puedes convertir este lote en lotes de comisiones por semana.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowConvertModal(true)}
+                    className="ml-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <ArrowRight className="h-5 w-5" />
+                    Convertir a Lotes
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {selectedBatch.status === 'converted' && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-purple-900">Lote convertido</p>
+                    <p className="text-sm text-purple-700 mt-1">
+                      Este lote ya fue convertido a lotes de comisiones el{' '}
+                      {selectedBatch.converted_at &&
+                        new Date(selectedBatch.converted_at).toLocaleString('es-MX')}
+                    </p>
+                    {selectedBatch.conversion_summary?.total_batches_created && (
+                      <p className="text-sm text-purple-700 mt-1">
+                        Se crearon {selectedBatch.conversion_summary.total_batches_created} lotes de comisiones.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {selectedBatch.records_unmatched > 0 && !conversionResult && (
           <VendedoresNoReconocidosTable
             groups={unmatchedGroups}
             batchId={selectedBatch.id}
             onRefresh={handleRefreshBatch}
+          />
+        )}
+
+        {showConvertModal && selectedBatch && (
+          <ConvertirLoteModal
+            batchId={selectedBatch.id}
+            batchName={selectedBatch.file_name}
+            onClose={() => setShowConvertModal(false)}
+            onSuccess={handleConversionSuccess}
           />
         )}
       </div>
