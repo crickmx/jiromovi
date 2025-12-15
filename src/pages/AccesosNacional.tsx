@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Plus, Edit2, Trash2, ExternalLink, Eye } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ExternalLink, Eye, Copy, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -13,6 +13,7 @@ interface AccesoNacional {
   usuario_2: string | null;
   contrasena: string;
   link: string;
+  clave_agente: string | null;
   creado_por: string;
   fecha_creacion: string;
   ultima_edicion_por: string | null;
@@ -27,6 +28,7 @@ interface AccesoFormData {
   usuario_2: string;
   contrasena: string;
   link: string;
+  clave_agente: string;
 }
 
 export function AccesosNacional() {
@@ -43,11 +45,13 @@ export function AccesosNacional() {
     usuario_2: '',
     contrasena: '',
     link: '',
+    clave_agente: '',
   });
   const [sortField, setSortField] = useState<'aseguradora' | 'fecha_creacion' | 'fecha_ultima_edicion'>('aseguradora');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedAcceso, setSelectedAcceso] = useState<AccesoNacional | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const canDelete = usuario?.rol === 'Administrador';
 
@@ -151,6 +155,7 @@ export function AccesosNacional() {
         usuario_2: acceso.usuario_2 || '',
         contrasena: acceso.contrasena,
         link: acceso.link,
+        clave_agente: acceso.clave_agente || '',
       });
     } else {
       setEditingAcceso(null);
@@ -160,6 +165,7 @@ export function AccesosNacional() {
         usuario_2: '',
         contrasena: '',
         link: '',
+        clave_agente: '',
       });
     }
     setShowModal(true);
@@ -174,6 +180,7 @@ export function AccesosNacional() {
       usuario_2: '',
       contrasena: '',
       link: '',
+      clave_agente: '',
     });
   };
 
@@ -192,6 +199,7 @@ export function AccesosNacional() {
           .update({
             ...formData,
             usuario_2: formData.usuario_2 || null,
+            clave_agente: formData.clave_agente || null,
             ultima_edicion_por: usuario?.id,
             fecha_ultima_edicion: new Date().toISOString(),
           })
@@ -205,6 +213,7 @@ export function AccesosNacional() {
           .insert({
             ...formData,
             usuario_2: formData.usuario_2 || null,
+            clave_agente: formData.clave_agente || null,
             creado_por: usuario?.id,
           });
 
@@ -257,6 +266,13 @@ export function AccesosNacional() {
     setTimeout(() => {
       toast.remove();
     }, 3000);
+  };
+
+  const handleCopyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
   };
 
   const formatDate = (dateString: string | null) => {
@@ -324,6 +340,9 @@ export function AccesosNacional() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
                     Contraseña
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                    Clave de Agente
+                  </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-700 uppercase tracking-wider">
                     Ingresar
                   </th>
@@ -338,7 +357,7 @@ export function AccesosNacional() {
               <tbody className="divide-y divide-neutral-200">
                 {filteredAccesos.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-neutral-500">
+                    <td colSpan={8} className="px-4 py-8 text-center text-neutral-500">
                       {searchTerm ? 'No se encontraron registros' : 'No hay accesos registrados'}
                     </td>
                   </tr>
@@ -349,6 +368,26 @@ export function AccesosNacional() {
                       <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_1}</td>
                       <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_2 || '-'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-700 font-mono">{acceso.contrasena}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-700">
+                        {acceso.clave_agente ? (
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono">{acceso.clave_agente}</span>
+                            <button
+                              onClick={() => handleCopyToClipboard(acceso.clave_agente!, acceso.id)}
+                              className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded hover:bg-neutral-100"
+                              title="Copiar clave"
+                            >
+                              {copiedId === acceso.id ? (
+                                <Check className="w-4 h-4 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-neutral-400">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <a
                           href={acceso.link}
@@ -478,6 +517,20 @@ export function AccesosNacional() {
                 <p className="text-xs text-neutral-500 mt-1">Debe comenzar con http:// o https://</p>
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Clave de Agente
+                </label>
+                <input
+                  type="text"
+                  value={formData.clave_agente}
+                  onChange={(e) => setFormData({ ...formData, clave_agente: e.target.value })}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono"
+                  placeholder="Ej. A12345"
+                />
+                <p className="text-xs text-neutral-500 mt-1">Clave alfanumérica de identificación del agente (opcional)</p>
+              </div>
+
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
                 <button
                   type="button"
@@ -518,6 +571,26 @@ export function AccesosNacional() {
                 <h3 className="text-sm font-semibold text-neutral-700 mb-1">Aseguradora</h3>
                 <p className="text-neutral-900">{selectedAcceso.aseguradora}</p>
               </div>
+
+              {selectedAcceso.clave_agente && (
+                <div>
+                  <h3 className="text-sm font-semibold text-neutral-700 mb-1">Clave de Agente</h3>
+                  <div className="flex items-center gap-2">
+                    <p className="text-neutral-900 font-mono">{selectedAcceso.clave_agente}</p>
+                    <button
+                      onClick={() => handleCopyToClipboard(selectedAcceso.clave_agente!, selectedAcceso.id)}
+                      className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded hover:bg-neutral-100"
+                      title="Copiar clave"
+                    >
+                      {copiedId === selectedAcceso.id ? (
+                        <Check className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="border-t border-neutral-200 pt-4">
                 <h3 className="text-sm font-semibold text-neutral-700 mb-3">Información de Creación</h3>
