@@ -233,3 +233,29 @@ export async function getDocumentsByVendorGroup(
 
   return data || [];
 }
+
+export async function deleteBatch(batchId: string) {
+  const { data, error } = await supabase.rpc('delete_import_batch', {
+    p_batch_id: batchId,
+  });
+
+  if (error) {
+    console.error('Error al eliminar batch:', error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error('No se recibió respuesta al eliminar el batch');
+  }
+
+  const result = Array.isArray(data) ? data[0] : data;
+
+  if (!result.success) {
+    throw new Error(result.error || 'Error al eliminar el batch');
+  }
+
+  return {
+    success: true,
+    documents_deleted: result.documents_deleted,
+  };
+}

@@ -9,6 +9,7 @@ import {
   Clock,
   Users,
   FileText,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -16,6 +17,7 @@ import {
   getAllBatches,
   getUnmatchedVendorGroups,
   getBatchById,
+  deleteBatch,
 } from '../lib/documentImportUtils';
 import type { DocumentImportBatch } from '../lib/documentImportTypes';
 import VendedoresNoReconocidosTable from '../components/documentImport/VendedoresNoReconocidosTable';
@@ -147,6 +149,31 @@ export default function DocumentosImportar() {
       }
 
       await loadBatches();
+    }
+  };
+
+  const handleDeleteBatch = async (batch: DocumentImportBatch) => {
+    const confirmed = window.confirm(
+      `¿Estás seguro de que deseas eliminar este lote?\n\n` +
+      `Archivo: ${batch.file_name}\n` +
+      `Total de documentos: ${batch.records_total}\n\n` +
+      `Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const result = await deleteBatch(batch.id);
+
+      alert(
+        `Lote eliminado exitosamente.\n\n` +
+        `Documentos eliminados: ${result.documents_deleted}`
+      );
+
+      await loadBatches();
+    } catch (error: any) {
+      console.error('Error al eliminar batch:', error);
+      alert(error.message || 'Error al eliminar el lote. Por favor intenta de nuevo.');
     }
   };
 
@@ -438,12 +465,21 @@ export default function DocumentosImportar() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => handleViewBatch(batch)}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-700 transition"
-                      >
-                        Ver detalle
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleViewBatch(batch)}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-700 transition"
+                        >
+                          Ver detalle
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBatch(batch)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Eliminar lote"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
