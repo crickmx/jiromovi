@@ -11,6 +11,7 @@ import { TramitesWidget } from '../components/TramitesWidget';
 import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
 import CalendarioEventos from '../components/CalendarioEventos';
 import { UltimoComunicado } from '../components/UltimoComunicado';
+import CumpleanosContactos from '../components/CumpleanosContactos';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -248,6 +249,8 @@ export function Dashboard() {
 
         <CalendarioEventos />
 
+        <CumpleanosContactos />
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ResumenVacaciones />
           <TramitesWidget />
@@ -345,6 +348,8 @@ export function Dashboard() {
       <CalendarioEventos />
 
       <UltimoComunicado />
+
+      <CumpleanosContactos />
 
       {currentUser?.rol === 'Administrador' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
