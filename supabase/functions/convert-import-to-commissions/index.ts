@@ -220,18 +220,28 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
+        // Calcular valores para comisión
+        const primaNeta = parseFloat(docData.prima_neta || docData.prima || 0);
+        const importeBase = parseFloat(docData.importe_base || docData.prima_base || primaNeta);
+        const comisionBruta = parseFloat(docData.comision_bruta || docData.comision || 0);
+        const comisionNeta = parseFloat(docData.comision_neta || comisionBruta);
+        const porcentajeComision = importeBase > 0 ? (comisionBruta / importeBase * 100) : 0;
+
         commissionDetails.push({
           batch_id: commissionBatch.id,
           agent_id: agentId,
           ramo: docData.ramo || "Sin especificar",
-          aseguradora: docData.aseguradora || "Sin especificar",
-          poliza: docData.poliza || doc.document_id,
-          prima_base: parseFloat(docData.prima_base || docData.prima || 0),
+          aseguradora: docData.aseguradora || docData.aseguradora_abreviacion || "Sin especificar",
+          poliza: docData.poliza || docData.documento || doc.document_id,
+          prima_neta: primaNeta,
+          importe_base: importeBase,
+          porcentaje_comision: porcentajeComision,
           concepto: docData.concepto || null,
+          nombre_asegurado: docData.nombre_asegurado || docData.asegurado || null,
           date_fpago: docData.fecha_pago,
-          commission_bruta: parseFloat(docData.comision_bruta || 0),
+          commission_bruta: comisionBruta,
           impuestos_json: {},
-          commission_neta: parseFloat(docData.comision_neta || docData.comision_bruta || 0),
+          commission_neta: comisionNeta,
           raw_row: docData,
         });
       }

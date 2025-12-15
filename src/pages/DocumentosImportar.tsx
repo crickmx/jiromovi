@@ -231,55 +231,55 @@ export default function DocumentosImportar() {
 
   if (selectedBatch) {
     return (
-      <div className="p-4 md:p-6 lg:p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <button
           onClick={() => setSelectedBatch(null)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 sm:mb-6 transition min-h-[44px]"
         >
           <ArrowLeft className="h-5 w-5" />
           <span className="font-medium">Volver a la lista</span>
         </button>
 
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Detalle del lote</h2>
-              <p className="text-gray-600 mt-1">{selectedBatch.file_name}</p>
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">Detalle del lote</h2>
+              <p className="text-sm sm:text-base text-gray-600 mt-1 break-words">{selectedBatch.file_name}</p>
             </div>
             {getStatusBadge(selectedBatch.status)}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
               <div className="flex items-center gap-3">
-                <FileText className="h-8 w-8 text-gray-600" />
+                <FileText className="h-6 h-6 sm:h-8 sm:w-8 text-gray-600 flex-shrink-0" />
                 <div>
-                  <p className="text-sm text-gray-600">Total</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-xs sm:text-sm text-gray-600">Total</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
                     {selectedBatch.records_total}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="p-4 bg-green-50 rounded-xl border border-green-200">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-8 w-8 text-green-600" />
+                <CheckCircle2 className="h-6 h-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
                 <div>
-                  <p className="text-sm text-green-700">Reconocidos</p>
-                  <p className="text-2xl font-bold text-green-900">
+                  <p className="text-xs sm:text-sm text-green-700">Reconocidos</p>
+                  <p className="text-xl sm:text-2xl font-bold text-green-900">
                     {selectedBatch.records_matched}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+            <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
               <div className="flex items-center gap-3">
-                <AlertCircle className="h-8 w-8 text-orange-600" />
+                <AlertCircle className="h-6 h-6 sm:h-8 sm:w-8 text-orange-600 flex-shrink-0" />
                 <div>
-                  <p className="text-sm text-orange-700">Sin reconocer</p>
-                  <p className="text-2xl font-bold text-orange-900">
+                  <p className="text-xs sm:text-sm text-orange-700">Sin reconocer</p>
+                  <p className="text-xl sm:text-2xl font-bold text-orange-900">
                     {selectedBatch.records_unmatched}
                   </p>
                 </div>
@@ -428,7 +428,7 @@ export default function DocumentosImportar() {
                           </td>
                           <td className="px-4 py-3">
                             <button
-                              onClick={() => navigate(`/comisiones-lote?batch=${batch.id}`)}
+                              onClick={() => navigate(`/comisiones/lote/${batch.id}`)}
                               className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
                             >
                               Abrir lote
@@ -462,11 +462,11 @@ export default function DocumentosImportar() {
             )}
 
             {selectedBatch.status === 'ready_to_convert' && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center justify-between">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 sm:mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-start gap-3 flex-1">
                     <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="font-semibold text-green-900">Listo para convertir</p>
                       <p className="text-sm text-green-700 mt-1">
                         Todos los documentos tienen usuarios asignados. Puedes convertir este lote en lotes de comisiones por semana.
@@ -475,7 +475,7 @@ export default function DocumentosImportar() {
                   </div>
                   <button
                     onClick={() => setShowConvertModal(true)}
-                    className="ml-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 whitespace-nowrap"
+                    className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2 whitespace-nowrap min-h-[44px] font-semibold"
                   >
                     <ArrowRight className="h-5 w-5" />
                     Convertir a Lotes
@@ -528,40 +528,40 @@ export default function DocumentosImportar() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <button
         onClick={() => navigate('/comisiones')}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition"
+        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 sm:mb-6 transition min-h-[44px]"
       >
         <ArrowLeft className="h-5 w-5" />
         <span className="font-medium">Volver a Comisiones</span>
       </button>
 
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
           Importar documentos desde Excel
         </h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-sm sm:text-base text-gray-600 mt-1">
           Sube un archivo Excel para procesar documentos y asignar vendedores automáticamente
         </p>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <Upload className="h-6 w-6 text-blue-600" />
+          <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+            <Upload className="h-5 h-5 sm:h-6 sm:w-6 text-blue-600" />
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Cargar archivo</h3>
-            <p className="text-sm text-gray-600">Selecciona un archivo Excel (.xlsx o .xls)</p>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Cargar archivo</h3>
+            <p className="text-xs sm:text-sm text-gray-600">Selecciona un archivo Excel (.xlsx o .xls)</p>
           </div>
         </div>
 
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
+        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-8">
           <div className="text-center">
-            <FileSpreadsheet className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <FileSpreadsheet className="h-10 h-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
             <label className="cursor-pointer">
-              <span className="text-blue-600 hover:text-blue-700 font-medium">
+              <span className="text-sm sm:text-base text-blue-600 hover:text-blue-700 font-medium">
                 Selecciona un archivo
               </span>
               <input
@@ -572,17 +572,17 @@ export default function DocumentosImportar() {
                 disabled={loading}
               />
             </label>
-            <p className="text-sm text-gray-500 mt-2">o arrastra y suelta aquí</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-2">o arrastra y suelta aquí</p>
           </div>
 
           {selectedFile && (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <FileSpreadsheet className="h-8 w-8 text-blue-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                    <p className="text-sm text-gray-600">
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <FileSpreadsheet className="h-6 h-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm sm:text-base font-medium text-gray-900 truncate">{selectedFile.name}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">
                       {(selectedFile.size / 1024).toFixed(2)} KB
                     </p>
                   </div>
@@ -590,17 +590,17 @@ export default function DocumentosImportar() {
                 <button
                   onClick={handleUpload}
                   disabled={loading}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px] font-semibold"
                 >
                   {loading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      {uploadProgress}
+                      <span className="text-sm sm:text-base">{uploadProgress}</span>
                     </>
                   ) : (
                     <>
                       <Upload className="h-5 w-5" />
-                      Procesar archivo
+                      <span className="text-sm sm:text-base">Procesar archivo</span>
                     </>
                   )}
                 </button>
@@ -632,29 +632,29 @@ export default function DocumentosImportar() {
             <p className="text-gray-400 text-sm">Sube tu primer archivo Excel para comenzar</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Archivo
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
                     Total
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
                     Reconocidos
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
                     Pendientes
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">
                     Fecha
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Acciones
                   </th>
                 </tr>
@@ -662,26 +662,26 @@ export default function DocumentosImportar() {
               <tbody className="divide-y divide-gray-200">
                 {batches.map((batch) => (
                   <tr key={batch.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <FileSpreadsheet className="h-5 w-5 text-green-600" />
-                        <span className="text-sm font-medium text-gray-900">
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileSpreadsheet className="h-5 w-5 text-green-600 flex-shrink-0" />
+                        <span className="text-sm font-medium text-gray-900 truncate">
                           {batch.file_name}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">{getStatusBadge(batch.status)}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4">{getStatusBadge(batch.status)}</td>
+                    <td className="px-4 sm:px-6 py-4 hidden sm:table-cell">
                       <span className="text-sm font-semibold text-gray-900">
                         {batch.records_total}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4 hidden md:table-cell">
                       <span className="text-sm font-semibold text-green-600">
                         {batch.records_matched}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4 hidden md:table-cell">
                       {batch.records_unmatched > 0 ? (
                         <span className="text-sm font-semibold text-orange-600">
                           {batch.records_unmatched}
@@ -690,7 +690,7 @@ export default function DocumentosImportar() {
                         <span className="text-sm text-gray-400">0</span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4 hidden lg:table-cell">
                       <span className="text-sm text-gray-600">
                         {new Date(batch.imported_at).toLocaleDateString('es-MX', {
                           day: 'numeric',
@@ -699,17 +699,17 @@ export default function DocumentosImportar() {
                         })}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
                         <button
                           onClick={() => handleViewBatch(batch)}
-                          className="text-sm font-medium text-blue-600 hover:text-blue-700 transition"
+                          className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-700 transition whitespace-nowrap"
                         >
-                          Ver detalle
+                          Ver
                         </button>
                         <button
                           onClick={() => handleDeleteBatch(batch)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition min-h-[36px] min-w-[36px] flex items-center justify-center"
                           title="Eliminar lote"
                         >
                           <Trash2 className="h-4 w-4" />
