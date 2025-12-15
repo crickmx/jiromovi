@@ -85,18 +85,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-
-    if (deleteAuthError) {
-      return new Response(
-        JSON.stringify({ error: deleteAuthError.message }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
     const { error: deleteUserError } = await supabaseAdmin
       .from('usuarios')
       .delete()
@@ -104,6 +92,26 @@ Deno.serve(async (req: Request) => {
 
     if (deleteUserError) {
       console.error('Error deleting from usuarios table:', deleteUserError);
+
+      let errorMessage = 'Error al eliminar usuario de la base de datos';
+
+      if (deleteUserError.message.includes('foreign key') || deleteUserError.code === '23503') {
+        errorMessage = 'No se puede eliminar este usuario porque tiene registros asociados (comunicados, cursos, notificaciones, etc.). Primero debes reasignar o eliminar esos registros.';
+      }
+
+      return new Response(
+        JSON.stringify({ error: errorMessage, details: deleteUserError.message }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (deleteAuthError) {
+      console.error('Error deleting auth user (user already deleted from usuarios):', deleteAuthError);
     }
 
     return new Response(
