@@ -35,6 +35,25 @@ export default function ComisionesLote() {
 
     setLoading(true);
 
+    console.log('[ComisionesLote] Cargando batch:', id);
+
+    // DIAGNÓSTICO: Primero verificar si existen registros sin JOINs
+    const simpleCountResult = await supabase
+      .from('commission_details')
+      .select('id', { count: 'exact', head: true })
+      .eq('batch_id', id);
+
+    console.log('[ComisionesLote] DIAGNÓSTICO - Conteo simple (sin JOINs):', simpleCountResult);
+
+    // DIAGNÓSTICO: Intentar query simple con solo agent_id
+    const simpleDetailsResult = await supabase
+      .from('commission_details')
+      .select('id, poliza, agent_id')
+      .eq('batch_id', id)
+      .limit(5);
+
+    console.log('[ComisionesLote] DIAGNÓSTICO - Query simple (sin JOINs profundos):', simpleDetailsResult);
+
     const [batchResult, detailsResult, errorsResult] = await Promise.all([
       supabase.from('commission_batches').select('*').eq('id', id).single(),
       supabase.from('commission_details').select(`
@@ -42,27 +61,58 @@ export default function ComisionesLote() {
         agent:agent_id(
           *,
           office:office_id(*),
-          fiscal_regime:fiscal_regime_id(*),
-          usuario:usuario_id(
-            id,
-            regimen_fiscal_id,
-            regimen_fiscal:regimen_fiscal_id(*)
-          )
+          fiscal_regime:fiscal_regime_id(*)
         )
       `).eq('batch_id', id),
       supabase.from('commission_errors').select('*').eq('batch_id', id).eq('resolved', false)
     ]);
 
+    console.log('[ComisionesLote] Batch result:', batchResult);
+    console.log('[ComisionesLote] Details result:', detailsResult);
+    console.log('[ComisionesLote] Details count:', detailsResult.data?.length || 0);
+    console.log('[ComisionesLote] Errors result:', errorsResult);
+
     if (batchResult.error) {
-      console.error('Error loading batch:', batchResult.error);
+      console.error('[ComisionesLote] Error loading batch:', batchResult.error);
       navigate('/comisiones');
       return;
+    }
+
+    if (detailsResult.error) {
+      console.error('[ComisionesLote] Error loading details:', detailsResult.error);
+    }
+
+    // EMERGENCIA: Si no hay datos con JOINs pero sí con query simple, intentar sin JOINs
+    if ((!detailsResult.data || detailsResult.data.length === 0) && simpleCountResult.count && simpleCountResult.count > 0) {
+      console.warn('[ComisionesLote] EMERGENCIA: Datos existen pero JOINs fallaron. Cargando sin JOINs...');
+
+      const fallbackResult = await supabase
+        .from('commission_details')
+        .select('*, agent:agent_id(id, name, email)')
+        .eq('batch_id', id);
+
+      console.log('[ComisionesLote] EMERGENCIA - Resultado sin JOINs profundos:', fallbackResult);
+
+      if (fallbackResult.data && fallbackResult.data.length > 0) {
+        console.log('[ComisionesLote] EMERGENCIA - Usando datos sin JOINs profundos');
+        setBatch(batchResult.data);
+        setDetails(fallbackResult.data);
+        setErrors(errorsResult.data || []);
+        setLoading(false);
+        return;
+      }
     }
 
     setBatch(batchResult.data);
     setDetails(detailsResult.data || []);
     setErrors(errorsResult.data || []);
     setLoading(false);
+
+    console.log('[ComisionesLote] Estado actualizado:', {
+      batch: batchResult.data,
+      detailsCount: detailsResult.data?.length || 0,
+      errorsCount: errorsResult.data?.length || 0
+    });
   };
 
   const handleCloseBatch = async () => {

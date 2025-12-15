@@ -375,3 +375,44 @@ El modal de conversión se cerraba inmediatamente y los lotes quedaban vacíos.
 - No se crean lotes vacíos (se eliminan automáticamente)
 - Errores se muestran con detalles completos
 - Logs en consola permiten debugging inmediato
+
+---
+
+## Problema adicional: Lote se muestra vacío al abrirlo
+
+### Síntoma
+Después de hacer clic en "Abrir lote", la página muestra:
+- Número correcto de pólizas en el contador
+- Pero la tabla de pólizas está vacía
+- No se muestran datos de agentes, ramos, etc.
+
+### Posibles causas
+1. **Datos no se insertaron**: `commission_details` está vacío
+2. **JOINs fallando**: Los JOINs anidados no encuentran las foreign keys
+3. **RLS bloqueando**: Las políticas no permiten leer los datos
+4. **Error de renderizado**: El frontend tiene un problema al mostrar los datos
+
+### Diagnóstico
+Se agregó logging exhaustivo en `ComisionesLote.tsx`:
+
+```typescript
+[ComisionesLote] Cargando batch: {uuid}
+[ComisionesLote] DIAGNÓSTICO - Conteo simple: {count: X}
+[ComisionesLote] DIAGNÓSTICO - Query simple: {data: [...]}
+[ComisionesLote] Details result: {data: [...], count: X}
+```
+
+**Ver documento `DEBUG_LOTE_VACIO.md` para guía completa de debugging.**
+
+### Solución temporal
+Se simplificaron los JOINs en el SELECT:
+- Removido JOIN profundo a `usuario:usuario_id`
+- Solo se hace JOIN a `agent`, `office` y `fiscal_regime`
+- Esto previene que JOINs anidados fallen silenciosamente
+
+### Verificación
+1. Abre consola del navegador (F12)
+2. Ve a un lote recién convertido
+3. Revisa los logs de diagnóstico
+4. Si `count: 0`, el problema está en backend (no se insertaron datos)
+5. Si `count: X` pero `data: []`, el problema está en los JOINs o RLS
