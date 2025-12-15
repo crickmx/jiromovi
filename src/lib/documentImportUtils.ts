@@ -175,16 +175,35 @@ export async function assignVendorToUser(
   };
 }
 
+export async function getAllMoviUsers() {
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('id, nombre_completo, email, oficina_id')
+    .order('nombre_completo', { ascending: true });
+
+  if (error) {
+    console.error('Error al obtener usuarios:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
 export async function searchMoviUsers(query: string) {
   const normalizedQuery = query.toLowerCase().trim();
 
+  if (!normalizedQuery) {
+    return getAllMoviUsers();
+  }
+
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre_completo, email')
+    .select('id, nombre_completo, email, oficina_id')
     .or(
       `nombre_completo.ilike.%${normalizedQuery}%,email.ilike.%${normalizedQuery}%`
     )
-    .limit(20);
+    .order('nombre_completo', { ascending: true })
+    .limit(100);
 
   if (error) {
     console.error('Error al buscar usuarios:', error);

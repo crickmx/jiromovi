@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Search, User, CheckCircle, FileText, Mail } from 'lucide-react';
-import { searchMoviUsers, assignVendorToUser } from '../../lib/documentImportUtils';
+import { getAllMoviUsers, searchMoviUsers, assignVendorToUser } from '../../lib/documentImportUtils';
 import type { UnmatchedVendorGroup } from '../../lib/documentImportTypes';
 
 interface AsignarVendedorModalProps {
@@ -23,23 +23,42 @@ export default function AsignarVendedorModal({
   onSuccess,
 }: AsignarVendedorModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [allUsers, setAllUsers] = useState<MoviUser[]>([]);
   const [searchResults, setSearchResults] = useState<MoviUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<MoviUser | null>(null);
   const [saveMapping, setSaveMapping] = useState(true);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    loadAllUsers();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery.trim()) {
         performSearch();
       } else {
-        setSearchResults([]);
+        setSearchResults(allUsers);
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, allUsers]);
+
+  const loadAllUsers = async () => {
+    setInitialLoading(true);
+    try {
+      const users = await getAllMoviUsers();
+      setAllUsers(users);
+      setSearchResults(users);
+    } catch (error) {
+      console.error('Error al cargar usuarios:', error);
+    } finally {
+      setInitialLoading(false);
+    }
+  };
 
   const performSearch = async () => {
     setSearching(true);
@@ -211,42 +230,60 @@ export default function AsignarVendedorModal({
               />
             </div>
 
-            {searching && (
+            {initialLoading && (
+              <div className="mt-2 text-center text-gray-500 text-sm p-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                Cargando usuarios...
+              </div>
+            )}
+
+            {!initialLoading && searching && (
               <div className="mt-2 text-center text-gray-500 text-sm">
                 Buscando...
               </div>
             )}
 
-            {searchResults.length > 0 && (
-              <div className="mt-2 border border-gray-200 rounded-lg max-h-60 overflow-y-auto">
-                {searchResults.map((user) => (
-                  <button
-                    key={user.id}
-                    onClick={() => setSelectedUser(user)}
-                    className={`w-full p-3 text-left hover:bg-gray-50 transition border-b border-gray-100 last:border-b-0 ${
-                      selectedUser?.id === user.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <User className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="font-medium text-gray-900">{user.nombre_completo}</p>
-                          <p className="text-sm text-gray-600">{user.email}</p>
+            {!initialLoading && searchResults.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs text-gray-600 mb-2">
+                  {searchQuery ? `${searchResults.length} resultados` : `${searchResults.length} usuarios disponibles`}
+                </p>
+                <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto">
+                  {searchResults.map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => setSelectedUser(user)}
+                      className={`w-full p-3 text-left hover:bg-gray-50 transition border-b border-gray-100 last:border-b-0 ${
+                        selectedUser?.id === user.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <User className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="font-medium text-gray-900">{user.nombre_completo}</p>
+                            <p className="text-sm text-gray-600">{user.email}</p>
+                          </div>
                         </div>
+                        {selectedUser?.id === user.id && (
+                          <CheckCircle className="h-5 w-5 text-blue-600" />
+                        )}
                       </div>
-                      {selectedUser?.id === user.id && (
-                        <CheckCircle className="h-5 w-5 text-blue-600" />
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
-            {searchQuery && !searching && searchResults.length === 0 && (
+            {!initialLoading && searchQuery && !searching && searchResults.length === 0 && (
               <div className="mt-2 text-center text-gray-500 text-sm p-4 bg-gray-50 rounded-lg">
-                No se encontraron usuarios
+                No se encontraron usuarios con "{searchQuery}"
+              </div>
+            )}
+
+            {!initialLoading && !searchQuery && searchResults.length === 0 && (
+              <div className="mt-2 text-center text-gray-500 text-sm p-4 bg-red-50 border border-red-200 rounded-lg">
+                No hay usuarios disponibles en el sistema
               </div>
             )}
           </div>
