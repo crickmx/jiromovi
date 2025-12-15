@@ -174,17 +174,17 @@ export default function ComisionesLote() {
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-soft p-12 text-center max-w-md">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+        <div className="bg-white rounded-3xl shadow-soft p-8 sm:p-12 text-center max-w-md w-full">
+          <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-2">
             Acceso Denegado
           </h2>
-          <p className="text-neutral-600 mb-6">
+          <p className="text-sm sm:text-base text-neutral-600 mb-6">
             Solo los administradores pueden acceder a esta sección.
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold"
+            className="w-full px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold min-h-[44px]"
           >
             Volver al Dashboard
           </button>
@@ -203,14 +203,14 @@ export default function ComisionesLote() {
 
   if (!batch) {
     return (
-      <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-12 text-center">
-        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-neutral-700 mb-2">
+      <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center mx-4">
+        <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
           Lote no encontrado
         </h3>
         <button
           onClick={() => navigate('/comisiones')}
-          className="mt-4 px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold"
+          className="mt-4 px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold min-h-[44px]"
         >
           Volver a Comisiones
         </button>
@@ -222,39 +222,39 @@ export default function ComisionesLote() {
   const agentSummaries = calculateAgentSummaries(details);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+        <div className="flex flex-col gap-4 mb-4 sm:mb-6">
+          <div className="flex items-start gap-3">
             <button
               onClick={() => navigate('/comisiones')}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
-              <ArrowLeft className="w-6 h-6 text-neutral-700" />
+              <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-700" />
             </button>
-            <div>
-              <h1 className="text-3xl font-display font-bold text-neutral-900 mb-1">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-neutral-900 mb-1 break-words">
                 {batch.name}
               </h1>
-              <p className="text-neutral-600">
+              <p className="text-sm sm:text-base text-neutral-600">
                 Periodo: {formatDate(batch.date_from)} - {formatDate(batch.date_to)}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             {batch.status !== 'closed' ? (
               <>
                 <button
                   onClick={handleCloseBatch}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-semibold"
+                  className="flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
                 >
                   <CheckCircle className="w-5 h-5" />
                   <span>Cerrar Lote</span>
                 </button>
                 <button
                   onClick={handleDeleteBatch}
-                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold"
+                  className="flex items-center justify-center space-x-2 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
                 >
                   <XCircle className="w-5 h-5" />
                   <span>Eliminar</span>
@@ -263,7 +263,7 @@ export default function ComisionesLote() {
             ) : (
               <button
                 onClick={handleDeleteBatch}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold"
+                className="flex items-center justify-center space-x-2 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
               >
                 <XCircle className="w-5 h-5" />
                 <span>Eliminar Lote</span>
@@ -272,10 +272,10 @@ export default function ComisionesLote() {
           </div>
         </div>
 
-        <div className="flex space-x-2 border-b border-neutral-200">
+        <div className="flex overflow-x-auto space-x-2 border-b border-neutral-200 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
           <button
             onClick={() => setActiveTab('resumen')}
-            className={`px-6 py-3 font-semibold transition-all ${
+            className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
               activeTab === 'resumen'
                 ? 'text-primary-600 border-b-2 border-primary-600'
                 : 'text-neutral-600 hover:text-neutral-900'
@@ -285,7 +285,7 @@ export default function ComisionesLote() {
           </button>
           <button
             onClick={() => setActiveTab('agentes')}
-            className={`px-6 py-3 font-semibold transition-all ${
+            className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
               activeTab === 'agentes'
                 ? 'text-primary-600 border-b-2 border-primary-600'
                 : 'text-neutral-600 hover:text-neutral-900'
@@ -295,7 +295,7 @@ export default function ComisionesLote() {
           </button>
           <button
             onClick={() => setActiveTab('polizas')}
-            className={`px-6 py-3 font-semibold transition-all ${
+            className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
               activeTab === 'polizas'
                 ? 'text-primary-600 border-b-2 border-primary-600'
                 : 'text-neutral-600 hover:text-neutral-900'
@@ -306,7 +306,7 @@ export default function ComisionesLote() {
           {errors.length > 0 && (
             <button
               onClick={() => setActiveTab('errores')}
-              className={`px-6 py-3 font-semibold transition-all ${
+              className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
                 activeTab === 'errores'
                   ? 'text-primary-600 border-b-2 border-primary-600'
                   : 'text-neutral-600 hover:text-neutral-900'
@@ -319,30 +319,30 @@ export default function ComisionesLote() {
       </div>
 
       {activeTab === 'resumen' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-neutral-600 font-medium">Comisión Total</span>
-                <DollarSign className="w-6 h-6 text-primary-600" />
+                <span className="text-sm sm:text-base text-neutral-600 font-medium">Comisión Total</span>
+                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
               </div>
-              <div className="text-3xl font-bold text-green-700">
+              <div className="text-2xl sm:text-3xl font-bold text-green-700">
                 {formatCurrency(summary.total_neta)}
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-neutral-600 font-medium">Total Pólizas</span>
-                <FileSpreadsheet className="w-6 h-6 text-blue-600" />
+                <span className="text-sm sm:text-base text-neutral-600 font-medium">Total Pólizas</span>
+                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
-              <div className="text-3xl font-bold text-neutral-900">
+              <div className="text-2xl sm:text-3xl font-bold text-neutral-900">
                 {summary.total_polizas}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <GraficaColumnas
               title="Comisiones por Ramo"
               data={Object.entries(summary.by_ramo).map(([ramo, data]) => ({
@@ -362,13 +362,13 @@ export default function ComisionesLote() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-              <h3 className="text-xl font-bold text-neutral-900 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
                 Comisiones por Ramo
               </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-neutral-200">
                       <th className="text-left py-3 px-4 font-semibold text-neutral-700">Ramo</th>
@@ -389,12 +389,12 @@ export default function ComisionesLote() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-              <h3 className="text-xl font-bold text-neutral-900 mb-4">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
                 Comisiones por Aseguradora
               </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-neutral-200">
                       <th className="text-left py-3 px-4 font-semibold text-neutral-700">Aseguradora</th>
@@ -419,12 +419,12 @@ export default function ComisionesLote() {
       )}
 
       {activeTab === 'agentes' && (
-        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-          <h3 className="text-xl font-bold text-neutral-900 mb-4">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+          <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
             Comisiones por Agente
           </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200">
                   <th className="text-left py-3 px-4 font-semibold text-neutral-700">Agente</th>
@@ -465,8 +465,8 @@ export default function ComisionesLote() {
       )}
 
       {activeTab === 'polizas' && (
-        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-4 md:p-6">
-          <h3 className="text-xl font-bold text-neutral-900 mb-4">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+          <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
             Detalle por Póliza ({details.length})
           </h3>
 
@@ -541,21 +541,21 @@ export default function ComisionesLote() {
               return (
                 <div key={detail.id} className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="font-bold text-neutral-900 mb-1">{detail.poliza}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-neutral-900 mb-1 break-words">{detail.poliza}</div>
                       {detail.is_manual_adjusted && (
                         <span className="inline-block text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full mb-2">
                           Ajustado
                         </span>
                       )}
-                      <div className="text-sm text-neutral-700">{detail.nombre_asegurado || '-'}</div>
+                      <div className="text-sm text-neutral-700 break-words">{detail.nombre_asegurado || '-'}</div>
                       {detail.concepto && (
-                        <div className="text-xs text-neutral-500 mt-1">{detail.concepto}</div>
+                        <div className="text-xs text-neutral-500 mt-1 break-words">{detail.concepto}</div>
                       )}
                     </div>
                     <button
                       onClick={() => setAdjustingDetail(detail)}
-                      className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                      className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium ml-2 flex-shrink-0"
                     >
                       <Wrench className="w-4 h-4" />
                       <span>Ajustar</span>
@@ -565,15 +565,15 @@ export default function ComisionesLote() {
                   <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-neutral-200">
                     <div>
                       <div className="text-xs text-neutral-600 mb-1">Agente</div>
-                      <div className="text-sm font-medium text-neutral-900">{detail.agent?.name}</div>
+                      <div className="text-sm font-medium text-neutral-900 break-words">{detail.agent?.name}</div>
                     </div>
                     <div>
                       <div className="text-xs text-neutral-600 mb-1">Ramo</div>
-                      <div className="text-sm font-medium text-neutral-900">{detail.ramo}</div>
+                      <div className="text-sm font-medium text-neutral-900 break-words">{detail.ramo}</div>
                     </div>
                     <div>
                       <div className="text-xs text-neutral-600 mb-1">Aseguradora</div>
-                      <div className="text-sm font-medium text-neutral-900">{detail.aseguradora}</div>
+                      <div className="text-sm font-medium text-neutral-900 break-words">{detail.aseguradora}</div>
                     </div>
                     <div>
                       <div className="text-xs text-neutral-600 mb-1">Prima Neta</div>
@@ -605,36 +605,36 @@ export default function ComisionesLote() {
 
           {details.length === 0 && (
             <div className="text-center py-12">
-              <FileSpreadsheet className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-              <p className="text-neutral-500">No hay pólizas registradas en este lote</p>
+              <FileSpreadsheet className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-4" />
+              <p className="text-sm sm:text-base text-neutral-500">No hay pólizas registradas en este lote</p>
             </div>
           )}
         </div>
       )}
 
       {activeTab === 'errores' && (
-        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-          <h3 className="text-xl font-bold text-neutral-900 mb-4">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+          <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
             Errores de Procesamiento
           </h3>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {errors.map(error => (
               <div key={error.id} className="bg-red-50 border border-red-200 rounded-xl p-4">
                 <div className="flex items-start space-x-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                  <div className="flex-1">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
                     <div className="font-semibold text-red-900 mb-1">
                       {error.error_type === 'agent_not_found' && 'Agente no encontrado'}
                       {error.error_type === 'rule_not_found' && 'Regla no encontrada'}
                       {error.error_type === 'invalid_data' && 'Datos inválidos'}
                       {error.error_type === 'other' && 'Error desconocido'}
                     </div>
-                    <p className="text-red-800 text-sm mb-2">{error.detalle}</p>
+                    <p className="text-red-800 text-sm mb-2 break-words">{error.detalle}</p>
                     {error.email_agente && (
-                      <p className="text-red-700 text-xs">Email: {error.email_agente}</p>
+                      <p className="text-red-700 text-xs break-all">Email: {error.email_agente}</p>
                     )}
                     {error.poliza && (
-                      <p className="text-red-700 text-xs">Póliza: {error.poliza}</p>
+                      <p className="text-red-700 text-xs break-words">Póliza: {error.poliza}</p>
                     )}
                   </div>
                 </div>
