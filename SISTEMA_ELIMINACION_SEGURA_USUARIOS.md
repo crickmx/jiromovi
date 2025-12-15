@@ -668,20 +668,22 @@ VALUES (
    - Si el usuario está logueado, se le cierra la sesión inmediatamente
 
 **2. Bloqueo de Nuevos Logins**
-   - Cuando un usuario intenta hacer login, `AuthContext.signIn()`:
-     1. Llama a `supabase.auth.signInWithPassword()`
-     2. Si Supabase Auth permite el login (credenciales correctas)
-     3. Inmediatamente llama a `check_user_can_login()` en la BD
-     4. La función verifica:
-        - `is_deleted = false`
+   - Cuando un usuario intenta hacer login, el flujo es:
+     1. `AuthContext.signIn()` llama a `supabase.auth.signInWithPassword()`
+     2. Si las credenciales son correctas, Supabase Auth permite el login
+     3. `AuthContext` automáticamente llama a `fetchUsuario()` para cargar datos del usuario
+     4. `fetchUsuario()` hace SELECT filtrando por:
         - `activo = true`
-        - `estado != 'suspendido'`
-     5. Si el usuario está eliminado, rechaza el login y cierra la sesión
+        - `is_deleted = false`
+     5. Si el usuario está eliminado, NO se encuentra en la consulta
+     6. Se ejecuta `signOut()` automático y se muestra error
+     7. El usuario eliminado NO puede acceder al sistema
 
 **3. Filtrado en Queries**
    - Todas las queries que obtienen usuarios filtran por `is_deleted = false`
-   - Esto previene que usuarios eliminados aparezcan en listas
+   - Las RLS policies excluyen usuarios eliminados
    - El usuario "desaparece" del sistema sin perder datos
+   - Esto previene que usuarios eliminados aparezcan en listas y puedan acceder
 
 ### Garantías del Sistema
 
@@ -701,12 +703,22 @@ VALUES (
 
 ### ¿Qué pasa si un usuario eliminado está conectado?
 
+**Escenario 1: Usuario tiene sesión activa cuando es eliminado**
 1. Admin elimina usuario en Directorio
 2. Edge function marca `is_deleted = true` en BD
 3. Edge function revoca sesiones con `admin.signOut(userId, 'global')`
-4. Usuario eliminado ve error al hacer siguiente request
-5. Usuario es redirigido a login
-6. Al intentar login, es bloqueado por `check_user_can_login()`
+4. Usuario eliminado pierde su sesión inmediatamente (< 1 segundo)
+5. Usuario ve error de sesión inválida
+6. Usuario es redirigido a login automáticamente
+
+**Escenario 2: Usuario eliminado intenta hacer login**
+1. Usuario ingresa email y password correctos
+2. Supabase Auth valida credenciales (OK)
+3. `fetchUsuario()` busca el usuario filtrando por `activo=true` y `is_deleted=false`
+4. Usuario eliminado NO se encuentra (is_deleted=true)
+5. Se ejecuta `signOut()` automático
+6. Se muestra: "Usuario no encontrado o no activo"
+7. Usuario NO puede acceder al sistema
 
 ### Vista de Usuarios Eliminados (Solo Admins)
 

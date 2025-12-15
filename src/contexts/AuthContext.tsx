@@ -128,49 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error };
       }
 
-      if (!data.user) {
-        const authError: AuthError = {
-          name: 'NoUser',
-          message: 'No se pudo obtener información del usuario',
-          status: 401,
-        } as AuthError;
-        return { error: authError };
-      }
-
-      console.log('[AuthContext] Sign in successful, verifying user status...');
-
-      const { data: canLoginResult, error: rpcError } = await supabase.rpc('check_user_can_login', {
-        user_id_to_check: data.user.id
-      });
-
-      if (rpcError) {
-        console.error('[AuthContext] Error checking user status:', rpcError);
-        await supabase.auth.signOut();
-        const authError: AuthError = {
-          name: 'CheckFailed',
-          message: 'Error al verificar el estado de la cuenta',
-          status: 500,
-        } as AuthError;
-        return { error: authError };
-      }
-
-      if (!canLoginResult || !canLoginResult.can_login) {
-        console.warn('[AuthContext] User cannot login:', canLoginResult);
-        await supabase.auth.signOut();
-
-        const errorMessage = canLoginResult?.error || 'Tu cuenta no está activa. Contacta al administrador.';
-
-        const authError: AuthError = {
-          name: 'AccountDisabled',
-          message: errorMessage,
-          status: 403,
-        } as AuthError;
-        return { error: authError };
-      }
-
-      console.log('[AuthContext] User verified and can login:', {
-        userId: data.user.id,
-        email: data.user.email
+      console.log('[AuthContext] Sign in successful:', {
+        userId: data.user?.id,
+        email: data.user?.email
       });
 
       return { error: null };
@@ -180,8 +140,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: err.name,
         stack: err.stack
       });
-
-      await supabase.auth.signOut();
 
       const networkError: AuthError = {
         name: 'NetworkError',
