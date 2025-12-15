@@ -241,8 +241,10 @@ Deno.serve(async (req: Request) => {
           errorsToInsert.push({
             batch_id: batch.id,
             fila_excel: JSON.stringify(row),
-            tipo_error: 'agent_not_found',
+            error_type: 'agent_not_found',
             detalle: `No se encontró el agente con email: ${email}`,
+            email_agente: email || null,
+            poliza: row.Poliza || row.Documento || null,
             resolved: false
           });
           continue;
@@ -298,7 +300,7 @@ Deno.serve(async (req: Request) => {
           ramo,
           aseguradora,
           prima_neta: primaNeta,
-          porcentaje_base,
+          porcentaje_base: porcentajeBase,
           porcentaje_comision: porcentajeComision,
           commission_bruta: commission,
           commission_neta: commission,
@@ -339,6 +341,13 @@ Deno.serve(async (req: Request) => {
 
         allErrors.push(...errorsToInsert);
       }
+
+      batchesCreated.push({
+        id: batch.id,
+        name: batch.name,
+        details_count: detailsToInsert.length,
+        errors_count: errorsToInsert.length
+      });
     }
 
     console.log('[process-commissions] Processing complete!');
