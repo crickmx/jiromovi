@@ -46,6 +46,43 @@ interface CommissionAgent {
   } | null;
 }
 
+// Helper functions for vendor normalization
+function normalizeEmail(email: string | null | undefined): string | null {
+  if (!email || email.trim() === '') return null;
+  return email.trim().toLowerCase();
+}
+
+function normalizeName(name: string | null | undefined): string | null {
+  if (!name || name.trim() === '') return null;
+
+  let normalized = name.trim().toLowerCase();
+
+  const accentMap: { [key: string]: string } = {
+    'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n',
+    'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ü': 'U', 'Ñ': 'N'
+  };
+
+  normalized = normalized.split('').map(char => accentMap[char] || char).join('');
+  normalized = normalized.replace(/\s+/g, ' ');
+
+  return normalized;
+}
+
+function calculateVendorKey(vendorEmail: string | null | undefined, vendorName: string | null | undefined): string {
+  const normalizedEmail = normalizeEmail(vendorEmail);
+  const normalizedName = normalizeName(vendorName);
+
+  if (normalizedEmail) {
+    return `email:${normalizedEmail}`;
+  }
+
+  if (normalizedName) {
+    return `name:${normalizedName}`;
+  }
+
+  return 'unknown';
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -133,6 +170,25 @@ Deno.serve(async (req: Request) => {
         });
       }
     });
+
+    console.log('[process-commissions] Loading vendor mappings...');
+    const { data: vendorMappings, error: mappingsError } = await supabase
+      .from('vendor_mappings')
+      .select('source_type, source_value, movi_user_id')
+      .eq('status', 'active');
+
+    if (mappingsError) {
+      console.error('[process-commissions] Error loading vendor mappings:', mappingsError);
+    }
+
+    const mappingsMap = new Map<string, string>();
+    if (vendorMappings) {
+      vendorMappings.forEach(mapping => {
+        const key = `${mapping.source_type}:${mapping.source_value}`;
+        mappingsMap.set(key, mapping.movi_user_id);
+      });
+    }
+    console.log('[process-commissions] Vendor mappings loaded:', mappingsMap.size);
 
     console.log('[process-commissions] Filtering rows by selected weeks...');
     const filteredRows = selectedWeeks && selectedWeeks.length > 0
@@ -233,21 +289,59 @@ Deno.serve(async (req: Request) => {
       const errorsToInsert: any[] = [];
 
       for (const row of weekRows) {
-        const email = (row.EmailAgente || row.Email || '').toLowerCase().trim();
-        const agent = agentsMap.get(email);
+        const vendorEmail = row.EmailAgente || row.Email || '';
+        const vendorName = row.NombreAgente || row.NombreVendedor || '';
+        const vendorKey = calculateVendorKey(vendorEmail, vendorName);
+
+        console.log(`[process-commissions] Processing row - Email: ${vendorEmail}, Name: ${vendorName}, Key: ${vendorKey}`);
+
+        let agent: CommissionAgent | undefined;
+        let matchMethod: string = 'none';
+        let agentId: string | null = null;
+
+        const normalizedEmail = normalizeEmail(vendorEmail);
+        if (normalizedEmail) {
+          agent = agentsMap.get(normalizedEmail);
+          if (agent) {
+            matchMethod = 'direct_email';
+            agentId = agent.id;
+            console.log(`[process-commissions] Direct email match: ${agent.name}`);
+          }
+        }
 
         if (!agent) {
-          console.warn(`[process-commissions] Agent not found for email: ${email}`);
+          const mappedUserId = mappingsMap.get(vendorKey);
+          if (mappedUserId) {
+            const mappedAgent = agents.find(a => a.id === mappedUserId);
+            if (mappedAgent) {
+              const fiscalRegime = mappedAgent.fiscal_regime_id ? regimesMap.get(mappedAgent.fiscal_regime_id) : null;
+              agent = {
+                id: mappedAgent.id,
+                name: mappedAgent.name,
+                email: mappedAgent.email,
+                office_id: mappedAgent.office_id,
+                fiscal_regime: fiscalRegime || null
+              };
+              agentId = agent.id;
+              matchMethod = vendorKey.startsWith('email:') ? 'mapping_email' : 'mapping_name';
+              console.log(`[process-commissions] Mapping match (${matchMethod}): ${agent.name}`);
+            }
+          }
+        }
+
+        const isUnmatched = !agent;
+
+        if (isUnmatched) {
+          console.warn(`[process-commissions] No match found - Email: ${vendorEmail}, Name: ${vendorName}`);
           errorsToInsert.push({
             batch_id: batch.id,
             fila_excel: JSON.stringify(row),
             error_type: 'agent_not_found',
-            detalle: `No se encontró el agente con email: ${email}`,
-            email_agente: email || null,
+            detalle: `No se encontró el agente - Email: ${vendorEmail || 'N/A'}, Nombre: ${vendorName || 'N/A'}`,
+            email_agente: vendorEmail || null,
             poliza: row.Poliza || row.Documento || null,
             resolved: false
           });
-          continue;
         }
 
         const ramo = row.Ramo;
@@ -255,7 +349,7 @@ Deno.serve(async (req: Request) => {
         const primaNeta = Number(row.PrimaNeta || row.Importe || 0);
         const porcentajeBase = Number(row.PorPart || 0);
 
-        const matchingRule = findBusinessRule(businessRules || [], ramo, aseguradora, agent.office_id);
+        const matchingRule = findBusinessRule(businessRules || [], ramo, aseguradora, agent?.office_id || null);
 
         let porcentajeComision = porcentajeBase;
         let tipoCalculo = 'directo';
@@ -295,11 +389,11 @@ Deno.serve(async (req: Request) => {
 
         detailsToInsert.push({
           batch_id: batch.id,
-          agent_id: agent.id,
+          agent_id: agentId,
           poliza: row.Poliza || row.Documento || '',
           ramo,
           aseguradora,
-          office_id: agent.office_id,
+          office_id: agent?.office_id || null,
           prima_neta: primaNeta,
           date_fpago: row.FPago,
           porcentaje_base: porcentajeBase,
@@ -312,6 +406,11 @@ Deno.serve(async (req: Request) => {
           tipo_calculo: tipoCalculo,
           concepto: row.Concepto || '',
           nombre_asegurado: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || '',
+          vendor_email_raw: vendorEmail || null,
+          vendor_name_raw: vendorName || null,
+          vendor_key: vendorKey,
+          match_method: matchMethod,
+          is_unmatched: isUnmatched,
           raw_row: row
         });
       }
