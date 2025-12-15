@@ -138,17 +138,42 @@ export default function ConvertirLoteModal({
                 </div>
               </div>
 
+              {validation.warnings && validation.warnings.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-yellow-900 mb-2">Advertencias</p>
+                      <div className="space-y-1">
+                        {validation.warnings.map((warning, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-sm text-yellow-800">
+                            <span className="font-bold">•</span>
+                            <span>{warning}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="mb-6">
                 <h3 className="font-semibold text-gray-900 mb-3">Resumen</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center gap-2 text-gray-600 mb-2">
                       <FileText className="h-4 w-4" />
-                      <span className="text-sm">Documentos</span>
+                      <span className="text-sm">Documentos a convertir</span>
                     </div>
                     <p className="text-2xl font-bold text-gray-900">
                       {validation.summary.total_documents}
                     </p>
+                    {validation.summary.unmatched_documents !== undefined &&
+                     validation.summary.unmatched_documents > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {validation.summary.unmatched_documents} sin asignar
+                      </p>
+                    )}
                   </div>
 
                   <div className="bg-gray-50 rounded-lg p-4">

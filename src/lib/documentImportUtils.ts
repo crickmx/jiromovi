@@ -285,6 +285,7 @@ export interface BatchConversionValidation {
   warnings: string[];
   summary: {
     total_documents: number;
+    unmatched_documents?: number;
     total_agents: number;
     weeks: Array<{
       week_number: number;
