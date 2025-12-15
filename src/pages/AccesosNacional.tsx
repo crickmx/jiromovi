@@ -101,7 +101,8 @@ export function AccesosNacional() {
         (acceso) =>
           acceso.aseguradora.toLowerCase().includes(term) ||
           acceso.usuario_1.toLowerCase().includes(term) ||
-          (acceso.usuario_2 && acceso.usuario_2.toLowerCase().includes(term))
+          (acceso.usuario_2 && acceso.usuario_2.toLowerCase().includes(term)) ||
+          (acceso.clave_agente && acceso.clave_agente.toLowerCase().includes(term))
       );
     }
 
@@ -125,6 +126,17 @@ export function AccesosNacional() {
     });
 
     setFilteredAccesos(filtered);
+  };
+
+  const groupedAccesos = () => {
+    const grouped: { [key: string]: AccesoNacional[] } = {};
+    filteredAccesos.forEach((acceso) => {
+      if (!grouped[acceso.aseguradora]) {
+        grouped[acceso.aseguradora] = [];
+      }
+      grouped[acceso.aseguradora].push(acceso);
+    });
+    return grouped;
   };
 
   const handleSort = (field: 'aseguradora' | 'fecha_creacion' | 'fecha_ultima_edicion') => {
@@ -320,36 +332,24 @@ export function AccesosNacional() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+        <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   <th
-                    className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+                    className="px-3 py-2 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
                     onClick={() => handleSort('aseguradora')}
                   >
-                    Aseguradora {sortField === 'aseguradora' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    Aseguradora / Clave {sortField === 'aseguradora' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Clave de Agente
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                    Usuario
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Usuario 1
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Usuario 2
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
                     Contraseña
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Ingresar
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Detalles
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-neutral-700 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
@@ -357,62 +357,240 @@ export function AccesosNacional() {
               <tbody className="divide-y divide-neutral-200">
                 {filteredAccesos.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-neutral-500">
+                    <td colSpan={4} className="px-4 py-8 text-center text-neutral-500">
                       {searchTerm ? 'No se encontraron registros' : 'No hay accesos registrados'}
                     </td>
                   </tr>
                 ) : (
-                  filteredAccesos.map((acceso) => (
-                    <tr key={acceso.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-neutral-900">{acceso.aseguradora}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-700">
-                        {acceso.clave_agente ? (
+                  (() => {
+                    const grouped = groupedAccesos();
+                    return Object.keys(grouped).sort().map((aseguradora) => (
+                      <>
+                        {grouped[aseguradora].map((acceso, index) => (
+                          <tr key={acceso.id} className="hover:bg-neutral-50 transition-colors">
+                            <td className="px-3 py-2">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold text-neutral-900">{acceso.aseguradora}</span>
+                                {acceso.clave_agente && (
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <span className="text-xs font-mono text-neutral-600">{acceso.clave_agente}</span>
+                                    <button
+                                      onClick={() => handleCopyToClipboard(acceso.clave_agente!, `clave-${acceso.id}`)}
+                                      className="p-0.5 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                      title="Copiar clave"
+                                    >
+                                      {copiedId === `clave-${acceso.id}` ? (
+                                        <Check className="w-3 h-3 text-emerald-500" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-neutral-900">{acceso.usuario_1}</span>
+                                  <button
+                                    onClick={() => handleCopyToClipboard(acceso.usuario_1, `user1-${acceso.id}`)}
+                                    className="p-0.5 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                    title="Copiar usuario"
+                                  >
+                                    {copiedId === `user1-${acceso.id}` ? (
+                                      <Check className="w-3 h-3 text-emerald-500" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                </div>
+                                {acceso.usuario_2 && (
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <span className="text-xs text-neutral-600">{acceso.usuario_2}</span>
+                                    <button
+                                      onClick={() => handleCopyToClipboard(acceso.usuario_2!, `user2-${acceso.id}`)}
+                                      className="p-0.5 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                      title="Copiar usuario 2"
+                                    >
+                                      {copiedId === `user2-${acceso.id}` ? (
+                                        <Check className="w-3 h-3 text-emerald-500" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs font-mono text-neutral-900">{acceso.contrasena}</span>
+                                <button
+                                  onClick={() => handleCopyToClipboard(acceso.contrasena, `pass-${acceso.id}`)}
+                                  className="p-0.5 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                  title="Copiar contraseña"
+                                >
+                                  {copiedId === `pass-${acceso.id}` ? (
+                                    <Check className="w-3 h-3 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center justify-center gap-1">
+                                <a
+                                  href={acceso.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-1.5 bg-primary-600 text-white text-xs rounded hover:bg-primary-700 transition-colors"
+                                  title="Ingresar al portal"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Ingresar
+                                </a>
+                                <button
+                                  onClick={() => openDetailsModal(acceso)}
+                                  className="p-1.5 text-neutral-600 hover:text-primary-600 transition-colors rounded hover:bg-neutral-100"
+                                  title="Ver detalles"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => openModal(acceso)}
+                                  className="p-1.5 text-neutral-600 hover:text-primary-600 transition-colors rounded hover:bg-neutral-100"
+                                  title="Editar"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                {canDelete && (
+                                  <button
+                                    onClick={() => handleDelete(acceso)}
+                                    className="p-1.5 text-neutral-600 hover:text-red-600 transition-colors rounded hover:bg-neutral-100"
+                                    title="Eliminar"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </>
+                    ));
+                  })()
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="lg:hidden space-y-3">
+          {filteredAccesos.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-8 text-center text-neutral-500">
+              {searchTerm ? 'No se encontraron registros' : 'No hay accesos registrados'}
+            </div>
+          ) : (
+            (() => {
+              const grouped = groupedAccesos();
+              return Object.keys(grouped).sort().map((aseguradora) => (
+                <div key={aseguradora} className="space-y-3">
+                  <h3 className="text-sm font-bold text-neutral-700 px-2">{aseguradora}</h3>
+                  {grouped[aseguradora].map((acceso) => (
+                    <div key={acceso.id} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+                      <div className="space-y-3">
+                        {acceso.clave_agente && (
+                          <div>
+                            <label className="text-xs font-semibold text-neutral-600 block mb-1">Clave de Agente</label>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-mono text-neutral-900">{acceso.clave_agente}</span>
+                              <button
+                                onClick={() => handleCopyToClipboard(acceso.clave_agente!, `mobile-clave-${acceso.id}`)}
+                                className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                              >
+                                {copiedId === `mobile-clave-${acceso.id}` ? (
+                                  <Check className="w-4 h-4 text-emerald-500" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-600 block mb-1">Usuario</label>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-neutral-900">{acceso.usuario_1}</span>
+                              <button
+                                onClick={() => handleCopyToClipboard(acceso.usuario_1, `mobile-user1-${acceso.id}`)}
+                                className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                              >
+                                {copiedId === `mobile-user1-${acceso.id}` ? (
+                                  <Check className="w-4 h-4 text-emerald-500" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                            {acceso.usuario_2 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-neutral-600">{acceso.usuario_2}</span>
+                                <button
+                                  onClick={() => handleCopyToClipboard(acceso.usuario_2!, `mobile-user2-${acceso.id}`)}
+                                  className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                >
+                                  {copiedId === `mobile-user2-${acceso.id}` ? (
+                                    <Check className="w-4 h-4 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="w-4 h-4" />
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-600 block mb-1">Contraseña</label>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono">{acceso.clave_agente}</span>
+                            <span className="text-sm font-mono text-neutral-900">{acceso.contrasena}</span>
                             <button
-                              onClick={() => handleCopyToClipboard(acceso.clave_agente!, acceso.id)}
-                              className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded hover:bg-neutral-100"
-                              title="Copiar clave"
+                              onClick={() => handleCopyToClipboard(acceso.contrasena, `mobile-pass-${acceso.id}`)}
+                              className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
                             >
-                              {copiedId === acceso.id ? (
+                              {copiedId === `mobile-pass-${acceso.id}` ? (
                                 <Check className="w-4 h-4 text-emerald-500" />
                               ) : (
                                 <Copy className="w-4 h-4" />
                               )}
                             </button>
                           </div>
-                        ) : (
-                          <span className="text-neutral-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_1}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_2 || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-700 font-mono">{acceso.contrasena}</td>
-                      <td className="px-4 py-3 text-center">
-                        <a
-                          href={acceso.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-3 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors min-h-[44px]"
-                        >
-                          Ingresar
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => openDetailsModal(acceso)}
-                          className="p-2.5 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100 min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
-                          title="Ver detalles"
-                        >
-                          <Eye className="w-5 h-5" />
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                          <a
+                            href={acceso.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors font-semibold"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Ingresar
+                          </a>
+                          <button
+                            onClick={() => openDetailsModal(acceso)}
+                            className="p-2.5 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100 border border-neutral-300"
+                            title="Ver detalles"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
                           <button
                             onClick={() => openModal(acceso)}
-                            className="p-2.5 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100 min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
+                            className="p-2.5 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100 border border-neutral-300"
                             title="Editar"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -420,20 +598,20 @@ export function AccesosNacional() {
                           {canDelete && (
                             <button
                               onClick={() => handleDelete(acceso)}
-                              className="p-2.5 text-neutral-600 hover:text-red-600 transition-colors rounded-lg hover:bg-neutral-100 min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
+                              className="p-2.5 text-neutral-600 hover:text-red-600 transition-colors rounded-lg hover:bg-neutral-100 border border-neutral-300"
                               title="Eliminar"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ));
+            })()
+          )}
         </div>
       </div>
 
