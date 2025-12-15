@@ -332,6 +332,9 @@ export function AccesosNacional() {
                     Aseguradora {sortField === 'aseguradora' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                    Clave de Agente
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
                     Usuario 1
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
@@ -339,9 +342,6 @@ export function AccesosNacional() {
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
                     Contraseña
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-700 uppercase tracking-wider">
-                    Clave de Agente
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-700 uppercase tracking-wider">
                     Ingresar
@@ -365,9 +365,6 @@ export function AccesosNacional() {
                   filteredAccesos.map((acceso) => (
                     <tr key={acceso.id} className="hover:bg-neutral-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-neutral-900">{acceso.aseguradora}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_1}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_2 || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-700 font-mono">{acceso.contrasena}</td>
                       <td className="px-4 py-3 text-sm text-neutral-700">
                         {acceso.clave_agente ? (
                           <div className="flex items-center gap-2">
@@ -388,6 +385,9 @@ export function AccesosNacional() {
                           <span className="text-neutral-400">-</span>
                         )}
                       </td>
+                      <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_1}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-700">{acceso.usuario_2 || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-700 font-mono">{acceso.contrasena}</td>
                       <td className="px-4 py-3 text-center">
                         <a
                           href={acceso.link}
