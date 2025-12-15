@@ -50,6 +50,8 @@ import ComisionesLote from './pages/ComisionesLote';
 import MisComisiones from './pages/MisComisiones';
 import ComisionesUpload from './pages/ComisionesUpload';
 import MapeoVendedores from './pages/MapeoVendedores';
+import DocumentosImportar from './pages/DocumentosImportar';
+import MapeoVendedoresAdmin from './pages/MapeoVendedoresAdmin';
 import ProduccionTotal from './pages/ProduccionTotal';
 import ProduccionConvenio from './pages/ProduccionConvenio';
 import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
@@ -537,6 +539,28 @@ function AppRoutes() {
           <ProtectedRoute requireAdmin>
             <Layout>
               <MapeoVendedores />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comisiones/importar-documentos"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <DocumentosImportar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/configuracion/mapeo-vendedores"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <MapeoVendedoresAdmin />
             </Layout>
           </ProtectedRoute>
         }
