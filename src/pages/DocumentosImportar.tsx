@@ -26,6 +26,7 @@ import type { DocumentImportBatch } from '../lib/documentImportTypes';
 import VendedoresNoReconocidosTable from '../components/documentImport/VendedoresNoReconocidosTable';
 import VendedoresReconocidosTable from '../components/documentImport/VendedoresReconocidosTable';
 import ConvertirLoteModal from '../components/documentImport/ConvertirLoteModal';
+import SelfCheckConsistencia from '../components/documentImport/SelfCheckConsistencia';
 
 export default function DocumentosImportar() {
   const { usuario } = useAuth();
@@ -425,6 +426,10 @@ export default function DocumentosImportar() {
           </div>
         )}
 
+        {usuario?.rol === 'Administrador' && (
+          <SelfCheckConsistencia batchId={selectedBatch.id} batchName={selectedBatch.file_name} />
+        )}
+
         {conversionResult && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
             <div className="flex items-start gap-3">
@@ -487,7 +492,8 @@ export default function DocumentosImportar() {
 
         {!conversionResult && (
           <>
-            {selectedBatch.status === 'ready_to_convert' && (
+            {(selectedBatch.status === 'completed' || selectedBatch.status === 'ready_to_convert') &&
+             !selectedBatch.converted_to_commissions && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-start gap-3 flex-1">
@@ -497,7 +503,7 @@ export default function DocumentosImportar() {
                       <p className="text-sm text-green-700 mt-1">
                         {selectedBatch.records_unmatched > 0 ? (
                           <>
-                            Hay {selectedBatch.records_unmatched} documentos sin asignación. Podrás asignarlos dentro del lote después de convertir.
+                            Hay {selectedBatch.records_unmatched} documentos sin asignación. Podrás asignarlos dentro del lote antes de cerrarlo.
                           </>
                         ) : (
                           <>
@@ -512,13 +518,13 @@ export default function DocumentosImportar() {
                     className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition flex items-center justify-center gap-2 whitespace-nowrap min-h-[44px] font-semibold"
                   >
                     <ArrowRight className="h-5 w-5" />
-                    Convertir a Lotes
+                    Convertir en Lotes (por semana)
                   </button>
                 </div>
               </div>
             )}
 
-            {selectedBatch.status === 'converted' && (
+            {selectedBatch.converted_to_commissions && (
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />

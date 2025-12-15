@@ -12,18 +12,22 @@ export interface UserMatchResult {
 
 export class UserMatchingService {
   static normalizeEmail(email: string | null | undefined): string {
-    if (!email) return '';
-    return email.toLowerCase().trim();
+    if (!email || typeof email !== 'string') return '';
+    return email.trim().toLowerCase();
   }
 
   static normalizeName(name: string | null | undefined): string {
-    if (!name) return '';
-    return name
-      .toLowerCase()
-      .trim()
+    if (!name || typeof name !== 'string') return '';
+
+    let normalized = name.trim().toLowerCase();
+
+    normalized = normalized
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, ' ');
+      .replace(/[\u0300-\u036f]/g, '');
+
+    normalized = normalized.replace(/\s+/g, ' ');
+
+    return normalized;
   }
 
   static buildVendorKey(emailNorm?: string, nameNorm?: string): string {

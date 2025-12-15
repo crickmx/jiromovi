@@ -8,52 +8,140 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
-interface ExcelRow {
-  [key: string]: any;
+interface ParsedExcel {
+  sheetNameUsed: string;
+  headersOriginal: string[];
+  headersNormalizedMap: Record<string, string>;
+  rows: Record<string, any>[];
+  totalRowsRead: number;
+  debugInfo: {
+    allSheetNames: string[];
+    rowCountPerSheet: Record<string, number>;
+    detectedColumns: {
+      emailAgente?: string;
+      vendNombre?: string;
+    };
+  };
 }
 
-function normalizeHeader(header: string | null | undefined): string {
-  if (!header || typeof header !== 'string') return '';
+function normalizeHeader(header: string): string {
+  if (!header) return '';
 
-  let normalized = header.trim().toLowerCase();
-  normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  normalized = normalized.replace(/\s+/g, '');
+  let normalized = header.toString().trim().toLowerCase();
+
+  normalized = normalized
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  normalized = normalized
+    .replace(/[\s\-_.]/g, '');
 
   return normalized;
 }
 
-function normalizeEmail(email: string | null | undefined): string | null {
-  if (!email || typeof email !== 'string' || !email.trim()) return null;
+function parseExcelUnified(fileBuffer: ArrayBuffer): ParsedExcel {
+  const workbook = XLSX.read(fileBuffer, { type: 'array' });
+
+  const sheetNames = workbook.SheetNames;
+  if (sheetNames.length === 0) {
+    throw new Error('El archivo Excel no contiene hojas');
+  }
+
+  let bestSheet: { name: string; rowCount: number } | null = null;
+  const rowCountPerSheet: Record<string, number> = {};
+
+  for (const sheetName of sheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: null, raw: false });
+    const rowCount = jsonData.length;
+    rowCountPerSheet[sheetName] = rowCount;
+
+    if (!bestSheet || rowCount > bestSheet.rowCount) {
+      bestSheet = { name: sheetName, rowCount };
+    }
+  }
+
+  if (!bestSheet) {
+    throw new Error('No se pudo determinar la hoja con más datos');
+  }
+
+  const sheet = workbook.Sheets[bestSheet.name];
+
+  const jsonData = XLSX.utils.sheet_to_json(sheet, {
+    defval: null,
+    raw: false,
+    blankrows: true
+  });
+
+  if (jsonData.length === 0) {
+    throw new Error(`La hoja "${bestSheet.name}" no contiene datos`);
+  }
+
+  const firstRow = jsonData[0] as Record<string, any>;
+  const headersOriginal = Object.keys(firstRow);
+
+  const headersNormalizedMap: Record<string, string> = {};
+  for (const header of headersOriginal) {
+    const normalized = normalizeHeader(header);
+    if (normalized) {
+      headersNormalizedMap[normalized] = header;
+    }
+  }
+
+  const detectedColumns: { emailAgente?: string; vendNombre?: string } = {};
+
+  if (headersNormalizedMap['emailagente']) {
+    detectedColumns.emailAgente = headersNormalizedMap['emailagente'];
+  }
+
+  if (headersNormalizedMap['vendnombre']) {
+    detectedColumns.vendNombre = headersNormalizedMap['vendnombre'];
+  }
+
+  const rows = jsonData.map(row => {
+    const normalizedRow: Record<string, any> = {};
+    for (const [key, value] of Object.entries(row as Record<string, any>)) {
+      normalizedRow[key] = value;
+    }
+    return normalizedRow;
+  });
+
+  return {
+    sheetNameUsed: bestSheet.name,
+    headersOriginal,
+    headersNormalizedMap,
+    rows,
+    totalRowsRead: rows.length,
+    debugInfo: {
+      allSheetNames: sheetNames,
+      rowCountPerSheet,
+      detectedColumns,
+    },
+  };
+}
+
+function normalizeEmail(email: string | null | undefined): string {
+  if (!email || typeof email !== 'string') return '';
   return email.trim().toLowerCase();
 }
 
-function normalizeName(name: string | null | undefined): string | null {
-  if (!name || typeof name !== 'string' || !name.trim()) return null;
+function normalizeName(name: string | null | undefined): string {
+  if (!name || typeof name !== 'string') return '';
 
   let normalized = name.trim().toLowerCase();
+
+  normalized = normalized
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
   normalized = normalized.replace(/\s+/g, ' ');
-
-  const accentMap: Record<string, string> = {
-    'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n', 'ü': 'u',
-    'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u', 'Ñ': 'n', 'Ü': 'u',
-  };
-
-  normalized = normalized.replace(/[áéíóúñüÁÉÍÓÚÑÜ]/g, (match) => accentMap[match] || match);
 
   return normalized;
 }
 
-function calculateVendorKey(vendorEmail: string | null, vendorName: string | null): string {
-  const normalizedEmail = normalizeEmail(vendorEmail);
-  if (normalizedEmail) {
-    return `email:${normalizedEmail}`;
-  }
-
-  const normalizedName = normalizeName(vendorName);
-  if (normalizedName) {
-    return `name:${normalizedName}`;
-  }
-
+function buildVendorKey(emailNorm?: string, nameNorm?: string): string {
+  if (emailNorm) return `email:${emailNorm}`;
+  if (nameNorm) return `name:${nameNorm}`;
   return 'unknown';
 }
 
@@ -139,7 +227,6 @@ Deno.serve(async (req: Request) => {
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const columnMapping = JSON.parse(formData.get('columnMapping') as string || '{}');
 
     if (!file) {
       return new Response(
@@ -151,14 +238,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows: ExcelRow[] = XLSX.utils.sheet_to_json(firstSheet);
+    console.log(`[Import] Procesando archivo: ${file.name}`);
 
-    if (rows.length === 0) {
+    const arrayBuffer = await file.arrayBuffer();
+    const parsed = parseExcelUnified(arrayBuffer);
+
+    console.log(`[Import] Hoja seleccionada: ${parsed.sheetNameUsed}`);
+    console.log(`[Import] Total filas leídas: ${parsed.totalRowsRead}`);
+    console.log(`[Import] EmailAgente detectado: ${parsed.debugInfo.detectedColumns.emailAgente || 'NO'}`);
+    console.log(`[Import] VendNombre detectado: ${parsed.debugInfo.detectedColumns.vendNombre || 'NO'}`);
+
+    if (!parsed.debugInfo.detectedColumns.vendNombre) {
       return new Response(
-        JSON.stringify({ error: 'El archivo está vacío' }),
+        JSON.stringify({
+          error: 'No se encontró la columna VendNombre en el archivo',
+          hint: 'Columnas detectadas: ' + parsed.headersOriginal.join(', ')
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -166,27 +261,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const headerMap: Record<string, string> = {};
-    if (rows.length > 0) {
-      Object.keys(rows[0]).forEach((key) => {
-        const normalized = normalizeHeader(key);
-        headerMap[normalized] = key;
-      });
-    }
-
-    const VEND_NOMBRE_COL = headerMap['vendnombre'] ||
-                            headerMap['nombre'] ||
-                            headerMap['vendedor'] ||
-                            columnMapping.vendor_name || null;
-
-    const EMAIL_AGENTE_COL = headerMap['emailagente'] ||
-                             headerMap['email'] ||
-                             headerMap['correo'] ||
-                             columnMapping.vendor_email || null;
-
-    const POLIZA_COL = headerMap['poliza'] ||
-                       headerMap['documento'] ||
-                       columnMapping.document_id || null;
+    const EMAIL_COL = parsed.headersNormalizedMap['emailagente'];
+    const NAME_COL = parsed.headersNormalizedMap['vendnombre'];
+    const POLIZA_COL = parsed.headersNormalizedMap['poliza'] ||
+                       parsed.headersNormalizedMap['documento'];
 
     const { data: batch, error: batchError } = await supabase
       .from('document_import_batches')
@@ -194,6 +272,11 @@ Deno.serve(async (req: Request) => {
         file_name: file.name,
         imported_by: user.id,
         status: 'processing',
+        metadata: {
+          sheet_used: parsed.sheetNameUsed,
+          total_sheets: parsed.debugInfo.allSheetNames.length,
+          headers_detected: parsed.headersOriginal,
+        }
       })
       .select()
       .single();
@@ -215,16 +298,18 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+    console.log(`[Import] Procesando ${parsed.rows.length} filas...`);
+
+    for (let i = 0; i < parsed.rows.length; i++) {
+      const row = parsed.rows[i];
 
       const documentId = POLIZA_COL ? row[POLIZA_COL] : `DOC-${i + 1}`;
-      const vendorNameRaw = VEND_NOMBRE_COL ? String(row[VEND_NOMBRE_COL] ?? '').trim() : '';
-      const vendorEmailRaw = EMAIL_AGENTE_COL ? String(row[EMAIL_AGENTE_COL] ?? '').trim() : '';
+      const vendorEmailRaw = EMAIL_COL ? (row[EMAIL_COL]?.toString() || '').trim() : '';
+      const vendorNameRaw = NAME_COL ? (row[NAME_COL]?.toString() || '').trim() : '';
 
       const vendorEmailNorm = normalizeEmail(vendorEmailRaw);
       const vendorNameNorm = normalizeName(vendorNameRaw);
-      const vendorKey = calculateVendorKey(vendorEmailRaw, vendorNameRaw);
+      const vendorKey = buildVendorKey(vendorEmailNorm, vendorNameNorm);
 
       const userMatch = await findMoviUserForVendor(
         adminSupabase,
@@ -235,11 +320,11 @@ Deno.serve(async (req: Request) => {
       documents.push({
         batch_id: batch.id,
         source_row_index: i + 1,
-        document_id: String(documentId),
+        document_id: String(documentId || `DOC-${i + 1}`),
         vendor_email_raw: vendorEmailRaw || null,
         vendor_name_raw: vendorNameRaw || null,
-        vendor_email_norm: vendorEmailNorm,
-        vendor_name_norm: vendorNameNorm,
+        vendor_email_norm: vendorEmailNorm || null,
+        vendor_name_norm: vendorNameNorm || null,
         vendor_key: vendorKey,
         movi_user_id: userMatch.user_id,
         match_method: userMatch.method,
@@ -247,6 +332,8 @@ Deno.serve(async (req: Request) => {
         document_data: row,
       });
     }
+
+    console.log(`[Import] Insertando ${documents.length} documentos...`);
 
     const { error: insertError } = await adminSupabase
       .from('imported_documents')
@@ -283,30 +370,49 @@ Deno.serve(async (req: Request) => {
       .eq('id', batch.id)
       .single();
 
-    const emptyVendorCount = documents.filter(d => !d.vendor_name_raw || d.vendor_name_raw.trim() === '').length;
-    const uniqueVendorNames = [...new Set(documents.map(d => d.vendor_name_raw).filter(n => n && n.trim()))].slice(0, 5);
-    const uniqueEmails = [...new Set(documents.map(d => d.vendor_email_raw).filter(e => e && e.trim()))].slice(0, 5);
+    const matchedCount = documents.filter(d => d.movi_user_id !== null).length;
+    const unmatchedCount = documents.filter(d => d.movi_user_id === null).length;
+    const emptyVendorCount = documents.filter(d => !d.vendor_name_raw).length;
+    const uniqueVendorNames = [...new Set(documents.map(d => d.vendor_name_raw).filter(n => n))].slice(0, 5);
+    const uniqueEmails = [...new Set(documents.map(d => d.vendor_email_raw).filter(e => e))].slice(0, 5);
+
+    const methodCounts: Record<string, number> = {};
+    for (const doc of documents) {
+      methodCounts[doc.match_method] = (methodCounts[doc.match_method] || 0) + 1;
+    }
+
+    console.log(`[Import] Completado - Matched: ${matchedCount}, Unmatched: ${unmatchedCount}`);
+    console.log(`[Import] Methods: ${JSON.stringify(methodCounts)}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         batch: updatedBatch,
         diagnostics: {
-          vendor_column_detected: VEND_NOMBRE_COL,
-          email_column_detected: EMAIL_AGENTE_COL,
+          sheet_used: parsed.sheetNameUsed,
+          all_sheets: parsed.debugInfo.allSheetNames,
+          row_count_per_sheet: parsed.debugInfo.rowCountPerSheet,
+          vendor_column_detected: NAME_COL,
+          email_column_detected: EMAIL_COL,
+          total_rows_read: parsed.totalRowsRead,
+          total_rows_processed: documents.length,
+          matched_count: matchedCount,
+          unmatched_count: unmatchedCount,
           empty_vendor_count: emptyVendorCount,
+          match_method_counts: methodCounts,
           sample_vendor_names: uniqueVendorNames,
           sample_emails: uniqueEmails,
         },
       }),
       {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-  } catch (error) {
-    console.error('Error en process-document-import:', error);
+  } catch (error: any) {
+    console.error('Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Error desconocido' }),
+      JSON.stringify({ error: error.message || 'Error al procesar archivo' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
