@@ -81,9 +81,30 @@ export function UsuariosPendientes() {
 
     setProcessingId(usuarioId);
     try {
-      const { error } = await supabase.auth.admin.deleteUser(usuarioId);
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (error) throw error;
+      if (!session) {
+        alert('No hay sesión activa');
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ userId: usuarioId }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al eliminar usuario');
+      }
 
       await loadUsuariosPendientes();
     } catch (error) {

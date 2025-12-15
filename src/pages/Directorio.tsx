@@ -63,12 +63,37 @@ export function Directorio() {
       return;
     }
 
-    const { error } = await supabase.auth.admin.deleteUser(id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (error) {
+      if (!session) {
+        alert('No hay sesión activa');
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ userId: id }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(result.error || 'Error al eliminar usuario');
+      } else {
+        alert('Usuario eliminado correctamente');
+        loadData();
+      }
+    } catch (error) {
+      console.error('Error al eliminar usuario:', error);
       alert('Error al eliminar usuario');
-    } else {
-      loadData();
     }
   };
 
