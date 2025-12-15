@@ -299,16 +299,21 @@ Deno.serve(async (req: Request) => {
           poliza: row.Poliza || row.Documento || '',
           ramo,
           aseguradora,
+          office_id: agent.office_id,
+          prima_base: primaNeta,
           prima_neta: primaNeta,
+          date_fpago: row.FPago,
           porcentaje_base: porcentajeBase,
           porcentaje_comision: porcentajeComision,
           commission_bruta: commission,
           commission_neta: commission,
+          impuestos_json: {},
           business_rule_id: ruleApplied,
           tipo_calculo: tipoCalculo,
           importe_base: importeBase,
           concepto: row.Concepto || '',
-          nombre_asegurado: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || ''
+          nombre_asegurado: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || '',
+          raw_row: row
         });
       }
 
