@@ -76,21 +76,27 @@ export default function ConvertirLoteModal({
       const result = await convertBatchToCommissions(batchId);
 
       console.log('[ConvertirLoteModal] Conversión exitosa:', result);
+      console.log('[ConvertirLoteModal] Batches creados:', result.createdBatches);
+      console.log('[ConvertirLoteModal] Total items:', result.totalInsertedItems);
 
       // VALIDACIÓN: Verificar que tenemos batches y items
       if (!result.createdBatches || result.createdBatches.length === 0) {
+        console.error('[ConvertirLoteModal] ERROR: No hay createdBatches');
         throw new Error('NO_ITEMS_CONVERTED: No se crearon lotes. Los documentos no pudieron ser convertidos.');
       }
 
       if (!result.totalInsertedItems || result.totalInsertedItems === 0) {
+        console.error('[ConvertirLoteModal] ERROR: totalInsertedItems es 0');
         throw new Error('NO_ITEMS_CONVERTED: No se insertaron documentos en los lotes.');
       }
 
+      // CRÍTICO: Establecer resultado PRIMERO, NO llamar onSuccess todavía
+      console.log('[ConvertirLoteModal] Estableciendo conversionResult...');
       setConversionResult(result);
       setConverting(false);
+      console.log('[ConvertirLoteModal] Estado actualizado. Esperando a que usuario cierre modal.');
 
-      // Llamar a onSuccess para actualizar la lista de batches
-      onSuccess(result);
+      // NO llamamos onSuccess aquí, se llamará cuando el usuario cierre el modal
     } catch (err: any) {
       console.error('[ConvertirLoteModal] Error en conversión:', err);
 
@@ -155,11 +161,19 @@ export default function ConvertirLoteModal({
   }
 
   function handleNavigateToBatch(batchId: string) {
+    // Llamar onSuccess ANTES de cerrar para actualizar la lista
+    if (conversionResult) {
+      onSuccess(conversionResult);
+    }
     onClose();
     navigate(`/comisiones/lote/${batchId}`);
   }
 
   function handleCloseSuccess() {
+    // Llamar onSuccess ANTES de cerrar para actualizar la lista
+    if (conversionResult) {
+      onSuccess(conversionResult);
+    }
     onClose();
   }
 
@@ -167,7 +181,26 @@ export default function ConvertirLoteModal({
   const warnings = validation?.errors.filter((e) => e.severity === 'warning') || [];
 
   // PANTALLA DE RESULTADO EXITOSO
-  if (conversionResult && !converting && conversionResult.createdBatches && conversionResult.createdBatches.length > 0) {
+  // VALIDACIÓN ROBUSTA: Verificar que todos los datos estén presentes
+  const hasValidResult =
+    conversionResult &&
+    !converting &&
+    Array.isArray(conversionResult.createdBatches) &&
+    conversionResult.createdBatches.length > 0 &&
+    typeof conversionResult.totalInsertedItems === 'number' &&
+    conversionResult.totalInsertedItems > 0;
+
+  console.log('[ConvertirLoteModal] Render - Estado actual:', {
+    hasValidResult,
+    converting,
+    hasConversionResult: !!conversionResult,
+    batchesCount: conversionResult?.createdBatches?.length,
+    totalItems: conversionResult?.totalInsertedItems,
+    hasError: !!error
+  });
+
+  if (hasValidResult) {
+    console.log('[ConvertirLoteModal] Mostrando pantalla de éxito');
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -192,7 +225,7 @@ export default function ConvertirLoteModal({
                     Lotes creados exitosamente
                   </p>
                   <p className="text-sm text-green-700 mt-1">
-                    Se crearon {conversionResult.createdBatches.length} lote(s) con un total de {conversionResult.totalInsertedItems || 0} documentos.
+                    Se crearon {conversionResult.createdBatches.length} lote(s) con un total de {conversionResult.totalInsertedItems} documentos.
                   </p>
                 </div>
               </div>
@@ -201,36 +234,44 @@ export default function ConvertirLoteModal({
             <div className="mb-6">
               <h3 className="font-semibold text-gray-900 mb-3">Lotes Creados</h3>
               <div className="space-y-3">
-                {conversionResult.createdBatches.map((batch, idx) => (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Calendar className="h-4 w-4 text-gray-500" />
-                          <span className="font-semibold text-gray-900">
-                            {batch.display_name}
-                          </span>
-                        </div>
-                        {batch.period_start && batch.period_end && (
-                          <p className="text-sm text-gray-600 mb-1">
-                            Periodo: {formatWeekPeriod(batch.period_start, batch.period_end)}
+                {conversionResult.createdBatches.map((batch, idx) => {
+                  // VALIDACIÓN: Verificar que batch tenga ID y display_name
+                  if (!batch || !batch.id || !batch.display_name) {
+                    console.warn('Batch inválido en index', idx, batch);
+                    return null;
+                  }
+
+                  return (
+                    <div key={batch.id || idx} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <span className="font-semibold text-gray-900">
+                              {batch.display_name}
+                            </span>
+                          </div>
+                          {batch.period_start && batch.period_end && (
+                            <p className="text-sm text-gray-600 mb-1">
+                              Periodo: {formatWeekPeriod(batch.period_start, batch.period_end)}
+                            </p>
+                          )}
+                          <p className="text-sm text-gray-600">
+                            <FileText className="h-3 w-3 inline mr-1" />
+                            {batch.items || 0} documentos
                           </p>
-                        )}
-                        <p className="text-sm text-gray-600">
-                          <FileText className="h-3 w-3 inline mr-1" />
-                          {batch.items} documentos
-                        </p>
+                        </div>
+                        <button
+                          onClick={() => handleNavigateToBatch(batch.id)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium min-h-[44px]"
+                        >
+                          Abrir lote
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleNavigateToBatch(batch.id)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium min-h-[44px]"
-                      >
-                        Abrir lote
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
