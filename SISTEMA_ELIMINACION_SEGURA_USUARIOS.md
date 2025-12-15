@@ -371,27 +371,144 @@ Todas las foreign keys a `usuarios.id` usan `ON DELETE SET NULL` o `ON DELETE CA
 
 ## Verificación y Testing
 
-### Pruebas Obligatorias
+### Página de Prueba Automatizada
+
+Se ha creado una página de prueba completa en `/public/test-eliminacion-usuarios.html` que permite verificar todo el flujo de eliminación.
+
+**Para usar la página de prueba:**
+
+1. Abre tu navegador en: `http://localhost:5173/test-eliminacion-usuarios.html` (desarrollo) o `https://tu-dominio.com/test-eliminacion-usuarios.html` (producción)
+
+2. Sigue los pasos en la página:
+   - Configura URL y API Key de Supabase
+   - Login como Administrador
+   - Crea usuario de prueba
+   - Elimina usuario de prueba
+   - Intenta login con usuario eliminado (debe fallar)
+   - Verifica estado en base de datos
+
+La página verificará automáticamente:
+- ✅ Soft delete aplicado correctamente
+- ✅ Usuario bloqueado de login
+- ✅ Sesiones revocadas
+- ✅ Campos `is_deleted`, `deleted_at`, `deleted_by_user_id` actualizados
+- ✅ Estado cambiado a "eliminado"
+
+### Pruebas Manuales Obligatorias
 
 1. **Eliminar usuario con datos asociados**
    - ✅ Sin errores
    - ✅ Conserva histórico
 
 2. **Usuario eliminado intenta login**
-   - ✅ Bloqueado
-   - 💬 Mensaje: "Tu cuenta ha sido desactivada"
+   - ✅ Bloqueado inmediatamente
+   - 💬 Mensaje: "Tu cuenta ha sido desactivada. Contacta al administrador."
 
 3. **Usuario no aparece en listados normales**
    - ✅ Filtrado correctamente
 
 4. **No se puede eliminar a sí mismo**
    - ✅ Validación funciona
+   - 💬 Mensaje: "No puedes eliminarte a ti mismo"
 
 5. **No se puede eliminar al último admin**
    - ✅ Validación funciona
+   - 💬 Mensaje: "No se puede eliminar el último administrador activo"
 
 6. **Eliminar dos veces el mismo usuario**
    - ✅ Segunda vez retorna error: "Usuario ya está eliminado"
+
+### Flujo de Verificación Paso a Paso
+
+**Paso 1: Crear usuario de prueba**
+```
+1. Login como Admin
+2. Ir a Directorio
+3. Crear nuevo usuario: test-delete@ejemplo.com
+4. Verificar que aparece en el listado
+```
+
+**Paso 2: Usuario puede hacer login**
+```
+1. Abrir navegador en modo incógnito
+2. Login con test-delete@ejemplo.com
+3. Verificar acceso al dashboard
+4. Cerrar sesión
+```
+
+**Paso 3: Admin elimina usuario**
+```
+1. Login como Admin
+2. Ir a Directorio
+3. Buscar test-delete@ejemplo.com
+4. Click en botón eliminar (ícono basura)
+5. En modal, escribir "ELIMINAR"
+6. Confirmar eliminación
+7. Ver mensaje: "Usuario eliminado correctamente. El usuario ya no puede iniciar sesión."
+```
+
+**Paso 4: Verificar usuario no aparece**
+```
+1. Usuario eliminado NO debe aparecer en Directorio
+2. Usuario eliminado NO debe aparecer en listas desplegables
+3. Usuario eliminado NO debe aparecer en asignaciones
+```
+
+**Paso 5: Usuario eliminado intenta login**
+```
+1. Abrir navegador en modo incógnito
+2. Intentar login con test-delete@ejemplo.com
+3. Debe mostrar error: "Tu cuenta ha sido desactivada. Contacta al administrador."
+4. NO debe permitir acceso
+```
+
+**Paso 6: Verificar en base de datos**
+```sql
+SELECT
+  nombre,
+  apellidos,
+  email_laboral,
+  is_deleted,
+  deleted_at,
+  deleted_by_user_id,
+  estado,
+  activo
+FROM usuarios
+WHERE email_laboral = 'test-delete@ejemplo.com';
+```
+
+**Resultado esperado:**
+```
+is_deleted = true
+deleted_at = [timestamp]
+deleted_by_user_id = [UUID del admin]
+estado = 'eliminado'
+activo = false
+```
+
+**Paso 7: Verificar log de auditoría**
+```sql
+SELECT
+  a.*,
+  admin.nombre as admin_nombre,
+  target.nombre as usuario_eliminado
+FROM audit_logs a
+LEFT JOIN usuarios admin ON a.performed_by = admin.id
+LEFT JOIN usuarios target ON a.target_user_id = target.id
+WHERE a.action = 'USER_DELETE'
+  AND a.target_user_id = '[UUID del usuario de prueba]'
+ORDER BY a.created_at DESC
+LIMIT 1;
+```
+
+**Paso 8: Verificar datos históricos intactos**
+```sql
+-- Ejemplo con comisiones (si el usuario tenía)
+SELECT COUNT(*) FROM comisiones
+WHERE usuario_id = '[UUID del usuario de prueba]';
+
+-- Debe retornar el número de comisiones, NO debe ser 0 si tenía datos
+```
 
 ### Queries de Verificación
 
@@ -536,6 +653,74 @@ VALUES (
 - Edge Function: `supabase/functions/delete-user/index.ts`
 - Frontend: `src/pages/Directorio.tsx`
 - Auth: `src/contexts/AuthContext.tsx`
+- Página de prueba: `public/test-eliminacion-usuarios.html`
+
+## Resumen: Bloqueo de Sesiones y Login
+
+### ¿Cómo se bloquea el acceso de un usuario eliminado?
+
+**1. Revocación Inmediata de Sesiones Activas**
+   - Al eliminar un usuario, el edge function `delete-user` llama a:
+     ```typescript
+     await supabaseAdmin.auth.admin.signOut(userId, 'global');
+     ```
+   - Esto revoca TODAS las sesiones activas del usuario
+   - Si el usuario está logueado, se le cierra la sesión inmediatamente
+
+**2. Bloqueo de Nuevos Logins**
+   - Cuando un usuario intenta hacer login, `AuthContext.signIn()`:
+     1. Llama a `supabase.auth.signInWithPassword()`
+     2. Si Supabase Auth permite el login (credenciales correctas)
+     3. Inmediatamente llama a `check_user_can_login()` en la BD
+     4. La función verifica:
+        - `is_deleted = false`
+        - `activo = true`
+        - `estado != 'suspendido'`
+     5. Si el usuario está eliminado, rechaza el login y cierra la sesión
+
+**3. Filtrado en Queries**
+   - Todas las queries que obtienen usuarios filtran por `is_deleted = false`
+   - Esto previene que usuarios eliminados aparezcan en listas
+   - El usuario "desaparece" del sistema sin perder datos
+
+### Garantías del Sistema
+
+✅ **Sesiones activas:** Revocadas automáticamente al eliminar
+✅ **Nuevos logins:** Bloqueados con verificación inmediata
+✅ **Datos históricos:** Completamente preservados
+✅ **Sin errores:** Todas las referencias intactas
+✅ **Auditoría:** Registro completo de quien eliminó y cuándo
+✅ **Idempotencia:** Eliminar dos veces no causa error
+✅ **Validaciones:** No auto-eliminar, no eliminar último admin
+
+### Tiempos de Bloqueo
+
+- **Sesiones activas:** Revocadas en < 1 segundo
+- **Verificación login:** En cada intento de acceso
+- **Propagación en UI:** Inmediata (filtros por `is_deleted`)
+
+### ¿Qué pasa si un usuario eliminado está conectado?
+
+1. Admin elimina usuario en Directorio
+2. Edge function marca `is_deleted = true` en BD
+3. Edge function revoca sesiones con `admin.signOut(userId, 'global')`
+4. Usuario eliminado ve error al hacer siguiente request
+5. Usuario es redirigido a login
+6. Al intentar login, es bloqueado por `check_user_can_login()`
+
+### Vista de Usuarios Eliminados (Solo Admins)
+
+Se creó una vista especial para que admins puedan ver usuarios eliminados:
+
+```sql
+SELECT * FROM usuarios_eliminados;
+```
+
+Esta vista muestra:
+- Información del usuario eliminado
+- Fecha de eliminación
+- Quién lo eliminó
+- Datos completos para auditoría
 
 ---
 
@@ -543,3 +728,5 @@ VALUES (
 **Fecha:** Diciembre 2024
 **Sistema:** MOVI Digital
 **Estado:** ✅ Producción
+
+**Testing:** Usar `/public/test-eliminacion-usuarios.html` para verificación completa

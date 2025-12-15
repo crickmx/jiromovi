@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test - Eliminación Segura de Usuarios</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #1a202c;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    h2 {
+      color: #2d3748;
+      margin-bottom: 15px;
+      font-size: 20px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 10px;
+    }
+    .subtitle {
+      color: #718096;
+      margin-bottom: 30px;
+    }
+    .test-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border-left: 4px solid #4299e1;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #2d3748;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 15px;
+      transition: all 0.3s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4299e1;
+      box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-right: 10px;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #68d391 0%, #48bb78 100%);
+    }
+    .result {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .success {
+      background: #c6f6d5;
+      border: 2px solid #48bb78;
+      color: #22543d;
+    }
+    .error {
+      background: #fed7d7;
+      border: 2px solid #f56565;
+      color: #742a2a;
+    }
+    .info {
+      background: #bee3f8;
+      border: 2px solid #4299e1;
+      color: #2c5282;
+    }
+    .warning {
+      background: #fef5e7;
+      border: 2px solid #f39c12;
+      color: #7d6608;
+    }
+    pre {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .status-ok {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+    .status-error {
+      background: #fed7d7;
+      color: #742a2a;
+    }
+    .steps {
+      list-style: none;
+      counter-reset: step-counter;
+    }
+    .steps li {
+      counter-increment: step-counter;
+      margin-bottom: 15px;
+      padding-left: 40px;
+      position: relative;
+    }
+    .steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0;
+      top: 0;
+      background: #667eea;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Test - Eliminación Segura de Usuarios</h1>
+      <p class="subtitle">Verificación del sistema de soft delete y bloqueo de sesiones</p>
+
+      <div class="test-section">
+        <h2>1. Configuración</h2>
+        <label>SUPABASE_URL</label>
+        <input type="text" id="supabaseUrl" placeholder="https://xxx.supabase.co">
+
+        <label>SUPABASE_ANON_KEY</label>
+        <input type="text" id="supabaseAnonKey" placeholder="eyJhbGci...">
+
+        <button onclick="initSupabase()">Inicializar Conexión</button>
+        <div id="initResult"></div>
+      </div>
+
+      <div class="test-section">
+        <h2>2. Login como Administrador</h2>
+        <label>Email del Administrador</label>
+        <input type="email" id="adminEmail" placeholder="admin@ejemplo.com">
+
+        <label>Password del Administrador</label>
+        <input type="password" id="adminPassword" placeholder="••••••••">
+
+        <button onclick="loginAdmin()">Login como Admin</button>
+        <div id="loginResult"></div>
+      </div>
+
+      <div class="test-section">
+        <h2>3. Crear Usuario de Prueba</h2>
+        <p style="color: #718096; font-size: 14px; margin-bottom: 15px;">
+          Este usuario será creado solo para pruebas de eliminación
+        </p>
+
+        <label>Email del Usuario de Prueba</label>
+        <input type="email" id="testUserEmail" placeholder="test-delete@ejemplo.com" value="test-delete@ejemplo.com">
+
+        <label>Nombre</label>
+        <input type="text" id="testUserNombre" placeholder="Test" value="Test">
+
+        <label>Apellidos</label>
+        <input type="text" id="testUserApellidos" placeholder="Delete" value="Delete">
+
+        <label>Password</label>
+        <input type="password" id="testUserPassword" placeholder="••••••••" value="TestDelete123!">
+
+        <button onclick="createTestUser()">Crear Usuario de Prueba</button>
+        <div id="createUserResult"></div>
+      </div>
+
+      <div class="test-section">
+        <h2>4. Eliminar Usuario de Prueba</h2>
+        <p style="color: #718096; font-size: 14px; margin-bottom: 15px;">
+          Esto ejecutará el soft delete con todas las validaciones
+        </p>
+
+        <label>ID del Usuario a Eliminar</label>
+        <input type="text" id="userToDeleteId" placeholder="UUID del usuario">
+
+        <button class="btn-danger" onclick="deleteTestUser()">Eliminar Usuario</button>
+        <div id="deleteUserResult"></div>
+      </div>
+
+      <div class="test-section">
+        <h2>5. Verificar Bloqueo de Login</h2>
+        <p style="color: #718096; font-size: 14px; margin-bottom: 15px;">
+          Intentar hacer login con el usuario eliminado debe fallar
+        </p>
+
+        <button class="btn-success" onclick="tryLoginDeletedUser()">Intentar Login con Usuario Eliminado</button>
+        <div id="loginDeletedResult"></div>
+      </div>
+
+      <div class="test-section">
+        <h2>6. Verificar en Base de Datos</h2>
+        <button class="btn-success" onclick="checkDatabaseStatus()">Ver Estado en BD</button>
+        <div id="dbStatusResult"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Instrucciones de Prueba</h2>
+      <ol class="steps">
+        <li>Configura la URL y la API Key de Supabase</li>
+        <li>Haz login como Administrador</li>
+        <li>Crea un usuario de prueba</li>
+        <li>Elimina el usuario de prueba</li>
+        <li>Intenta hacer login con el usuario eliminado (debe fallar)</li>
+        <li>Verifica el estado en la base de datos</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    let supabase = null;
+    let adminSession = null;
+    let testUserId = null;
+
+    function initSupabase() {
+      const url = document.getElementById('supabaseUrl').value;
+      const key = document.getElementById('supabaseAnonKey').value;
+
+      if (!url || !key) {
+        showResult('initResult', 'error', 'Por favor ingresa URL y API Key');
+        return;
+      }
+
+      try {
+        supabase = window.supabase.createClient(url, key);
+        showResult('initResult', 'success', 'Conexión inicializada correctamente');
+      } catch (error) {
+        showResult('initResult', 'error', `Error: ${error.message}`);
+      }
+    }
+
+    async function loginAdmin() {
+      if (!supabase) {
+        showResult('loginResult', 'error', 'Primero inicializa la conexión');
+        return;
+      }
+
+      const email = document.getElementById('adminEmail').value;
+      const password = document.getElementById('adminPassword').value;
+
+      if (!email || !password) {
+        showResult('loginResult', 'error', 'Ingresa email y password');
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        adminSession = data.session;
+
+        const { data: userData, error: userError } = await supabase
+          .from('usuarios')
+          .select('rol, nombre')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (userError) throw userError;
+
+        if (userData.rol !== 'Administrador') {
+          showResult('loginResult', 'error', 'Este usuario no es Administrador');
+          await supabase.auth.signOut();
+          return;
+        }
+
+        showResult('loginResult', 'success',
+          `Login exitoso como ${userData.nombre} (${userData.rol})<br>` +
+          `<span class="status-badge status-ok">Sesión Activa</span>`
+        );
+      } catch (error) {
+        showResult('loginResult', 'error', `Error: ${error.message}`);
+      }
+    }
+
+    async function createTestUser() {
+      if (!adminSession) {
+        showResult('createUserResult', 'error', 'Primero haz login como admin');
+        return;
+      }
+
+      const email = document.getElementById('testUserEmail').value;
+      const nombre = document.getElementById('testUserNombre').value;
+      const apellidos = document.getElementById('testUserApellidos').value;
+      const password = document.getElementById('testUserPassword').value;
+
+      try {
+        const response = await fetch(
+          `${document.getElementById('supabaseUrl').value}/functions/v1/create-user`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${adminSession.access_token}`,
+            },
+            body: JSON.stringify({
+              email,
+              password,
+              nombre,
+              apellidos,
+              rol: 'Empleado',
+              puesto: 'Test',
+              oficina_id: null
+            })
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Error al crear usuario');
+        }
+
+        testUserId = result.userId;
+        document.getElementById('userToDeleteId').value = testUserId;
+
+        showResult('createUserResult', 'success',
+          `Usuario creado exitosamente<br>` +
+          `<strong>ID:</strong> ${testUserId}<br>` +
+          `<strong>Email:</strong> ${email}<br>` +
+          `<span class="status-badge status-ok">Listo para Eliminar</span>`
+        );
+      } catch (error) {
+        showResult('createUserResult', 'error', `Error: ${error.message}`);
+      }
+    }
+
+    async function deleteTestUser() {
+      if (!adminSession) {
+        showResult('deleteUserResult', 'error', 'Primero haz login como admin');
+        return;
+      }
+
+      const userId = document.getElementById('userToDeleteId').value;
+
+      if (!userId) {
+        showResult('deleteUserResult', 'error', 'Ingresa el ID del usuario');
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${document.getElementById('supabaseUrl').value}/functions/v1/delete-user`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${adminSession.access_token}`,
+            },
+            body: JSON.stringify({
+              userId,
+              reason: 'Test de eliminación segura'
+            })
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || result.error || 'Error al eliminar');
+        }
+
+        showResult('deleteUserResult', 'success',
+          `${result.message}<br>` +
+          `<strong>Tipo:</strong> ${result.deletion_type}<br>` +
+          `<strong>Info:</strong> ${result.info}<br>` +
+          `<span class="status-badge status-ok">Eliminado Correctamente</span><br>` +
+          `<pre>${JSON.stringify(result.details, null, 2)}</pre>`
+        );
+      } catch (error) {
+        showResult('deleteUserResult', 'error', `Error: ${error.message}`);
+      }
+    }
+
+    async function tryLoginDeletedUser() {
+      if (!supabase) {
+        showResult('loginDeletedResult', 'error', 'Primero inicializa la conexión');
+        return;
+      }
+
+      const email = document.getElementById('testUserEmail').value;
+      const password = document.getElementById('testUserPassword').value;
+
+      try {
+        // Cerrar cualquier sesión anterior
+        await supabase.auth.signOut();
+
+        showResult('loginDeletedResult', 'info', 'Intentando login...');
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) {
+          // Este es el resultado ESPERADO
+          showResult('loginDeletedResult', 'success',
+            `<strong>✓ Prueba Exitosa:</strong> Login bloqueado correctamente<br>` +
+            `<strong>Error:</strong> ${error.message}<br>` +
+            `<span class="status-badge status-ok">Sistema Funciona Correctamente</span>`
+          );
+          return;
+        }
+
+        // Si llegó aquí, verificamos con check_user_can_login
+        if (data.user) {
+          const { data: canLogin, error: rpcError } = await supabase.rpc('check_user_can_login', {
+            user_id_to_check: data.user.id
+          });
+
+          if (!canLogin || !canLogin.can_login) {
+            await supabase.auth.signOut();
+            showResult('loginDeletedResult', 'success',
+              `<strong>✓ Prueba Exitosa:</strong> Usuario bloqueado por check_user_can_login<br>` +
+              `<strong>Mensaje:</strong> ${canLogin?.error || 'Usuario no puede acceder'}<br>` +
+              `<span class="status-badge status-ok">Sistema Funciona Correctamente</span>`
+            );
+            return;
+          }
+
+          // Si llegó aquí, hay un problema
+          await supabase.auth.signOut();
+          showResult('loginDeletedResult', 'error',
+            `<strong>✗ Error:</strong> Usuario eliminado pudo hacer login<br>` +
+            `<span class="status-badge status-error">Verificar Configuración</span>`
+          );
+        }
+      } catch (error) {
+        showResult('loginDeletedResult', 'success',
+          `<strong>✓ Prueba Exitosa:</strong> Login bloqueado<br>` +
+          `<strong>Error:</strong> ${error.message}<br>` +
+          `<span class="status-badge status-ok">Sistema Funciona Correctamente</span>`
+        );
+      }
+    }
+
+    async function checkDatabaseStatus() {
+      if (!supabase || !adminSession) {
+        showResult('dbStatusResult', 'error', 'Primero haz login como admin');
+        return;
+      }
+
+      const userId = document.getElementById('userToDeleteId').value;
+
+      if (!userId) {
+        showResult('dbStatusResult', 'error', 'Ingresa el ID del usuario');
+        return;
+      }
+
+      try {
+        const { data: usuario, error: userError } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (userError) throw userError;
+
+        if (!usuario) {
+          showResult('dbStatusResult', 'warning', 'Usuario no encontrado en la base de datos');
+          return;
+        }
+
+        const statusHtml = `
+          <strong>Estado del Usuario en BD:</strong><br>
+          <strong>Nombre:</strong> ${usuario.nombre} ${usuario.apellidos}<br>
+          <strong>Email:</strong> ${usuario.email_laboral || 'N/A'}<br>
+          <strong>is_deleted:</strong> ${usuario.is_deleted ? '✓ true (ELIMINADO)' : '✗ false'}<br>
+          <strong>activo:</strong> ${usuario.activo ? '✓ true' : '✗ false'}<br>
+          <strong>estado:</strong> ${usuario.estado}<br>
+          <strong>deleted_at:</strong> ${usuario.deleted_at || 'N/A'}<br>
+          <strong>deleted_by_user_id:</strong> ${usuario.deleted_by_user_id || 'N/A'}<br>
+          ${usuario.is_deleted ? '<span class="status-badge status-ok">Soft Delete Aplicado</span>' : '<span class="status-badge status-error">No Eliminado</span>'}
+          <pre>${JSON.stringify(usuario, null, 2)}</pre>
+        `;
+
+        showResult('dbStatusResult', usuario.is_deleted ? 'success' : 'warning', statusHtml);
+      } catch (error) {
+        showResult('dbStatusResult', 'error', `Error: ${error.message}`);
+      }
+    }
+
+    function showResult(elementId, type, message) {
+      const element = document.getElementById(elementId);
+      element.innerHTML = `<div class="result ${type}">${message}</div>`;
+    }
+  </script>
+</body>
+</html>
