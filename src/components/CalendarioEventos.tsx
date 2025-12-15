@@ -213,22 +213,43 @@ export default function CalendarioEventos() {
   };
 
   const cargarCumpleanos = async (inicio: Date, fin: Date): Promise<CalendarioEvento[]> => {
-    const { data } = await supabase
-      .from('dashboard_calendar_events')
-      .select('*')
-      .eq('tipo_evento', 'cumpleanos')
-      .gte('fecha_inicio', inicio.toISOString())
-      .lte('fecha_inicio', fin.toISOString())
-      .order('fecha_inicio', { ascending: true });
+    if (!usuario) return [];
 
-    return (data || []).map(evento => ({
-      id: evento.id,
-      fecha: evento.fecha_inicio.split('T')[0],
-      tipo: 'cumpleanos' as const,
-      titulo: evento.titulo,
-      descripcion: evento.descripcion || undefined,
-      deep_link: (evento.metadata as any)?.deep_link,
-    }));
+    const { data } = await supabase
+      .from('crm_contactos')
+      .select('id, nombre_completo, fecha_nacimiento')
+      .eq('creado_por', usuario.id)
+      .not('fecha_nacimiento', 'is', null)
+      .order('fecha_nacimiento');
+
+    if (!data) return [];
+
+    const anoActual = inicio.getFullYear();
+    const eventos: CalendarioEvento[] = [];
+
+    for (const contacto of data) {
+      const fechaNacimiento = new Date(contacto.fecha_nacimiento!);
+
+      const cumpleanosEsteAno = new Date(
+        anoActual,
+        fechaNacimiento.getMonth(),
+        fechaNacimiento.getDate()
+      );
+
+      if (cumpleanosEsteAno >= inicio && cumpleanosEsteAno <= fin) {
+        const edadActual = anoActual - fechaNacimiento.getFullYear();
+        eventos.push({
+          id: contacto.id,
+          fecha: cumpleanosEsteAno.toISOString().split('T')[0],
+          tipo: 'cumpleanos' as const,
+          titulo: `🎂 ${contacto.nombre_completo}`,
+          descripcion: `Cumpleaños #${edadActual}`,
+          deep_link: `/mi-crm/contactos/${contacto.id}`,
+        });
+      }
+    }
+
+    return eventos;
   };
 
   const getDiasDelMes = () => {
