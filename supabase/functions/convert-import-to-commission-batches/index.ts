@@ -738,11 +738,9 @@ Deno.serve(async (req: Request) => {
     const weekGroups = groupByWeek(parsedRows);
     console.log(`[Conversion] Grouped into ${weekGroups.length} weeks`);
 
-    // Obtener todos los emails únicos de las filas parseadas
     const uniqueEmails = [...new Set(parsedRows.filter(r => r.agent_email).map(r => r.agent_email))];
     console.log(`[Conversion] Found ${uniqueEmails.length} unique emails to map`);
 
-    // Buscar los agentes en commission_agents por email
     const emailToAgentId: Record<string, string> = {};
 
     if (uniqueEmails.length > 0) {
@@ -777,8 +775,13 @@ Deno.serve(async (req: Request) => {
           display_name: batchName,
           period_start: group.period_start,
           period_end: group.period_end,
+          week_number: group.week_number,
           total_commission: 0,
-          status: "draft"
+          status: "draft",
+          source_import_batch_id: batch_id,
+          source_type: "import",
+          converted_from_import_at: new Date().toISOString(),
+          converted_by: user.id
         })
         .select()
         .single();
@@ -796,7 +799,6 @@ Deno.serve(async (req: Request) => {
         const commissionBruta = (row.importe * row.porpart) / 100;
         const commissionNeta = commissionBruta;
 
-        // Buscar el agent_id correspondiente al email
         let agentId = null;
         let pendingAssignment = true;
 
