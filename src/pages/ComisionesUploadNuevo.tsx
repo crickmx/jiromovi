@@ -24,58 +24,90 @@ export default function ComisionesUploadNuevo() {
   const isAdmin = usuario?.rol === 'Administrador';
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
+    try {
+      console.log('[ComisionesUploadNuevo] File selected');
+      const selectedFile = e.target.files?.[0];
+      if (!selectedFile) return;
 
-    if (!selectedFile.name.endsWith('.xlsx')) {
-      setError('Por favor selecciona un archivo Excel (.xlsx)');
-      return;
+      if (!selectedFile.name.endsWith('.xlsx')) {
+        setError('Por favor selecciona un archivo Excel (.xlsx)');
+        return;
+      }
+
+      console.log('[ComisionesUploadNuevo] File validated:', selectedFile.name);
+      setFile(selectedFile);
+      setError(null);
+      setSession(null);
+    } catch (error: any) {
+      console.error('[ComisionesUploadNuevo] Error selecting file:', error);
+      setError('Error al seleccionar archivo: ' + error.message);
     }
-
-    setFile(selectedFile);
-    setError(null);
-    setSession(null);
   };
 
   const handleUpload = async () => {
     if (!file) return;
 
+    console.log('[ComisionesUploadNuevo] Starting upload...', file.name);
     setUploading(true);
     setError(null);
 
     try {
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      if (!authSession) throw new Error('No autenticado');
+      console.log('[ComisionesUploadNuevo] Getting auth session...');
+      const { data: { session: authSession }, error: sessionError } = await supabase.auth.getSession();
 
+      if (sessionError) {
+        console.error('[ComisionesUploadNuevo] Session error:', sessionError);
+        throw new Error('Error de autenticación: ' + sessionError.message);
+      }
+
+      if (!authSession) {
+        console.error('[ComisionesUploadNuevo] No auth session');
+        throw new Error('No autenticado. Por favor inicia sesión nuevamente.');
+      }
+
+      console.log('[ComisionesUploadNuevo] Creating FormData...');
       const formData = new FormData();
       formData.append('file', file);
       formData.append('fileName', file.name);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-excel-staging`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authSession.access_token}`,
-          },
-          body: formData
-        }
-      );
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-excel-staging`;
+      console.log('[ComisionesUploadNuevo] Calling edge function:', functionUrl);
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authSession.access_token}`,
+        },
+        body: formData
+      });
+
+      console.log('[ComisionesUploadNuevo] Response status:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al procesar archivo');
+        let errorMessage = 'Error al procesar archivo';
+        try {
+          const errorData = await response.json();
+          console.error('[ComisionesUploadNuevo] Error response:', errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          const errorText = await response.text();
+          console.error('[ComisionesUploadNuevo] Error text:', errorText);
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      console.log('[ComisionesUploadNuevo] Result:', result);
 
       if (!result.success || !result.session) {
-        throw new Error('Error al procesar archivo');
+        throw new Error('Error al procesar archivo: respuesta inválida');
       }
 
+      console.log('[ComisionesUploadNuevo] Upload successful!');
       setSession(result.session);
     } catch (error: any) {
-      console.error('Error uploading file:', error);
+      console.error('[ComisionesUploadNuevo] Error uploading file:', error);
       setError(error.message || 'Error al procesar archivo');
     } finally {
       setUploading(false);
