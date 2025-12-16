@@ -401,41 +401,65 @@ export default function ConvertirLoteModal({
                     <Info className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="font-semibold text-orange-900 mb-2">
-                        Reporte de Descarte
+                        Reporte de Conversión
                       </p>
-                      <p className="text-sm text-orange-800 mb-3">
-                        Todas las filas fueron descartadas por las siguientes razones:
-                      </p>
-                      <div className="space-y-2">
-                        {errorDetails.details.discarded.invalid_importe > 0 && (
-                          <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">Importe inválido (no numérico)</span>
-                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.invalid_importe} filas</span>
-                          </div>
-                        )}
-                        {errorDetails.details.discarded.invalid_porpart > 0 && (
-                          <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">PorPart inválido (no numérico)</span>
-                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.invalid_porpart} filas</span>
-                          </div>
-                        )}
-                        {errorDetails.details.discarded.missing_ramo > 0 && (
-                          <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">Ramo faltante</span>
-                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_ramo} filas</span>
-                          </div>
-                        )}
-                        {errorDetails.details.discarded.missing_poliza > 0 && (
-                          <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">Póliza faltante</span>
-                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_poliza} filas</span>
-                          </div>
-                        )}
+
+                      {/* Summary */}
+                      <div className="grid grid-cols-3 gap-2 mb-4">
+                        <div className="bg-white p-2 rounded border border-gray-200">
+                          <p className="text-xs text-gray-600">Válidas</p>
+                          <p className="text-lg font-bold text-green-700">{errorDetails.details.validRows || 0}</p>
+                        </div>
+                        <div className="bg-white p-2 rounded border border-gray-200">
+                          <p className="text-xs text-gray-600">Con Advertencias</p>
+                          <p className="text-lg font-bold text-blue-700">{errorDetails.details.warningRows || 0}</p>
+                        </div>
+                        <div className="bg-white p-2 rounded border border-gray-200">
+                          <p className="text-xs text-gray-600">Descartadas</p>
+                          <p className="text-lg font-bold text-red-700">{errorDetails.details.discardedRows || 0}</p>
+                        </div>
                       </div>
 
+                      {/* Errores bloqueantes (si existen) */}
+                      {(errorDetails.details.discarded.invalid_importe > 0 ||
+                        errorDetails.details.discarded.invalid_porpart > 0 ||
+                        errorDetails.details.discarded.missing_ramo > 0 ||
+                        errorDetails.details.discarded.missing_poliza > 0) && (
+                        <div className="mb-4">
+                          <p className="text-sm font-semibold text-orange-900 mb-2">Errores Bloqueantes:</p>
+                          <div className="space-y-2">
+                            {errorDetails.details.discarded.invalid_importe > 0 && (
+                              <div className="flex items-center justify-between bg-white p-2 rounded">
+                                <span className="text-sm text-gray-700">Importe inválido (no numérico)</span>
+                                <span className="text-sm font-semibold text-red-700">{errorDetails.details.discarded.invalid_importe} filas</span>
+                              </div>
+                            )}
+                            {errorDetails.details.discarded.invalid_porpart > 0 && (
+                              <div className="flex items-center justify-between bg-white p-2 rounded">
+                                <span className="text-sm text-gray-700">PorPart inválido (no numérico)</span>
+                                <span className="text-sm font-semibold text-red-700">{errorDetails.details.discarded.invalid_porpart} filas</span>
+                              </div>
+                            )}
+                            {errorDetails.details.discarded.missing_ramo > 0 && (
+                              <div className="flex items-center justify-between bg-white p-2 rounded">
+                                <span className="text-sm text-gray-700">Ramo faltante</span>
+                                <span className="text-sm font-semibold text-red-700">{errorDetails.details.discarded.missing_ramo} filas</span>
+                              </div>
+                            )}
+                            {errorDetails.details.discarded.missing_poliza > 0 && (
+                              <div className="flex items-center justify-between bg-white p-2 rounded">
+                                <span className="text-sm text-gray-700">Póliza faltante</span>
+                                <span className="text-sm font-semibold text-red-700">{errorDetails.details.discarded.missing_poliza} filas</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Advertencias (no bloqueantes) */}
                       {(errorDetails.details.discarded.missing_email_warnings > 0 || errorDetails.details.discarded.missing_aseguradora_warnings > 0) && (
-                        <div className="mt-4 pt-4 border-t border-orange-200">
-                          <p className="text-xs font-semibold text-orange-900 mb-2">Advertencias (no bloquean conversión):</p>
+                        <div className="mb-4 bg-blue-50 p-3 rounded">
+                          <p className="text-sm font-semibold text-blue-900 mb-2">Advertencias (NO bloquean conversión):</p>
                           <div className="space-y-1">
                             {errorDetails.details.discarded.missing_email_warnings > 0 && (
                               <div className="flex items-center justify-between bg-white p-2 rounded">

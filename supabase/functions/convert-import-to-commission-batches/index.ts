@@ -48,135 +48,114 @@ interface HeaderCheckResult {
   mapped: Record<string, string>;
 }
 
-function normalizeNumeric(value: any): number {
-  if (value === null || value === undefined || value === '') return 0;
-  if (typeof value === 'number') return isNaN(value) ? 0 : value;
+// ============================================================================
+// MAPEO DE COLUMNAS CON SINÓNIMOS
+// ============================================================================
 
-  if (typeof value === 'string') {
-    const cleaned = value.replace(/[$,\s%]/g, '').trim();
-    if (cleaned === '' || cleaned === '-') return 0;
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
+function mapColumns(docData: Record<string, any>): Record<string, string> {
+  const keys = Object.keys(docData);
+  const result: Record<string, string> = {};
+
+  // Diccionario de sinónimos
+  const synonyms: Record<string, string[]> = {
+    fpago: ['fpago', 'f.pago', 'fecha_pago', 'fecha pago', 'fechapago', 'fecha', 'date'],
+    email: ['email', 'correo', 'mail', 'correo_electronico', 'agent_email', 'email_agente'],
+    ramo: ['ramo', 'rama', 'line', 'linea', 'tipo_seguro'],
+    aseguradora: ['aseguradora', 'aseguradora', 'insurer', 'company', 'compañia', 'compania'],
+    importe: ['importe', 'amount', 'monto', 'valor', 'prima'],
+    porpart: ['porpart', 'por.part', '% part', 'porcentaje', 'percentage', 'comision'],
+    poliza: ['poliza', 'póliza', 'numero_poliza', 'num_poliza', 'policy', 'no_poliza', 'certificado'],
+    primaneta: ['prima_neta', 'primaneta', 'prima neta', 'netpremium'],
+    nombreasegurado: ['nombre_asegurado', 'asegurado', 'nombre', 'insured_name', 'cliente'],
+    concepto: ['concepto', 'concept', 'descripcion', 'description', 'detalle']
+  };
+
+  for (const [field, syns] of Object.entries(synonyms)) {
+    for (const key of keys) {
+      const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+      for (const syn of syns) {
+        const normalizedSyn = syn.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (normalized === normalizedSyn || normalized.includes(normalizedSyn) || normalizedSyn.includes(normalized)) {
+          result[field] = key;
+          break;
+        }
+      }
+      if (result[field]) break;
+    }
   }
 
-  return 0;
+  return result;
 }
 
-function normalizeText(value: any, defaultValue: string = ''): string {
-  if (value === null || value === undefined) return defaultValue;
-  const str = String(value).trim();
-  return str || defaultValue;
-}
+// ============================================================================
+// NORMALIZACIÓN
+// ============================================================================
 
 function normalizeEmail(value: any): string {
   if (!value) return '';
-  return String(value).trim().toLowerCase();
+  return String(value).toLowerCase().trim();
+}
+
+function normalizeText(value: any): string | undefined {
+  if (value === null || value === undefined || value === '') return undefined;
+  return String(value).trim();
+}
+
+function normalizeNumeric(value: any): number {
+  if (typeof value === 'number') return value;
+  if (!value) return 0;
+  const str = String(value).replace(/[^0-9.-]/g, '');
+  return parseFloat(str) || 0;
 }
 
 function normalizeDate(value: any): string | null {
   if (!value) return null;
-
-  if (typeof value === 'number') {
-    const excelEpoch = new Date(1900, 0, 1);
-    const daysOffset = value - 2;
-    const resultDate = new Date(excelEpoch.getTime() + daysOffset * 24 * 60 * 60 * 1000);
-    return resultDate.toISOString().split('T')[0];
+  if (value instanceof Date) {
+    return value.toISOString().split('T')[0];
   }
+  const str = String(value).trim();
+  if (!str) return null;
+  
+  // Intenta parsear varios formatos
+  const datePatterns = [
+    /^(\d{4})-(\d{2})-(\d{2})$/, // YYYY-MM-DD
+    /^(\d{2})\/(\d{2})\/(\d{4})$/, // DD/MM/YYYY
+    /^(\d{2})-(\d{2})-(\d{4})$/, // DD-MM-YYYY
+  ];
 
-  if (typeof value === 'string') {
-    if (value.includes('/')) {
-      const parts = value.split('/');
-      if (parts.length === 3) {
-        const day = parts[0].padStart(2, '0');
-        const month = parts[1].padStart(2, '0');
-        const year = parts[2];
+  for (const pattern of datePatterns) {
+    const match = str.match(pattern);
+    if (match) {
+      if (pattern.source.startsWith('^(\\d{4})')) {
+        // Ya está en formato YYYY-MM-DD
+        return str;
+      } else {
+        // Convertir DD/MM/YYYY o DD-MM-YYYY a YYYY-MM-DD
+        const [, day, month, year] = match;
         return `${year}-${month}-${day}`;
       }
     }
+  }
 
-    if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      return value;
-    }
-
-    try {
-      const date = new Date(value);
-      if (!isNaN(date.getTime())) {
-        return date.toISOString().split('T')[0];
-      }
-    } catch {
-      // Ignore
-    }
+  // Si no coincide con ningún patrón, intentar parsearlo como fecha
+  const date = new Date(str);
+  if (!isNaN(date.getTime())) {
+    return date.toISOString().split('T')[0];
   }
 
   return null;
 }
 
-/**
- * Mapea columnas con sinónimos (versión simplificada)
- * Retorna un mapa de: standardKey => nombreOriginal
- */
-function mapColumns(data: Record<string, any>): Record<string, string> {
-  const mapped: Record<string, string> = {};
+// ============================================================================
+// VALIDACIÓN DE HEADERS
+// ============================================================================
 
-  // Normalizar keys del objeto
-  const keys = Object.keys(data);
-  const normalizedKeys = new Map<string, string>();
-
-  for (const key of keys) {
-    const norm = key.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_.]/g, '');
-    normalizedKeys.set(norm, key);
-  }
-
-  // Mapear con sinónimos
-  const synonymMap = [
-    { standard: 'fpago', variants: ['fpago', 'fecha', 'fechapago'] },
-    { standard: 'email', variants: ['email', 'emailagente', 'mail', 'correo'] },
-    { standard: 'ramo', variants: ['ramo', 'branch'] },
-    { standard: 'aseguradora', variants: ['aseguradora', 'ciaabreviacion', 'cia', 'compania'] },
-    { standard: 'importe', variants: ['importe', 'importebase', 'base', 'monto'] },
-    { standard: 'porpart', variants: ['porpart', 'porcentaje', 'percentage'] },
-    { standard: 'poliza', variants: ['poliza', 'documento', 'policy'] },
-    { standard: 'primaneta', variants: ['primaneta', 'prima'] },
-    { standard: 'nombreasegurado', variants: ['nombreasegurado', 'asegurado', 'nombrecompleto'] },
-    { standard: 'concepto', variants: ['concepto', 'descripcion'] }
-  ];
-
-  for (const { standard, variants } of synonymMap) {
-    for (const variant of variants) {
-      if (normalizedKeys.has(variant)) {
-        mapped[standard] = normalizedKeys.get(variant)!;
-        break;
-      }
-    }
-  }
-
-  return mapped;
-}
-
-/**
- * Pre-check: Valida que el primer documento tenga las columnas obligatorias
- * Retorna información detallada sobre headers detectados y faltantes
- *
- * CAMPOS REALMENTE OBLIGATORIOS (para calcular comisión):
- * - importe (puede ser negativo)
- * - porpart
- * - ramo
- * - poliza
- *
- * CAMPOS OPCIONALES (no bloquean conversión):
- * - email (se marca como pending_assignment)
- * - aseguradora (se usa "NO_ESPECIFICADA")
- * - fpago (va a lote "Sin fecha")
- */
 function checkHeaders(firstDoc: any): HeaderCheckResult {
   const docData = firstDoc?.document_data || {};
   const keys = Object.keys(docData);
-
-  const normalized = keys.map(key =>
-    key.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_.]/g, '')
-  );
-
   const mapped = mapColumns(docData);
+
+  const normalized = keys.map(k => k.toLowerCase().trim());
 
   // Solo campos realmente obligatorios para calcular comisión
   const requiredFields = ['importe', 'porpart', 'ramo', 'poliza'];
@@ -197,6 +176,15 @@ function checkHeaders(firstDoc: any): HeaderCheckResult {
   };
 }
 
+type ParseStatus = "valid" | "warning" | "discard";
+
+interface ParseResult {
+  row: StandardCommissionRow | null;
+  status: ParseStatus;
+  warnings: string[];
+  errors: string[];
+}
+
 /**
  * Parsea una fila de documento importado al modelo estándar
  *
@@ -213,16 +201,19 @@ function checkHeaders(firstDoc: any): HeaderCheckResult {
  * - PorPart inválido (NaN)
  * - Ramo vacío
  * - Póliza vacía
+ *
+ * RETORNA:
+ * - status: "discard" si no se puede calcular comisión
+ * - status: "warning" si tiene advertencias pero SÍ se puede insertar
+ * - status: "valid" si no tiene advertencias
  */
 function parseImportedDocument(
   doc: any,
   rowIndex: number,
   discardReport: DiscardReport
-): {
-  row: StandardCommissionRow | null;
-  errors: string[];
-} {
+): ParseResult {
   const errors: string[] = [];
+  const warnings: string[] = [];
   const docData = doc.document_data || {};
 
   // Mapear columnas del documento
@@ -285,20 +276,22 @@ function parseImportedDocument(
     discardReason = discardReason || 'missing_poliza';
   }
 
-  // ADVERTENCIAS (no bloquean conversión)
+  // ADVERTENCIAS (NO BLOQUEAN conversión - la fila SÍ se inserta)
 
-  // Email vacío -> warning, no error
+  // Email vacío -> warning, NO error
   if (!agent_email || agent_email === '') {
+    warnings.push('Email faltante - se marcará como pendiente de asignación');
     discardReport.missing_email_warnings++;
   }
 
-  // Aseguradora vacía -> usar default
+  // Aseguradora vacía -> usar default, NO error
   if (!aseguradora || aseguradora === '') {
     aseguradora = 'NO_ESPECIFICADA';
+    warnings.push('Aseguradora faltante - se usará "NO_ESPECIFICADA"');
     discardReport.missing_aseguradora_warnings++;
   }
 
-  // Si hay errores bloqueantes, descartar
+  // Si hay errores bloqueantes, DISCARD
   if (errors.length > 0) {
     if (discardReport.examples.length < 10) {
       discardReport.examples.push({
@@ -314,27 +307,34 @@ function parseImportedDocument(
         }
       });
     }
-    return { row: null, errors };
+    return { row: null, status: "discard", warnings: [], errors };
   }
 
   // CÁLCULO CORRECTO: Comisión = Importe × (PorPart / 100)
   // Importe puede ser negativo (ajustes, cancelaciones)
   const comision_calculada = importe_base * (porcentaje / 100);
 
+  const parsedRow: StandardCommissionRow = {
+    fpago,
+    agent_email: agent_email || '',  // Puede estar vacío
+    ramo: ramo!,
+    aseguradora: aseguradora!,  // Siempre tiene valor (default si vacío)
+    importe_base,  // Puede ser negativo
+    porcentaje,
+    poliza: poliza!,
+    comision_calculada,  // Puede ser negativa
+    prima_neta_info,
+    nombre_asegurado,
+    concepto
+  };
+
+  // Determinar status: "warning" si hay advertencias, "valid" si no
+  const status: ParseStatus = warnings.length > 0 ? "warning" : "valid";
+
   return {
-    row: {
-      fpago,
-      agent_email: agent_email || '',  // Puede estar vacío
-      ramo: ramo!,
-      aseguradora: aseguradora!,  // Siempre tiene valor (default si vacío)
-      importe_base,  // Puede ser negativo
-      porcentaje,
-      poliza: poliza!,
-      comision_calculada,  // Puede ser negativa
-      prima_neta_info,
-      nombre_asegurado,
-      concepto
-    },
+    row: parsedRow,
+    status,
+    warnings,
     errors: []
   };
 }
@@ -348,91 +348,47 @@ function getWeekInfo(dateStr: string): {
   period_start: string;
   period_end: string;
 } {
-  const date = new Date(dateStr);
-  const dayOfWeek = date.getDay();
-  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const date = new Date(dateStr + 'T00:00:00Z');
+  const firstDayOfYear = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const dayOfYear = Math.floor((date.getTime() - firstDayOfYear.getTime()) / (24 * 60 * 60 * 1000));
+  const weekNumber = Math.ceil((dayOfYear + firstDayOfYear.getUTCDay() + 1) / 7);
 
-  const monday = new Date(date);
-  monday.setDate(date.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-
-  const oneJan = new Date(date.getFullYear(), 0, 1);
-  const weekNumber = Math.ceil((((date.getTime() - oneJan.getTime()) / 86400000) + oneJan.getDay() + 1) / 7);
+  const startOfWeek = new Date(date);
+  startOfWeek.setUTCDate(date.getUTCDate() - date.getUTCDay());
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6);
 
   return {
     week_number: weekNumber,
-    period_start: monday.toISOString().split('T')[0],
-    period_end: sunday.toISOString().split('T')[0],
+    period_start: startOfWeek.toISOString().split('T')[0],
+    period_end: endOfWeek.toISOString().split('T')[0]
   };
 }
 
 async function insertItemsInChunks(
   supabase: any,
-  items: any[],
-  chunkSize: number = 200
-): Promise<{ success: boolean; insertedCount: number; errors: any[] }> {
+  items: any[]
+): Promise<{ insertedCount: number; errors: any[] }> {
+  const CHUNK_SIZE = 200;
   let insertedCount = 0;
   const errors: any[] = [];
 
-  for (let i = 0; i < items.length; i += chunkSize) {
-    const chunk = items.slice(i, i + chunkSize);
+  for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+    const chunk = items.slice(i, i + CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from("commission_details")
+      .insert(chunk)
+      .select();
 
-    try {
-      const { data, error } = await supabase
-        .from("commission_details")
-        .insert(chunk)
-        .select();
-
-      if (error) {
-        console.error(`[Insert] Chunk ${i}-${i + chunk.length} failed:`, error);
-
-        for (let j = 0; j < chunk.length; j++) {
-          const singleItem = chunk[j];
-          try {
-            const { data: singleData, error: singleError } = await supabase
-              .from("commission_details")
-              .insert([singleItem])
-              .select();
-
-            if (singleError) {
-              errors.push({
-                row_index: i + j,
-                item: singleItem,
-                error: {
-                  code: singleError.code,
-                  message: singleError.message,
-                  details: singleError.details
-                }
-              });
-            } else {
-              insertedCount++;
-            }
-          } catch (individualError: any) {
-            errors.push({
-              row_index: i + j,
-              item: singleItem,
-              error: { message: individualError.message }
-            });
-          }
-        }
-      } else {
-        insertedCount += data?.length || 0;
-      }
-    } catch (chunkError: any) {
-      console.error(`[Insert] Chunk error:`, chunkError);
-      errors.push({
-        chunk_start: i,
-        chunk_end: i + chunk.length,
-        error: { message: chunkError.message }
-      });
+    if (error) {
+      console.error(`[Batch Insert] Error inserting chunk ${i}-${i + chunk.length}:`, error);
+      errors.push({ chunk_start: i, error });
+    } else {
+      insertedCount += data?.length || 0;
     }
   }
 
-  return { success: errors.length === 0, insertedCount, errors };
+  return { insertedCount, errors };
 }
 
 // ============================================================================
@@ -441,153 +397,127 @@ async function insertItemsInChunks(
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders
+    });
   }
 
   const startTime = Date.now();
-  let conversionJobId: string | null = null;
+  let conversionJobId: string | undefined;
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Authorization required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace("Bearer ", "")
+    );
+
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      throw new Error("Unauthorized");
-    }
-
-    const url = new URL(req.url);
-    const batchId = url.pathname.split("/").pop();
+    const { batch_id: batchId } = await req.json();
 
     if (!batchId) {
-      throw new Error("Batch ID is required");
+      return new Response(JSON.stringify({ error: "batch_id is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     console.log(`[Conversion] Starting conversion for batch ${batchId}`);
 
     // Verificar que el batch existe
-    const { data: importBatch, error: batchError } = await supabase
+    const { data: batch, error: batchError } = await supabase
       .from("document_import_batches")
       .select("*")
       .eq("id", batchId)
       .single();
 
-    if (batchError || !importBatch) {
-      return new Response(JSON.stringify({
-        success: false,
-        code: "BATCH_NOT_FOUND",
-        message: "El lote de importación no existe"
-      }), {
+    if (batchError || !batch) {
+      return new Response(JSON.stringify({ error: "Batch not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    // Verificar que no fue convertido
-    if (importBatch.converted_to_commissions) {
+    if (batch.converted_to_commissions) {
       return new Response(JSON.stringify({
-        success: false,
-        code: "ALREADY_CONVERTED",
-        message: "Este lote ya fue convertido anteriormente"
-      }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    // Contar documentos de origen
-    const { count: sourceCount, error: countError } = await supabase
-      .from("imported_documents")
-      .select("*", { count: 'exact', head: true })
-      .eq("batch_id", batchId);
-
-    if (countError) {
-      throw countError;
-    }
-
-    if (!sourceCount || sourceCount === 0) {
-      return new Response(JSON.stringify({
-        success: false,
-        code: "NO_SOURCE_ITEMS",
-        message: "No hay documentos para convertir"
+        error: "Batch already converted",
+        converted_at: batch.converted_at
       }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    console.log(`[Conversion] Found ${sourceCount} documents to convert`);
-
-    // Pre-check: Obtener primer documento para validar headers
-    const { data: firstDoc, error: firstDocError } = await supabase
-      .from("imported_documents")
-      .select("*")
-      .eq("batch_id", batchId)
-      .limit(1)
-      .single();
-
-    if (firstDocError || !firstDoc) {
-      return new Response(JSON.stringify({
-        success: false,
-        code: "NO_DOCUMENTS",
-        message: "No se encontró ningún documento para validar headers"
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    // Validar headers
-    const headerCheck = checkHeaders(firstDoc);
-
-    if (!headerCheck.valid) {
-      return new Response(JSON.stringify({
-        success: false,
-        code: "MISSING_REQUIRED_COLUMNS",
-        message: "El archivo Excel no tiene todas las columnas obligatorias",
-        details: {
-          detectedHeaders: headerCheck.detected,
-          normalizedHeaders: headerCheck.normalized,
-          missingColumns: headerCheck.missing,
-          mappedColumns: headerCheck.mapped,
-          requiredColumns: ['importe', 'porpart', 'ramo', 'poliza']
-        }
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    console.log('[Conversion] Header check passed:', headerCheck.mapped);
-
-    // Crear job de conversión
-    const { data: conversionJob, error: jobError } = await supabase
+    // Crear registro de job
+    const { data: job, error: jobError } = await supabase
       .from("conversion_jobs")
       .insert({
         batch_id: batchId,
         started_by: user.id,
         status: "running",
-        total_source_items: sourceCount,
         started_at: new Date().toISOString()
       })
       .select()
       .single();
 
-    if (jobError || !conversionJob) {
+    if (jobError || !job) {
       throw new Error("Failed to create conversion job");
     }
 
-    conversionJobId = conversionJob.id;
+    conversionJobId = job.id;
 
-    // Obtener todos los documentos
+    // Pre-check: contar documentos fuente
+    const { count: sourceCount, error: countError } = await supabase
+      .from("imported_documents")
+      .select("*", { count: "exact", head: true })
+      .eq("batch_id", batchId);
+
+    if (countError) {
+      throw new Error("Failed to count source documents");
+    }
+
+    if (sourceCount === 0) {
+      await supabase
+        .from("conversion_jobs")
+        .update({
+          status: "failed",
+          finished_at: new Date().toISOString(),
+          duration_ms: Date.now() - startTime,
+          error_code: "NO_SOURCE_DOCUMENTS",
+          error_message: "No hay documentos en el lote de origen"
+        })
+        .eq("id", conversionJobId);
+
+      return new Response(JSON.stringify({
+        success: false,
+        code: "NO_SOURCE_DOCUMENTS",
+        message: "No hay documentos en el lote de origen"
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    console.log(`[Conversion] Found ${sourceCount} source documents`);
+
+    // Obtener documentos
     const { data: documents, error: docsError } = await supabase
       .from("imported_documents")
       .select("*")
@@ -600,8 +530,9 @@ Deno.serve(async (req: Request) => {
     console.log(`[Conversion] Processing ${documents.length} documents...`);
 
     // Parsear documentos al modelo estándar
-    const parsedRows: StandardCommissionRow[] = [];
-    const parseErrors: any[] = [];
+    const validRows: StandardCommissionRow[] = [];
+    const warningRows: StandardCommissionRow[] = [];
+    const discardedRows: any[] = [];
 
     // Inicializar reporte de descarte
     const discardReport: DiscardReport = {
@@ -616,22 +547,34 @@ Deno.serve(async (req: Request) => {
 
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i];
-      const { row, errors } = parseImportedDocument(doc, i, discardReport);
+      const result = parseImportedDocument(doc, i, discardReport);
 
-      if (row) {
-        parsedRows.push(row);
-      } else {
-        parseErrors.push({
+      if (result.status === "valid") {
+        validRows.push(result.row!);
+      } else if (result.status === "warning") {
+        // CRÍTICO: Las filas con warnings SÍ se insertan
+        warningRows.push(result.row!);
+      } else if (result.status === "discard") {
+        discardedRows.push({
           document_id: doc.document_id,
           vendor_email: doc.vendor_email_raw,
-          errors
+          errors: result.errors
         });
-        console.error(`[Conversion] Parse error for doc ${doc.document_id}:`, errors);
+        console.error(`[Conversion] Discarded doc ${doc.document_id}:`, result.errors);
       }
     }
 
-    console.log(`[Conversion] Parsed ${parsedRows.length} valid rows, ${parseErrors.length} errors`);
+    // Combinar valid + warning para itemsToInsert
+    const parsedRows = [...validRows, ...warningRows];
+
+    console.log(`[Conversion] Parsed ${validRows.length} valid rows, ${warningRows.length} warning rows, ${discardedRows.length} discarded`);
     console.log('[Conversion] Discard report:', discardReport);
+
+    // Self-check: detectar inconsistencia lógica
+    if (parsedRows.length === 0 && discardedRows.length === 0 && warningRows.length > 0) {
+      console.error('[SELF-CHECK FAILED] Inconsistencia: warningRows > 0 pero parsedRows = 0. Bug en construcción de itemsToInsert.');
+      throw new Error('SELF-CHECK FAILED: Las filas con warnings no se están incluyendo en parsedRows. Revisar lógica.');
+    }
 
     if (parsedRows.length === 0) {
       await supabase
@@ -644,7 +587,7 @@ Deno.serve(async (req: Request) => {
           error_message: "Ninguna fila pudo ser parseada. Todas las filas tienen datos inválidos o incompletos.",
           conversion_report: {
             discard_report: discardReport,
-            parse_errors: parseErrors.slice(0, 10)
+            parse_errors: discardedRows.slice(0, 10)
           }
         })
         .eq("id", conversionJobId);
@@ -656,8 +599,10 @@ Deno.serve(async (req: Request) => {
         details: {
           totalSourceItems: sourceCount,
           validRows: 0,
+          warningRows: 0,
+          discardedRows: discardedRows.length,
           discarded: discardReport,
-          parseErrors: parseErrors.slice(0, 5)
+          parseErrors: discardedRows.slice(0, 5)
         }
       }), {
         status: 400,
@@ -805,10 +750,14 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (createError || !weekBatch) {
-        throw new Error(`Failed to create batch for week ${group.week_number}: ${createError?.message}`);
+        console.error(`[Conversion] Failed to create week batch: ${createError?.message}`);
+        continue;
       }
 
-      createdBatchIds.push(weekBatch.id);      const itemsToInsert = group.rows.map(row => {
+      createdBatchIds.push(weekBatch.id);
+
+      // Preparar items
+      const itemsToInsert = group.rows.map(row => {
         const hasEmail = row.agent_email && row.agent_email !== '';
         const vendorKey = hasEmail ? row.agent_email : 'unknown';
         const matchMethod = hasEmail ? 'email' : 'none';
@@ -833,7 +782,7 @@ Deno.serve(async (req: Request) => {
           vendor_name_norm: '',
           vendor_key: vendorKey,
           match_method: matchMethod,
-          pending_assignment: true,
+          pending_assignment: !hasEmail,
           raw_row: {}
         };
       });
@@ -855,7 +804,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (createdBatches.length === 0 || totalInsertedItems === 0) {
+    console.log(`[Conversion] Total inserted items: ${totalInsertedItems}`);
+
+    if (totalInsertedItems === 0) {
       await supabase
         .from("conversion_jobs")
         .update({
@@ -866,7 +817,7 @@ Deno.serve(async (req: Request) => {
           error_message: "No se pudieron insertar items en los lotes. Todas las filas fueron descartadas.",
           conversion_report: {
             discard_report: discardReport,
-            parse_errors: parseErrors.slice(0, 10)
+            discarded_rows: discardedRows.slice(0, 10)
           }
         })
         .eq("id", conversionJobId);
@@ -877,7 +828,9 @@ Deno.serve(async (req: Request) => {
         message: "No se pudieron insertar documentos en los lotes",
         details: {
           totalSourceItems: sourceCount,
-          validRows: parsedRows.length,
+          validRows: validRows.length,
+          warningRows: warningRows.length,
+          discardedRows: discardedRows.length,
           insertedItems: totalInsertedItems,
           discarded: discardReport
         }
@@ -914,10 +867,13 @@ Deno.serve(async (req: Request) => {
           batches: createdBatches,
           summary: {
             sourceCount,
+            validRows: validRows.length,
+            warningRows: warningRows.length,
+            discardedRows: discardedRows.length,
             parsedCount: parsedRows.length,
-            insertedCount: totalInsertedItems,
-            parseErrorsCount: parseErrors.length
-          }
+            insertedCount: totalInsertedItems
+          },
+          discard_report: discardReport
         }
       })
       .eq("id", conversionJobId);
@@ -925,7 +881,9 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({
       success: true,
       totalSourceRows: sourceCount,
-      validRows: parsedRows.length,
+      validRows: validRows.length,
+      warningRows: warningRows.length,
+      discardedRows: discardedRows.length,
       discarded: discardReport,
       createdBatches,
       totalInsertedItems,
