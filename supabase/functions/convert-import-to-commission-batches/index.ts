@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -319,7 +319,21 @@ function parseImportedDocument(
       discardReport.examples.push({
         document_id: doc.document_id,
         vendor_email: doc.vendor_email_raw,
-        errors
+        errors,
+        raw_values: {
+          importe: importeRaw,
+          porpart: porpartRaw,
+          ramo: ramoRaw,
+          poliza: polizaRaw,
+          fpago: fpagoRaw
+        },
+        parsed_values: {
+          importe,
+          porpart,
+          ramo,
+          poliza,
+          fpago
+        }
       });
     }
     return { status: "discard", errors };
