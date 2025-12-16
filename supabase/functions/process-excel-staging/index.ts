@@ -189,11 +189,16 @@ Deno.serve(async (req: Request) => {
       sheetUsed: parsed.sheetNameUsed,
       totalRows: parsed.totalRowsRead,
       headers: parsed.headersOriginal.length,
+      headersOriginal: parsed.headersOriginal,
       detectedColumns: parsed.debugInfo.detectedColumns,
     });
 
+    if (parsed.rows.length > 0) {
+      console.log('[process-excel-staging] First row sample:', parsed.rows[0]);
+    }
+
     if (!parsed.debugInfo.detectedColumns.vendNombre) {
-      throw new Error('No se encontró la columna VendNombre en el Excel. Este campo es obligatorio.');
+      throw new Error(`No se encontró la columna VendNombre en el Excel. Este campo es obligatorio. Columnas encontradas: ${parsed.headersOriginal.join(', ')}`);
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -309,20 +314,27 @@ Deno.serve(async (req: Request) => {
       const aseguradora = row['Aseguradora'] || row['CiaAbreviacion'] || '';
       const primaNeta = Number(row['PrimaNeta'] || row['Importe'] || 0);
       const porcentajeBase = Number(row['PorPart'] || 0);
-      const fPagoStr = row['FPago'] || '';
+      const fPagoStr = row['FPago'] || row['Fecha'] || row['FechaEmision'] || row['FechaMovimiento'] || '';
       const concepto = row['Concepto'] || '';
       const nombreAsegurado = row['NombreCompleto'] || row['NombreAsegurado'] || row['Asegurado'] || '';
 
-      if (!fPagoStr) continue;
-
-      const [y, m, d] = fPagoStr.split('-').map(Number);
-      if (!y || !m || !d) continue;
-
-      const dateFPago = new Date(y, m - 1, d);
+      let dateFPago: Date;
+      if (!fPagoStr || fPagoStr.trim() === '') {
+        dateFPago = new Date();
+      } else {
+        const [y, m, d] = fPagoStr.split('-').map(Number);
+        if (!y || !m || !d) {
+          dateFPago = new Date();
+        } else {
+          dateFPago = new Date(y, m - 1, d);
+        }
+      }
       const weekNumber = getWeekNumber(dateFPago);
       const weekYear = dateFPago.getFullYear();
       const weekStartDate = getWeekStart(dateFPago);
       const weekEndDate = getWeekEnd(dateFPago);
+
+      const dateFPagoFormatted = fPagoStr || dateFPago.toISOString().split('T')[0];
 
       itemsToInsert.push({
         staging_session_id: session.id,
@@ -339,7 +351,7 @@ Deno.serve(async (req: Request) => {
         aseguradora,
         prima_neta: primaNeta,
         porcentaje_base: porcentajeBase,
-        date_fpago: fPagoStr,
+        date_fpago: dateFPagoFormatted,
         concepto,
         nombre_asegurado: nombreAsegurado,
         week_number: weekNumber,
