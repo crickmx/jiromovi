@@ -5,6 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { Calendar, Clock, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Skeleton } from './ui/skeleton';
+import { EmptyState } from './ui/empty-state';
 
 interface Sesion {
   id: string;
@@ -32,7 +37,6 @@ export function ProximasCapacitaciones() {
     if (!usuario) return;
 
     try {
-      // Fetch sesiones del aula virtual
       const { data: sesionesData, error: sesionesError } = await supabase
         .from('aula_virtual_sesiones')
         .select(`
@@ -51,7 +55,6 @@ export function ProximasCapacitaciones() {
 
       if (sesionesError) throw sesionesError;
 
-      // Fetch eventos del aula digital (RLS filtra por permisos automáticamente)
       const { data: eventosData, error: eventosError } = await supabase
         .from('aula_eventos')
         .select(`
@@ -68,22 +71,19 @@ export function ProximasCapacitaciones() {
 
       if (eventosError) throw eventosError;
 
-      // Combinar sesiones y eventos
       const sesionesFormateadas: Sesion[] = (sesionesData || []).map(s => ({
         ...s,
         tipo: 'sesion' as const
       }));
 
       const eventosFormateados: Sesion[] = (eventosData || []).map(e => {
-        // Combinar fecha y hora para crear fecha_inicio
         const fechaInicio = `${e.fecha}T${e.hora}`;
-
         return {
           id: e.id,
           titulo: e.titulo,
           descripcion: e.descripcion,
           fecha_inicio: fechaInicio,
-          duracion_minutos: 60, // Default duration for events
+          duracion_minutos: 60,
           instructor: { id: '', nombre_completo: e.ponente },
           esta_activa: false,
           estado: 'programada' as const,
@@ -91,7 +91,6 @@ export function ProximasCapacitaciones() {
         };
       });
 
-      // Combinar y ordenar por fecha
       const todas = [...sesionesFormateadas, ...eventosFormateados]
         .sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime())
         .slice(0, 5);
@@ -106,36 +105,41 @@ export function ProximasCapacitaciones() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-ios-2xl shadow-ios-lg border border-ios-gray-200/50 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-ios-gray-200 rounded w-1/3"></div>
-          <div className="space-y-3">
-            <div className="h-20 bg-ios-gray-100 rounded-ios-lg"></div>
-            <div className="h-20 bg-ios-gray-100 rounded-ios-lg"></div>
-          </div>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-ios-2xl shadow-ios-lg border border-ios-gray-200/50 overflow-hidden">
-      <div className="bg-ios-gray-50 px-6 py-4 border-b border-ios-gray-200/50">
+    <Card>
+      <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-[20px] font-bold text-ios-gray-900">Próximas Capacitaciones</h2>
-            <p className="text-[13px] text-ios-gray-600 mt-0.5">Sesiones y eventos programados</p>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary-500" />
+              Próximas Capacitaciones
+            </CardTitle>
+            <CardDescription className="mt-1">
+              Sesiones y eventos programados
+            </CardDescription>
           </div>
-          <Calendar className="w-5 h-5 text-ios-blue" />
         </div>
-      </div>
+      </CardHeader>
 
-      <div className="p-6">
+      <CardContent>
         {sesiones.length === 0 ? (
-          <div className="text-center py-8">
-            <Calendar className="w-12 h-12 text-ios-gray-400 mx-auto mb-3" />
-            <p className="text-[15px] text-ios-gray-600">No hay capacitaciones programadas</p>
-          </div>
+          <EmptyState
+            icon={Calendar}
+            title="No hay capacitaciones programadas"
+          />
         ) : (
           <div className="space-y-3">
             {sesiones.map((sesion) => {
@@ -147,28 +151,27 @@ export function ProximasCapacitaciones() {
                 <div
                   key={sesion.id}
                   onClick={() => navigate(sesion.tipo === 'evento' ? '/seguros-education/aula-digital' : '/seguros-education/aula-virtual')}
-                  className="p-4 bg-ios-gray-50 rounded-ios-lg border border-ios-gray-200/50 hover:bg-ios-gray-100 hover:border-ios-blue/30 transition-all cursor-pointer active:scale-[0.98]"
+                  className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 hover:bg-neutral-100 hover:border-primary-200 hover:shadow-ios transition-all cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-ios-gray-900 text-[15px] line-clamp-1 flex-1">
+                    <h3 className="font-semibold text-neutral-900 text-sm line-clamp-1 flex-1">
                       {sesion.titulo}
                     </h3>
-                    <span className={`ml-2 px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                      sesion.tipo === 'evento'
-                        ? 'bg-ios-green/10 text-ios-green'
-                        : 'bg-ios-blue/10 text-ios-blue'
-                    }`}>
+                    <Badge
+                      variant={sesion.tipo === 'evento' ? 'success' : 'default'}
+                      className="ml-2 text-xs"
+                    >
                       {sesion.tipo === 'evento' ? 'Evento' : 'Sesión'}
-                    </span>
+                    </Badge>
                   </div>
 
                   {sesion.descripcion && (
-                    <p className="text-[13px] text-ios-gray-600 mb-3 line-clamp-2">
+                    <p className="text-xs text-neutral-600 mb-3 line-clamp-2">
                       {sesion.descripcion}
                     </p>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-3 text-[13px] text-ios-gray-600">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600">
                     <span className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5" />
                       {fechaStr}
@@ -190,13 +193,14 @@ export function ProximasCapacitaciones() {
           </div>
         )}
 
-        <button
+        <Button
           onClick={() => navigate('/seguros-education/aula-virtual')}
-          className="w-full mt-4 px-4 py-2.5 bg-ios-blue text-white rounded-ios-lg hover:bg-ios-blue-dark transition-colors text-[15px] font-medium active:scale-[0.98]"
+          className="w-full mt-4"
+          variant="default"
         >
           Ver Todas las Sesiones
-        </button>
-      </div>
-    </div>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

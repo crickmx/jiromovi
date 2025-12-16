@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ClipboardList, Plus, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Skeleton } from './ui/skeleton';
+import { EmptyState } from './ui/empty-state';
 
 interface TramiteItem {
   id: string;
@@ -48,86 +53,92 @@ export function TramitesWidget() {
 
   const getPrioridadColor = (prioridad: string) => {
     switch (prioridad) {
-      case 'Alta': return 'text-red-600';
-      case 'Media': return 'text-yellow-600';
-      case 'Baja': return 'text-green-600';
+      case 'Alta': return 'text-ios-red';
+      case 'Media': return 'text-ios-orange';
+      case 'Baja': return 'text-ios-green';
       default: return 'text-neutral-600';
     }
   };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-        <div className="flex justify-center py-8">
-          <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <ClipboardList className="w-5 h-5 text-primary-600" />
-          <h2 className="text-lg font-display font-bold text-neutral-900">
-            Mis Trámites Activos
-          </h2>
-        </div>
-        <button
-          onClick={() => navigate('/tramites')}
-          className="text-primary-600 hover:text-primary-700 text-sm font-semibold"
-        >
-          Ver todos
-        </button>
-      </div>
-
-      {tramites.length === 0 ? (
-        <div className="text-center py-8">
-          <ClipboardList className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-          <p className="text-neutral-600 text-sm mb-4">No tienes trámites activos</p>
-          <button
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-primary-500" />
+            <CardTitle>Mis Trámites Activos</CardTitle>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => navigate('/tramites')}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all font-semibold text-sm"
+            className="text-primary-500 hover:text-primary-600"
           >
-            <Plus className="w-4 h-4" />
-            <span>Crear Trámite</span>
-          </button>
+            Ver todos
+          </Button>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {tramites.map((tramite) => (
-            <div
-              key={tramite.id}
-              onClick={() => navigate(`/tramites/${tramite.id}`)}
-              className="p-4 border border-neutral-200 rounded-xl hover:shadow-medium transition-all cursor-pointer"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <span className="text-sm font-bold text-primary-600">
-                  {tramite.folio}
-                </span>
-                <div className="flex items-center space-x-2">
-                  {tramite.estatus && (
-                    <span
-                      className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                      style={{
-                        backgroundColor: tramite.estatus.color + '20',
-                        color: tramite.estatus.color
-                      }}
-                    >
-                      {tramite.estatus.nombre}
-                    </span>
-                  )}
-                  <AlertCircle className={`w-4 h-4 ${getPrioridadColor(tramite.prioridad)}`} />
+      </CardHeader>
+
+      <CardContent>
+        {tramites.length === 0 ? (
+          <EmptyState
+            icon={ClipboardList}
+            title="No tienes trámites activos"
+            action={{
+              label: "Crear Trámite",
+              onClick: () => navigate('/tramites')
+            }}
+          />
+        ) : (
+          <div className="space-y-3">
+            {tramites.map((tramite) => (
+              <div
+                key={tramite.id}
+                onClick={() => navigate(`/tramites/${tramite.id}`)}
+                className="p-4 border border-neutral-200 rounded-xl hover:shadow-ios-md hover:border-primary-200 transition-all cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <span className="text-sm font-bold text-primary-500">
+                    {tramite.folio}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {tramite.estatus && (
+                      <Badge
+                        variant="outline"
+                        style={{
+                          backgroundColor: tramite.estatus.color + '20',
+                          borderColor: tramite.estatus.color + '40',
+                          color: tramite.estatus.color
+                        }}
+                      >
+                        {tramite.estatus.nombre}
+                      </Badge>
+                    )}
+                    <AlertCircle className={`w-4 h-4 ${getPrioridadColor(tramite.prioridad)}`} />
+                  </div>
                 </div>
+                <p className="text-sm text-neutral-700 line-clamp-2">
+                  {tramite.instrucciones}
+                </p>
               </div>
-              <p className="text-sm text-neutral-700 line-clamp-2">
-                {tramite.instrucciones}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
