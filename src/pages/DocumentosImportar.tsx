@@ -69,6 +69,7 @@ export default function DocumentosImportar() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('[DocumentosImportar] File select triggered');
+    e.preventDefault();
     e.stopPropagation();
 
     const file = e.target.files?.[0];
@@ -76,7 +77,9 @@ export default function DocumentosImportar() {
       console.log('[DocumentosImportar] File selected:', file.name, file.type);
       if (
         file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        file.type === 'application/vnd.ms-excel'
+        file.type === 'application/vnd.ms-excel' ||
+        file.name.endsWith('.xlsx') ||
+        file.name.endsWith('.xls')
       ) {
         setSelectedFile(file);
         console.log('[DocumentosImportar] File set successfully');
@@ -690,11 +693,18 @@ export default function DocumentosImportar() {
           </div>
         </div>
 
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-8">
+        <div
+          className="border-2 border-dashed border-gray-300 rounded-xl p-6 sm:p-8"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="text-center">
             <FileSpreadsheet className="h-10 h-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
             <div>
-              <label htmlFor="file-upload" className="cursor-pointer inline-block text-sm sm:text-base text-blue-600 hover:text-blue-700 font-medium">
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer inline-block text-sm sm:text-base text-blue-600 hover:text-blue-700 font-medium"
+                onClick={(e) => e.stopPropagation()}
+              >
                 Selecciona un archivo
               </label>
               <input
@@ -702,6 +712,7 @@ export default function DocumentosImportar() {
                 type="file"
                 accept=".xlsx,.xls"
                 onChange={handleFileSelect}
+                onClick={(e) => e.stopPropagation()}
                 className="hidden"
                 disabled={loading}
               />
