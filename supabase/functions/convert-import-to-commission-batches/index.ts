@@ -744,7 +744,29 @@ Deno.serve(async (req: Request) => {
     const weekGroups = groupByWeek(parsedRows);
     console.log(`[Conversion] Grouped into ${weekGroups.length} weeks`);
 
-    console.log(`[Conversion] Using movi_user_id from matched documents (all documents are pre-assigned)`);
+    const uniqueUsuarioIds = [...new Set(parsedRows.map(r => r.movi_user_id).filter(Boolean))];
+    console.log(`[Conversion] Found ${uniqueUsuarioIds.length} unique usuario IDs to map`);
+
+    const usuarioIdToAgentId: Record<string, string> = {};
+
+    if (uniqueUsuarioIds.length > 0) {
+      const { data: commissionAgents, error: agentsError } = await supabase
+        .from("commission_agents")
+        .select("id, usuario_id")
+        .in("usuario_id", uniqueUsuarioIds);
+
+      if (agentsError) {
+        console.error("[Conversion] Error loading commission agents:", agentsError);
+        throw new Error(`Failed to load commission agents: ${agentsError.message}`);
+      } else if (commissionAgents) {
+        for (const agent of commissionAgents) {
+          if (agent.usuario_id) {
+            usuarioIdToAgentId[agent.usuario_id] = agent.id;
+          }
+        }
+        console.log(`[Conversion] Mapped ${Object.keys(usuarioIdToAgentId).length} usuario IDs to agent IDs`);
+      }
+    }
 
     const createdBatches: any[] = [];
     const createdBatchIds: string[] = [];
@@ -758,6 +780,8 @@ Deno.serve(async (req: Request) => {
         .insert({
           name: batchName,
           display_name: batchName,
+          date_from: group.period_start,
+          date_to: group.period_end,
           period_start: group.period_start,
           period_end: group.period_end,
           week_number: group.week_number,
@@ -784,9 +808,15 @@ Deno.serve(async (req: Request) => {
         const commissionBruta = (row.importe * row.porpart) / 100;
         const commissionNeta = commissionBruta;
 
+        const agentId = row.movi_user_id ? usuarioIdToAgentId[row.movi_user_id] : null;
+
+        if (!agentId) {
+          console.warn(`[Conversion] No commission agent found for usuario_id ${row.movi_user_id}`);
+        }
+
         return {
           batch_id: batchId,
-          agent_id: row.movi_user_id,
+          agent_id: agentId,
           agent_email: row.agent_email,
           vendor_name_raw: row.vendor_name_raw,
           fpago: row.fpago,
@@ -799,7 +829,7 @@ Deno.serve(async (req: Request) => {
           prima_neta: row.prima_neta,
           nombre_asegurado: row.nombre_asegurado,
           concepto: row.concepto,
-          pending_assignment: false,
+          pending_assignment: !agentId,
           commission_bruta: commissionBruta,
           commission_neta: commissionNeta,
           calculation_status: 'ok',
@@ -887,9 +917,15 @@ Deno.serve(async (req: Request) => {
     console.log(`[Conversion] Success: ${createdBatches.length} batches, ${totalInsertedItems} items`);
 
     for (const batchId of createdBatchIds) {
+      const { count: pendingCount } = await supabase
+        .from("commission_details")
+        .select("*", { count: "exact", head: true })
+        .eq("batch_id", batchId)
+        .eq("pending_assignment", true);
+
       await supabase
         .from("commission_batches")
-        .update({ pending_assignments_count: 0 })
+        .update({ pending_assignments_count: pendingCount || 0 })
         .eq("id", batchId);
     }
 
