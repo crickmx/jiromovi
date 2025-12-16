@@ -32,43 +32,60 @@ interface ParseResult {
 }
 
 interface DiscardReport {
-  invalid_importe: number;
-  invalid_porpart: number;
   missing_ramo: number;
   missing_poliza: number;
-  missing_aseguradora_warnings: number;
+  invalid_importe: number;
+  invalid_porpart: number;
   missing_email_warnings: number;
+  missing_aseguradora_warnings: number;
   examples: any[];
 }
 
-interface FormatDetection {
-  isLogExport: boolean;
-  confidence: number;
-  details: {
-    hasVendNombre: boolean;
-    hasRequiredFields: boolean;
-    emailMissingRatio: number;
-    rowsWithoutEmail: number;
-    totalRows: number;
+function checkRequiredColumns(headers: string[]): {
+  hasVendNombre: boolean;
+  hasRequiredFields: boolean;
+  emailMissingRatio: number;
+  rowsWithoutEmail: number;
+  totalRows: number;
+} {
+  const normalizedHeaders = headers.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+  const hasVendNombre = normalizedHeaders.some(h =>
+    h.includes('vendnombre') || h.includes('vendedor') || h.includes('agente')
+  );
+
+  const hasImporte = normalizedHeaders.some(h =>
+    h.includes('importe') || h.includes('monto') || h.includes('prima')
+  );
+
+  const hasPorPart = normalizedHeaders.some(h =>
+    h.includes('porpart') || h.includes('comision') || h.includes('porcentaje')
+  );
+
+  const hasRamo = normalizedHeaders.some(h =>
+    h.includes('ramo') || h.includes('linea') || h.includes('rama')
+  );
+
+  const hasPoliza = normalizedHeaders.some(h =>
+    h.includes('poliza') || h.includes('documento') || h.includes('certificado')
+  );
+
+  const hasRequiredFields = hasImporte && hasPorPart && hasRamo && hasPoliza;
+
+  return {
+    hasVendNombre,
+    hasRequiredFields,
+    emailMissingRatio: 0,
+    rowsWithoutEmail: 0,
+    totalRows: 0,
+    details: {
+      hasVendNombre,
+      hasRequiredFields,
+      emailMissingRatio: 0,
+      rowsWithoutEmail: 0,
+      totalRows: 0
+    }
   };
-}
-
-interface WeekGroup {
-  week_number: number;
-  week_start: Date;
-  week_end: Date;
-  period_start: string;
-  period_end: string;
-  fpagos: string[];
-  items: StandardCommissionRow[];
-}
-
-function normalizeHeader(header: string): string {
-  if (!header) return '';
-  let normalized = header.toString().trim().toLowerCase();
-  normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  normalized = normalized.replace(/[\s\-_.]/g, '');
-  return normalized;
 }
 
 function mapColumns(docData: Record<string, any>): Record<string, string> {
@@ -173,68 +190,15 @@ function normalizeText(textRaw: any): string {
   return String(textRaw).trim();
 }
 
-function normalizeNumber(numRaw: any, defaultValue: number = 0): number {
-  if (numRaw === null || numRaw === undefined || numRaw === '') return defaultValue;
-  const parsed = parseFloat(String(numRaw).replace(/,/g, ''));
-  if (isNaN(parsed)) return defaultValue;
-  return parsed;
-}
+function normalizeNumber(numRaw: any): number {
+  if (numRaw === null || numRaw === undefined || numRaw === '') return 0;
 
-function detectFormatLOGEXPORT(documents: any[]): FormatDetection {
-  if (documents.length === 0) {
-    return {
-      isLogExport: false,
-      confidence: 0,
-      details: {
-        hasVendNombre: false,
-        hasRequiredFields: false,
-        emailMissingRatio: 0,
-        rowsWithoutEmail: 0,
-        totalRows: 0
-      }
-    };
-  }
+  if (typeof numRaw === 'number') return numRaw;
 
-  let rowsWithVendNombre = 0;
-  let rowsWithEmail = 0;
-  let rowsWithRequiredFields = 0;
-
-  for (const doc of documents) {
-    const data = doc.document_data || {};
-    const mapped = mapColumns(data);
-
-    const hasVendNombre = !!mapped.vendornombre && !!data[mapped.vendornombre];
-    const hasEmail = !!mapped.email && !!data[mapped.email];
-    const hasRamo = !!mapped.ramo && !!data[mapped.ramo];
-    const hasPoliza = !!mapped.poliza && !!data[mapped.poliza];
-    const hasImporte = !!mapped.importe && !!data[mapped.importe];
-
-    if (hasVendNombre) rowsWithVendNombre++;
-    if (hasEmail) rowsWithEmail++;
-    if (hasRamo && hasPoliza && hasImporte) rowsWithRequiredFields++;
-  }
-
-  const totalRows = documents.length;
-  const rowsWithoutEmail = totalRows - rowsWithEmail;
-  const emailMissingRatio = totalRows > 0 ? rowsWithoutEmail / totalRows : 0;
-  const vendNombreRatio = totalRows > 0 ? rowsWithVendNombre / totalRows : 0;
-
-  const hasVendNombre = vendNombreRatio > 0.8;
-  const hasRequiredFields = rowsWithRequiredFields >= totalRows * 0.9;
-  const isLogExport = hasVendNombre && hasRequiredFields && emailMissingRatio > 0.8;
-  const confidence = isLogExport ? Math.round(vendNombreRatio * 100) : 0;
-
-  return {
-    isLogExport,
-    confidence,
-    details: {
-      hasVendNombre,
-      hasRequiredFields,
-      emailMissingRatio,
-      rowsWithoutEmail,
-      totalRows
-    }
-  };
+  const str = String(numRaw).trim();
+  const cleaned = str.replace(/[^0-9.-]/g, '');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
 }
 
 function parseImportedDocument(
@@ -315,75 +279,64 @@ function parseImportedDocument(
     discardReport.missing_poliza++;
   }
 
-  if (errors.length > 0) {
-    if (discardReport.examples.length < 5) {
-      discardReport.examples.push({
-        document_id: doc.document_id,
-        vendor_email: doc.vendor_email_raw,
-        errors,
-        raw_values: {
-          importe: importeRaw,
-          porpart: porpartRaw,
-          ramo: ramoRaw,
-          poliza: polizaRaw,
-          fpago: fpagoRaw
-        },
-        parsed_values: {
-          importe,
-          porpart,
-          ramo,
-          poliza,
-          fpago
-        }
-      });
-    }
-    return { status: "discard", errors };
+  if (!agent_email) {
+    warnings.push("email_faltante");
+    discardReport.missing_email_warnings++;
   }
 
   if (!aseguradora || aseguradora === '') {
     warnings.push("aseguradora_faltante");
-    aseguradora = "SIN ASEGURADORA";
+    aseguradora = 'SIN_ASEGURADORA';
     discardReport.missing_aseguradora_warnings++;
   }
 
-  if (!agent_email && !vendor_name_raw) {
-    warnings.push("email_y_vendnombre_faltantes");
-    discardReport.missing_email_warnings++;
-  } else if (!agent_email && vendor_name_raw) {
-    warnings.push("email_faltante_con_vendnombre");
-    discardReport.missing_email_warnings++;
+  if (errors.length > 0) {
+    if (discardReport.examples.length < 5) {
+      discardReport.examples.push({
+        row_index: rowIndex,
+        errors,
+        data: {
+          poliza,
+          ramo,
+          aseguradora,
+          importe,
+          porpart,
+          vendor_name_raw
+        }
+      });
+    }
+
+    return { status: "discard", errors, warnings };
   }
 
-  const pending_assignment = !agent_email;
+  const pending_assignment = !doc.movi_user_id;
 
-  const row: StandardCommissionRow = {
-    fpago,
-    agent_email,
-    vendor_name_raw,
-    movi_user_id: doc.movi_user_id || null,
-    ramo,
-    aseguradora,
-    importe,
-    porpart,
-    poliza,
-    endoso,
-    prima_neta,
-    nombre_asegurado,
-    concepto,
-    pending_assignment
+  return {
+    status: warnings.length > 0 ? "warning" : "valid",
+    row: {
+      fpago,
+      agent_email,
+      vendor_name_raw,
+      movi_user_id: doc.movi_user_id || null,
+      ramo,
+      aseguradora,
+      importe,
+      porpart,
+      poliza,
+      endoso,
+      prima_neta,
+      nombre_asegurado,
+      concepto,
+      pending_assignment
+    },
+    warnings
   };
-
-  return warnings.length > 0
-    ? { status: "warning", row, warnings }
-    : { status: "valid", row };
 }
 
 function getWeekNumber(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+  const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+  return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
 }
 
 function getWeekStart(date: Date): Date {
@@ -394,88 +347,55 @@ function getWeekStart(date: Date): Date {
 }
 
 function getWeekEnd(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? 0 : 7);
-  return new Date(d.setDate(diff));
+  const start = getWeekStart(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return end;
 }
 
-function groupByWeek(rows: StandardCommissionRow[]): WeekGroup[] {
-  const weekMap = new Map<string, WeekGroup>();
+function groupByWeek(rows: StandardCommissionRow[]): Array<{
+  week_number: number;
+  period_start: string;
+  period_end: string;
+  items: StandardCommissionRow[];
+}> {
+  const groups: Record<number, StandardCommissionRow[]> = {};
 
   for (const row of rows) {
     const fpagoDate = new Date(row.fpago);
     const weekNum = getWeekNumber(fpagoDate);
     const weekStart = getWeekStart(fpagoDate);
-    const weekEnd = getWeekEnd(fpagoDate);
-    const year = fpagoDate.getFullYear();
-    const key = `${year}-W${weekNum}`;
 
-    if (!weekMap.has(key)) {
-      weekMap.set(key, {
-        week_number: weekNum,
-        week_start: weekStart,
-        week_end: weekEnd,
-        period_start: weekStart.toISOString().split('T')[0],
-        period_end: weekEnd.toISOString().split('T')[0],
-        fpagos: [],
-        items: []
-      });
+    if (!groups[weekNum]) {
+      groups[weekNum] = [];
     }
-
-    const group = weekMap.get(key)!;
-    group.items.push(row);
-    if (!group.fpagos.includes(row.fpago)) {
-      group.fpagos.push(row.fpago);
-    }
+    groups[weekNum].push(row);
   }
 
-  return Array.from(weekMap.values()).sort((a, b) =>
-    a.week_start.getTime() - b.week_start.getTime()
-  );
-}
+  const result: Array<{
+    week_number: number;
+    period_start: string;
+    period_end: string;
+    items: StandardCommissionRow[];
+  }> = [];
 
-async function applyPersistentMappings(
-  supabase: any,
-  rows: StandardCommissionRow[]
-): Promise<{ rows: StandardCommissionRow[]; appliedCount: number; mappings: Record<string, string> }> {
-  const { data: mappings, error } = await supabase
-    .from("vendor_mapping_persistent")
-    .select("vendor_key, movi_user_id");
+  for (const [weekNumStr, items] of Object.entries(groups)) {
+    const weekNum = parseInt(weekNumStr, 10);
+    const firstDate = new Date(items[0].fpago);
+    const weekStart = getWeekStart(firstDate);
+    const weekEnd = getWeekEnd(firstDate);
 
-  if (error || !mappings || mappings.length === 0) {
-    return { rows, appliedCount: 0, mappings: {} };
+    result.push({
+      week_number: weekNum,
+      period_start: weekStart.toISOString().split('T')[0],
+      period_end: weekEnd.toISOString().split('T')[0],
+      items
+    });
   }
 
-  const mappingLookup: Record<string, string> = {};
-  for (const mapping of mappings) {
-    mappingLookup[mapping.vendor_key] = mapping.movi_user_id;
-  }
+  result.sort((a, b) => a.week_number - b.week_number);
 
-  let appliedCount = 0;
-  const updatedRows = rows.map(row => {
-    if (row.agent_email || !row.vendor_name_raw) {
-      return row;
-    }
-
-    const normalizedName = row.vendor_name_raw.toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, ' ').trim();
-    const vendorKey = `name:${normalizedName}`;
-
-    if (mappingLookup[vendorKey]) {
-      appliedCount++;
-      return {
-        ...row,
-        agent_email: mappingLookup[vendorKey],
-        pending_assignment: false
-      };
-    }
-
-    return row;
-  });
-
-  return { rows: updatedRows, appliedCount, mappings: mappingLookup };
+  return result;
 }
 
 async function insertItemsInChunks(
@@ -541,13 +461,35 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Missing environment variables");
+    }
+
+    supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace("Bearer ", "")
+    );
+
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
 
     const { batch_id } = await req.json();
+
     if (!batch_id) {
-      return new Response(JSON.stringify({ error: "batch_id requerido" }), {
+      return new Response(JSON.stringify({ error: "batch_id is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -555,158 +497,106 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Conversion] Starting conversion for batch ${batch_id}`);
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { data: batch, error: batchError } = await supabase
+      .from("document_import_batches")
+      .select("*")
+      .eq("id", batch_id)
+      .single();
 
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Usuario no autorizado" }), {
-        status: 401,
+    if (batchError || !batch) {
+      return new Response(JSON.stringify({ error: "Batch not found" }), {
+        status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    const { data: jobData, error: jobError } = await supabase
+    const { data: conversionJobData, error: jobError } = await supabase
       .from("conversion_jobs")
       .insert({
         batch_id: batch_id,
-        started_by: user.id,
-        status: "running",
-        started_at: new Date().toISOString()
+        started_at: new Date().toISOString(),
+        status: "running"
       })
       .select()
       .single();
 
-    if (jobError || !jobData) {
-      console.error("[Conversion] Error creating job:", jobError);
-      throw new Error(`Failed to create conversion job: ${jobError?.message || 'Unknown error'}`);
+    if (jobError || !conversionJobData) {
+      console.error("[Conversion] Failed to create conversion job:", jobError);
+      throw new Error("Failed to create conversion job");
     }
 
-    conversionJobId = jobData.id;
+    conversionJobId = conversionJobData.id;
     console.log(`[Conversion] Created job ${conversionJobId}`);
 
-    const { count: sourceCount, error: countError } = await supabase
-      .from("imported_documents")
-      .select("*", { count: "exact", head: true })
-      .eq("batch_id", batch_id)
-      .eq("is_unmatched", false)
-      .not("movi_user_id", "is", null);
-
-    if (countError) {
-      throw new Error("Failed to count source documents");
-    }
-
-    console.log(`[Conversion] Source count: ${sourceCount} matched documents (excluding pending)`);
-
-    const { data: documents, error: docsError } = await supabase
+    const { data: docs, error: docsError } = await supabase
       .from("imported_documents")
       .select("*")
-      .eq("batch_id", batch_id)
-      .eq("is_unmatched", false)
-      .not("movi_user_id", "is", null);
+      .eq("batch_id", batch_id);
 
-    if (docsError || !documents) {
-      throw new Error("Failed to fetch documents");
+    if (docsError || !docs) {
+      throw new Error(`Failed to load documents: ${docsError?.message}`);
     }
 
-    console.log(`[Conversion] Processing ${documents.length} documents...`);
+    const sourceCount = docs.length;
+    console.log(`[Conversion] Loaded ${sourceCount} documents from batch`);
 
-    const formatDetection = detectFormatLOGEXPORT(documents);
-    console.log('[Format Detection]', formatDetection);
+    const headers = batch.metadata?.headers_detected || [];
+    const columnCheck = checkRequiredColumns(headers);
 
-    if (documents.length > 0) {
-      const firstDoc = documents[0];
-      console.log('[DEBUG] ===== MUESTRA DE DATOS =====');
-      console.log('[DEBUG] Primera fila document_data:', JSON.stringify(firstDoc.document_data, null, 2));
-      console.log('[DEBUG] Columnas detectadas:', Object.keys(firstDoc.document_data || {}));
-      console.log('[DEBUG] vendor_email_raw:', firstDoc.vendor_email_raw);
-      console.log('[DEBUG] vendor_name_raw:', firstDoc.vendor_name_raw);
-      console.log('[DEBUG] document_id:', firstDoc.document_id);
-      console.log('[DEBUG] ==================================');
+    if (!columnCheck.hasRequiredFields) {
+      return new Response(JSON.stringify({
+        success: false,
+        code: "MISSING_REQUIRED_COLUMNS",
+        message: "El archivo no contiene todas las columnas requeridas",
+        details: {
+          hasVendNombre: columnCheck.hasVendNombre,
+          hasRequiredFields: columnCheck.hasRequiredFields,
+          detectedHeaders: headers,
+          missingColumns: []
+        }
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    if (formatDetection.isLogExport) {
-      console.log(`FORMATO LOGEXPORT DETECTADO (confidence: ${formatDetection.confidence}%)`);
-      console.log(`   - VendNombre: ${formatDetection.details.hasVendNombre ? 'YES' : 'NO'}`);
-      console.log(`   - Required fields: ${formatDetection.details.hasRequiredFields ? 'YES' : 'NO'}`);
-      console.log(`   - Email missing ratio: ${(formatDetection.details.emailMissingRatio * 100).toFixed(1)}%`);
-      console.log(`   - Rows without email: ${formatDetection.details.rowsWithoutEmail}/${formatDetection.details.totalRows}`);
-      console.log('');
-      console.log('REGLA DE ORO: En formato LOGEXPORT, VendNombre sustituye al Email.');
-      console.log('   La falta de email NUNCA bloqueará la conversión.');
-      console.log('');
-    } else {
-      console.log('Formato estándar detectado (con email)');
-    }
+    const discardReport: DiscardReport = {
+      missing_ramo: 0,
+      missing_poliza: 0,
+      invalid_importe: 0,
+      invalid_porpart: 0,
+      missing_email_warnings: 0,
+      missing_aseguradora_warnings: 0,
+      examples: []
+    };
 
     const validRows: StandardCommissionRow[] = [];
     const warningRows: StandardCommissionRow[] = [];
     const discardedRows: any[] = [];
 
-    const discardReport: DiscardReport = {
-      invalid_importe: 0,
-      invalid_porpart: 0,
-      missing_ramo: 0,
-      missing_poliza: 0,
-      missing_aseguradora_warnings: 0,
-      missing_email_warnings: 0,
-      examples: []
-    };
+    for (let i = 0; i < docs.length; i++) {
+      const doc = docs[i];
+      const parsed = parseImportedDocument(doc, i, discardReport);
 
-    for (let i = 0; i < documents.length; i++) {
-      const doc = documents[i];
-      const result = parseImportedDocument(doc, i, discardReport);
-
-      if (result.status === "valid") {
-        validRows.push(result.row!);
-      } else if (result.status === "warning") {
-        warningRows.push(result.row!);
-      } else if (result.status === "discard") {
-        discardedRows.push({
-          document_id: doc.document_id,
-          vendor_email: doc.vendor_email_raw,
-          errors: result.errors
-        });
-        console.error(`[Conversion] Discarded doc ${doc.document_id}:`, result.errors);
+      if (parsed.status === "discard") {
+        discardedRows.push({ row_index: i, errors: parsed.errors, doc });
+      } else if (parsed.row) {
+        if (parsed.status === "warning") {
+          warningRows.push(parsed.row);
+        } else {
+          validRows.push(parsed.row);
+        }
       }
     }
 
-    let parsedRows = [...validRows, ...warningRows];
+    console.log(`[Conversion] Parsed ${docs.length} rows:`);
+    console.log(`[Conversion]   Valid: ${validRows.length}`);
+    console.log(`[Conversion]   Warnings: ${warningRows.length}`);
+    console.log(`[Conversion]   Discarded: ${discardedRows.length}`);
 
-    console.log(`[Conversion] Parsed ${validRows.length} valid rows, ${warningRows.length} warning rows, ${discardedRows.length} discarded`);
-    console.log('[Conversion] Discard report:', discardReport);
-
-    const mappingResult = await applyPersistentMappings(supabase, parsedRows);
-    parsedRows = mappingResult.rows;
-
-    if (mappingResult.appliedCount > 0) {
-      console.log(`Applied ${mappingResult.appliedCount} persistent mappings`);
-      console.log(`   Mappings used:`, Object.keys(mappingResult.mappings));
-    } else {
-      console.log('No persistent mappings to apply');
-    }
-
-    if (parsedRows.length === 0 && discardedRows.length === 0 && warningRows.length > 0) {
-      console.error('[SELF-CHECK FAILED] Inconsistencia: warningRows > 0 pero parsedRows = 0. Bug en construcción de itemsToInsert.');
-      throw new Error('SELF-CHECK FAILED: Las filas con warnings no se están incluyendo en parsedRows. Revisar lógica.');
-    }
+    const parsedRows = [...validRows, ...warningRows];
 
     if (parsedRows.length === 0) {
-      console.error('[CRITICAL] ===== NO ITEMS PARSED =====');
-      console.error('[CRITICAL] Source count:', sourceCount);
-      console.error('[CRITICAL] Valid rows:', validRows.length);
-      console.error('[CRITICAL] Warning rows:', warningRows.length);
-      console.error('[CRITICAL] Discarded rows:', discardedRows.length);
-      console.error('[CRITICAL] Discard report:', JSON.stringify(discardReport, null, 2));
-
-      if (documents.length > 0) {
-        const firstDoc = documents[0];
-        console.error('[CRITICAL] Primera fila document_data:', JSON.stringify(firstDoc.document_data, null, 2));
-        const mapped = mapColumns(firstDoc.document_data || {});
-        console.error('[CRITICAL] Mapped columns de primera fila:', mapped);
-        console.error('[CRITICAL] Columnas detectadas:', Object.keys(firstDoc.document_data || {}));
-      }
-      console.error('[CRITICAL] ==============================');
-
       await supabase
         .from("conversion_jobs")
         .update({
@@ -714,13 +604,14 @@ Deno.serve(async (req: Request) => {
           finished_at: new Date().toISOString(),
           duration_ms: Date.now() - startTime,
           error_code: "NO_VALID_ITEMS_AFTER_MAPPING",
-          error_message: "Ninguna fila pudo ser parseada. Todas las filas tienen datos inválidos o incompletos.",
+          error_message: "No se encontraron filas válidas después del mapeo de columnas",
           conversion_report: {
             discard_report: discardReport,
-            parse_errors: discardedRows.slice(0, 10),
-            sample_document_data: documents.length > 0 ? documents[0].document_data : null,
-            detected_columns: documents.length > 0 ? Object.keys(documents[0].document_data || {}) : [],
-            total_source_items: sourceCount
+            discarded_rows: discardedRows.slice(0, 10),
+            total_source_items: sourceCount,
+            valid_rows: validRows.length,
+            warning_rows: warningRows.length,
+            parsed_rows: parsedRows.length
           }
         })
         .eq("id", conversionJobId);
@@ -728,15 +619,14 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({
         success: false,
         code: "NO_VALID_ITEMS_AFTER_MAPPING",
-        message: "Ninguna fila es válida. Todas las filas tienen datos inválidos o incompletos.",
+        message: "No se encontraron filas válidas después del mapeo de columnas",
         details: {
           totalSourceItems: sourceCount,
-          validRows: 0,
-          warningRows: 0,
+          validRows: validRows.length,
+          warningRows: warningRows.length,
           discardedRows: discardedRows.length,
+          parsedRows: parsedRows.length,
           discarded: discardReport,
-          sample_document_data: documents.length > 0 ? documents[0].document_data : null,
-          detected_columns: documents.length > 0 ? Object.keys(documents[0].document_data || {}) : [],
           parseErrors: discardedRows.slice(0, 5)
         }
       }), {
@@ -869,21 +759,27 @@ Deno.serve(async (req: Request) => {
     console.log(`[Conversion] Total inserted items: ${totalInsertedItems}`);
 
     if (totalInsertedItems === 0) {
-      console.error('[CRITICAL] ===== NO ITEMS INSERTED =====');
-      console.error('[CRITICAL] Total source items:', sourceCount);
-      console.error('[CRITICAL] Valid rows:', validRows.length);
-      console.error('[CRITICAL] Warning rows:', warningRows.length);
-      console.error('[CRITICAL] Discarded rows:', discardedRows.length);
-      console.error('[CRITICAL] Parsed rows (valid+warning):', parsedRows.length);
-      console.error('[CRITICAL] Inserted items:', totalInsertedItems);
-      console.error('[CRITICAL] Discard report:', JSON.stringify(discardReport, null, 2));
-
+      console.error('[CRITICAL] ============================== ');
+      console.error('[CRITICAL] NO SE INSERTARON ITEMS EN LOS LOTES');
+      console.error('[CRITICAL] ============================== ');
+      console.error('[CRITICAL] Parsed Rows:', parsedRows.length);
+      console.error('[CRITICAL] Valid Rows:', validRows.length);
+      console.error('[CRITICAL] Warning Rows:', warningRows.length);
+      console.error('[CRITICAL] Discarded:', discardedRows.length);
+      console.error('[CRITICAL] Discard Report:');
+      console.error('[CRITICAL]   missing_ramo:', discardReport.missing_ramo);
+      console.error('[CRITICAL]   missing_poliza:', discardReport.missing_poliza);
+      console.error('[CRITICAL]   invalid_importe:', discardReport.invalid_importe);
+      console.error('[CRITICAL]   invalid_porpart:', discardReport.invalid_porpart);
+      console.error('[CRITICAL]   missing_email_warnings:', discardReport.missing_email_warnings);
+      console.error('[CRITICAL]   missing_aseguradora_warnings:', discardReport.missing_aseguradora_warnings);
       if (parsedRows.length > 0) {
-        console.error('[CRITICAL] Primera fila parseada (debería insertarse):', JSON.stringify(parsedRows[0], null, 2));
+        console.error('[CRITICAL] Sample parsed row:');
+        console.error('[CRITICAL]', JSON.stringify(parsedRows[0], null, 2));
       }
-
       if (discardedRows.length > 0) {
-        console.error('[CRITICAL] Primera fila descartada:', JSON.stringify(discardedRows[0], null, 2));
+        console.error('[CRITICAL] Sample discarded row:');
+        console.error('[CRITICAL]', JSON.stringify(discardedRows[0], null, 2));
       }
 
       console.error('[CRITICAL] ==============================');
@@ -932,51 +828,46 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    console.log(`[Conversion] Success: ${createdBatches.length} batches, ${totalInsertedItems} items`);
-
-    for (const batchId of createdBatchIds) {
-      const { count: pendingCount } = await supabase
-        .from("commission_details")
-        .select("*", { count: "exact", head: true })
-        .eq("batch_id", batchId)
-        .eq("pending_assignment", true);
-
-      await supabase
-        .from("commission_batches")
-        .update({ pending_assignments_count: pendingCount || 0 })
-        .eq("id", batchId);
-    }
+    await supabase
+      .from("document_import_batches")
+      .update({
+        status: "converted",
+        converted_at: new Date().toISOString(),
+        converted_by: user.id,
+        converted_to_commissions: true,
+        commission_batch_ids: createdBatchIds
+      })
+      .eq("id", batch_id);
 
     await supabase
       .from("conversion_jobs")
       .update({
-        status: "completed",
+        status: "success",
         finished_at: new Date().toISOString(),
         duration_ms: Date.now() - startTime,
         conversion_report: {
+          created_batches: createdBatches,
+          total_inserted_items: totalInsertedItems,
+          discard_report: discardReport,
           total_source_items: sourceCount,
           valid_rows: validRows.length,
           warning_rows: warningRows.length,
-          discarded_rows: discardedRows.length,
-          total_inserted: totalInsertedItems,
-          batches_created: createdBatches.length,
-          discard_report: discardReport,
-          format_detection: formatDetection
+          parsed_rows: parsedRows.length
         }
       })
       .eq("id", conversionJobId);
 
     return new Response(JSON.stringify({
       success: true,
-      conversionJobId,
-      batches: createdBatches,
-      summary: {
-        totalSourceItems: sourceCount,
+      message: "Conversión completada exitosamente",
+      data: {
+        createdBatches,
+        totalInsertedItems,
+        sourceCount,
         validRows: validRows.length,
         warningRows: warningRows.length,
         discardedRows: discardedRows.length,
-        insertedItems: totalInsertedItems,
-        batchesCreated: createdBatches.length
+        conversion_job_id: conversionJobId
       }
     }), {
       status: 200,
@@ -986,7 +877,7 @@ Deno.serve(async (req: Request) => {
   } catch (error: any) {
     console.error("[Conversion] Fatal error:", error);
 
-    if (supabase && conversionJobId) {
+    if (conversionJobId && supabase) {
       await supabase
         .from("conversion_jobs")
         .update({
@@ -994,16 +885,17 @@ Deno.serve(async (req: Request) => {
           finished_at: new Date().toISOString(),
           duration_ms: Date.now() - startTime,
           error_code: "FATAL_ERROR",
-          error_message: error.message || "Error desconocido"
+          error_message: error.message || "Unknown error"
         })
-        .eq("id", conversionJobId);
+        .eq("id", conversionJobId)
+        .then(() => console.log("[Conversion] Updated job status to failed"))
+        .catch((err: any) => console.error("[Conversion] Failed to update job:", err));
     }
 
     return new Response(JSON.stringify({
       success: false,
       code: "FATAL_ERROR",
-      message: error.message || "Error fatal durante la conversión",
-      error: error.toString()
+      message: error.message || "An unexpected error occurred"
     }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
