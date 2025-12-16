@@ -748,6 +748,7 @@ Deno.serve(async (req: Request) => {
       const { data: batchData, error: batchError } = await supabase
         .from("commission_batches")
         .insert({
+          name: batchName,
           display_name: batchName,
           period_start: group.period_start,
           period_end: group.period_end,
