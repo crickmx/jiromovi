@@ -514,6 +514,7 @@ Deno.serve(async (req: Request) => {
       .from("conversion_jobs")
       .insert({
         batch_id: batch_id,
+        started_by: user.id,
         started_at: new Date().toISOString(),
         status: "running"
       })
