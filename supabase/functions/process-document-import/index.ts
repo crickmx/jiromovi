@@ -117,15 +117,37 @@ function parseExcelLogExport(fileBuffer: ArrayBuffer): ParsedExcel {
   };
 }
 
-function parseNumeric(value: any): number | null {
+function parseNumberMx(value: any): number | null {
   if (value === null || value === undefined || value === '') return null;
-  const str = String(value).trim().replace(/,/g, '');
+
+  if (typeof value === 'number') {
+    return isNaN(value) ? null : value;
+  }
+
+  let str = String(value).trim();
+
+  if (str === '' || str === '-' || str === 'N/A' || str.toLowerCase() === 'na') return null;
+
+  str = str.replace(/\$/g, '');
+  str = str.replace(/\s/g, '');
+  str = str.replace(/,/g, '');
+
+  if (str.includes('%')) {
+    str = str.replace(/%/g, '');
+  }
+
   const num = parseFloat(str);
   return isNaN(num) ? null : num;
 }
 
 function parseDate(value: any): Date | null {
   if (!value) return null;
+
+  if (typeof value === 'number') {
+    const excelEpoch = new Date(1899, 11, 30);
+    const date = new Date(excelEpoch.getTime() + value * 86400000);
+    if (!isNaN(date.getTime())) return date;
+  }
 
   const str = String(value).trim();
   if (!str) return null;
@@ -287,8 +309,8 @@ Deno.serve(async (req: Request) => {
       const vendorNameRaw = row[vendNombre]?.toString()?.trim() || '';
       const documentoValue = row[documento]?.toString()?.trim() || '';
       const ramoValue = row[ramo]?.toString()?.trim() || '';
-      const importeValue = parseNumeric(row[importe]);
-      const porPartValue = parseNumeric(row[porPart]);
+      const importeValue = parseNumberMx(row[importe]);
+      const porPartValue = parseNumberMx(row[porPart]);
 
       const warnings: string[] = [];
       let status: 'valid' | 'warning' | 'discard' = 'valid';
@@ -308,10 +330,16 @@ Deno.serve(async (req: Request) => {
         discardReason = 'PorPart no numérico o vacío';
       }
 
-      const fpagoValue = fPago ? parseDate(row[fPago]) : null;
-      if (!fpagoValue && status === 'valid') {
+      let fpagoValue: Date | null = null;
+      if (fPago && row[fPago]) {
+        fpagoValue = parseDate(row[fPago]);
+        if (!fpagoValue && status === 'valid') {
+          status = 'warning';
+          warnings.push('FPago inválido o vacío');
+        }
+      } else if (status === 'valid') {
         status = 'warning';
-        warnings.push('FPago inválido o vacío');
+        warnings.push('FPago no especificado');
       }
 
       const aseguradoraValue = row[parsed.headersNormalizedMap['ciaabreviacion']]?.toString()?.trim() ||
@@ -401,7 +429,7 @@ Deno.serve(async (req: Request) => {
         importe_base: importeValue,
         porcentaje: porPartValue,
         comision_calculada: comisionCalculada,
-        prima_neta_info: parseNumeric(row[parsed.headersNormalizedMap['primaneta']]),
+        prima_neta_info: parseNumberMx(row[parsed.headersNormalizedMap['primaneta']]),
         concepto: row[parsed.headersNormalizedMap['concepto']]?.toString()?.trim() || null,
         oficina: row[parsed.headersNormalizedMap['despnombre']]?.toString()?.trim() || null,
         nombre_completo: row[parsed.headersNormalizedMap['nombrecompleto']]?.toString()?.trim() || null,

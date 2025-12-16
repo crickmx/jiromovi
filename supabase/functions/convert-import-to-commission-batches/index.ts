@@ -119,16 +119,40 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!insertableItems || insertableItems.length === 0) {
-      console.log(`[Convert] No hay items insertables`);
+      console.log(`[Convert] No hay items insertables - obteniendo diagnóstico completo`);
+
+      const { data: totalCheck } = await adminSupabase
+        .from('document_import_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('import_batch_id', import_batch_id);
+
+      if (totalCheck === null || (totalCheck as any) === 0) {
+        console.error('[Convert] STAGING VACÍO - No hay items en staging para este batch');
+        return new Response(
+          JSON.stringify({
+            success: false,
+            code: 'STAGING_EMPTY_OR_WRONG_BATCH_ID',
+            message: `No hay filas en staging para el batch ${import_batch_id}. Verifica que el batch fue importado correctamente.`,
+            batch_id: import_batch_id,
+            diagnostic: {
+              error: 'STAGING_EMPTY',
+              suggestion: 'El batch puede no haber sido importado o el batchId es incorrecto'
+            }
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       let diagnostic: any = {
         batch_id: import_batch_id,
-        counts: {
+        counts_by_status: {
           total: 0,
           valid: 0,
           warning: 0,
           discard: 0
         },
+        top_discard_reasons: [],
+        discard_samples: [],
         message: 'No se encontraron items válidos para convertir'
       };
 
@@ -139,11 +163,27 @@ Deno.serve(async (req: Request) => {
 
         if (!diagError && diagData) {
           diagnostic = diagData;
+          console.log('[Convert] Diagnóstico obtenido:', JSON.stringify(diagnostic, null, 2));
         } else {
-          console.warn('[Convert] No se pudo obtener diagnóstico:', diagError);
+          console.error('[Convert] Error al obtener diagnóstico:', diagError);
+
+          const { data: manualCounts } = await adminSupabase
+            .from('document_import_items')
+            .select('status')
+            .eq('import_batch_id', import_batch_id);
+
+          if (manualCounts) {
+            const counts = {
+              total: manualCounts.length,
+              valid: manualCounts.filter(i => i.status === 'valid').length,
+              warning: manualCounts.filter(i => i.status === 'warning').length,
+              discard: manualCounts.filter(i => i.status === 'discard').length
+            };
+            diagnostic.counts_by_status = counts;
+          }
         }
       } catch (diagError: any) {
-        console.warn('[Convert] Error al obtener diagnóstico:', diagError);
+        console.error('[Convert] Excepción al obtener diagnóstico:', diagError);
       }
 
       await supabase

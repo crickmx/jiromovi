@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   X,
   AlertTriangle,
+  AlertCircle,
   CheckCircle,
   Calendar,
   Users,
@@ -427,60 +428,121 @@ export default function ConvertirLoteModal({
                   <div className="flex items-start gap-3">
                     <Info className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <p className="font-semibold text-orange-900 mb-2">
+                      <p className="font-semibold text-orange-900 mb-3 text-lg">
                         Diagnóstico Detallado
                       </p>
 
-                      {errorDetails.diagnostic.counts && (
+                      {errorDetails.diagnostic.batch_info && (
+                        <div className="bg-white rounded-lg p-3 mb-4 border border-orange-200">
+                          <p className="text-xs font-semibold text-gray-700 mb-2">Información del Archivo:</p>
+                          <div className="space-y-1 text-xs text-gray-600">
+                            <p><span className="font-semibold">Archivo:</span> {errorDetails.diagnostic.batch_info.file_name}</p>
+                            <p><span className="font-semibold">Hoja usada:</span> {errorDetails.diagnostic.batch_info.sheet_name_used}</p>
+                            <p><span className="font-semibold">Formato:</span> {errorDetails.diagnostic.batch_info.detected_format}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {errorDetails.diagnostic.counts_by_status && (
                         <div className="grid grid-cols-4 gap-2 mb-4">
-                          <div className="bg-white p-2 rounded border border-gray-200">
+                          <div className="bg-white p-3 rounded border border-gray-200">
                             <p className="text-xs text-gray-600">Total</p>
-                            <p className="text-lg font-bold text-gray-700">{errorDetails.diagnostic.counts.total || 0}</p>
+                            <p className="text-2xl font-bold text-gray-700">{errorDetails.diagnostic.counts_by_status.total || 0}</p>
                           </div>
-                          <div className="bg-white p-2 rounded border border-green-200">
+                          <div className="bg-white p-3 rounded border border-green-200">
                             <p className="text-xs text-green-600">Válidas</p>
-                            <p className="text-lg font-bold text-green-700">{errorDetails.diagnostic.counts.valid || 0}</p>
+                            <p className="text-2xl font-bold text-green-700">{errorDetails.diagnostic.counts_by_status.valid || 0}</p>
                           </div>
-                          <div className="bg-white p-2 rounded border border-blue-200">
+                          <div className="bg-white p-3 rounded border border-blue-200">
                             <p className="text-xs text-blue-600">Advertencias</p>
-                            <p className="text-lg font-bold text-blue-700">{errorDetails.diagnostic.counts.warning || 0}</p>
+                            <p className="text-2xl font-bold text-blue-700">{errorDetails.diagnostic.counts_by_status.warning || 0}</p>
                           </div>
-                          <div className="bg-white p-2 rounded border border-red-200">
+                          <div className="bg-white p-3 rounded border border-red-200">
                             <p className="text-xs text-red-600">Descartadas</p>
-                            <p className="text-lg font-bold text-red-700">{errorDetails.diagnostic.counts.discard || 0}</p>
+                            <p className="text-2xl font-bold text-red-700">{errorDetails.diagnostic.counts_by_status.discard || 0}</p>
                           </div>
                         </div>
                       )}
 
                       {errorDetails.diagnostic.top_discard_reasons && errorDetails.diagnostic.top_discard_reasons.length > 0 && (
                         <div className="mb-4">
-                          <p className="text-sm font-semibold text-orange-900 mb-2">Motivos de Descarte:</p>
+                          <p className="text-sm font-semibold text-orange-900 mb-2">Principales Motivos de Descarte:</p>
                           <div className="space-y-2">
                             {errorDetails.diagnostic.top_discard_reasons.map((reason: any, idx: number) => (
-                              <div key={idx} className="flex items-center justify-between bg-white p-2 rounded">
-                                <span className="text-sm text-gray-700">{reason.discard_reason}</span>
-                                <span className="text-sm font-semibold text-red-700">{reason.count} filas</span>
+                              <div key={idx} className="flex items-center justify-between bg-white p-3 rounded border border-orange-200">
+                                <span className="text-sm text-gray-700 font-medium">{reason.reason || 'Sin razón especificada'}</span>
+                                <span className="text-sm font-bold text-red-700">{reason.count} filas</span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      {errorDetails.diagnostic.sample_discard_rows && errorDetails.diagnostic.sample_discard_rows.length > 0 && (
-                        <div className="mt-3 bg-white rounded-lg p-3 border border-orange-200">
-                          <p className="text-xs font-semibold text-orange-900 mb-2">Ejemplos de filas descartadas:</p>
-                          <div className="space-y-3">
-                            {errorDetails.diagnostic.sample_discard_rows.slice(0, 5).map((row: any, idx: number) => (
-                              <div key={idx} className="text-xs border-l-2 border-orange-300 pl-2 pb-2">
-                                <p className="text-orange-900 font-semibold">Fila {row.row_index}</p>
-                                <p className="text-gray-600 text-xs">Motivo: {row.reason}</p>
-                                {row.vendor_name && <p className="text-gray-600 text-xs">Vendedor: {row.vendor_name}</p>}
-                                {row.documento && <p className="text-gray-600 text-xs">Documento: {row.documento}</p>}
+                      {errorDetails.diagnostic.discard_samples && errorDetails.diagnostic.discard_samples.length > 0 && (
+                        <div className="mt-4 bg-white rounded-lg p-4 border border-orange-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm font-semibold text-orange-900">Ejemplos de Filas Descartadas (máx 20):</p>
+                            <button
+                              onClick={() => {
+                                const diagnosticText = JSON.stringify(errorDetails.diagnostic, null, 2);
+                                navigator.clipboard.writeText(diagnosticText);
+                                alert('Diagnóstico copiado al portapapeles');
+                              }}
+                              className="text-xs px-2 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 transition"
+                            >
+                              Copiar diagnóstico completo
+                            </button>
+                          </div>
+                          <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {errorDetails.diagnostic.discard_samples.map((sample: any, idx: number) => (
+                              <div key={idx} className="text-xs border-l-4 border-orange-400 pl-3 py-2 bg-orange-50">
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                  <p className="text-orange-900 font-bold col-span-2">Fila {sample.row_index}</p>
+                                  <p className="text-red-700 font-semibold col-span-2 mb-1">
+                                    Motivo: {sample.discard_reason || 'No especificado'}
+                                  </p>
+                                  {sample.vendor_name_raw && (
+                                    <p className="text-gray-600"><span className="font-semibold">Vendedor:</span> {sample.vendor_name_raw}</p>
+                                  )}
+                                  {sample.documento && (
+                                    <p className="text-gray-600"><span className="font-semibold">Documento:</span> {sample.documento}</p>
+                                  )}
+                                  {sample.ramo && (
+                                    <p className="text-gray-600"><span className="font-semibold">Ramo:</span> {sample.ramo}</p>
+                                  )}
+                                  {sample.aseguradora && (
+                                    <p className="text-gray-600"><span className="font-semibold">Aseguradora:</span> {sample.aseguradora}</p>
+                                  )}
+                                  <p className="text-gray-600">
+                                    <span className="font-semibold">Importe:</span> {sample.importe_base !== null ? sample.importe_base : 'null'}
+                                  </p>
+                                  <p className="text-gray-600">
+                                    <span className="font-semibold">PorPart:</span> {sample.porcentaje !== null ? sample.porcentaje : 'null'}
+                                  </p>
+                                  {sample.fpago_raw && (
+                                    <p className="text-gray-600 col-span-2"><span className="font-semibold">FPago:</span> {sample.fpago_raw}</p>
+                                  )}
+                                  {sample.warnings && (
+                                    <p className="text-blue-600 col-span-2 text-xs mt-1">
+                                      Advertencias: {sample.warnings}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
+
+                      <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm font-semibold text-blue-900 mb-2">Posibles Soluciones:</p>
+                        <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                          <li>Verifica que las columnas <strong>Documento</strong>, <strong>Ramo</strong>, <strong>Importe</strong> y <strong>PorPart</strong> tengan valores válidos</li>
+                          <li>Asegúrate de que Importe y PorPart sean valores numéricos (sin letras ni caracteres especiales)</li>
+                          <li>La hoja seleccionada automáticamente fue: <strong>{errorDetails.diagnostic.batch_info?.sheet_name_used || 'desconocida'}</strong></li>
+                          <li>Si usas formato LOGEXPORT, verifica que el archivo no esté corrupto</li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 </div>
