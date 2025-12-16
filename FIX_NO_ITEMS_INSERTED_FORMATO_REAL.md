@@ -134,11 +134,21 @@ Si `insertableRows == 0`, el error mostrará exactamente qué campos obligatorio
 ## Archivos Modificados
 
 1. **supabase/functions/convert-import-to-commission-batches/index.ts**
-   - Sinónimos actualizados
-   - vendor_key implementado
-   - Validaciones corregidas
-   - Filtro de items corregido
-   - Campos nuevos agregados
+   - Sinónimos actualizados (EmailAgente, VendNombre, Documento, CiaAbreviacion, etc.)
+   - vendor_key implementado (email:xxx / name:YYY / unknown)
+   - Validaciones corregidas (solo 4 campos obligatorios reales)
+   - Filtro de items corregido (valid + warning)
+   - Campos nuevos agregados (vendor_name_raw, endoso)
+
+2. **Migraciones de Base de Datos Aplicadas**
+   - `fix_commission_details_nullable_agent.sql`:
+     - `agent_id` ahora es NULLABLE
+     - Agregado campo `endoso` (text, opcional)
+     - Índice para búsquedas por endoso
+   - `fix_commission_batches_nullable_dates.sql`:
+     - `date_from` ahora es NULLABLE
+     - `date_to` ahora es NULLABLE
+     - Permite crear lotes "Sin fecha" (week_number = 0)
 
 ## Próximos Pasos
 
