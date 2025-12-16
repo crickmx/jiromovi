@@ -15,11 +15,14 @@ const corsHeaders = {
 interface StandardCommissionRow {
   fpago: string | null;
   agent_email: string;
+  vendor_name_raw?: string;
+  vendor_key: string;
   ramo: string;
   aseguradora: string;
   importe_base: number;
   porcentaje: number;
   poliza: string;
+  endoso?: string;
   comision_calculada: number;
   prima_neta_info?: number;
   nombre_asegurado?: string;
@@ -58,15 +61,17 @@ function mapColumns(docData: Record<string, any>): Record<string, string> {
 
   // Diccionario de sinónimos
   const synonyms: Record<string, string[]> = {
-    fpago: ['fpago', 'f.pago', 'fecha_pago', 'fecha pago', 'fechapago', 'fecha', 'date'],
-    email: ['email', 'correo', 'mail', 'correo_electronico', 'agent_email', 'email_agente'],
+    fpago: ['fpago', 'f.pago', 'fecha_pago', 'fecha pago', 'fechapago', 'fecha', 'date', 'fliquidacion', 'f.liquidacion'],
+    email: ['email', 'correo', 'mail', 'correo_electronico', 'agent_email', 'email_agente', 'emailagente'],
+    vendornombre: ['vendnombre', 'vend.nombre', 'vendedor', 'vendor', 'nombre_vendedor', 'agente', 'despnombre', 'desp.nombre'],
     ramo: ['ramo', 'rama', 'line', 'linea', 'tipo_seguro'],
-    aseguradora: ['aseguradora', 'aseguradora', 'insurer', 'company', 'compañia', 'compania'],
+    aseguradora: ['aseguradora', 'cia', 'ciaabreviacion', 'cia.abreviacion', 'insurer', 'company', 'compañia', 'compania'],
     importe: ['importe', 'amount', 'monto', 'valor', 'prima'],
     porpart: ['porpart', 'por.part', '% part', 'porcentaje', 'percentage', 'comision'],
-    poliza: ['poliza', 'póliza', 'numero_poliza', 'num_poliza', 'policy', 'no_poliza', 'certificado'],
+    poliza: ['poliza', 'póliza', 'numero_poliza', 'num_poliza', 'policy', 'no_poliza', 'certificado', 'documento'],
+    endoso: ['endoso', 'endorsement', 'end'],
     primaneta: ['prima_neta', 'primaneta', 'prima neta', 'netpremium'],
-    nombreasegurado: ['nombre_asegurado', 'asegurado', 'nombre', 'insured_name', 'cliente'],
+    nombreasegurado: ['nombre_asegurado', 'asegurado', 'nombre', 'insured_name', 'cliente', 'nombrecompleto', 'nombre.completo'],
     concepto: ['concepto', 'concept', 'descripcion', 'description', 'detalle']
   };
 
@@ -99,6 +104,26 @@ function normalizeEmail(value: any): string {
 function normalizeText(value: any): string | undefined {
   if (value === null || value === undefined || value === '') return undefined;
   return String(value).trim();
+}
+
+function normalizeName(value: any): string {
+  if (!value) return '';
+  return String(value)
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function createVendorKey(email?: string, name?: string): string {
+  if (email && email.trim() !== '') {
+    return `email:${email.toLowerCase().trim()}`;
+  }
+  if (name && name.trim() !== '') {
+    return `name:${normalizeName(name)}`;
+  }
+  return 'unknown';
 }
 
 function normalizeNumeric(value: any): number {
@@ -158,6 +183,7 @@ function checkHeaders(firstDoc: any): HeaderCheckResult {
   const normalized = keys.map(k => k.toLowerCase().trim());
 
   // Solo campos realmente obligatorios para calcular comisión
+  // NOTA: poliza puede venir como "Documento" en algunos archivos
   const requiredFields = ['importe', 'porpart', 'ramo', 'poliza'];
   const missing: string[] = [];
 
@@ -222,11 +248,13 @@ function parseImportedDocument(
   // Extraer valores usando mapeo
   const fpagoRaw = mapped.fpago ? docData[mapped.fpago] : null;
   const emailRaw = mapped.email ? docData[mapped.email] : doc.vendor_email_raw;
+  const vendorNombreRaw = mapped.vendornombre ? docData[mapped.vendornombre] : doc.vendor_name_raw;
   const ramoRaw = mapped.ramo ? docData[mapped.ramo] : null;
   const aseguradoraRaw = mapped.aseguradora ? docData[mapped.aseguradora] : null;
   const importeRaw = mapped.importe ? docData[mapped.importe] : null;
   const porpartRaw = mapped.porpart ? docData[mapped.porpart] : null;
   const polizaRaw = mapped.poliza ? docData[mapped.poliza] : doc.document_id;
+  const endosoRaw = mapped.endoso ? docData[mapped.endoso] : null;
 
   const primaNetaRaw = mapped.primaneta ? docData[mapped.primaneta] : null;
   const nombreAseguradoRaw = mapped.nombreasegurado ? docData[mapped.nombreasegurado] : null;
@@ -235,15 +263,20 @@ function parseImportedDocument(
   // Normalizar
   const fpago = normalizeDate(fpagoRaw);
   const agent_email = normalizeEmail(emailRaw);
+  const vendor_name_raw = vendorNombreRaw ? normalizeText(vendorNombreRaw) : undefined;
   const ramo = normalizeText(ramoRaw);
   let aseguradora = normalizeText(aseguradoraRaw);
   const importe_base = normalizeNumeric(importeRaw);
   const porcentaje = normalizeNumeric(porpartRaw);
   const poliza = normalizeText(polizaRaw);
+  const endoso = endosoRaw ? normalizeText(endosoRaw) : undefined;
 
   const prima_neta_info = primaNetaRaw ? normalizeNumeric(primaNetaRaw) : undefined;
   const nombre_asegurado = nombreAseguradoRaw ? normalizeText(nombreAseguradoRaw) : undefined;
   const concepto = conceptoRaw ? normalizeText(conceptoRaw) : undefined;
+
+  // Crear vendor_key: priorizar email, luego nombre, luego unknown
+  const vendor_key = createVendorKey(agent_email, vendor_name_raw);
 
   // Validar SOLO campos realmente obligatorios para calcular comisión
   let discardReason = '';
@@ -317,11 +350,14 @@ function parseImportedDocument(
   const parsedRow: StandardCommissionRow = {
     fpago,
     agent_email: agent_email || '',  // Puede estar vacío
+    vendor_name_raw,  // VendNombre del Excel (para agrupar y asignar manualmente)
+    vendor_key,  // email:xxx o name:YYY o unknown (para matching)
     ramo: ramo!,
     aseguradora: aseguradora!,  // Siempre tiene valor (default si vacío)
     importe_base,  // Puede ser negativo
     porcentaje,
     poliza: poliza!,
+    endoso,  // Opcional
     comision_calculada,  // Puede ser negativa
     prima_neta_info,
     nombre_asegurado,
@@ -708,13 +744,14 @@ Deno.serve(async (req: Request) => {
       // Preparar items para inserción
       const itemsToInsert = noDateRows.map(row => {
         const hasEmail = row.agent_email && row.agent_email !== '';
-        const vendorKey = hasEmail ? row.agent_email : 'unknown';
         const matchMethod = hasEmail ? 'email' : 'none';
+        const isPending = !hasEmail;
 
         return {
           batch_id: noDateBatch.id,
           agent_id: null,
           poliza: row.poliza,
+          endoso: row.endoso || null,
           nombre_asegurado: row.nombre_asegurado || null,
           ramo: row.ramo,
           aseguradora: row.aseguradora,
@@ -725,13 +762,13 @@ Deno.serve(async (req: Request) => {
           date_fpago: row.fpago,
           commission_bruta: row.comision_calculada,
           commission_neta: row.comision_calculada,
-          vendor_email_raw: row.agent_email || '',
-          vendor_email_norm: row.agent_email || '',
-          vendor_name_raw: '',
-          vendor_name_norm: '',
-          vendor_key: vendorKey,
+          vendor_email_raw: row.agent_email || null,
+          vendor_email_norm: row.agent_email || null,
+          vendor_name_raw: row.vendor_name_raw || null,
+          vendor_name_norm: row.vendor_name_raw ? normalizeName(row.vendor_name_raw) : null,
+          vendor_key: row.vendor_key,
           match_method: matchMethod,
-          pending_assignment: true,
+          pending_assignment: isPending,
           raw_row: {}
         };
       });
@@ -790,13 +827,14 @@ Deno.serve(async (req: Request) => {
       // Preparar items
       const itemsToInsert = group.rows.map(row => {
         const hasEmail = row.agent_email && row.agent_email !== '';
-        const vendorKey = hasEmail ? row.agent_email : 'unknown';
         const matchMethod = hasEmail ? 'email' : 'none';
+        const isPending = !hasEmail;
 
         return {
           batch_id: weekBatch.id,
           agent_id: null,
           poliza: row.poliza,
+          endoso: row.endoso || null,
           nombre_asegurado: row.nombre_asegurado || null,
           ramo: row.ramo,
           aseguradora: row.aseguradora,
@@ -807,13 +845,13 @@ Deno.serve(async (req: Request) => {
           date_fpago: row.fpago,
           commission_bruta: row.comision_calculada,
           commission_neta: row.comision_calculada,
-          vendor_email_raw: row.agent_email || '',
-          vendor_email_norm: row.agent_email || '',
-          vendor_name_raw: '',
-          vendor_name_norm: '',
-          vendor_key: vendorKey,
+          vendor_email_raw: row.agent_email || null,
+          vendor_email_norm: row.agent_email || null,
+          vendor_name_raw: row.vendor_name_raw || null,
+          vendor_name_norm: row.vendor_name_raw ? normalizeName(row.vendor_name_raw) : null,
+          vendor_key: row.vendor_key,
           match_method: matchMethod,
-          pending_assignment: !hasEmail,
+          pending_assignment: isPending,
           raw_row: {}
         };
       });
