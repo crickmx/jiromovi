@@ -400,14 +400,25 @@ export interface DetailedBatchConversionValidation {
 
 export interface ConversionResult {
   success: boolean;
-  message: string;
-  batches: Array<{
+  conversion_job_id?: string;
+  createdBatches: Array<{
     id: string;
+    batch_id: string;
     week_number: number;
     period_start: string;
     period_end: string;
-    document_count: number;
+    display_name: string;
+    items: number;
   }>;
+  totalInsertedItems: number;
+  summary?: {
+    totalSourceItems: number;
+    validRows: number;
+    warningRows: number;
+    discardedRows: number;
+    insertedItems: number;
+    batchesCreated: number;
+  };
 }
 
 export async function validateBatchForConversion(
@@ -516,16 +527,33 @@ export async function convertBatchToCommissions(
     throw error;
   }
 
+  // Mapear la respuesta de la edge function al formato esperado
+  const mappedResult: ConversionResult = {
+    success: result.success,
+    conversion_job_id: result.conversionJobId,
+    createdBatches: (result.batches || []).map((batch: any) => ({
+      id: batch.batch_id || batch.id,
+      batch_id: batch.batch_id || batch.id,
+      week_number: batch.week_number,
+      period_start: batch.period_start,
+      period_end: batch.period_end,
+      display_name: batch.display_name,
+      items: batch.items || 0
+    })),
+    totalInsertedItems: result.summary?.insertedItems || 0,
+    summary: result.summary
+  };
+
   // Validar que tenemos datos válidos
-  if (!result.createdBatches || result.createdBatches.length === 0) {
+  if (!mappedResult.createdBatches || mappedResult.createdBatches.length === 0) {
     throw new Error('NO_ITEMS_CONVERTED: No se crearon lotes. Verifica que el archivo tenga datos válidos.');
   }
 
-  if (result.totalInsertedItems === 0) {
+  if (mappedResult.totalInsertedItems === 0) {
     throw new Error('NO_ITEMS_CONVERTED: No se insertaron items en los lotes.');
   }
 
-  return result as ConversionResult;
+  return mappedResult;
 }
 
 /**
