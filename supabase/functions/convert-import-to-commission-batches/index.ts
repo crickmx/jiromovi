@@ -499,7 +499,11 @@ async function insertItemsInChunks(
 
     if (error) {
       console.error(`[Batch Insert] Error inserting chunk ${i}-${i + chunk.length}:`, error);
-      console.error(`[Batch Insert] Error details:`, JSON.stringify(error, null, 2));
+      console.error(`[Batch Insert] Error code:`, error.code);
+      console.error(`[Batch Insert] Error message:`, error.message);
+      console.error(`[Batch Insert] Error hint:`, error.hint);
+      console.error(`[Batch Insert] Error details:`, error.details);
+      console.error(`[Batch Insert] Full error object:`, JSON.stringify(error, null, 2));
       console.error(`[Batch Insert] Primera fila del chunk con error:`, JSON.stringify(chunk[0], null, 2));
       errors.push({ chunk_start: i, error, sample_item: chunk[0] });
     } else {
@@ -820,11 +824,11 @@ Deno.serve(async (req: Request) => {
           agent_email: row.agent_email,
           vendor_name_raw: row.vendor_name_raw,
           fpago: row.fpago,
-          ramo: row.ramo,
-          aseguradora: row.aseguradora,
+          ramo: row.ramo || 'SIN_RAMO',
+          aseguradora: row.aseguradora || 'SIN_ASEGURADORA',
           importe: row.importe,
           porpart: row.porpart,
-          poliza: row.poliza,
+          poliza: row.poliza || 'SIN_POLIZA',
           endoso: row.endoso,
           prima_neta: row.prima_neta,
           nombre_asegurado: row.nombre_asegurado,
@@ -836,6 +840,10 @@ Deno.serve(async (req: Request) => {
           calculation_method: 'excel_column'
         };
       });
+
+      if (itemsToInsert.length > 0) {
+        console.log(`[Conversion] Sample item to insert:`, JSON.stringify(itemsToInsert[0], null, 2));
+      }
 
       const insertResult = await insertItemsInChunks(supabase, itemsToInsert);
 
