@@ -13,7 +13,7 @@ const corsHeaders = {
 // ============================================================================
 
 interface StandardCommissionRow {
-  fpago: string;
+  fpago: string | null;
   agent_email: string;
   ramo: string;
   aseguradora: string;
@@ -24,6 +24,30 @@ interface StandardCommissionRow {
   prima_neta_info?: number;
   nombre_asegurado?: string;
   concepto?: string;
+}
+
+interface DiscardReport {
+  missing_email: number;
+  missing_importe: number;
+  missing_porpart: number;
+  missing_ramo: number;
+  missing_aseguradora: number;
+  missing_poliza: number;
+  invalid_importe: number;
+  invalid_porpart: number;
+  examples: Array<{
+    rowIndex: number;
+    reason: string;
+    values: Record<string, any>;
+  }>;
+}
+
+interface HeaderCheckResult {
+  valid: boolean;
+  detected: string[];
+  normalized: string[];
+  missing: string[];
+  mapped: Record<string, string>;
 }
 
 function normalizeNumeric(value: any): number {
@@ -132,11 +156,48 @@ function mapColumns(data: Record<string, any>): Record<string, string> {
 }
 
 /**
+ * Pre-check: Valida que el primer documento tenga las columnas obligatorias
+ * Retorna información detallada sobre headers detectados y faltantes
+ */
+function checkHeaders(firstDoc: any): HeaderCheckResult {
+  const docData = firstDoc?.document_data || {};
+  const keys = Object.keys(docData);
+
+  const normalized = keys.map(key =>
+    key.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_.]/g, '')
+  );
+
+  const mapped = mapColumns(docData);
+
+  const requiredFields = ['email', 'importe', 'porpart', 'ramo', 'aseguradora', 'poliza'];
+  const missing: string[] = [];
+
+  for (const field of requiredFields) {
+    if (!mapped[field]) {
+      missing.push(field);
+    }
+  }
+
+  return {
+    valid: missing.length === 0,
+    detected: keys,
+    normalized,
+    missing,
+    mapped
+  };
+}
+
+/**
  * Parsea una fila de documento importado al modelo estándar
  * REGLA DE ORO: Comisión = Importe × (PorPart / 100)
  * CRÍTICO: NO usar prima_neta como base de cálculo
+ * IMPORTANTE: FPago puede ser NULL (va al lote "Sin fecha")
  */
-function parseImportedDocument(doc: any): {
+function parseImportedDocument(
+  doc: any,
+  rowIndex: number,
+  discardReport: DiscardReport
+): {
   row: StandardCommissionRow | null;
   errors: string[];
 } {
@@ -145,9 +206,6 @@ function parseImportedDocument(doc: any): {
 
   // Mapear columnas del documento
   const mapped = mapColumns(docData);
-
-  console.log('[ParseDoc] Mapped columns:', mapped);
-  console.log('[ParseDoc] Document data keys:', Object.keys(docData));
 
   // Extraer valores usando mapeo
   const fpagoRaw = mapped.fpago ? docData[mapped.fpago] : null;
@@ -162,16 +220,6 @@ function parseImportedDocument(doc: any): {
   const nombreAseguradoRaw = mapped.nombreasegurado ? docData[mapped.nombreasegurado] : null;
   const conceptoRaw = mapped.concepto ? docData[mapped.concepto] : null;
 
-  console.log('[ParseDoc] Raw values:', {
-    fpagoRaw,
-    emailRaw,
-    ramoRaw,
-    aseguradoraRaw,
-    importeRaw,
-    porpartRaw,
-    polizaRaw
-  });
-
   // Normalizar
   const fpago = normalizeDate(fpagoRaw);
   const agent_email = normalizeEmail(emailRaw);
@@ -185,63 +233,77 @@ function parseImportedDocument(doc: any): {
   const nombre_asegurado = nombreAseguradoRaw ? normalizeText(nombreAseguradoRaw) : undefined;
   const concepto = conceptoRaw ? normalizeText(conceptoRaw) : undefined;
 
-  console.log('[ParseDoc] Normalized values:', {
-    fpago,
-    agent_email,
-    ramo,
-    aseguradora,
-    importe_base,
-    porcentaje,
-    poliza
-  });
-
-  // Validar campos obligatorios
-  if (!fpago) {
-    errors.push(`FPago inválido o vacío: ${fpagoRaw}`);
-  }
+  // Validar campos obligatorios (FPago NO es obligatorio)
+  let discardReason = '';
 
   if (!agent_email || agent_email === '') {
     errors.push(`Email vacío o inválido: ${emailRaw}`);
+    discardReport.missing_email++;
+    discardReason = 'missing_email';
   }
 
   if (!ramo || ramo === '') {
     errors.push(`Ramo vacío: ${ramoRaw}`);
+    discardReport.missing_ramo++;
+    discardReason = discardReason || 'missing_ramo';
   }
 
   if (!aseguradora || aseguradora === '') {
     errors.push(`Aseguradora vacía: ${aseguradoraRaw}`);
+    discardReport.missing_aseguradora++;
+    discardReason = discardReason || 'missing_aseguradora';
   }
 
   if (!importe_base || importe_base <= 0) {
     errors.push(`Importe vacío o inválido (debe ser > 0): ${importeRaw}`);
+    if (!importeRaw || importeRaw === '') {
+      discardReport.missing_importe++;
+    } else {
+      discardReport.invalid_importe++;
+    }
+    discardReason = discardReason || 'invalid_importe';
   }
 
-  if (porcentaje === undefined || porcentaje === null) {
+  if (porcentaje === undefined || porcentaje === null || isNaN(porcentaje)) {
     errors.push(`PorPart vacío o inválido: ${porpartRaw}`);
+    if (!porpartRaw || porpartRaw === '') {
+      discardReport.missing_porpart++;
+    } else {
+      discardReport.invalid_porpart++;
+    }
+    discardReason = discardReason || 'invalid_porpart';
   }
 
   if (!poliza || poliza === '') {
     errors.push(`Póliza vacía: ${polizaRaw}`);
+    discardReport.missing_poliza++;
+    discardReason = discardReason || 'missing_poliza';
   }
 
   if (errors.length > 0) {
-    console.error('[ParseDoc] Validation errors:', errors);
+    if (discardReport.examples.length < 10) {
+      discardReport.examples.push({
+        rowIndex,
+        reason: discardReason,
+        values: {
+          email: emailRaw,
+          ramo: ramoRaw,
+          aseguradora: aseguradoraRaw,
+          importe: importeRaw,
+          porpart: porpartRaw,
+          poliza: polizaRaw
+        }
+      });
+    }
     return { row: null, errors };
   }
 
   // CÁLCULO CORRECTO: Comisión = Importe × (PorPart / 100)
   const comision_calculada = importe_base * (porcentaje / 100);
 
-  console.log('[ParseDoc] Calculated commission:', {
-    importe_base,
-    porcentaje,
-    formula: `${importe_base} × (${porcentaje} / 100)`,
-    result: comision_calculada
-  });
-
   return {
     row: {
-      fpago: fpago!,
+      fpago,
       agent_email: agent_email!,
       ramo: ramo!,
       aseguradora: aseguradora!,
@@ -444,6 +506,48 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Conversion] Found ${sourceCount} documents to convert`);
 
+    // Pre-check: Obtener primer documento para validar headers
+    const { data: firstDoc, error: firstDocError } = await supabase
+      .from("imported_documents")
+      .select("*")
+      .eq("batch_id", batchId)
+      .limit(1)
+      .single();
+
+    if (firstDocError || !firstDoc) {
+      return new Response(JSON.stringify({
+        success: false,
+        code: "NO_DOCUMENTS",
+        message: "No se encontró ningún documento para validar headers"
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // Validar headers
+    const headerCheck = checkHeaders(firstDoc);
+
+    if (!headerCheck.valid) {
+      return new Response(JSON.stringify({
+        success: false,
+        code: "MISSING_REQUIRED_COLUMNS",
+        message: "El archivo Excel no tiene todas las columnas obligatorias",
+        details: {
+          detectedHeaders: headerCheck.detected,
+          normalizedHeaders: headerCheck.normalized,
+          missingColumns: headerCheck.missing,
+          mappedColumns: headerCheck.mapped,
+          requiredColumns: ['email', 'importe', 'porpart', 'ramo', 'aseguradora', 'poliza']
+        }
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    console.log('[Conversion] Header check passed:', headerCheck.mapped);
+
     // Crear job de conversión
     const { data: conversionJob, error: jobError } = await supabase
       .from("conversion_jobs")
@@ -479,9 +583,22 @@ Deno.serve(async (req: Request) => {
     const parsedRows: StandardCommissionRow[] = [];
     const parseErrors: any[] = [];
 
+    // Inicializar reporte de descarte
+    const discardReport: DiscardReport = {
+      missing_email: 0,
+      missing_importe: 0,
+      missing_porpart: 0,
+      missing_ramo: 0,
+      missing_aseguradora: 0,
+      missing_poliza: 0,
+      invalid_importe: 0,
+      invalid_porpart: 0,
+      examples: []
+    };
+
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i];
-      const { row, errors } = parseImportedDocument(doc);
+      const { row, errors } = parseImportedDocument(doc, i, discardReport);
 
       if (row) {
         parsedRows.push(row);
@@ -496,6 +613,7 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`[Conversion] Parsed ${parsedRows.length} valid rows, ${parseErrors.length} errors`);
+    console.log('[Conversion] Discard report:', discardReport);
 
     if (parsedRows.length === 0) {
       await supabase
@@ -504,18 +622,23 @@ Deno.serve(async (req: Request) => {
           status: "failed",
           finished_at: new Date().toISOString(),
           duration_ms: Date.now() - startTime,
-          error_code: "ALL_ROWS_INVALID",
-          error_message: "Ninguna fila pudo ser parseada. Revisa que el Excel tenga las columnas correctas.",
-          conversion_report: { parse_errors: parseErrors.slice(0, 10) }
+          error_code: "NO_VALID_ITEMS_AFTER_MAPPING",
+          error_message: "Ninguna fila pudo ser parseada. Todas las filas tienen datos inválidos o incompletos.",
+          conversion_report: {
+            discard_report: discardReport,
+            parse_errors: parseErrors.slice(0, 10)
+          }
         })
         .eq("id", conversionJobId);
 
       return new Response(JSON.stringify({
         success: false,
-        code: "ALL_ROWS_INVALID",
-        message: "Ninguna fila es válida. Revisa que el archivo tenga las columnas obligatorias: FPago, Email, Ramo, Aseguradora, Importe, PorPart, Poliza",
+        code: "NO_VALID_ITEMS_AFTER_MAPPING",
+        message: "Ninguna fila es válida. Todas las filas tienen datos inválidos o incompletos.",
         details: {
           totalSourceItems: sourceCount,
+          validRows: 0,
+          discarded: discardReport,
           parseErrors: parseErrors.slice(0, 5)
         }
       }), {
@@ -529,6 +652,12 @@ Deno.serve(async (req: Request) => {
     const noDateRows: StandardCommissionRow[] = [];
 
     for (const row of parsedRows) {
+      // Si FPago es null, va directo al lote "Sin fecha"
+      if (!row.fpago) {
+        noDateRows.push(row);
+        continue;
+      }
+
       try {
         const weekInfo = getWeekInfo(row.fpago);
         const key = `${weekInfo.week_number}-${weekInfo.period_start}`;
@@ -706,14 +835,24 @@ Deno.serve(async (req: Request) => {
           finished_at: new Date().toISOString(),
           duration_ms: Date.now() - startTime,
           error_code: "NO_ITEMS_INSERTED",
-          error_message: "No se pudieron insertar items en los lotes"
+          error_message: "No se pudieron insertar items en los lotes. Todas las filas fueron descartadas.",
+          conversion_report: {
+            discard_report: discardReport,
+            parse_errors: parseErrors.slice(0, 10)
+          }
         })
         .eq("id", conversionJobId);
 
       return new Response(JSON.stringify({
         success: false,
         code: "NO_ITEMS_INSERTED",
-        message: "No se pudieron insertar documentos en los lotes"
+        message: "No se pudieron insertar documentos en los lotes",
+        details: {
+          totalSourceItems: sourceCount,
+          validRows: parsedRows.length,
+          insertedItems: totalInsertedItems,
+          discarded: discardReport
+        }
       }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -757,8 +896,10 @@ Deno.serve(async (req: Request) => {
 
     return new Response(JSON.stringify({
       success: true,
+      totalSourceRows: sourceCount,
+      validRows: parsedRows.length,
+      discarded: discardReport,
       createdBatches,
-      totalSourceItems: sourceCount,
       totalInsertedItems,
       conversion_job_id: conversionJobId
     }), {

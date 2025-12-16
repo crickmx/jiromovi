@@ -360,6 +360,127 @@ export default function ConvertirLoteModal({
                 </div>
               </div>
 
+              {errorDetails?.code === 'MISSING_REQUIRED_COLUMNS' && errorDetails.details && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-orange-900 mb-2">
+                        Columnas Faltantes
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-semibold text-orange-900 mb-1">Columnas obligatorias faltantes:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {errorDetails.details.missingColumns?.map((col: string) => (
+                              <span key={col} className="px-2 py-1 bg-orange-200 text-orange-900 text-xs font-semibold rounded">
+                                {col}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-orange-900 mb-1">Columnas detectadas en el archivo:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {errorDetails.details.detectedHeaders?.slice(0, 10).map((col: string) => (
+                              <span key={col} className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded">
+                                {col}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(errorDetails?.code === 'NO_ITEMS_INSERTED' || errorDetails?.code === 'NO_VALID_ITEMS_AFTER_MAPPING') && errorDetails.details?.discarded && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-orange-900 mb-2">
+                        Reporte de Descarte
+                      </p>
+                      <p className="text-sm text-orange-800 mb-3">
+                        Todas las filas fueron descartadas por las siguientes razones:
+                      </p>
+                      <div className="space-y-2">
+                        {errorDetails.details.discarded.missing_email > 0 && (
+                          <div className="flex items-center justify-between bg-white p-2 rounded">
+                            <span className="text-sm text-gray-700">Email faltante o vacío</span>
+                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_email} filas</span>
+                          </div>
+                        )}
+                        {errorDetails.details.discarded.missing_importe > 0 && (
+                          <div className="flex items-center justify-between bg-white p-2 rounded">
+                            <span className="text-sm text-gray-700">Importe faltante</span>
+                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_importe} filas</span>
+                          </div>
+                        )}
+                        {errorDetails.details.discarded.invalid_importe > 0 && (
+                          <div className="flex items-center justify-between bg-white p-2 rounded">
+                            <span className="text-sm text-gray-700">Importe inválido (debe ser mayor a 0)</span>
+                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.invalid_importe} filas</span>
+                          </div>
+                        )}
+                        {errorDetails.details.discarded.missing_porpart > 0 && (
+                          <div className="flex items-center justify-between bg-white p-2 rounded">
+                            <span className="text-sm text-gray-700">PorPart faltante</span>
+                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_porpart} filas</span>
+                          </div>
+                        )}
+                        {errorDetails.details.discarded.invalid_porpart > 0 && (
+                          <div className="flex items-center justify-between bg-white p-2 rounded">
+                            <span className="text-sm text-gray-700">PorPart inválido</span>
+                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.invalid_porpart} filas</span>
+                          </div>
+                        )}
+                        {errorDetails.details.discarded.missing_ramo > 0 && (
+                          <div className="flex items-center justify-between bg-white p-2 rounded">
+                            <span className="text-sm text-gray-700">Ramo faltante</span>
+                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_ramo} filas</span>
+                          </div>
+                        )}
+                        {errorDetails.details.discarded.missing_aseguradora > 0 && (
+                          <div className="flex items-center justify-between bg-white p-2 rounded">
+                            <span className="text-sm text-gray-700">Aseguradora faltante</span>
+                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_aseguradora} filas</span>
+                          </div>
+                        )}
+                        {errorDetails.details.discarded.missing_poliza > 0 && (
+                          <div className="flex items-center justify-between bg-white p-2 rounded">
+                            <span className="text-sm text-gray-700">Póliza faltante</span>
+                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_poliza} filas</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {errorDetails.details.discarded.examples && errorDetails.details.discarded.examples.length > 0 && (
+                        <div className="mt-3 bg-white rounded-lg p-3 border border-orange-200">
+                          <p className="text-xs font-semibold text-orange-900 mb-2">Ejemplos de filas descartadas:</p>
+                          <div className="space-y-2">
+                            {errorDetails.details.discarded.examples.slice(0, 5).map((ex: any, idx: number) => (
+                              <div key={idx} className="text-xs border-l-2 border-orange-300 pl-2">
+                                <p className="text-orange-900 font-semibold">Fila {ex.rowIndex + 1}</p>
+                                <p className="text-orange-800">Razón: {ex.reason}</p>
+                                <div className="text-gray-600 mt-1 space-y-0.5">
+                                  {ex.values.email && <p>Email: {ex.values.email}</p>}
+                                  {ex.values.importe !== undefined && <p>Importe: {ex.values.importe}</p>}
+                                  {ex.values.porpart !== undefined && <p>PorPart: {ex.values.porpart}</p>}
+                                  {ex.values.ramo && <p>Ramo: {ex.values.ramo}</p>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {(errorDetails?.details?.errors_count > 0 || errorDetails?.details?.insert_errors_count > 0) && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-3">
