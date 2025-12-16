@@ -767,22 +767,31 @@ Deno.serve(async (req: Request) => {
       createdBatchIds.push(batchId);
       console.log(`[Conversion] Created batch ${batchId}: ${batchName}`);
 
-      const itemsToInsert = group.items.map(row => ({
-        batch_id: batchId,
-        agent_email: row.agent_email,
-        vendor_name_raw: row.vendor_name_raw,
-        fpago: row.fpago,
-        ramo: row.ramo,
-        aseguradora: row.aseguradora,
-        importe: row.importe,
-        porpart: row.porpart,
-        poliza: row.poliza,
-        endoso: row.endoso,
-        prima_neta: row.prima_neta,
-        nombre_asegurado: row.nombre_asegurado,
-        concepto: row.concepto,
-        pending_assignment: row.pending_assignment
-      }));
+      const itemsToInsert = group.items.map(row => {
+        const commissionBruta = (row.importe * row.porpart) / 100;
+        const commissionNeta = commissionBruta;
+
+        return {
+          batch_id: batchId,
+          agent_email: row.agent_email,
+          vendor_name_raw: row.vendor_name_raw,
+          fpago: row.fpago,
+          ramo: row.ramo,
+          aseguradora: row.aseguradora,
+          importe: row.importe,
+          porpart: row.porpart,
+          poliza: row.poliza,
+          endoso: row.endoso,
+          prima_neta: row.prima_neta,
+          nombre_asegurado: row.nombre_asegurado,
+          concepto: row.concepto,
+          pending_assignment: row.pending_assignment,
+          commission_bruta: commissionBruta,
+          commission_neta: commissionNeta,
+          calculation_status: 'ok',
+          calculation_method: 'excel_column'
+        };
+      });
 
       const insertResult = await insertItemsInChunks(supabase, itemsToInsert);
 
