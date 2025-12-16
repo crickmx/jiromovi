@@ -738,6 +738,31 @@ Deno.serve(async (req: Request) => {
     const weekGroups = groupByWeek(parsedRows);
     console.log(`[Conversion] Grouped into ${weekGroups.length} weeks`);
 
+    // Obtener todos los emails únicos de las filas parseadas
+    const uniqueEmails = [...new Set(parsedRows.filter(r => r.agent_email).map(r => r.agent_email))];
+    console.log(`[Conversion] Found ${uniqueEmails.length} unique emails to map`);
+
+    // Buscar los agentes en commission_agents por email
+    const emailToAgentId: Record<string, string> = {};
+
+    if (uniqueEmails.length > 0) {
+      const { data: commissionAgents, error: agentsError } = await supabase
+        .from("commission_agents")
+        .select("id, email")
+        .in("email", uniqueEmails);
+
+      if (agentsError) {
+        console.error("[Conversion] Error loading commission agents:", agentsError);
+      } else if (commissionAgents) {
+        for (const agent of commissionAgents) {
+          if (agent.email) {
+            emailToAgentId[agent.email.toLowerCase()] = agent.id;
+          }
+        }
+        console.log(`[Conversion] Mapped ${Object.keys(emailToAgentId).length} emails to agent IDs`);
+      }
+    }
+
     const createdBatches: any[] = [];
     const createdBatchIds: string[] = [];
     let totalInsertedItems = 0;
@@ -771,8 +796,19 @@ Deno.serve(async (req: Request) => {
         const commissionBruta = (row.importe * row.porpart) / 100;
         const commissionNeta = commissionBruta;
 
+        // Buscar el agent_id correspondiente al email
+        let agentId = null;
+        let pendingAssignment = true;
+
+        if (row.agent_email) {
+          const emailLower = row.agent_email.toLowerCase();
+          agentId = emailToAgentId[emailLower] || null;
+          pendingAssignment = !agentId;
+        }
+
         return {
           batch_id: batchId,
+          agent_id: agentId,
           agent_email: row.agent_email,
           vendor_name_raw: row.vendor_name_raw,
           fpago: row.fpago,
@@ -785,7 +821,7 @@ Deno.serve(async (req: Request) => {
           prima_neta: row.prima_neta,
           nombre_asegurado: row.nombre_asegurado,
           concepto: row.concepto,
-          pending_assignment: row.pending_assignment,
+          pending_assignment: pendingAssignment,
           commission_bruta: commissionBruta,
           commission_neta: commissionNeta,
           calculation_status: 'ok',
