@@ -775,6 +775,7 @@ Deno.serve(async (req: Request) => {
     const createdBatches: any[] = [];
     const createdBatchIds: string[] = [];
     let totalInsertedItems = 0;
+    const insertionErrors: any[] = [];
 
     for (const group of weekGroups) {
       const batchName = `Comisiones Semana ${group.week_number} (${group.period_start} a ${group.period_end})`;
@@ -847,6 +848,11 @@ Deno.serve(async (req: Request) => {
 
       const insertResult = await insertItemsInChunks(supabase, itemsToInsert);
 
+      if (insertResult.errors.length > 0) {
+        console.error(`[Conversion] Errors during insertion for batch ${batchId}:`, insertResult.errors);
+        insertionErrors.push(...insertResult.errors);
+      }
+
       if (insertResult.insertedCount > 0) {
         totalInsertedItems += insertResult.insertedCount;
         createdBatches.push({
@@ -889,14 +895,16 @@ Deno.serve(async (req: Request) => {
           finished_at: new Date().toISOString(),
           duration_ms: Date.now() - startTime,
           error_code: "NO_ITEMS_INSERTED",
-          error_message: "No se pudieron insertar items en los lotes. Todas las filas fueron descartadas.",
+          error_message: "No se pudieron insertar items en los lotes.",
           conversion_report: {
             discard_report: discardReport,
             discarded_rows: discardedRows.slice(0, 10),
             total_source_items: sourceCount,
             valid_rows: validRows.length,
             warning_rows: warningRows.length,
-            parsed_rows: parsedRows.length
+            parsed_rows: parsedRows.length,
+            insertion_errors: insertionErrors.slice(0, 5),
+            total_insertion_errors: insertionErrors.length
           }
         })
         .eq("id", conversionJobId);
@@ -914,7 +922,9 @@ Deno.serve(async (req: Request) => {
           insertedItems: totalInsertedItems,
           discarded: discardReport,
           sample_parsed_row: parsedRows.length > 0 ? parsedRows[0] : null,
-          sample_discarded_row: discardedRows.length > 0 ? discardedRows[0] : null
+          sample_discarded_row: discardedRows.length > 0 ? discardedRows[0] : null,
+          insertion_errors: insertionErrors.slice(0, 5),
+          total_insertion_errors: insertionErrors.length
         }
       }), {
         status: 400,

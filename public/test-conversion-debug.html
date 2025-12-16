@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Conversion Debug</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Test Conversion Debug</h1>
+  <button onclick="runTest()">Run Diagnostic</button>
+  <pre id="output"></pre>
+
+  <script>
+    const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NjI2NTYsImV4cCI6MjA0NTEzODY1Nn0.rgGLzoEZ_bnaaq4UQsvau3h6Cj79yT_EzFy8aR4fGT4';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function log(msg) {
+      const output = document.getElementById('output');
+      output.textContent += msg + '\n';
+      console.log(msg);
+    }
+
+    async function runTest() {
+      document.getElementById('output').textContent = '';
+
+      try {
+        log('1. Obteniendo batch pendiente...');
+        const { data: batch, error: batchError } = await supabase
+          .from('imported_document_batches')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (batchError) {
+          log('Error obteniendo batch: ' + batchError.message);
+          return;
+        }
+
+        if (!batch) {
+          log('No hay batches pendientes');
+          return;
+        }
+
+        log(`Batch ID: ${batch.id}`);
+        log(`Total documentos: ${batch.total_documents}`);
+        log('');
+
+        log('2. Verificando documentos en el batch...');
+        const { data: docs, error: docsError } = await supabase
+          .from('imported_documents')
+          .select('*')
+          .eq('batch_id', batch.id)
+          .limit(5);
+
+        if (docsError) {
+          log('Error: ' + docsError.message);
+          return;
+        }
+
+        log(`Total documentos encontrados: ${docs.length}`);
+        if (docs.length > 0) {
+          const first = docs[0];
+          log('\nPrimera fila:');
+          log(JSON.stringify(first, null, 2));
+
+          log('\nVerificando movi_user_id...');
+          log(`movi_user_id: ${first.movi_user_id}`);
+          log(`is_unmatched: ${first.is_unmatched}`);
+          log(`vendor_email_raw: ${first.vendor_email_raw}`);
+          log(`vendor_name_raw: ${first.vendor_name_raw}`);
+        }
+        log('');
+
+        log('3. Contando documentos matched...');
+        const { count: matchedCount, error: countError } = await supabase
+          .from('imported_documents')
+          .select('*', { count: 'exact', head: true })
+          .eq('batch_id', batch.id)
+          .eq('is_unmatched', false)
+          .not('movi_user_id', 'is', null);
+
+        if (countError) {
+          log('Error: ' + countError.message);
+        } else {
+          log(`Documentos matched (con movi_user_id): ${matchedCount}`);
+        }
+        log('');
+
+        log('4. Verificando commission_agents...');
+        const { data: agents, error: agentsError } = await supabase
+          .from('commission_agents')
+          .select('*')
+          .limit(5);
+
+        if (agentsError) {
+          log('Error: ' + agentsError.message);
+        } else {
+          log(`Total commission_agents: ${agents.length}`);
+          if (agents.length > 0) {
+            log('\nPrimer agent:');
+            log(JSON.stringify(agents[0], null, 2));
+          }
+        }
+        log('');
+
+        log('5. Verificando usuarios...');
+        if (docs.length > 0 && docs[0].movi_user_id) {
+          const { data: usuario, error: usuarioError } = await supabase
+            .from('usuarios')
+            .select('id, email, nombre_completo')
+            .eq('id', docs[0].movi_user_id)
+            .single();
+
+          if (usuarioError) {
+            log('Error obteniendo usuario: ' + usuarioError.message);
+          } else {
+            log('Usuario encontrado:');
+            log(JSON.stringify(usuario, null, 2));
+
+            // Buscar commission_agent por usuario_id
+            const { data: agent, error: agentError } = await supabase
+              .from('commission_agents')
+              .select('*')
+              .eq('usuario_id', usuario.id)
+              .maybeSingle();
+
+            if (agentError) {
+              log('Error buscando agent: ' + agentError.message);
+            } else if (agent) {
+              log('\nCommission agent encontrado:');
+              log(JSON.stringify(agent, null, 2));
+            } else {
+              log('\n⚠️ PROBLEMA: No existe commission_agent para este usuario');
+            }
+          }
+        }
+        log('');
+
+        log('6. Verificando estructura de commission_details...');
+        const { data: sample, error: sampleError } = await supabase
+          .from('commission_details')
+          .select('*')
+          .limit(1);
+
+        if (sampleError) {
+          log('Error: ' + sampleError.message);
+        } else {
+          log('Estructura OK - campos disponibles:');
+          if (sample && sample.length > 0) {
+            log(Object.keys(sample[0]).join(', '));
+          } else {
+            log('Tabla vacía, verificando con RPC...');
+          }
+        }
+
+        log('\n✅ Diagnóstico completado');
+
+      } catch (err) {
+        log('Error: ' + err.message);
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -543,6 +543,53 @@ export default function ConvertirLoteModal({
                 </div>
               )}
 
+              {errorDetails?.details?.insertion_errors && errorDetails.details.insertion_errors.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-red-900">
+                        Errores de base de datos detectados
+                      </p>
+                      <p className="text-sm text-red-700 mt-1">
+                        {errorDetails.details.total_insertion_errors || errorDetails.details.insertion_errors.length} error(es) durante la inserción en la base de datos.
+                      </p>
+
+                      <div className="mt-3 bg-white rounded-lg p-3 border border-red-200">
+                        <p className="text-xs font-semibold text-red-900 mb-2">Detalles de los errores:</p>
+                        <div className="space-y-3">
+                          {errorDetails.details.insertion_errors.map((err: any, idx: number) => (
+                            <div key={idx} className="text-xs border-l-4 border-red-400 pl-3 py-2 bg-red-50">
+                              <p className="font-semibold text-red-900 mb-1">Error {idx + 1}</p>
+                              {err.error?.code && (
+                                <p className="font-mono text-red-800">Código: {err.error.code}</p>
+                              )}
+                              {err.error?.message && (
+                                <p className="text-red-700 mt-1">Mensaje: {err.error.message}</p>
+                              )}
+                              {err.error?.hint && (
+                                <p className="text-red-600 mt-1 italic">Sugerencia: {err.error.hint}</p>
+                              )}
+                              {err.error?.details && (
+                                <p className="text-red-600 mt-1">Detalles: {err.error.details}</p>
+                              )}
+                              {err.sample_item && (
+                                <details className="mt-2">
+                                  <summary className="cursor-pointer text-red-800 font-semibold">Ver datos de ejemplo</summary>
+                                  <pre className="mt-1 text-xs bg-white p-2 rounded border border-red-200 overflow-x-auto">
+                                    {JSON.stringify(err.sample_item, null, 2)}
+                                  </pre>
+                                </details>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {(errorDetails?.details?.errors_count > 0 || errorDetails?.details?.insert_errors_count > 0) && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-3">
