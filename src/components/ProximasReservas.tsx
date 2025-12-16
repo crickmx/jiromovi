@@ -4,6 +4,11 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { MapPin, Calendar, Clock, ArrowRight } from 'lucide-react';
 import type { Database } from '../lib/database.types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Skeleton } from './ui/skeleton';
+import { EmptyState } from './ui/empty-state';
 
 type Reserva = Database['public']['Tables']['reservas_espacio']['Row'] & {
   areas?: { nombre: string } | null;
@@ -24,8 +29,6 @@ export function ProximasReservas() {
 
     setLoading(true);
     try {
-      const now = new Date().toISOString();
-
       const today = new Date().toISOString().split('T')[0];
 
       const { data, error } = await supabase
@@ -63,117 +66,124 @@ export function ProximasReservas() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <div className="flex justify-center py-8">
-          <div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-32 mt-2" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-32 w-full" />
+        </CardContent>
+      </Card>
     );
   }
 
   if (reservas.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="p-2 bg-amber-100 rounded-lg">
-            <MapPin className="w-6 h-6 text-amber-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-800">Próximas Reservas</h2>
-            <p className="text-sm text-slate-600">Espacio JIRO</p>
-          </div>
-        </div>
-        <div className="text-center py-8">
-          <p className="text-slate-500 mb-4">No tienes reservas próximas</p>
-          <button
-            onClick={() => navigate('/espacio-jiro')}
-            className="text-amber-600 hover:text-amber-700 font-medium text-sm"
-          >
-            Hacer una reserva →
-          </button>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-amber-500" />
+            Próximas Reservas
+          </CardTitle>
+          <CardDescription>Espacio JIRO</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EmptyState
+            icon={MapPin}
+            title="No tienes reservas próximas"
+            action={{
+              label: "Hacer una reserva",
+              onClick: () => navigate('/espacio-jiro')
+            }}
+          />
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-amber-100 rounded-lg">
-            <MapPin className="w-6 h-6 text-amber-600" />
-          </div>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Próximas Reservas</h2>
-            <p className="text-sm text-slate-600">
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-amber-500" />
+              Próximas Reservas
+            </CardTitle>
+            <CardDescription>
               {reservas.length} {reservas.length === 1 ? 'reserva confirmada' : 'reservas confirmadas'}
-            </p>
+            </CardDescription>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/espacio-jiro')}
+            className="text-amber-500 hover:text-amber-600"
+          >
+            Ver todas →
+          </Button>
         </div>
-        <button
-          onClick={() => navigate('/espacio-jiro')}
-          className="text-amber-600 hover:text-amber-700 text-sm font-medium"
-        >
-          Ver todas →
-        </button>
-      </div>
+      </CardHeader>
 
-      <div className="space-y-3">
-        {reservas.map((reserva) => {
-          const estadoBadge = reserva.estado === 'aprobada'
-            ? 'bg-green-100 text-green-800'
-            : 'bg-yellow-100 text-yellow-800';
-          const estadoLabel = reserva.estado === 'aprobada' ? 'Aprobada' : 'Pendiente';
+      <CardContent>
+        <div className="space-y-3">
+          {reservas.map((reserva) => {
+            const estadoBadge = reserva.estado === 'aprobada' ? 'success' : 'warning';
+            const estadoLabel = reserva.estado === 'aprobada' ? 'Aprobada' : 'Pendiente';
 
-          return (
-            <div
-              key={reserva.id}
-              className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 mb-2">
-                    {reserva.areas?.nombre || 'Espacio'}
-                  </h3>
-                  <div className="flex items-center space-x-4 text-sm text-slate-600">
-                    <span className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1" />
-                      {formatDate(reserva.fecha)}
-                    </span>
-                    <span className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {formatTime(reserva.hora_inicio)} - {formatTime(reserva.hora_fin)}
-                    </span>
-                  </div>
-                  {reserva.notas && (
-                    <p className="text-sm text-slate-500 mt-2">{reserva.notas}</p>
-                  )}
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${estadoBadge}`}>
-                  {estadoLabel}
-                </span>
-              </div>
-
-              <button
-                onClick={() => navigate('/espacio-jiro')}
-                className="w-full flex items-center justify-center space-x-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition font-medium"
+            return (
+              <div
+                key={reserva.id}
+                className="border border-neutral-200 rounded-xl p-4 hover:bg-neutral-50 transition"
               >
-                <span>Ver detalles</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-neutral-900 mb-2 text-sm">
+                      {reserva.areas?.nombre || 'Espacio'}
+                    </h3>
+                    <div className="flex items-center flex-wrap gap-3 text-xs text-neutral-600">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {formatDate(reserva.fecha)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        {formatTime(reserva.hora_inicio)} - {formatTime(reserva.hora_fin)}
+                      </span>
+                    </div>
+                    {reserva.notas && (
+                      <p className="text-xs text-neutral-500 mt-2">{reserva.notas}</p>
+                    )}
+                  </div>
+                  <Badge variant={estadoBadge}>
+                    {estadoLabel}
+                  </Badge>
+                </div>
 
-      {reservas.length >= 5 && (
-        <button
-          onClick={() => navigate('/espacio-jiro')}
-          className="w-full mt-4 text-center text-sm text-amber-600 hover:text-amber-700 font-medium py-2 hover:bg-amber-50 rounded-lg transition"
-        >
-          Ver más reservas
-        </button>
-      )}
-    </div>
+                <Button
+                  onClick={() => navigate('/espacio-jiro')}
+                  className="w-full bg-amber-500 hover:bg-amber-600"
+                  size="sm"
+                >
+                  Ver detalles
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+
+        {reservas.length >= 5 && (
+          <Button
+            variant="ghost"
+            className="w-full mt-4 text-amber-500 hover:text-amber-600"
+            onClick={() => navigate('/espacio-jiro')}
+          >
+            Ver más reservas
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
