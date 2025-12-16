@@ -174,6 +174,19 @@ export default function DocumentosImportar() {
     } else {
       setMatchedGroups([]);
     }
+
+    // Cargar diagnóstico de status
+    try {
+      const { data, error } = await supabase.rpc('get_import_diagnostic', {
+        p_batch_id: batch.id
+      });
+
+      if (!error && data) {
+        setDiagnostics(data);
+      }
+    } catch (error) {
+      console.error('Error al cargar diagnóstico:', error);
+    }
   };
 
   const handleRefreshBatch = async () => {
@@ -197,6 +210,19 @@ export default function DocumentosImportar() {
         setMatchedGroups(matched);
       } else {
         setMatchedGroups([]);
+      }
+
+      // Recargar diagnóstico de status
+      try {
+        const { data, error } = await supabase.rpc('get_import_diagnostic', {
+          p_batch_id: batchData.id
+        });
+
+        if (!error && data) {
+          setDiagnostics(data);
+        }
+      } catch (error) {
+        console.error('Error al cargar diagnóstico:', error);
       }
 
       await loadBatches();
@@ -338,6 +364,61 @@ export default function DocumentosImportar() {
             </p>
           </div>
         </div>
+
+        {diagnostics && diagnostics.counts && (
+          <div className="bg-white rounded-xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Estado de validación</h3>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                <p className="text-xs text-gray-600 mb-1">Total</p>
+                <p className="text-2xl font-bold text-gray-900">{diagnostics.counts.total || 0}</p>
+              </div>
+              <div className="p-4 bg-green-50 rounded-xl border border-green-200 text-center">
+                <p className="text-xs text-green-700 mb-1">Válidas</p>
+                <p className="text-2xl font-bold text-green-700">{diagnostics.counts.valid || 0}</p>
+              </div>
+              <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-center">
+                <p className="text-xs text-blue-700 mb-1">Advertencias</p>
+                <p className="text-2xl font-bold text-blue-700">{diagnostics.counts.warning || 0}</p>
+              </div>
+              <div className="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
+                <p className="text-xs text-red-700 mb-1">Descartadas</p>
+                <p className="text-2xl font-bold text-red-700">{diagnostics.counts.discard || 0}</p>
+              </div>
+            </div>
+
+            {diagnostics.top_discard_reasons && diagnostics.top_discard_reasons.length > 0 && (
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-base font-semibold text-gray-900 mb-3">Motivos de descarte principales</h4>
+                <div className="space-y-2">
+                  {diagnostics.top_discard_reasons.map((reason: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
+                      <span className="text-sm text-red-900 font-medium">{reason.discard_reason}</span>
+                      <span className="text-sm font-bold text-red-700">{reason.count} filas</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {diagnostics.sample_discard_rows && diagnostics.sample_discard_rows.length > 0 && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h4 className="text-base font-semibold text-gray-900 mb-3">Ejemplos de filas descartadas</h4>
+                <div className="space-y-3">
+                  {diagnostics.sample_discard_rows.slice(0, 5).map((row: any, idx: number) => (
+                    <div key={idx} className="border-l-4 border-red-300 pl-4 py-2 bg-red-50 rounded-r">
+                      <p className="text-sm font-bold text-red-900 mb-1">Fila {row.row_index}</p>
+                      <p className="text-xs text-red-700 mb-1"><span className="font-semibold">Motivo:</span> {row.discard_reason}</p>
+                      {row.agent_name_raw && <p className="text-xs text-gray-700">Vendedor: {row.agent_name_raw}</p>}
+                      {row.documento && <p className="text-xs text-gray-700">Documento: {row.documento}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {diagnostics && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
