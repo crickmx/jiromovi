@@ -120,6 +120,28 @@ Deno.serve(async (req: Request) => {
 
     console.log('[create-weekly-batches] Grouped into', weekMap.size, 'weeks');
 
+    // Get all unique usuario_ids from items and create usuario_id -> commission_agent_id map
+    const uniqueUsuarioIds = [...new Set(items.map(i => i.movi_user_id).filter(Boolean))];
+    const { data: commissionAgents, error: agentsError } = await supabase
+      .from('commission_agents')
+      .select('id, usuario_id')
+      .in('usuario_id', uniqueUsuarioIds);
+
+    if (agentsError) {
+      throw new Error(`Error al cargar agentes de comisión: ${agentsError.message}`);
+    }
+
+    const usuarioToAgentMap = new Map<string, string>();
+    if (commissionAgents) {
+      commissionAgents.forEach(ca => {
+        if (ca.usuario_id) {
+          usuarioToAgentMap.set(ca.usuario_id, ca.id);
+        }
+      });
+    }
+
+    console.log('[create-weekly-batches] Created usuario->agent map with', usuarioToAgentMap.size, 'entries');
+
     const batchesCreated: any[] = [];
     const batchIds: string[] = [];
 
@@ -187,9 +209,22 @@ Deno.serve(async (req: Request) => {
           });
         }
 
+        // Get commission_agent_id from the map
+        const commissionAgentId = item.movi_user_id ? usuarioToAgentMap.get(item.movi_user_id) : null;
+
+        if (!commissionAgentId && item.movi_user_id) {
+          console.warn(`[create-weekly-batches] No commission_agent found for usuario_id: ${item.movi_user_id}`);
+          // Skip this item - no commission agent record exists
+          calculationWarnings.push({
+            code: 'NO_COMMISSION_AGENT',
+            message: `No se encontró registro de agente de comisión para el usuario: ${item.movi_user_id}`,
+          });
+          continue;
+        }
+
         detailsToInsert.push({
           batch_id: batch.id,
-          agent_id: item.movi_user_id,
+          agent_id: commissionAgentId,
           poliza: item.poliza,
           ramo: item.ramo,
           aseguradora: item.aseguradora,
