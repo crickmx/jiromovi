@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import * as XLSX from 'npm:xlsx@0.18.5';
+import { normalizePersonName, buildAgentKey, findBestUserMatch } from '../_shared/nameNormalization.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,7 +19,6 @@ interface ParsedExcel {
     allSheetNames: string[];
     rowCountPerSheet: Record<string, number>;
     detectedColumns: {
-      emailAgente?: string;
       vendNombre?: string;
       fPago?: string;
     };
@@ -27,23 +27,16 @@ interface ParsedExcel {
 
 function normalizeHeader(header: string): string {
   if (!header) return '';
-
   let normalized = header.toString().trim().toLowerCase();
-
-  normalized = normalized
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  normalized = normalized
-    .replace(/[\s\-_.]/g, '');
-
+  normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  normalized = normalized.replace(/[\s\-_.]/g, '');
   return normalized;
 }
 
 function parseExcelUnified(fileBuffer: ArrayBuffer): ParsedExcel {
   const workbook = XLSX.read(fileBuffer, { type: 'array' });
-
   const sheetNames = workbook.SheetNames;
+
   if (sheetNames.length === 0) {
     throw new Error('El archivo Excel no contiene hojas');
   }
@@ -67,7 +60,6 @@ function parseExcelUnified(fileBuffer: ArrayBuffer): ParsedExcel {
   }
 
   const sheet = workbook.Sheets[bestSheet.name];
-
   const jsonData = XLSX.utils.sheet_to_json(sheet, {
     defval: null,
     raw: false,
@@ -89,17 +81,12 @@ function parseExcelUnified(fileBuffer: ArrayBuffer): ParsedExcel {
     }
   }
 
-  const detectedColumns: { emailAgente?: string; vendNombre?: string; fPago?: string } = {};
-
-  if (headersNormalizedMap['emailagente']) {
-    detectedColumns.emailAgente = headersNormalizedMap['emailagente'];
-  }
+  const detectedColumns: { vendNombre?: string; fPago?: string } = {};
 
   if (headersNormalizedMap['vendnombre']) {
     detectedColumns.vendNombre = headersNormalizedMap['vendnombre'];
   }
 
-  // REGLA DE ORO: FPago es la única fecha válida para comisiones
   if (headersNormalizedMap['fpago']) {
     detectedColumns.fPago = headersNormalizedMap['fpago'];
   }
@@ -126,52 +113,20 @@ function parseExcelUnified(fileBuffer: ArrayBuffer): ParsedExcel {
   };
 }
 
-function normalizeEmail(email: string | null | undefined): string {
-  if (!email || typeof email !== 'string') return '';
-  return email.trim().toLowerCase();
-}
-
-function normalizeName(name: string | null | undefined): string {
-  if (!name || typeof name !== 'string') return '';
-
-  let normalized = name.trim().toLowerCase();
-
-  normalized = normalized
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  normalized = normalized.replace(/\s+/g, ' ');
-
-  return normalized;
-}
-
-function buildVendorKey(emailNorm?: string, nameNorm?: string): string {
-  if (emailNorm) return `email:${emailNorm}`;
-  if (nameNorm) return `name:${nameNorm}`;
-  return 'unknown';
-}
-
-interface FindUserResult {
-  user_id: string | null;
-  method: string;
-}
-
-async function findMoviUserForVendor(
-  supabase: any,
-  vendorEmail: string | null,
-  vendorName: string | null
-): Promise<FindUserResult> {
-  const { data, error } = await supabase.rpc('find_movi_user_for_vendor', {
-    vendor_email: vendorEmail,
-    vendor_name: vendorName,
-  });
+async function checkExistingMapping(supabase: any, agentKey: string) {
+  const { data, error } = await supabase
+    .from('agent_user_mappings')
+    .select('matched_user_id, confidence, mapping_source')
+    .eq('agent_key', agentKey)
+    .eq('is_active', true)
+    .maybeSingle();
 
   if (error) {
-    console.error('Error en find_movi_user_for_vendor:', error);
-    return { user_id: null, method: 'none' };
+    console.error('Error checking mapping:', error);
+    return null;
   }
 
-  return data || { user_id: null, method: 'none' };
+  return data;
 }
 
 Deno.serve(async (req: Request) => {
@@ -215,24 +170,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: userData } = await supabase
-      .from('usuarios')
-      .select('rol')
-      .eq('id', user.id)
-      .single();
-
-    if (userData?.rol !== 'Administrador') {
-      return new Response(
-        JSON.stringify({ error: 'Sin permisos' }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
     const formData = await req.formData();
     const file = formData.get('file') as File;
+    const batchName = formData.get('batch_name') as string;
 
     if (!file) {
       return new Response(
@@ -251,9 +191,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Import] Hoja seleccionada: ${parsed.sheetNameUsed}`);
     console.log(`[Import] Total filas leídas: ${parsed.totalRowsRead}`);
-    console.log(`[Import] EmailAgente detectado: ${parsed.debugInfo.detectedColumns.emailAgente || 'NO'}`);
     console.log(`[Import] VendNombre detectado: ${parsed.debugInfo.detectedColumns.vendNombre || 'NO'}`);
-    console.log(`[Import] FPago detectado: ${parsed.debugInfo.detectedColumns.fPago || 'NO - Se crearán en lote "Sin fecha"}`);
 
     if (!parsed.debugInfo.detectedColumns.vendNombre) {
       return new Response(
@@ -268,15 +206,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const EMAIL_COL = parsed.headersNormalizedMap['emailagente'];
-    const NAME_COL = parsed.headersNormalizedMap['vendnombre'];
-    const POLIZA_COL = parsed.headersNormalizedMap['poliza'] ||
-                       parsed.headersNormalizedMap['documento'];
+    const NAME_COL = parsed.debugInfo.detectedColumns.vendNombre;
+    const POLIZA_COL = parsed.headersNormalizedMap['poliza'] || parsed.headersNormalizedMap['documento'];
 
     const { data: batch, error: batchError } = await supabase
       .from('document_import_batches')
       .insert({
-        file_name: file.name,
+        file_name: batchName || file.name,
         imported_by: user.id,
         status: 'processing',
         metadata: {
@@ -307,40 +243,108 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Import] Procesando ${parsed.rows.length} filas...`);
 
+    let matchedCount = 0;
+    let pendingCount = 0;
+    let conflictCount = 0;
+
     for (let i = 0; i < parsed.rows.length; i++) {
       const row = parsed.rows[i];
 
       const documentId = POLIZA_COL ? row[POLIZA_COL] : `DOC-${i + 1}`;
-      const vendorEmailRaw = EMAIL_COL ? (row[EMAIL_COL]?.toString() || '').trim() : '';
       const vendorNameRaw = NAME_COL ? (row[NAME_COL]?.toString() || '').trim() : '';
 
-      const vendorEmailNorm = normalizeEmail(vendorEmailRaw);
-      const vendorNameNorm = normalizeName(vendorNameRaw);
-      const vendorKey = buildVendorKey(vendorEmailNorm, vendorNameNorm);
+      if (!vendorNameRaw) {
+        continue;
+      }
 
-      const userMatch = await findMoviUserForVendor(
-        adminSupabase,
-        vendorEmailRaw || null,
-        vendorNameRaw || null
-      );
+      const normalized = normalizePersonName(vendorNameRaw);
+      const agentKey = buildAgentKey(normalized.name_signature);
+
+      let matchedUserId = null;
+      let matchStatus = 'pending';
+      let matchMethod = 'none';
+      let matchConfidence = 0;
+      let matchCandidates = null;
+
+      const existingMapping = await checkExistingMapping(adminSupabase, agentKey);
+
+      if (existingMapping && existingMapping.matched_user_id) {
+        matchedUserId = existingMapping.matched_user_id;
+        matchStatus = existingMapping.mapping_source === 'manual' ? 'matched_manual' : 'matched_auto';
+        matchMethod = existingMapping.mapping_source;
+        matchConfidence = existingMapping.confidence;
+        matchedCount++;
+      } else {
+        const matchResult = await findBestUserMatch(adminSupabase, vendorNameRaw);
+
+        if (matchResult.userId) {
+          matchedUserId = matchResult.userId;
+          matchConfidence = matchResult.confidence;
+          matchMethod = matchResult.matchMethod;
+          matchStatus = 'matched_auto';
+          matchedCount++;
+
+          await adminSupabase
+            .from('agent_user_mappings')
+            .upsert({
+              agent_key: agentKey,
+              agent_name_raw_latest: vendorNameRaw,
+              agent_name_norm: normalized.name_norm,
+              agent_name_signature: normalized.name_signature,
+              matched_user_id: matchedUserId,
+              mapping_source: matchResult.matchMethod,
+              confidence: matchConfidence,
+              is_active: true
+            }, {
+              onConflict: 'agent_key'
+            });
+        } else if (matchResult.matchMethod === 'conflict') {
+          matchStatus = 'conflict';
+          matchCandidates = matchResult.candidates;
+          conflictCount++;
+        } else {
+          matchStatus = 'pending';
+          pendingCount++;
+        }
+      }
 
       documents.push({
         batch_id: batch.id,
         source_row_index: i + 1,
         document_id: String(documentId || `DOC-${i + 1}`),
-        vendor_email_raw: vendorEmailRaw || null,
-        vendor_name_raw: vendorNameRaw || null,
-        vendor_email_norm: vendorEmailNorm || null,
-        vendor_name_norm: vendorNameNorm || null,
-        vendor_key: vendorKey,
-        movi_user_id: userMatch.user_id,
-        match_method: userMatch.method,
-        is_unmatched: userMatch.user_id === null,
+        vendor_name_raw: vendorNameRaw,
+        vendor_name_norm: normalized.name_norm,
+        agent_name_raw: vendorNameRaw,
+        agent_name_norm: normalized.name_norm,
+        agent_name_signature: normalized.name_signature,
+        agent_key: agentKey,
+        movi_user_id: matchedUserId,
+        match_status: matchStatus,
+        match_method: matchMethod,
+        match_confidence: matchConfidence,
+        match_candidates: matchCandidates ? JSON.stringify(matchCandidates) : null,
+        is_unmatched: matchedUserId === null,
+        pending: matchedUserId === null,
         document_data: row,
       });
     }
 
     console.log(`[Import] Insertando ${documents.length} documentos...`);
+
+    if (documents.length === 0) {
+      await supabase
+        .from('document_import_batches')
+        .update({ status: 'failed' })
+        .eq('id', batch.id);
+
+      return new Response(
+        JSON.stringify({ error: 'No se encontraron documentos válidos para importar' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     const { error: insertError } = await adminSupabase
       .from('imported_documents')
@@ -354,7 +358,7 @@ Deno.serve(async (req: Request) => {
         .eq('id', batch.id);
 
       return new Response(
-        JSON.stringify({ error: 'Error al procesar documentos' }),
+        JSON.stringify({ error: 'Error al procesar documentos: ' + insertError.message }),
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -362,13 +366,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    await adminSupabase.rpc('update_batch_counters', {
-      p_batch_id: batch.id,
-    });
-
     await supabase
       .from('document_import_batches')
-      .update({ status: 'completed' })
+      .update({
+        status: 'completed',
+        total_documents: documents.length,
+        matched_documents: matchedCount,
+        unmatched_documents: pendingCount + conflictCount
+      })
       .eq('id', batch.id);
 
     const { data: updatedBatch } = await supabase
@@ -377,38 +382,20 @@ Deno.serve(async (req: Request) => {
       .eq('id', batch.id)
       .single();
 
-    const matchedCount = documents.filter(d => d.movi_user_id !== null).length;
-    const unmatchedCount = documents.filter(d => d.movi_user_id === null).length;
-    const emptyVendorCount = documents.filter(d => !d.vendor_name_raw).length;
-    const uniqueVendorNames = [...new Set(documents.map(d => d.vendor_name_raw).filter(n => n))].slice(0, 5);
-    const uniqueEmails = [...new Set(documents.map(d => d.vendor_email_raw).filter(e => e))].slice(0, 5);
-
-    const methodCounts: Record<string, number> = {};
-    for (const doc of documents) {
-      methodCounts[doc.match_method] = (methodCounts[doc.match_method] || 0) + 1;
-    }
-
-    console.log(`[Import] Completado - Matched: ${matchedCount}, Unmatched: ${unmatchedCount}`);
-    console.log(`[Import] Methods: ${JSON.stringify(methodCounts)}`);
+    console.log(`[Import] Completado - Matched: ${matchedCount}, Pending: ${pendingCount}, Conflicts: ${conflictCount}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         batch: updatedBatch,
+        batch_id: batch.id,
         diagnostics: {
           sheet_used: parsed.sheetNameUsed,
-          all_sheets: parsed.debugInfo.allSheetNames,
-          row_count_per_sheet: parsed.debugInfo.rowCountPerSheet,
-          vendor_column_detected: NAME_COL,
-          email_column_detected: EMAIL_COL,
-          total_rows_read: parsed.totalRowsRead,
           total_rows_processed: documents.length,
           matched_count: matchedCount,
-          unmatched_count: unmatchedCount,
-          empty_vendor_count: emptyVendorCount,
-          match_method_counts: methodCounts,
-          sample_vendor_names: uniqueVendorNames,
-          sample_emails: uniqueEmails,
+          pending_count: pendingCount,
+          conflict_count: conflictCount,
+          message: 'Importación completada. Los documentos pendientes deben asignarse manualmente.'
         },
       }),
       {
