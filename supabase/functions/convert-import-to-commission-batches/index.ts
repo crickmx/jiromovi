@@ -11,6 +11,7 @@ interface StandardCommissionRow {
   fpago: string;
   agent_email: string | null;
   vendor_name_raw: string | undefined;
+  movi_user_id: string | null;
   ramo: string;
   aseguradora: string;
   importe: number;
@@ -359,6 +360,7 @@ function parseImportedDocument(
     fpago,
     agent_email,
     vendor_name_raw,
+    movi_user_id: doc.movi_user_id || null,
     ramo,
     aseguradora,
     importe,
@@ -581,18 +583,22 @@ Deno.serve(async (req: Request) => {
     const { count: sourceCount, error: countError } = await supabase
       .from("imported_documents")
       .select("*", { count: "exact", head: true })
-      .eq("batch_id", batch_id);
+      .eq("batch_id", batch_id)
+      .eq("is_unmatched", false)
+      .not("movi_user_id", "is", null);
 
     if (countError) {
       throw new Error("Failed to count source documents");
     }
 
-    console.log(`[Conversion] Source count: ${sourceCount} documents`);
+    console.log(`[Conversion] Source count: ${sourceCount} matched documents (excluding pending)`);
 
     const { data: documents, error: docsError } = await supabase
       .from("imported_documents")
       .select("*")
-      .eq("batch_id", batch_id);
+      .eq("batch_id", batch_id)
+      .eq("is_unmatched", false)
+      .not("movi_user_id", "is", null);
 
     if (docsError || !documents) {
       throw new Error("Failed to fetch documents");
@@ -738,28 +744,7 @@ Deno.serve(async (req: Request) => {
     const weekGroups = groupByWeek(parsedRows);
     console.log(`[Conversion] Grouped into ${weekGroups.length} weeks`);
 
-    const uniqueEmails = [...new Set(parsedRows.filter(r => r.agent_email).map(r => r.agent_email))];
-    console.log(`[Conversion] Found ${uniqueEmails.length} unique emails to map`);
-
-    const emailToAgentId: Record<string, string> = {};
-
-    if (uniqueEmails.length > 0) {
-      const { data: commissionAgents, error: agentsError } = await supabase
-        .from("commission_agents")
-        .select("id, email")
-        .in("email", uniqueEmails);
-
-      if (agentsError) {
-        console.error("[Conversion] Error loading commission agents:", agentsError);
-      } else if (commissionAgents) {
-        for (const agent of commissionAgents) {
-          if (agent.email) {
-            emailToAgentId[agent.email.toLowerCase()] = agent.id;
-          }
-        }
-        console.log(`[Conversion] Mapped ${Object.keys(emailToAgentId).length} emails to agent IDs`);
-      }
-    }
+    console.log(`[Conversion] Using movi_user_id from matched documents (all documents are pre-assigned)`);
 
     const createdBatches: any[] = [];
     const createdBatchIds: string[] = [];
@@ -799,18 +784,9 @@ Deno.serve(async (req: Request) => {
         const commissionBruta = (row.importe * row.porpart) / 100;
         const commissionNeta = commissionBruta;
 
-        let agentId = null;
-        let pendingAssignment = true;
-
-        if (row.agent_email) {
-          const emailLower = row.agent_email.toLowerCase();
-          agentId = emailToAgentId[emailLower] || null;
-          pendingAssignment = !agentId;
-        }
-
         return {
           batch_id: batchId,
-          agent_id: agentId,
+          agent_id: row.movi_user_id,
           agent_email: row.agent_email,
           vendor_name_raw: row.vendor_name_raw,
           fpago: row.fpago,
@@ -823,7 +799,7 @@ Deno.serve(async (req: Request) => {
           prima_neta: row.prima_neta,
           nombre_asegurado: row.nombre_asegurado,
           concepto: row.concepto,
-          pending_assignment: pendingAssignment,
+          pending_assignment: false,
           commission_bruta: commissionBruta,
           commission_neta: commissionNeta,
           calculation_status: 'ok',
@@ -911,15 +887,9 @@ Deno.serve(async (req: Request) => {
     console.log(`[Conversion] Success: ${createdBatches.length} batches, ${totalInsertedItems} items`);
 
     for (const batchId of createdBatchIds) {
-      const { count: pendingCount } = await supabase
-        .from("commission_details")
-        .select("*", { count: "exact", head: true })
-        .eq("batch_id", batchId)
-        .eq("pending_assignment", true);
-
       await supabase
         .from("commission_batches")
-        .update({ pending_assignments_count: pendingCount || 0 })
+        .update({ pending_assignments_count: 0 })
         .eq("id", batchId);
     }
 
