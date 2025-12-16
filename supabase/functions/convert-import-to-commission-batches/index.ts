@@ -55,6 +55,24 @@ interface HeaderCheckResult {
 // MAPEO DE COLUMNAS CON SINÓNIMOS
 // ============================================================================
 
+/**
+ * MAPPER UNIFICADO para múltiples formatos de Excel
+ *
+ * SOPORTA:
+ * 1. Formato con Email (típico)
+ * 2. Formato LOGEXPORT (sin email, usa VendNombre)
+ *
+ * FORMATO LOGEXPORT:
+ * - Columnas: VendNombre, Documento, Endoso, CiaAbreviacion, Ramo, Importe, PorPart, FPago
+ * - NO contiene Email del agente
+ * - Identificador: VendNombre (nombre del vendedor)
+ * - Los items sin email se marcan como pending_assignment = true
+ * - vendor_key = "name:NOMBRE_NORMALIZADO"
+ *
+ * REGLA DE ORO:
+ * En formato LOGEXPORT, VendNombre sustituye al Email.
+ * El email no existe y nunca debe bloquear la conversión.
+ */
 function mapColumns(docData: Record<string, any>): Record<string, string> {
   const keys = Object.keys(docData);
   const result: Record<string, string> = {};
@@ -216,11 +234,18 @@ interface ParseResult {
  *
  * REGLA DE ORO: Comisión = Importe × (PorPart / 100)
  *
+ * SOPORTA FORMATO LOGEXPORT:
+ * - Archivos SIN email del agente
+ * - Identificación por VendNombre
+ * - Items sin email se marcan como pending_assignment = true
+ * - vendor_key = "name:NOMBRE_NORMALIZADO" (sin email)
+ *
  * REGLAS DE NEGOCIO:
  * 1. Email NO es obligatorio (se marca como pending_assignment)
- * 2. Importe puede ser negativo (ajustes, cancelaciones, reversos)
- * 3. Aseguradora puede estar vacía (se usa "NO_ESPECIFICADA")
- * 4. FPago puede ser NULL (va al lote "Sin fecha")
+ * 2. VendNombre se usa para agrupar y asignar manualmente
+ * 3. Importe puede ser negativo (ajustes, cancelaciones, reversos)
+ * 4. Aseguradora puede estar vacía (se usa "NO_ESPECIFICADA")
+ * 5. FPago puede ser NULL (va al lote "Sin fecha")
  *
  * SOLO SE DESCARTA si NO se puede calcular comisión:
  * - Importe inválido (NaN)
@@ -276,6 +301,8 @@ function parseImportedDocument(
   const concepto = conceptoRaw ? normalizeText(conceptoRaw) : undefined;
 
   // Crear vendor_key: priorizar email, luego nombre, luego unknown
+  // FORMATO LOGEXPORT: usa VendNombre cuando no hay email
+  // vendor_key = "email:xxx@mail.com" o "name:JUAN PEREZ" o "unknown"
   const vendor_key = createVendorKey(agent_email, vendor_name_raw);
 
   // Validar SOLO campos realmente obligatorios para calcular comisión
@@ -309,12 +336,17 @@ function parseImportedDocument(
     discardReason = discardReason || 'missing_poliza';
   }
 
+  // ========================================================================
   // ADVERTENCIAS (NO BLOQUEAN conversión - la fila SÍ se inserta)
+  // ========================================================================
 
   // Email vacío -> warning, NO error
+  // FORMATO LOGEXPORT: Esto es NORMAL, se usa VendNombre en su lugar
   if (!agent_email || agent_email === '') {
     warnings.push('Email faltante - se marcará como pendiente de asignación');
     discardReport.missing_email_warnings++;
+    // La fila SÍ se insertará con pending_assignment = true
+    // vendor_key usará el nombre: "name:VENDEDOR"
   }
 
   // Aseguradora vacía -> usar default, NO error
@@ -347,17 +379,20 @@ function parseImportedDocument(
   // Importe puede ser negativo (ajustes, cancelaciones)
   const comision_calculada = importe_base * (porcentaje / 100);
 
+  // ========================================================================
+  // CONSTRUCCIÓN DEL ROW - FUNCIONA CON Y SIN EMAIL
+  // ========================================================================
   const parsedRow: StandardCommissionRow = {
     fpago,
-    agent_email: agent_email || '',  // Puede estar vacío
+    agent_email: agent_email || '',  // Puede estar vacío (FORMATO LOGEXPORT)
     vendor_name_raw,  // VendNombre del Excel (para agrupar y asignar manualmente)
-    vendor_key,  // email:xxx o name:YYY o unknown (para matching)
+    vendor_key,  // "email:xxx" o "name:YYY" o "unknown" (para matching)
     ramo: ramo!,
     aseguradora: aseguradora!,  // Siempre tiene valor (default si vacío)
     importe_base,  // Puede ser negativo
     porcentaje,
     poliza: poliza!,
-    endoso,  // Opcional
+    endoso,  // Opcional (común en LOGEXPORT)
     comision_calculada,  // Puede ser negativa
     prima_neta_info,
     nombre_asegurado,
@@ -620,6 +655,7 @@ Deno.serve(async (req: Request) => {
         validRows.push(result.row!);
       } else if (result.status === "warning") {
         // CRÍTICO: Las filas con warnings SÍ se insertan
+        // FORMATO LOGEXPORT: Archivos sin email generan warnings pero SÍ se insertan
         warningRows.push(result.row!);
       } else if (result.status === "discard") {
         discardedRows.push({
@@ -631,7 +667,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Combinar valid + warning para itemsToInsert
+    // ========================================================================
+    // ITEMS INSERTABLES = VALID + WARNING
+    // ========================================================================
+    // FORMATO LOGEXPORT: Archivos sin email generan 100% warnings pero SÍ se insertan
+    // Si existe VendNombre, la fila ES INSERTABLE (pending_assignment = true)
     const parsedRows = [...validRows, ...warningRows];
 
     console.log(`[Conversion] Parsed ${validRows.length} valid rows, ${warningRows.length} warning rows, ${discardedRows.length} discarded`);

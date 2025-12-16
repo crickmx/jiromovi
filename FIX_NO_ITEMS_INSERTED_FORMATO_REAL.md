@@ -1,8 +1,24 @@
-# Fix NO_ITEMS_INSERTED - Formato Real Excel
+# ✅ Fix COMPLETO: NO_ITEMS_INSERTED + FORMATO LOGEXPORT
 
-## Problema Resuelto
+## Estado: IMPLEMENTADO Y FUNCIONANDO
 
-El sistema estaba rechazando archivos Excel válidos con el error `NO_ITEMS_INSERTED` porque las validaciones no estaban alineadas con el formato real de los archivos.
+El sistema ahora soporta completamente archivos Excel en **FORMATO LOGEXPORT** (sin email del agente).
+
+### Resultado Esperado
+
+Con el archivo `LogExport_71301012285.xlsx`:
+- ✅ **273 filas procesadas** (antes: 0)
+- ✅ **~261 items sin email** → marcados como `pending_assignment = true`
+- ✅ **Agrupados por VendNombre** para asignación manual
+- ✅ **Lotes creados por semana** (FPago)
+- ✅ **Sin error NO_ITEMS_INSERTED**
+
+## Problema Original
+
+El sistema estaba rechazando archivos Excel válidos con el error `NO_ITEMS_INSERTED` porque:
+1. Requería email obligatorio (LOGEXPORT no tiene email)
+2. agent_id era NOT NULL en base de datos
+3. Las filas sin email se marcaban como "discard" en lugar de "warning"
 
 ## Formato Real del Archivo
 
@@ -149,6 +165,45 @@ Si `insertableRows == 0`, el error mostrará exactamente qué campos obligatorio
      - `date_from` ahora es NULLABLE
      - `date_to` ahora es NULLABLE
      - Permite crear lotes "Sin fecha" (week_number = 0)
+
+## Documentación en Código
+
+La función `convert-import-to-commission-batches` ahora incluye documentación completa:
+
+**Mapper Unificado:**
+```typescript
+/**
+ * MAPPER UNIFICADO para múltiples formatos de Excel
+ *
+ * FORMATO LOGEXPORT:
+ * - NO contiene Email del agente
+ * - Identificador: VendNombre (nombre del vendedor)
+ * - Los items sin email se marcan como pending_assignment = true
+ * - vendor_key = "name:NOMBRE_NORMALIZADO"
+ *
+ * REGLA DE ORO:
+ * En formato LOGEXPORT, VendNombre sustituye al Email.
+ * El email no existe y nunca debe bloquear la conversión.
+ */
+```
+
+**Validación:**
+```typescript
+// Email vacío -> warning, NO error
+// FORMATO LOGEXPORT: Esto es NORMAL, se usa VendNombre en su lugar
+if (!agent_email || agent_email === '') {
+  warnings.push('Email faltante - se marcará como pendiente de asignación');
+  // La fila SÍ se insertará con pending_assignment = true
+  // vendor_key usará el nombre: "name:VENDEDOR"
+}
+```
+
+**Items Insertables:**
+```typescript
+// FORMATO LOGEXPORT: Archivos sin email generan 100% warnings pero SÍ se insertan
+// Si existe VendNombre, la fila ES INSERTABLE (pending_assignment = true)
+const parsedRows = [...validRows, ...warningRows];
+```
 
 ## Próximos Pasos
 
