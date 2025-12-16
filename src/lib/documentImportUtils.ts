@@ -464,13 +464,14 @@ export async function convertBatchToCommissions(
   }
 
   const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convert-import-to-commission-batches/${batchId}`,
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convert-import-to-commission-batches`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.session.access_token}`,
       },
+      body: JSON.stringify({ batch_id: batchId })
     }
   );
 

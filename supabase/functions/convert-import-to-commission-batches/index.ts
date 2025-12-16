@@ -430,10 +430,39 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { batch_id: batchId } = await req.json();
+    // Parsear request body con manejo de errores
+    let body: any;
+    try {
+      const text = await req.text();
+      if (!text || text.trim() === '') {
+        return new Response(JSON.stringify({
+          error: "Request body is empty",
+          code: "EMPTY_REQUEST"
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+      body = JSON.parse(text);
+    } catch (parseError: any) {
+      console.error("[Conversion] JSON parse error:", parseError);
+      return new Response(JSON.stringify({
+        error: "Invalid JSON in request body",
+        code: "INVALID_JSON",
+        details: parseError.message
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const batchId = body?.batch_id;
 
     if (!batchId) {
-      return new Response(JSON.stringify({ error: "batch_id is required" }), {
+      return new Response(JSON.stringify({
+        error: "batch_id is required",
+        code: "MISSING_BATCH_ID"
+      }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
