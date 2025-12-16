@@ -522,6 +522,7 @@ export async function convertBatchToCommissions(
     const error: any = new Error(errorMessage);
     error.code = result.code || 'UNKNOWN_ERROR';
     error.details = result.details;
+    error.diagnostic = result.diagnostic;
     error.job_id = result.job_id;
     error.db = result.db;
     throw error;
@@ -531,26 +532,31 @@ export async function convertBatchToCommissions(
   const mappedResult: ConversionResult = {
     success: result.success,
     conversion_job_id: result.conversionJobId,
-    createdBatches: (result.batches || []).map((batch: any) => ({
+    createdBatches: (result.created_batches || result.batches || []).map((batch: any) => ({
       id: batch.batch_id || batch.id,
       batch_id: batch.batch_id || batch.id,
       week_number: batch.week_number,
-      period_start: batch.period_start,
-      period_end: batch.period_end,
-      display_name: batch.display_name,
+      year: batch.year,
+      period_start: batch.date_from || batch.period_start,
+      period_end: batch.date_to || batch.period_end,
+      display_name: batch.display_name || `Semana ${batch.week_number} (${batch.year})`,
       items: batch.items || 0
     })),
-    totalInsertedItems: result.summary?.insertedItems || 0,
-    summary: result.summary
+    totalInsertedItems: result.totalInsertedItems || result.summary?.insertedItems || 0,
+    summary: result.summary || result.counts
   };
 
   // Validar que tenemos datos válidos
   if (!mappedResult.createdBatches || mappedResult.createdBatches.length === 0) {
-    throw new Error('NO_ITEMS_CONVERTED: No se crearon lotes. Verifica que el archivo tenga datos válidos.');
+    const error: any = new Error('NO_ITEMS_CONVERTED: No se crearon lotes. Verifica que el archivo tenga datos válidos.');
+    error.code = 'NO_ITEMS_CONVERTED';
+    throw error;
   }
 
   if (mappedResult.totalInsertedItems === 0) {
-    throw new Error('NO_ITEMS_CONVERTED: No se insertaron items en los lotes.');
+    const error: any = new Error('NO_ITEMS_CONVERTED: No se insertaron items en los lotes.');
+    error.code = 'NO_ITEMS_CONVERTED';
+    throw error;
   }
 
   return mappedResult;

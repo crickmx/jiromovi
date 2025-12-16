@@ -109,10 +109,11 @@ export default function ConvertirLoteModal({
         setJobId(err.job_id);
       }
 
-      // Capturar detalles completos del error incluyendo info de DB
+      // Capturar detalles completos del error incluyendo info de DB y diagnóstico
       const errorDetailsObj: any = {
         code: err.code,
         details: err.details,
+        diagnostic: err.diagnostic,
         job_id: err.job_id
       };
 
@@ -416,6 +417,70 @@ export default function ConvertirLoteModal({
                           </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {errorDetails?.code === 'NO_ITEMS_INSERTED' && errorDetails.diagnostic && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-orange-900 mb-2">
+                        Diagnóstico Detallado
+                      </p>
+
+                      {errorDetails.diagnostic.counts && (
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                          <div className="bg-white p-2 rounded border border-gray-200">
+                            <p className="text-xs text-gray-600">Total</p>
+                            <p className="text-lg font-bold text-gray-700">{errorDetails.diagnostic.counts.total || 0}</p>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-green-200">
+                            <p className="text-xs text-green-600">Válidas</p>
+                            <p className="text-lg font-bold text-green-700">{errorDetails.diagnostic.counts.valid || 0}</p>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-blue-200">
+                            <p className="text-xs text-blue-600">Advertencias</p>
+                            <p className="text-lg font-bold text-blue-700">{errorDetails.diagnostic.counts.warning || 0}</p>
+                          </div>
+                          <div className="bg-white p-2 rounded border border-red-200">
+                            <p className="text-xs text-red-600">Descartadas</p>
+                            <p className="text-lg font-bold text-red-700">{errorDetails.diagnostic.counts.discard || 0}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {errorDetails.diagnostic.top_discard_reasons && errorDetails.diagnostic.top_discard_reasons.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-sm font-semibold text-orange-900 mb-2">Motivos de Descarte:</p>
+                          <div className="space-y-2">
+                            {errorDetails.diagnostic.top_discard_reasons.map((reason: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between bg-white p-2 rounded">
+                                <span className="text-sm text-gray-700">{reason.discard_reason}</span>
+                                <span className="text-sm font-semibold text-red-700">{reason.count} filas</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {errorDetails.diagnostic.sample_discard_rows && errorDetails.diagnostic.sample_discard_rows.length > 0 && (
+                        <div className="mt-3 bg-white rounded-lg p-3 border border-orange-200">
+                          <p className="text-xs font-semibold text-orange-900 mb-2">Ejemplos de filas descartadas:</p>
+                          <div className="space-y-3">
+                            {errorDetails.diagnostic.sample_discard_rows.slice(0, 5).map((row: any, idx: number) => (
+                              <div key={idx} className="text-xs border-l-2 border-orange-300 pl-2 pb-2">
+                                <p className="text-orange-900 font-semibold">Fila {row.row_index}</p>
+                                <p className="text-gray-600 text-xs">Motivo: {row.reason}</p>
+                                {row.vendor_name && <p className="text-gray-600 text-xs">Vendedor: {row.vendor_name}</p>}
+                                {row.documento && <p className="text-gray-600 text-xs">Documento: {row.documento}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
