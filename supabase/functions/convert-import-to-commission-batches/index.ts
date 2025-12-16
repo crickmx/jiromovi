@@ -294,7 +294,7 @@ function parseImportedDocument(
   const nombre_asegurado = nombreAseguradoRaw ? normalizeText(nombreAseguradoRaw) : null;
   const concepto = conceptoRaw ? normalizeText(conceptoRaw) : null;
 
-  if (importe <= 0) {
+  if (importe === 0) {
     errors.push("importe_invalido");
     discardReport.invalid_importe++;
   }
