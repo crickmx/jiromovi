@@ -7,10 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// ============================================================================
-// TIPOS
-// ============================================================================
-
 interface StandardCommissionRow {
   fpago: string;
   agent_email: string | null;
@@ -66,10 +62,6 @@ interface WeekGroup {
   items: StandardCommissionRow[];
 }
 
-// ============================================================================
-// FUNCIONES DE NORMALIZACIÓN
-// ============================================================================
-
 function normalizeHeader(header: string): string {
   if (!header) return '';
   let normalized = header.toString().trim().toLowerCase();
@@ -82,7 +74,6 @@ function mapColumns(docData: Record<string, any>): Record<string, string> {
   const keys = Object.keys(docData);
   const result: Record<string, string> = {};
 
-  // Diccionario de sinónimos (extendido para mayor cobertura)
   const synonyms: Record<string, string[]> = {
     fpago: ['fpago', 'f.pago', 'fecha_pago', 'fecha pago', 'fechapago', 'fecha', 'date', 'fliquidacion', 'f.liquidacion', 'fechaliquidacion'],
     email: ['email', 'correo', 'mail', 'correo_electronico', 'agent_email', 'email_agente', 'emailagente', 'correoelectronico'],
@@ -188,10 +179,6 @@ function normalizeNumber(numRaw: any, defaultValue: number = 0): number {
   return parsed;
 }
 
-// ============================================================================
-// DETECCIÓN DE FORMATO LOGEXPORT
-// ============================================================================
-
 function detectFormatLOGEXPORT(documents: any[]): FormatDetection {
   if (documents.length === 0) {
     return {
@@ -249,10 +236,6 @@ function detectFormatLOGEXPORT(documents: any[]): FormatDetection {
   };
 }
 
-// ============================================================================
-// PARSEO DE DOCUMENTOS
-// ============================================================================
-
 function parseImportedDocument(
   doc: any,
   rowIndex: number,
@@ -262,15 +245,12 @@ function parseImportedDocument(
   const warnings: string[] = [];
   const docData = doc.document_data || {};
 
-  // Mapear columnas del documento
   const mapped = mapColumns(docData);
 
-  // DEBUG: Mostrar mapeo para las primeras filas
   if (rowIndex < 3) {
     console.log(`[DEBUG] Row ${rowIndex} - Mapped columns:`, mapped);
   }
 
-  // Extraer valores usando mapeo
   const fpagoRaw = mapped.fpago ? docData[mapped.fpago] : null;
   const emailRaw = mapped.email ? docData[mapped.email] : doc.vendor_email_raw;
   const vendorNombreRaw = mapped.vendornombre ? docData[mapped.vendornombre] : doc.vendor_name_raw;
@@ -286,7 +266,6 @@ function parseImportedDocument(
   const nombreAseguradoRaw = mapped.nombreasegurado ? docData[mapped.nombreasegurado] : null;
   const conceptoRaw = mapped.concepto ? docData[mapped.concepto] : null;
 
-  // DEBUG: Mostrar valores raw para las primeras filas
   if (rowIndex < 3) {
     console.log(`[DEBUG] Row ${rowIndex} - Raw values:`, {
       fpagoRaw,
@@ -300,7 +279,6 @@ function parseImportedDocument(
     });
   }
 
-  // Normalizar
   const fpago = normalizeDate(fpagoRaw);
   const agent_email = normalizeEmail(emailRaw);
   const vendor_name_raw = vendorNombreRaw ? normalizeText(vendorNombreRaw) : undefined;
@@ -316,7 +294,6 @@ function parseImportedDocument(
   const nombre_asegurado = nombreAseguradoRaw ? normalizeText(nombreAseguradoRaw) : null;
   const concepto = conceptoRaw ? normalizeText(conceptoRaw) : null;
 
-  // VALIDACIÓN CRÍTICA
   if (importe <= 0) {
     errors.push("importe_invalido");
     discardReport.invalid_importe++;
@@ -348,7 +325,6 @@ function parseImportedDocument(
     return { status: "discard", errors };
   }
 
-  // WARNINGS (no bloquean inserción)
   if (!aseguradora || aseguradora === '') {
     warnings.push("aseguradora_faltante");
     aseguradora = "SIN ASEGURADORA";
@@ -385,10 +361,6 @@ function parseImportedDocument(
     ? { status: "warning", row, warnings }
     : { status: "valid", row };
 }
-
-// ============================================================================
-// AGRUPACIÓN POR SEMANA
-// ============================================================================
 
 function getWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -447,10 +419,6 @@ function groupByWeek(rows: StandardCommissionRow[]): WeekGroup[] {
   );
 }
 
-// ============================================================================
-// MAPPINGS PERSISTENTES
-// ============================================================================
-
 async function applyPersistentMappings(
   supabase: any,
   rows: StandardCommissionRow[]
@@ -494,10 +462,6 @@ async function applyPersistentMappings(
   return { rows: updatedRows, appliedCount, mappings: mappingLookup };
 }
 
-// ============================================================================
-// INSERCIÓN EN LOTES
-// ============================================================================
-
 async function insertItemsInChunks(
   supabase: any,
   items: any[]
@@ -536,18 +500,12 @@ async function insertItemsInChunks(
   return { insertedCount, errors };
 }
 
-// ============================================================================
-// HANDLER PRINCIPAL
-// ============================================================================
-
 Deno.serve(async (req: Request) => {
-  /* GARANTÍA: SIEMPRE devolver JSON, incluso en errores catastróficos */
   const startTime = Date.now();
   let conversionJobId: string | undefined;
   let supabase: any = null;
 
   try {
-    // OPTIONS handling
     if (req.method === "OPTIONS") {
       return new Response(null, {
         status: 200,
@@ -577,7 +535,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Conversion] Starting conversion for batch ${batch_id}`);
 
-    // Obtener el usuario autenticado
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
@@ -588,7 +545,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Crear conversion job
     const { data: jobData, error: jobError } = await supabase
       .from("conversion_jobs")
       .insert({
@@ -608,7 +564,6 @@ Deno.serve(async (req: Request) => {
     conversionJobId = jobData.id;
     console.log(`[Conversion] Created job ${conversionJobId}`);
 
-    // Obtener source count
     const { count: sourceCount, error: countError } = await supabase
       .from("imported_documents")
       .select("*", { count: "exact", head: true })
@@ -620,7 +575,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Conversion] Source count: ${sourceCount} documents`);
 
-    // Obtener documentos
     const { data: documents, error: docsError } = await supabase
       .from("imported_documents")
       .select("*")
@@ -632,13 +586,9 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Conversion] Processing ${documents.length} documents...`);
 
-    // ========================================================================
-    // DETECCIÓN AUTOMÁTICA DE FORMATO LOGEXPORT
-    // ========================================================================
     const formatDetection = detectFormatLOGEXPORT(documents);
     console.log('[Format Detection]', formatDetection);
 
-    // DEBUG: Mostrar muestra de datos para diagnóstico
     if (documents.length > 0) {
       const firstDoc = documents[0];
       console.log('[DEBUG] ===== MUESTRA DE DATOS =====');
@@ -664,12 +614,10 @@ Deno.serve(async (req: Request) => {
       console.log('Formato estándar detectado (con email)');
     }
 
-    // Parsear documentos al modelo estándar
     const validRows: StandardCommissionRow[] = [];
     const warningRows: StandardCommissionRow[] = [];
     const discardedRows: any[] = [];
 
-    // Inicializar reporte de descarte
     const discardReport: DiscardReport = {
       invalid_importe: 0,
       invalid_porpart: 0,
@@ -687,8 +635,6 @@ Deno.serve(async (req: Request) => {
       if (result.status === "valid") {
         validRows.push(result.row!);
       } else if (result.status === "warning") {
-        // CRÍTICO: Las filas con warnings SÍ se insertan
-        // FORMATO LOGEXPORT: Archivos sin email generan warnings pero SÍ se insertan
         warningRows.push(result.row!);
       } else if (result.status === "discard") {
         discardedRows.push({
@@ -700,19 +646,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ========================================================================
-    // ITEMS INSERTABLES = VALID + WARNING
-    // ========================================================================
-    // FORMATO LOGEXPORT: Archivos sin email generan 100% warnings pero SÍ se insertan
-    // Si existe VendNombre, la fila ES INSERTABLE (pending_assignment = true)
     let parsedRows = [...validRows, ...warningRows];
 
     console.log(`[Conversion] Parsed ${validRows.length} valid rows, ${warningRows.length} warning rows, ${discardedRows.length} discarded`);
     console.log('[Conversion] Discard report:', discardReport);
 
-    // ========================================================================
-    // APLICAR MAPPINGS PERSISTENTES
-    // ========================================================================
     const mappingResult = await applyPersistentMappings(supabase, parsedRows);
     parsedRows = mappingResult.rows;
 
@@ -723,14 +661,12 @@ Deno.serve(async (req: Request) => {
       console.log('No persistent mappings to apply');
     }
 
-    // Self-check: detectar inconsistencia lógica
     if (parsedRows.length === 0 && discardedRows.length === 0 && warningRows.length > 0) {
       console.error('[SELF-CHECK FAILED] Inconsistencia: warningRows > 0 pero parsedRows = 0. Bug en construcción de itemsToInsert.');
       throw new Error('SELF-CHECK FAILED: Las filas con warnings no se están incluyendo en parsedRows. Revisar lógica.');
     }
 
     if (parsedRows.length === 0) {
-      // LOG CRÍTICO: Diagnóstico completo del fallo
       console.error('[CRITICAL] ===== NO ITEMS PARSED =====');
       console.error('[CRITICAL] Source count:', sourceCount);
       console.error('[CRITICAL] Valid rows:', validRows.length);
@@ -738,7 +674,6 @@ Deno.serve(async (req: Request) => {
       console.error('[CRITICAL] Discarded rows:', discardedRows.length);
       console.error('[CRITICAL] Discard report:', JSON.stringify(discardReport, null, 2));
 
-      // Diagnóstico: mostrar primera fila para análisis
       if (documents.length > 0) {
         const firstDoc = documents[0];
         console.error('[CRITICAL] Primera fila document_data:', JSON.stringify(firstDoc.document_data, null, 2));
@@ -759,7 +694,6 @@ Deno.serve(async (req: Request) => {
           conversion_report: {
             discard_report: discardReport,
             parse_errors: discardedRows.slice(0, 10),
-            // Diagnóstico adicional
             sample_document_data: documents.length > 0 ? documents[0].document_data : null,
             detected_columns: documents.length > 0 ? Object.keys(documents[0].document_data || {}) : [],
             total_source_items: sourceCount
@@ -777,7 +711,6 @@ Deno.serve(async (req: Request) => {
           warningRows: 0,
           discardedRows: discardedRows.length,
           discarded: discardReport,
-          // CRITICAL: Datos de diagnóstico
           sample_document_data: documents.length > 0 ? documents[0].document_data : null,
           detected_columns: documents.length > 0 ? Object.keys(documents[0].document_data || {}) : [],
           parseErrors: discardedRows.slice(0, 5)
@@ -788,15 +721,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ========================================================================
-    // AGRUPAR POR SEMANA
-    // ========================================================================
     const weekGroups = groupByWeek(parsedRows);
     console.log(`[Conversion] Grouped into ${weekGroups.length} weeks`);
 
-    // ========================================================================
-    // CREAR BATCHES Y INSERTAR ITEMS
-    // ========================================================================
     const createdBatches: any[] = [];
     const createdBatchIds: string[] = [];
     let totalInsertedItems = 0;
@@ -825,7 +752,6 @@ Deno.serve(async (req: Request) => {
       createdBatchIds.push(batchId);
       console.log(`[Conversion] Created batch ${batchId}: ${batchName}`);
 
-      // Preparar items para inserción
       const itemsToInsert = group.items.map(row => ({
         batch_id: batchId,
         agent_email: row.agent_email,
@@ -861,7 +787,6 @@ Deno.serve(async (req: Request) => {
     console.log(`[Conversion] Total inserted items: ${totalInsertedItems}`);
 
     if (totalInsertedItems === 0) {
-      // LOG CRÍTICO: Diagnóstico de fallo de inserción
       console.error('[CRITICAL] ===== NO ITEMS INSERTED =====');
       console.error('[CRITICAL] Total source items:', sourceCount);
       console.error('[CRITICAL] Valid rows:', validRows.length);
@@ -871,12 +796,10 @@ Deno.serve(async (req: Request) => {
       console.error('[CRITICAL] Inserted items:', totalInsertedItems);
       console.error('[CRITICAL] Discard report:', JSON.stringify(discardReport, null, 2));
 
-      // Mostrar diagnóstico de primera fila parseada (si existe)
       if (parsedRows.length > 0) {
         console.error('[CRITICAL] Primera fila parseada (debería insertarse):', JSON.stringify(parsedRows[0], null, 2));
       }
 
-      // Mostrar diagnóstico de primera fila descartada (si existe)
       if (discardedRows.length > 0) {
         console.error('[CRITICAL] Primera fila descartada:', JSON.stringify(discardedRows[0], null, 2));
       }
@@ -914,7 +837,6 @@ Deno.serve(async (req: Request) => {
           parsedRows: parsedRows.length,
           insertedItems: totalInsertedItems,
           discarded: discardReport,
-          // Diagnóstico
           sample_parsed_row: parsedRows.length > 0 ? parsedRows[0] : null,
           sample_discarded_row: discardedRows.length > 0 ? discardedRows[0] : null
         }
@@ -926,9 +848,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Conversion] Success: ${createdBatches.length} batches, ${totalInsertedItems} items`);
 
-    // ========================================================================
-    // ACTUALIZAR CONTADORES DE PENDING ASSIGNMENTS EN LOS BATCHES
-    // ========================================================================
     for (const batchId of createdBatchIds) {
       const { count: pendingCount } = await supabase
         .from("commission_details")
@@ -942,9 +861,6 @@ Deno.serve(async (req: Request) => {
         .eq("id", batchId);
     }
 
-    // ========================================================================
-    // ACTUALIZAR CONVERSION JOB
-    // ========================================================================
     await supabase
       .from("conversion_jobs")
       .update({
