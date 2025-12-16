@@ -175,7 +175,7 @@ export default function MisComisiones() {
                         <span className="flex items-center space-x-1">
                           <Calendar className="w-4 h-4 flex-shrink-0" />
                           <span className="font-medium">Periodo:</span>
-                          <span>{formatDate(batch.date_from)} - {formatDate(batch.date_to)}</span>
+                          <span>{formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}</span>
                         </span>
                         <span className="flex items-center space-x-1">
                           <FileText className="w-4 h-4 flex-shrink-0" />

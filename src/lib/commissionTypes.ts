@@ -53,14 +53,18 @@ export interface CommissionBusinessRule {
 export interface CommissionBatch {
   id: string;
   name: string;
-  date_from: string;
-  date_to: string;
-  uploaded_by: string | null;
+  display_name?: string;
+  date_from?: string;
+  date_to?: string;
+  period_start?: string;
+  period_end?: string;
+  uploaded_by?: string | null;
   status: 'draft' | 'closed';
-  rules_version: string | null;
-  source_file: string | null;
+  rules_version?: string | null;
+  source_file?: string | null;
+  total_commission?: number;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface CommissionDetail {

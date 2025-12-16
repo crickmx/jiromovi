@@ -200,7 +200,7 @@ export default function Comisiones() {
                     <span className="flex items-center space-x-1">
                       <Calendar className="w-4 h-4 flex-shrink-0" />
                       <span className="font-medium">Periodo:</span>
-                      <span className="truncate">{formatDate(batch.date_from)} - {formatDate(batch.date_to)}</span>
+                      <span className="truncate">{formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}</span>
                     </span>
                     {batch.source_file && (
                       <span className="flex items-center space-x-1 min-w-0">

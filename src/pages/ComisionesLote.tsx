@@ -287,7 +287,7 @@ export default function ComisionesLote() {
                 {batch.name}
               </h1>
               <p className="text-sm sm:text-base text-neutral-600">
-                Periodo: {formatDate(batch.date_from)} - {formatDate(batch.date_to)}
+                Periodo: {formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}
               </p>
             </div>
           </div>

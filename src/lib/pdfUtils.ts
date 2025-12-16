@@ -77,7 +77,9 @@ export async function generateCommissionPDF(
   yPosition += 15;
   doc.setFontSize(11);
   doc.setTextColor(60);
-  doc.text(`Periodo: ${formatDate(batch.date_from)} al ${formatDate(batch.date_to)}`, pageWidth / 2, yPosition, { align: 'center' });
+  const dateFrom = batch.period_start || batch.date_from;
+  const dateTo = batch.period_end || batch.date_to;
+  doc.text(`Periodo: ${formatDate(dateFrom)} al ${formatDate(dateTo)}`, pageWidth / 2, yPosition, { align: 'center' });
 
   yPosition += 15;
   doc.setFontSize(10);
@@ -316,9 +318,16 @@ export async function generateOrdenDePagoPDF(
 
   yPosition += 5;
 
-  const [year, month, day] = batch.date_from.split('-').map(Number);
-  const dateFromLocal = new Date(year, month - 1, day);
-  const weekNumber = getWeekNumber(dateFromLocal);
+  const dateFrom = batch.period_start || batch.date_from;
+  const dateTo = batch.period_end || batch.date_to;
+
+  let weekNumber = 0;
+  if (dateFrom) {
+    const [year, month, day] = dateFrom.split('-').map(Number);
+    const dateFromLocal = new Date(year, month - 1, day);
+    weekNumber = getWeekNumber(dateFromLocal);
+  }
+
   doc.setFont(undefined, 'bold');
   doc.text('Semana:', marginLeft, yPosition);
   doc.setFont(undefined, 'normal');
@@ -327,7 +336,7 @@ export async function generateOrdenDePagoPDF(
   doc.setFont(undefined, 'bold');
   doc.text('Periodo:', marginLeft + 45, yPosition);
   doc.setFont(undefined, 'normal');
-  doc.text(`${formatDate(batch.date_from)} al ${formatDate(batch.date_to)}`, marginLeft + 61, yPosition);
+  doc.text(`${formatDate(dateFrom)} al ${formatDate(dateTo)}`, marginLeft + 61, yPosition);
 
   yPosition += 8;
 
