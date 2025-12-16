@@ -436,6 +436,160 @@ function getWeekInfo(dateStr: string): {
   };
 }
 
+/**
+ * Detecta automáticamente si un lote de documentos es formato LOGEXPORT
+ *
+ * LOGEXPORT se detecta cuando:
+ * - Existe columna VendNombre (o variantes)
+ * - Existen columnas obligatorias: Documento, Ramo, Importe, PorPart
+ * - Email está ausente o vacío en la mayoría de filas
+ */
+function detectFormatLOGEXPORT(documents: any[]): {
+  isLogExport: boolean;
+  confidence: number;
+  details: {
+    hasVendNombre: boolean;
+    hasRequiredFields: boolean;
+    emailMissingRatio: number;
+    totalRows: number;
+    rowsWithoutEmail: number;
+  };
+} {
+  if (!documents || documents.length === 0) {
+    return {
+      isLogExport: false,
+      confidence: 0,
+      details: {
+        hasVendNombre: false,
+        hasRequiredFields: false,
+        emailMissingRatio: 0,
+        totalRows: 0,
+        rowsWithoutEmail: 0
+      }
+    };
+  }
+
+  const sampleDoc = documents[0].document_data || {};
+  const keys = Object.keys(sampleDoc).map(k => k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+  // Verificar VendNombre
+  const hasVendNombre = keys.some(k =>
+    k.includes('vendnombre') || k.includes('vendedor') || k.includes('despnombre')
+  );
+
+  // Verificar campos obligatorios
+  const hasDocumento = keys.some(k => k.includes('documento') || k.includes('poliza'));
+  const hasRamo = keys.some(k => k.includes('ramo'));
+  const hasImporte = keys.some(k => k.includes('importe') || k.includes('monto'));
+  const hasPorPart = keys.some(k => k.includes('porpart') || k.includes('porcentaje'));
+  const hasRequiredFields = hasDocumento && hasRamo && hasImporte && hasPorPart;
+
+  // Contar filas sin email
+  let rowsWithoutEmail = 0;
+  for (const doc of documents) {
+    const mapped = mapColumns(doc.document_data || {});
+    const emailValue = mapped.email ? doc.document_data[mapped.email] : null;
+    const vendorEmail = doc.vendor_email_raw;
+
+    if (!emailValue && !vendorEmail) {
+      rowsWithoutEmail++;
+    }
+  }
+
+  const emailMissingRatio = documents.length > 0 ? rowsWithoutEmail / documents.length : 0;
+
+  // LOGEXPORT si:
+  // - Tiene VendNombre
+  // - Tiene campos obligatorios
+  // - >50% de filas sin email
+  const isLogExport = hasVendNombre && hasRequiredFields && emailMissingRatio > 0.5;
+  const confidence = isLogExport ?
+    Math.min((hasVendNombre ? 40 : 0) + (hasRequiredFields ? 30 : 0) + (emailMissingRatio * 30), 100) :
+    0;
+
+  return {
+    isLogExport,
+    confidence,
+    details: {
+      hasVendNombre,
+      hasRequiredFields,
+      emailMissingRatio,
+      totalRows: documents.length,
+      rowsWithoutEmail
+    }
+  };
+}
+
+/**
+ * Aplica mappings persistentes existentes a las filas parseadas
+ * antes de insertar en commission_details
+ */
+async function applyPersistentMappings(
+  supabase: any,
+  rows: StandardCommissionRow[]
+): Promise<{
+  rows: StandardCommissionRow[];
+  appliedCount: number;
+  mappings: Record<string, any>;
+}> {
+  // Obtener todos los vendor_keys únicos que necesitan mapping
+  const vendorKeys = [...new Set(rows
+    .filter(r => r.vendor_key && r.vendor_key !== 'unknown')
+    .map(r => r.vendor_key))];
+
+  if (vendorKeys.length === 0) {
+    return { rows, appliedCount: 0, mappings: {} };
+  }
+
+  // Buscar mappings persistentes existentes
+  const { data: mappings, error } = await supabase
+    .from("vendor_mapping_persistent")
+    .select("*")
+    .in("vendor_key", vendorKeys)
+    .eq("is_active", true);
+
+  if (error || !mappings || mappings.length === 0) {
+    console.log("[Mapping] No persistent mappings found");
+    return { rows, appliedCount: 0, mappings: {} };
+  }
+
+  console.log(`[Mapping] Found ${mappings.length} persistent mappings to apply`);
+
+  // Crear lookup de mappings
+  const mappingLookup: Record<string, any> = {};
+  for (const mapping of mappings) {
+    mappingLookup[mapping.vendor_key] = mapping;
+  }
+
+  // Aplicar mappings a las filas
+  let appliedCount = 0;
+  const updatedRows = rows.map(row => {
+    const mapping = mappingLookup[row.vendor_key];
+    if (mapping) {
+      appliedCount++;
+      return {
+        ...row,
+        agent_email: mapping.movi_user_id ? '' : row.agent_email, // Si hay mapping, limpiar email
+        // El agent_id se asignará en el insert
+      };
+    }
+    return row;
+  });
+
+  // Actualizar contadores de uso
+  for (const mapping of mappings) {
+    await supabase
+      .from("vendor_mapping_persistent")
+      .update({
+        usage_count: mapping.usage_count + 1,
+        last_used_at: new Date().toISOString()
+      })
+      .eq("id", mapping.id);
+  }
+
+  return { rows: updatedRows, appliedCount, mappings: mappingLookup };
+}
+
 async function insertItemsInChunks(
   supabase: any,
   items: any[]
@@ -631,6 +785,26 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Conversion] Processing ${documents.length} documents...`);
 
+    // ========================================================================
+    // DETECCIÓN AUTOMÁTICA DE FORMATO LOGEXPORT
+    // ========================================================================
+    const formatDetection = detectFormatLOGEXPORT(documents);
+    console.log('[Format Detection]', formatDetection);
+
+    if (formatDetection.isLogExport) {
+      console.log(`✅ FORMATO LOGEXPORT DETECTADO (confidence: ${formatDetection.confidence}%)`);
+      console.log(`   - VendNombre: ${formatDetection.details.hasVendNombre ? 'YES' : 'NO'}`);
+      console.log(`   - Required fields: ${formatDetection.details.hasRequiredFields ? 'YES' : 'NO'}`);
+      console.log(`   - Email missing ratio: ${(formatDetection.details.emailMissingRatio * 100).toFixed(1)}%`);
+      console.log(`   - Rows without email: ${formatDetection.details.rowsWithoutEmail}/${formatDetection.details.totalRows}`);
+      console.log('');
+      console.log('🔑 REGLA DE ORO: En formato LOGEXPORT, VendNombre sustituye al Email.');
+      console.log('   La falta de email NUNCA bloqueará la conversión.');
+      console.log('');
+    } else {
+      console.log('ℹ️  Formato estándar detectado (con email)');
+    }
+
     // Parsear documentos al modelo estándar
     const validRows: StandardCommissionRow[] = [];
     const warningRows: StandardCommissionRow[] = [];
@@ -672,10 +846,23 @@ Deno.serve(async (req: Request) => {
     // ========================================================================
     // FORMATO LOGEXPORT: Archivos sin email generan 100% warnings pero SÍ se insertan
     // Si existe VendNombre, la fila ES INSERTABLE (pending_assignment = true)
-    const parsedRows = [...validRows, ...warningRows];
+    let parsedRows = [...validRows, ...warningRows];
 
     console.log(`[Conversion] Parsed ${validRows.length} valid rows, ${warningRows.length} warning rows, ${discardedRows.length} discarded`);
     console.log('[Conversion] Discard report:', discardReport);
+
+    // ========================================================================
+    // APLICAR MAPPINGS PERSISTENTES
+    // ========================================================================
+    const mappingResult = await applyPersistentMappings(supabase, parsedRows);
+    parsedRows = mappingResult.rows;
+
+    if (mappingResult.appliedCount > 0) {
+      console.log(`✅ Applied ${mappingResult.appliedCount} persistent mappings`);
+      console.log(`   Mappings used:`, Object.keys(mappingResult.mappings));
+    } else {
+      console.log('ℹ️  No persistent mappings to apply');
+    }
 
     // Self-check: detectar inconsistencia lógica
     if (parsedRows.length === 0 && discardedRows.length === 0 && warningRows.length > 0) {
@@ -784,31 +971,58 @@ Deno.serve(async (req: Request) => {
       // Preparar items para inserción
       const itemsToInsert = noDateRows.map(row => {
         const hasEmail = row.agent_email && row.agent_email !== '';
-        const matchMethod = hasEmail ? 'email' : 'none';
-        const isPending = !hasEmail;
+
+        // Verificar si existe mapping persistente para este vendor_key
+        const persistentMapping = mappingResult.mappings[row.vendor_key];
+
+        let agent_id = null;
+        let movi_user_id = null;
+        let matchMethod = 'none';
+        let isPending = true;
+
+        if (persistentMapping && persistentMapping.movi_user_id) {
+          // Aplicar mapping persistente
+          agent_id = persistentMapping.movi_user_id;
+          movi_user_id = persistentMapping.movi_user_id;
+          matchMethod = 'manual';
+          isPending = false;
+        } else if (hasEmail) {
+          // Tiene email, intentar match automático (por ahora pending)
+          matchMethod = 'email';
+          isPending = true;
+        } else {
+          // Sin email ni mapping = pending
+          matchMethod = 'name_only';
+          isPending = true;
+        }
 
         return {
           batch_id: noDateBatch.id,
-          agent_id: null,
+          agent_id,
+          movi_user_id,
           poliza: row.poliza,
           endoso: row.endoso || null,
           nombre_asegurado: row.nombre_asegurado || null,
           ramo: row.ramo,
           aseguradora: row.aseguradora,
           prima_neta: row.prima_neta_info || 0,
+          prima_neta_info: row.prima_neta_info || null,
           importe_base: row.importe_base,
           porcentaje_comision: row.porcentaje,
+          porcentaje: row.porcentaje,
           concepto: row.concepto || null,
-          date_fpago: row.fpago,
+          fpago: row.fpago,
           commission_bruta: row.comision_calculada,
+          commission_calculada: row.comision_calculada,
           commission_neta: row.comision_calculada,
           vendor_email_raw: row.agent_email || null,
-          vendor_email_norm: row.agent_email || null,
+          vendor_email_norm: row.agent_email ? row.agent_email.toLowerCase() : null,
           vendor_name_raw: row.vendor_name_raw || null,
           vendor_name_norm: row.vendor_name_raw ? normalizeName(row.vendor_name_raw) : null,
           vendor_key: row.vendor_key,
           match_method: matchMethod,
           pending_assignment: isPending,
+          assignment_status: isPending ? 'pending' : 'assigned',
           raw_row: {}
         };
       });
@@ -867,31 +1081,58 @@ Deno.serve(async (req: Request) => {
       // Preparar items
       const itemsToInsert = group.rows.map(row => {
         const hasEmail = row.agent_email && row.agent_email !== '';
-        const matchMethod = hasEmail ? 'email' : 'none';
-        const isPending = !hasEmail;
+
+        // Verificar si existe mapping persistente para este vendor_key
+        const persistentMapping = mappingResult.mappings[row.vendor_key];
+
+        let agent_id = null;
+        let movi_user_id = null;
+        let matchMethod = 'none';
+        let isPending = true;
+
+        if (persistentMapping && persistentMapping.movi_user_id) {
+          // Aplicar mapping persistente
+          agent_id = persistentMapping.movi_user_id;
+          movi_user_id = persistentMapping.movi_user_id;
+          matchMethod = 'manual';
+          isPending = false;
+        } else if (hasEmail) {
+          // Tiene email, intentar match automático (por ahora pending)
+          matchMethod = 'email';
+          isPending = true;
+        } else {
+          // Sin email ni mapping = pending
+          matchMethod = 'name_only';
+          isPending = true;
+        }
 
         return {
           batch_id: weekBatch.id,
-          agent_id: null,
+          agent_id,
+          movi_user_id,
           poliza: row.poliza,
           endoso: row.endoso || null,
           nombre_asegurado: row.nombre_asegurado || null,
           ramo: row.ramo,
           aseguradora: row.aseguradora,
           prima_neta: row.prima_neta_info || 0,
+          prima_neta_info: row.prima_neta_info || null,
           importe_base: row.importe_base,
           porcentaje_comision: row.porcentaje,
+          porcentaje: row.porcentaje,
           concepto: row.concepto || null,
-          date_fpago: row.fpago,
+          fpago: row.fpago,
           commission_bruta: row.comision_calculada,
+          commission_calculada: row.comision_calculada,
           commission_neta: row.comision_calculada,
           vendor_email_raw: row.agent_email || null,
-          vendor_email_norm: row.agent_email || null,
+          vendor_email_norm: row.agent_email ? row.agent_email.toLowerCase() : null,
           vendor_name_raw: row.vendor_name_raw || null,
           vendor_name_norm: row.vendor_name_raw ? normalizeName(row.vendor_name_raw) : null,
           vendor_key: row.vendor_key,
           match_method: matchMethod,
           pending_assignment: isPending,
+          assignment_status: isPending ? 'pending' : 'assigned',
           raw_row: {}
         };
       });
@@ -951,6 +1192,27 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Conversion] Success: ${createdBatches.length} batches, ${totalInsertedItems} items`);
 
+    // ========================================================================
+    // ACTUALIZAR CONTADORES DE PENDING ASSIGNMENTS EN LOS BATCHES
+    // ========================================================================
+    for (const batchId of createdBatchIds) {
+      const { count: pendingCount } = await supabase
+        .from("commission_details")
+        .select("*", { count: "exact", head: true })
+        .eq("batch_id", batchId)
+        .eq("pending_assignment", true);
+
+      const hasPending = (pendingCount || 0) > 0;
+
+      await supabase
+        .from("commission_batches")
+        .update({
+          has_pending_assignments: hasPending,
+          pending_count: pendingCount || 0
+        })
+        .eq("id", batchId);
+    }
+
     // Marcar batch como convertido
     await supabase
       .from("document_import_batches")
@@ -982,6 +1244,11 @@ Deno.serve(async (req: Request) => {
             parsedCount: parsedRows.length,
             insertedCount: totalInsertedItems
           },
+          format_detection: formatDetection,
+          persistent_mappings: {
+            applied_count: mappingResult.appliedCount,
+            mapping_keys: Object.keys(mappingResult.mappings)
+          },
           discard_report: discardReport
         }
       })
@@ -990,6 +1257,12 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({
       success: true,
       job_id: conversionJobId,
+      format: formatDetection.isLogExport ? 'LOGEXPORT' : 'STANDARD',
+      formatDetection: formatDetection,
+      persistentMappings: {
+        appliedCount: mappingResult.appliedCount,
+        mappingKeys: Object.keys(mappingResult.mappings)
+      },
       totalSourceRows: sourceCount,
       validRows: validRows.length,
       warningRows: warningRows.length,
