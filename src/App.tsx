@@ -49,6 +49,8 @@ import Comisiones from './pages/Comisiones';
 import ComisionesLote from './pages/ComisionesLote';
 import MisComisiones from './pages/MisComisiones';
 import ComisionesUpload from './pages/ComisionesUpload';
+import ComisionesUploadNuevo from './pages/ComisionesUploadNuevo';
+import ComisionesPrepararLote from './pages/ComisionesPrepararLote';
 import MapeoVendedores from './pages/MapeoVendedores';
 import DocumentosImportar from './pages/DocumentosImportar';
 import MapeoVendedoresAdmin from './pages/MapeoVendedoresAdmin';
@@ -528,6 +530,28 @@ function AppRoutes() {
           <ProtectedRoute requireAdmin>
             <Layout>
               <ComisionesUpload />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comisiones/upload-nuevo"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <ComisionesUploadNuevo />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/comisiones/preparar-lote/:sessionId"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <ComisionesPrepararLote />
             </Layout>
           </ProtectedRoute>
         }

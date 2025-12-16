@@ -112,11 +112,11 @@ export default function Comisiones() {
               <span>Importar Documentos</span>
             </button>
             <button
-              onClick={() => navigate('/comisiones/upload')}
+              onClick={() => navigate('/comisiones/upload-nuevo')}
               className="flex items-center justify-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 sm:px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px] w-full sm:w-auto"
             >
               <Plus className="w-5 h-5" />
-              <span>Nuevo Lote</span>
+              <span>Cargar Archivo</span>
             </button>
           </div>
         </div>

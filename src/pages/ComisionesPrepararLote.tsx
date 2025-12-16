@@ -124,6 +124,23 @@ export default function ComisionesPrepararLote() {
 
       if (error) throw error;
 
+      const { error: mappingError } = await supabase
+        .from('vendor_mappings')
+        .upsert({
+          source_type: 'vendor_name',
+          source_value: vendorKey.replace('name:', ''),
+          movi_user_id: moviUserId,
+          status: 'active',
+          created_by: usuario?.id,
+        }, {
+          onConflict: 'source_type,source_value',
+          ignoreDuplicates: false
+        });
+
+      if (mappingError) {
+        console.warn('Error creating persistent mapping:', mappingError);
+      }
+
       await supabase.rpc('recalculate_staging_session_counters', {
         session_id: sessionId
       });
@@ -246,7 +263,7 @@ export default function ComisionesPrepararLote() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate('/comisiones/upload')}
+              onClick={() => navigate('/comisiones/upload-nuevo')}
               className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-neutral-700" />
