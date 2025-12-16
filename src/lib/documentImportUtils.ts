@@ -482,7 +482,7 @@ export async function convertBatchToCommissions(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.session.access_token}`,
       },
-      body: JSON.stringify({ batch_id: batchId })
+      body: JSON.stringify({ import_batch_id: batchId })
     }
   );
 
