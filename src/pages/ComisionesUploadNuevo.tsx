@@ -29,8 +29,11 @@ export default function ComisionesUploadNuevo() {
       const selectedFile = e.target.files?.[0];
       if (!selectedFile) return;
 
-      if (!selectedFile.name.endsWith('.xlsx')) {
-        setError('Por favor selecciona un archivo Excel (.xlsx)');
+      const isXlsx = selectedFile.name.endsWith('.xlsx');
+      const isCsv = selectedFile.name.endsWith('.csv');
+
+      if (!isXlsx && !isCsv) {
+        setError('Por favor selecciona un archivo Excel (.xlsx) o CSV (.csv)');
         return;
       }
 
@@ -157,7 +160,7 @@ export default function ComisionesUploadNuevo() {
                 Cargar Archivo de Comisiones
               </h1>
               <p className="text-neutral-600">
-                Sube un archivo Excel para procesarlo e identificar vendedores
+                Sube un archivo Excel (.xlsx) o CSV (.csv) para procesarlo e identificar vendedores
               </p>
             </div>
           </div>
@@ -165,7 +168,7 @@ export default function ComisionesUploadNuevo() {
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
           <h3 className="font-semibold text-blue-900 mb-2">
-            Formato del archivo Excel
+            Formato del archivo
           </h3>
           <p className="text-sm text-blue-800 mb-2">
             El archivo debe contener las siguientes columnas obligatorias:
@@ -202,7 +205,7 @@ export default function ComisionesUploadNuevo() {
                   <input
                     id="file-upload"
                     type="file"
-                    accept=".xlsx"
+                    accept=".xlsx,.csv"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -211,7 +214,7 @@ export default function ComisionesUploadNuevo() {
                     Haz clic para seleccionar un archivo
                   </h3>
                   <p className="text-neutral-500">
-                    o arrastra y suelta aquí un archivo .xlsx
+                    o arrastra y suelta aquí un archivo .xlsx o .csv
                   </p>
                 </label>
               </div>
