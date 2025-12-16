@@ -396,17 +396,19 @@ async function insertItemsInChunks(
 // ============================================================================
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders
-    });
-  }
-
+  // GARANTÍA: SIEMPRE devolver JSON, incluso en errores catastróficos
   const startTime = Date.now();
   let conversionJobId: string | undefined;
+  let supabase: any = null;
 
   try {
+    // OPTIONS handling
+    if (req.method === "OPTIONS") {
+      return new Response(null, {
+        status: 200,
+        headers: corsHeaders
+      });
+    }
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Authorization required" }), {
@@ -909,47 +911,64 @@ Deno.serve(async (req: Request) => {
 
     return new Response(JSON.stringify({
       success: true,
+      job_id: conversionJobId,
       totalSourceRows: sourceCount,
       validRows: validRows.length,
       warningRows: warningRows.length,
       discardedRows: discardedRows.length,
       discarded: discardReport,
       createdBatches,
-      totalInsertedItems,
-      conversion_job_id: conversionJobId
+      totalInsertedItems
     }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json; charset=utf-8"
+      }
     });
 
   } catch (error: any) {
     console.error("[Conversion] Error:", error);
 
-    if (conversionJobId) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
+    // Determinar código de error
+    const errorCode = error.code || error.constraint || "INTERNAL_ERROR";
+    const errorMessage = error.message || "Error desconocido al convertir el lote";
 
-      await supabase
-        .from("conversion_jobs")
-        .update({
-          status: "failed",
-          finished_at: new Date().toISOString(),
-          duration_ms: Date.now() - startTime,
-          error_code: "UNKNOWN",
-          error_message: error.message,
-          error_stack: error.stack
-        })
-        .eq("id", conversionJobId);
+    // Actualizar job si existe
+    if (conversionJobId && supabase) {
+      try {
+        await supabase
+          .from("conversion_jobs")
+          .update({
+            status: "failed",
+            finished_at: new Date().toISOString(),
+            duration_ms: Date.now() - startTime,
+            error_code: errorCode,
+            error_message: errorMessage,
+            error_stack: error.stack || null
+          })
+          .eq("id", conversionJobId);
+      } catch (updateError) {
+        console.error("[Conversion] Failed to update job:", updateError);
+      }
     }
 
+    // GARANTÍA: SIEMPRE devolver JSON válido, incluso en errores catastróficos
     return new Response(JSON.stringify({
       success: false,
-      code: "INTERNAL_ERROR",
-      message: error.message || "Error desconocido al convertir el lote"
+      job_id: conversionJobId || null,
+      code: errorCode,
+      message: errorMessage,
+      details: {
+        timestamp: new Date().toISOString(),
+        duration_ms: Date.now() - startTime
+      }
     }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json; charset=utf-8"
+      }
     });
   }
 });

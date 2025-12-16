@@ -42,6 +42,7 @@ export default function ConvertirLoteModal({
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<any>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
   const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
   const [conversionResult, setConversionResult] = useState<ConversionResult | null>(null);
 
@@ -103,11 +104,16 @@ export default function ConvertirLoteModal({
       // Mostrar error detallado sin cerrar el modal
       setError(err.message || 'Error desconocido al convertir el lote');
 
+      // Capturar job_id para poder consultar el reporte
+      if (err.job_id) {
+        setJobId(err.job_id);
+      }
+
       // Capturar detalles completos del error incluyendo info de DB
       const errorDetailsObj: any = {
         code: err.code,
         details: err.details,
-        conversion_job_id: err.conversion_job_id
+        job_id: err.job_id
       };
 
       // Si hay info de DB en el error, incluirla
@@ -351,10 +357,30 @@ export default function ConvertirLoteModal({
                       </div>
                     )}
 
-                    {errorDetails?.conversion_job_id && (
-                      <p className="text-xs text-gray-600 mt-3 font-mono">
-                        Job ID: {errorDetails.conversion_job_id}
-                      </p>
+                    {(errorDetails?.conversion_job_id || errorDetails?.job_id || jobId) && (
+                      <div className="mt-4 pt-3 border-t border-red-200">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-red-800 font-mono">
+                            Job ID: {errorDetails?.job_id || errorDetails?.conversion_job_id || jobId}
+                          </p>
+                          <button
+                            onClick={() => {
+                              const id = errorDetails?.job_id || errorDetails?.conversion_job_id || jobId;
+                              if (id) {
+                                console.log('[ConvertirLoteModal] Ver reporte de job:', id);
+                                // TODO: Implementar modal de reporte
+                                alert(`Ver reporte del trabajo ${id}\n\nPróximamente: panel de diagnóstico detallado`);
+                              }
+                            }}
+                            className="text-xs text-red-700 hover:text-red-900 underline"
+                          >
+                            Ver reporte del trabajo
+                          </button>
+                        </div>
+                        <p className="text-xs text-red-600 mt-1">
+                          Se registró toda la información del error en el sistema
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>

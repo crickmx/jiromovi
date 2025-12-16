@@ -475,16 +475,44 @@ export async function convertBatchToCommissions(
     }
   );
 
-  const result = await response.json();
+  // TOLERANTE: No asumir que la respuesta es JSON válido
+  let result: any = null;
+  let textBody = '';
+
+  try {
+    textBody = await response.text();
+
+    if (!textBody || textBody.trim() === '') {
+      throw new Error('El servidor devolvió una respuesta vacía');
+    }
+
+    result = JSON.parse(textBody);
+  } catch (parseError: any) {
+    console.error('[Conversion] Parse error:', parseError);
+    console.error('[Conversion] Response status:', response.status, response.statusText);
+    console.error('[Conversion] Response body (first 200 chars):', textBody.substring(0, 200));
+
+    const error: any = new Error(
+      `El servidor no devolvió una respuesta válida. Status: ${response.status}. Revisa el reporte del trabajo.`
+    );
+    error.code = 'INVALID_RESPONSE';
+    error.details = {
+      status: response.status,
+      statusText: response.statusText,
+      bodyPreview: textBody.substring(0, 200),
+      parseError: parseError.message
+    };
+    throw error;
+  }
 
   // Manejar respuestas de error estructuradas
   if (!response.ok || !result.success) {
     const errorMessage = result.message || result.error || 'Error desconocido al convertir batch';
     const error: any = new Error(errorMessage);
-    error.code = result.code;
+    error.code = result.code || 'UNKNOWN_ERROR';
     error.details = result.details;
-    error.conversion_job_id = result.conversion_job_id;
-    error.db = result.db; // Información de base de datos (código, constraint, etc)
+    error.job_id = result.job_id;
+    error.db = result.db;
     throw error;
   }
 
@@ -498,6 +526,46 @@ export async function convertBatchToCommissions(
   }
 
   return result as ConversionResult;
+}
+
+/**
+ * Consulta el estado de un job de conversión
+ */
+export async function getConversionJob(jobId: string): Promise<any> {
+  const { data: session } = await supabase.auth.getSession();
+
+  if (!session?.session?.access_token) {
+    throw new Error('No hay sesión activa');
+  }
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-conversion-job/${jobId}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.session.access_token}`,
+      }
+    }
+  );
+
+  let result: any = null;
+  let textBody = '';
+
+  try {
+    textBody = await response.text();
+    if (textBody && textBody.trim() !== '') {
+      result = JSON.parse(textBody);
+    }
+  } catch (parseError) {
+    console.error('[GetConversionJob] Parse error:', parseError);
+    throw new Error('No se pudo obtener información del trabajo de conversión');
+  }
+
+  if (!response.ok || !result?.success) {
+    throw new Error(result?.error || 'Error al consultar el trabajo de conversión');
+  }
+
+  return result.job;
 }
 
 export function getBatchStatusLabel(status: string): { text: string; color: string } {
