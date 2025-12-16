@@ -121,9 +121,30 @@ Deno.serve(async (req: Request) => {
     if (!insertableItems || insertableItems.length === 0) {
       console.log(`[Convert] No hay items insertables`);
 
-      const diagnostic = await adminSupabase.rpc('get_import_diagnostic', {
-        p_batch_id: import_batch_id
-      });
+      let diagnostic: any = {
+        batch_id: import_batch_id,
+        counts: {
+          total: 0,
+          valid: 0,
+          warning: 0,
+          discard: 0
+        },
+        message: 'No se encontraron items válidos para convertir'
+      };
+
+      try {
+        const { data: diagData, error: diagError } = await adminSupabase.rpc('get_import_diagnostic', {
+          p_batch_id: import_batch_id
+        });
+
+        if (!diagError && diagData) {
+          diagnostic = diagData;
+        } else {
+          console.warn('[Convert] No se pudo obtener diagnóstico:', diagError);
+        }
+      } catch (diagError: any) {
+        console.warn('[Convert] Error al obtener diagnóstico:', diagError);
+      }
 
       await supabase
         .from('document_import_batches')
@@ -138,11 +159,7 @@ Deno.serve(async (req: Request) => {
           success: false,
           code: 'NO_ITEMS_INSERTED',
           message: 'No hay filas insertables en staging',
-          diagnostic: diagnostic.data || {
-            batch_id: import_batch_id,
-            counts: batch,
-            message: 'Todos los items fueron descartados o no hay datos válidos'
-          }
+          diagnostic
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
