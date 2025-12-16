@@ -577,11 +577,23 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Conversion] Starting conversion for batch ${batch_id}`);
 
+    // Obtener el usuario autenticado
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Usuario no autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     // Crear conversion job
     const { data: jobData, error: jobError } = await supabase
       .from("conversion_jobs")
       .insert({
-        import_batch_id: batch_id,
+        batch_id: batch_id,
+        started_by: user.id,
         status: "running",
         started_at: new Date().toISOString()
       })
@@ -589,7 +601,8 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (jobError || !jobData) {
-      throw new Error("Failed to create conversion job");
+      console.error("[Conversion] Error creating job:", jobError);
+      throw new Error(`Failed to create conversion job: ${jobError?.message || 'Unknown error'}`);
     }
 
     conversionJobId = jobData.id;
