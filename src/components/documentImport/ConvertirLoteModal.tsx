@@ -505,18 +505,22 @@ export default function ConvertirLoteModal({
 
                       {errorDetails.details.discarded.examples && errorDetails.details.discarded.examples.length > 0 && (
                         <div className="mt-3 bg-white rounded-lg p-3 border border-orange-200">
-                          <p className="text-xs font-semibold text-orange-900 mb-2">Ejemplos de filas descartadas:</p>
+                          <p className="text-xs font-semibold text-orange-900 mb-2">Ejemplos de documentos descartados:</p>
                           <div className="space-y-2">
                             {errorDetails.details.discarded.examples.slice(0, 5).map((ex: any, idx: number) => (
                               <div key={idx} className="text-xs border-l-2 border-orange-300 pl-2">
-                                <p className="text-orange-900 font-semibold">Fila {ex.rowIndex + 1}</p>
-                                <p className="text-orange-800">Razón: {ex.reason}</p>
-                                <div className="text-gray-600 mt-1 space-y-0.5">
-                                  {ex.values.email && <p>Email: {ex.values.email}</p>}
-                                  {ex.values.importe !== undefined && <p>Importe: {ex.values.importe}</p>}
-                                  {ex.values.porpart !== undefined && <p>PorPart: {ex.values.porpart}</p>}
-                                  {ex.values.ramo && <p>Ramo: {ex.values.ramo}</p>}
-                                </div>
+                                {ex.vendor_email && <p className="text-orange-900 font-semibold">Email: {ex.vendor_email}</p>}
+                                {ex.document_id && <p className="text-gray-600 text-xs">ID: {ex.document_id}</p>}
+                                {ex.errors && ex.errors.length > 0 && (
+                                  <div className="text-orange-800 mt-1">
+                                    <p className="font-semibold">Errores:</p>
+                                    <ul className="list-disc list-inside text-xs space-y-0.5">
+                                      {ex.errors.map((err: string, errIdx: number) => (
+                                        <li key={errIdx}>{err.replace(/_/g, ' ')}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
