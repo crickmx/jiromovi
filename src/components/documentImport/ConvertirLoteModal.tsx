@@ -407,33 +407,15 @@ export default function ConvertirLoteModal({
                         Todas las filas fueron descartadas por las siguientes razones:
                       </p>
                       <div className="space-y-2">
-                        {errorDetails.details.discarded.missing_email > 0 && (
-                          <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">Email faltante o vacío</span>
-                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_email} filas</span>
-                          </div>
-                        )}
-                        {errorDetails.details.discarded.missing_importe > 0 && (
-                          <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">Importe faltante</span>
-                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_importe} filas</span>
-                          </div>
-                        )}
                         {errorDetails.details.discarded.invalid_importe > 0 && (
                           <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">Importe inválido (debe ser mayor a 0)</span>
+                            <span className="text-sm text-gray-700">Importe inválido (no numérico)</span>
                             <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.invalid_importe} filas</span>
-                          </div>
-                        )}
-                        {errorDetails.details.discarded.missing_porpart > 0 && (
-                          <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">PorPart faltante</span>
-                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_porpart} filas</span>
                           </div>
                         )}
                         {errorDetails.details.discarded.invalid_porpart > 0 && (
                           <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">PorPart inválido</span>
+                            <span className="text-sm text-gray-700">PorPart inválido (no numérico)</span>
                             <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.invalid_porpart} filas</span>
                           </div>
                         )}
@@ -443,12 +425,6 @@ export default function ConvertirLoteModal({
                             <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_ramo} filas</span>
                           </div>
                         )}
-                        {errorDetails.details.discarded.missing_aseguradora > 0 && (
-                          <div className="flex items-center justify-between bg-white p-2 rounded">
-                            <span className="text-sm text-gray-700">Aseguradora faltante</span>
-                            <span className="text-sm font-semibold text-orange-900">{errorDetails.details.discarded.missing_aseguradora} filas</span>
-                          </div>
-                        )}
                         {errorDetails.details.discarded.missing_poliza > 0 && (
                           <div className="flex items-center justify-between bg-white p-2 rounded">
                             <span className="text-sm text-gray-700">Póliza faltante</span>
@@ -456,6 +432,26 @@ export default function ConvertirLoteModal({
                           </div>
                         )}
                       </div>
+
+                      {(errorDetails.details.discarded.missing_email_warnings > 0 || errorDetails.details.discarded.missing_aseguradora_warnings > 0) && (
+                        <div className="mt-4 pt-4 border-t border-orange-200">
+                          <p className="text-xs font-semibold text-orange-900 mb-2">Advertencias (no bloquean conversión):</p>
+                          <div className="space-y-1">
+                            {errorDetails.details.discarded.missing_email_warnings > 0 && (
+                              <div className="flex items-center justify-between bg-white p-2 rounded">
+                                <span className="text-xs text-gray-600">Filas sin email (se marcarán como pendientes)</span>
+                                <span className="text-xs font-semibold text-blue-700">{errorDetails.details.discarded.missing_email_warnings} filas</span>
+                              </div>
+                            )}
+                            {errorDetails.details.discarded.missing_aseguradora_warnings > 0 && (
+                              <div className="flex items-center justify-between bg-white p-2 rounded">
+                                <span className="text-xs text-gray-600">Filas sin aseguradora (se usará "NO_ESPECIFICADA")</span>
+                                <span className="text-xs font-semibold text-blue-700">{errorDetails.details.discarded.missing_aseguradora_warnings} filas</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {errorDetails.details.discarded.examples && errorDetails.details.discarded.examples.length > 0 && (
                         <div className="mt-3 bg-white rounded-lg p-3 border border-orange-200">

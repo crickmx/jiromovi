@@ -27,14 +27,12 @@ interface StandardCommissionRow {
 }
 
 interface DiscardReport {
-  missing_email: number;
-  missing_importe: number;
-  missing_porpart: number;
-  missing_ramo: number;
-  missing_aseguradora: number;
-  missing_poliza: number;
   invalid_importe: number;
   invalid_porpart: number;
+  missing_ramo: number;
+  missing_poliza: number;
+  missing_aseguradora_warnings: number;
+  missing_email_warnings: number;
   examples: Array<{
     rowIndex: number;
     reason: string;
@@ -158,6 +156,17 @@ function mapColumns(data: Record<string, any>): Record<string, string> {
 /**
  * Pre-check: Valida que el primer documento tenga las columnas obligatorias
  * Retorna información detallada sobre headers detectados y faltantes
+ *
+ * CAMPOS REALMENTE OBLIGATORIOS (para calcular comisión):
+ * - importe (puede ser negativo)
+ * - porpart
+ * - ramo
+ * - poliza
+ *
+ * CAMPOS OPCIONALES (no bloquean conversión):
+ * - email (se marca como pending_assignment)
+ * - aseguradora (se usa "NO_ESPECIFICADA")
+ * - fpago (va a lote "Sin fecha")
  */
 function checkHeaders(firstDoc: any): HeaderCheckResult {
   const docData = firstDoc?.document_data || {};
@@ -169,7 +178,8 @@ function checkHeaders(firstDoc: any): HeaderCheckResult {
 
   const mapped = mapColumns(docData);
 
-  const requiredFields = ['email', 'importe', 'porpart', 'ramo', 'aseguradora', 'poliza'];
+  // Solo campos realmente obligatorios para calcular comisión
+  const requiredFields = ['importe', 'porpart', 'ramo', 'poliza'];
   const missing: string[] = [];
 
   for (const field of requiredFields) {
@@ -189,9 +199,20 @@ function checkHeaders(firstDoc: any): HeaderCheckResult {
 
 /**
  * Parsea una fila de documento importado al modelo estándar
+ *
  * REGLA DE ORO: Comisión = Importe × (PorPart / 100)
- * CRÍTICO: NO usar prima_neta como base de cálculo
- * IMPORTANTE: FPago puede ser NULL (va al lote "Sin fecha")
+ *
+ * REGLAS DE NEGOCIO:
+ * 1. Email NO es obligatorio (se marca como pending_assignment)
+ * 2. Importe puede ser negativo (ajustes, cancelaciones, reversos)
+ * 3. Aseguradora puede estar vacía (se usa "NO_ESPECIFICADA")
+ * 4. FPago puede ser NULL (va al lote "Sin fecha")
+ *
+ * SOLO SE DESCARTA si NO se puede calcular comisión:
+ * - Importe inválido (NaN)
+ * - PorPart inválido (NaN)
+ * - Ramo vacío
+ * - Póliza vacía
  */
 function parseImportedDocument(
   doc: any,
@@ -224,7 +245,7 @@ function parseImportedDocument(
   const fpago = normalizeDate(fpagoRaw);
   const agent_email = normalizeEmail(emailRaw);
   const ramo = normalizeText(ramoRaw);
-  const aseguradora = normalizeText(aseguradoraRaw);
+  let aseguradora = normalizeText(aseguradoraRaw);
   const importe_base = normalizeNumeric(importeRaw);
   const porcentaje = normalizeNumeric(porpartRaw);
   const poliza = normalizeText(polizaRaw);
@@ -233,53 +254,51 @@ function parseImportedDocument(
   const nombre_asegurado = nombreAseguradoRaw ? normalizeText(nombreAseguradoRaw) : undefined;
   const concepto = conceptoRaw ? normalizeText(conceptoRaw) : undefined;
 
-  // Validar campos obligatorios (FPago NO es obligatorio)
+  // Validar SOLO campos realmente obligatorios para calcular comisión
   let discardReason = '';
 
-  if (!agent_email || agent_email === '') {
-    errors.push(`Email vacío o inválido: ${emailRaw}`);
-    discardReport.missing_email++;
-    discardReason = 'missing_email';
-  }
-
+  // 1. Ramo es obligatorio
   if (!ramo || ramo === '') {
     errors.push(`Ramo vacío: ${ramoRaw}`);
     discardReport.missing_ramo++;
-    discardReason = discardReason || 'missing_ramo';
+    discardReason = 'missing_ramo';
   }
 
-  if (!aseguradora || aseguradora === '') {
-    errors.push(`Aseguradora vacía: ${aseguradoraRaw}`);
-    discardReport.missing_aseguradora++;
-    discardReason = discardReason || 'missing_aseguradora';
-  }
-
-  if (!importe_base || importe_base <= 0) {
-    errors.push(`Importe vacío o inválido (debe ser > 0): ${importeRaw}`);
-    if (!importeRaw || importeRaw === '') {
-      discardReport.missing_importe++;
-    } else {
-      discardReport.invalid_importe++;
-    }
+  // 2. Importe debe ser numérico (puede ser negativo para ajustes/cancelaciones)
+  if (importeRaw === null || importeRaw === undefined || importeRaw === '' || isNaN(importe_base)) {
+    errors.push(`Importe inválido (no numérico): ${importeRaw}`);
+    discardReport.invalid_importe++;
     discardReason = discardReason || 'invalid_importe';
   }
 
-  if (porcentaje === undefined || porcentaje === null || isNaN(porcentaje)) {
-    errors.push(`PorPart vacío o inválido: ${porpartRaw}`);
-    if (!porpartRaw || porpartRaw === '') {
-      discardReport.missing_porpart++;
-    } else {
-      discardReport.invalid_porpart++;
-    }
+  // 3. PorPart debe ser numérico
+  if (porpartRaw === null || porpartRaw === undefined || porpartRaw === '' || isNaN(porcentaje)) {
+    errors.push(`PorPart inválido (no numérico): ${porpartRaw}`);
+    discardReport.invalid_porpart++;
     discardReason = discardReason || 'invalid_porpart';
   }
 
+  // 4. Póliza es obligatoria
   if (!poliza || poliza === '') {
     errors.push(`Póliza vacía: ${polizaRaw}`);
     discardReport.missing_poliza++;
     discardReason = discardReason || 'missing_poliza';
   }
 
+  // ADVERTENCIAS (no bloquean conversión)
+
+  // Email vacío -> warning, no error
+  if (!agent_email || agent_email === '') {
+    discardReport.missing_email_warnings++;
+  }
+
+  // Aseguradora vacía -> usar default
+  if (!aseguradora || aseguradora === '') {
+    aseguradora = 'NO_ESPECIFICADA';
+    discardReport.missing_aseguradora_warnings++;
+  }
+
+  // Si hay errores bloqueantes, descartar
   if (errors.length > 0) {
     if (discardReport.examples.length < 10) {
       discardReport.examples.push({
@@ -299,18 +318,19 @@ function parseImportedDocument(
   }
 
   // CÁLCULO CORRECTO: Comisión = Importe × (PorPart / 100)
+  // Importe puede ser negativo (ajustes, cancelaciones)
   const comision_calculada = importe_base * (porcentaje / 100);
 
   return {
     row: {
       fpago,
-      agent_email: agent_email!,
+      agent_email: agent_email || '',  // Puede estar vacío
       ramo: ramo!,
-      aseguradora: aseguradora!,
-      importe_base,
+      aseguradora: aseguradora!,  // Siempre tiene valor (default si vacío)
+      importe_base,  // Puede ser negativo
       porcentaje,
       poliza: poliza!,
-      comision_calculada,
+      comision_calculada,  // Puede ser negativa
       prima_neta_info,
       nombre_asegurado,
       concepto
@@ -538,7 +558,7 @@ Deno.serve(async (req: Request) => {
           normalizedHeaders: headerCheck.normalized,
           missingColumns: headerCheck.missing,
           mappedColumns: headerCheck.mapped,
-          requiredColumns: ['email', 'importe', 'porpart', 'ramo', 'aseguradora', 'poliza']
+          requiredColumns: ['importe', 'porpart', 'ramo', 'poliza']
         }
       }), {
         status: 400,
@@ -585,14 +605,12 @@ Deno.serve(async (req: Request) => {
 
     // Inicializar reporte de descarte
     const discardReport: DiscardReport = {
-      missing_email: 0,
-      missing_importe: 0,
-      missing_porpart: 0,
-      missing_ramo: 0,
-      missing_aseguradora: 0,
-      missing_poliza: 0,
       invalid_importe: 0,
       invalid_porpart: 0,
+      missing_ramo: 0,
+      missing_poliza: 0,
+      missing_aseguradora_warnings: 0,
+      missing_email_warnings: 0,
       examples: []
     };
 
@@ -712,29 +730,35 @@ Deno.serve(async (req: Request) => {
       createdBatchIds.push(noDateBatch.id);
 
       // Preparar items para inserción
-      const itemsToInsert = noDateRows.map(row => ({
-        batch_id: noDateBatch.id,
-        agent_id: null,
-        poliza: row.poliza,
-        nombre_asegurado: row.nombre_asegurado || null,
-        ramo: row.ramo,
-        aseguradora: row.aseguradora,
-        prima_neta: row.prima_neta_info || 0,
-        importe_base: row.importe_base,
-        porcentaje_comision: row.porcentaje,
-        concepto: row.concepto || null,
-        date_fpago: row.fpago,
-        commission_bruta: row.comision_calculada,
-        commission_neta: row.comision_calculada,
-        vendor_email_raw: row.agent_email,
-        vendor_email_norm: row.agent_email,
-        vendor_name_raw: '',
-        vendor_name_norm: '',
-        vendor_key: row.agent_email,
-        match_method: 'email',
-        pending_assignment: true,
-        raw_row: {}
-      }));
+      const itemsToInsert = noDateRows.map(row => {
+        const hasEmail = row.agent_email && row.agent_email !== '';
+        const vendorKey = hasEmail ? row.agent_email : 'unknown';
+        const matchMethod = hasEmail ? 'email' : 'none';
+
+        return {
+          batch_id: noDateBatch.id,
+          agent_id: null,
+          poliza: row.poliza,
+          nombre_asegurado: row.nombre_asegurado || null,
+          ramo: row.ramo,
+          aseguradora: row.aseguradora,
+          prima_neta: row.prima_neta_info || 0,
+          importe_base: row.importe_base,
+          porcentaje_comision: row.porcentaje,
+          concepto: row.concepto || null,
+          date_fpago: row.fpago,
+          commission_bruta: row.comision_calculada,
+          commission_neta: row.comision_calculada,
+          vendor_email_raw: row.agent_email || '',
+          vendor_email_norm: row.agent_email || '',
+          vendor_name_raw: '',
+          vendor_name_norm: '',
+          vendor_key: vendorKey,
+          match_method: matchMethod,
+          pending_assignment: true,
+          raw_row: {}
+        };
+      });
 
       const insertResult = await insertItemsInChunks(supabase, itemsToInsert);
       totalInsertedItems += insertResult.insertedCount;
@@ -784,31 +808,35 @@ Deno.serve(async (req: Request) => {
         throw new Error(`Failed to create batch for week ${group.week_number}: ${createError?.message}`);
       }
 
-      createdBatchIds.push(weekBatch.id);
+      createdBatchIds.push(weekBatch.id);      const itemsToInsert = group.rows.map(row => {
+        const hasEmail = row.agent_email && row.agent_email !== '';
+        const vendorKey = hasEmail ? row.agent_email : 'unknown';
+        const matchMethod = hasEmail ? 'email' : 'none';
 
-      const itemsToInsert = group.rows.map(row => ({
-        batch_id: weekBatch.id,
-        agent_id: null,
-        poliza: row.poliza,
-        nombre_asegurado: row.nombre_asegurado || null,
-        ramo: row.ramo,
-        aseguradora: row.aseguradora,
-        prima_neta: row.prima_neta_info || 0,
-        importe_base: row.importe_base,
-        porcentaje_comision: row.porcentaje,
-        concepto: row.concepto || null,
-        date_fpago: row.fpago,
-        commission_bruta: row.comision_calculada,
-        commission_neta: row.comision_calculada,
-        vendor_email_raw: row.agent_email,
-        vendor_email_norm: row.agent_email,
-        vendor_name_raw: '',
-        vendor_name_norm: '',
-        vendor_key: row.agent_email,
-        match_method: 'email',
-        pending_assignment: true,
-        raw_row: {}
-      }));
+        return {
+          batch_id: weekBatch.id,
+          agent_id: null,
+          poliza: row.poliza,
+          nombre_asegurado: row.nombre_asegurado || null,
+          ramo: row.ramo,
+          aseguradora: row.aseguradora,
+          prima_neta: row.prima_neta_info || 0,
+          importe_base: row.importe_base,
+          porcentaje_comision: row.porcentaje,
+          concepto: row.concepto || null,
+          date_fpago: row.fpago,
+          commission_bruta: row.comision_calculada,
+          commission_neta: row.comision_calculada,
+          vendor_email_raw: row.agent_email || '',
+          vendor_email_norm: row.agent_email || '',
+          vendor_name_raw: '',
+          vendor_name_norm: '',
+          vendor_key: vendorKey,
+          match_method: matchMethod,
+          pending_assignment: true,
+          raw_row: {}
+        };
+      });
 
       const insertResult = await insertItemsInChunks(supabase, itemsToInsert);
       totalInsertedItems += insertResult.insertedCount;
