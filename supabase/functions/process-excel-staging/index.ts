@@ -31,34 +31,10 @@ function normalizeHeader(header: string): string {
   return normalized;
 }
 
-function normalizeEmail(email: string | null | undefined): string | null {
-  if (!email || email.trim() === '') return null;
-  return email.trim().toLowerCase();
-}
-
-function normalizeName(name: string | null | undefined): string | null {
-  if (!name || name.trim() === '') return null;
-  let normalized = name.trim().toLowerCase();
-  const accentMap: { [key: string]: string } = {
-    'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n',
-  };
-  normalized = normalized.split('').map(char => accentMap[char] || char).join('');
-  normalized = normalized.replace(/\s+/g, ' ');
-  return normalized;
-}
-
-function calculateVendorKey(vendorEmail: string | null, vendorName: string | null): string {
-  const normalizedEmail = normalizeEmail(vendorEmail);
-  const normalizedName = normalizeName(vendorName);
-
-  if (normalizedEmail) {
-    return `email:${normalizedEmail}`;
+function calculateVendorKey(vendorNameNorm: string | null): string {
+  if (vendorNameNorm && vendorNameNorm.trim() !== '') {
+    return `name:${vendorNameNorm}`;
   }
-
-  if (normalizedName) {
-    return `name:${normalizedName}`;
-  }
-
   return 'unknown';
 }
 
@@ -244,13 +220,14 @@ Deno.serve(async (req: Request) => {
 
     const { data: usuarios } = await supabase
       .from('usuarios')
-      .select('id, email, nombre_completo');
+      .select('id, nombre_completo, nombre_completo_norm')
+      .not('nombre_completo_norm', 'is', null);
 
     const usuariosMap = new Map();
     if (usuarios) {
       usuarios.forEach(u => {
-        if (u.email) {
-          usuariosMap.set(normalizeEmail(u.email), u);
+        if (u.nombre_completo_norm) {
+          usuariosMap.set(u.nombre_completo_norm, u);
         }
       });
     }
@@ -273,29 +250,55 @@ Deno.serve(async (req: Request) => {
     const itemsToInsert: any[] = [];
 
     for (const row of parsed.rows) {
-      const vendorEmailRaw = row[parsed.debugInfo.detectedColumns.emailAgente || ''] || row['EmailAgente'] || row['Email'] || '';
       const vendorNameRaw = row[parsed.debugInfo.detectedColumns.vendNombre!] || '';
 
-      const vendorEmailNorm = normalizeEmail(vendorEmailRaw);
-      const vendorNameNorm = normalizeName(vendorNameRaw);
-      const vendorKey = calculateVendorKey(vendorEmailRaw, vendorNameRaw);
-
+      let vendorNameNorm: string | null = null;
       let moviUserId: string | null = null;
       let matchMethod: string = 'none';
 
-      if (vendorEmailNorm) {
-        const u = usuariosMap.get(vendorEmailNorm);
-        if (u) {
-          moviUserId = u.id;
-          matchMethod = 'direct_email';
+      if (vendorNameRaw && vendorNameRaw.trim() !== '') {
+        const { data: normalizedData, error: normError } = await supabase.rpc('normalize_person_name', {
+          name_input: vendorNameRaw
+        });
+
+        if (!normError && normalizedData) {
+          vendorNameNorm = normalizedData;
         }
       }
 
-      if (!moviUserId) {
-        const mappedUserId = mappingsMap.get(vendorKey);
-        if (mappedUserId) {
-          moviUserId = mappedUserId;
-          matchMethod = vendorKey.startsWith('email:') ? 'mapping_email' : 'mapping_name';
+      const vendorKey = calculateVendorKey(vendorNameNorm);
+
+      if (vendorNameNorm) {
+        const persistentMatch = mappingsMap.get(vendorKey);
+        if (persistentMatch) {
+          moviUserId = persistentMatch;
+          matchMethod = 'mapping_name';
+        } else {
+          const exactMatch = usuariosMap.get(vendorNameNorm);
+          if (exactMatch) {
+            moviUserId = exactMatch.id;
+            matchMethod = 'auto_exact';
+          } else {
+            let bestMatch: { userId: string; confidence: number } | null = null;
+
+            for (const [userNameNorm, userData] of usuariosMap) {
+              const { data: similarity, error: simError } = await supabase.rpc('name_similarity', {
+                name1: vendorNameNorm,
+                name2: userNameNorm
+              });
+
+              if (!simError && similarity && similarity >= 92) {
+                if (!bestMatch || similarity > bestMatch.confidence) {
+                  bestMatch = { userId: userData.id, confidence: similarity };
+                }
+              }
+            }
+
+            if (bestMatch) {
+              moviUserId = bestMatch.userId;
+              matchMethod = `auto_fuzzy_${bestMatch.confidence}`;
+            }
+          }
         }
       }
 
@@ -323,8 +326,8 @@ Deno.serve(async (req: Request) => {
 
       itemsToInsert.push({
         staging_session_id: session.id,
-        vendor_email_raw: vendorEmailRaw || null,
-        vendor_email_norm: vendorEmailNorm || null,
+        vendor_email_raw: null,
+        vendor_email_norm: null,
         vendor_name_raw: vendorNameRaw || null,
         vendor_name_norm: vendorNameNorm || null,
         vendor_key: vendorKey,
