@@ -58,6 +58,7 @@ import ProduccionTotal from './pages/ProduccionTotal';
 import ProduccionPorVendedor from './pages/ProduccionPorVendedor';
 import ProduccionConvenio from './pages/ProduccionConvenio';
 import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
+import MiProduccion from './pages/MiProduccion';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -619,6 +620,17 @@ function AppRoutes() {
           <ProtectedRoute requireAdmin={false} requireGerente>
             <Layout>
               <ProduccionConvenio />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-produccion"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MiProduccion />
             </Layout>
           </ProtectedRoute>
         }

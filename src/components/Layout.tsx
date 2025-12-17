@@ -89,6 +89,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: isAdmin ? '/comisiones' : '/mis-comisiones', label: 'Comisiones', icon: DollarSign, show: true },
+    { path: '/mi-produccion', label: 'Mi Producción', icon: TrendingUp, show: isAgente },
     { path: '/produccion/total', label: 'Producción por Oficina', icon: Building, show: isAdminOrGerente },
     { path: '/produccion/por-vendedor', label: 'Producción por Vendedor', icon: Users, show: isAdminOrGerente },
     { path: '/mi-crm', label: 'Mi CRM', icon: Briefcase, show: true },
@@ -164,6 +165,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               const Icon = item.icon;
               const isActive = location.pathname === item.path ||
                 (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones'))) ||
+                (item.label === 'Mi Producción' && location.pathname === '/mi-produccion') ||
                 (item.label.includes('Producción') && location.pathname.startsWith('/produccion') && (
                   (item.path === '/produccion/total' && location.pathname === '/produccion/total') ||
                   (item.path === '/produccion/por-vendedor' && location.pathname === '/produccion/por-vendedor')
