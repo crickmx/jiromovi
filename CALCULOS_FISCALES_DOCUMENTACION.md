@@ -71,21 +71,35 @@ Tanto el backend como el PDF usan esta misma función, garantizando consistencia
 
 ## Estructura de Datos
 
+### Campos Base de Comisiones
+
+Antes de aplicar cálculos fiscales, es importante entender la estructura de datos de comisiones:
+
+| Campo | Descripción | Uso |
+|-------|-------------|-----|
+| `prima_neta` | Prima total de la póliza | Referencia |
+| `importe_base` | Base sobre la que se calcula comisión | Puede diferir de prima_neta |
+| `porcentaje_comision` | Porcentaje aplicado | Según reglas de negocio |
+| `commission_bruta` | Comisión antes de impuestos | `(importe_base × porcentaje) / 100` |
+| `commission_neta` | Comisión después de impuestos | Base para cálculo fiscal |
+
+**IMPORTANTE**: Para el cálculo fiscal, se usa `commission_neta` como "Comisión Base Total".
+
 ### Interface DesgloseFiscal
 
 ```typescript
 interface DesgloseFiscal {
-  vida: number;
-  sinVida: number;
-  retContable: number;
-  costoDispersion: number;
-  iva: number;
-  retIsr: number;
-  retIva: number;
-  isrVida: number;
-  isrDanios: number;
-  isrTotal: number;
-  totalAPagar: number;
+  vida: number;              // Comisión del ramo Vida
+  sinVida: number;           // Comisión Base - Vida
+  retContable: number;       // Retención contable (solo ASIMILADOS)
+  costoDispersion: number;   // Costo dispersión (solo ASIMILADOS)
+  iva: number;               // IVA trasladado
+  retIsr: number;            // Retención ISR
+  retIva: number;            // Retención IVA
+  isrVida: number;           // ISR sobre Vida (solo ASIMILADOS)
+  isrDanios: number;         // ISR sobre Daños (solo ASIMILADOS)
+  isrTotal: number;          // ISR Total (solo ASIMILADOS)
+  totalAPagar: number;       // Total final a pagar al agente
 }
 ```
 

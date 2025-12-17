@@ -349,6 +349,10 @@ Deno.serve(async (req: Request) => {
         let calculationStatus = 'ok';
         let calculationMethod = 'unknown';
         const calculationWarnings: any[] = [];
+        let porcentajeComision = porcentajeBase;
+        let importeBase = primaNeta;
+        let tipoCalculo = 'directo';
+        let ruleApplied = null;
 
         if (commissionConfig.commission_bruta_source === 'excel_column' &&
             commissionConfig.commission_bruta_column_name) {
@@ -366,11 +370,6 @@ Deno.serve(async (req: Request) => {
           }
         } else if (commissionConfig.commission_bruta_source === 'rules_engine') {
           const matchingRule = findBusinessRule(businessRules || [], ramo, aseguradora, agent?.office_id || null);
-
-          let porcentajeComision = porcentajeBase;
-          let tipoCalculo = 'directo';
-          let importeBase = primaNeta;
-          let ruleApplied = null;
 
           if (matchingRule) {
             tipoCalculo = matchingRule.tipo_calculo;
@@ -436,12 +435,12 @@ Deno.serve(async (req: Request) => {
           prima_neta: primaNeta,
           date_fpago: row.FPago,
           porcentaje_base: porcentajeBase,
-          porcentaje_comision: porcentajeBase,
-          importe_base: primaNeta,
+          porcentaje_comision: porcentajeComision,
+          importe_base: importeBase,
           commission_bruta: commissionBruta,
           commission_neta: commissionNeta,
           impuestos_json: {},
-          tipo_calculo: 'directo',
+          tipo_calculo: tipoCalculo,
           concepto: row.Concepto || '',
           nombre_asegurado: row.NombreCompleto || row.NombreAsegurado || row.Asegurado || '',
           vendor_email_raw: vendorEmail || null,
