@@ -330,6 +330,12 @@ export default function ComisionesPrepararLote() {
               <Users className="w-6 h-6 text-green-600" />
               <span>Vendedores Reconocidos ({recognizedGroups.length})</span>
             </h2>
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+              <p className="text-sm text-green-800">
+                Los siguientes vendedores fueron reconocidos automáticamente.
+                Puedes cambiar la asignación si es necesario.
+              </p>
+            </div>
             <div className="space-y-2">
               {recognizedGroups.map(group => (
                 <div
@@ -348,13 +354,21 @@ export default function ComisionesPrepararLote() {
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-neutral-900">
-                        {group.items_count} documentos
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-neutral-900">
+                          {group.items_count} documentos
+                        </div>
+                        <div className="text-sm text-neutral-600">
+                          ${group.total_comision.toFixed(2)}
+                        </div>
                       </div>
-                      <div className="text-sm text-neutral-600">
-                        ${group.total_comision.toFixed(2)}
-                      </div>
+                      <button
+                        onClick={() => setSelectedVendor(group)}
+                        className="px-4 py-2 bg-white text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors font-semibold"
+                      >
+                        Cambiar
+                      </button>
                     </div>
                   </div>
                 </div>
