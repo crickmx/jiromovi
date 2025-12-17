@@ -151,26 +151,39 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!;
 
+    // Verify user authentication
     const supabaseUser = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: authHeader } },
     });
 
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) {
-      throw new Error('No autorizado');
+      console.error('[process-excel-staging] Auth error:', userError);
+      throw new Error('No autorizado - sesión inválida');
     }
 
-    const { data: userData } = await supabaseUser
+    console.log('[process-excel-staging] User authenticated:', user.id);
+
+    // Use service role to check user role (bypass RLS)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: userData, error: roleError } = await supabase
       .from('usuarios')
       .select('rol')
       .eq('id', user.id)
       .maybeSingle();
 
-    if (userData?.rol !== 'Administrador') {
+    if (roleError) {
+      console.error('[process-excel-staging] Error fetching user role:', roleError);
+      throw new Error('Error al verificar permisos');
+    }
+
+    if (!userData || userData.rol !== 'Administrador') {
+      console.error('[process-excel-staging] User is not admin:', userData?.rol);
       throw new Error('Solo administradores pueden cargar comisiones');
     }
 
-    console.log('[process-excel-staging] Authorized user:', user.id);
+    console.log('[process-excel-staging] Authorized admin user:', user.id);
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -201,7 +214,7 @@ Deno.serve(async (req: Request) => {
       throw new Error(`No se encontró la columna VendNombre en el Excel. Este campo es obligatorio. Columnas encontradas: ${parsed.headersOriginal.join(', ')}`);
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // supabase client already initialized above with service role
 
     const { data: session, error: sessionError } = await supabase
       .from('commission_staging_sessions')
