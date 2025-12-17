@@ -240,8 +240,8 @@ export async function reassignUserDocuments(
 export async function getAllMoviUsers() {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre_completo, email_laboral, email_personal, oficina_id, rol')
-    .eq('activo', true)
+    .select('id, nombre_completo, email_laboral, email_personal, email, oficina_id, rol')
+    .neq('estado', 'eliminado')
     .order('nombre_completo', { ascending: true });
 
   if (error) {
@@ -252,7 +252,7 @@ export async function getAllMoviUsers() {
   return (data || []).map(user => ({
     id: user.id,
     nombre_completo: user.nombre_completo,
-    email: user.email_laboral || user.email_personal || 'Sin email',
+    email: user.email_laboral || user.email_personal || user.email || 'Sin email',
     rol: user.rol
   }));
 }
@@ -266,10 +266,10 @@ export async function searchMoviUsers(query: string) {
 
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre_completo, email_laboral, email_personal, oficina_id, rol')
-    .eq('activo', true)
+    .select('id, nombre_completo, email_laboral, email_personal, email, oficina_id, rol')
+    .neq('estado', 'eliminado')
     .or(
-      `nombre_completo.ilike.%${normalizedQuery}%,email_laboral.ilike.%${normalizedQuery}%,email_personal.ilike.%${normalizedQuery}%`
+      `nombre_completo.ilike.%${normalizedQuery}%,email_laboral.ilike.%${normalizedQuery}%,email_personal.ilike.%${normalizedQuery}%,email.ilike.%${normalizedQuery}%`
     )
     .order('nombre_completo', { ascending: true })
     .limit(100);
@@ -282,7 +282,7 @@ export async function searchMoviUsers(query: string) {
   return (data || []).map(user => ({
     id: user.id,
     nombre_completo: user.nombre_completo,
-    email: user.email_laboral || user.email_personal || 'Sin email',
+    email: user.email_laboral || user.email_personal || user.email || 'Sin email',
     rol: user.rol
   }));
 }

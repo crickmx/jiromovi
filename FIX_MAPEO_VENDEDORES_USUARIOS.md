@@ -321,6 +321,147 @@ Si el problema persiste después de seguir esta guía:
 
 ---
 
+## Correcciones Adicionales Implementadas (17 Dic 2024)
+
+### Problemas Adicionales Encontrados
+
+1. **Política RLS para Administradores**: Faltaba una política que permitiera a los Administradores leer TODOS los usuarios
+2. **Filtro por campo obsoleto**: Las funciones en `documentImportUtils.ts` usaban `.eq('activo', true)` en lugar de `.neq('estado', 'eliminado')`
+
+### Soluciones Implementadas
+
+#### 1. Nueva Política RLS para Administradores
+
+**Migración**: `fix_usuarios_rls_allow_admin_read_all.sql`
+
+```sql
+CREATE POLICY "Admins can read all users" ON usuarios
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM usuarios u
+      WHERE u.id = auth.uid()
+      AND u.rol = 'Administrador'
+    )
+  );
+```
+
+Esta política permite que los administradores vean TODOS los usuarios (no eliminados), que es crítico para:
+- Módulo de Mapeo de Vendedores
+- Asignación de documentos importados
+- Asignación en módulo de comisiones
+
+#### 2. Actualización de `documentImportUtils.ts`
+
+**Funciones corregidas**:
+
+##### `getAllMoviUsers()`
+```typescript
+// ANTES
+.eq('activo', true)
+
+// DESPUÉS
+.neq('estado', 'eliminado')
+```
+
+Además se agregó el campo `email` a la consulta para soportar usuarios que solo tienen ese campo.
+
+##### `searchMoviUsers()`
+```typescript
+// ANTES
+.eq('activo', true)
+.or(`nombre_completo.ilike.%${q}%,email_laboral.ilike.%${q}%,email_personal.ilike.%${q}%`)
+
+// DESPUÉS
+.neq('estado', 'eliminado')
+.or(`nombre_completo.ilike.%${q}%,email_laboral.ilike.%${q}%,email_personal.ilike.%${q}%,email.ilike.%${q}%`)
+```
+
+### Componentes que Ahora Funcionan Correctamente
+
+1. **MapeoVendedores.tsx**: Dropdowns muestran usuarios reales
+2. **AsignarVendedorModal.tsx** (documentImport): Lista completa de usuarios con búsqueda
+3. **AsignarVendedorModal.tsx** (comisiones): Reutiliza el mismo sistema
+
+### Arquitectura Unificada
+
+```
+┌─────────────────────────────────────────────┐
+│         Tabla: vendor_mappings              │
+│  (Única fuente de verdad para mapeos)      │
+└─────────────────────────────────────────────┘
+                    ↑
+                    │
+        ┌───────────┴───────────┐
+        │                       │
+┌───────────────┐       ┌───────────────┐
+│   Comisiones  │       │  Imports de   │
+│               │       │  Documentos   │
+└───────────────┘       └───────────────┘
+        │                       │
+        └───────────┬───────────┘
+                    ↓
+        ┌───────────────────────┐
+        │ vendorMappingUtils.ts │
+        │  - obtenerUsuariosMOVI│
+        │  - normalizeEmail     │
+        │  - normalizeName      │
+        └───────────────────────┘
+```
+
+### Página de Diagnóstico
+
+Se creó `public/test-mapeo-usuarios.html` que permite:
+
+1. Verificar conexión a Supabase
+2. Probar `obtenerUsuariosMOVI()`
+3. Verificar permisos RLS
+4. Ver vendor mappings existentes
+
+**URL**: http://localhost:5173/test-mapeo-usuarios.html
+
+### Tests de Verificación
+
+#### Test 1: Usuarios se Cargan Correctamente
+```
+✓ Login como Administrador
+✓ Ir a Producción → Configuración → Mapeo de Vendedores
+✓ Click en "Nuevo Mapeo"
+✓ Verificar que dropdown muestra usuarios con formato: "NOMBRE COMPLETO (email)"
+✓ Verificar que hay más de 1 usuario disponible
+```
+
+#### Test 2: Búsqueda Funciona
+```
+✓ En modal de asignación, escribir nombre en búsqueda
+✓ Verificar que filtra usuarios correctamente
+✓ Seleccionar un usuario
+✓ Verificar que se resalta en la lista
+```
+
+#### Test 3: Asignación se Guarda
+```
+✓ Asignar un vendedor no reconocido a un usuario
+✓ Marcar checkbox "Recordar esta asignación"
+✓ Guardar
+✓ Verificar que aparece en la lista de mapeos
+✓ Importar mismo vendedor nuevamente
+✓ Verificar que se asigna automáticamente
+```
+
+### Build Exitoso
+
+```bash
+npm run build
+✓ 2997 modules transformed
+✓ built in 18.39s
+```
+
+Sin errores de compilación ni TypeScript.
+
+---
+
 **Implementado**: Diciembre 2024
+**Última Actualización**: 17 Diciembre 2024
 **Estado**: Listo para deployment
-**Build**: Exitoso
+**Build**: Exitoso ✓
