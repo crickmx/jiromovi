@@ -1,15 +1,19 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Checkbox } from '../components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+
+const REMEMBER_KEY = 'movi-remember-email';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,6 +21,14 @@ export function Login() {
   const [resetEmail, setResetEmail] = useState('');
   const { signIn } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem(REMEMBER_KEY);
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -43,6 +55,12 @@ export function Login() {
         }
         setLoading(false);
       } else {
+        if (rememberMe) {
+          localStorage.setItem(REMEMBER_KEY, email);
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+
         navigate('/');
       }
     } catch (err: any) {
@@ -149,6 +167,20 @@ export function Login() {
                     required
                     placeholder="••••••••"
                   />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="remember"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  />
+                  <Label
+                    htmlFor="remember"
+                    className="text-sm font-normal text-neutral-700 cursor-pointer select-none"
+                  >
+                    Recordar en este dispositivo
+                  </Label>
                 </div>
 
                 <Button
