@@ -461,7 +461,120 @@ Sin errores de compilación ni TypeScript.
 
 ---
 
+## ⚠️ CORRECCIÓN CRÍTICA: Problema de Recursión RLS (17 Dic 2024)
+
+### Problema Detectado
+
+La política RLS agregada inicialmente causó **recursión infinita** que bloqueó completamente el login:
+
+```sql
+-- ❌ POLÍTICA PROBLEMÁTICA (CAUSA RECURSIÓN)
+CREATE POLICY "Admins can read all users" ON usuarios
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM usuarios u  -- ← Hace SELECT en usuarios DENTRO de política de usuarios
+      WHERE u.id = auth.uid()
+      AND u.rol = 'Administrador'
+    )
+  );
+```
+
+**Por qué falla:**
+1. Usuario intenta hacer login
+2. Sistema intenta leer tabla `usuarios` para verificar datos
+3. RLS evalúa la política que hace SELECT a `usuarios`
+4. Ese SELECT dispara otra evaluación de la política
+5. Loop infinito → timeout → login bloqueado
+
+### Solución Implementada
+
+**Migración**: `fix_login_remove_recursive_policy.sql`
+
+```sql
+-- ✅ SOLUCIÓN: Política simple sin recursión
+DROP POLICY IF EXISTS "Admins can read all users" ON usuarios;
+
+CREATE POLICY "Authenticated users can view active users" ON usuarios
+  FOR SELECT TO authenticated
+  USING (estado != 'eliminado');
+```
+
+**Ventajas:**
+- No causa recursión (no hace SELECT a usuarios)
+- Permite a TODOS los usuarios autenticados ver otros usuarios activos
+- Suficiente para dropdowns, directorios y asignaciones
+- Los administradores tienen acceso porque son usuarios autenticados
+
+### Página de Login de Emergencia
+
+**Archivo**: `public/diagnostico-login-simple.html`
+
+Página especial que permite:
+1. Login directo si la UI principal falla
+2. Diagnóstico de conexión a Supabase
+3. Verificación de políticas RLS
+4. Ver sesión actual
+5. Limpiar cache y cerrar sesión
+
+**URL de acceso**: `http://localhost:5173/diagnostico-login-simple.html`
+
+### Lecciones Aprendidas
+
+#### ❌ Nunca hacer esto en políticas RLS:
+```sql
+-- MAL: Causa recursión
+USING (
+  EXISTS (
+    SELECT 1 FROM misma_tabla  -- ← Recursión!
+    WHERE condicion
+  )
+)
+```
+
+#### ✅ Alternativas seguras:
+
+**Opción 1**: Política simple basada en campos
+```sql
+USING (estado != 'eliminado')
+```
+
+**Opción 2**: Usar funciones de autenticación sin SELECT
+```sql
+USING (id = auth.uid())  -- Solo usa función de auth, no SELECT
+```
+
+**Opción 3**: Función PostgreSQL que verifica rol sin recursión
+```sql
+-- Crear función auxiliar
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS boolean AS $$
+BEGIN
+  RETURN (auth.jwt() ->> 'user_metadata' ->> 'rol') = 'Administrador';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Usar en política
+USING (is_admin() OR id = auth.uid())
+```
+
+### Estado Final del Sistema
+
+**Políticas RLS actuales en `usuarios`**:
+1. `"Authenticated users can view active users"` - SELECT para todos los autenticados
+2. `"Users can update own profile"` - UPDATE solo propio perfil
+3. Otras políticas específicas por módulo
+
+**Funcionalidades que ahora funcionan:**
+- ✅ Login normal
+- ✅ Dropdowns de asignación muestran usuarios
+- ✅ Mapeo de vendedores funcional
+- ✅ Imports de documentos funcional
+- ✅ Módulo de comisiones funcional
+
+---
+
 **Implementado**: Diciembre 2024
-**Última Actualización**: 17 Diciembre 2024
-**Estado**: Listo para deployment
+**Última Actualización**: 17 Diciembre 2024 - 20:30
+**Estado**: CORREGIDO - Sistema funcional
 **Build**: Exitoso ✓
