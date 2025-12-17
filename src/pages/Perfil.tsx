@@ -60,6 +60,11 @@ export function Perfil() {
     setSaving(true);
     setMessage(null);
 
+    // Guardar valores originales de información de pago para detectar cambios
+    const originalBanco = usuario.banco;
+    const originalClabe = usuario.clabe;
+    const originalRegimenFiscalId = usuario.regimen_fiscal_id;
+
     const updateData: Partial<Usuario> = {};
     Object.keys(formData).forEach((key) => {
       if (isFieldEditable(key)) {
@@ -76,11 +81,55 @@ export function Perfil() {
 
     if (error) {
       setMessage({ type: 'error', text: 'Error al guardar cambios' });
-    } else {
-      setMessage({ type: 'success', text: 'Cambios guardados correctamente' });
-      await refreshUsuario();
+      setSaving(false);
+      return;
     }
 
+    // Detectar si cambió información de pago
+    const cambioBanco = updateData.banco !== undefined && updateData.banco !== originalBanco;
+    const cambioClabe = updateData.clabe !== undefined && updateData.clabe !== originalClabe;
+    const cambioRegimenFiscal = updateData.regimen_fiscal_id !== undefined && updateData.regimen_fiscal_id !== originalRegimenFiscalId;
+
+    // Si cambió algún dato de pago, crear ticket automáticamente
+    if (cambioBanco || cambioClabe || cambioRegimenFiscal) {
+      try {
+        // Obtener nombre del régimen fiscal si cambió
+        let regimenFiscalNombre = null;
+        if (updateData.regimen_fiscal_id) {
+          const { data: regimenData } = await supabase
+            .from('commission_fiscal_regimes')
+            .select('name')
+            .eq('id', updateData.regimen_fiscal_id)
+            .single();
+
+          if (regimenData) {
+            regimenFiscalNombre = regimenData.name;
+          }
+        }
+
+        // Llamar a la función de crear ticket
+        const { data: ticketResult, error: ticketError } = await supabase.rpc(
+          'crear_ticket_cambio_bancario',
+          {
+            p_usuario_id: usuario.id,
+            p_regimen_fiscal_nombre: regimenFiscalNombre,
+            p_banco: updateData.banco || null,
+            p_clabe: updateData.clabe || null
+          }
+        );
+
+        if (ticketError) {
+          console.error('Error al crear ticket:', ticketError);
+        } else if (ticketResult) {
+          console.log('Ticket creado/actualizado:', ticketResult);
+        }
+      } catch (ticketErr) {
+        console.error('Error en proceso de ticket:', ticketErr);
+      }
+    }
+
+    setMessage({ type: 'success', text: 'Cambios guardados correctamente' });
+    await refreshUsuario();
     setSaving(false);
   };
 
