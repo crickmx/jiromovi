@@ -342,91 +342,63 @@ Deno.serve(async (req: Request) => {
 
         const ramo = row.Ramo;
         const aseguradora = row.Aseguradora || row.CiaAbreviacion || '';
-        const primaNeta = Number(row.PrimaNeta || row.Importe || 0);
+
+        // REGLA ÚNICA: Separar Importe (base comisión) de PrimaNeta (informativo)
+        // Comisión = Importe × (PorPart / 100)
+        // NUNCA usar PrimaNeta como base de comisión
+        const importeBase = Number(row.Importe || 0);
+        const primaNeta = Number(row.PrimaNeta || 0);
         const porcentajeBase = Number(row.PorPart || 0);
 
+        // Validación y cálculo único
         let commissionBruta: number | null = null;
         let calculationStatus = 'ok';
-        let calculationMethod = 'unknown';
+        let calculationMethod = 'standard';
         const calculationWarnings: any[] = [];
         let porcentajeComision = porcentajeBase;
-        let importeBase = primaNeta;
-        let tipoCalculo = 'directo';
+        let tipoCalculo = 'importe_x_porcentaje';
         let ruleApplied = null;
 
-        if (commissionConfig.commission_bruta_source === 'excel_column' &&
-            commissionConfig.commission_bruta_column_name) {
-          const columnValue = row[commissionConfig.commission_bruta_column_name];
-          if (columnValue !== undefined && columnValue !== null && columnValue !== '') {
-            commissionBruta = Number(columnValue);
-            calculationMethod = 'excel_column';
-            console.log(`[process-commissions] Commission from Excel column: ${commissionBruta}`);
-          } else {
-            calculationStatus = 'missing_base';
-            calculationWarnings.push({
-              code: 'MISSING_COLUMN_VALUE',
-              message: `Columna ${commissionConfig.commission_bruta_column_name} no tiene valor`
-            });
-          }
-        } else if (commissionConfig.commission_bruta_source === 'rules_engine') {
-          const matchingRule = findBusinessRule(businessRules || [], ramo, aseguradora, agent?.office_id || null);
-
-          if (matchingRule) {
-            tipoCalculo = matchingRule.tipo_calculo;
-            ruleApplied = matchingRule.id;
-
-            if (tipoCalculo === 'porcentaje_fijo') {
-              porcentajeComision = matchingRule.valor_calculo;
-              importeBase = primaNeta;
-            } else if (tipoCalculo === 'escalas') {
-              const escalasConfig = matchingRule.escalas_config || [];
-              let escalaMatch = null;
-              for (const escala of escalasConfig) {
-                if (primaNeta >= escala.desde && primaNeta <= escala.hasta) {
-                  escalaMatch = escala;
-                  break;
-                }
-              }
-              if (escalaMatch) {
-                porcentajeComision = escalaMatch.porcentaje;
-                importeBase = primaNeta;
-              }
-            } else if (tipoCalculo === 'multiplicador') {
-              importeBase = primaNeta * matchingRule.valor_calculo;
-              porcentajeComision = porcentajeBase;
-            } else {
-              importeBase = primaNeta;
-              porcentajeComision = porcentajeBase;
-            }
-
-            commissionBruta = (importeBase * porcentajeComision) / 100;
-            calculationMethod = 'rules_engine';
-          } else {
-            calculationStatus = 'fallback';
-            calculationWarnings.push({
-              code: 'NO_MATCHING_RULE',
-              message: `No se encontró regla para ramo=${ramo}, aseguradora=${aseguradora}. Usando porcentaje base como fallback.`
-            });
-            tipoCalculo = 'fallback_porcentaje_base';
-            importeBase = primaNeta;
-            porcentajeComision = porcentajeBase;
-            commissionBruta = (importeBase * porcentajeComision) / 100;
-            calculationMethod = 'fallback';
-            console.log(`[process-commissions] FALLBACK: Usando porcentaje base ${porcentajeBase}% para calcular comisión: ${commissionBruta}`);
-          }
+        // Validar que Importe exista
+        if (!importeBase || importeBase === 0) {
+          calculationStatus = 'missing_importe';
+          calculationWarnings.push({
+            code: 'MISSING_IMPORTE',
+            message: 'Columna Importe faltante o en 0. No se puede calcular comisión.',
+            importe: importeBase
+          });
+          commissionBruta = 0;
+          console.warn(`[process-commissions] WARNING: Importe es 0 para póliza ${row.Poliza || row.Documento}. Comisión = 0.`);
+        }
+        // Validar que PorPart exista
+        else if (!porcentajeBase || porcentajeBase === 0) {
+          calculationStatus = 'missing_porcentaje';
+          calculationWarnings.push({
+            code: 'MISSING_PORCENTAJE',
+            message: 'Columna PorPart faltante o en 0. No se puede calcular comisión.',
+            porcentaje: porcentajeBase
+          });
+          commissionBruta = 0;
+          console.warn(`[process-commissions] WARNING: PorPart es 0 para póliza ${row.Poliza || row.Documento}. Comisión = 0.`);
+        }
+        // Calcular comisión con fórmula única
+        else {
+          // FÓRMULA ÚNICA: Comisión = Importe × (PorPart / 100)
+          commissionBruta = (importeBase * porcentajeComision) / 100;
+          commissionBruta = Math.round(commissionBruta * 100) / 100; // Redondear a 2 decimales
+          calculationStatus = 'ok';
+          calculationMethod = 'standard';
+          console.log(`[process-commissions] ✓ Comisión calculada: ${commissionBruta} = ${importeBase} × (${porcentajeComision} / 100) | Póliza: ${row.Poliza || row.Documento} | Ramo: ${ramo}`);
         }
 
-        if (commissionBruta !== null && primaNeta > 0 && commissionBruta === primaNeta) {
-          if (!commissionConfig.allow_prima_neta_as_commission_bruta) {
-            calculationStatus = 'error';
-            calculationWarnings.push({
-              code: 'SUSPICIOUS_BRUTA_EQUALS_PRIMA',
-              message: 'commission_bruta es igual a prima_neta, esto probablemente es un bug',
-              prima_neta: primaNeta,
-              commission_bruta: commissionBruta
-            });
-            console.warn(`[process-commissions] BUG DETECTED: commission_bruta === prima_neta (${primaNeta})`);
-          }
+        // ADVERTENCIA: Si Importe == PrimaNeta (posible error en Excel)
+        if (importeBase > 0 && primaNeta > 0 && Math.abs(importeBase - primaNeta) < 0.01) {
+          calculationWarnings.push({
+            code: 'IMPORTE_EQUALS_PRIMA',
+            message: `ADVERTENCIA: Importe (${importeBase}) es igual a PrimaNeta (${primaNeta}). Verificar que sean columnas diferentes en Excel.`,
+            importe_base: importeBase,
+            prima_neta: primaNeta
+          });
         }
 
         const commissionNeta = commissionBruta || 0;

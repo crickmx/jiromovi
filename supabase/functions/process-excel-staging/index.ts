@@ -312,8 +312,13 @@ Deno.serve(async (req: Request) => {
       const poliza = row['Poliza'] || row['Documento'] || row['Póliza'] || '';
       const ramo = row['Ramo'] || '';
       const aseguradora = row['Aseguradora'] || row['CiaAbreviacion'] || '';
-      const primaNeta = Number(row['PrimaNeta'] || row['Importe'] || 0);
+
+      // CRÍTICO: Separar Importe (base comisión) de PrimaNeta (informativo)
+      // Importe es la BASE de cálculo: Comisión = Importe × (PorPart / 100)
+      const importeBase = Number(row['Importe'] || 0);
+      const primaNeta = Number(row['PrimaNeta'] || 0);
       const porcentajeBase = Number(row['PorPart'] || 0);
+
       const fPagoStr = row['FPago'] || row['Fecha'] || row['FechaEmision'] || row['FechaMovimiento'] || '';
       const concepto = row['Concepto'] || '';
       const nombreAsegurado = row['NombreCompleto'] || row['NombreAsegurado'] || row['Asegurado'] || '';
@@ -349,6 +354,7 @@ Deno.serve(async (req: Request) => {
         poliza,
         ramo,
         aseguradora,
+        importe_base: importeBase,
         prima_neta: primaNeta,
         porcentaje_base: porcentajeBase,
         date_fpago: dateFPagoFormatted,

@@ -145,89 +145,56 @@ Deno.serve(async (req: Request) => {
     const warnings = [];
 
     for (const detail of details) {
+      // FÓRMULA ÚNICA: Comisión = Importe × (PorPart / 100)
+      const importeBase = Number(detail.importe_base || 0);
+      const porcentajeComision = Number(detail.porcentaje_comision || 0);
+      const primaNeta = Number(detail.prima_neta || 0);
+
       let commissionBruta: number | null = null;
       let calculationStatus = 'ok';
-      let calculationMethod = 'unknown';
+      let calculationMethod = 'recalculated_fix';
       const calculationWarnings: any[] = [];
 
-      const primaNeta = detail.prima_neta || 0;
-      const ramo = detail.ramo;
-      const aseguradora = detail.aseguradora;
-      const officeId = detail.office_id;
-
-      if (commissionConfig.commission_bruta_source === 'excel_column' &&
-          commissionConfig.commission_bruta_column_name) {
-        const rawRow = detail.raw_row || {};
-        const columnValue = rawRow[commissionConfig.commission_bruta_column_name];
-
-        if (columnValue !== undefined && columnValue !== null && columnValue !== '') {
-          commissionBruta = Number(columnValue);
-          calculationMethod = 'excel_column';
-        } else {
-          calculationStatus = 'missing_base';
-          calculationWarnings.push({
-            code: 'MISSING_COLUMN_VALUE',
-            message: `Columna ${commissionConfig.commission_bruta_column_name} no tiene valor`
-          });
-        }
-      } else if (commissionConfig.commission_bruta_source === 'rules_engine') {
-        const matchingRule = findBusinessRule(businessRules || [], ramo, aseguradora, officeId);
-
-        if (matchingRule) {
-          const porcentajeBase = detail.porcentaje_base || 0;
-          let porcentajeComision = porcentajeBase;
-          let importeBase = primaNeta;
-          const tipoCalculo = matchingRule.tipo_calculo;
-
-          if (tipoCalculo === 'porcentaje_fijo') {
-            porcentajeComision = matchingRule.valor_calculo;
-            importeBase = primaNeta;
-          } else if (tipoCalculo === 'escalas') {
-            const escalasConfig = matchingRule.escalas_config || [];
-            let escalaMatch = null;
-            for (const escala of escalasConfig) {
-              if (primaNeta >= escala.desde && primaNeta <= escala.hasta) {
-                escalaMatch = escala;
-                break;
-              }
-            }
-            if (escalaMatch) {
-              porcentajeComision = escalaMatch.porcentaje;
-              importeBase = primaNeta;
-            }
-          } else if (tipoCalculo === 'multiplicador') {
-            importeBase = primaNeta * matchingRule.valor_calculo;
-            porcentajeComision = porcentajeBase;
-          } else {
-            importeBase = primaNeta;
-            porcentajeComision = porcentajeBase;
-          }
-
-          commissionBruta = (importeBase * porcentajeComision) / 100;
-          calculationMethod = 'rules_engine';
-        } else {
-          calculationStatus = 'missing_rules';
-          calculationWarnings.push({
-            code: 'NO_MATCHING_RULE',
-            message: `No se encontró regla para ramo=${ramo}, aseguradora=${aseguradora}`
-          });
-        }
+      // Validar que Importe exista
+      if (!importeBase || importeBase === 0) {
+        calculationStatus = 'missing_importe';
+        calculationWarnings.push({
+          code: 'MISSING_IMPORTE',
+          message: 'importe_base faltante o en 0. No se puede calcular comisión.'
+        });
+        commissionBruta = 0;
+        warnings.push({
+          poliza: detail.poliza,
+          message: `Póliza ${detail.poliza}: importe_base es 0`
+        });
+      }
+      // Validar que PorPart exista
+      else if (!porcentajeComision || porcentajeComision === 0) {
+        calculationStatus = 'missing_porcentaje';
+        calculationWarnings.push({
+          code: 'MISSING_PORCENTAJE',
+          message: 'porcentaje_comision faltante o en 0. No se puede calcular comisión.'
+        });
+        commissionBruta = 0;
+        warnings.push({
+          poliza: detail.poliza,
+          message: `Póliza ${detail.poliza}: porcentaje_comision es 0`
+        });
+      }
+      // Calcular con fórmula única
+      else {
+        commissionBruta = Math.round((importeBase * porcentajeComision) / 100 * 100) / 100;
+        calculationStatus = 'ok';
+        calculationMethod = 'recalculated_fix';
+        console.log(`[recalculate] ✓ Póliza ${detail.poliza}: ${importeBase} × ${porcentajeComision}% = ${commissionBruta}`);
       }
 
-      if (commissionBruta !== null && primaNeta > 0 && commissionBruta === primaNeta) {
-        if (!commissionConfig.allow_prima_neta_as_commission_bruta) {
-          calculationStatus = 'error';
-          calculationWarnings.push({
-            code: 'SUSPICIOUS_BRUTA_EQUALS_PRIMA',
-            message: 'commission_bruta es igual a prima_neta, esto probablemente es un bug',
-            prima_neta: primaNeta,
-            commission_bruta: commissionBruta
-          });
-          warnings.push({
-            poliza: detail.poliza,
-            message: `Poliza ${detail.poliza}: commission_bruta === prima_neta (${primaNeta})`
-          });
-        }
+      // Advertencia si Importe == PrimaNeta
+      if (importeBase > 0 && primaNeta > 0 && Math.abs(importeBase - primaNeta) < 0.01) {
+        calculationWarnings.push({
+          code: 'IMPORTE_EQUALS_PRIMA',
+          message: `ADVERTENCIA: importe_base (${importeBase}) es igual a prima_neta (${primaNeta})`
+        });
       }
 
       const commissionNeta = commissionBruta || 0;
