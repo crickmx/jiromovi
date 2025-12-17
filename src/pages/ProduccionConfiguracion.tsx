@@ -51,7 +51,9 @@ export default function ProduccionConfiguracion() {
   const [savingVendor, setSavingVendor] = useState<string | null>(null);
   const [searchVendor, setSearchVendor] = useState('');
   const [filterMappingStatus, setFilterMappingStatus] = useState<'all' | 'mapped' | 'unmapped'>('all');
-  const [usuarios, setUsuarios] = useState<{ id: string; nombre_completo: string; email: string; oficina_id: string | null }[]>([]);
+  const [usuarios, setUsuarios] = useState<{ id: string; nombre_completo: string; email: string; oficina_id: string | null; rol?: string }[]>([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+  const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null);
 
   useEffect(() => {
     if (usuario?.rol !== 'Administrador') {
@@ -255,16 +257,37 @@ export default function ProduccionConfiguracion() {
   };
 
   const loadUsuarios = async () => {
+    console.log('[loadUsuarios] Iniciando carga de usuarios MOVI...');
+    setLoadingUsuarios(true);
+    setErrorUsuarios(null);
+
     try {
+      // Obtener TODOS los usuarios no eliminados
+      // La política RLS ya filtra por estado != 'eliminado'
       const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nombre_completo, email, oficina_id')
+        .select('id, nombre_completo, email, oficina_id, rol, estado')
         .order('nombre_completo');
 
-      if (error) throw error;
+      if (error) {
+        console.error('[loadUsuarios] Error de Supabase:', error);
+        throw error;
+      }
+
+      console.log('[loadUsuarios] Usuarios cargados exitosamente:', data?.length || 0);
+
+      if (!data || data.length === 0) {
+        console.warn('[loadUsuarios] No se encontraron usuarios. Verificar RLS policies.');
+        setErrorUsuarios('No se encontraron usuarios disponibles. Verifica los permisos de acceso.');
+      }
+
       setUsuarios(data || []);
     } catch (error: any) {
-      console.error('Error loading usuarios:', error);
+      console.error('[loadUsuarios] Error al cargar usuarios:', error);
+      setErrorUsuarios(`Error al cargar usuarios: ${error.message || 'Error desconocido'}`);
+      setUsuarios([]);
+    } finally {
+      setLoadingUsuarios(false);
     }
   };
 
@@ -576,6 +599,38 @@ export default function ProduccionConfiguracion() {
             </p>
           </div>
 
+          {errorUsuarios && (
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-900 mb-1">Error al cargar usuarios MOVI</p>
+                  <p className="text-xs text-red-800 mb-2">{errorUsuarios}</p>
+                  <button
+                    onClick={loadUsuarios}
+                    className="text-xs font-medium text-red-700 hover:text-red-900 underline"
+                  >
+                    Intentar de nuevo
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!errorUsuarios && usuarios.length === 0 && !loadingUsuarios && (
+            <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-yellow-900 mb-1">No hay usuarios disponibles</p>
+                  <p className="text-xs text-yellow-800">
+                    No se pudieron cargar los usuarios de la plataforma. Esto podría deberse a un problema de permisos o de conexión.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {vendors.length === 0 && !loadingVendors ? (
             <div className="text-center py-8 text-neutral-500">
               <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -678,15 +733,24 @@ export default function ProduccionConfiguracion() {
                       <select
                         value={vendor.movi_user_id || ''}
                         onChange={(e) => handleVendorMappingChange(vendor.vendor_nombre, e.target.value)}
-                        disabled={savingVendor === vendor.vendor_nombre}
+                        disabled={savingVendor === vendor.vendor_nombre || loadingUsuarios}
                         className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
+                        title={loadingUsuarios ? 'Cargando usuarios...' : usuarios.length === 0 ? 'No hay usuarios disponibles' : ''}
                       >
-                        <option value="">-- Sin asignar --</option>
-                        {usuarios.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.nombre_completo} ({u.email})
-                          </option>
-                        ))}
+                        {loadingUsuarios ? (
+                          <option value="">Cargando usuarios...</option>
+                        ) : usuarios.length === 0 ? (
+                          <option value="">No hay usuarios disponibles</option>
+                        ) : (
+                          <>
+                            <option value="">-- Sin asignar --</option>
+                            {usuarios.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.nombre_completo} ({u.email})
+                              </option>
+                            ))}
+                          </>
+                        )}
                       </select>
                     </div>
                     {savingVendor === vendor.vendor_nombre && (
