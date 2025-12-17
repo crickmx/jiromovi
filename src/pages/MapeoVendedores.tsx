@@ -212,10 +212,14 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
   const [usuarioId, setUsuarioId] = useState(mapeo.movi_user_id);
   const [notas, setNotas] = useState(mapeo.notes || '');
   const [saving, setSaving] = useState(false);
+  const [guardadoExitoso, setGuardadoExitoso] = useState(false);
+
+  const tieneCambios = usuarioId !== mapeo.movi_user_id || notas !== (mapeo.notes || '');
 
   const handleGuardar = async () => {
     try {
       setSaving(true);
+      setGuardadoExitoso(false);
       await actualizarVendorMapping(
         mapeo.id,
         {
@@ -224,14 +228,25 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
         },
         userId
       );
-      setEditando(false);
+      setGuardadoExitoso(true);
+      setTimeout(() => {
+        setEditando(false);
+        setGuardadoExitoso(false);
+      }, 1500);
       onUpdate();
     } catch (error) {
       console.error('Error al actualizar mapeo:', error);
-      alert('Error al actualizar mapeo');
+      alert('Error al actualizar mapeo: ' + (error as Error).message);
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCancelar = () => {
+    setUsuarioId(mapeo.movi_user_id);
+    setNotas(mapeo.notes || '');
+    setEditando(false);
+    setGuardadoExitoso(false);
   };
 
   const handleCambiarEstado = async () => {
@@ -289,22 +304,38 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
       </td>
       <td className="px-6 py-4">
         {editando ? (
-          <select
-            value={usuarioId}
-            onChange={(e) => setUsuarioId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">--Sin asignar--</option>
-            {usuarios.length === 0 ? (
-              <option disabled>No hay usuarios disponibles</option>
-            ) : (
-              usuarios.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre_completo} ({u.email})
-                </option>
-              ))
+          <div className="space-y-2">
+            <select
+              value={usuarioId}
+              onChange={(e) => setUsuarioId(e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                tieneCambios ? 'border-orange-400 bg-orange-50' : 'border-gray-300'
+              }`}
+            >
+              <option value="">--Sin asignar--</option>
+              {usuarios.length === 0 ? (
+                <option disabled>No hay usuarios disponibles</option>
+              ) : (
+                usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nombre_completo} ({u.email})
+                  </option>
+                ))
+              )}
+            </select>
+            {tieneCambios && !guardadoExitoso && (
+              <p className="text-xs text-orange-600 flex items-center gap-1">
+                <span className="inline-block w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+                Cambios sin guardar
+              </p>
             )}
-          </select>
+            {guardadoExitoso && (
+              <p className="text-xs text-green-600 flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Guardado exitosamente
+              </p>
+            )}
+          </div>
         ) : (
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-xs">
@@ -342,12 +373,39 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
             <>
               <button
                 onClick={handleGuardar}
-                disabled={saving}
-                className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                disabled={saving || !tieneCambios}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  guardadoExitoso
+                    ? 'bg-green-600 text-white'
+                    : tieneCambios
+                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                } disabled:opacity-50`}
+                title={!tieneCambios ? 'No hay cambios para guardar' : 'Guardar cambios'}
               >
-                <Save className="h-5 w-5" />
+                {saving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Guardando...</span>
+                  </>
+                ) : guardadoExitoso ? (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Guardado</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    <span>Guardar</span>
+                  </>
+                )}
               </button>
-              <button onClick={() => setEditando(false)} className="text-gray-600 hover:text-gray-900">
+              <button
+                onClick={handleCancelar}
+                disabled={saving}
+                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50 transition-colors"
+                title="Cancelar"
+              >
                 <X className="h-5 w-5" />
               </button>
             </>
@@ -355,11 +413,16 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
             <>
               <button
                 onClick={() => setEditando(true)}
-                className="text-blue-600 hover:text-blue-900"
+                className="p-2 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors"
+                title="Editar mapeo"
               >
                 <Edit2 className="h-5 w-5" />
               </button>
-              <button onClick={handleEliminar} className="text-red-600 hover:text-red-900">
+              <button
+                onClick={handleEliminar}
+                className="p-2 rounded-lg text-red-600 hover:bg-red-100 transition-colors"
+                title="Eliminar mapeo"
+              >
                 <Trash2 className="h-5 w-5" />
               </button>
             </>
