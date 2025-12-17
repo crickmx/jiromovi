@@ -111,9 +111,11 @@ export function PaymentFields({
 
         <div className="mt-4 flex items-start gap-2 sm:gap-3 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
           <Info className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-xs sm:text-sm text-blue-900 leading-relaxed">
-            <span className="font-medium">Recuerda:</span> La actualización de tus datos de &quot;Información de pago&quot; tarda de 24 a 72 horas en verse reflejada y aplicada para futuros movimientos.
-          </p>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs sm:text-sm text-blue-900 leading-relaxed break-words">
+              <span className="font-medium">Recuerda:</span> La actualización de tus datos de Información de pago tarda de 24 a 72 horas en verse reflejada y aplicada para futuros movimientos.
+            </p>
+          </div>
         </div>
       </div>
     </div>
