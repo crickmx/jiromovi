@@ -130,7 +130,15 @@ crear_ticket_cambio_bancario(
 ```
 
 **Ubicación:**
-- Migración: `supabase/migrations/[timestamp]_create_payment_change_ticket_system.sql`
+- Migración inicial: `supabase/migrations/20251217184945_create_payment_change_ticket_system.sql`
+- Corrección tabla notificaciones: `supabase/migrations/fix_crear_ticket_cambio_bancario_notifications.sql`
+- Corrección tipo notificación: `supabase/migrations/fix_crear_ticket_tipo_notificacion.sql`
+
+**Correcciones aplicadas:**
+- ✅ Cambio de tabla `notificaciones_globales` a `notificaciones`
+- ✅ Ajuste de nombres de columnas (`enlace` → `url`, `fecha_hora` → `created_at`)
+- ✅ Corrección de tipo de notificación de `'ticket'` a `'info'` para cumplir constraint
+- ✅ Ajuste de comparación de estado: `'Activo'` → `'activo'`
 
 ### Frontend
 

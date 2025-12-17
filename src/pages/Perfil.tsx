@@ -112,24 +112,47 @@ export function Perfil() {
     const cambioClabe = formData.clabe !== originalClabe;
     const cambioRegimenFiscal = formData.regimen_fiscal_id !== originalRegimenFiscalId;
 
+    console.log('🔍 Detección de cambios en información de pago:', {
+      cambioBanco,
+      cambioClabe,
+      cambioRegimenFiscal,
+      banco: { original: originalBanco, nuevo: formData.banco },
+      clabe: { original: originalClabe, nuevo: formData.clabe },
+      regimenFiscal: { original: originalRegimenFiscalId, nuevo: formData.regimen_fiscal_id }
+    });
+
     // Si cambió algún dato de pago, crear ticket automáticamente
     if (cambioBanco || cambioClabe || cambioRegimenFiscal) {
+      console.log('✅ Se detectaron cambios en información de pago, creando ticket...');
+
       try {
         // Obtener nombre del régimen fiscal si cambió
         let regimenFiscalNombre = null;
         if (formData.regimen_fiscal_id) {
-          const { data: regimenData } = await supabase
+          console.log('📋 Obteniendo nombre del régimen fiscal:', formData.regimen_fiscal_id);
+
+          const { data: regimenData, error: regimenError } = await supabase
             .from('commission_fiscal_regimes')
             .select('name')
             .eq('id', formData.regimen_fiscal_id)
-            .single();
+            .maybeSingle();
 
-          if (regimenData) {
+          if (regimenError) {
+            console.error('Error al obtener régimen fiscal:', regimenError);
+          } else if (regimenData) {
             regimenFiscalNombre = regimenData.name;
+            console.log('✅ Régimen fiscal encontrado:', regimenFiscalNombre);
           }
         }
 
         // Llamar a la función de crear ticket
+        console.log('📞 Llamando a crear_ticket_cambio_bancario con parámetros:', {
+          p_usuario_id: usuario.id,
+          p_regimen_fiscal_nombre: regimenFiscalNombre,
+          p_banco: formData.banco || null,
+          p_clabe: formData.clabe || null
+        });
+
         const { data: ticketResult, error: ticketError } = await supabase.rpc(
           'crear_ticket_cambio_bancario',
           {
@@ -141,16 +164,30 @@ export function Perfil() {
         );
 
         if (ticketError) {
-          console.error('Error al crear ticket:', ticketError);
+          console.error('❌ Error al crear ticket:', ticketError);
+          setMessage({
+            type: 'error',
+            text: `Cambios guardados, pero no se pudo crear el ticket de cambios bancarios: ${ticketError.message}`
+          });
         } else if (ticketResult) {
-          console.log('Ticket creado/actualizado:', ticketResult);
+          console.log('✅ Ticket creado/actualizado exitosamente:', ticketResult);
+          setMessage({
+            type: 'success',
+            text: `Cambios guardados correctamente. Ticket de cambios bancarios ${ticketResult.accion} con folio ${ticketResult.folio}`
+          });
         }
       } catch (ticketErr) {
-        console.error('Error en proceso de ticket:', ticketErr);
+        console.error('❌ Error en proceso de ticket:', ticketErr);
+        setMessage({
+          type: 'error',
+          text: `Cambios guardados, pero hubo un error al crear el ticket: ${ticketErr}`
+        });
       }
+    } else {
+      console.log('ℹ️ No se detectaron cambios en información de pago, no se creará ticket');
+      setMessage({ type: 'success', text: 'Cambios guardados correctamente' });
     }
 
-    setMessage({ type: 'success', text: 'Cambios guardados correctamente' });
     await refreshUsuario();
     setSaving(false);
   };
