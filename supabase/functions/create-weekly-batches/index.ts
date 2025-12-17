@@ -197,7 +197,9 @@ Deno.serve(async (req: Request) => {
         );
 
         if (matchingRule) {
-          const importeBase = item.prima_neta;
+          // ✅ CORRECCIÓN CRÍTICA: usar importe_base (Importe del Excel), NO prima_neta
+          // Comisión = Importe × (PorPart / 100)
+          const importeBase = item.importe_base;
           const porcentajeComision = item.porcentaje_base || matchingRule.valor_calculo || 0;
           commissionBruta = (importeBase * porcentajeComision) / 100;
           commissionNeta = commissionBruta;
@@ -228,11 +230,11 @@ Deno.serve(async (req: Request) => {
           poliza: item.poliza,
           ramo: item.ramo,
           aseguradora: item.aseguradora,
-          prima_neta: item.prima_neta,
+          prima_neta: item.prima_neta,  // Informativo solamente
           date_fpago: item.date_fpago,
           porcentaje_base: item.porcentaje_base,
           porcentaje_comision: item.porcentaje_base,
-          importe_base: item.prima_neta,
+          importe_base: item.importe_base,  // ✅ CORRECTO: desde Importe del Excel
           commission_bruta: commissionBruta,
           commission_neta: commissionNeta,
           impuestos_json: {},
