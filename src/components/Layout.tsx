@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -89,7 +89,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: isAdmin ? '/comisiones' : '/mis-comisiones', label: 'Comisiones', icon: DollarSign, show: true },
-    { path: '/produccion/total', label: 'Producción', icon: TrendingUp, show: isAdminOrGerente },
+    { path: '/produccion/total', label: 'Producción por Oficina', icon: Building, show: isAdminOrGerente },
+    { path: '/produccion/por-vendedor', label: 'Producción por Vendedor', icon: Users, show: isAdminOrGerente },
     { path: '/mi-crm', label: 'Mi CRM', icon: Briefcase, show: true },
     { path: '/comunicados', label: 'Comunicados', icon: FileText, show: true },
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
@@ -163,7 +164,10 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               const Icon = item.icon;
               const isActive = location.pathname === item.path ||
                 (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones'))) ||
-                (item.label === 'Producción' && location.pathname.startsWith('/produccion'));
+                (item.label.includes('Producción') && location.pathname.startsWith('/produccion') && (
+                  (item.path === '/produccion/total' && location.pathname === '/produccion/total') ||
+                  (item.path === '/produccion/por-vendedor' && location.pathname === '/produccion/por-vendedor')
+                ));
 
               return (
                 <Button

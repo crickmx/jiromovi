@@ -55,6 +55,7 @@ import ComisionesPrepararLote from './pages/ComisionesPrepararLote';
 import DocumentosImportar from './pages/DocumentosImportar';
 // import MapeoVendedoresAdmin from './pages/MapeoVendedoresAdmin';
 import ProduccionTotal from './pages/ProduccionTotal';
+import ProduccionPorVendedor from './pages/ProduccionPorVendedor';
 import ProduccionConvenio from './pages/ProduccionConvenio';
 import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
 
@@ -618,6 +619,17 @@ function AppRoutes() {
           <ProtectedRoute requireAdmin={false} requireGerente>
             <Layout>
               <ProduccionConvenio />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/produccion/por-vendedor"
+        element={
+          <ProtectedRoute requireAdmin={false} requireGerente>
+            <Layout>
+              <ProduccionPorVendedor />
             </Layout>
           </ProtectedRoute>
         }
