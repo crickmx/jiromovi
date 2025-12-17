@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link2, Mail, User, Edit2, Trash2, X, Save, Plus, Search, CheckCircle } from 'lucide-react';
+import { Link2, Mail, User, Edit2, Trash2, X, Save, Plus, Search, CheckCircle, RefreshCw } from 'lucide-react';
 import {
   obtenerVendorMappings,
   actualizarVendorMapping,
@@ -21,6 +21,7 @@ export default function MapeoVendedores() {
   const [nuevoMapeo, setNuevoMapeo] = useState(false);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [cambiosSinGuardar, setCambiosSinGuardar] = useState<Set<string>>(new Set());
+  const [ultimaCarga, setUltimaCarga] = useState<Date | null>(null);
 
   useEffect(() => {
     cargarDatos();
@@ -36,6 +37,7 @@ export default function MapeoVendedores() {
       console.log('[MapeoVendedores] Usuarios cargados:', usuariosData?.length || 0);
       setMapeos(mapeosData);
       setUsuarios(usuariosData || []);
+      setUltimaCarga(new Date());
     } catch (error) {
       console.error('[MapeoVendedores] Error al cargar datos:', error);
       alert('Error al cargar datos: ' + (error as Error).message);
@@ -105,15 +107,31 @@ export default function MapeoVendedores() {
               <p className="text-gray-600">
                 Gestiona las relaciones entre vendedores externos y usuarios MOVI
               </p>
+              {ultimaCarga && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Última actualización: {ultimaCarga.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </p>
+              )}
             </div>
           </div>
-          <button
-            onClick={() => setNuevoMapeo(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Nuevo Mapeo</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={cargarDatos}
+              disabled={loading}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Recargar datos desde la base de datos"
+            >
+              <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Cargar</span>
+            </button>
+            <button
+              onClick={() => setNuevoMapeo(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              <span>Nuevo Mapeo</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -236,7 +254,8 @@ export default function MapeoVendedores() {
           onClose={() => setNuevoMapeo(false)}
           onSuccess={() => {
             setNuevoMapeo(false);
-            cargarDatos();
+            alert('Mapeo creado correctamente. Haz clic en "Cargar" para ver los cambios.');
+            // NO recargar automáticamente - el usuario debe hacer clic en "Cargar"
           }}
           userId={user?.id || ''}
         />
@@ -293,7 +312,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
         setEditando(false);
         setGuardadoExitoso(false);
       }, 1500);
-      onUpdate();
+      // NO recargar automáticamente - el usuario debe hacer clic en "Cargar"
     } catch (error) {
       console.error('Error al actualizar mapeo:', error);
       alert('Error al actualizar mapeo: ' + (error as Error).message);
@@ -319,7 +338,8 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
         },
         userId
       );
-      onUpdate();
+      alert('Estado cambiado correctamente. Haz clic en "Cargar" para ver los cambios.');
+      // NO recargar automáticamente - el usuario debe hacer clic en "Cargar"
     } catch (error) {
       console.error('Error al cambiar estado:', error);
       alert('Error al cambiar estado');
@@ -332,7 +352,8 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
 
     try {
       await eliminarVendorMapping(mapeo.id);
-      onUpdate();
+      alert('Mapeo eliminado correctamente. Haz clic en "Cargar" para ver los cambios.');
+      // NO recargar automáticamente - el usuario debe hacer clic en "Cargar"
     } catch (error) {
       console.error('Error al eliminar mapeo:', error);
       alert('Error al eliminar mapeo');
