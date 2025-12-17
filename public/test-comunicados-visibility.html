@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test - Visibilidad de Comunicados</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #1a202c;
+      border-bottom: 3px solid #3b82f6;
+      padding-bottom: 10px;
+    }
+    .section {
+      margin: 30px 0;
+      padding: 20px;
+      background: #f9fafb;
+      border-radius: 6px;
+      border-left: 4px solid #3b82f6;
+    }
+    .result {
+      background: #f0f9ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 10px 0;
+      border: 1px solid #bae6fd;
+    }
+    .success {
+      background: #f0fdf4;
+      border-color: #86efac;
+      color: #166534;
+    }
+    .error {
+      background: #fef2f2;
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+    .info {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1e40af;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    pre {
+      background: #1f2937;
+      color: #f3f4f6;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    .test-case {
+      background: white;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 0 5px;
+    }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-error { background: #fee2e2; color: #991b1b; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Test de Visibilidad de Comunicados</h1>
+
+    <div class="section">
+      <h2>📋 Objetivo del Test</h2>
+      <p>Verificar que las políticas RLS muestren correctamente los comunicados según las reglas de visibilidad:</p>
+      <ul>
+        <li><strong>Caso 1:</strong> Comunicado sin reglas de visibilidad → Visible para todos</li>
+        <li><strong>Caso 2:</strong> Comunicado con <code>para_todos = true</code> → Visible para todos</li>
+        <li><strong>Caso 3:</strong> Comunicado con reglas específicas de rol → Visible solo para usuarios con ese rol</li>
+        <li><strong>Caso 4:</strong> Comunicado con reglas específicas de oficina → Visible solo para usuarios de esa oficina</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>🔧 Configuración</h2>
+      <button onclick="runTests()">▶️ Ejecutar Tests</button>
+      <button onclick="location.reload()">🔄 Reiniciar</button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://cmwvqihnkcldebrbuzrs.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd3ZxaWhua2NsZGVicmJ1enJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzAyNDU1ODUsImV4cCI6MjA0NTgyMTU4NX0.lswuy1DztyG_1GAauElk_c0A4iNf01FBibGh8pUvqck';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let resultsDiv = null;
+
+    function log(message, type = 'info') {
+      if (!resultsDiv) resultsDiv = document.getElementById('results');
+      const div = document.createElement('div');
+      div.className = `result ${type}`;
+      div.innerHTML = message;
+      resultsDiv.appendChild(div);
+      console.log(message.replace(/<[^>]*>/g, ''));
+    }
+
+    function logSection(title) {
+      if (!resultsDiv) resultsDiv = document.getElementById('results');
+      const div = document.createElement('div');
+      div.className = 'section';
+      div.innerHTML = `<h2>${title}</h2>`;
+      resultsDiv.appendChild(div);
+    }
+
+    async function runTests() {
+      resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+
+      try {
+        logSection('🔍 Test 1: Consultar Comunicados Publicados');
+
+        // Obtener comunicados publicados
+        const { data: comunicados, error: comError } = await supabase
+          .from('comunicados_publicaciones')
+          .select(`
+            id,
+            titulo,
+            publicado,
+            fecha_publicacion,
+            oficina_origen_id,
+            creado_por
+          `)
+          .eq('publicado', true)
+          .lte('fecha_publicacion', new Date().toISOString())
+          .order('fecha_publicacion', { ascending: false })
+          .limit(10);
+
+        if (comError) {
+          log(`❌ Error al consultar comunicados: ${comError.message}`, 'error');
+          return;
+        }
+
+        log(`✅ Se encontraron <strong>${comunicados.length}</strong> comunicados publicados`, 'success');
+
+        if (comunicados.length === 0) {
+          log('⚠️ No hay comunicados publicados para probar. Crea algunos comunicados primero.', 'error');
+          return;
+        }
+
+        logSection('🔍 Test 2: Verificar Reglas de Visibilidad');
+
+        // Para cada comunicado, verificar sus reglas de visibilidad
+        for (const com of comunicados) {
+          const { data: reglas, error: regError } = await supabase
+            .from('comunicados_visibilidad')
+            .select('*')
+            .eq('comunicado_id', com.id);
+
+          if (regError) {
+            log(`❌ Error al consultar reglas del comunicado "${com.titulo}": ${regError.message}`, 'error');
+            continue;
+          }
+
+          const testCase = document.createElement('div');
+          testCase.className = 'test-case';
+
+          let badgeHtml = '';
+          let visibilityInfo = '';
+
+          if (!reglas || reglas.length === 0) {
+            badgeHtml = '<span class="badge badge-success">SIN REGLAS (Todos)</span>';
+            visibilityInfo = '<p>✅ <strong>Visible para TODOS</strong> (no hay reglas de visibilidad)</p>';
+          } else {
+            const paraTodos = reglas.find(r => r.para_todos === true);
+            if (paraTodos) {
+              badgeHtml = '<span class="badge badge-success">PARA TODOS</span>';
+              visibilityInfo = '<p>✅ <strong>Visible para TODOS</strong> (para_todos = true)</p>';
+            } else {
+              badgeHtml = '<span class="badge badge-warning">ESPECÍFICO</span>';
+              visibilityInfo = '<p>⚠️ <strong>Visible para usuarios específicos:</strong></p><ul>';
+
+              reglas.forEach(r => {
+                if (r.rol) {
+                  visibilityInfo += `<li>Rol: <strong>${r.rol}</strong>`;
+                  if (r.oficina_id) visibilityInfo += ` en oficina ${r.oficina_id}`;
+                  visibilityInfo += '</li>';
+                }
+                if (r.oficina_id && !r.rol) {
+                  visibilityInfo += `<li>Oficina: <strong>${r.oficina_id}</strong></li>`;
+                }
+                if (r.usuario_id) {
+                  visibilityInfo += `<li>Usuario específico: <strong>${r.usuario_id}</strong></li>`;
+                }
+              });
+
+              visibilityInfo += '</ul>';
+            }
+          }
+
+          testCase.innerHTML = `
+            <h3>${badgeHtml} ${com.titulo}</h3>
+            ${visibilityInfo}
+            <details>
+              <summary style="cursor: pointer; color: #3b82f6;">Ver reglas completas (${reglas ? reglas.length : 0})</summary>
+              <pre>${JSON.stringify(reglas, null, 2)}</pre>
+            </details>
+          `;
+
+          resultsDiv.appendChild(testCase);
+        }
+
+        logSection('✅ Test Completado');
+        log('Los comunicados se están mostrando según las reglas de visibilidad configuradas.', 'success');
+
+      } catch (error) {
+        log(`❌ Error general: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>
