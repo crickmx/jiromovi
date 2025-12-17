@@ -19,7 +19,9 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const { usuario, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop sidebar - closed by default
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
