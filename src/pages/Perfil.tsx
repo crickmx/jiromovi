@@ -72,7 +72,24 @@ export function Perfil() {
       }
     });
 
+    // Siempre incluir campos de información de pago si están presentes en formData
+    // Estos campos son editables desde PaymentFields y deben guardarse
+    const paymentFields = ['banco', 'clabe', 'regimen_fiscal_id'];
+    paymentFields.forEach((field) => {
+      if (field in formData) {
+        updateData[field as keyof Usuario] = formData[field as keyof Usuario];
+      }
+    });
+
     updateData.updated_at = new Date().toISOString();
+
+    // Debug: Verificar que los campos de pago se incluyen
+    console.log('Datos a actualizar:', {
+      banco: updateData.banco,
+      clabe: updateData.clabe,
+      regimen_fiscal_id: updateData.regimen_fiscal_id,
+      totalFields: Object.keys(updateData).length
+    });
 
     const { error } = await supabase
       .from('usuarios')
@@ -90,20 +107,21 @@ export function Perfil() {
     }
 
     // Detectar si cambió información de pago
-    const cambioBanco = updateData.banco !== undefined && updateData.banco !== originalBanco;
-    const cambioClabe = updateData.clabe !== undefined && updateData.clabe !== originalClabe;
-    const cambioRegimenFiscal = updateData.regimen_fiscal_id !== undefined && updateData.regimen_fiscal_id !== originalRegimenFiscalId;
+    // Comparar con los valores actuales en formData, no con updateData
+    const cambioBanco = formData.banco !== originalBanco;
+    const cambioClabe = formData.clabe !== originalClabe;
+    const cambioRegimenFiscal = formData.regimen_fiscal_id !== originalRegimenFiscalId;
 
     // Si cambió algún dato de pago, crear ticket automáticamente
     if (cambioBanco || cambioClabe || cambioRegimenFiscal) {
       try {
         // Obtener nombre del régimen fiscal si cambió
         let regimenFiscalNombre = null;
-        if (updateData.regimen_fiscal_id) {
+        if (formData.regimen_fiscal_id) {
           const { data: regimenData } = await supabase
             .from('commission_fiscal_regimes')
             .select('name')
-            .eq('id', updateData.regimen_fiscal_id)
+            .eq('id', formData.regimen_fiscal_id)
             .single();
 
           if (regimenData) {
@@ -117,8 +135,8 @@ export function Perfil() {
           {
             p_usuario_id: usuario.id,
             p_regimen_fiscal_nombre: regimenFiscalNombre,
-            p_banco: updateData.banco || null,
-            p_clabe: updateData.clabe || null
+            p_banco: formData.banco || null,
+            p_clabe: formData.clabe || null
           }
         );
 
