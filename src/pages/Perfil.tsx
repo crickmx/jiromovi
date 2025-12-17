@@ -80,7 +80,11 @@ export function Perfil() {
       .eq('id', usuario.id);
 
     if (error) {
-      setMessage({ type: 'error', text: 'Error al guardar cambios' });
+      console.error('Error al actualizar perfil:', error);
+      setMessage({
+        type: 'error',
+        text: `Error al guardar cambios: ${error.message || 'Error desconocido'}`
+      });
       setSaving(false);
       return;
     }
