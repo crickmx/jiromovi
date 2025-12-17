@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -305,7 +305,7 @@ export default function ProduccionConfiguracion() {
     }
   };
 
-  const handleVendorMappingChange = async (vendNombre: string, userId: string) => {
+  const handleVendorMappingChange = useCallback(async (vendNombre: string, userId: string) => {
     if (!usuario) {
       console.error('[handleVendorMappingChange] Usuario no autenticado');
       return;
@@ -348,20 +348,27 @@ export default function ProduccionConfiguracion() {
     } finally {
       setSavingVendor(null);
     }
-  };
+  }, [usuario, usuarios]);
 
-  const filteredVendors = vendors.filter(v => {
-    const matchesSearch = searchVendor === '' ||
-      v.vendor_nombre.toLowerCase().includes(searchVendor.toLowerCase()) ||
-      v.movi_user_name?.toLowerCase().includes(searchVendor.toLowerCase());
+  const filteredVendors = useMemo(() => {
+    return vendors.filter(v => {
+      // Siempre mostrar el vendor que se está guardando
+      if (savingVendor === v.vendor_nombre) {
+        return true;
+      }
 
-    const matchesStatus =
-      filterMappingStatus === 'all' ||
-      (filterMappingStatus === 'mapped' && v.movi_user_id !== null) ||
-      (filterMappingStatus === 'unmapped' && v.movi_user_id === null);
+      const matchesSearch = searchVendor === '' ||
+        v.vendor_nombre.toLowerCase().includes(searchVendor.toLowerCase()) ||
+        v.movi_user_name?.toLowerCase().includes(searchVendor.toLowerCase());
 
-    return matchesSearch && matchesStatus;
-  });
+      const matchesStatus =
+        filterMappingStatus === 'all' ||
+        (filterMappingStatus === 'mapped' && v.movi_user_id !== null) ||
+        (filterMappingStatus === 'unmapped' && v.movi_user_id === null);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [vendors, searchVendor, filterMappingStatus, savingVendor]);
 
   if (loading) {
     return (

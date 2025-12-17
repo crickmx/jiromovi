@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { Search, X, ChevronDown } from 'lucide-react';
 
 interface User {
@@ -16,7 +16,7 @@ interface SearchableUserSelectProps {
   placeholder?: string;
 }
 
-export function SearchableUserSelect({
+export const SearchableUserSelect = memo(function SearchableUserSelect({
   users,
   value,
   onChange,
@@ -158,4 +158,4 @@ export function SearchableUserSelect({
       )}
     </div>
   );
-}
+});
