@@ -511,17 +511,44 @@ export async function generateOrdenDePagoPDF(
 
     yPosition += 4;
 
-    const desgloseFiscalRows = [
-      ['Ret. Contable', formatCurrency(desgloseFiscal.retContable)],
-      ['Costo Dispersión', formatCurrency(desgloseFiscal.costoDispersion)],
-      ['IVA', formatCurrency(desgloseFiscal.iva)],
-      ['Ret ISR', formatCurrency(desgloseFiscal.retIsr)],
-      ['Ret IVA', formatCurrency(desgloseFiscal.retIva)],
+    const desgloseFiscalRows: any[] = [
       [
-        { content: 'Total a pagar', styles: { fontStyle: 'bold' } },
-        { content: formatCurrency(desgloseFiscal.totalAPagar), styles: { fontStyle: 'bold', textColor: [0, 128, 0] } }
-      ]
+        { content: 'Comisión Base Total', styles: { fontStyle: 'bold' } },
+        { content: formatCurrency(totalComisionNeta), styles: { fontStyle: 'bold' } }
+      ],
+      ['Vida', formatCurrency(desgloseFiscal.vida)],
+      ['Comisión Sin Vida', formatCurrency(desgloseFiscal.sinVida)]
     ];
+
+    if (regimenFiscal === 'ASIMILADOS') {
+      desgloseFiscalRows.push(
+        ['Retención Contable (16% Vida)', `- ${formatCurrency(desgloseFiscal.retContable)}`],
+        ['Costo Dispersión (10% Sin Vida)', `- ${formatCurrency(desgloseFiscal.costoDispersion)}`],
+        ['ISR Vida (10%)', `- ${formatCurrency(desgloseFiscal.isrVida)}`],
+        ['ISR Daños (10%)', `- ${formatCurrency(desgloseFiscal.isrDanios)}`],
+        [
+          { content: 'ISR Total', styles: { fontStyle: 'bold' } },
+          { content: `- ${formatCurrency(desgloseFiscal.isrTotal)}`, styles: { fontStyle: 'bold' } }
+        ]
+      );
+    } else if (regimenFiscal === 'RESICO') {
+      desgloseFiscalRows.push(
+        ['IVA (16% Sin Vida)', `+ ${formatCurrency(desgloseFiscal.iva)}`],
+        ['Retención ISR (1.25% Total)', `- ${formatCurrency(desgloseFiscal.retIsr)}`],
+        ['Retención IVA (10.667% Sin Vida)', `- ${formatCurrency(desgloseFiscal.retIva)}`]
+      );
+    } else if (regimenFiscal === 'HONORARIOS') {
+      desgloseFiscalRows.push(
+        ['IVA (16% Sin Vida)', `+ ${formatCurrency(desgloseFiscal.iva)}`],
+        ['Retención ISR (10% Total)', `- ${formatCurrency(desgloseFiscal.retIsr)}`],
+        ['Retención IVA (10.667% Sin Vida)', `- ${formatCurrency(desgloseFiscal.retIva)}`]
+      );
+    }
+
+    desgloseFiscalRows.push([
+      { content: 'Total a Pagar', styles: { fontStyle: 'bold', fillColor: [0, 102, 51] } },
+      { content: formatCurrency(desgloseFiscal.totalAPagar), styles: { fontStyle: 'bold', textColor: [255, 255, 255], fillColor: [0, 102, 51] } }
+    ]);
 
     autoTable(doc, {
       startY: yPosition,
