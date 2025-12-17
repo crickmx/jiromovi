@@ -20,7 +20,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
