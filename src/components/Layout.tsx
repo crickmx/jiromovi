@@ -132,20 +132,23 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           isCollapsed ? "justify-center px-2 py-4" : "justify-between px-6 py-6"
         )}>
           <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center transition-transform hover:scale-105"
+            onClick={() => {
+              navigate('/dashboard');
+              if (isMobile) {
+                setSidebarOpen(false);
+              }
+            }}
+            className="flex items-center transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg"
+            aria-label="Ir al Dashboard"
           >
-            {isCollapsed ? (
-              <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">M</span>
-              </div>
-            ) : (
-              <img
-                src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
-                alt="MOVI Digital Logo"
-                className="h-12 object-contain"
-              />
-            )}
+            <img
+              src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
+              alt="MOVI Digital Logo"
+              className={cn(
+                "object-contain transition-all",
+                isCollapsed ? "h-10 w-10" : "h-12"
+              )}
+            />
           </button>
         </div>
 
