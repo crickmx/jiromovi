@@ -43,7 +43,12 @@ export function ProtectedRoute({
   }
 
   if (requireAdmin && usuario.rol !== 'Administrador') {
-    console.log('[ProtectedRoute] Admin required but user is', usuario.rol, '- redirecting to dashboard');
+    console.error('[ProtectedRoute] ❌ ACCESO DENEGADO - Admin requerido');
+    console.error('[ProtectedRoute] Rol del usuario:', usuario.rol);
+    console.error('[ProtectedRoute] Rol esperado: Administrador');
+    console.error('[ProtectedRoute] Comparación exacta:', usuario.rol === 'Administrador');
+    console.error('[ProtectedRoute] Usuario completo:', JSON.stringify(usuario, null, 2));
+    console.error('[ProtectedRoute] Redirigiendo a /dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
