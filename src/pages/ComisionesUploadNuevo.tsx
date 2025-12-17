@@ -82,8 +82,8 @@ export default function ComisionesUploadNuevo() {
     setError(null);
 
     try {
-      console.log('[ComisionesUploadNuevo] Getting auth session...');
-      const { data: { session: authSession }, error: sessionError } = await supabase.auth.getSession();
+      console.log('[ComisionesUploadNuevo] Refreshing session...');
+      const { data: { session: authSession }, error: sessionError } = await supabase.auth.refreshSession();
 
       if (sessionError) {
         console.error('[ComisionesUploadNuevo] Session error:', sessionError);
@@ -94,6 +94,8 @@ export default function ComisionesUploadNuevo() {
         console.error('[ComisionesUploadNuevo] No auth session');
         throw new Error('No autenticado. Por favor inicia sesión nuevamente.');
       }
+
+      console.log('[ComisionesUploadNuevo] Session refreshed, token valid until:', new Date(authSession.expires_at! * 1000));
 
       console.log('[ComisionesUploadNuevo] Creating FormData...');
       const formData = new FormData();

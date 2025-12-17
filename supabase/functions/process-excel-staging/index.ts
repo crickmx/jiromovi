@@ -143,13 +143,17 @@ Deno.serve(async (req: Request) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
+    console.log('[process-excel-staging] Auth header present:', !!authHeader);
+
     if (!authHeader) {
-      throw new Error('No autorizado');
+      throw new Error('No autorizado - falta token de autenticación');
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    console.log('[process-excel-staging] Creating Supabase client for auth verification...');
 
     // Create client with user's JWT to verify authentication
     const supabaseClient = createClient(supabaseUrl, supabaseKey, {
@@ -158,15 +162,26 @@ Deno.serve(async (req: Request) => {
       },
     });
 
+    console.log('[process-excel-staging] Verifying user token...');
+
     // Verify JWT and get user
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
-    if (userError || !user) {
-      console.error('[process-excel-staging] Auth error:', userError?.message);
-      throw new Error('No autorizado - sesión inválida');
+    if (userError) {
+      console.error('[process-excel-staging] Auth error details:', {
+        message: userError.message,
+        name: userError.name,
+        status: userError.status,
+      });
+      throw new Error(`No autorizado - error de sesión: ${userError.message}`);
     }
 
-    console.log('[process-excel-staging] User authenticated:', user.id);
+    if (!user) {
+      console.error('[process-excel-staging] No user returned from getUser()');
+      throw new Error('No autorizado - sesión inválida o expirada');
+    }
+
+    console.log('[process-excel-staging] User authenticated successfully:', user.id, user.email);
 
     // Use service role client for database operations (bypass RLS)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
