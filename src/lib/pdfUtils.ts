@@ -7,8 +7,144 @@ import {
   normalizarRegimenFiscal,
   agruparComisionesPorRamo,
   type DesgloseFiscal,
-  type RamoResumen
+  type RamoResumen,
+  type RegimenFiscal
 } from './commissionFiscalCalculations';
+
+interface PdfFiscalRow {
+  label: string;
+  value: string;
+  isBold?: boolean;
+  isTotal?: boolean;
+}
+
+/**
+ * Genera las filas permitidas para el PDF de desglose fiscal.
+ * SOLO muestra los campos permitidos según el régimen fiscal.
+ *
+ * Campos permitidos:
+ * - Ret. Contable
+ * - Costo Dispersión
+ * - IVA
+ * - Ret. ISR
+ * - Ret. IVA
+ * - Total
+ *
+ * NUNCA muestra campos intermedios como:
+ * - Prima/Comisión Base Total
+ * - Vida/Sin Vida
+ * - ISR Vida/Daños
+ * - Bases intermedias
+ */
+function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal): PdfFiscalRow[] {
+  const rows: PdfFiscalRow[] = [];
+
+  switch (regimen) {
+    case 'HONORARIOS':
+      // HONORARIOS: IVA, Ret. ISR, Ret. IVA, Total
+      if (desgloseFiscal.iva > 0) {
+        rows.push({
+          label: 'IVA',
+          value: `+ ${formatCurrency(desgloseFiscal.iva)}`
+        });
+      }
+      if (desgloseFiscal.retIsr > 0) {
+        rows.push({
+          label: 'Ret. ISR',
+          value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
+        });
+      }
+      if (desgloseFiscal.retIva > 0) {
+        rows.push({
+          label: 'Ret. IVA',
+          value: `- ${formatCurrency(desgloseFiscal.retIva)}`
+        });
+      }
+      break;
+
+    case 'ASIMILADOS':
+      // ASIMILADOS: Ret. Contable, Costo Dispersión, Ret. ISR (solo si aplica como suma del ISR Total)
+      if (desgloseFiscal.retContable > 0) {
+        rows.push({
+          label: 'Ret. Contable',
+          value: `- ${formatCurrency(desgloseFiscal.retContable)}`
+        });
+      }
+      if (desgloseFiscal.costoDispersion > 0) {
+        rows.push({
+          label: 'Costo Dispersión',
+          value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
+        });
+      }
+      // Para ASIMILADOS, el ISR Total se muestra como "Ret. ISR"
+      if (desgloseFiscal.isrTotal > 0) {
+        rows.push({
+          label: 'Ret. ISR',
+          value: `- ${formatCurrency(desgloseFiscal.isrTotal)}`
+        });
+      }
+      // IVA no aplica para ASIMILADOS pero si existe valor, mostrarlo
+      if (desgloseFiscal.iva > 0) {
+        rows.push({
+          label: 'IVA',
+          value: `+ ${formatCurrency(desgloseFiscal.iva)}`
+        });
+      }
+      if (desgloseFiscal.retIva > 0) {
+        rows.push({
+          label: 'Ret. IVA',
+          value: `- ${formatCurrency(desgloseFiscal.retIva)}`
+        });
+      }
+      break;
+
+    case 'RESICO':
+      // RESICO: IVA, Ret. ISR, Ret. IVA, Total
+      if (desgloseFiscal.iva > 0) {
+        rows.push({
+          label: 'IVA',
+          value: `+ ${formatCurrency(desgloseFiscal.iva)}`
+        });
+      }
+      if (desgloseFiscal.retIsr > 0) {
+        rows.push({
+          label: 'Ret. ISR',
+          value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
+        });
+      }
+      if (desgloseFiscal.retIva > 0) {
+        rows.push({
+          label: 'Ret. IVA',
+          value: `- ${formatCurrency(desgloseFiscal.retIva)}`
+        });
+      }
+      // Ret. Contable y Costo Dispersión no aplican para RESICO
+      // pero si existen valores, mostrarlos
+      if (desgloseFiscal.retContable > 0) {
+        rows.push({
+          label: 'Ret. Contable',
+          value: `- ${formatCurrency(desgloseFiscal.retContable)}`
+        });
+      }
+      if (desgloseFiscal.costoDispersion > 0) {
+        rows.push({
+          label: 'Costo Dispersión',
+          value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
+        });
+      }
+      break;
+  }
+
+  // Total siempre se muestra al final
+  rows.push({
+    label: 'Total',
+    value: formatCurrency(desgloseFiscal.totalAPagar),
+    isBold: true,
+    isTotal: true
+  });
+
+  return rows;
+}
 
 async function loadImageAsBase64(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -507,48 +643,32 @@ export async function generateOrdenDePagoPDF(
     doc.setFontSize(10);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(0, 51, 102);
-    doc.text('Desglose Fiscal', marginLeft, yPosition);
+    doc.text('Cálculo Fiscal (Resumen)', marginLeft, yPosition);
 
     yPosition += 4;
 
-    const desgloseFiscalRows: any[] = [
-      [
-        { content: 'Comisión Base Total', styles: { fontStyle: 'bold' } },
-        { content: formatCurrency(totalComisionNeta), styles: { fontStyle: 'bold' } }
-      ],
-      ['Vida', formatCurrency(desgloseFiscal.vida)],
-      ['Comisión Sin Vida', formatCurrency(desgloseFiscal.sinVida)]
-    ];
+    // Usar la función de allowlist para generar solo los campos permitidos
+    const fiscalRows = getPdfFiscalRows(regimenFiscal, desgloseFiscal);
 
-    if (regimenFiscal === 'ASIMILADOS') {
-      desgloseFiscalRows.push(
-        ['Retención Contable (16% Vida)', `- ${formatCurrency(desgloseFiscal.retContable)}`],
-        ['Costo Dispersión (10% Sin Vida)', `- ${formatCurrency(desgloseFiscal.costoDispersion)}`],
-        ['ISR Vida (10%)', `- ${formatCurrency(desgloseFiscal.isrVida)}`],
-        ['ISR Daños (10%)', `- ${formatCurrency(desgloseFiscal.isrDanios)}`],
-        [
-          { content: 'ISR Total', styles: { fontStyle: 'bold' } },
-          { content: `- ${formatCurrency(desgloseFiscal.isrTotal)}`, styles: { fontStyle: 'bold' } }
-        ]
-      );
-    } else if (regimenFiscal === 'RESICO') {
-      desgloseFiscalRows.push(
-        ['IVA (16% Sin Vida)', `+ ${formatCurrency(desgloseFiscal.iva)}`],
-        ['Retención ISR (1.25% Total)', `- ${formatCurrency(desgloseFiscal.retIsr)}`],
-        ['Retención IVA (10.667% Sin Vida)', `- ${formatCurrency(desgloseFiscal.retIva)}`]
-      );
-    } else if (regimenFiscal === 'HONORARIOS') {
-      desgloseFiscalRows.push(
-        ['IVA (16% Sin Vida)', `+ ${formatCurrency(desgloseFiscal.iva)}`],
-        ['Retención ISR (10% Total)', `- ${formatCurrency(desgloseFiscal.retIsr)}`],
-        ['Retención IVA (10.667% Sin Vida)', `- ${formatCurrency(desgloseFiscal.retIva)}`]
-      );
-    }
-
-    desgloseFiscalRows.push([
-      { content: 'Total a Pagar', styles: { fontStyle: 'bold', fillColor: [0, 102, 51] } },
-      { content: formatCurrency(desgloseFiscal.totalAPagar), styles: { fontStyle: 'bold', textColor: [255, 255, 255], fillColor: [0, 102, 51] } }
-    ]);
+    // Convertir a formato de tabla con estilos
+    const desgloseFiscalRows: any[] = fiscalRows.map(row => {
+      if (row.isTotal) {
+        // Fila de Total con estilo destacado
+        return [
+          { content: row.label, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } },
+          { content: row.value, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } }
+        ];
+      } else if (row.isBold) {
+        // Fila en negrita
+        return [
+          { content: row.label, styles: { fontStyle: 'bold' } },
+          { content: row.value, styles: { fontStyle: 'bold' } }
+        ];
+      } else {
+        // Fila normal
+        return [row.label, row.value];
+      }
+    });
 
     autoTable(doc, {
       startY: yPosition,
@@ -569,7 +689,7 @@ export async function generateOrdenDePagoPDF(
     doc.setFontSize(7);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(60);
-    doc.text(`Régimen fiscal: ${regimenFiscalName} (${regimenFiscal})`, marginLeft, yPosition);
+    doc.text(`Régimen fiscal: ${regimenFiscalName}`, marginLeft, yPosition);
   }
 
   const pdfBlob = doc.output('blob');
