@@ -896,7 +896,145 @@ npm run build
 
 ---
 
+## 🔒 FIX CRÍTICO: RLS Policies vendor_mappings (17 Diciembre 2024 - 23:00)
+
+### Problema Reportado
+
+Usuario reporta:
+> "Al elegir vendedor nuevamente recarga todo. Error: new row violates row-level security policy for table vendor_mappings"
+
+### Análisis de Causa Raíz
+
+Las políticas RLS de `vendor_mappings` tenían un error crítico:
+
+```sql
+-- ❌ INCORRECTO
+EXISTS (
+  SELECT 1 FROM usuarios
+  WHERE id = auth.uid() AND rol = 'admin'  -- 'admin' NO EXISTE
+)
+```
+
+**Problema**:
+- Las políticas buscaban `rol = 'admin'`
+- El rol correcto en la BD es `'Administrador'`
+- Esto bloqueaba TODAS las operaciones en vendor_mappings
+- Usuarios administradores no podían crear/actualizar mapeos
+
+### Solución Implementada
+
+#### Migración: `fix_vendor_mappings_rls_policies.sql`
+
+**Cambios**:
+
+1. **Eliminar políticas incorrectas**:
+   - "Admins pueden ver todos los mapeos"
+   - "Admins pueden crear mapeos"
+   - "Admins pueden actualizar mapeos"
+   - "Admins pueden eliminar mapeos"
+
+2. **Crear políticas corregidas**:
+
+```sql
+-- ✅ CORRECTO
+CREATE POLICY "Administradores pueden crear mapeos"
+  ON vendor_mappings FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM usuarios
+      WHERE id = auth.uid()
+        AND rol = 'Administrador'  -- Rol correcto
+        AND estado != 'eliminado'   -- Excluir usuarios eliminados
+    )
+  );
+```
+
+### Políticas Corregidas
+
+| Operación | Política | Condición |
+|-----------|----------|-----------|
+| SELECT | Administradores pueden ver todos los mapeos | rol = 'Administrador' |
+| INSERT | Administradores pueden crear mapeos | rol = 'Administrador' |
+| UPDATE | Administradores pueden actualizar mapeos | rol = 'Administrador' |
+| DELETE | Administradores pueden eliminar mapeos | rol = 'Administrador' |
+
+### Validación de Seguridad
+
+#### Antes del Fix
+```
+Usuario Administrador intenta guardar mapeo
+  ↓
+Frontend: createOrUpdateVendorMapping()
+  ↓
+Backend: INSERT INTO vendor_mappings
+  ↓
+RLS Policy: busca rol = 'admin' ❌
+  ↓
+Error: "new row violates row-level security policy"
+  ↓
+Frontend recarga tabla completa para recuperar estado
+```
+
+#### Después del Fix
+```
+Usuario Administrador intenta guardar mapeo
+  ↓
+Frontend: createOrUpdateVendorMapping()
+  ↓
+Backend: INSERT INTO vendor_mappings
+  ↓
+RLS Policy: busca rol = 'Administrador' ✅
+  ↓
+Mapeo guardado exitosamente
+  ↓
+Frontend actualiza optimísticamente (sin recarga)
+```
+
+### Testing de Seguridad
+
+#### ✅ Test 1: Administrador puede crear mapeo
+```typescript
+// Usuario con rol = 'Administrador'
+await createOrUpdateVendorMapping('Juan Perez', userId, adminId);
+// Resultado: SUCCESS
+```
+
+#### ✅ Test 2: Usuario no admin no puede crear mapeo
+```typescript
+// Usuario con rol = 'Agente'
+await createOrUpdateVendorMapping('Juan Perez', userId, agenteId);
+// Resultado: Error RLS (esperado y correcto)
+```
+
+#### ✅ Test 3: Usuario eliminado no puede crear mapeo
+```typescript
+// Usuario con rol = 'Administrador' pero estado = 'eliminado'
+await createOrUpdateVendorMapping('Juan Perez', userId, deletedAdminId);
+// Resultado: Error RLS (esperado y correcto)
+```
+
+### Resultado
+
+| Aspecto | Antes | Después |
+|---------|-------|---------|
+| Crear mapeo | ❌ Error RLS | ✅ Funciona |
+| Actualizar mapeo | ❌ Error RLS | ✅ Funciona |
+| Eliminar mapeo | ❌ Error RLS | ✅ Funciona |
+| Recarga visual | Sí (por error) | No (optimista) |
+| Seguridad | Bloqueado todo | Solo Administradores |
+
+### Build Exitoso
+
+```bash
+npm run build
+✓ 3001 modules transformed
+✓ built in 25.04s
+```
+
+---
+
 **Implementado**: Diciembre 2024
-**Última Actualización**: 17 Diciembre 2024 - 22:15
-**Estado**: OPTIMIZADO - Sin recarga visual ⚡
+**Última Actualización**: 17 Diciembre 2024 - 23:00
+**Estado**: RESUELTO - RLS corregido + Sin recarga visual ✅
 **Build**: Exitoso ✓
