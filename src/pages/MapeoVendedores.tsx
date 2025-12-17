@@ -32,10 +32,12 @@ export default function MapeoVendedores() {
         obtenerVendorMappings(filtroEstatus === 'all' ? undefined : filtroEstatus),
         obtenerUsuariosMOVI(),
       ]);
+      console.log('[MapeoVendedores] Usuarios cargados:', usuariosData?.length || 0);
       setMapeos(mapeosData);
       setUsuarios(usuariosData || []);
     } catch (error) {
-      console.error('Error al cargar datos:', error);
+      console.error('[MapeoVendedores] Error al cargar datos:', error);
+      alert('Error al cargar datos: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -292,11 +294,16 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
             onChange={(e) => setUsuarioId(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           >
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nombre_completo} ({u.email})
-              </option>
-            ))}
+            <option value="">--Sin asignar--</option>
+            {usuarios.length === 0 ? (
+              <option disabled>No hay usuarios disponibles</option>
+            ) : (
+              usuarios.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre_completo} ({u.email})
+                </option>
+              ))
+            )}
           </select>
         ) : (
           <div className="flex items-center space-x-2">
@@ -466,12 +473,22 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
               onChange={(e) => setMoviUserId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
-              {usuarios.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre_completo} ({u.email})
-                </option>
-              ))}
+              <option value="">--Sin asignar--</option>
+              {usuarios.length === 0 ? (
+                <option disabled>No hay usuarios disponibles</option>
+              ) : (
+                usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nombre_completo} ({u.email})
+                  </option>
+                ))
+              )}
             </select>
+            {usuarios.length === 0 && (
+              <p className="text-sm text-red-600 mt-1">
+                No se pudieron cargar los usuarios. Verifica la consola del navegador (F12).
+              </p>
+            )}
           </div>
 
           <div>

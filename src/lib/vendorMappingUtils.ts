@@ -138,12 +138,19 @@ export async function asignarVendedorManualmente(
 }
 
 export async function obtenerUsuariosMOVI() {
+  console.log('[obtenerUsuariosMOVI] Obteniendo usuarios...');
   const { data, error } = await supabase
     .from('usuarios')
     .select('id, nombre_completo, email, oficina_id')
+    .neq('estado', 'eliminado')
     .order('nombre_completo');
 
-  if (error) throw error;
+  if (error) {
+    console.error('[obtenerUsuariosMOVI] Error:', error);
+    throw error;
+  }
+
+  console.log('[obtenerUsuariosMOVI] Usuarios obtenidos:', data?.length || 0);
   return data;
 }
 
