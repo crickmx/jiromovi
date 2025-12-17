@@ -1,101 +1,85 @@
-@import 'bootstrap/dist/css/bootstrap.min.css';
-
-:root {
-  --bs-primary: #0050D1;
-  --bs-primary-rgb: 0, 80, 209;
-  --bs-link-color: #0050D1;
-  --bs-link-hover-color: #003DA8;
-  --primary-color: #0050D1;
-  --primary-hover: #003DA8;
-  --primary-light: rgba(0, 80, 209, 0.1);
-}
-
-.btn-primary {
-  --bs-btn-bg: #0050D1;
-  --bs-btn-border-color: #0050D1;
-  --bs-btn-hover-bg: #003DA8;
-  --bs-btn-hover-border-color: #003DA8;
-  --bs-btn-active-bg: #003DA8;
-  --bs-btn-active-border-color: #003DA8;
-}
-
-.bg-primary {
-  background-color: #0050D1 !important;
-}
-
-.text-primary {
-  color: #0050D1 !important;
-}
-
-.border-primary {
-  border-color: #0050D1 !important;
-}
-
-.form-check-input:checked {
-  background-color: #0050D1;
-  border-color: #0050D1;
-}
-
-.form-control:focus,
-.form-select:focus {
-  border-color: #0050D1;
-  box-shadow: 0 0 0 0.25rem rgba(0, 80, 209, 0.25);
-}
-
-.btn-outline-primary {
-  --bs-btn-color: #0050D1;
-  --bs-btn-border-color: #0050D1;
-  --bs-btn-hover-bg: #0050D1;
-  --bs-btn-hover-border-color: #0050D1;
-  --bs-btn-active-bg: #0050D1;
-  --bs-btn-active-border-color: #0050D1;
-}
-
-.badge.bg-primary {
-  background-color: #0050D1 !important;
-}
-
-.navbar-dark {
-  background-color: #0050D1 !important;
-}
+/* ============================================
+   MOVI DIGITAL - SISTEMA DE DISEÑO UNIFICADO
+   ============================================ */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   VARIABLES CSS GLOBALES
+   ============================================ */
+
 @layer base {
   :root {
-    --color-primary: 0 80 209;
-    --ios-blue: #0050D1;
-    --ios-gray-50: #F9F9F9;
-    --ios-gray-100: #F2F2F7;
-    --ios-gray-200: #E5E5EA;
+    /* Colores primarios - MOVI Blue */
+    --color-primary-50: 230 240 255;
+    --color-primary-100: 204 224 255;
+    --color-primary-200: 153 194 255;
+    --color-primary-300: 102 163 255;
+    --color-primary-400: 51 120 224;
+    --color-primary-500: 0 80 209;
+    --color-primary-600: 0 61 168;
+    --color-primary-700: 0 47 127;
+    --color-primary-800: 0 33 87;
+    --color-primary-900: 0 19 46;
 
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 217 100% 41%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 217 100% 41%;
-    --radius: 0.5rem;
+    /* Colores neutros - iOS Style */
+    --color-neutral-50: 249 249 249;
+    --color-neutral-100: 242 242 247;
+    --color-neutral-200: 229 229 234;
+    --color-neutral-300: 209 209 214;
+    --color-neutral-400: 199 199 204;
+    --color-neutral-500: 174 174 178;
+    --color-neutral-600: 142 142 147;
+    --color-neutral-700: 99 99 102;
+    --color-neutral-800: 72 72 74;
+    --color-neutral-900: 58 58 60;
+
+    /* Colores semánticos */
+    --color-success: 52 199 89;
+    --color-warning: 255 149 0;
+    --color-danger: 255 59 48;
+    --color-info: 0 122 255;
+
+    /* Radios */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 28px;
+
+    /* Sombras iOS */
+    --shadow-ios: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-ios-md: 0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.03);
+    --shadow-ios-lg: 0 10px 15px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.04);
+    --shadow-ios-xl: 0 20px 25px rgba(0, 0, 0, 0.08), 0 10px 10px rgba(0, 0, 0, 0.04);
+
+    /* Transiciones */
+    --transition-base: 200ms cubic-bezier(0.4, 0.0, 0.2, 1);
+    --transition-smooth: 250ms cubic-bezier(0.4, 0.0, 0.2, 1);
+    --transition-ios: 280ms cubic-bezier(0.32, 0.72, 0, 1);
+
+    /* Tipografía */
+    --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+
+    /* Spacing */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
   }
+
+  /* ============================================
+     BASE STYLES
+     ============================================ */
 
   * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    box-sizing: border-box;
   }
 
   html {
@@ -103,20 +87,126 @@
     max-width: 100vw;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+    height: 100%;
   }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+    font-family: var(--font-sans);
     letter-spacing: -0.01em;
     overflow-x: hidden;
     max-width: 100vw;
+    background-color: rgb(var(--color-neutral-50));
+    color: rgb(var(--color-neutral-900));
+    min-height: 100%;
+    font-size: 16px;
+    line-height: 1.5;
   }
 
-  button, a {
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+  /* Prevenir zoom en inputs pequeños (iOS) */
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
   }
 
-  /* Ocultar scrollbar pero mantener funcionalidad */
+  @media (min-width: 768px) {
+    input,
+    select,
+    textarea,
+    button {
+      font-size: 14px;
+    }
+  }
+
+  /* Mejorar tap highlight en móviles */
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: rgba(0, 80, 209, 0.1);
+    touch-action: manipulation;
+  }
+
+  /* Focus visible para accesibilidad */
+  *:focus-visible {
+    outline: 2px solid rgb(var(--color-primary-500));
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Mejorar renderizado de imágenes */
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* ============================================
+     TIPOGRAFÍA CONSISTENTE
+     ============================================ */
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: rgb(var(--color-neutral-900));
+  }
+
+  h1 {
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    margin-bottom: 0.5rem;
+  }
+
+  h2 {
+    font-size: clamp(1.5rem, 3vw, 1.875rem);
+    margin-bottom: 0.5rem;
+  }
+
+  h3 {
+    font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+    margin-bottom: 0.5rem;
+  }
+
+  h4 {
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+  }
+
+  h5, h6 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    line-height: 1.6;
+    color: rgb(var(--color-neutral-700));
+  }
+
+  /* ============================================
+     COMPONENTES REUTILIZABLES
+     ============================================ */
+
+  /* Scrollbar personalizado */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: rgb(var(--color-neutral-100));
+    border-radius: 100px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(var(--color-neutral-400));
+    border-radius: 100px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--color-neutral-500));
+  }
+
+  /* Ocultar scrollbar completamente */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -126,16 +216,136 @@
     display: none;
   }
 
-  /* Safari iOS: Prevenir zoom en inputs pequeños */
-  input, select, textarea {
-    font-size: 16px;
+  /* ============================================
+     UTILIDADES PARA RESPONSIVE
+     ============================================ */
+
+  /* Prevenir scroll horizontal */
+  .no-scroll-x {
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
-  @media (min-width: 768px) {
-    input, select, textarea {
-      font-size: 14px;
+  /* Touch-friendly targets (mínimo 44x44px) */
+  .btn-touch {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.75rem 1rem;
+  }
+
+  /* Tablas responsivas */
+  .table-responsive {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  /* Grid auto-responsive */
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .grid-auto-fill {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+
+  /* ============================================
+     ANIMACIONES Y TRANSICIONES
+     ============================================ */
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
+
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideOutLeft {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ============================================
+     COMPATIBILIDAD CROSS-BROWSER
+     ============================================ */
 
   /* Safari: Sticky position */
   .sticky {
@@ -151,134 +361,143 @@
     }
   }
 
-  /* Safari: Flex fix */
+  /* Safari: Flex shrink fix */
   [class*="flex"] > * {
-    flex-shrink: 0;
+    flex-shrink: 1;
   }
 
-  /* Touch-friendly buttons */
-  .btn-touch {
-    min-height: 44px;
-    min-width: 44px;
+  /* Firefox: Smooth scrolling */
+  @-moz-document url-prefix() {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
-  /* Tablas responsivas */
-  .table-responsive {
-    -webkit-overflow-scrolling: touch;
-    overflow-x: auto;
+  /* ============================================
+     ESTADOS DE CARGA Y SKELETON
+     ============================================ */
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--color-neutral-200)) 0%,
+      rgb(var(--color-neutral-100)) 50%,
+      rgb(var(--color-neutral-200)) 100%
+    );
+    background-size: 200% 100%;
+    animation: pulse 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+  }
+
+  /* ============================================
+     PRINT STYLES
+     ============================================ */
+
+  @media print {
+    body {
+      background: white;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+
+    a[href]:after {
+      content: " (" attr(href) ")";
+    }
   }
 }
+
+/* ============================================
+   UTILITIES LAYER
+   ============================================ */
 
 @layer utilities {
-  .bg-blue-600,
-  .bg-blue-700 {
-    background-color: #0050D1 !important;
+  /* Animaciones */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
   }
 
-  .hover\:bg-blue-700:hover,
-  .hover\:bg-blue-900:hover {
-    background-color: #003DA8 !important;
+  .animate-fade-out {
+    animation: fadeOut 0.15s ease-in;
   }
 
-  .text-blue-600,
-  .text-blue-700 {
-    color: #0050D1 !important;
+  .animate-slide-up {
+    animation: slideUp 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
-  .hover\:text-blue-700:hover,
-  .hover\:text-blue-900:hover {
-    color: #003DA8 !important;
+  .animate-slide-down {
+    animation: slideDown 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
-  .border-blue-600 {
-    border-color: #0050D1 !important;
+  .animate-scale-in {
+    animation: scaleIn 0.2s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
-  .ring-blue-500 {
-    --tw-ring-color: rgb(0 80 209 / 0.5) !important;
+  /* Transiciones suaves */
+  .transition-base {
+    transition: all var(--transition-base);
   }
 
-  .focus\:ring-blue-500:focus {
-    --tw-ring-color: rgb(0 80 209 / 0.5) !important;
+  .transition-smooth {
+    transition: all var(--transition-smooth);
   }
 
-  .hover\:bg-blue-50:hover {
-    background-color: rgba(0, 80, 209, 0.05) !important;
+  .transition-ios {
+    transition: all var(--transition-ios);
   }
 
-  .bg-blue-100 {
-    background-color: rgba(0, 80, 209, 0.1) !important;
-  }
-
-  .text-blue-100 {
-    color: rgba(255, 255, 255, 0.9) !important;
-  }
-
-  .bg-red-100 {
-    background-color: rgba(239, 68, 68, 0.1) !important;
-  }
-
-  .text-red-800 {
-    color: rgb(153, 27, 27) !important;
-  }
-
-  .bg-green-100 {
-    background-color: rgba(34, 197, 94, 0.1) !important;
-  }
-
-  .text-green-800 {
-    color: rgb(22, 101, 52) !important;
-  }
-
-  .from-blue-600 {
-    --tw-gradient-from: #0050D1 !important;
-  }
-
-  .to-blue-700 {
-    --tw-gradient-to: #003DA8 !important;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* iOS-style Sidebar Animations */
-@layer utilities {
-  .sidebar-transition {
-    transition-property: width, margin, padding, opacity, transform;
-    transition-duration: 250ms;
-    transition-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
-  }
-
-  .sidebar-content-fade {
-    transition: opacity 200ms cubic-bezier(0.4, 0.0, 0.2, 1);
-  }
-
-  /* Smooth backdrop blur for iOS */
-  .backdrop-blur-ios {
-    -webkit-backdrop-filter: blur(20px);
-    backdrop-filter: blur(20px);
-  }
-
-  /* Active state for touch */
+  /* Touch feedback */
   .touch-active:active {
     transform: scale(0.96);
     transition: transform 100ms cubic-bezier(0.4, 0.0, 0.2, 1);
   }
 
-  /* Prevent text selection during animations */
+  /* Prevenir selección de texto */
   .no-select {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+  }
+
+  /* Truncate text con ellipsis */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Glassmorphism effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  /* Card elevations */
+  .elevation-1 {
+    box-shadow: var(--shadow-ios);
+  }
+
+  .elevation-2 {
+    box-shadow: var(--shadow-ios-md);
+  }
+
+  .elevation-3 {
+    box-shadow: var(--shadow-ios-lg);
+  }
+
+  .elevation-4 {
+    box-shadow: var(--shadow-ios-xl);
   }
 }
