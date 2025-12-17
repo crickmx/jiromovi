@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Settings, Save, Link as LinkIcon, Check, AlertCircle, Building, Users, UserCheck, UserX, Search } from 'lucide-react';
 import { getUniqueVendorsFromProduction, createOrUpdateVendorMapping, deleteVendorMapping, type VendorMappingInfo } from '../lib/produccionVendorUtils';
+import { SearchableUserSelect } from '../components/SearchableUserSelect';
 
 interface GoogleSheetsConfig {
   id: string;
@@ -305,21 +306,45 @@ export default function ProduccionConfiguracion() {
   };
 
   const handleVendorMappingChange = async (vendNombre: string, userId: string) => {
-    if (!usuario) return;
+    if (!usuario) {
+      console.error('[handleVendorMappingChange] Usuario no autenticado');
+      return;
+    }
 
+    console.log('[handleVendorMappingChange] Iniciando cambio:', { vendNombre, userId });
     setSavingVendor(vendNombre);
+
     try {
       if (userId === '') {
+        console.log('[handleVendorMappingChange] Eliminando mapeo...');
         await deleteVendorMapping(vendNombre);
         setMessage({ type: 'success', text: 'Mapeo eliminado exitosamente' });
       } else {
+        console.log('[handleVendorMappingChange] Guardando mapeo:', { vendNombre, userId, createdBy: usuario.id });
         await createOrUpdateVendorMapping(vendNombre, userId, usuario.id);
         setMessage({ type: 'success', text: 'Mapeo guardado exitosamente' });
       }
-      await loadVendors();
+
+      // Actualizar localmente el vendor para evitar el re-fetch
+      setVendors(prevVendors => prevVendors.map(v => {
+        if (v.vendor_nombre === vendNombre) {
+          const selectedUser = usuarios.find(u => u.id === userId);
+          return {
+            ...v,
+            movi_user_id: userId || null,
+            movi_user_name: selectedUser?.nombre_completo || null,
+            mapping_source: 'manual' as const
+          };
+        }
+        return v;
+      }));
+
+      console.log('[handleVendorMappingChange] Mapeo guardado y actualizado localmente');
     } catch (error: any) {
-      console.error('Error saving vendor mapping:', error);
+      console.error('[handleVendorMappingChange] Error:', error);
       setMessage({ type: 'error', text: 'Error al guardar el mapeo: ' + error.message });
+      // Si hay error, recargar para mostrar el estado real
+      await loadVendors();
     } finally {
       setSavingVendor(null);
     }
@@ -730,28 +755,14 @@ export default function ProduccionConfiguracion() {
                       </p>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <select
-                        value={vendor.movi_user_id || ''}
-                        onChange={(e) => handleVendorMappingChange(vendor.vendor_nombre, e.target.value)}
-                        disabled={savingVendor === vendor.vendor_nombre || loadingUsuarios}
-                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
-                        title={loadingUsuarios ? 'Cargando usuarios...' : usuarios.length === 0 ? 'No hay usuarios disponibles' : ''}
-                      >
-                        {loadingUsuarios ? (
-                          <option value="">Cargando usuarios...</option>
-                        ) : usuarios.length === 0 ? (
-                          <option value="">No hay usuarios disponibles</option>
-                        ) : (
-                          <>
-                            <option value="">-- Sin asignar --</option>
-                            {usuarios.map((u) => (
-                              <option key={u.id} value={u.id}>
-                                {u.nombre_completo} ({u.email_laboral || 'Sin email'})
-                              </option>
-                            ))}
-                          </>
-                        )}
-                      </select>
+                      <SearchableUserSelect
+                        users={usuarios}
+                        value={vendor.movi_user_id}
+                        onChange={(userId) => handleVendorMappingChange(vendor.vendor_nombre, userId)}
+                        disabled={savingVendor === vendor.vendor_nombre}
+                        loading={loadingUsuarios}
+                        placeholder="Buscar por nombre o email..."
+                      />
                     </div>
                     {savingVendor === vendor.vendor_nombre && (
                       <div className="flex items-center justify-center">

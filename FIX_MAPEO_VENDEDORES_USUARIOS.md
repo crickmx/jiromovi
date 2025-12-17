@@ -574,7 +574,147 @@ USING (is_admin() OR id = auth.uid())
 
 ---
 
+---
+
+## 🎯 MEJORA: Combobox Searchable (17 Diciembre 2024 - 22:00)
+
+### Problema Reportado
+
+Usuario dice:
+> "Ya muestra la lista pero al elegir el usuario este se des-selecciona y regresa a 'sin asignar'. Quiero que en la lista se pueda escribir y buscar al usuario por texto y que al elegirlo quede guardado."
+
+### Análisis de Causa
+
+1. **Des-selección**: `loadVendors()` se ejecutaba después de guardar, causando re-render que perdía la selección
+2. **Sin búsqueda**: Select HTML nativo no permite búsqueda por texto
+3. **UX limitada**: Difícil encontrar usuarios en listas largas
+
+### Solución Implementada
+
+#### 1. Nuevo Componente: SearchableUserSelect
+
+**Archivo**: `src/components/SearchableUserSelect.tsx`
+
+Combobox personalizado con:
+- ✅ **Búsqueda en tiempo real** por nombre o email
+- ✅ **Dropdown interactivo** con animaciones
+- ✅ **Selección persistente** sin des-seleccionar
+- ✅ **Botón X** para limpiar rápidamente
+- ✅ **Click fuera para cerrar**
+- ✅ **Estados visuales** (loading, selected, hover)
+
+```typescript
+<SearchableUserSelect
+  users={usuarios}
+  value={vendor.movi_user_id}
+  onChange={(userId) => handleVendorMappingChange(vendor.vendor_nombre, userId)}
+  disabled={savingVendor === vendor.vendor_nombre}
+  loading={loadingUsuarios}
+  placeholder="Buscar por nombre o email..."
+/>
+```
+
+#### 2. Actualización Optimista Local
+
+**Antes** (causaba des-selección):
+```typescript
+await createOrUpdateVendorMapping(vendNombre, userId, usuario.id);
+await loadVendors(); // ← Recargaba TODA la lista
+```
+
+**Después** (sin des-selección):
+```typescript
+await createOrUpdateVendorMapping(vendNombre, userId, usuario.id);
+
+// Actualización local sin re-fetch
+setVendors(prevVendors => prevVendors.map(v => {
+  if (v.vendor_nombre === vendNombre) {
+    const selectedUser = usuarios.find(u => u.id === userId);
+    return {
+      ...v,
+      movi_user_id: userId || null,
+      movi_user_name: selectedUser?.nombre_completo || null,
+      mapping_source: 'manual' as const
+    };
+  }
+  return v;
+}));
+```
+
+### Características del Combobox
+
+```
+┌──────────────────────────────────────────────┐
+│ Juan Pérez (juan@example.com)          [X] ▼ │ ← Button
+└──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│ 🔍 Buscar por nombre o email...              │ ← Search input
+├──────────────────────────────────────────────┤
+│ -- Sin asignar --                            │ ← Clear option
+├──────────────────────────────────────────────┤
+│ Juan Pérez                                   │ ← User 1
+│ juan@example.com                             │
+├──────────────────────────────────────────────┤
+│ María García                                 │ ← User 2 (selected)
+│ maria@example.com                            │ 🟣 Highlighted
+└──────────────────────────────────────────────┘
+```
+
+### Flujo de Guardado
+
+```
+Usuario → SearchableUserSelect → onChange(userId)
+           ↓
+ProduccionConfiguracion.handleVendorMappingChange()
+           ↓
+1. setSavingVendor(vendNombre) → Muestra spinner
+2. createOrUpdateVendorMapping() → Guarda en DB
+3. setVendors() local update → Actualiza UI inmediatamente
+4. setSavingVendor(null) → Oculta spinner
+           ↓
+SearchableUserSelect cierra dropdown
+           ↓
+Usuario ve nuevo valor asignado ✅
+```
+
+### Archivos Modificados
+
+**1. Nuevo archivo creado**:
+- `src/components/SearchableUserSelect.tsx` (180 líneas)
+
+**2. Archivos actualizados**:
+- `src/pages/ProduccionConfiguracion.tsx`:
+  - Línea 7: Import SearchableUserSelect
+  - Línea 308-351: handleVendorMappingChange con actualización optimista
+  - Línea 734-741: Reemplazo select → SearchableUserSelect
+
+### Testing
+
+#### ✅ Test 1: Búsqueda funciona
+1. Click en combobox
+2. Escribir "juan"
+3. Lista filtra usuarios matching
+
+#### ✅ Test 2: Selección persiste
+1. Seleccionar usuario
+2. Verificar que NO se des-selecciona
+3. Verificar que queda asignado
+
+#### ✅ Test 3: Limpiar funciona
+1. Click en X
+2. Regresa a "-- Sin asignar --"
+
+### Build Exitoso
+
+```bash
+npm run build
+✓ 3001 modules transformed
+✓ built in 26.09s
+```
+
+---
+
 **Implementado**: Diciembre 2024
-**Última Actualización**: 17 Diciembre 2024 - 20:30
-**Estado**: CORREGIDO - Sistema funcional
+**Última Actualización**: 17 Diciembre 2024 - 22:00
+**Estado**: FUNCIONAL - Combobox searchable implementado ✅
 **Build**: Exitoso ✓
