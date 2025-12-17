@@ -51,9 +51,9 @@ import MisComisiones from './pages/MisComisiones';
 import ComisionesUpload from './pages/ComisionesUpload';
 import ComisionesUploadNuevo from './pages/ComisionesUploadNuevo';
 import ComisionesPrepararLote from './pages/ComisionesPrepararLote';
-import MapeoVendedores from './pages/MapeoVendedores';
+// import MapeoVendedores from './pages/MapeoVendedores';
 import DocumentosImportar from './pages/DocumentosImportar';
-import MapeoVendedoresAdmin from './pages/MapeoVendedoresAdmin';
+// import MapeoVendedoresAdmin from './pages/MapeoVendedoresAdmin';
 import ProduccionTotal from './pages/ProduccionTotal';
 import ProduccionConvenio from './pages/ProduccionConvenio';
 import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
@@ -557,7 +557,7 @@ function AppRoutes() {
         }
       />
 
-      <Route
+      {/* <Route
         path="/comisiones/mapeo-vendedores"
         element={
           <ProtectedRoute requireAdmin>
@@ -566,7 +566,7 @@ function AppRoutes() {
             </Layout>
           </ProtectedRoute>
         }
-      />
+      /> */}
 
       <Route
         path="/comisiones/importar-documentos"
@@ -579,7 +579,7 @@ function AppRoutes() {
         }
       />
 
-      <Route
+      {/* <Route
         path="/configuracion/mapeo-vendedores"
         element={
           <ProtectedRoute requireAdmin>
@@ -588,7 +588,7 @@ function AppRoutes() {
             </Layout>
           </ProtectedRoute>
         }
-      />
+      /> */}
 
       <Route
         path="/mis-comisiones"

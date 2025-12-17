@@ -56,7 +56,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
     { path: '/notificaciones-transaccionales', label: 'Notificaciones Transaccionales', icon: Mail, show: isAdmin },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
-    { path: '/configuracion/mapeo-vendedores', label: 'Mapeo de Agentes', icon: Users, show: isAdmin },
+    // { path: '/configuracion/mapeo-vendedores', label: 'Mapeo de Agentes', icon: Users, show: isAdmin },
     { path: '/configuracion', label: 'Configuración', icon: Settings, show: isAdmin },
   ];
 
