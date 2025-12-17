@@ -20,6 +20,7 @@ export default function MapeoVendedores() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nuevoMapeo, setNuevoMapeo] = useState(false);
   const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [cambiosSinGuardar, setCambiosSinGuardar] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     cargarDatos();
@@ -50,8 +51,49 @@ export default function MapeoVendedores() {
       m.usuarios?.email.toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  const handleMarkUnsaved = (id: string) => {
+    setCambiosSinGuardar(prev => new Set(prev).add(id));
+  };
+
+  const handleMarkSaved = (id: string) => {
+    setCambiosSinGuardar(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Banner de cambios sin guardar */}
+      {cambiosSinGuardar.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4">
+          <div className="bg-orange-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-4 border-2 border-orange-500">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 w-3 h-3 bg-white rounded-full animate-ping"></div>
+              </div>
+              <div>
+                <p className="font-bold">
+                  {cambiosSinGuardar.size} {cambiosSinGuardar.size === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}
+                </p>
+                <p className="text-xs text-orange-100">
+                  Haz clic en "Guardar" en cada fila para confirmar los cambios
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setCambiosSinGuardar(new Set())}
+              className="ml-4 px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-orange-50 font-medium transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
+    <div>
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -178,6 +220,9 @@ export default function MapeoVendedores() {
                   usuarios={usuarios}
                   onUpdate={cargarDatos}
                   userId={user?.id || ''}
+                  onMarkUnsaved={handleMarkUnsaved}
+                  onMarkSaved={handleMarkSaved}
+                  hasUnsavedChanges={cambiosSinGuardar.has(mapeo.id)}
                 />
               ))}
             </tbody>
@@ -205,9 +250,12 @@ interface MapeoRowProps {
   usuarios: any[];
   onUpdate: () => void;
   userId: string;
+  onMarkUnsaved: (id: string) => void;
+  onMarkSaved: (id: string) => void;
+  hasUnsavedChanges: boolean;
 }
 
-function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
+function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSaved, hasUnsavedChanges }: MapeoRowProps) {
   const [editando, setEditando] = useState(false);
   const [usuarioId, setUsuarioId] = useState(mapeo.movi_user_id);
   const [notas, setNotas] = useState(mapeo.notes || '');
@@ -216,7 +264,18 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
 
   const tieneCambios = usuarioId !== mapeo.movi_user_id || notas !== (mapeo.notes || '');
 
+  // Notificar cambios sin guardar
+  useEffect(() => {
+    if (tieneCambios && editando) {
+      onMarkUnsaved(mapeo.id);
+    } else if (!tieneCambios) {
+      onMarkSaved(mapeo.id);
+    }
+  }, [tieneCambios, editando, mapeo.id, onMarkUnsaved, onMarkSaved]);
+
   const handleGuardar = async () => {
+    if (!tieneCambios) return;
+
     try {
       setSaving(true);
       setGuardadoExitoso(false);
@@ -229,6 +288,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
         userId
       );
       setGuardadoExitoso(true);
+      onMarkSaved(mapeo.id);
       setTimeout(() => {
         setEditando(false);
         setGuardadoExitoso(false);
@@ -247,6 +307,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
     setNotas(mapeo.notes || '');
     setEditando(false);
     setGuardadoExitoso(false);
+    onMarkSaved(mapeo.id);
   };
 
   const handleCambiarEstado = async () => {
@@ -279,7 +340,11 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
   };
 
   return (
-    <tr className={mapeo.status === 'inactive' ? 'bg-gray-50 opacity-60' : ''}>
+    <tr className={`
+      ${mapeo.status === 'inactive' ? 'bg-gray-50 opacity-60' : ''}
+      ${hasUnsavedChanges && editando ? 'ring-2 ring-orange-400 ring-inset bg-orange-50' : ''}
+      transition-all duration-200
+    `}>
       <td className="px-6 py-4 whitespace-nowrap">
         <div
           className={`flex items-center space-x-2 px-2 py-1 rounded-full w-fit ${
@@ -324,13 +389,16 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
               )}
             </select>
             {tieneCambios && !guardadoExitoso && (
-              <p className="text-xs text-orange-600 flex items-center gap-1">
-                <span className="inline-block w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
-                Cambios sin guardar
-              </p>
+              <div className="px-2 py-1 bg-orange-100 border border-orange-300 rounded text-xs text-orange-700 flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                </span>
+                <span className="font-medium">Cambios sin guardar - Haz clic en "Guardar"</span>
+              </div>
             )}
             {guardadoExitoso && (
-              <p className="text-xs text-green-600 flex items-center gap-1">
+              <p className="text-xs text-green-600 flex items-center gap-1 font-medium">
                 <CheckCircle className="h-3 w-3" />
                 Guardado exitosamente
               </p>
@@ -374,29 +442,29 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId }: MapeoRowProps) {
               <button
                 onClick={handleGuardar}
                 disabled={saving || !tieneCambios}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all transform ${
                   guardadoExitoso
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-green-600 text-white scale-105'
                     : tieneCambios
-                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 shadow-lg hover:shadow-xl scale-105 animate-pulse'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed scale-100'
                 } disabled:opacity-50`}
-                title={!tieneCambios ? 'No hay cambios para guardar' : 'Guardar cambios'}
+                title={!tieneCambios ? 'No hay cambios para guardar' : 'GUARDAR CAMBIOS'}
               >
                 {saving ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>Guardando...</span>
                   </>
                 ) : guardadoExitoso ? (
                   <>
-                    <CheckCircle className="h-4 w-4" />
+                    <CheckCircle className="h-5 w-5" />
                     <span>Guardado</span>
                   </>
                 ) : (
                   <>
-                    <Save className="h-4 w-4" />
-                    <span>Guardar</span>
+                    <Save className="h-5 w-5" />
+                    <span>GUARDAR</span>
                   </>
                 )}
               </button>
