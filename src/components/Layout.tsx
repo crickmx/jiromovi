@@ -311,15 +311,13 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             {/* Mobile header */}
             <header className="lg:hidden bg-white/95 backdrop-blur-sm border-b border-neutral-200 sticky top-0 z-30 shadow-sm">
               <div className="flex items-center justify-between px-4 py-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={() => setSidebarOpen(true)}
-                  className="mr-2"
+                  className="mr-2 p-2 text-neutral-700 hover:text-neutral-900 transition-colors active:scale-95"
                   aria-label="Abrir menú"
                 >
                   <Menu className="w-6 h-6" />
-                </Button>
+                </button>
                 <img
                   src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
                   alt="MOVI Digital Logo"
