@@ -44,14 +44,19 @@ No había feedback visual cuando los usuarios se estaban cargando, lo que podía
 
 **Archivo**: `src/pages/ProduccionConfiguracion.tsx`
 
-Se eliminó el filtro redundante y se dejó que la política RLS maneje el filtrado automáticamente:
+Se corrigió el nombre de las columnas y se eliminó el filtro redundante:
 
 ```typescript
 const { data, error } = await supabase
   .from('usuarios')
-  .select('id, nombre_completo, email, oficina_id, rol, estado')
+  .select('id, nombre_completo, email_laboral, oficina_id, rol, estado')
   .order('nombre_completo');
 ```
+
+**Cambios**:
+- ✅ Usa `email_laboral` (nombre correcto de la columna)
+- ✅ `nombre_completo` (columna generada automáticamente)
+- ✅ Sin filtros redundantes (RLS filtra automáticamente)
 
 **Razón**: La política RLS ya filtra automáticamente usuarios con `estado != 'eliminado'`, por lo que no es necesario agregar filtros adicionales en la consulta.
 
@@ -164,10 +169,10 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_estado
 
 ### 1. Frontend
 **`src/pages/ProduccionConfiguracion.tsx`**
-- Línea 54-56: Agregados estados de carga y error
-- Línea 259-291: Función `loadUsuarios()` mejorada con logs y manejo de errores
+- Línea 54-56: Agregados estados de carga y error + corregido tipo a `email_laboral`
+- Línea 259-291: Función `loadUsuarios()` mejorada con logs, manejo de errores y columna `email_laboral`
 - Línea 601-631: Agregados mensajes de error y advertencia visibles
-- Línea 732-754: Dropdown mejorado con estados de carga
+- Línea 732-754: Dropdown mejorado con estados de carga y fallback para email
 
 ### 2. Backend
 **`supabase/migrations/fix_usuarios_rls_mapeo_agentes.sql`**

@@ -51,7 +51,7 @@ export default function ProduccionConfiguracion() {
   const [savingVendor, setSavingVendor] = useState<string | null>(null);
   const [searchVendor, setSearchVendor] = useState('');
   const [filterMappingStatus, setFilterMappingStatus] = useState<'all' | 'mapped' | 'unmapped'>('all');
-  const [usuarios, setUsuarios] = useState<{ id: string; nombre_completo: string; email: string; oficina_id: string | null; rol?: string }[]>([]);
+  const [usuarios, setUsuarios] = useState<{ id: string; nombre_completo: string; email_laboral: string; oficina_id: string | null; rol?: string }[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
   const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null);
 
@@ -266,7 +266,7 @@ export default function ProduccionConfiguracion() {
       // La política RLS ya filtra por estado != 'eliminado'
       const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nombre_completo, email, oficina_id, rol, estado')
+        .select('id, nombre_completo, email_laboral, oficina_id, rol, estado')
         .order('nombre_completo');
 
       if (error) {
@@ -746,7 +746,7 @@ export default function ProduccionConfiguracion() {
                             <option value="">-- Sin asignar --</option>
                             {usuarios.map((u) => (
                               <option key={u.id} value={u.id}>
-                                {u.nombre_completo} ({u.email})
+                                {u.nombre_completo} ({u.email_laboral || 'Sin email'})
                               </option>
                             ))}
                           </>
