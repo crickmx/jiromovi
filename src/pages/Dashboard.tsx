@@ -164,40 +164,40 @@ export function Dashboard() {
 
   if (!isAdminOrGerente) {
     return (
-      <div className="space-y-5">
-        <div className="bg-white rounded-ios-2xl shadow-ios-lg p-8 md:p-10 border border-ios-gray-200/50">
+      <div className="space-y-4 md:space-y-5">
+        <div className="bg-white rounded-2xl md:rounded-ios-2xl shadow-ios-lg p-6 md:p-8 lg:p-10 border border-ios-gray-200/50">
           <div className="flex flex-col space-y-2 mb-6">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 rounded-full bg-ios-blue"></div>
-              <span className="text-[13px] font-medium text-ios-gray-600 uppercase tracking-wide">Dashboard</span>
+              <span className="text-xs md:text-[13px] font-medium text-ios-gray-600 uppercase tracking-wide">Dashboard</span>
             </div>
-            <h1 className="text-[34px] font-bold text-ios-gray-900 tracking-tight leading-tight">
+            <h1 className="text-2xl md:text-3xl lg:text-[34px] font-bold text-ios-gray-900 tracking-tight leading-tight">
               Hola, {currentUser?.nombre}
             </h1>
-            <p className="text-[17px] text-ios-gray-600 leading-relaxed">
+            <p className="text-sm md:text-base lg:text-[17px] text-ios-gray-600 leading-relaxed">
               Resumen de tus actividades
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
             {currentUser?.url_web_multicotizador ? (
               <a
                 href={currentUser.url_web_multicotizador}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Abrir Multicotizador Digital"
-                className="flex items-center space-x-2 bg-ios-blue text-white px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-blue-dark shadow-ios transition-all duration-200 active:scale-95"
+                className="flex items-center justify-center space-x-2 bg-ios-blue text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-ios-lg font-medium text-sm sm:text-[15px] hover:bg-ios-blue-dark shadow-ios transition-all duration-200 active:scale-95 w-full sm:w-auto"
               >
-                <span>Multicotizador Digital</span>
-                <ExternalLink className="w-4 h-4 stroke-[2]" />
+                <span className="truncate">Multicotizador Digital</span>
+                <ExternalLink className="w-4 h-4 stroke-[2] flex-shrink-0" />
               </a>
             ) : (
               <div
                 title="URL no configurada"
                 aria-label="Multicotizador Digital - URL no configurada"
-                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] cursor-not-allowed opacity-60"
+                className="flex items-center justify-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-ios-lg font-medium text-sm sm:text-[15px] cursor-not-allowed opacity-60 w-full sm:w-auto"
               >
-                <span>Multicotizador Digital</span>
-                <ExternalLink className="w-4 h-4 stroke-[2]" />
+                <span className="truncate">Multicotizador Digital</span>
+                <ExternalLink className="w-4 h-4 stroke-[2] flex-shrink-0" />
               </div>
             )}
             {currentUser?.url_web_jiro ? (
@@ -206,19 +206,19 @@ export function Dashboard() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Abrir Página Web de Contacto"
-                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-900 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-gray-200 transition-all duration-200 active:scale-95"
+                className="flex items-center justify-center space-x-2 bg-ios-gray-100 text-ios-gray-900 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-ios-lg font-medium text-sm sm:text-[15px] hover:bg-ios-gray-200 transition-all duration-200 active:scale-95 w-full sm:w-auto"
               >
-                <span>Página web de contacto</span>
-                <ExternalLink className="w-4 h-4 stroke-[2]" />
+                <span className="truncate">Página web de contacto</span>
+                <ExternalLink className="w-4 h-4 stroke-[2] flex-shrink-0" />
               </a>
             ) : (
               <div
                 title="URL no configurada"
                 aria-label="Página Web de Contacto - URL no configurada"
-                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] cursor-not-allowed opacity-60"
+                className="flex items-center justify-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-ios-lg font-medium text-sm sm:text-[15px] cursor-not-allowed opacity-60 w-full sm:w-auto"
               >
-                <span>Página web de contacto</span>
-                <ExternalLink className="w-4 h-4 stroke-[2]" />
+                <span className="truncate">Página web de contacto</span>
+                <ExternalLink className="w-4 h-4 stroke-[2] flex-shrink-0" />
               </div>
             )}
           </div>
@@ -282,40 +282,40 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="bg-white rounded-ios-2xl shadow-ios-lg p-8 md:p-10 border border-ios-gray-200/50">
+    <div className="space-y-4 md:space-y-5">
+      <div className="bg-white rounded-2xl md:rounded-ios-2xl shadow-ios-lg p-6 md:p-8 lg:p-10 border border-ios-gray-200/50">
         <div className="flex flex-col space-y-2 mb-6">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 rounded-full bg-ios-blue"></div>
-            <span className="text-[13px] font-medium text-ios-gray-600 uppercase tracking-wide">Dashboard</span>
+            <span className="text-xs md:text-[13px] font-medium text-ios-gray-600 uppercase tracking-wide">Dashboard</span>
           </div>
-          <h1 className="text-[34px] font-bold text-ios-gray-900 tracking-tight leading-tight">
+          <h1 className="text-2xl md:text-3xl lg:text-[34px] font-bold text-ios-gray-900 tracking-tight leading-tight">
             Hola, {currentUser?.nombre}
           </h1>
-          <p className="text-[17px] text-ios-gray-600 leading-relaxed">
+          <p className="text-sm md:text-base lg:text-[17px] text-ios-gray-600 leading-relaxed">
             Panel de administración
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
             {currentUser?.url_web_multicotizador ? (
               <a
                 href={currentUser.url_web_multicotizador}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Abrir Multicotizador Digital"
-                className="flex items-center space-x-2 bg-ios-blue text-white px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-blue-dark shadow-ios transition-all duration-200 active:scale-95"
+                className="flex items-center justify-center space-x-2 bg-ios-blue text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-ios-lg font-medium text-sm sm:text-[15px] hover:bg-ios-blue-dark shadow-ios transition-all duration-200 active:scale-95 w-full sm:w-auto"
               >
-                <span>Multicotizador Digital</span>
-                <ExternalLink className="w-4 h-4 stroke-[2]" />
+                <span className="truncate">Multicotizador Digital</span>
+                <ExternalLink className="w-4 h-4 stroke-[2] flex-shrink-0" />
               </a>
             ) : (
               <div
                 title="URL no configurada"
                 aria-label="Multicotizador Digital - URL no configurada"
-                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] cursor-not-allowed opacity-60"
+                className="flex items-center justify-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-ios-lg font-medium text-sm sm:text-[15px] cursor-not-allowed opacity-60 w-full sm:w-auto"
               >
-                <span>Multicotizador Digital</span>
-                <ExternalLink className="w-4 h-4 stroke-[2]" />
+                <span className="truncate">Multicotizador Digital</span>
+                <ExternalLink className="w-4 h-4 stroke-[2] flex-shrink-0" />
               </div>
             )}
             {currentUser?.url_web_jiro ? (
@@ -324,19 +324,19 @@ export function Dashboard() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Abrir Página Web de Contacto"
-                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-900 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] hover:bg-ios-gray-200 transition-all duration-200 active:scale-95"
+                className="flex items-center justify-center space-x-2 bg-ios-gray-100 text-ios-gray-900 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-ios-lg font-medium text-sm sm:text-[15px] hover:bg-ios-gray-200 transition-all duration-200 active:scale-95 w-full sm:w-auto"
               >
-                <span>Página web de contacto</span>
-                <ExternalLink className="w-4 h-4 stroke-[2]" />
+                <span className="truncate">Página web de contacto</span>
+                <ExternalLink className="w-4 h-4 stroke-[2] flex-shrink-0" />
               </a>
             ) : (
               <div
                 title="URL no configurada"
                 aria-label="Página Web de Contacto - URL no configurada"
-                className="flex items-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-4 py-2.5 rounded-ios-lg font-medium text-[15px] cursor-not-allowed opacity-60"
+                className="flex items-center justify-center space-x-2 bg-ios-gray-100 text-ios-gray-400 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-ios-lg font-medium text-sm sm:text-[15px] cursor-not-allowed opacity-60 w-full sm:w-auto"
               >
-                <span>Página web de contacto</span>
-                <ExternalLink className="w-4 h-4 stroke-[2]" />
+                <span className="truncate">Página web de contacto</span>
+                <ExternalLink className="w-4 h-4 stroke-[2] flex-shrink-0" />
               </div>
             )}
         </div>
@@ -345,7 +345,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <a
           href="/seguros-education"
-          className="group relative bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 overflow-hidden transition-all duration-200 hover:shadow-ios-lg active:scale-[0.98]"
+          className="group relative bg-white rounded-xl md:rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 overflow-hidden transition-all duration-200 hover:shadow-ios-lg active:scale-[0.98]"
         >
           <div className="aspect-[16/9] w-full flex items-center justify-center bg-ios-gray-50 p-8">
             <img
@@ -445,58 +445,58 @@ export function Dashboard() {
 
       {currentUser?.rol === 'Administrador' && <UsuariosPendientes />}
 
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${isGerente ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-4`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isGerente ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-3 md:gap-4`}>
         <div
           onClick={() => navigate('/directorio')}
-          className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6 cursor-pointer hover:shadow-ios-lg active:scale-[0.98] transition-all duration-200"
+          className="bg-white rounded-xl md:rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-5 md:p-6 cursor-pointer hover:shadow-ios-lg active:scale-[0.98] transition-all duration-200"
         >
           <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-ios-gray-600 text-[13px] font-medium uppercase tracking-wide">
+            <div className="flex-1 min-w-0">
+              <p className="text-ios-gray-600 text-xs md:text-[13px] font-medium uppercase tracking-wide truncate">
                 {isGerente ? 'Usuarios en mi Oficina' : 'Total Usuarios'}
               </p>
-              <p className="text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{totalUsuarios}</p>
-              <p className="text-ios-blue text-[15px] mt-4 font-medium">Ver usuarios →</p>
+              <p className="text-3xl md:text-4xl lg:text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{totalUsuarios}</p>
+              <p className="text-ios-blue text-sm md:text-[15px] mt-3 md:mt-4 font-medium">Ver usuarios →</p>
             </div>
-            <Users className="w-14 h-14 text-ios-blue/20 stroke-[1.5]" />
+            <Users className="w-12 h-12 md:w-14 md:h-14 text-ios-blue/20 stroke-[1.5] flex-shrink-0 ml-2" />
           </div>
         </div>
 
         {!isGerente && (
           <div
             onClick={() => navigate('/oficinas')}
-            className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6 cursor-pointer hover:shadow-ios-lg active:scale-[0.98] transition-all duration-200"
+            className="bg-white rounded-xl md:rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-5 md:p-6 cursor-pointer hover:shadow-ios-lg active:scale-[0.98] transition-all duration-200"
           >
             <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-ios-gray-600 text-[13px] font-medium uppercase tracking-wide">Total Oficinas</p>
-                <p className="text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{totalOficinas}</p>
-                <p className="text-ios-green text-[15px] mt-4 font-medium">Gestionar oficinas →</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-ios-gray-600 text-xs md:text-[13px] font-medium uppercase tracking-wide truncate">Total Oficinas</p>
+                <p className="text-3xl md:text-4xl lg:text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{totalOficinas}</p>
+                <p className="text-ios-green text-sm md:text-[15px] mt-3 md:mt-4 font-medium">Gestionar oficinas →</p>
               </div>
-              <Building2 className="w-14 h-14 text-ios-green/20 stroke-[1.5]" />
+              <Building2 className="w-12 h-12 md:w-14 md:h-14 text-ios-green/20 stroke-[1.5] flex-shrink-0 ml-2" />
             </div>
           </div>
         )}
 
-        <div className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6">
+        <div className="bg-white rounded-xl md:rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-5 md:p-6">
           <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-ios-gray-600 text-[13px] font-medium uppercase tracking-wide">Próximos Cumpleaños</p>
-              <p className="text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{proximosCumpleanos.length}</p>
-              <p className="text-ios-gray-600 text-[15px] mt-4">En el siguiente mes</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-ios-gray-600 text-xs md:text-[13px] font-medium uppercase tracking-wide truncate">Próximos Cumpleaños</p>
+              <p className="text-3xl md:text-4xl lg:text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{proximosCumpleanos.length}</p>
+              <p className="text-ios-gray-600 text-sm md:text-[15px] mt-3 md:mt-4 truncate">En el siguiente mes</p>
             </div>
-            <Cake className="w-14 h-14 text-ios-purple/20 stroke-[1.5]" />
+            <Cake className="w-12 h-12 md:w-14 md:h-14 text-ios-purple/20 stroke-[1.5] flex-shrink-0 ml-2" />
           </div>
         </div>
 
-        <div className="bg-white rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-6">
+        <div className="bg-white rounded-xl md:rounded-ios-xl shadow-ios-md border border-ios-gray-200/50 p-5 md:p-6">
           <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-ios-gray-600 text-[13px] font-medium uppercase tracking-wide">Aniversarios Laborales</p>
-              <p className="text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{proximosAniversarios.length}</p>
-              <p className="text-ios-gray-600 text-[15px] mt-4">En el siguiente mes</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-ios-gray-600 text-xs md:text-[13px] font-medium uppercase tracking-wide truncate">Aniversarios Laborales</p>
+              <p className="text-3xl md:text-4xl lg:text-[44px] font-bold mt-2 text-ios-gray-900 tracking-tight leading-none">{proximosAniversarios.length}</p>
+              <p className="text-ios-gray-600 text-sm md:text-[15px] mt-3 md:mt-4 truncate">En el siguiente mes</p>
             </div>
-            <Award className="w-14 h-14 text-ios-orange/20 stroke-[1.5]" />
+            <Award className="w-12 h-12 md:w-14 md:h-14 text-ios-orange/20 stroke-[1.5] flex-shrink-0 ml-2" />
           </div>
         </div>
       </div>

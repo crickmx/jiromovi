@@ -157,7 +157,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex">
+    <div className="min-h-screen bg-neutral-50">
       <aside
         className={cn(
           "hidden lg:flex fixed inset-y-0 left-0 z-40 w-72 border-r border-neutral-200 bg-white shadow-sm transition-all duration-300",
@@ -174,8 +174,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       </Sheet>
 
       <div className={cn(
-        "flex-1 transition-all duration-300",
-        desktopSidebarOpen && "lg:ml-72"
+        "min-h-screen transition-all duration-300",
+        desktopSidebarOpen ? "lg:ml-72" : "lg:ml-0"
       )}>
         {!hideHeader && (
           <>
@@ -199,7 +199,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             </header>
 
             <header className="hidden lg:flex bg-white/95 backdrop-blur-sm border-b border-neutral-200 sticky top-0 z-30 shadow-sm">
-              <div className="max-w-full w-full px-6 lg:px-8 py-4 flex items-center justify-between">
+              <div className="w-full px-6 lg:px-8 py-4 flex items-center justify-between">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -218,7 +218,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
         <main className={
           location.pathname === '/multicotizador-digital'
             ? 'h-screen'
-            : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8'
+            : 'w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8'
         }>
           {children}
         </main>
