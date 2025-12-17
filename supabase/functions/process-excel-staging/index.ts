@@ -149,24 +149,29 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    // Verify user authentication
-    const supabaseUser = createClient(supabaseUrl, supabaseAnon, {
-      global: { headers: { Authorization: authHeader } },
+    // Create client with user's JWT to verify authentication
+    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: { Authorization: authHeader },
+      },
     });
 
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    // Verify JWT and get user
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+
     if (userError || !user) {
-      console.error('[process-excel-staging] Auth error:', userError);
+      console.error('[process-excel-staging] Auth error:', userError?.message);
       throw new Error('No autorizado - sesión inválida');
     }
 
     console.log('[process-excel-staging] User authenticated:', user.id);
 
-    // Use service role to check user role (bypass RLS)
+    // Use service role client for database operations (bypass RLS)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check user role using service role client (bypass RLS)
     const { data: userData, error: roleError } = await supabase
       .from('usuarios')
       .select('rol')
