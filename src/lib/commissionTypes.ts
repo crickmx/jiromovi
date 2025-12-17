@@ -91,6 +91,18 @@ export interface CommissionDetail {
   raw_row: Record<string, any>;
   created_at: string;
   agent?: CommissionAgent;
+  tipo_ramo?: 'VIDA' | 'DAÑOS' | null;
+  costo_dispersion?: number | null;
+  asimilados_retencion_contable?: number | null;
+  asimilados_base_vida?: number | null;
+  asimilados_comision_vida?: number | null;
+  asimilados_base_danios_pre?: number | null;
+  asimilados_base_danios_sin_iva?: number | null;
+  asimilados_comision_danios?: number | null;
+  asimilados_isr_vida?: number | null;
+  asimilados_isr_danios?: number | null;
+  asimilados_isr_total?: number | null;
+  asimilados_comision_final?: number | null;
 }
 
 export interface CommissionError {
