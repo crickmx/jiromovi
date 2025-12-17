@@ -92,24 +92,7 @@ export async function findVendorMapping(vendNombre: string): Promise<{
     };
   }
 
-  // Paso 1: Buscar coincidencia directa en usuarios por nombre_completo
-  const { data: directMatch } = await supabase
-    .from('usuarios')
-    .select('id, nombre_completo, oficinas(nombre)')
-    .ilike('nombre_completo', normalized)
-    .limit(1)
-    .maybeSingle();
-
-  if (directMatch) {
-    return {
-      movi_user_id: directMatch.id,
-      movi_user_name: directMatch.nombre_completo,
-      oficina_nombre: (directMatch.oficinas as any)?.nombre || null,
-      match_method: 'direct_name',
-    };
-  }
-
-  // Paso 2: Buscar en vendor_mappings por nombre
+  // Paso 1: Buscar en vendor_mappings por nombre (fuente de verdad principal)
   const { data: mappingMatch } = await supabase
     .from('vendor_mappings')
     .select('movi_user_id, usuarios(nombre_completo, oficinas(nombre))')
@@ -127,6 +110,27 @@ export async function findVendorMapping(vendNombre: string): Promise<{
       oficina_nombre: usuario?.oficinas?.nombre || null,
       match_method: 'mapping_name',
     };
+  }
+
+  // Paso 2: Buscar coincidencia directa en usuarios normalizando nombre_completo
+  // Obtener usuarios y normalizar en cliente para comparación precisa
+  const { data: allUsers } = await supabase
+    .from('usuarios')
+    .select('id, nombre_completo, oficinas(nombre)')
+    .neq('estado', 'eliminado');
+
+  if (allUsers) {
+    for (const user of allUsers) {
+      const userNormalized = normalizeVendorName(user.nombre_completo);
+      if (userNormalized === normalized) {
+        return {
+          movi_user_id: user.id,
+          movi_user_name: user.nombre_completo,
+          oficina_nombre: (user.oficinas as any)?.nombre || null,
+          match_method: 'direct_name',
+        };
+      }
+    }
   }
 
   // No se encontró match

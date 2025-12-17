@@ -51,10 +51,11 @@ export class UserMatchingService {
     let match_method: MatchMethod = 'none';
 
     if (vendor_email_norm) {
+      // Buscar en email_laboral (campo correcto en tabla usuarios)
       const { data: userByEmail } = await supabase
         .from('usuarios')
         .select('id')
-        .eq('email', vendor_email_norm)
+        .eq('email_laboral', vendor_email_norm)
         .maybeSingle();
 
       if (userByEmail) {
