@@ -66,6 +66,7 @@ export default function ProduccionConfiguracion() {
     loadMappings();
     loadExcelOfficeNames();
     loadUsuarios();
+    loadVendors();
   }, [usuario, navigate]);
 
   const loadConfig = async () => {

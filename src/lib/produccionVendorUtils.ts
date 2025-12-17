@@ -261,30 +261,45 @@ export async function createOrUpdateVendorMapping(
   moviUserId: string,
   userId: string
 ): Promise<void> {
+  console.log('[createOrUpdateVendorMapping] Iniciando:', { vendNombre, moviUserId, userId });
+
   const normalized = normalizeVendorName(vendNombre);
 
   if (!normalized) {
+    console.error('[createOrUpdateVendorMapping] Nombre normalizado es null');
     throw new Error('Nombre de vendedor inválido');
   }
 
-  // Insertar o actualizar en vendor_mappings
-  const { error } = await supabase
-    .from('vendor_mappings')
-    .upsert({
-      source_type: 'name',
-      source_value: normalized,
-      movi_user_id: moviUserId,
-      status: 'active',
-      created_by: userId,
-      updated_by: userId,
-      source_raw_examples: [{
-        name: vendNombre,
-      }],
-    }, {
-      onConflict: 'source_type,source_value',
-    });
+  console.log('[createOrUpdateVendorMapping] Nombre normalizado:', normalized);
 
-  if (error) throw error;
+  // Insertar o actualizar en vendor_mappings
+  const payload = {
+    source_type: 'name' as const,
+    source_value: normalized,
+    movi_user_id: moviUserId,
+    status: 'active' as const,
+    created_by: userId,
+    updated_by: userId,
+    source_raw_examples: [{
+      name: vendNombre,
+    }],
+  };
+
+  console.log('[createOrUpdateVendorMapping] Payload:', payload);
+
+  const { data, error } = await supabase
+    .from('vendor_mappings')
+    .upsert(payload, {
+      onConflict: 'source_type,source_value',
+    })
+    .select();
+
+  if (error) {
+    console.error('[createOrUpdateVendorMapping] Error de Supabase:', error);
+    throw new Error(`Error al guardar mapeo: ${error.message}`);
+  }
+
+  console.log('[createOrUpdateVendorMapping] Guardado exitoso:', data);
 }
 
 /**
