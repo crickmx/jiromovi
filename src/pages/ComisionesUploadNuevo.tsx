@@ -21,19 +21,40 @@ export default function ComisionesUploadNuevo() {
   const [session, setSession] = useState<StagingSession | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const isAdmin = usuario?.rol === 'Administrador';
+  const isAdmin = usuario?.rol?.toLowerCase() === 'administrador';
+
+  console.log('[ComisionesUploadNuevo] Component mounted/updated', {
+    usuario: usuario?.nombre_completo,
+    rol: usuario?.rol,
+    isAdmin,
+    usuarioObj: usuario
+  });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
-      console.log('[ComisionesUploadNuevo] File selected');
+      console.log('[ComisionesUploadNuevo] File selected - event triggered');
       const selectedFile = e.target.files?.[0];
-      if (!selectedFile) return;
 
-      const isXlsx = selectedFile.name.endsWith('.xlsx');
-      const isCsv = selectedFile.name.endsWith('.csv');
+      if (!selectedFile) {
+        console.log('[ComisionesUploadNuevo] No file selected');
+        return;
+      }
+
+      console.log('[ComisionesUploadNuevo] File info:', {
+        name: selectedFile.name,
+        size: selectedFile.size,
+        type: selectedFile.type
+      });
+
+      const isXlsx = selectedFile.name.toLowerCase().endsWith('.xlsx');
+      const isCsv = selectedFile.name.toLowerCase().endsWith('.csv');
 
       if (!isXlsx && !isCsv) {
+        console.error('[ComisionesUploadNuevo] Invalid file type:', selectedFile.name);
         setError('Por favor selecciona un archivo Excel (.xlsx) o CSV (.csv)');
+        setFile(null);
+        // Clear the input
+        e.target.value = '';
         return;
       }
 
@@ -43,7 +64,13 @@ export default function ComisionesUploadNuevo() {
       setSession(null);
     } catch (error: any) {
       console.error('[ComisionesUploadNuevo] Error selecting file:', error);
-      setError('Error al seleccionar archivo: ' + error.message);
+      console.error('[ComisionesUploadNuevo] Error stack:', error.stack);
+      setError('Error al seleccionar archivo: ' + (error.message || 'Error desconocido'));
+      setFile(null);
+      // Clear the input on error
+      if (e.target) {
+        e.target.value = '';
+      }
     }
   };
 
