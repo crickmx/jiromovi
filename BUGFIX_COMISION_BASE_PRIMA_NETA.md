@@ -136,3 +136,13 @@ Regla:              Multiplicador × 0.8
 - PDFs generando información precisa
 
 **Fecha de corrección:** 2024-12-17
+
+---
+
+## Nota Adicional: Bug Relacionado Encontrado y Corregido
+
+Durante la validación se encontró un **segundo bug relacionado**: las comisiones aparecían en $0.00 para todos los ramos excepto Vida porque cuando no existía una regla de negocio coincidente, el sistema no calculaba la comisión.
+
+**Solución:** Se agregó un cálculo fallback que usa el porcentaje base del Excel cuando no hay regla definida.
+
+Ver documentación completa en: **`BUGFIX_CONSISTENCIA_IMPORT_LOTE.md`**

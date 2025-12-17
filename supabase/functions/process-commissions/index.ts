@@ -402,11 +402,17 @@ Deno.serve(async (req: Request) => {
             commissionBruta = (importeBase * porcentajeComision) / 100;
             calculationMethod = 'rules_engine';
           } else {
-            calculationStatus = 'missing_rules';
+            calculationStatus = 'fallback';
             calculationWarnings.push({
               code: 'NO_MATCHING_RULE',
-              message: `No se encontró regla para ramo=${ramo}, aseguradora=${aseguradora}`
+              message: `No se encontró regla para ramo=${ramo}, aseguradora=${aseguradora}. Usando porcentaje base como fallback.`
             });
+            tipoCalculo = 'fallback_porcentaje_base';
+            importeBase = primaNeta;
+            porcentajeComision = porcentajeBase;
+            commissionBruta = (importeBase * porcentajeComision) / 100;
+            calculationMethod = 'fallback';
+            console.log(`[process-commissions] FALLBACK: Usando porcentaje base ${porcentajeBase}% para calcular comisión: ${commissionBruta}`);
           }
         }
 
