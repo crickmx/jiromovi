@@ -130,7 +130,7 @@ export default function Comunicados() {
 
   if (loading) {
     return (
-      <Layout>
+      <Layout hideHeader>
         <Container size="lg">
           <div className="space-y-4">
             <div className="skeleton h-24 w-full" />
@@ -143,7 +143,7 @@ export default function Comunicados() {
   }
 
   return (
-    <Layout>
+    <Layout hideHeader>
       <Container size="lg">
         <PageHeader
           title="Comunicados"

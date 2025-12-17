@@ -21,7 +21,7 @@ La página de **Comunicados** ha sido completamente rediseñada aplicando el Sis
 
 #### Después
 ```tsx
-<Layout>
+<Layout hideHeader>
   <Container size="lg">
     <PageHeader
       title="Comunicados"
@@ -40,7 +40,8 @@ La página de **Comunicados** ha sido completamente rediseñada aplicando el Sis
 ```
 
 **Beneficios:**
-- Encabezado consistente con otras páginas
+- `hideHeader` evita duplicar el header del Layout con el PageHeader
+- Encabezado interno limpio con PageHeader
 - Uso de componentes base reutilizables
 - Jerarquía visual clara
 - Espaciado consistente
@@ -338,7 +339,26 @@ className="group-hover:text-primary-600 transition-colors"
 - Alt text descriptivo
 - Mejora rendimiento
 
-### 8. Optimizaciones de Rendimiento
+### 8. Fix del Doble Header
+
+**Problema Identificado:**
+Al usar `<Layout>` sin `hideHeader`, se mostraba el header del Layout (menú hamburguesa + notificaciones) junto con el `PageHeader`, creando un doble encabezado.
+
+**Solución:**
+```tsx
+<Layout hideHeader>
+  {/* El PageHeader funciona como encabezado interno */}
+  <PageHeader title="Comunicados" ... />
+</Layout>
+```
+
+**Resultado:**
+- Un solo header limpio con `PageHeader`
+- No hay duplicación visual
+- El menú lateral sigue funcionando normalmente
+- Layout consistente con el diseño de la aplicación
+
+### 9. Optimizaciones de Rendimiento
 
 #### Clase Utility Helpers
 ```tsx
@@ -442,7 +462,7 @@ className={cn(
 ## 📋 Checklist de Validación
 
 ### Estructura ✅
-- [x] Usa `<Layout>` sin `hideHeader`
+- [x] Usa `<Layout hideHeader>` para evitar doble header
 - [x] Usa `<Container size="lg">`
 - [x] Usa `<PageHeader>` con título e icono
 - [x] Usa `<Section variant="card">` para filtros
