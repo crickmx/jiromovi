@@ -112,10 +112,14 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
   const SidebarContent = ({ isMobile = false, isCollapsed = false }: { isMobile?: boolean; isCollapsed?: boolean }) => {
     const handleNavClick = (path: string) => {
-      navigate(path);
+      // Cerrar inmediatamente el menú antes de navegar
       if (isMobile) {
         setSidebarOpen(false);
       }
+      // Navegar después de cerrar
+      setTimeout(() => {
+        navigate(path);
+      }, 0);
     };
 
     const getInitials = () => {
@@ -128,24 +132,24 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       <div className="flex flex-col h-full bg-white">
         {/* Header */}
         <div className={cn(
-          "flex items-center border-b border-neutral-200 transition-all",
+          "flex items-center border-b border-neutral-200 transition-all duration-250 ease-ios-smooth",
           isCollapsed ? "justify-center px-2 py-4" : "justify-between px-6 py-6"
         )}>
           <button
             onClick={() => {
-              navigate('/dashboard');
               if (isMobile) {
                 setSidebarOpen(false);
               }
+              setTimeout(() => navigate('/dashboard'), 0);
             }}
-            className="flex items-center transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg"
+            className="flex items-center transition-all duration-250 ease-ios-smooth hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg"
             aria-label="Ir al Dashboard"
           >
             <img
               src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
               alt="MOVI Digital Logo"
               className={cn(
-                "object-contain transition-all",
+                "object-contain transition-all duration-250 ease-ios-smooth",
                 isCollapsed ? "h-10 w-10" : "h-12"
               )}
             />
@@ -166,9 +170,9 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                   key={item.path}
                   variant={isActive ? "default" : "ghost"}
                   className={cn(
-                    "w-full transition-all font-medium text-sm",
+                    "w-full transition-all duration-250 ease-ios-smooth font-medium text-sm",
                     isCollapsed ? "justify-center px-2 py-3" : "justify-start px-4 py-3",
-                    "h-auto",
+                    "h-auto active:scale-95",
                     isActive
                       ? "bg-primary-500 text-white hover:bg-primary-600 shadow-ios"
                       : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
@@ -176,8 +180,15 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                   onClick={() => handleNavClick(item.path)}
                   title={isCollapsed ? item.label : undefined}
                 >
-                  <Icon className={cn("w-5 h-5 flex-shrink-0", !isCollapsed && "mr-3")} />
-                  {!isCollapsed && <span className="text-left flex-1">{item.label}</span>}
+                  <Icon className={cn(
+                    "w-5 h-5 flex-shrink-0 transition-all duration-250 ease-ios-smooth",
+                    !isCollapsed && "mr-3"
+                  )} />
+                  {!isCollapsed && (
+                    <span className="text-left flex-1 transition-opacity duration-200 ease-ios-smooth">
+                      {item.label}
+                    </span>
+                  )}
                 </Button>
               );
             })}
@@ -186,22 +197,25 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
         {/* Footer */}
         <div className={cn(
-          "border-t border-neutral-200 bg-neutral-50/50 transition-all",
+          "border-t border-neutral-200 bg-neutral-50/50 transition-all duration-250 ease-ios-smooth",
           isCollapsed ? "p-2" : "p-4"
         )}>
           <Button
             variant="ghost"
             className={cn(
-              "w-full h-auto mb-2 hover:bg-white transition-all",
+              "w-full h-auto mb-2 hover:bg-white transition-all duration-250 ease-ios-smooth active:scale-95",
               isCollapsed ? "justify-center p-2" : "justify-start p-3"
             )}
             onClick={() => {
-              navigate('/perfil');
               if (isMobile) setSidebarOpen(false);
+              setTimeout(() => navigate('/perfil'), 0);
             }}
             title={isCollapsed ? `${usuario?.nombre} ${usuario?.apellidos}` : undefined}
           >
-            <Avatar className={cn(isCollapsed ? "h-9 w-9" : "h-10 w-10 mr-3")}>
+            <Avatar className={cn(
+              "transition-all duration-250 ease-ios-smooth",
+              isCollapsed ? "h-9 w-9" : "h-10 w-10 mr-3"
+            )}>
               <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} />
               <AvatarFallback className="bg-primary-500 text-white font-semibold">
                 {getInitials()}
@@ -209,13 +223,13 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             </Avatar>
             {!isCollapsed && (
               <>
-                <div className="flex-1 text-left min-w-0">
+                <div className="flex-1 text-left min-w-0 transition-opacity duration-200 ease-ios-smooth">
                   <p className="text-sm font-semibold text-neutral-900 truncate">
                     {usuario?.nombre} {usuario?.apellidos}
                   </p>
                   <p className="text-xs text-neutral-500 truncate">{usuario?.rol}</p>
                 </div>
-                <User className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                <User className="w-4 h-4 text-neutral-400 flex-shrink-0 transition-all duration-250 ease-ios-smooth" />
               </>
             )}
           </Button>
@@ -225,14 +239,21 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           <Button
             variant="ghost"
             className={cn(
-              "w-full text-ios-red hover:text-ios-red hover:bg-ios-red/10",
+              "w-full text-ios-red hover:text-ios-red hover:bg-ios-red/10 transition-all duration-250 ease-ios-smooth active:scale-95",
               isCollapsed ? "justify-center p-2" : "justify-center"
             )}
             onClick={handleSignOut}
             title={isCollapsed ? "Cerrar Sesión" : undefined}
           >
-            <LogOut className={cn("w-4 h-4", !isCollapsed && "mr-2")} />
-            {!isCollapsed && <span>Cerrar Sesión</span>}
+            <LogOut className={cn(
+              "w-4 h-4 transition-all duration-250 ease-ios-smooth",
+              !isCollapsed && "mr-2"
+            )} />
+            {!isCollapsed && (
+              <span className="transition-opacity duration-200 ease-ios-smooth">
+                Cerrar Sesión
+              </span>
+            )}
           </Button>
         </div>
       </div>
@@ -244,7 +265,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       {/* Desktop Sidebar - Always visible, can be collapsed */}
       <aside
         className={cn(
-          "hidden lg:flex fixed inset-y-0 left-0 z-40 border-r border-neutral-200 bg-white shadow-sm transition-all duration-300 ease-in-out",
+          "hidden lg:flex fixed inset-y-0 left-0 z-40 border-r border-neutral-200 bg-white shadow-sm transition-all duration-250 ease-ios-smooth",
           desktopSidebarCollapsed ? "w-[72px]" : "w-[280px]"
         )}
       >
@@ -255,13 +276,14 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           <button
             onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
             className={cn(
-              "absolute top-[88px] -right-3 z-50 w-6 h-6 rounded-full bg-white border-2 border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition-all shadow-sm",
-              "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              "absolute top-[88px] -right-3 z-50 w-6 h-6 rounded-full bg-white border-2 border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition-all duration-250 ease-ios-smooth shadow-sm",
+              "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2",
+              "active:scale-95"
             )}
             aria-label={desktopSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
             <ChevronLeft className={cn(
-              "w-4 h-4 text-neutral-600 transition-transform",
+              "w-4 h-4 text-neutral-600 transition-transform duration-250 ease-ios-smooth",
               desktopSidebarCollapsed && "rotate-180"
             )} />
           </button>
@@ -277,7 +299,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
       {/* Main content area */}
       <div className={cn(
-        "min-h-screen transition-all duration-300 ease-in-out",
+        "min-h-screen transition-all duration-250 ease-ios-smooth",
         desktopSidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-[280px]"
       )}>
         {!hideHeader && (
