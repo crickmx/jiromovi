@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { Info } from 'lucide-react';
 
 interface FiscalRegime {
   id: string;
@@ -106,6 +107,13 @@ export function PaymentFields({
               className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
             />
           </div>
+        </div>
+
+        <div className="mt-4 flex items-start space-x-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-900">
+            <span className="font-medium">Recuerda:</span> La actualización de tus datos de "Información de pago" tarda de 24 a 72 horas en verse reflejada y aplicada para futuros movimientos.
+          </p>
         </div>
       </div>
     </div>
