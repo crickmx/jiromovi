@@ -1,7 +1,7 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -15,14 +15,62 @@ interface LayoutProps {
   hideHeader?: boolean;
 }
 
+const SIDEBAR_STORAGE_KEY = 'movi-sidebar-collapsed';
+
 export function Layout({ children, hideHeader = false }: LayoutProps) {
   const { usuario, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  // Mobile sidebar state
+
+  // Mobile sidebar state (drawer overlay)
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Desktop sidebar - closed by default
-  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
+
+  // Desktop sidebar state (collapsed/expanded)
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(() => {
+    // Load from localStorage only on desktop
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      return stored === 'true';
+    }
+    return false;
+  });
+
+  // Persist desktop sidebar state
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(desktopSidebarCollapsed));
+    }
+  }, [desktopSidebarCollapsed]);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  // Handle ESC key to close mobile sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarOpen]);
+
+  // Prevent body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen && window.innerWidth < 1024) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarOpen]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -62,7 +110,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/configuracion', label: 'Configuración', icon: Settings, show: isAdmin },
   ];
 
-  const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => {
+  const SidebarContent = ({ isMobile = false, isCollapsed = false }: { isMobile?: boolean; isCollapsed?: boolean }) => {
     const handleNavClick = (path: string) => {
       navigate(path);
       if (isMobile) {
@@ -78,20 +126,31 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
     return (
       <div className="flex flex-col h-full bg-white">
-        <div className="flex items-center justify-between px-6 py-6 border-b border-neutral-200">
+        {/* Header */}
+        <div className={cn(
+          "flex items-center border-b border-neutral-200 transition-all",
+          isCollapsed ? "justify-center px-2 py-4" : "justify-between px-6 py-6"
+        )}>
           <button
             onClick={() => navigate('/dashboard')}
             className="flex items-center transition-transform hover:scale-105"
           >
-            <img
-              src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
-              alt="MOVI Digital Logo"
-              className="h-12 object-contain"
-            />
+            {isCollapsed ? (
+              <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xl">M</span>
+              </div>
+            ) : (
+              <img
+                src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
+                alt="MOVI Digital Logo"
+                className="h-12 object-contain"
+              />
+            )}
           </button>
         </div>
 
-        <ScrollArea className="flex-1 px-4 py-4">
+        {/* Navigation */}
+        <ScrollArea className="flex-1 px-2 py-4">
           <nav className="space-y-1">
             {navItems.filter(item => item.show).map((item) => {
               const Icon = item.icon;
@@ -104,54 +163,73 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                   key={item.path}
                   variant={isActive ? "default" : "ghost"}
                   className={cn(
-                    "w-full justify-start px-4 py-3 h-auto font-medium text-sm transition-all",
+                    "w-full transition-all font-medium text-sm",
+                    isCollapsed ? "justify-center px-2 py-3" : "justify-start px-4 py-3",
+                    "h-auto",
                     isActive
                       ? "bg-primary-500 text-white hover:bg-primary-600 shadow-ios"
                       : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
                   )}
                   onClick={() => handleNavClick(item.path)}
+                  title={isCollapsed ? item.label : undefined}
                 >
-                  <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
-                  <span className="text-left flex-1">{item.label}</span>
+                  <Icon className={cn("w-5 h-5 flex-shrink-0", !isCollapsed && "mr-3")} />
+                  {!isCollapsed && <span className="text-left flex-1">{item.label}</span>}
                 </Button>
               );
             })}
           </nav>
         </ScrollArea>
 
-        <div className="p-4 border-t border-neutral-200 bg-neutral-50/50">
+        {/* Footer */}
+        <div className={cn(
+          "border-t border-neutral-200 bg-neutral-50/50 transition-all",
+          isCollapsed ? "p-2" : "p-4"
+        )}>
           <Button
             variant="ghost"
-            className="w-full justify-start h-auto p-3 mb-2 hover:bg-white"
+            className={cn(
+              "w-full h-auto mb-2 hover:bg-white transition-all",
+              isCollapsed ? "justify-center p-2" : "justify-start p-3"
+            )}
             onClick={() => {
               navigate('/perfil');
               if (isMobile) setSidebarOpen(false);
             }}
+            title={isCollapsed ? `${usuario?.nombre} ${usuario?.apellidos}` : undefined}
           >
-            <Avatar className="h-10 w-10 mr-3">
+            <Avatar className={cn(isCollapsed ? "h-9 w-9" : "h-10 w-10 mr-3")}>
               <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} />
               <AvatarFallback className="bg-primary-500 text-white font-semibold">
                 {getInitials()}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-semibold text-neutral-900 truncate">
-                {usuario?.nombre} {usuario?.apellidos}
-              </p>
-              <p className="text-xs text-neutral-500 truncate">{usuario?.rol}</p>
-            </div>
-            <User className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+            {!isCollapsed && (
+              <>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-sm font-semibold text-neutral-900 truncate">
+                    {usuario?.nombre} {usuario?.apellidos}
+                  </p>
+                  <p className="text-xs text-neutral-500 truncate">{usuario?.rol}</p>
+                </div>
+                <User className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+              </>
+            )}
           </Button>
 
-          <Separator className="my-2" />
+          {!isCollapsed && <Separator className="my-2" />}
 
           <Button
             variant="ghost"
-            className="w-full justify-center text-ios-red hover:text-ios-red hover:bg-ios-red/10"
+            className={cn(
+              "w-full text-ios-red hover:text-ios-red hover:bg-ios-red/10",
+              isCollapsed ? "justify-center p-2" : "justify-center"
+            )}
             onClick={handleSignOut}
+            title={isCollapsed ? "Cerrar Sesión" : undefined}
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            <span>Cerrar Sesión</span>
+            <LogOut className={cn("w-4 h-4", !isCollapsed && "mr-2")} />
+            {!isCollapsed && <span>Cerrar Sesión</span>}
           </Button>
         </div>
       </div>
@@ -160,27 +238,48 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-neutral-50">
+      {/* Desktop Sidebar - Always visible, can be collapsed */}
       <aside
         className={cn(
-          "hidden lg:flex fixed inset-y-0 left-0 z-40 w-72 border-r border-neutral-200 bg-white shadow-sm transition-all duration-300",
-          desktopSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          "hidden lg:flex fixed inset-y-0 left-0 z-40 border-r border-neutral-200 bg-white shadow-sm transition-all duration-300 ease-in-out",
+          desktopSidebarCollapsed ? "w-[72px]" : "w-[280px]"
         )}
       >
-        <SidebarContent />
+        <div className="flex flex-col w-full relative">
+          <SidebarContent isCollapsed={desktopSidebarCollapsed} />
+
+          {/* Collapse/Expand button */}
+          <button
+            onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
+            className={cn(
+              "absolute top-[88px] -right-3 z-50 w-6 h-6 rounded-full bg-white border-2 border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition-all shadow-sm",
+              "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            )}
+            aria-label={desktopSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
+          >
+            <ChevronLeft className={cn(
+              "w-4 h-4 text-neutral-600 transition-transform",
+              desktopSidebarCollapsed && "rotate-180"
+            )} />
+          </button>
+        </div>
       </aside>
 
+      {/* Mobile Sidebar - Overlay drawer */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-72 p-0">
+        <SheetContent side="left" className="w-[280px] p-0">
           <SidebarContent isMobile />
         </SheetContent>
       </Sheet>
 
+      {/* Main content area */}
       <div className={cn(
-        "min-h-screen transition-all duration-300",
-        desktopSidebarOpen ? "lg:ml-72" : "lg:ml-0"
+        "min-h-screen transition-all duration-300 ease-in-out",
+        desktopSidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-[280px]"
       )}>
         {!hideHeader && (
           <>
+            {/* Mobile header */}
             <header className="lg:hidden bg-white/95 backdrop-blur-sm border-b border-neutral-200 sticky top-0 z-30 shadow-sm">
               <div className="flex items-center justify-between px-4 py-4">
                 <Button
@@ -188,6 +287,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                   size="icon"
                   onClick={() => setSidebarOpen(true)}
                   className="mr-2"
+                  aria-label="Abrir menú"
                 >
                   <Menu className="w-6 h-6" />
                 </Button>
@@ -200,17 +300,9 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               </div>
             </header>
 
+            {/* Desktop header */}
             <header className="hidden lg:flex bg-white/95 backdrop-blur-sm border-b border-neutral-200 sticky top-0 z-30 shadow-sm">
-              <div className="w-full px-6 lg:px-8 py-4 flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setDesktopSidebarOpen(!desktopSidebarOpen)}
-                  className="mr-4"
-                >
-                  <Menu className="w-6 h-6" />
-                </Button>
-                <div className="flex-1" />
+              <div className="w-full px-6 lg:px-8 py-4 flex items-center justify-end">
                 <NotificationBell />
               </div>
             </header>
