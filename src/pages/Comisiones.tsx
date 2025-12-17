@@ -160,11 +160,11 @@ export default function Comisiones() {
             Crea tu primer lote subiendo un archivo Excel
           </p>
           <button
-            onClick={() => navigate('/comisiones/upload')}
+            onClick={() => navigate('/comisiones/upload-nuevo')}
             className="inline-flex items-center justify-center space-x-2 bg-primary-600 text-white px-5 sm:px-6 py-3 rounded-xl hover:bg-primary-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
           >
             <Plus className="w-5 h-5" />
-            <span>Subir Excel</span>
+            <span>Cargar Archivo</span>
           </button>
         </div>
       ) : (
