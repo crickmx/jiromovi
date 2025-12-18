@@ -257,12 +257,12 @@ export default function MiProduccion() {
     if (syncing) return;
 
     setSyncing(true);
-    setMessage('Actualizando cache de vendedores...');
+    setMessage('Actualizando asignación de vendedores...');
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Actualizar cache de vendedores
-      const cacheApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-vendors-cache`;
+      // Usar la función rápida que lee desde la base de datos
+      const cacheApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refresh-production-cache`;
       const cacheResponse = await fetch(cacheApiUrl, {
         method: 'POST',
         headers: {
@@ -274,15 +274,15 @@ export default function MiProduccion() {
       const cacheResult = await cacheResponse.json();
 
       if (cacheResult.success) {
-        setMessage(`Cache actualizado con ${cacheResult.synced_count} vendedores.`);
-        // Recargar datos
+        setMessage(null);
+        // Recargar datos inmediatamente
         await loadMyProduction();
       } else {
-        setMessage(`Error al actualizar el cache: ${cacheResult.error || 'Error desconocido'}`);
+        setMessage(`Error al actualizar: ${cacheResult.error || 'Error desconocido'}`);
       }
     } catch (error: any) {
       console.error('[MiProduccion] Error refreshing cache:', error);
-      setMessage(`Error al actualizar el cache: ${error.message}`);
+      setMessage(`Error al actualizar: ${error.message}`);
     } finally {
       setSyncing(false);
     }
@@ -296,6 +296,7 @@ export default function MiProduccion() {
       const { data: { session } } = await supabase.auth.getSession();
 
       // Paso 1: Sincronizar datos de Google Sheets
+      setMessage('Sincronizando datos desde Google Sheets...');
       const syncApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-from-sheets`;
       const syncResponse = await fetch(syncApiUrl, {
         method: 'POST',
@@ -312,8 +313,9 @@ export default function MiProduccion() {
         return;
       }
 
-      // Paso 2: Actualizar cache de vendedores
-      const cacheApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-vendors-cache`;
+      // Paso 2: Actualizar cache de vendedores (función rápida desde DB)
+      setMessage('Actualizando cache de vendedores...');
+      const cacheApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refresh-production-cache`;
       const cacheResponse = await fetch(cacheApiUrl, {
         method: 'POST',
         headers: {
