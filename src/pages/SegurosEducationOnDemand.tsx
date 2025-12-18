@@ -209,18 +209,43 @@ export function SegurosEducationOnDemand() {
     file: File,
     onProgress?: (progress: number) => void
   ) => {
-    // Supabase automatically handles large files using TUS protocol
-    // We just need to ensure the content type is set correctly
-    const result = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type || 'video/mp4'
-      });
+    console.log(`[Upload] Starting upload to ${bucket}:`, {
+      fileName,
+      fileSize: file.size,
+      fileSizeFormatted: file.size >= 1024 * 1024 * 1024
+        ? `${(file.size / (1024 * 1024 * 1024)).toFixed(2)} GB`
+        : `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+      fileType: file.type,
+      timestamp: new Date().toISOString()
+    });
 
-    if (onProgress) onProgress(100);
-    return result;
+    try {
+      // Supabase automatically handles large files using TUS protocol for files > 6MB
+      const result = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type || 'video/mp4'
+        });
+
+      if (result.error) {
+        console.error('[Upload] Error from Supabase:', {
+          error: result.error,
+          message: result.error.message,
+          statusCode: result.error.statusCode,
+          details: result.error
+        });
+      } else {
+        console.log('[Upload] Success:', result.data);
+      }
+
+      if (onProgress) onProgress(100);
+      return result;
+    } catch (error) {
+      console.error('[Upload] Exception during upload:', error);
+      throw error;
+    }
   };
 
   const handleUploadLesson = async () => {
@@ -234,9 +259,29 @@ export function SegurosEducationOnDemand() {
       return;
     }
 
+    // Final client-side validation
+    const maxVideoSize = 10 * 1024 * 1024 * 1024; // 10GB
+    const maxThumbnailSize = 500 * 1024 * 1024; // 500MB
+
+    if (videoFile.size > maxVideoSize) {
+      showToast(`El video (${(videoFile.size / (1024 * 1024 * 1024)).toFixed(2)} GB) excede el límite de 10GB`, 'error');
+      return;
+    }
+
+    if (thumbnailFile && thumbnailFile.size > maxThumbnailSize) {
+      showToast(`La miniatura (${(thumbnailFile.size / (1024 * 1024)).toFixed(2)} MB) excede el límite de 500MB`, 'error');
+      return;
+    }
+
     try {
       setUploading(true);
       setUploadProgress(5);
+
+      console.log('[handleUploadLesson] Starting lesson upload process', {
+        videoSize: videoFile.size,
+        thumbnailSize: thumbnailFile?.size,
+        titulo: formData.titulo
+      });
 
       // Upload video with progress tracking
       const videoFileName = `${Date.now()}-${videoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
@@ -250,24 +295,37 @@ export function SegurosEducationOnDemand() {
         }
       );
 
-      if (videoResult.error) throw videoResult.error;
+      if (videoResult.error) {
+        console.error('[handleUploadLesson] Video upload failed:', videoResult.error);
+        throw videoResult.error;
+      }
+      console.log('[handleUploadLesson] Video uploaded successfully');
       setUploadProgress(70);
 
       // Upload thumbnail if provided
       let thumbnailUrl = null;
       if (thumbnailFile) {
+        console.log('[handleUploadLesson] Starting thumbnail upload');
         const thumbFileName = `${Date.now()}-${thumbnailFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         const { error: thumbError } = await supabase.storage
           .from('seguros-thumbnails')
-          .upload(thumbFileName, thumbnailFile);
+          .upload(thumbFileName, thumbnailFile, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: thumbnailFile.type
+          });
 
-        if (thumbError) throw thumbError;
+        if (thumbError) {
+          console.error('[handleUploadLesson] Thumbnail upload failed:', thumbError);
+          throw thumbError;
+        }
 
         const { data: thumbPublicUrl } = supabase.storage
           .from('seguros-thumbnails')
           .getPublicUrl(thumbFileName);
 
         thumbnailUrl = thumbPublicUrl.publicUrl;
+        console.log('[handleUploadLesson] Thumbnail uploaded successfully');
       }
       setUploadProgress(80);
 

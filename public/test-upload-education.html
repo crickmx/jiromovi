@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico de Subida - Seguros Education</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #1e40af;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border-left: 4px solid #3b82f6;
+    }
+    .test-section h3 {
+      margin-top: 0;
+      color: #1e40af;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      margin-right: 10px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .success {
+      color: #059669;
+      font-weight: 500;
+    }
+    .error {
+      color: #dc2626;
+      font-weight: 500;
+    }
+    .info {
+      color: #0284c7;
+      font-weight: 500;
+    }
+    .result {
+      margin-top: 15px;
+      padding: 15px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    input[type="file"] {
+      margin: 10px 0;
+      padding: 10px;
+      border: 2px dashed #d1d5db;
+      border-radius: 6px;
+      width: 100%;
+      cursor: pointer;
+    }
+    .file-info {
+      margin: 10px 0;
+      padding: 10px;
+      background: #eff6ff;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .progress {
+      width: 100%;
+      height: 20px;
+      background: #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #3b82f6;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Diagnóstico de Subida - Seguros Education</h1>
+    <p class="subtitle">Herramienta para diagnosticar problemas con la subida de archivos</p>
+
+    <div class="test-section">
+      <h3>1. Verificar Configuración de Buckets</h3>
+      <button onclick="checkBuckets()">Verificar Configuración</button>
+      <div id="buckets-result"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>2. Probar Subida de Video</h3>
+      <input type="file" id="video-file" accept="video/mp4,video/webm,video/quicktime" />
+      <div id="video-info"></div>
+      <button onclick="testVideoUpload()">Subir Video de Prueba</button>
+      <div id="video-progress"></div>
+      <div id="video-result"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>3. Probar Subida de Miniatura</h3>
+      <input type="file" id="thumbnail-file" accept="image/*,video/*" />
+      <div id="thumbnail-info"></div>
+      <button onclick="testThumbnailUpload()">Subir Miniatura de Prueba</button>
+      <div id="thumbnail-progress"></div>
+      <div id="thumbnail-result"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>4. Información del Sistema</h3>
+      <button onclick="showSystemInfo()">Mostrar Información</button>
+      <div id="system-result"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://jnvbbswqhtbbzhxasjcr.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpudmJic3dxaHRiYnpoeGFzamNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NjYyNTMsImV4cCI6MjA0NTE0MjI1M30.CqFWHRqKqYu7nAkiclLdxZiDn_qsDVVe7eXV7G6UHQA';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // File size formatter
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // Show file info when selected
+    document.getElementById('video-file').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const info = `
+          <strong>Archivo seleccionado:</strong><br>
+          Nombre: ${file.name}<br>
+          Tamaño: ${formatBytes(file.size)}<br>
+          Tipo: ${file.type}<br>
+          Última modificación: ${new Date(file.lastModified).toLocaleString()}
+        `;
+        document.getElementById('video-info').innerHTML = `<div class="file-info">${info}</div>`;
+      }
+    });
+
+    document.getElementById('thumbnail-file').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const info = `
+          <strong>Archivo seleccionado:</strong><br>
+          Nombre: ${file.name}<br>
+          Tamaño: ${formatBytes(file.size)}<br>
+          Tipo: ${file.type}<br>
+          Última modificación: ${new Date(file.lastModified).toLocaleString()}
+        `;
+        document.getElementById('thumbnail-info').innerHTML = `<div class="file-info">${info}</div>`;
+      }
+    });
+
+    async function checkBuckets() {
+      const result = document.getElementById('buckets-result');
+      result.innerHTML = '<div class="info">Verificando configuración...</div>';
+
+      try {
+        const { data, error } = await supabase.rpc('get_bucket_info');
+
+        if (error) {
+          // Try direct query
+          const { data: buckets, error: bucketsError } = await supabase
+            .from('storage.buckets')
+            .select('*')
+            .in('id', ['seguros-videos', 'seguros-thumbnails']);
+
+          if (bucketsError) throw bucketsError;
+
+          const info = buckets.map(b => `
+<strong>${b.name}</strong>
+- ID: ${b.id}
+- Público: ${b.public ? 'Sí' : 'No'}
+- Límite de tamaño: ${formatBytes(b.file_size_limit || 0)}
+- MIME types permitidos: ${b.allowed_mime_types || 'Todos'}
+          `).join('\n\n');
+
+          result.innerHTML = `<div class="result success">✓ Configuración obtenida:\n\n${info}</div>`;
+        } else {
+          result.innerHTML = `<div class="result success">✓ Configuración correcta:\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+      } catch (error) {
+        result.innerHTML = `<div class="result error">✗ Error: ${error.message}</div>`;
+        console.error('Error checking buckets:', error);
+      }
+    }
+
+    async function testVideoUpload() {
+      const fileInput = document.getElementById('video-file');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert('Por favor selecciona un archivo de video');
+        return;
+      }
+
+      const result = document.getElementById('video-result');
+      const progressDiv = document.getElementById('video-progress');
+
+      result.innerHTML = '';
+      progressDiv.innerHTML = '<div class="progress"><div class="progress-bar" id="video-bar">0%</div></div>';
+
+      try {
+        const fileName = `test-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+        console.log('Iniciando subida de video:', {
+          fileName,
+          size: file.size,
+          type: file.type
+        });
+
+        const { data, error } = await supabase.storage
+          .from('seguros-videos')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: file.type || 'video/mp4'
+          });
+
+        document.getElementById('video-bar').style.width = '100%';
+        document.getElementById('video-bar').textContent = '100%';
+
+        if (error) throw error;
+
+        const { data: publicUrl } = supabase.storage
+          .from('seguros-videos')
+          .getPublicUrl(fileName);
+
+        result.innerHTML = `<div class="result success">✓ Video subido exitosamente!\n\nRuta: ${data.path}\nURL: ${publicUrl.publicUrl}\n\nPuedes eliminar este archivo de prueba desde la consola de Supabase.</div>`;
+      } catch (error) {
+        result.innerHTML = `<div class="result error">✗ Error al subir video:\n\n${error.message}\n\nDetalles completos:\n${JSON.stringify(error, null, 2)}</div>`;
+        console.error('Error uploading video:', error);
+      } finally {
+        progressDiv.innerHTML = '';
+      }
+    }
+
+    async function testThumbnailUpload() {
+      const fileInput = document.getElementById('thumbnail-file');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert('Por favor selecciona un archivo de miniatura');
+        return;
+      }
+
+      const result = document.getElementById('thumbnail-result');
+      const progressDiv = document.getElementById('thumbnail-progress');
+
+      result.innerHTML = '';
+      progressDiv.innerHTML = '<div class="progress"><div class="progress-bar" id="thumb-bar">0%</div></div>';
+
+      try {
+        const fileName = `test-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+        console.log('Iniciando subida de miniatura:', {
+          fileName,
+          size: file.size,
+          type: file.type
+        });
+
+        const { data, error } = await supabase.storage
+          .from('seguros-thumbnails')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: file.type
+          });
+
+        document.getElementById('thumb-bar').style.width = '100%';
+        document.getElementById('thumb-bar').textContent = '100%';
+
+        if (error) throw error;
+
+        const { data: publicUrl } = supabase.storage
+          .from('seguros-thumbnails')
+          .getPublicUrl(fileName);
+
+        result.innerHTML = `<div class="result success">✓ Miniatura subida exitosamente!\n\nRuta: ${data.path}\nURL: ${publicUrl.publicUrl}\n\nPuedes eliminar este archivo de prueba desde la consola de Supabase.</div>`;
+      } catch (error) {
+        result.innerHTML = `<div class="result error">✗ Error al subir miniatura:\n\n${error.message}\n\nDetalles completos:\n${JSON.stringify(error, null, 2)}</div>`;
+        console.error('Error uploading thumbnail:', error);
+      } finally {
+        progressDiv.innerHTML = '';
+      }
+    }
+
+    async function showSystemInfo() {
+      const result = document.getElementById('system-result');
+
+      const info = {
+        navegador: navigator.userAgent,
+        conexion: navigator.onLine ? 'En línea' : 'Sin conexión',
+        idioma: navigator.language,
+        plataforma: navigator.platform,
+        memoriaDisponible: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'No disponible',
+        supabaseURL: SUPABASE_URL,
+        timestamp: new Date().toISOString()
+      };
+
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      info.autenticado = session ? 'Sí' : 'No';
+      if (session) {
+        info.usuario = session.user.email;
+      }
+
+      result.innerHTML = `<div class="result">${JSON.stringify(info, null, 2)}</div>`;
+    }
+  </script>
+</body>
+</html>
