@@ -33,7 +33,7 @@ export default function MisComisiones() {
     const { data: agent } = await supabase
       .from('commission_agents')
       .select('id')
-      .eq('email', authUser.user.email)
+      .eq('usuario_id', authUser.user.id)
       .maybeSingle();
 
     if (!agent) {
