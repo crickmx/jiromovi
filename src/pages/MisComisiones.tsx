@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { DollarSign, Download, FileText, Calendar, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { DollarSign, Download, FileText, Calendar, Loader2, ChevronDown, ChevronRight, TrendingUp, Shield } from 'lucide-react';
 import type { CommissionBatch, CommissionDetail } from '../lib/commissionTypes';
 import { calculateBatchSummary, formatCurrency, formatDate } from '../lib/commissionUtils';
 import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
@@ -249,46 +249,74 @@ export default function MisComisiones() {
                       />
                     </div>
 
-                    <h4 className="text-base sm:text-lg font-bold text-neutral-900 mb-3 sm:mb-4">
-                      Desglose por Ramo
-                    </h4>
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                      <TrendingUp className="w-5 h-5 text-primary-600" />
+                      <h4 className="text-base sm:text-lg font-bold text-neutral-900">
+                        Desglose por Ramo
+                      </h4>
+                    </div>
 
-                    <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-                      {Object.entries(summary.by_ramo).map(([ramo, data]) => (
-                        <div key={ramo} className="bg-white rounded-lg p-3 sm:p-4">
-                          <div className="text-sm sm:text-base font-semibold text-neutral-900 mb-2 sm:mb-3">
-                            {ramo} ({data.count} pólizas)
-                          </div>
-                          <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
-                            <div>
-                              <div className="text-neutral-600 mb-1">Prima Neta</div>
-                              <div className="font-bold text-neutral-900 break-words">
-                                {formatCurrency(details.filter(d => d.ramo === ramo).reduce((sum, d) => sum + d.prima_neta, 0))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 sm:mb-6">
+                      {Object.entries(summary.by_ramo).map(([ramo, data]) => {
+                        const primaNeta = details.filter(d => d.ramo === ramo).reduce((sum, d) => sum + d.prima_neta, 0);
+                        const porcentaje = summary.total_neta > 0 ? (data.neta / summary.total_neta) * 100 : 0;
+
+                        return (
+                          <div key={ramo} className="bg-gradient-to-br from-white to-neutral-50 rounded-lg border border-neutral-200 p-3 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1 min-w-0">
+                                <h5 className="text-sm font-bold text-neutral-900 truncate">{ramo}</h5>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                                  {data.count} {data.count === 1 ? 'póliza' : 'pólizas'}
+                                </span>
+                              </div>
+                              <div className="flex-shrink-0 text-right ml-2">
+                                <div className="text-lg font-bold text-green-700">{formatCurrency(data.neta)}</div>
+                                <div className="text-xs text-neutral-500">{porcentaje.toFixed(1)}%</div>
                               </div>
                             </div>
-                            <div>
-                              <div className="text-neutral-600 mb-1">Comisiones</div>
-                              <div className="font-bold text-green-700 break-words">{formatCurrency(data.neta)}</div>
-                            </div>
-                          </div>
 
-                          <div className="mt-3 sm:mt-4 border-t border-neutral-100 pt-3 sm:pt-4">
-                            <div className="text-xs sm:text-sm font-medium text-neutral-700 mb-2">
-                              Aseguradoras:
+                            <div className="w-full bg-neutral-200 rounded-full h-1.5 mb-2">
+                              <div
+                                className="bg-gradient-to-r from-green-500 to-green-600 h-1.5 rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(porcentaje, 100)}%` }}
+                              ></div>
                             </div>
-                            {Object.entries(summary.by_aseguradora)
-                              .filter(([aseg]) => {
-                                return details.some(d => d.ramo === ramo && d.aseguradora === aseg);
-                              })
-                              .map(([aseg, asegData]) => (
-                                <div key={aseg} className="flex justify-between text-xs sm:text-sm py-1 gap-2">
-                                  <span className="text-neutral-700 truncate">{aseg}</span>
-                                  <span className="font-semibold text-green-700 flex-shrink-0">{formatCurrency(asegData.neta)}</span>
-                                </div>
-                              ))}
+
+                            <div className="flex items-center justify-between text-xs text-neutral-600 mb-2">
+                              <span>Prima Neta</span>
+                              <span className="font-semibold text-neutral-900">{formatCurrency(primaNeta)}</span>
+                            </div>
+
+                            <div className="pt-2 border-t border-neutral-200">
+                              <div className="flex items-center gap-1 mb-1.5">
+                                <Shield className="w-3 h-3 text-neutral-500" />
+                                <span className="text-xs font-medium text-neutral-600">Aseguradoras:</span>
+                              </div>
+                              <div className="space-y-0.5">
+                                {Object.entries(summary.by_aseguradora)
+                                  .filter(([aseg]) => details.some(d => d.ramo === ramo && d.aseguradora === aseg))
+                                  .slice(0, 3)
+                                  .map(([aseg, asegData]) => (
+                                    <div key={aseg} className="flex items-center justify-between text-xs gap-2">
+                                      <span className="text-neutral-700 truncate flex-1">{aseg}</span>
+                                      <span className="font-semibold text-green-700 flex-shrink-0">{formatCurrency(asegData.neta)}</span>
+                                    </div>
+                                  ))}
+                                {Object.entries(summary.by_aseguradora)
+                                  .filter(([aseg]) => details.some(d => d.ramo === ramo && d.aseguradora === aseg))
+                                  .length > 3 && (
+                                    <div className="text-xs text-neutral-500 italic">
+                                      +{Object.entries(summary.by_aseguradora)
+                                        .filter(([aseg]) => details.some(d => d.ramo === ramo && d.aseguradora === aseg))
+                                        .length - 3} más
+                                    </div>
+                                  )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
