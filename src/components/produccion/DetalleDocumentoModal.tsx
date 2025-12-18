@@ -126,15 +126,13 @@ export default function DetalleDocumentoModal({
             </div>
           )}
 
-          {documento.concepto && (
-            <div className="bg-neutral-50 rounded-lg p-3">
-              <InfoItem
-                icon={FileText}
-                label="Concepto"
-                value={documento.concepto}
-              />
-            </div>
-          )}
+          <div className="bg-neutral-50 rounded-lg p-3">
+            <InfoItem
+              icon={FileText}
+              label="Concepto"
+              value={documento.concepto || '-'}
+            />
+          </div>
         </div>
 
         <div className="border-t border-neutral-200 px-5 py-3 bg-neutral-50 flex justify-end gap-2">
