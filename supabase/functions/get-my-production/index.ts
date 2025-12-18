@@ -136,6 +136,7 @@ function transformRecord(row: any): any | null {
     const agenteNombre = (row['VendNombre'] || row['vendnombre'] || row['vendedor'] || '').toString().trim();
     const aseguradoraNombre = (row['Nombre Compañía'] || row['nombre compañia'] || row['nombre compania'] || row['compañia'] || '').toString().trim();
     const ramoNombre = (row['Sub Ramo'] || row['sub ramo'] || row['subramo'] || row['RamosNombre'] || row['ramos'] || '').toString().trim();
+    const concepto = (row['Concepto'] || row['concepto'] || '').toString().trim() || null;
 
     return {
       fecha: fechaStr,
@@ -151,6 +152,7 @@ function transformRecord(row: any): any | null {
       aseguradora_nombre: aseguradoraNombre,
       ramo_nombre: ramoNombre,
       subramo_nombre: null,
+      concepto: concepto,
       importe_pesos: importePesos,
       prima_convenio: primaConvenio,
       prima_ponderada: primaPonderada,

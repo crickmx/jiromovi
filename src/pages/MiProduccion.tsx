@@ -26,6 +26,7 @@ interface ProductionRecord {
   aseguradora_nombre: string;
   ramo_nombre: string;
   subramo_nombre: string | null;
+  concepto: string | null;
   importe_pesos: number;
   prima_convenio: number;
   prima_ponderada: number;
@@ -221,6 +222,7 @@ export default function MiProduccion() {
       'Aseguradora': record.aseguradora_nombre,
       'Ramo': record.ramo_nombre,
       'Subramo': record.subramo_nombre || '-',
+      'Concepto': record.concepto || '-',
       'Importe Pesos': record.importe_pesos,
       'Prima Convenio': record.prima_convenio,
       'Prima Ponderada': record.prima_ponderada,

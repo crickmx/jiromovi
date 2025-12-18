@@ -298,6 +298,7 @@ Deno.serve(async (req: Request) => {
           const agenteNombre = (getColumnValue(['VendNombre', 'vendnombre', 'vendedor']) || '').toString().trim();
           const aseguradoraNombre = (getColumnValue(['Nombre Compañía', 'nombre compañia', 'nombre compania', 'compañia']) || '').toString().trim();
           const ramoNombre = (getColumnValue(['Sub Ramo', 'sub ramo', 'subramo', 'RamosNombre', 'ramos']) || '').toString().trim();
+          const concepto = (getColumnValue(['Concepto', 'concepto']) || '').toString().trim() || null;
 
           const recordKey = `${fechaStr}|${clienteNombre}|${gerenciaNombre}|${agenteNombre}|${aseguradoraNombre}|${ramoNombre}|${importePesos}`;
 
@@ -324,6 +325,7 @@ Deno.serve(async (req: Request) => {
             aseguradora_nombre: aseguradoraNombre,
             ramo_nombre: ramoNombre,
             subramo_nombre: null,
+            concepto: concepto,
             importe_pesos: importePesos,
             prima_convenio: primaConvenio,
             prima_ponderada: primaPonderada,
