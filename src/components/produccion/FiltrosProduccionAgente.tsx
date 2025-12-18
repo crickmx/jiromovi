@@ -22,7 +22,7 @@ export default function FiltrosProduccionAgente({
   availableRamos,
   availableAseguradoras,
 }: FiltrosProduccionAgenteProps) {
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [localFilters, setLocalFilters] = useState<ProductionFilters>(filters);
 
   const handleApply = () => {
