@@ -253,15 +253,17 @@ export default function MiProduccion() {
     XLSX.writeFile(wb, filename);
   };
 
-  const handleSyncProduction = async () => {
+  const handleRefreshCache = async () => {
     if (syncing) return;
 
     setSyncing(true);
+    setMessage('Actualizando cache de vendedores...');
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-from-sheets`;
 
-      const response = await fetch(apiUrl, {
+      // Actualizar cache de vendedores
+      const cacheApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-vendors-cache`;
+      const cacheResponse = await fetch(cacheApiUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session?.access_token}`,
@@ -269,15 +271,67 @@ export default function MiProduccion() {
         }
       });
 
-      const result = await response.json();
+      const cacheResult = await cacheResponse.json();
 
-      if (result.success) {
-        setMessage(`Sincronización completada: ${result.rows_inserted} registros insertados`);
+      if (cacheResult.success) {
+        setMessage(`Cache actualizado con ${cacheResult.synced_count} vendedores.`);
         // Recargar datos
         await loadMyProduction();
       } else {
-        setMessage(`Error en sincronización: ${result.error || 'Error desconocido'}`);
+        setMessage(`Error al actualizar el cache: ${cacheResult.error || 'Error desconocido'}`);
       }
+    } catch (error: any) {
+      console.error('[MiProduccion] Error refreshing cache:', error);
+      setMessage(`Error al actualizar el cache: ${error.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleSyncProduction = async () => {
+    if (syncing) return;
+
+    setSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Paso 1: Sincronizar datos de Google Sheets
+      const syncApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-from-sheets`;
+      const syncResponse = await fetch(syncApiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const syncResult = await syncResponse.json();
+
+      if (!syncResult.success) {
+        setMessage(`Error en sincronización: ${syncResult.error || 'Error desconocido'}`);
+        return;
+      }
+
+      // Paso 2: Actualizar cache de vendedores
+      const cacheApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-vendors-cache`;
+      const cacheResponse = await fetch(cacheApiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const cacheResult = await cacheResponse.json();
+
+      if (cacheResult.success) {
+        setMessage(`Sincronización completada: ${syncResult.rows_inserted} registros insertados. Cache actualizado con ${cacheResult.synced_count} vendedores.`);
+      } else {
+        setMessage(`Datos sincronizados (${syncResult.rows_inserted} registros), pero hubo un problema al actualizar el cache de vendedores.`);
+      }
+
+      // Paso 3: Recargar datos
+      await loadMyProduction();
     } catch (error: any) {
       console.error('[MiProduccion] Error syncing:', error);
       setMessage(`Error al sincronizar: ${error.message}`);
@@ -309,9 +363,47 @@ export default function MiProduccion() {
             Sin Vendedor Asignado
           </h2>
           <p className="text-neutral-700 mb-4">{message}</p>
-          <p className="text-sm text-neutral-600">
-            Por favor, contacta al administrador del sistema para que te asignen un vendedor.
+          <p className="text-sm text-neutral-600 mb-6">
+            Si ya tienes un vendedor asignado, intenta actualizar el sistema. Si el problema persiste, contacta al administrador.
           </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={handleRefreshCache}
+              disabled={syncing}
+              className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {syncing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Actualizando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Actualizar Sistema
+                </>
+              )}
+            </button>
+            {(usuario?.rol === 'admin' || usuario?.rol === 'gerente') && (
+              <button
+                onClick={handleSyncProduction}
+                disabled={syncing}
+                className="px-6 py-2.5 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {syncing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Sincronizando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Sincronizar Google Sheets
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

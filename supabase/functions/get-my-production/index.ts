@@ -132,24 +132,19 @@ Deno.serve(async (req: Request) => {
       console.log('[get-my-production] Vendedor encontrado en cache:', vendorName);
     }
 
-    // FALLBACK 2: Buscar en vendor_mappings
+    // FALLBACK 2: Buscar en vendor_mappings (todas las variantes activas)
     if (!vendorName) {
-      const { data: usuarioData } = await supabase
-        .from('usuarios')
-        .select('nombre_completo')
-        .eq('id', user.id)
-        .maybeSingle();
+      const { data: mappings } = await supabase
+        .from('vendor_mappings')
+        .select('source_value')
+        .eq('movi_user_id', user.id)
+        .eq('status', 'active');
 
-      if (usuarioData?.nombre_completo) {
-        const { data: mapping } = await supabase
-          .from('vendor_mappings')
-          .select('source_value')
-          .eq('movi_user_id', user.id)
-          .eq('source_type', 'name')
-          .eq('status', 'active')
-          .maybeSingle();
+      if (mappings && mappings.length > 0) {
+        console.log('[get-my-production] Found', mappings.length, 'active mappings');
 
-        if (mapping?.source_value) {
+        // Intentar cada mapping hasta encontrar registros
+        for (const mapping of mappings) {
           const { data: productionRecord } = await supabase
             .from('production_records')
             .select('agente_nombre')
@@ -161,22 +156,54 @@ Deno.serve(async (req: Request) => {
           if (productionRecord?.agente_nombre) {
             vendorName = productionRecord.agente_nombre;
             console.log('[get-my-production] Vendedor encontrado via mapping:', vendorName);
+            break;
           }
         }
+      }
+    }
 
-        // FALLBACK 3: Buscar por coincidencia directa de nombre
+    // FALLBACK 3: Buscar por nombre completo del usuario
+    if (!vendorName) {
+      const { data: usuarioData } = await supabase
+        .from('usuarios')
+        .select('nombre_completo')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (usuarioData?.nombre_completo) {
+        // Intentar búsqueda directa
+        const { data: directMatch } = await supabase
+          .from('production_records')
+          .select('agente_nombre')
+          .eq('batch_id', latestBatch.id)
+          .ilike('agente_nombre', `%${usuarioData.nombre_completo}%`)
+          .limit(1)
+          .maybeSingle();
+
+        if (directMatch?.agente_nombre) {
+          vendorName = directMatch.agente_nombre;
+          console.log('[get-my-production] Vendedor encontrado por nombre directo:', vendorName);
+        }
+
+        // FALLBACK 4: Buscar por partes del nombre (primer y segundo nombre)
         if (!vendorName) {
-          const { data: directMatch } = await supabase
-            .from('production_records')
-            .select('agente_nombre')
-            .eq('batch_id', latestBatch.id)
-            .ilike('agente_nombre', `%${usuarioData.nombre_completo}%`)
-            .limit(1)
-            .maybeSingle();
+          const nombreParts = usuarioData.nombre_completo.trim().split(/\s+/);
+          if (nombreParts.length >= 2) {
+            const primerNombre = nombreParts[0];
+            const apellido = nombreParts[nombreParts.length - 1];
 
-          if (directMatch?.agente_nombre) {
-            vendorName = directMatch.agente_nombre;
-            console.log('[get-my-production] Vendedor encontrado por nombre directo:', vendorName);
+            const { data: partialMatch } = await supabase
+              .from('production_records')
+              .select('agente_nombre')
+              .eq('batch_id', latestBatch.id)
+              .ilike('agente_nombre', `%${primerNombre}%${apellido}%`)
+              .limit(1)
+              .maybeSingle();
+
+            if (partialMatch?.agente_nombre) {
+              vendorName = partialMatch.agente_nombre;
+              console.log('[get-my-production] Vendedor encontrado por partes del nombre:', vendorName);
+            }
           }
         }
       }
