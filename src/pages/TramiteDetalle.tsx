@@ -114,7 +114,7 @@ export function TramiteDetalle() {
 
   const loadEstatus = async () => {
     const { data } = await supabase
-      .from('tramite_estatus')
+      .from('ticket_estatus')
       .select('*')
       .eq('activo', true)
       .order('orden');
