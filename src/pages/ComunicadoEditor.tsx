@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
+import { Container } from '../components/ui/container';
+import { Button } from '../components/ui/button';
+import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User } from 'lucide-react';
+import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { cn } from '@/lib/utils';
 import {
   obtenerComunicadoPorId,
   crearComunicado,
@@ -421,24 +426,22 @@ export default function ComunicadoEditor() {
   if (gerenteSinOficina) {
     return (
       <Layout hideHeader>
-        <div className="max-w-4xl mx-auto px-4 py-12">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
-            <div className="text-red-600 text-5xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+        <Container size="lg">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 sm:p-8 md:p-12 text-center shadow-ios">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-3">
               Oficina no asignada
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-sm sm:text-base text-neutral-600 mb-6 max-w-md mx-auto">
               Para crear comunicados necesitas tener una oficina asignada. Por favor contacta al administrador del sistema.
             </p>
-            <button
-              type="button"
-              onClick={() => navigate('/comunicados')}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
+            <Button onClick={() => navigate('/comunicados')}>
               Volver a Comunicados
-            </button>
+            </Button>
           </div>
-        </div>
+        </Container>
       </Layout>
     );
   }
@@ -446,51 +449,57 @@ export default function ComunicadoEditor() {
   if (loading) {
     return (
       <Layout hideHeader>
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
+        <Container size="lg">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-3 border-primary-500 border-t-transparent"></div>
+          </div>
+        </Container>
       </Layout>
     );
   }
 
   return (
     <Layout hideHeader>
-      <div className="max-w-4xl mx-auto">
+      <Container size="lg">
         {/* Navegación */}
-        <button
-          type="button"
-          onClick={() => navigate('/comunicados')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition text-sm"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver
-        </button>
+        <div className="mb-4 sm:mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/comunicados')}
+            className="btn-touch"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Volver
+          </Button>
+        </div>
 
         {/* Formulario */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
+        <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-4 sm:p-6 md:p-8 space-y-6">
           {/* Título */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="space-y-2">
+            <Label htmlFor="titulo" className="text-sm sm:text-base">
               Título *
-            </label>
-            <input
+            </Label>
+            <Input
+              id="titulo"
               type="text"
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               placeholder="Escribe un título atractivo..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+              className="text-base sm:text-lg py-3"
             />
           </div>
 
           {/* Categoría */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="space-y-2">
+            <Label htmlFor="categoria" className="text-sm sm:text-base">
               Categoría *
-            </label>
+            </Label>
             <select
+              id="categoria"
               value={categoriaId}
               onChange={(e) => setCategoriaId(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-base text-sm sm:text-base bg-white"
             >
               {categorias.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -501,33 +510,35 @@ export default function ComunicadoEditor() {
           </div>
 
           {/* Imagen Principal */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="space-y-2">
+            <Label className="text-sm sm:text-base">
               Imagen Principal *
-            </label>
+            </Label>
             {imagenPrincipalUrl ? (
-              <div className="relative">
+              <div className="relative rounded-lg overflow-hidden">
                 <img
                   src={imagenPrincipalUrl}
                   alt="Preview"
-                  className="w-full h-64 object-cover rounded-lg"
+                  className="w-full h-48 sm:h-64 md:h-80 object-cover"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     setImagenPrincipal(null);
                     setImagenPrincipalUrl('');
                   }}
-                  className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition"
+                  className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm hover:bg-white text-red-600 hover:text-red-700"
                 >
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition">
-                <Upload className="w-12 h-12 text-gray-400 mb-2" />
-                <span className="text-gray-600">Click para subir imagen</span>
-                <span className="text-gray-400 text-sm mt-1">JPG, PNG o WEBP</span>
+              <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:border-primary-500 active:border-primary-600 transition-colors bg-neutral-50 hover:bg-neutral-100 btn-touch">
+                <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-neutral-400 mb-2" />
+                <span className="text-sm sm:text-base text-neutral-600 font-medium">Click para subir imagen</span>
+                <span className="text-xs sm:text-sm text-neutral-400 mt-1">JPG, PNG o WEBP</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -539,30 +550,31 @@ export default function ComunicadoEditor() {
           </div>
 
           {/* Contenido HTML */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="space-y-2">
+            <Label htmlFor="contenido" className="text-sm sm:text-base">
               Contenido *
-            </label>
+            </Label>
             <textarea
+              id="contenido"
               value={contenidoHtml}
               onChange={(e) => setContenidoHtml(e.target.value)}
               placeholder="Escribe el contenido del comunicado (puedes usar HTML básico)..."
-              rows={12}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              rows={10}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-base font-mono text-xs sm:text-sm resize-y"
             />
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-neutral-500">
               Puedes usar HTML: &lt;p&gt;, &lt;h1&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, etc.
             </p>
           </div>
 
           {/* Adjuntos */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="space-y-3">
+            <Label className="text-sm sm:text-base">
               Archivos Adjuntos (máximo 5)
-            </label>
-            <label className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition w-fit">
-              <Paperclip className="w-5 h-5 text-gray-600" />
-              <span className="text-gray-700">Agregar archivos</span>
+            </Label>
+            <label className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-50 active:bg-neutral-100 transition-colors btn-touch">
+              <Paperclip className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-600" />
+              <span className="text-sm sm:text-base text-neutral-700 font-medium">Agregar archivos</span>
               <input
                 type="file"
                 multiple
@@ -573,20 +585,22 @@ export default function ComunicadoEditor() {
             </label>
 
             {adjuntos.length > 0 && (
-              <div className="mt-3 space-y-2">
+              <div className="space-y-2">
                 {adjuntos.map((adjunto, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
                   >
-                    <span className="text-sm text-gray-700">{adjunto.name}</span>
-                    <button
+                    <span className="text-xs sm:text-sm text-neutral-700 truncate flex-1 mr-2">{adjunto.name}</span>
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => eliminarAdjuntoLocal(index)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-red-600 hover:text-red-700 flex-shrink-0"
                     >
                       <X className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -827,27 +841,28 @@ export default function ComunicadoEditor() {
           </div>
 
           {/* Botones de acción */}
-          <div className="flex items-center gap-3 pt-6 border-t">
-            <button
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-6 border-t border-neutral-200">
+            <Button
               type="button"
               onClick={handleGuardar}
               disabled={saving}
-              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-touch flex-1 sm:flex-initial order-2 sm:order-1"
             >
-              <Save className="w-5 h-5" />
+              <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               {saving ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Publicar'}
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => navigate('/comunicados')}
-              className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
+              className="btn-touch flex-1 sm:flex-initial order-1 sm:order-2"
             >
               Cancelar
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
+      </Container>
     </Layout>
   );
 }
