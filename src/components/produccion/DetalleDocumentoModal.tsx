@@ -82,11 +82,11 @@ export default function DetalleDocumentoModal({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <p className="text-xs text-neutral-500 mb-1">Oficina</p>
+                <p className="text-xs text-neutral-500 mb-1">Cliente</p>
                 <p className="text-sm font-medium text-neutral-900">{documento.desp_nombre_raw}</p>
               </div>
               <div>
-                <p className="text-xs text-neutral-500 mb-1">Gerencia</p>
+                <p className="text-xs text-neutral-500 mb-1">Gerencia/Oficina</p>
                 <p className="text-sm font-medium text-neutral-900">{documento.gerencia_nombre_raw}</p>
               </div>
               {documento.region_raw && (

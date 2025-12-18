@@ -70,6 +70,9 @@ export default function ProduccionConfiguracion() {
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
   const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null);
 
+  const [refreshingNames, setRefreshingNames] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
   // Funciones para manejar cambios con persistencia
   const handleSearchChange = (value: string) => {
     setSearchVendor(value);
@@ -285,6 +288,49 @@ export default function ProduccionConfiguracion() {
       setMessage({ type: 'error', text: 'Error al guardar el mapeo: ' + error.message });
     } finally {
       setSavingMappings(false);
+    }
+  };
+
+  const handleRefreshClientNames = async () => {
+    if (!confirm('¿Estás seguro de que deseas actualizar los nombres de clientes desde Google Sheets? Esta operación puede tardar varios minutos.')) {
+      return;
+    }
+
+    setRefreshingNames(true);
+    setRefreshMessage(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No hay sesión activa');
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refresh-production-client-names`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Error al actualizar nombres de clientes');
+      }
+
+      setRefreshMessage({
+        type: 'success',
+        text: `Nombres actualizados: ${result.stats.updated} registros. No encontrados: ${result.stats.not_found}. Sin cambios: ${result.stats.unchanged}.`
+      });
+    } catch (error: any) {
+      console.error('Error refreshing client names:', error);
+      setRefreshMessage({
+        type: 'error',
+        text: error.message || 'Error al actualizar nombres de clientes'
+      });
+    } finally {
+      setRefreshingNames(false);
     }
   };
 
@@ -578,6 +624,44 @@ export default function ProduccionConfiguracion() {
                         </span>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {config && (
+                  <div className="border-t border-neutral-200 pt-4 sm:pt-6">
+                    <h3 className="font-semibold text-neutral-900 mb-3 text-sm sm:text-base">Actualizar Nombres de Clientes</h3>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-3">
+                      <p className="text-xs sm:text-sm text-blue-800">
+                        Si agregaste la columna "NombreCompleto" al Excel, usa este botón para actualizar los registros existentes.
+                        Los datos se actualizarán desde Google Sheets usando la nueva columna.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleRefreshClientNames}
+                      disabled={refreshingNames}
+                      className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
+                    >
+                      {refreshingNames ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                          <span>Actualizando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4" />
+                          <span>Actualizar Nombres de Clientes</span>
+                        </>
+                      )}
+                    </button>
+                    {refreshMessage && (
+                      <div className={`mt-3 p-3 rounded-lg text-xs sm:text-sm ${
+                        refreshMessage.type === 'success'
+                          ? 'bg-green-50 text-green-800 border border-green-200'
+                          : 'bg-red-50 text-red-800 border border-red-200'
+                      }`}>
+                        {refreshMessage.text}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
