@@ -885,7 +885,18 @@ export function SegurosEducationOnDemand() {
                   <input
                     type="file"
                     accept="video/mp4,video/webm,video/quicktime"
-                    onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      if (file) {
+                        const maxSize = 2 * 1024 * 1024 * 1024;
+                        if (file.size > maxSize) {
+                          showToast('El archivo supera el límite de 2GB', 'error');
+                          e.target.value = '';
+                          return;
+                        }
+                      }
+                      setVideoFile(file);
+                    }}
                     className="hidden"
                     id="video-upload"
                   />
@@ -893,6 +904,9 @@ export function SegurosEducationOnDemand() {
                     <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
                     <p className="text-sm text-neutral-600">
                       {videoFile ? videoFile.name : editingLesson ? 'Click para cambiar el video (MP4, WebM, MOV)' : 'Click para subir video (MP4, WebM, MOV)'}
+                    </p>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      Tamaño máximo: 2GB
                     </p>
                   </label>
                 </div>
