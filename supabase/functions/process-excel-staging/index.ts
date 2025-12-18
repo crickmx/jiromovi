@@ -213,31 +213,31 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: batch, error: batchError } = await supabase
-      .from('document_import_batches')
+    const { data: session, error: sessionError } = await supabase
+      .from('commission_staging_sessions')
       .insert({
         file_name: fileName,
-        imported_by: user.id,
-        status: 'processing',
-        detected_format: 'LOGEXPORT',
         sheet_name_used: bestSheet.name,
-        headers_json: {
+        total_rows_read: jsonData.length,
+        headers_detected: {
           original: headersOriginal,
           detected: detectedColumns
-        }
+        },
+        status: 'processing',
+        uploaded_by: user.id
       })
       .select()
       .single();
 
-    if (batchError || !batch) {
-      console.error('Error al crear batch:', batchError);
+    if (sessionError || !session) {
+      console.error('Error al crear sesión:', sessionError);
       return new Response(
-        JSON.stringify({ error: 'Error al crear lote de importación' }),
+        JSON.stringify({ error: 'Error al crear sesión de staging' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[process-excel-staging] Batch created: ${batch.id}`);
+    console.log(`[process-excel-staging] Session created: ${session.id}`);
 
     const { data: usuarios } = await supabase
       .from('usuarios')
@@ -361,42 +361,30 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      const item = {
-        import_batch_id: batch.id,
-        row_index: i + 1,
-        raw_json: row,
-        status,
-        discard_reason: discardReason,
-        warnings: '[]',
-        vendor_name_raw: vendorNameRaw || null,
-        vendor_name_norm: vendorNameNorm || null,
-        agent_key: agentKey,
-        agent_name_raw: vendorNameRaw || null,
-        agent_name_norm: vendorNameNorm || null,
-        agent_name_signature: vendorNameNorm || null,
-        documento: documentoValue || null,
-        endoso: row[headersNormalizedMap['endoso']]?.toString()?.trim() || null,
-        fpago: fpagoValue ? fpagoValue.toISOString().split('T')[0] : null,
-        fpago_raw: detectedColumns.fPago ? row[detectedColumns.fPago]?.toString()?.trim() : null,
-        aseguradora: aseguradoraValue,
-        ramo: ramoValue || null,
-        importe_base: importeValue,
-        porcentaje: porPartValue,
-        comision_calculada: comisionCalculada,
-        prima_neta_info: parseNumberMx(row[headersNormalizedMap['primaneta']]),
-        concepto: row[headersNormalizedMap['concepto']]?.toString()?.trim() || null,
-        oficina: row[headersNormalizedMap['despnombre']]?.toString()?.trim() || null,
-        nombre_completo: row[headersNormalizedMap['nombrecompleto']]?.toString()?.trim()
-                      || row[headersNormalizedMap['nombreasegurado']]?.toString()?.trim()
-                      || row[headersNormalizedMap['asegurado']]?.toString()?.trim()
-                      || null,
-        movi_user_id: matchedUserId,
-        match_status: matchStatus,
-        match_method: matchMethod,
-        match_confidence: matchConfidence
-      };
+      if (status === 'valid') {
+        const item = {
+          staging_session_id: session.id,
+          vendor_name_raw: vendorNameRaw || null,
+          vendor_name_norm: vendorNameNorm || null,
+          vendor_key: agentKey,
+          poliza: documentoValue,
+          ramo: ramoValue,
+          aseguradora: aseguradoraValue,
+          prima_neta: importeValue || 0,
+          porcentaje_base: porPartValue || 0,
+          date_fpago: fpagoValue ? fpagoValue.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          concepto: row[headersNormalizedMap['concepto']]?.toString()?.trim() || null,
+          nombre_asegurado: row[headersNormalizedMap['nombrecompleto']]?.toString()?.trim()
+                        || row[headersNormalizedMap['nombreasegurado']]?.toString()?.trim()
+                        || row[headersNormalizedMap['asegurado']]?.toString()?.trim()
+                        || null,
+          movi_user_id: matchedUserId,
+          match_method: matchMethod,
+          pending_assignment: matchStatus === 'pending'
+        };
 
-      itemsToInsert.push(item);
+        itemsToInsert.push(item);
+      }
     }
 
     console.log(`[process-excel-staging] Inserting ${itemsToInsert.length} items...`);
@@ -405,15 +393,15 @@ Deno.serve(async (req: Request) => {
     for (let i = 0; i < itemsToInsert.length; i += CHUNK_SIZE) {
       const chunk = itemsToInsert.slice(i, i + CHUNK_SIZE);
       const { error: insertError } = await supabase
-        .from('document_import_items')
+        .from('commission_items_staging')
         .insert(chunk);
 
       if (insertError) {
         console.error('Error inserting chunk:', insertError);
         await supabase
-          .from('document_import_batches')
-          .update({ status: 'failed', conversion_failed_reason: insertError.message })
-          .eq('id', batch.id);
+          .from('commission_staging_sessions')
+          .update({ status: 'error', parse_errors: [{ message: insertError.message }] })
+          .eq('id', session.id);
 
         return new Response(
           JSON.stringify({ error: 'Error al procesar documentos: ' + insertError.message }),
@@ -422,29 +410,32 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const recognizedCount = itemsToInsert.filter(item => !item.pending_assignment).length;
+    const pendingCount = itemsToInsert.filter(item => item.pending_assignment).length;
+
     await supabase
-      .from('document_import_batches')
-      .update({ status: 'completed' })
-      .eq('id', batch.id);
+      .from('commission_staging_sessions')
+      .update({
+        status: 'ready',
+        total_items: itemsToInsert.length,
+        recognized_count: recognizedCount,
+        pending_assignment_count: pendingCount,
+        processed_at: new Date().toISOString()
+      })
+      .eq('id', session.id);
 
-    const { data: updatedBatch } = await supabase
-      .from('document_import_batches')
-      .select('*')
-      .eq('id', batch.id)
-      .single();
-
-    console.log(`[process-excel-staging] Completed - Total: ${updatedBatch.row_count_total}, Matched: ${updatedBatch.records_matched}, Pending: ${updatedBatch.row_count_valid - (updatedBatch.records_matched || 0)}`);
+    console.log(`[process-excel-staging] Completed - Total: ${itemsToInsert.length}, Matched: ${recognizedCount}, Pending: ${pendingCount}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         session: {
-          id: batch.id,
-          file_name: updatedBatch.file_name,
-          total_items: updatedBatch.row_count_total || 0,
-          recognized_count: updatedBatch.records_matched || 0,
-          pending_assignment_count: (updatedBatch.row_count_valid || 0) - (updatedBatch.records_matched || 0),
-          status: updatedBatch.status
+          id: session.id,
+          file_name: session.file_name,
+          total_items: itemsToInsert.length,
+          recognized_count: recognizedCount,
+          pending_assignment_count: pendingCount,
+          status: 'ready'
         },
         message: 'Archivo procesado exitosamente'
       }),
