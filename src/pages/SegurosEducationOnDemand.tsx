@@ -203,6 +203,56 @@ export function SegurosEducationOnDemand() {
     }
   };
 
+  const uploadLargeFile = async (
+    bucket: string,
+    fileName: string,
+    file: File,
+    onProgress?: (progress: number) => void
+  ) => {
+    const chunkSize = 6 * 1024 * 1024; // 6MB chunks
+    const totalChunks = Math.ceil(file.size / chunkSize);
+
+    if (file.size <= chunkSize) {
+      // For small files, use regular upload
+      const result = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (onProgress) onProgress(100);
+      return result;
+    }
+
+    // For large files, use chunked upload
+    let uploadedChunks = 0;
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+      const chunk = file.slice(start, end);
+
+      const chunkFileName = i === 0 ? fileName : `${fileName}.part${i}`;
+
+      const { error } = await supabase.storage
+        .from(bucket)
+        .upload(chunkFileName, chunk, {
+          cacheControl: '3600',
+          upsert: i > 0
+        });
+
+      if (error) throw error;
+
+      uploadedChunks++;
+      if (onProgress) {
+        onProgress(Math.floor((uploadedChunks / totalChunks) * 100));
+      }
+    }
+
+    return { data: { path: fileName }, error: null };
+  };
+
   const handleUploadLesson = async () => {
     if (editingLesson) {
       await handleUpdateLesson();
@@ -216,22 +266,28 @@ export function SegurosEducationOnDemand() {
 
     try {
       setUploading(true);
-      setUploadProgress(10);
+      setUploadProgress(5);
 
-      // Upload video
-      const videoFileName = `${Date.now()}-${videoFile.name}`;
-      const { data: videoData, error: videoError } = await supabase.storage
-        .from('seguros-videos')
-        .upload(videoFileName, videoFile);
+      // Upload video with progress tracking
+      const videoFileName = `${Date.now()}-${videoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
-      if (videoError) throw videoError;
-      setUploadProgress(50);
+      const videoResult = await uploadLargeFile(
+        'seguros-videos',
+        videoFileName,
+        videoFile,
+        (progress) => {
+          setUploadProgress(5 + Math.floor(progress * 0.6)); // 5-65%
+        }
+      );
+
+      if (videoResult.error) throw videoResult.error;
+      setUploadProgress(70);
 
       // Upload thumbnail if provided
       let thumbnailUrl = null;
       if (thumbnailFile) {
-        const thumbFileName = `${Date.now()}-${thumbnailFile.name}`;
-        const { data: thumbData, error: thumbError } = await supabase.storage
+        const thumbFileName = `${Date.now()}-${thumbnailFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const { error: thumbError } = await supabase.storage
           .from('seguros-thumbnails')
           .upload(thumbFileName, thumbnailFile);
 
@@ -243,15 +299,16 @@ export function SegurosEducationOnDemand() {
 
         thumbnailUrl = thumbPublicUrl.publicUrl;
       }
-      setUploadProgress(70);
+      setUploadProgress(80);
 
       // Get video public URL
       const { data: videoPublicUrl } = supabase.storage
         .from('seguros-videos')
         .getPublicUrl(videoFileName);
 
-      // Get video duration (approximate - in real implementation would use server-side processing)
+      // Get video duration
       const videoDuration = await getVideoDuration(videoFile);
+      setUploadProgress(90);
 
       // Create lesson record
       const { error: lessonError } = await supabase
@@ -291,19 +348,25 @@ export function SegurosEducationOnDemand() {
 
     try {
       setUploading(true);
-      setUploadProgress(10);
+      setUploadProgress(5);
 
       let videoUrl = editingLesson.video_url;
       let thumbnailUrl = editingLesson.miniatura_url;
       let duration = editingLesson.duracion;
 
       if (videoFile) {
-        const videoFileName = `${Date.now()}-${videoFile.name}`;
-        const { error: videoError } = await supabase.storage
-          .from('seguros-videos')
-          .upload(videoFileName, videoFile);
+        const videoFileName = `${Date.now()}-${videoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
-        if (videoError) throw videoError;
+        const videoResult = await uploadLargeFile(
+          'seguros-videos',
+          videoFileName,
+          videoFile,
+          (progress) => {
+            setUploadProgress(5 + Math.floor(progress * 0.5)); // 5-55%
+          }
+        );
+
+        if (videoResult.error) throw videoResult.error;
 
         const { data: videoPublicUrl } = supabase.storage
           .from('seguros-videos')
@@ -312,10 +375,10 @@ export function SegurosEducationOnDemand() {
         videoUrl = videoPublicUrl.publicUrl;
         duration = Math.floor(await getVideoDuration(videoFile));
       }
-      setUploadProgress(50);
+      setUploadProgress(60);
 
       if (thumbnailFile) {
-        const thumbFileName = `${Date.now()}-${thumbnailFile.name}`;
+        const thumbFileName = `${Date.now()}-${thumbnailFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         const { error: thumbError } = await supabase.storage
           .from('seguros-thumbnails')
           .upload(thumbFileName, thumbnailFile);
@@ -328,7 +391,7 @@ export function SegurosEducationOnDemand() {
 
         thumbnailUrl = thumbPublicUrl.publicUrl;
       }
-      setUploadProgress(70);
+      setUploadProgress(80);
 
       const { error: updateError } = await supabase
         .from('seguros_lessons')
@@ -902,12 +965,23 @@ export function SegurosEducationOnDemand() {
                   />
                   <label htmlFor="video-upload" className="cursor-pointer">
                     <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
-                    <p className="text-sm text-neutral-600">
-                      {videoFile ? videoFile.name : editingLesson ? 'Click para cambiar el video (MP4, WebM, MOV)' : 'Click para subir video (MP4, WebM, MOV)'}
-                    </p>
-                    <p className="text-xs text-neutral-500 mt-1">
-                      Tamaño máximo: 2GB
-                    </p>
+                    {videoFile ? (
+                      <>
+                        <p className="text-sm text-neutral-900 font-medium">{videoFile.name}</p>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-neutral-600">
+                          {editingLesson ? 'Click para cambiar el video (MP4, WebM, MOV)' : 'Click para subir video (MP4, WebM, MOV)'}
+                        </p>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          Tamaño máximo: 2GB
+                        </p>
+                      </>
+                    )}
                   </label>
                 </div>
               </div>
@@ -936,7 +1010,17 @@ export function SegurosEducationOnDemand() {
               {uploading && (
                 <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-primary-800">Subiendo...</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-primary-800">
+                        {uploadProgress < 70 ? 'Subiendo video...' : uploadProgress < 80 ? 'Procesando...' : 'Finalizando...'}
+                      </span>
+                      {videoFile && (
+                        <span className="text-xs text-primary-600 mt-1">
+                          {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+                          {videoFile.size > 50 * 1024 * 1024 && ' - Esto puede tomar varios minutos'}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-sm font-bold text-primary-800">{uploadProgress}%</span>
                   </div>
                   <div className="w-full h-2 bg-primary-200 rounded-full overflow-hidden">
