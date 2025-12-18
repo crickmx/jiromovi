@@ -165,7 +165,15 @@ export default function MiProduccion() {
 
     } catch (error: any) {
       console.error('[MiProduccion] Error:', error);
-      alert('Error al cargar tu producción:\n\n' + error.message);
+      setMessage(`Error al cargar tu producción: ${error.message}. Por favor, asegúrate de que tu usuario esté asociado a un vendedor en Configuración de Producción.`);
+      setRecords([]);
+      setKpis({
+        total_produccion: 0,
+        total_documentos: 0,
+        clientes_unicos: 0,
+        aseguradora_top: null,
+        ramo_top: null,
+      });
     } finally {
       setLoading(false);
     }
@@ -283,6 +291,15 @@ export default function MiProduccion() {
             Resumen de tu producción como <span className="font-semibold text-primary-600">{vendorName}</span>
           </p>
         </div>
+
+        {message && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-800">{message}</p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">

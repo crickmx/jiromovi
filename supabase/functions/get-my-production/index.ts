@@ -6,6 +6,159 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current.trim());
+  return result;
+}
+
+function parseCSV(csvText: string): any[] {
+  const lines = csvText.split('\n').filter(line => line.trim());
+  if (lines.length === 0) return [];
+  
+  const headers = parseCSVLine(lines[0]);
+  const records: any[] = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i]);
+    const record: any = {};
+    
+    headers.forEach((header, index) => {
+      record[header] = values[index] || '';
+    });
+    
+    records.push(record);
+  }
+  
+  return records;
+}
+
+function parseMoneyValue(value: string): number {
+  if (!value) return 0;
+  const str = value.toString().replace(/[$,]/g, '').trim();
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
+
+function parsePercentValue(value: string): number | null {
+  if (!value) return null;
+  const str = value.toString().replace(/%/g, '').trim();
+  const num = parseFloat(str);
+  return isNaN(num) ? null : num;
+}
+
+function parseDateDMY(dateStr: string): Date | null {
+  if (!dateStr) return null;
+
+  const parts = dateStr.trim().split('/');
+  if (parts.length !== 3) return null;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+  if (day < 1 || day > 31) return null;
+  if (month < 1 || month > 12) return null;
+
+  const fecha = new Date(year, month - 1, day);
+
+  if (isNaN(fecha.getTime())) return null;
+
+  return fecha;
+}
+
+function transformRecord(row: any): any | null {
+  try {
+    const fechaValue = row['FechaSimp'] || row['Fecha'] || row['fechasimp'] || row['fecha'];
+    if (!fechaValue) return null;
+
+    let fecha: Date | null = null;
+
+    if (typeof fechaValue === 'string') {
+      fecha = parseDateDMY(fechaValue);
+
+      if (!fecha) {
+        fecha = new Date(fechaValue);
+      }
+    } else if (fechaValue instanceof Date) {
+      fecha = fechaValue;
+    } else if (typeof fechaValue === 'number') {
+      const excelEpoch = new Date(1899, 11, 30);
+      fecha = new Date(excelEpoch.getTime() + fechaValue * 86400000);
+    }
+
+    if (!fecha || isNaN(fecha.getTime())) return null;
+
+    const anio = fecha.getFullYear();
+    const mes = fecha.getMonth() + 1;
+    const dia = fecha.getDate();
+    const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
+    const periodoAnio = anio;
+
+    const despNombre = (row['DespNombre'] || row['despnombre'] || '').toString().trim();
+    const gerenciaNombre = (row['GerenciaNombre'] || row['gerencianombre'] || '').toString().trim();
+    const regionNombre = (row['Dirección Regional'] || row['direccion regional'] || row['region'] || '').toString().trim();
+
+    if (!despNombre || !gerenciaNombre) return null;
+
+    const importePesos = parseMoneyValue(row['IMPORTE PESOS'] || row['importe pesos'] || row['importe'] || '0');
+    const primaConvenio = parseMoneyValue(row['Prima de convenio'] || row['prima de convenio'] || row['prima convenio'] || '0');
+    const primaPonderada = parseMoneyValue(row['Prima Ponderada'] || row['prima ponderada'] || '0');
+    const bono = parseMoneyValue(row['Bono'] || row['bono'] || '0');
+    const porcentajeBono = parsePercentValue(row['% BONO'] || row['porcentaje bono'] || row['porciento bono'] || '');
+
+    const convenioStr = (row['CONVENIO'] || row['convenio'] || '').toString().toLowerCase().trim();
+    const convenioFlag = convenioStr === 'si' || convenioStr === 'sí' || convenioStr === 'yes' || primaConvenio > 0;
+
+    const fechaStr = fecha.toISOString().split('T')[0];
+    const agenteNombre = (row['VendNombre'] || row['vendnombre'] || row['vendedor'] || '').toString().trim();
+    const aseguradoraNombre = (row['Nombre Compañía'] || row['nombre compañia'] || row['nombre compania'] || row['compañia'] || '').toString().trim();
+    const ramoNombre = (row['Sub Ramo'] || row['sub ramo'] || row['subramo'] || row['RamosNombre'] || row['ramos'] || '').toString().trim();
+
+    return {
+      fecha: fechaStr,
+      anio,
+      mes,
+      dia,
+      periodo_mes: periodoMes,
+      periodo_anio: periodoAnio,
+      desp_nombre_raw: despNombre,
+      gerencia_nombre_raw: gerenciaNombre,
+      region_raw: regionNombre || null,
+      agente_nombre: agenteNombre,
+      aseguradora_nombre: aseguradoraNombre,
+      ramo_nombre: ramoNombre,
+      subramo_nombre: null,
+      importe_pesos: importePesos,
+      prima_convenio: primaConvenio,
+      prima_ponderada: primaPonderada,
+      bono: bono,
+      convenio_flag: convenioFlag,
+      porcentaje_bono: porcentajeBono
+    };
+  } catch (error) {
+    console.error('Error transforming record:', error);
+    return null;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -49,20 +202,18 @@ Deno.serve(async (req: Request) => {
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '50');
 
-    // Obtener mapeo del usuario autenticado
-    const { data: vendorMapping, error: mappingError } = await supabase
-      .from('vendor_mappings')
-      .select('source_value, source_raw_examples')
+    // Buscar el vendedor asociado al usuario desde production_vendors_cache
+    const { data: vendorCache, error: vendorError } = await supabase
+      .from('production_vendors_cache')
+      .select('vendor_nombre')
       .eq('movi_user_id', user.id)
-      .eq('source_type', 'name')
-      .eq('status', 'active')
       .maybeSingle();
 
-    if (mappingError) {
-      throw mappingError;
+    if (vendorError) {
+      throw vendorError;
     }
 
-    if (!vendorMapping) {
+    if (!vendorCache) {
       return new Response(
         JSON.stringify({
           success: true,
@@ -76,7 +227,7 @@ Deno.serve(async (req: Request) => {
             aseguradora_top: null,
             ramo_top: null,
           },
-          message: 'Aún no tienes un vendedor asignado. Contacta a administración.',
+          message: 'Aún no tienes un vendedor asignado. Contacta a administración para que asocien tu nombre del Excel con tu usuario.',
         }),
         {
           status: 200,
@@ -85,47 +236,48 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const vendorName = vendorMapping.source_raw_examples?.[0]?.name || vendorMapping.source_value;
+    const vendorName = vendorCache.vendor_nombre;
     console.log('[get-my-production] Vendedor encontrado:', vendorName);
 
-    // Obtener detalles del cache
-    const { data: cacheData, error: cacheError } = await supabase
-      .from('production_vendor_details_cache')
-      .select('details_json, record_count')
-      .eq('cache_key', 'production_vendors_main')
-      .eq('vend_nombre', vendorName)
+    // Obtener configuración de Google Sheets
+    const { data: config, error: configError } = await supabase
+      .from('production_google_sheets_config')
+      .select('*')
+      .eq('activo', true)
       .maybeSingle();
 
-    if (cacheError) {
-      throw cacheError;
+    if (configError) {
+      throw new Error(`Error obteniendo configuración: ${configError.message}`);
     }
 
-    if (!cacheData) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          vendor_nombre: vendorName,
-          records: [],
-          pagination: { page, limit, total: 0, totalPages: 0 },
-          kpis: {
-            total_produccion: 0,
-            total_documentos: 0,
-            clientes_unicos: 0,
-            aseguradora_top: null,
-            ramo_top: null,
-          },
-          message: 'No hay datos de producción disponibles para tu vendedor.',
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+    if (!config) {
+      throw new Error('No hay una configuración activa de Google Sheets.');
     }
 
-    let allRecords = cacheData.details_json || [];
+    console.log('[get-my-production] Fetching data from Google Sheets...');
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${config.sheet_id}/export?format=csv&gid=0`;
+    const csvResponse = await fetch(csvUrl);
+    
+    if (!csvResponse.ok) {
+      throw new Error(`Error al obtener datos de Google Sheets: ${csvResponse.status}`);
+    }
 
-    // Aplicar filtros
+    const csvText = await csvResponse.text();
+    const rawRecords = parseCSV(csvText);
+    console.log('[get-my-production] Parsed', rawRecords.length, 'rows');
+
+    // Transformar y filtrar por vendedor
+    let allRecords: any[] = [];
+    for (const row of rawRecords) {
+      const transformed = transformRecord(row);
+      if (transformed && transformed.agente_nombre === vendorName) {
+        allRecords.push(transformed);
+      }
+    }
+
+    console.log('[get-my-production] Found', allRecords.length, 'records for vendor:', vendorName);
+
+    // Aplicar filtros adicionales
     if (fechaDesde) {
       const desde = new Date(fechaDesde);
       allRecords = allRecords.filter((r: any) => new Date(r.fecha) >= desde);
@@ -251,7 +403,7 @@ Deno.serve(async (req: Request) => {
         },
         performance: {
           duration_ms: duration,
-          total_records_before_filter: cacheData.record_count,
+          total_records_before_filter: rawRecords.length,
           total_records_after_filter: totalFiltered,
         },
       }),
