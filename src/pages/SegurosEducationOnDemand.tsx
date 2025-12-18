@@ -209,48 +209,18 @@ export function SegurosEducationOnDemand() {
     file: File,
     onProgress?: (progress: number) => void
   ) => {
-    const chunkSize = 6 * 1024 * 1024; // 6MB chunks
-    const totalChunks = Math.ceil(file.size / chunkSize);
+    // Supabase automatically handles large files using TUS protocol
+    // We just need to ensure the content type is set correctly
+    const result = await supabase.storage
+      .from(bucket)
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type || 'video/mp4'
+      });
 
-    if (file.size <= chunkSize) {
-      // For small files, use regular upload
-      const result = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (onProgress) onProgress(100);
-      return result;
-    }
-
-    // For large files, use chunked upload
-    let uploadedChunks = 0;
-
-    for (let i = 0; i < totalChunks; i++) {
-      const start = i * chunkSize;
-      const end = Math.min(start + chunkSize, file.size);
-      const chunk = file.slice(start, end);
-
-      const chunkFileName = i === 0 ? fileName : `${fileName}.part${i}`;
-
-      const { error } = await supabase.storage
-        .from(bucket)
-        .upload(chunkFileName, chunk, {
-          cacheControl: '3600',
-          upsert: i > 0
-        });
-
-      if (error) throw error;
-
-      uploadedChunks++;
-      if (onProgress) {
-        onProgress(Math.floor((uploadedChunks / totalChunks) * 100));
-      }
-    }
-
-    return { data: { path: fileName }, error: null };
+    if (onProgress) onProgress(100);
+    return result;
   };
 
   const handleUploadLesson = async () => {
