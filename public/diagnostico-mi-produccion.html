@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico Mi Producción</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 2rem;
+      background: #f5f5f5;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 { color: #2563eb; margin-bottom: 0.5rem; }
+    h2 { color: #334155; margin: 1.5rem 0 0.75rem; font-size: 1.25rem; }
+    .subtitle { color: #64748b; margin-bottom: 2rem; }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    .info-box {
+      background: #f1f5f9;
+      border-left: 4px solid #2563eb;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+    }
+    .success-box {
+      background: #f0fdf4;
+      border-left: 4px solid #16a34a;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+    }
+    .error-box {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+    }
+    .warning-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+    }
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.875rem;
+      margin: 0.5rem 0;
+    }
+    .step {
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .step:last-child { border-bottom: none; }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+    .badge-success { background: #dcfce7; color: #16a34a; }
+    .badge-error { background: #fee2e2; color: #dc2626; }
+    .badge-warning { background: #fef3c7; color: #f59e0b; }
+    code {
+      background: #f1f5f9;
+      padding: 0.125rem 0.375rem;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Diagnóstico Mi Producción</h1>
+    <p class="subtitle">Herramienta para diagnosticar problemas con la asignación de vendedores</p>
+
+    <div class="info-box">
+      <strong>¿Para qué sirve esto?</strong><br>
+      Esta herramienta verifica todos los sistemas de búsqueda de vendedores para identificar dónde está el problema.
+    </div>
+
+    <button id="runDiagnostic">Ejecutar Diagnóstico</button>
+
+    <div id="results"></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    // Leer variables del archivo .env embebidas durante el build
+    // O permitir que el usuario las ingrese manualmente
+    let supabaseUrl = '';
+    let supabaseKey = '';
+
+    // Intentar cargar desde localStorage (si ya se ingresaron antes)
+    const savedUrl = localStorage.getItem('diag_supabase_url');
+    const savedKey = localStorage.getItem('diag_supabase_key');
+
+    if (savedUrl && savedKey) {
+      supabaseUrl = savedUrl;
+      supabaseKey = savedKey;
+    } else {
+      // Intentar obtener del window (inyectadas por el index.html principal)
+      supabaseUrl = window.__SUPABASE_URL__ || '';
+      supabaseKey = window.__SUPABASE_ANON_KEY__ || '';
+    }
+
+    let supabase;
+
+    if (!supabaseUrl || !supabaseKey) {
+      document.getElementById('results').innerHTML = `
+        <div class="warning-box">
+          <strong>Configuración requerida</strong><br>
+          Por favor, ingresa las credenciales de Supabase para continuar.
+          <br><br>
+          <label style="display: block; margin-bottom: 0.5rem;">
+            <strong>SUPABASE_URL:</strong><br>
+            <input type="text" id="input_url" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 0.25rem;" placeholder="https://xxxxx.supabase.co">
+          </label>
+          <label style="display: block; margin-bottom: 1rem;">
+            <strong>SUPABASE_ANON_KEY:</strong><br>
+            <input type="text" id="input_key" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 0.25rem;" placeholder="eyJhbGciOi...">
+          </label>
+          <button onclick="saveCredentials()" style="background: #16a34a;">Guardar y Continuar</button>
+        </div>
+      `;
+      document.getElementById('runDiagnostic').disabled = true;
+
+      window.saveCredentials = function() {
+        const url = document.getElementById('input_url').value.trim();
+        const key = document.getElementById('input_key').value.trim();
+
+        if (!url || !key) {
+          alert('Por favor, completa ambos campos');
+          return;
+        }
+
+        localStorage.setItem('diag_supabase_url', url);
+        localStorage.setItem('diag_supabase_key', key);
+        location.reload();
+      };
+    } else {
+      supabase = createClient(supabaseUrl, supabaseKey);
+    }
+
+    function normalizeVendorName(name) {
+      if (!name) return '';
+      let normalized = name.toLowerCase().trim();
+      normalized = normalized
+        .replace(/[áàäâ]/g, 'a')
+        .replace(/[éèëê]/g, 'e')
+        .replace(/[íìïî]/g, 'i')
+        .replace(/[óòöô]/g, 'o')
+        .replace(/[úùüû]/g, 'u')
+        .replace(/[ñ]/g, 'n');
+      normalized = normalized.replace(/\s+/g, ' ').trim();
+      return normalized;
+    }
+
+    async function runDiagnostic() {
+      if (!supabase) {
+        alert('Por favor, configura las credenciales de Supabase primero.');
+        return;
+      }
+
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<div class="info-box"><span class="loading"></span>Ejecutando diagnóstico...</div>';
+
+      const results = [];
+
+      try {
+        // Paso 1: Verificar sesión
+        results.push('<div class="step">');
+        results.push('<h2>1. Verificación de Sesión</h2>');
+
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError || !session) {
+          results.push(`<div class="error-box">❌ No hay sesión activa. Por favor, inicia sesión primero.</div>`);
+          results.push('</div>');
+          resultsDiv.innerHTML = results.join('');
+          return;
+        }
+
+        const userId = session.user.id;
+        const userEmail = session.user.email;
+
+        results.push(`<div class="success-box">✅ Sesión activa<br>User ID: <code>${userId}</code><br>Email: <code>${userEmail}</code></div>`);
+        results.push('</div>');
+
+        // Paso 2: Verificar datos del usuario
+        results.push('<div class="step">');
+        results.push('<h2>2. Datos del Usuario</h2>');
+
+        const { data: usuario, error: usuarioError } = await supabase
+          .from('usuarios')
+          .select('id, nombre_completo, email, oficina_id')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (usuarioError) {
+          results.push(`<div class="error-box">❌ Error consultando usuario: ${usuarioError.message}</div>`);
+          results.push('</div>');
+          resultsDiv.innerHTML = results.join('');
+          return;
+        }
+
+        if (!usuario) {
+          results.push(`<div class="error-box">❌ No se encontró el usuario en la tabla usuarios</div>`);
+          results.push('</div>');
+          resultsDiv.innerHTML = results.join('');
+          return;
+        }
+
+        const nombreCompleto = usuario.nombre_completo;
+        const nombreNormalizado = normalizeVendorName(nombreCompleto);
+
+        results.push(`<div class="success-box">✅ Usuario encontrado</div>`);
+        results.push(`<div class="info-box">`);
+        results.push(`<strong>Nombre completo:</strong> ${nombreCompleto}<br>`);
+        results.push(`<strong>Nombre normalizado:</strong> ${nombreNormalizado}<br>`);
+        results.push(`<strong>Oficina ID:</strong> ${usuario.oficina_id || 'No asignada'}`);
+        results.push(`</div>`);
+        results.push('</div>');
+
+        // Paso 3: Buscar en production_vendors_cache
+        results.push('<div class="step">');
+        results.push('<h2>3. Búsqueda en Cache (production_vendors_cache)</h2>');
+
+        const { data: cacheData, error: cacheError } = await supabase
+          .from('production_vendors_cache')
+          .select('*')
+          .eq('movi_user_id', userId)
+          .maybeSingle();
+
+        if (cacheError) {
+          results.push(`<div class="warning-box">⚠️ Error consultando cache: ${cacheError.message}</div>`);
+        } else if (cacheData) {
+          results.push(`<div class="success-box">✅ Vendedor encontrado en cache</div>`);
+          results.push(`<pre>${JSON.stringify(cacheData, null, 2)}</pre>`);
+        } else {
+          results.push(`<div class="warning-box">⚠️ No se encontró en cache. Esto es normal si el cache no se ha sincronizado.</div>`);
+        }
+        results.push('</div>');
+
+        // Paso 4: Buscar en vendor_mappings
+        results.push('<div class="step">');
+        results.push('<h2>4. Búsqueda en Mapeos (vendor_mappings)</h2>');
+
+        const { data: mappings, error: mappingError } = await supabase
+          .from('vendor_mappings')
+          .select('*')
+          .eq('movi_user_id', userId)
+          .eq('status', 'active');
+
+        if (mappingError) {
+          results.push(`<div class="warning-box">⚠️ Error consultando mapeos: ${mappingError.message}</div>`);
+        } else if (mappings && mappings.length > 0) {
+          results.push(`<div class="success-box">✅ Se encontraron ${mappings.length} mapeo(s)</div>`);
+          mappings.forEach((mapping, idx) => {
+            results.push(`<div class="info-box">`);
+            results.push(`<strong>Mapeo ${idx + 1}:</strong><br>`);
+            results.push(`<strong>Tipo:</strong> ${mapping.source_type}<br>`);
+            results.push(`<strong>Valor:</strong> ${mapping.source_value}<br>`);
+            results.push(`<strong>Estado:</strong> ${mapping.status}<br>`);
+            results.push(`</div>`);
+          });
+        } else {
+          results.push(`<div class="warning-box">⚠️ No se encontraron mapeos activos</div>`);
+        }
+        results.push('</div>');
+
+        // Paso 5: Buscar en production_records por nombre directo
+        results.push('<div class="step">');
+        results.push('<h2>5. Búsqueda Directa en Producción</h2>');
+        results.push(`<p>Buscando registros que contengan: <code>${nombreCompleto}</code></p>`);
+
+        const { data: directRecords, error: directError } = await supabase
+          .from('production_records')
+          .select('agente_nombre')
+          .ilike('agente_nombre', `%${nombreCompleto}%`)
+          .limit(5);
+
+        if (directError) {
+          results.push(`<div class="warning-box">⚠️ Error buscando en production_records: ${directError.message}</div>`);
+        } else if (directRecords && directRecords.length > 0) {
+          results.push(`<div class="success-box">✅ Se encontraron ${directRecords.length} registro(s) que coinciden</div>`);
+          const uniqueNames = [...new Set(directRecords.map(r => r.agente_nombre))];
+          results.push(`<div class="info-box">`);
+          results.push(`<strong>Nombres de vendedor encontrados:</strong><br>`);
+          uniqueNames.forEach(name => {
+            results.push(`- ${name}<br>`);
+          });
+          results.push(`</div>`);
+        } else {
+          results.push(`<div class="error-box">❌ No se encontraron registros de producción con este nombre</div>`);
+        }
+        results.push('</div>');
+
+        // Paso 6: Verificar si hay registros en production_records en general
+        results.push('<div class="step">');
+        results.push('<h2>6. Verificación de Datos de Producción</h2>');
+
+        const { count, error: countError } = await supabase
+          .from('production_records')
+          .select('*', { count: 'exact', head: true });
+
+        if (countError) {
+          results.push(`<div class="error-box">❌ Error verificando production_records: ${countError.message}</div>`);
+        } else {
+          results.push(`<div class="info-box">Hay <strong>${count}</strong> registros totales en production_records</div>`);
+          if (count === 0) {
+            results.push(`<div class="warning-box">⚠️ La tabla de producción está vacía. Necesitas cargar datos primero desde "Producción Total".</div>`);
+          }
+        }
+        results.push('</div>');
+
+        // Paso 7: Probar la edge function
+        results.push('<div class="step">');
+        results.push('<h2>7. Prueba de Edge Function</h2>');
+
+        try {
+          const apiUrl = `${supabaseUrl}/functions/v1/get-my-production`;
+          const response = await fetch(`${apiUrl}?page=1&limit=1`, {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            }
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.success) {
+            results.push(`<div class="success-box">✅ Edge function funcionando correctamente</div>`);
+            results.push(`<div class="info-box">`);
+            results.push(`<strong>Vendedor encontrado:</strong> ${result.vendor_nombre || 'Ninguno'}<br>`);
+            results.push(`<strong>Total documentos:</strong> ${result.kpis?.total_documentos || 0}<br>`);
+            if (result.message) {
+              results.push(`<strong>Mensaje:</strong> ${result.message}<br>`);
+            }
+            results.push(`</div>`);
+          } else {
+            results.push(`<div class="error-box">❌ Error en edge function: ${result.error || 'Desconocido'}</div>`);
+            results.push(`<pre>${JSON.stringify(result, null, 2)}</pre>`);
+          }
+        } catch (error) {
+          results.push(`<div class="error-box">❌ Error llamando edge function: ${error.message}</div>`);
+        }
+        results.push('</div>');
+
+        // Resumen y recomendaciones
+        results.push('<div class="step">');
+        results.push('<h2>📋 Resumen y Recomendaciones</h2>');
+
+        if (cacheData || (mappings && mappings.length > 0) || (directRecords && directRecords.length > 0)) {
+          results.push(`<div class="success-box">`);
+          results.push(`<strong>✅ Tu usuario tiene asignación de vendedor</strong><br><br>`);
+
+          if (cacheData) {
+            results.push(`El cache está actualizado con el vendedor: <strong>${cacheData.vendor_nombre}</strong><br>`);
+          } else if (mappings && mappings.length > 0) {
+            results.push(`Tienes mapeos configurados pero el cache necesita sincronizarse.<br>`);
+            results.push(`<strong>Solución:</strong> Un administrador debe ejecutar la función "Sincronizar Cache de Vendedores" desde Configuración de Producción.<br>`);
+          } else if (directRecords && directRecords.length > 0) {
+            results.push(`Se encontró tu nombre en los datos de producción pero no hay mapeo configurado.<br>`);
+            results.push(`<strong>Solución:</strong> Un administrador debe crear un mapeo manual desde "Mapeo de Vendedores".<br>`);
+          }
+          results.push(`</div>`);
+        } else {
+          results.push(`<div class="error-box">`);
+          results.push(`<strong>❌ No se encontró asignación de vendedor</strong><br><br>`);
+          results.push(`<strong>Pasos para solucionar:</strong><br>`);
+          results.push(`1. Verifica que tu nombre (<code>${nombreCompleto}</code>) aparezca en el Excel de producción<br>`);
+          results.push(`2. Si el nombre es diferente en el Excel, solicita a un administrador crear un mapeo manual<br>`);
+          results.push(`3. Si ya existe el mapeo, solicita sincronizar el cache de vendedores<br>`);
+          results.push(`</div>`);
+        }
+        results.push('</div>');
+
+      } catch (error) {
+        results.push(`<div class="error-box">❌ Error general: ${error.message}</div>`);
+      }
+
+      resultsDiv.innerHTML = results.join('');
+    }
+
+    document.getElementById('runDiagnostic').addEventListener('click', runDiagnostic);
+  </script>
+</body>
+</html>

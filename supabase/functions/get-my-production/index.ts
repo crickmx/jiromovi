@@ -225,7 +225,17 @@ Deno.serve(async (req: Request) => {
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '50');
 
-    // Buscar el vendedor asociado al usuario desde production_vendors_cache
+    // Buscar el vendedor asociado al usuario
+    // ESTRATEGIA DE BÚSQUEDA CON FALLBACKS:
+    // 1. Buscar en production_vendors_cache (más rápido)
+    // 2. Buscar en vendor_mappings directamente
+    // 3. Buscar por coincidencia de nombre en usuarios
+
+    let vendorName: string | null = null;
+
+    console.log('[get-my-production] Buscando vendedor para usuario:', user.id);
+
+    // FALLBACK 1: Buscar en cache
     const { data: vendorCache, error: vendorError } = await supabase
       .from('production_vendors_cache')
       .select('vendor_nombre')
@@ -233,10 +243,75 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (vendorError) {
-      throw vendorError;
+      console.error('[get-my-production] Error buscando en cache:', vendorError);
     }
 
-    if (!vendorCache) {
+    if (vendorCache?.vendor_nombre) {
+      vendorName = vendorCache.vendor_nombre;
+      console.log('[get-my-production] Vendedor encontrado en cache:', vendorName);
+    }
+
+    // FALLBACK 2: Buscar en vendor_mappings
+    if (!vendorName) {
+      console.log('[get-my-production] No encontrado en cache, buscando en vendor_mappings...');
+
+      // Primero obtener el nombre del usuario
+      const { data: usuarioData } = await supabase
+        .from('usuarios')
+        .select('nombre_completo')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (usuarioData?.nombre_completo) {
+        const nombreNormalizado = normalizeVendorName(usuarioData.nombre_completo);
+        console.log('[get-my-production] Nombre usuario normalizado:', nombreNormalizado);
+
+        // Buscar mapping
+        const { data: mapping } = await supabase
+          .from('vendor_mappings')
+          .select('source_value')
+          .eq('movi_user_id', user.id)
+          .eq('source_type', 'name')
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (mapping?.source_value) {
+          // Buscar en production_records el nombre original del vendedor
+          const { data: productionRecord } = await supabase
+            .from('production_records')
+            .select('agente_nombre')
+            .ilike('agente_nombre', `%${mapping.source_value}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (productionRecord?.agente_nombre) {
+            vendorName = productionRecord.agente_nombre;
+            console.log('[get-my-production] Vendedor encontrado via mapping:', vendorName);
+          }
+        }
+
+        // FALLBACK 3: Buscar por coincidencia directa de nombre
+        if (!vendorName) {
+          console.log('[get-my-production] No encontrado en mappings, buscando por nombre directo...');
+
+          const { data: directMatch } = await supabase
+            .from('production_records')
+            .select('agente_nombre')
+            .ilike('agente_nombre', `%${usuarioData.nombre_completo}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (directMatch?.agente_nombre) {
+            vendorName = directMatch.agente_nombre;
+            console.log('[get-my-production] Vendedor encontrado por nombre directo:', vendorName);
+          }
+        }
+      }
+    }
+
+    // Si después de todos los fallbacks no se encontró vendedor
+    if (!vendorName) {
+      console.log('[get-my-production] No se encontró vendedor para el usuario');
       return new Response(
         JSON.stringify({
           success: true,
@@ -250,6 +325,12 @@ Deno.serve(async (req: Request) => {
             aseguradora_top: null,
             ramo_top: null,
           },
+          charts: {
+            produccion_por_ramo: [],
+            produccion_por_aseguradora: [],
+            evolucion_temporal: [],
+            top_10_clientes: [],
+          },
           message: 'Aún no tienes un vendedor asignado. Contacta a administración para que asocien tu nombre del Excel con tu usuario.',
         }),
         {
@@ -259,7 +340,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const vendorName = vendorCache.vendor_nombre;
     const vendorNameNormalized = normalizeVendorName(vendorName);
     console.log('[get-my-production] Vendedor encontrado:', vendorName, '(normalizado:', vendorNameNormalized + ')');
 
