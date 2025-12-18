@@ -276,34 +276,64 @@ export async function createOrUpdateVendorMapping(
 
   console.log('[createOrUpdateVendorMapping] Nombre normalizado:', normalized);
 
-  // Insertar o actualizar en vendor_mappings
-  const payload = {
-    source_type: 'name' as const,
-    source_value: normalized,
-    movi_user_id: moviUserId,
-    status: 'active' as const,
-    created_by: userId,
-    updated_by: userId,
-    source_raw_examples: [{
-      name: vendNombre,
-    }],
-  };
-
-  console.log('[createOrUpdateVendorMapping] Payload:', payload);
-
-  const { data, error } = await supabase
+  // Primero buscar si existe un mapeo activo
+  const { data: existing, error: searchError } = await supabase
     .from('vendor_mappings')
-    .upsert(payload, {
-      onConflict: 'source_type,source_value',
-    })
-    .select();
+    .select('id')
+    .eq('source_type', 'name')
+    .eq('source_value', normalized)
+    .eq('status', 'active')
+    .maybeSingle();
 
-  if (error) {
-    console.error('[createOrUpdateVendorMapping] Error de Supabase:', error);
-    throw new Error(`Error al guardar mapeo: ${error.message}`);
+  if (searchError) {
+    console.error('[createOrUpdateVendorMapping] Error al buscar mapeo existente:', searchError);
+    throw new Error(`Error al buscar mapeo: ${searchError.message}`);
   }
 
-  console.log('[createOrUpdateVendorMapping] Guardado exitoso:', data);
+  if (existing) {
+    // Actualizar el mapeo existente
+    console.log('[createOrUpdateVendorMapping] Actualizando mapeo existente:', existing.id);
+
+    const { error: updateError } = await supabase
+      .from('vendor_mappings')
+      .update({
+        movi_user_id: moviUserId,
+        updated_by: userId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+
+    if (updateError) {
+      console.error('[createOrUpdateVendorMapping] Error al actualizar:', updateError);
+      throw new Error(`Error al actualizar mapeo: ${updateError.message}`);
+    }
+
+    console.log('[createOrUpdateVendorMapping] Mapeo actualizado exitosamente');
+  } else {
+    // Crear nuevo mapeo
+    console.log('[createOrUpdateVendorMapping] Creando nuevo mapeo');
+
+    const { error: insertError } = await supabase
+      .from('vendor_mappings')
+      .insert({
+        source_type: 'name',
+        source_value: normalized,
+        movi_user_id: moviUserId,
+        status: 'active',
+        created_by: userId,
+        updated_by: userId,
+        source_raw_examples: [{
+          name: vendNombre,
+        }],
+      });
+
+    if (insertError) {
+      console.error('[createOrUpdateVendorMapping] Error al insertar:', insertError);
+      throw new Error(`Error al crear mapeo: ${insertError.message}`);
+    }
+
+    console.log('[createOrUpdateVendorMapping] Mapeo creado exitosamente');
+  }
 }
 
 /**
