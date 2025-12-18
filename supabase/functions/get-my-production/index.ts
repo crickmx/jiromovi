@@ -290,12 +290,21 @@ Deno.serve(async (req: Request) => {
     const rawRecords = parseCSV(csvText);
     console.log('[get-my-production] Parsed', rawRecords.length, 'rows');
 
+    // Log de los primeros 3 registros para debug
+    if (rawRecords.length > 0) {
+      console.log('[get-my-production] Sample record (first row):', JSON.stringify(rawRecords[0]));
+    }
+
     // Transformar y filtrar por vendedor (usando comparación normalizada)
     let allRecords: any[] = [];
+    const uniqueVendors = new Set<string>();
+
     for (const row of rawRecords) {
       const transformed = transformRecord(row);
-      if (transformed) {
+      if (transformed && transformed.agente_nombre) {
         const agenteNormalizado = normalizeVendorName(transformed.agente_nombre);
+        uniqueVendors.add(agenteNormalizado);
+
         if (agenteNormalizado === vendorNameNormalized) {
           allRecords.push(transformed);
         }
@@ -303,6 +312,12 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[get-my-production] Found', allRecords.length, 'records for vendor:', vendorName);
+    console.log('[get-my-production] Looking for normalized:', vendorNameNormalized);
+    console.log('[get-my-production] Total unique vendors found:', uniqueVendors.size);
+
+    // Log algunos vendedores para comparación
+    const vendorsArray = Array.from(uniqueVendors).slice(0, 10);
+    console.log('[get-my-production] Sample vendors (first 10):', vendorsArray);
 
     // Aplicar filtros adicionales
     if (fechaDesde) {
@@ -432,6 +447,12 @@ Deno.serve(async (req: Request) => {
           duration_ms: duration,
           total_records_before_filter: rawRecords.length,
           total_records_after_filter: totalFiltered,
+        },
+        debug: {
+          vendor_normalized: vendorNameNormalized,
+          unique_vendors_found: uniqueVendors.size,
+          sample_vendors: Array.from(uniqueVendors).slice(0, 20),
+          records_before_date_filter: allRecords.length,
         },
       }),
       {

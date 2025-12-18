@@ -340,9 +340,44 @@
         let output = '=== RESPUESTA DE get-my-production ===\n\n';
         output += `Status: ${response.status} ${response.statusText}\n`;
         output += `Duración: ${duration}ms\n\n`;
+
+        if (result.success) {
+          output += `✅ VENDEDOR: ${result.vendor_nombre}\n\n`;
+          output += `📊 KPIs:\n`;
+          output += `  - Producción Total: $${result.kpis?.total_produccion?.toLocaleString() || 0}\n`;
+          output += `  - Total Documentos: ${result.kpis?.total_documentos || 0}\n`;
+          output += `  - Clientes Únicos: ${result.kpis?.clientes_unicos || 0}\n\n`;
+
+          if (result.debug) {
+            output += `🔍 DEBUG INFO:\n`;
+            output += `  - Vendedor Normalizado Buscado: "${result.debug.vendor_normalized}"\n`;
+            output += `  - Total Registros en Sheet: ${result.performance?.total_records_before_filter || 0}\n`;
+            output += `  - Vendedores Únicos Encontrados: ${result.debug.unique_vendors_found}\n`;
+            output += `  - Registros para este vendedor: ${result.debug.records_before_date_filter}\n\n`;
+
+            if (result.debug.sample_vendors && result.debug.sample_vendors.length > 0) {
+              output += `  📝 Primeros 20 vendedores en la hoja (normalizados):\n`;
+              result.debug.sample_vendors.forEach((v, i) => {
+                const match = v === result.debug.vendor_normalized ? ' ✅ MATCH!' : '';
+                output += `     ${i + 1}. "${v}"${match}\n`;
+              });
+            }
+          }
+
+          output += `\n📄 Registros Retornados: ${result.records?.length || 0}\n`;
+
+          if (result.records && result.records.length > 0) {
+            output += `\n📋 Primer registro:\n`;
+            output += JSON.stringify(result.records[0], null, 2);
+          }
+        } else {
+          output += `❌ Error: ${result.error}\n\n`;
+        }
+
+        output += '\n\n=== RESPUESTA COMPLETA ===\n\n';
         output += JSON.stringify(result, null, 2);
 
-        resultDiv.className = response.ok ? 'result success' : 'result error';
+        resultDiv.className = response.ok && result.kpis?.total_documentos > 0 ? 'result success' : 'result error';
         resultDiv.textContent = output;
       } catch (error) {
         resultDiv.className = 'result error';
@@ -391,9 +426,45 @@
         output += `Status: ${response.status} ${response.statusText}\n`;
         output += `Duración: ${duration}ms\n`;
         output += `Filtros aplicados: ${firstDayOfYear} - ${today}\n\n`;
+
+        if (result.success) {
+          output += `✅ VENDEDOR: ${result.vendor_nombre}\n\n`;
+          output += `📊 KPIs:\n`;
+          output += `  - Producción Total: $${result.kpis?.total_produccion?.toLocaleString() || 0}\n`;
+          output += `  - Total Documentos: ${result.kpis?.total_documentos || 0}\n`;
+          output += `  - Clientes Únicos: ${result.kpis?.clientes_unicos || 0}\n\n`;
+
+          if (result.debug) {
+            output += `🔍 DEBUG INFO:\n`;
+            output += `  - Vendedor Normalizado Buscado: "${result.debug.vendor_normalized}"\n`;
+            output += `  - Total Registros en Sheet: ${result.performance?.total_records_before_filter || 0}\n`;
+            output += `  - Vendedores Únicos Encontrados: ${result.debug.unique_vendors_found}\n`;
+            output += `  - Registros para este vendedor (antes de filtros): ${result.debug.records_before_date_filter}\n`;
+            output += `  - Registros después de filtros de fecha: ${result.kpis?.total_documentos}\n\n`;
+
+            if (result.debug.sample_vendors && result.debug.sample_vendors.length > 0) {
+              output += `  📝 Primeros 20 vendedores en la hoja (normalizados):\n`;
+              result.debug.sample_vendors.forEach((v, i) => {
+                const match = v === result.debug.vendor_normalized ? ' ✅ MATCH!' : '';
+                output += `     ${i + 1}. "${v}"${match}\n`;
+              });
+            }
+          }
+
+          output += `\n📄 Registros Retornados: ${result.records?.length || 0}\n`;
+
+          if (result.records && result.records.length > 0) {
+            output += `\n📋 Primer registro:\n`;
+            output += JSON.stringify(result.records[0], null, 2);
+          }
+        } else {
+          output += `❌ Error: ${result.error}\n\n`;
+        }
+
+        output += '\n\n=== RESPUESTA COMPLETA ===\n\n';
         output += JSON.stringify(result, null, 2);
 
-        resultDiv.className = response.ok ? 'result success' : 'result error';
+        resultDiv.className = response.ok && result.kpis?.total_documentos > 0 ? 'result success' : 'result error';
         resultDiv.textContent = output;
       } catch (error) {
         resultDiv.className = 'result error';
