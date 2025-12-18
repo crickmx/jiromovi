@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Building2, MapPin, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
+import { Layout } from '../components/Layout';
+import { Container } from '../components/ui/container';
+import { PageHeader } from '../components/ui/page-header';
+import { Section } from '../components/ui/section';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Building2, MapPin, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Info, Search } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { DIAS_SEMANA_LABELS, validarHorario, getEstadoReservaBadgeClass, getEstadoReservaLabel, type DisponibilidadSemanal } from '../lib/espacioJiroUtils';
+import { cn } from '@/lib/utils';
 
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 type Area = Database['public']['Tables']['areas']['Row'] & {
@@ -254,9 +262,14 @@ export function EspacioJiro() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
+      <Layout hideHeader>
+        <Container size="lg">
+          <div className="space-y-4">
+            <div className="skeleton h-24 w-full" />
+            <div className="skeleton h-64 w-full" />
+          </div>
+        </Container>
+      </Layout>
     );
   }
 
@@ -274,404 +287,445 @@ export function EspacioJiro() {
   });
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 md:p-8 text-white">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">Espacio JIRO</h1>
-        <p className="text-sm sm:text-base text-blue-100">
-          {isEmpleadoOrAgente && 'Reserva espacios de trabajo en nuestras oficinas'}
-          {isGerente && 'Gestiona reservas y bloqueos de espacios'}
-          {isAdmin && 'Administra áreas y supervisa todas las reservas'}
-        </p>
-      </div>
+    <Layout hideHeader>
+      <Container size="lg">
+        <PageHeader
+          title="Espacio JIRO"
+          description={
+            isEmpleadoOrAgente
+              ? 'Reserva espacios de trabajo en nuestras oficinas'
+              : isGerente
+              ? 'Gestiona reservas y bloqueos de espacios'
+              : 'Administra áreas y supervisa todas las reservas'
+          }
+          icon={Building2}
+        />
 
-      {isGerente && reservasPendientes.length > 0 && (
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-800 mb-4">
-            Reservas Pendientes ({reservasPendientes.length})
-          </h2>
-          <div className="space-y-4">
-            {reservasPendientes.map((reserva) => (
-              <div key={reserva.id} className="border border-slate-200 rounded-lg p-3 sm:p-4">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-slate-900 text-sm sm:text-base">
-                      {reserva.usuarios?.nombre} {reserva.usuarios?.apellidos}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-slate-600 truncate">{reserva.usuarios?.email_laboral}</p>
-                    <p className="text-xs sm:text-sm text-slate-600">{reserva.usuarios?.celular_personal}</p>
-                    <div className="mt-2 space-y-1 text-xs sm:text-sm text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                        <span className="break-words">{reserva.areas?.nombre}</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 mt-0.5" />
-                        <span className="break-words">
-                          {new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-MX', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                        <span>{reserva.hora_inicio} - {reserva.hora_fin}</span>
-                      </div>
-                    </div>
-                    {reserva.notas && (
-                      <div className="mt-2 p-2 bg-slate-50 rounded text-xs sm:text-sm text-slate-700 break-words">
-                        <strong>Notas:</strong> {reserva.notas}
-                      </div>
-                    )}
-                  </div>
-                  <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getEstadoReservaBadgeClass(reserva.estado)}`}>
-                    {getEstadoReservaLabel(reserva.estado)}
-                  </span>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    onClick={() => handleAprobar(reserva.id)}
-                    disabled={processingId === reserva.id}
-                    className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm transition disabled:opacity-50"
-                  >
-                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>Aprobar</span>
-                  </button>
-                  <button
-                    onClick={() => handleRechazar(reserva.id)}
-                    disabled={processingId === reserva.id}
-                    className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm transition disabled:opacity-50"
-                  >
-                    <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>Rechazar</span>
-                  </button>
-                </div>
+        <div className="mt-6 space-y-6">
+          {isGerente && reservasPendientes.length > 0 && (
+            <Section variant="card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg sm:text-xl font-semibold text-neutral-900">
+                  Reservas Pendientes
+                </h2>
+                <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">
+                  {reservasPendientes.length}
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-800">Áreas Disponibles</h2>
-          <input
-            type="text"
-            placeholder="Buscar área u oficina..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-64 px-3 sm:px-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {filteredAreas.length === 0 ? (
-          <div className="text-center py-8 sm:py-12 text-slate-500">
-            <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 text-slate-400" />
-            <p className="text-sm sm:text-base">No hay áreas disponibles</p>
-            {isAdmin && (
-              <p className="text-xs sm:text-sm mt-2 px-4">
-                Configura oficinas como Espacio JIRO y agrega áreas desde el módulo de Oficinas
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {filteredAreas.map((area) => {
-              const disponibilidad = area.disponibilidad_semanal as unknown as DisponibilidadSemanal;
-              const diasDisponibles = Object.keys(disponibilidad).filter(
-                (dia) => disponibilidad[dia as keyof DisponibilidadSemanal].length > 0
-              );
-
-              return (
-                <div
-                  key={area.id}
-                  className="border border-slate-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition overflow-hidden"
-                >
-                  <div className="mb-3 min-w-0">
-                    <div className="flex items-center text-xs sm:text-sm font-semibold text-blue-600 mb-2 min-w-0">
-                      <Building2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
-                      <span className="flex-1 min-w-0 break-words">{area.oficinas?.nombre}</span>
-                    </div>
-                    <h3 className="font-bold text-slate-900 text-base sm:text-lg mb-2 break-words">{area.nombre}</h3>
-                    {area.detalles && (
-                      <p className="text-xs sm:text-sm text-slate-600 mb-2 break-words">{area.detalles}</p>
-                    )}
-                    {area.oficinas?.domicilio && (
-                      <div className="flex items-start text-xs sm:text-sm text-slate-600 mb-2 min-w-0">
-                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mr-1 mt-0.5 flex-shrink-0" />
-                        <span className="flex-1 min-w-0 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                          {area.oficinas.domicilio}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mb-3 p-2 bg-slate-50 rounded text-xs text-slate-700">
-                    <div className="flex items-start mb-1">
-                      <Info className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+              <div className="space-y-4">
+                {reservasPendientes.map((reserva) => (
+                  <div key={reserva.id} className="bg-neutral-50 rounded-lg border border-neutral-200 p-4 hover:shadow-ios transition-shadow">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
                       <div className="flex-1 min-w-0">
-                        <strong>Disponibilidad:</strong>
-                        <div className="mt-1 space-y-0.5">
-                          {diasDisponibles.length === 0 ? (
-                            <p className="text-slate-500 italic">No hay horarios configurados</p>
-                          ) : (
-                            diasDisponibles.map((dia) => {
-                              const franjas = disponibilidad[dia as keyof DisponibilidadSemanal];
-                              return (
-                                <div key={dia} className="break-words">
-                                  <strong className="mr-1">{DIAS_SEMANA_LABELS[dia]}:</strong>
-                                  {franjas.map((f, i) => (
-                                    <span key={i} className="mr-1 whitespace-nowrap">
-                                      {f.inicio}-{f.fin}
-                                      {i < franjas.length - 1 ? ',' : ''}
-                                    </span>
-                                  ))}
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {(isEmpleadoOrAgente || isGerente || isAdmin) && (
-                    <button
-                      onClick={() => openReservaModal(area)}
-                      disabled={diasDisponibles.length === 0}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Reservar
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-bold text-slate-800 mb-4">
-          {isEmpleadoOrAgente ? 'Mis Reservas' : 'Historial de Reservas'}
-        </h2>
-        {(isEmpleadoOrAgente ? misReservas : reservas).length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
-            <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 text-slate-400" />
-            <p className="text-sm sm:text-base">No hay reservas</p>
-          </div>
-        ) : (
-          <>
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50">
-                  <tr>
-                    {!isEmpleadoOrAgente && (
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                        Usuario
-                      </th>
-                    )}
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                      Área
-                    </th>
-                    {isAdmin && (
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                        Oficina
-                      </th>
-                    )}
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                      Fecha
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                      Horario
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                      Estado
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                      Comentarios
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {(isEmpleadoOrAgente ? misReservas : reservas).map((reserva) => (
-                    <tr key={reserva.id} className="hover:bg-slate-50">
-                      {!isEmpleadoOrAgente && (
-                        <td className="px-4 py-3 text-sm">
-                          <div className="font-medium text-slate-900">
-                            {reserva.usuarios?.nombre} {reserva.usuarios?.apellidos}
+                        <h3 className="font-semibold text-neutral-900 text-sm sm:text-base mb-1">
+                          {reserva.usuarios?.nombre} {reserva.usuarios?.apellidos}
+                        </h3>
+                        <p className="text-xs sm:text-sm text-neutral-600 truncate">{reserva.usuarios?.email_laboral}</p>
+                        <p className="text-xs sm:text-sm text-neutral-600">{reserva.usuarios?.celular_personal}</p>
+                        <div className="mt-3 space-y-2 text-xs sm:text-sm text-neutral-700">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-neutral-500 flex-shrink-0" />
+                            <span className="break-words">{reserva.areas?.nombre}</span>
                           </div>
-                          <div className="text-slate-600">{reserva.usuarios?.email_laboral}</div>
-                        </td>
-                      )}
-                      <td className="px-4 py-3 text-sm text-slate-900">{reserva.areas?.nombre}</td>
-                      {isAdmin && (
-                        <td className="px-4 py-3 text-sm text-slate-900">
-                          {reserva.oficinas?.nombre || '-'}
-                        </td>
-                      )}
-                      <td className="px-4 py-3 text-sm text-slate-900">
-                        {new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-MX')}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-900">
-                        {reserva.hora_inicio} - {reserva.hora_fin}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getEstadoReservaBadgeClass(reserva.estado)}`}>
-                          {getEstadoReservaLabel(reserva.estado)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        {reserva.comentarios_gerente || reserva.notas || '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="md:hidden space-y-3">
-              {(isEmpleadoOrAgente ? misReservas : reservas).map((reserva) => (
-                <div key={reserva.id} className="border border-slate-200 rounded-lg p-3">
-                  {!isEmpleadoOrAgente && (
-                    <div className="mb-3 pb-3 border-b border-slate-200">
-                      <div className="font-semibold text-slate-900 text-sm">
-                        {reserva.usuarios?.nombre} {reserva.usuarios?.apellidos}
+                          <div className="flex items-start gap-2">
+                            <Calendar className="w-4 h-4 text-neutral-500 flex-shrink-0 mt-0.5" />
+                            <span className="break-words">
+                              {new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-MX', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-neutral-500 flex-shrink-0" />
+                            <span>{reserva.hora_inicio} - {reserva.hora_fin}</span>
+                          </div>
+                        </div>
+                        {reserva.notas && (
+                          <div className="mt-3 p-2 bg-white rounded text-xs sm:text-sm text-neutral-700 break-words border border-neutral-200">
+                            <strong className="text-neutral-900">Notas:</strong> {reserva.notas}
+                          </div>
+                        )}
                       </div>
-                      <div className="text-xs text-slate-600 truncate">{reserva.usuarios?.email_laboral}</div>
-                    </div>
-                  )}
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="text-slate-600 font-medium">Área:</span>
-                      <span className="text-slate-900 text-right break-words flex-1">{reserva.areas?.nombre}</span>
-                    </div>
-                    {isAdmin && (
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="text-slate-600 font-medium">Oficina:</span>
-                        <span className="text-slate-900 text-right break-words flex-1">{reserva.oficinas?.nombre || '-'}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center gap-2">
-                      <span className="text-slate-600 font-medium">Fecha:</span>
-                      <span className="text-slate-900">{new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-MX')}</span>
-                    </div>
-                    <div className="flex justify-between items-center gap-2">
-                      <span className="text-slate-600 font-medium">Horario:</span>
-                      <span className="text-slate-900">{reserva.hora_inicio} - {reserva.hora_fin}</span>
-                    </div>
-                    <div className="flex justify-between items-center gap-2">
-                      <span className="text-slate-600 font-medium">Estado:</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getEstadoReservaBadgeClass(reserva.estado)}`}>
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap",
+                        getEstadoReservaBadgeClass(reserva.estado)
+                      )}>
                         {getEstadoReservaLabel(reserva.estado)}
                       </span>
                     </div>
-                    {(reserva.comentarios_gerente || reserva.notas) && (
-                      <div className="pt-2 border-t border-slate-200">
-                        <span className="text-slate-600 font-medium block mb-1">Comentarios:</span>
-                        <p className="text-slate-900 text-xs break-words">{reserva.comentarios_gerente || reserva.notas}</p>
-                      </div>
-                    )}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        onClick={() => handleAprobar(reserva.id)}
+                        disabled={processingId === reserva.id}
+                        className="flex-1 bg-green-600 hover:bg-green-700 btn-touch"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Aprobar
+                      </Button>
+                      <Button
+                        onClick={() => handleRechazar(reserva.id)}
+                        disabled={processingId === reserva.id}
+                        variant="destructive"
+                        className="flex-1 btn-touch"
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Rechazar
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+                ))}
+              </div>
+            </Section>
+          )}
 
-      {showModal && selectedArea && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center sm:items-start justify-center z-50 p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl max-w-md w-full my-4 sm:my-8 flex flex-col max-h-[90vh] sm:max-h-[85vh]">
-            <div className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200">
-              <h2 className="text-base sm:text-xl font-bold text-slate-900 break-words">Reservar: {selectedArea.nombre}</h2>
-              <p className="text-xs sm:text-sm text-slate-600 break-words">{selectedArea.oficinas?.nombre}</p>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4">
-              <form id="reserva-form" onSubmit={handleSubmit}>
-              <div className="mb-3 sm:mb-4">
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
-                  Fecha <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={formData.fecha}
-                  onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 sm:px-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <Section variant="card">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-neutral-900">Áreas Disponibles</h2>
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar área u oficina..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
-                    Hora de Inicio <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.hora_inicio}
-                    onChange={(e) => setFormData({ ...formData, hora_inicio: e.target.value })}
-                    required
-                    className="w-full px-3 sm:px-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
-                    Hora de Fin <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.hora_fin}
-                    onChange={(e) => setFormData({ ...formData, hora_fin: e.target.value })}
-                    required
-                    className="w-full px-3 sm:px-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-3 sm:mb-4">
-                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
-                  Notas (opcional)
-                </label>
-                <textarea
-                  value={formData.notas}
-                  onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 sm:px-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  placeholder="Agrega cualquier información adicional..."
-                />
-              </div>
-
-              </form>
             </div>
-            <div className="flex-shrink-0 border-t border-slate-200 px-4 sm:px-6 py-3 sm:py-4">
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setSelectedArea(null);
-                    setFormData({ fecha: '', hora_inicio: '', hora_fin: '', notas: '' });
-                  }}
-                  className="w-full sm:flex-1 px-4 py-2 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  form="reserva-form"
-                  className="w-full sm:flex-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  Reservar
-                </button>
+
+            {filteredAreas.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <AlertCircle className="w-8 h-8 text-neutral-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                  No hay áreas disponibles
+                </h3>
+                {isAdmin && (
+                  <p className="text-sm text-neutral-600 max-w-md mx-auto">
+                    Configura oficinas como Espacio JIRO y agrega áreas desde el módulo de Oficinas
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredAreas.map((area) => {
+                  const disponibilidad = area.disponibilidad_semanal as unknown as DisponibilidadSemanal;
+                  const diasDisponibles = Object.keys(disponibilidad).filter(
+                    (dia) => disponibilidad[dia as keyof DisponibilidadSemanal].length > 0
+                  );
+
+                  return (
+                    <div
+                      key={area.id}
+                      className="bg-white border border-neutral-200 rounded-lg p-4 hover:shadow-ios hover:border-primary-300 transition-all overflow-hidden group"
+                    >
+                      <div className="mb-4 min-w-0">
+                        <div className="flex items-center text-sm font-semibold text-primary-600 mb-2 min-w-0">
+                          <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
+                          <span className="flex-1 min-w-0 break-words">{area.oficinas?.nombre}</span>
+                        </div>
+                        <h3 className="font-bold text-neutral-900 text-lg mb-2 break-words group-hover:text-primary-600 transition-colors">
+                          {area.nombre}
+                        </h3>
+                        {area.detalles && (
+                          <p className="text-sm text-neutral-600 mb-2 break-words leading-relaxed">{area.detalles}</p>
+                        )}
+                        {area.oficinas?.domicilio && (
+                          <div className="flex items-start text-sm text-neutral-600 mb-2 min-w-0">
+                            <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-neutral-400" />
+                            <span className="flex-1 min-w-0 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                              {area.oficinas.domicilio}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mb-4 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="flex items-start">
+                          <Info className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-neutral-500" />
+                          <div className="flex-1 min-w-0">
+                            <strong className="text-sm text-neutral-900">Disponibilidad:</strong>
+                            <div className="mt-2 space-y-1 text-xs text-neutral-700">
+                              {diasDisponibles.length === 0 ? (
+                                <p className="text-neutral-500 italic">No hay horarios configurados</p>
+                              ) : (
+                                diasDisponibles.map((dia) => {
+                                  const franjas = disponibilidad[dia as keyof DisponibilidadSemanal];
+                                  return (
+                                    <div key={dia} className="break-words">
+                                      <strong className="mr-1 text-neutral-900">{DIAS_SEMANA_LABELS[dia]}:</strong>
+                                      {franjas.map((f, i) => (
+                                        <span key={i} className="mr-1 whitespace-nowrap">
+                                          {f.inicio}-{f.fin}
+                                          {i < franjas.length - 1 ? ',' : ''}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {(isEmpleadoOrAgente || isGerente || isAdmin) && (
+                        <Button
+                          onClick={() => openReservaModal(area)}
+                          disabled={diasDisponibles.length === 0}
+                          className="w-full btn-touch"
+                        >
+                          Reservar Espacio
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+
+          <Section variant="card">
+            <h2 className="text-lg sm:text-xl font-semibold text-neutral-900 mb-4">
+              {isEmpleadoOrAgente ? 'Mis Reservas' : 'Historial de Reservas'}
+            </h2>
+            {(isEmpleadoOrAgente ? misReservas : reservas).length === 0 ? (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <AlertCircle className="w-8 h-8 text-neutral-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                  No hay reservas
+                </h3>
+                <p className="text-sm text-neutral-600">
+                  {isEmpleadoOrAgente ? 'Tus reservas aparecerán aquí' : 'Aún no hay reservas registradas'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-neutral-50">
+                      <tr>
+                        {!isEmpleadoOrAgente && (
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
+                            Usuario
+                          </th>
+                        )}
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
+                          Área
+                        </th>
+                        {isAdmin && (
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
+                            Oficina
+                          </th>
+                        )}
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
+                          Fecha
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
+                          Horario
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
+                          Estado
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
+                          Comentarios
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200">
+                      {(isEmpleadoOrAgente ? misReservas : reservas).map((reserva) => (
+                        <tr key={reserva.id} className="hover:bg-neutral-50 transition-colors">
+                          {!isEmpleadoOrAgente && (
+                            <td className="px-4 py-3 text-sm">
+                              <div className="font-medium text-neutral-900">
+                                {reserva.usuarios?.nombre} {reserva.usuarios?.apellidos}
+                              </div>
+                              <div className="text-neutral-600 text-xs">{reserva.usuarios?.email_laboral}</div>
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-sm text-neutral-900">{reserva.areas?.nombre}</td>
+                          {isAdmin && (
+                            <td className="px-4 py-3 text-sm text-neutral-900">
+                              {reserva.oficinas?.nombre || '-'}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-sm text-neutral-900">
+                            {new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-MX')}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-900">
+                            {reserva.hora_inicio} - {reserva.hora_fin}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={cn(
+                              "px-2 py-1 rounded-full text-xs font-semibold",
+                              getEstadoReservaBadgeClass(reserva.estado)
+                            )}>
+                              {getEstadoReservaLabel(reserva.estado)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-600">
+                            {reserva.comentarios_gerente || reserva.notas || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="md:hidden space-y-3">
+                  {(isEmpleadoOrAgente ? misReservas : reservas).map((reserva) => (
+                    <div key={reserva.id} className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                      {!isEmpleadoOrAgente && (
+                        <div className="mb-3 pb-3 border-b border-neutral-200">
+                          <div className="font-semibold text-neutral-900 text-sm">
+                            {reserva.usuarios?.nombre} {reserva.usuarios?.apellidos}
+                          </div>
+                          <div className="text-xs text-neutral-600 truncate">{reserva.usuarios?.email_laboral}</div>
+                        </div>
+                      )}
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-neutral-600 font-medium">Área:</span>
+                          <span className="text-neutral-900 text-right break-words flex-1">{reserva.areas?.nombre}</span>
+                        </div>
+                        {isAdmin && (
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="text-neutral-600 font-medium">Oficina:</span>
+                            <span className="text-neutral-900 text-right break-words flex-1">{reserva.oficinas?.nombre || '-'}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-neutral-600 font-medium">Fecha:</span>
+                          <span className="text-neutral-900">{new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-MX')}</span>
+                        </div>
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-neutral-600 font-medium">Horario:</span>
+                          <span className="text-neutral-900">{reserva.hora_inicio} - {reserva.hora_fin}</span>
+                        </div>
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-neutral-600 font-medium">Estado:</span>
+                          <span className={cn(
+                            "px-2 py-1 rounded-full text-xs font-semibold",
+                            getEstadoReservaBadgeClass(reserva.estado)
+                          )}>
+                            {getEstadoReservaLabel(reserva.estado)}
+                          </span>
+                        </div>
+                        {(reserva.comentarios_gerente || reserva.notas) && (
+                          <div className="pt-2 border-t border-neutral-200">
+                            <span className="text-neutral-600 font-medium block mb-1">Comentarios:</span>
+                            <p className="text-neutral-900 text-xs break-words">{reserva.comentarios_gerente || reserva.notas}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </Section>
+
+        </div>
+
+        {showModal && selectedArea && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full my-8 flex flex-col max-h-[90vh]">
+              <div className="flex-shrink-0 px-6 py-4 border-b border-neutral-200">
+                <h2 className="text-xl font-bold text-neutral-900 break-words">Reservar: {selectedArea.nombre}</h2>
+                <p className="text-sm text-neutral-600 break-words mt-1">{selectedArea.oficinas?.nombre}</p>
+              </div>
+              <div className="flex-1 overflow-y-auto px-6 py-4">
+                <form id="reserva-form" onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="fecha">
+                      Fecha <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="fecha"
+                      type="date"
+                      value={formData.fecha}
+                      onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                      required
+                      min={new Date().toISOString().split('T')[0]}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="hora-inicio">
+                        Hora de Inicio <span className="text-red-600">*</span>
+                      </Label>
+                      <Input
+                        id="hora-inicio"
+                        type="time"
+                        value={formData.hora_inicio}
+                        onChange={(e) => setFormData({ ...formData, hora_inicio: e.target.value })}
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="hora-fin">
+                        Hora de Fin <span className="text-red-600">*</span>
+                      </Label>
+                      <Input
+                        id="hora-fin"
+                        type="time"
+                        value={formData.hora_fin}
+                        onChange={(e) => setFormData({ ...formData, hora_fin: e.target.value })}
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="notas">Notas (opcional)</Label>
+                    <textarea
+                      id="notas"
+                      value={formData.notas}
+                      onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
+                      rows={3}
+                      className="w-full mt-1 px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                      placeholder="Agrega cualquier información adicional..."
+                    />
+                  </div>
+                </form>
+              </div>
+              <div className="flex-shrink-0 border-t border-neutral-200 px-6 py-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowModal(false);
+                      setSelectedArea(null);
+                      setFormData({ fecha: '', hora_inicio: '', hora_fin: '', notas: '' });
+                    }}
+                    className="flex-1 btn-touch"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    form="reserva-form"
+                    className="flex-1 btn-touch"
+                  >
+                    Confirmar Reserva
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </Container>
+    </Layout>
   );
 }
