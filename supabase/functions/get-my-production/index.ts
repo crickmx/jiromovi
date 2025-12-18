@@ -221,7 +221,6 @@ Deno.serve(async (req: Request) => {
     const fechaHasta = url.searchParams.get('fechaHasta');
     const ramos = url.searchParams.get('ramos')?.split(',').filter(Boolean) || [];
     const aseguradoras = url.searchParams.get('aseguradoras')?.split(',').filter(Boolean) || [];
-    const clienteSearch = url.searchParams.get('clienteSearch') || '';
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '50');
 
@@ -321,7 +320,6 @@ Deno.serve(async (req: Request) => {
           kpis: {
             total_produccion: 0,
             total_documentos: 0,
-            clientes_unicos: 0,
             aseguradora_top: null,
             ramo_top: null,
           },
@@ -329,8 +327,8 @@ Deno.serve(async (req: Request) => {
             produccion_por_ramo: [],
             produccion_por_aseguradora: [],
             evolucion_temporal: [],
-            top_10_clientes: [],
           },
+          fecha_actualizacion: null,
           message: 'Aún no tienes un vendedor asignado. Contacta a administración para que asocien tu nombre del Excel con tu usuario.',
         }),
         {
@@ -374,11 +372,6 @@ Deno.serve(async (req: Request) => {
       query = query.in('aseguradora_nombre', aseguradoras);
     }
 
-    // Búsqueda de cliente (incluir nombre_cliente en la búsqueda)
-    if (clienteSearch) {
-      query = query.or(`desp_nombre_raw.ilike.%${clienteSearch}%,nombre_cliente.ilike.%${clienteSearch}%,gerencia_nombre_raw.ilike.%${clienteSearch}%`);
-    }
-
     // Ordenar por fecha descendente
     query = query.order('fecha', { ascending: false });
 
@@ -405,8 +398,6 @@ Deno.serve(async (req: Request) => {
     const totalProduccion = allRecords.reduce((sum: number, r: any) =>
       sum + (r.importe_pesos > 0 ? r.importe_pesos : r.prima_convenio), 0
     );
-
-    const clientesUnicos = new Set(allRecords.map((r: any) => r.desp_nombre_raw)).size;
 
     // Top aseguradora
     const aseguradoraSums = new Map<string, number>();
@@ -444,22 +435,6 @@ Deno.serve(async (req: Request) => {
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
 
-    // Top 10 clientes
-    const clienteSums = new Map<string, { total: number; documentos: number }>();
-    allRecords.forEach((r: any) => {
-      const cliente = r.desp_nombre_raw || 'Sin nombre';
-      const current = clienteSums.get(cliente) || { total: 0, documentos: 0 };
-      clienteSums.set(cliente, {
-        total: current.total + (r.importe_pesos > 0 ? r.importe_pesos : r.prima_convenio),
-        documentos: current.documentos + 1,
-      });
-    });
-
-    const top10Clientes = Array.from(clienteSums.entries())
-      .map(([cliente, data]) => ({ cliente, ...data }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10);
-
     // Evolución temporal (por mes)
     const mesSums = new Map<string, number>();
     allRecords.forEach((r: any) => {
@@ -471,6 +446,16 @@ Deno.serve(async (req: Request) => {
     const evolucionTemporal = Array.from(mesSums.entries())
       .map(([mes, total]) => ({ mes, total }))
       .sort((a, b) => a.mes.localeCompare(b.mes));
+
+    // Obtener fecha más reciente de production_records
+    const { data: fechaData } = await supabase
+      .from('production_records')
+      .select('fecha')
+      .order('fecha', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const fechaActualizacion = fechaData?.fecha || null;
 
     return new Response(
       JSON.stringify({
@@ -486,7 +471,6 @@ Deno.serve(async (req: Request) => {
         kpis: {
           total_produccion: totalProduccion,
           total_documentos: totalFiltered,
-          clientes_unicos: clientesUnicos,
           aseguradora_top: aseguradoraTop,
           ramo_top: ramoTop,
         },
@@ -494,8 +478,8 @@ Deno.serve(async (req: Request) => {
           produccion_por_ramo: produccionPorRamo,
           produccion_por_aseguradora: produccionPorAseguradora,
           evolucion_temporal: evolucionTemporal,
-          top_10_clientes: top10Clientes,
         },
+        fecha_actualizacion: fechaActualizacion,
         performance: {
           duration_ms: duration,
           data_source: 'production_records_db',

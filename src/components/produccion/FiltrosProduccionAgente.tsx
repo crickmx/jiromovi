@@ -6,7 +6,6 @@ interface ProductionFilters {
   fechaHasta: string;
   ramos: string[];
   aseguradoras: string[];
-  clienteSearch: string;
 }
 
 interface FiltrosProduccionAgenteProps {
@@ -35,7 +34,6 @@ export default function FiltrosProduccionAgente({
       fechaHasta: '',
       ramos: [],
       aseguradoras: [],
-      clienteSearch: '',
     };
     setLocalFilters(clearedFilters);
     onFiltersChange(clearedFilters);
@@ -63,8 +61,7 @@ export default function FiltrosProduccionAgente({
     (localFilters.fechaDesde ? 1 : 0) +
     (localFilters.fechaHasta ? 1 : 0) +
     localFilters.ramos.length +
-    localFilters.aseguradoras.length +
-    (localFilters.clienteSearch ? 1 : 0);
+    localFilters.aseguradoras.length;
 
   return (
     <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
@@ -114,19 +111,6 @@ export default function FiltrosProduccionAgente({
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Buscar Cliente
-            </label>
-            <input
-              type="text"
-              value={localFilters.clienteSearch}
-              onChange={(e) => setLocalFilters(prev => ({ ...prev, clienteSearch: e.target.value }))}
-              placeholder="Nombre del cliente..."
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
           </div>
 
           <div>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { TrendingUp, FileText, Users, Building, Download, AlertCircle, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { TrendingUp, FileText, Building, Download, AlertCircle, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
@@ -14,7 +14,6 @@ interface ProductionFilters {
   fechaHasta: string;
   ramos: string[];
   aseguradoras: string[];
-  clienteSearch: string;
 }
 
 interface ProductionRecord {
@@ -37,7 +36,6 @@ interface ProductionRecord {
 interface KPIs {
   total_produccion: number;
   total_documentos: number;
-  clientes_unicos: number;
   aseguradora_top: string | null;
   ramo_top: string | null;
 }
@@ -46,7 +44,6 @@ interface ChartData {
   produccion_por_ramo: Array<{ ramo: string; total: number }>;
   produccion_por_aseguradora: Array<{ aseguradora: string; total: number }>;
   evolucion_temporal: Array<{ mes: string; total: number }>;
-  top_10_clientes: Array<{ cliente: string; total: number; documentos: number }>;
 }
 
 export default function MiProduccion() {
@@ -55,10 +52,10 @@ export default function MiProduccion() {
   const [vendorName, setVendorName] = useState<string | null>(null);
   const [records, setRecords] = useState<ProductionRecord[]>([]);
   const [allRecordsForExport, setAllRecordsForExport] = useState<ProductionRecord[]>([]);
+  const [fechaActualizacion, setFechaActualizacion] = useState<string | null>(null);
   const [kpis, setKpis] = useState<KPIs>({
     total_produccion: 0,
     total_documentos: 0,
-    clientes_unicos: 0,
     aseguradora_top: null,
     ramo_top: null,
   });
@@ -66,7 +63,6 @@ export default function MiProduccion() {
     produccion_por_ramo: [],
     produccion_por_aseguradora: [],
     evolucion_temporal: [],
-    top_10_clientes: [],
   });
   const [message, setMessage] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<ProductionRecord | null>(null);
@@ -82,7 +78,6 @@ export default function MiProduccion() {
     fechaHasta: '',
     ramos: [],
     aseguradoras: [],
-    clienteSearch: '',
   });
 
   const [availableRamos, setAvailableRamos] = useState<string[]>([]);
@@ -108,7 +103,6 @@ export default function MiProduccion() {
         ...(filters.fechaHasta && { fechaHasta: filters.fechaHasta }),
         ...(filters.ramos.length > 0 && { ramos: filters.ramos.join(',') }),
         ...(filters.aseguradoras.length > 0 && { aseguradoras: filters.aseguradoras.join(',') }),
-        ...(filters.clienteSearch && { clienteSearch: filters.clienteSearch }),
       });
 
       const response = await fetch(`${apiUrl}?${params}`, {
@@ -131,6 +125,7 @@ export default function MiProduccion() {
         setCharts(result.charts || {});
         setTotalPages(result.pagination?.totalPages || 0);
         setMessage(result.message || null);
+        setFechaActualizacion(result.fecha_actualizacion || null);
 
         if (currentPage === 1) {
           const allRecordsParams = new URLSearchParams({
@@ -140,7 +135,6 @@ export default function MiProduccion() {
             ...(filters.fechaHasta && { fechaHasta: filters.fechaHasta }),
             ...(filters.ramos.length > 0 && { ramos: filters.ramos.join(',') }),
             ...(filters.aseguradoras.length > 0 && { aseguradoras: filters.aseguradoras.join(',') }),
-            ...(filters.clienteSearch && { clienteSearch: filters.clienteSearch }),
           });
 
           const allResponse = await fetch(`${apiUrl}?${allRecordsParams}`, {
@@ -171,7 +165,6 @@ export default function MiProduccion() {
       setKpis({
         total_produccion: 0,
         total_documentos: 0,
-        clientes_unicos: 0,
         aseguradora_top: null,
         ramo_top: null,
       });
@@ -186,10 +179,9 @@ export default function MiProduccion() {
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(r =>
-        r.desp_nombre_raw?.toLowerCase().includes(search) ||
-        r.nombre_cliente?.toLowerCase().includes(search) ||
         r.aseguradora_nombre?.toLowerCase().includes(search) ||
-        r.ramo_nombre?.toLowerCase().includes(search)
+        r.ramo_nombre?.toLowerCase().includes(search) ||
+        r.subramo_nombre?.toLowerCase().includes(search)
       );
     }
 
@@ -217,13 +209,10 @@ export default function MiProduccion() {
     const dataSheet = allRecordsForExport.map(record => ({
       'Fecha': new Date(record.fecha).toLocaleDateString('es-MX'),
       'Periodo': record.periodo_mes,
-      'Cliente': record.desp_nombre_raw,
-      'Gerencia': record.gerencia_nombre_raw,
-      'Región': record.region_raw || '-',
       'Aseguradora': record.aseguradora_nombre,
       'Ramo': record.ramo_nombre,
       'Subramo': record.subramo_nombre || '-',
-      'Concepto': record.concepto || '-',
+      'Región': record.region_raw || '-',
       'Importe Pesos': record.importe_pesos,
       'Prima Convenio': record.prima_convenio,
       'Prima Ponderada': record.prima_ponderada,
@@ -234,7 +223,6 @@ export default function MiProduccion() {
     const resumenSheet = [
       { 'Indicador': 'Producción Total', 'Valor': kpis.total_produccion },
       { 'Indicador': 'Total Documentos', 'Valor': kpis.total_documentos },
-      { 'Indicador': 'Clientes Únicos', 'Valor': kpis.clientes_unicos },
       { 'Indicador': 'Aseguradora Top', 'Valor': kpis.aseguradora_top || '-' },
       { 'Indicador': 'Ramo Top', 'Valor': kpis.ramo_top || '-' },
     ];
@@ -293,6 +281,11 @@ export default function MiProduccion() {
           <p className="text-neutral-600">
             Resumen de tu producción como <span className="font-semibold text-primary-600">{vendorName}</span>
           </p>
+          {fechaActualizacion && (
+            <p className="text-sm text-neutral-500 mt-2">
+              Última actualización: <span className="font-medium">{new Date(fechaActualizacion).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </p>
+          )}
         </div>
 
         {message && (
@@ -304,7 +297,7 @@ export default function MiProduccion() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
@@ -322,16 +315,6 @@ export default function MiProduccion() {
             </div>
             <p className="text-2xl font-bold text-blue-900">
               {kpis.total_documentos}
-            </p>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="w-5 h-5 text-purple-600" />
-              <p className="text-sm text-purple-700 font-medium">Clientes Únicos</p>
-            </div>
-            <p className="text-2xl font-bold text-purple-900">
-              {kpis.clientes_unicos}
             </p>
           </div>
 
@@ -389,43 +372,13 @@ export default function MiProduccion() {
           </div>
 
           {charts.evolucion_temporal.length > 1 && (
-            <div className="mb-6">
+            <div>
               <GraficaLinea
                 data={charts.evolucion_temporal.map(d => ({ label: d.mes, value: d.total }))}
                 title="Evolución Temporal"
                 valueFormatter={formatCurrency}
                 height={280}
               />
-            </div>
-          )}
-
-          {charts.top_10_clientes.length > 0 && (
-            <div>
-              <h3 className="text-lg font-bold text-neutral-900 mb-4">Top 10 Clientes</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-neutral-100 border-b border-neutral-200">
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Cliente</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-900">Producción</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-900">Documentos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {charts.top_10_clientes.map((cliente, idx) => (
-                      <tr key={idx} className="border-b border-neutral-100 hover:bg-neutral-50">
-                        <td className="px-4 py-3 text-sm text-neutral-900">{cliente.cliente}</td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold text-green-700">
-                          {formatCurrency(cliente.total)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-neutral-900">
-                          {cliente.documentos}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
           )}
         </div>
@@ -453,7 +406,7 @@ export default function MiProduccion() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por cliente, aseguradora o ramo..."
+                placeholder="Buscar por aseguradora, ramo o subramo..."
                 className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
@@ -484,9 +437,9 @@ export default function MiProduccion() {
             <thead>
               <tr className="bg-neutral-100 border-b border-neutral-200">
                 <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Fecha</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Cliente</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Ramo</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Aseguradora</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Ramo</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Subramo</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-900">Importe</th>
                 <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-900">Acciones</th>
               </tr>
@@ -498,11 +451,9 @@ export default function MiProduccion() {
                     <td className="px-4 py-3 text-sm text-neutral-900">
                       {new Date(record.fecha).toLocaleDateString('es-MX')}
                     </td>
-                    <td className="px-4 py-3 text-sm text-neutral-900">
-                      {record.nombre_cliente || record.desp_nombre_raw}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-neutral-900">{record.ramo_nombre}</td>
                     <td className="px-4 py-3 text-sm text-neutral-900">{record.aseguradora_nombre}</td>
+                    <td className="px-4 py-3 text-sm text-neutral-900">{record.ramo_nombre}</td>
+                    <td className="px-4 py-3 text-sm text-neutral-900">{record.subramo_nombre || '-'}</td>
                     <td className="px-4 py-3 text-sm text-right font-semibold text-green-700">
                       {formatCurrency(record.importe_pesos > 0 ? record.importe_pesos : record.prima_convenio)}
                     </td>
