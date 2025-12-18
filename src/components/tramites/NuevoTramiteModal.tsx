@@ -89,9 +89,10 @@ export function NuevoTramiteModal({
   const canAssignOthers = !isAgent;
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && usuario) {
       resetForm();
       loadUsuarios();
+      loadLotesDisponibles();
       if (preloadedData) {
         if (preloadedData.tipoTramite) {
           setTipoTramite(preloadedData.tipoTramite);
