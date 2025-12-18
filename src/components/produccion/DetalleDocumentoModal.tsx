@@ -9,6 +9,7 @@ interface DocumentoDetalle {
   aseguradora_nombre: string;
   ramo_nombre: string;
   subramo_nombre: string | null;
+  concepto?: string | null;
   importe_pesos: number;
   prima_convenio: number;
   prima_ponderada: number;
@@ -125,12 +126,12 @@ export default function DetalleDocumentoModal({
             </div>
           )}
 
-          {documento.region_raw && (
+          {documento.concepto && (
             <div className="bg-neutral-50 rounded-lg p-3">
               <InfoItem
-                icon={Building2}
-                label="Región"
-                value={documento.region_raw}
+                icon={FileText}
+                label="Concepto"
+                value={documento.concepto}
               />
             </div>
           )}

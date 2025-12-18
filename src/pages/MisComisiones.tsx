@@ -347,7 +347,7 @@ export default function MisComisiones() {
                                     <div className="text-sm sm:text-base font-semibold text-neutral-900 break-words">{detail.poliza}</div>
                                   </div>
                                   <div className="ml-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-y-0.5 sm:gap-x-3 sm:gap-y-1 text-xs text-neutral-600">
-                                    <span className="truncate">{detail.nombre_asegurado || 'Sin asegurado'}</span>
+                                    <span className="truncate">{detail.nombre_asegurado || 'Cliente no especificado'}</span>
                                     <span className="hidden sm:inline text-neutral-400">•</span>
                                     <span className="truncate">{detail.ramo}</span>
                                   </div>
