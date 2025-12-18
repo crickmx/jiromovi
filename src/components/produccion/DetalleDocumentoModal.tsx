@@ -80,21 +80,9 @@ export default function DetalleDocumentoModal({
               <Building className="w-5 h-5 text-neutral-600" />
               <h3 className="font-semibold text-neutral-900">Información del Cliente</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-neutral-500 mb-1">Cliente</p>
-                <p className="text-sm font-medium text-neutral-900">{documento.desp_nombre_raw}</p>
-              </div>
-              <div>
-                <p className="text-xs text-neutral-500 mb-1">Gerencia/Oficina</p>
-                <p className="text-sm font-medium text-neutral-900">{documento.gerencia_nombre_raw}</p>
-              </div>
-              {documento.region_raw && (
-                <div>
-                  <p className="text-xs text-neutral-500 mb-1">Región</p>
-                  <p className="text-sm font-medium text-neutral-900">{documento.region_raw}</p>
-                </div>
-              )}
+            <div>
+              <p className="text-xs text-neutral-500 mb-1">Cliente</p>
+              <p className="text-sm font-medium text-neutral-900">{documento.desp_nombre_raw}</p>
             </div>
           </div>
 
@@ -124,28 +112,10 @@ export default function DetalleDocumentoModal({
           <div className="border border-neutral-200 rounded-xl p-4">
             <h3 className="font-semibold text-neutral-900 mb-3">Desglose Financiero</h3>
             <div className="space-y-2">
-              <div className="flex justify-between items-center py-2 border-b border-neutral-100">
+              <div className="flex justify-between items-center py-2">
                 <span className="text-sm text-neutral-600">Importe en Pesos</span>
                 <span className="text-sm font-semibold text-neutral-900">
                   {formatCurrency(documento.importe_pesos)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-100">
-                <span className="text-sm text-neutral-600">Prima Convenio</span>
-                <span className="text-sm font-semibold text-neutral-900">
-                  {formatCurrency(documento.prima_convenio)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-neutral-100">
-                <span className="text-sm text-neutral-600">Prima Ponderada</span>
-                <span className="text-sm font-semibold text-neutral-900">
-                  {formatCurrency(documento.prima_ponderada)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-neutral-600">Bono</span>
-                <span className="text-sm font-semibold text-orange-700">
-                  {formatCurrency(documento.bono)}
                 </span>
               </div>
             </div>
