@@ -338,11 +338,15 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           </>
         )}
 
-        <main className={
+        <main className={cn(
           location.pathname === '/multicotizador-digital'
             ? 'h-screen'
-            : 'w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8'
-        }>
+            : 'w-full mx-auto py-6 lg:py-8',
+          // Páginas con ancho completo
+          ['/comunicados', '/espacio-jiro'].includes(location.pathname)
+            ? 'px-4 sm:px-6 lg:px-8'
+            : 'max-w-7xl px-4 sm:px-6 lg:px-8'
+        )}>
           {children}
         </main>
       </div>

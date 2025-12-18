@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Layout } from '../components/Layout';
-import { Container } from '../components/ui/container';
 import { PageHeader } from '../components/ui/page-header';
 import { Section } from '../components/ui/section';
 import { Button } from '../components/ui/button';
@@ -263,12 +262,10 @@ export function EspacioJiro() {
   if (loading) {
     return (
       <Layout hideHeader>
-        <Container size="lg">
-          <div className="space-y-4">
-            <div className="skeleton h-24 w-full" />
-            <div className="skeleton h-64 w-full" />
-          </div>
-        </Container>
+        <div className="space-y-4">
+          <div className="skeleton h-24 w-full" />
+          <div className="skeleton h-64 w-full" />
+        </div>
       </Layout>
     );
   }
@@ -288,20 +285,19 @@ export function EspacioJiro() {
 
   return (
     <Layout hideHeader>
-      <Container size="lg">
-        <PageHeader
-          title="Espacio JIRO"
-          description={
-            isEmpleadoOrAgente
-              ? 'Reserva espacios de trabajo en nuestras oficinas'
-              : isGerente
-              ? 'Gestiona reservas y bloqueos de espacios'
-              : 'Administra áreas y supervisa todas las reservas'
-          }
-          icon={Building2}
-        />
+      <PageHeader
+        title="Espacio JIRO"
+        description={
+          isEmpleadoOrAgente
+            ? 'Reserva espacios de trabajo en nuestras oficinas'
+            : isGerente
+            ? 'Gestiona reservas y bloqueos de espacios'
+            : 'Administra áreas y supervisa todas las reservas'
+        }
+        icon={Building2}
+      />
 
-        <div className="mt-6 space-y-6">
+      <div className="mt-6 space-y-6">
           {isGerente && reservasPendientes.length > 0 && (
             <Section variant="card">
               <div className="flex items-center justify-between mb-4">
@@ -725,7 +721,6 @@ export function EspacioJiro() {
             </div>
           </div>
         )}
-      </Container>
     </Layout>
   );
 }
