@@ -57,7 +57,7 @@ export default function MiCRM() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Mi CRM</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-primary-600">Mi CRM</h1>
         <p className="text-gray-600 mt-1">Gestiona tus prospectos, clientes y ventas</p>
       </div>
 

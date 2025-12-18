@@ -313,7 +313,7 @@ export default function DocumentosImportar() {
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">Detalle del lote</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-primary-600 break-words">Detalle del lote</h2>
               <p className="text-sm sm:text-base text-gray-600 mt-1 break-words">{selectedBatch.file_name}</p>
             </div>
             {getStatusBadge(selectedBatch.status)}
@@ -674,7 +674,7 @@ export default function DocumentosImportar() {
       </button>
 
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-600">
           Importar documentos desde Excel
         </h1>
         <p className="text-sm sm:text-base text-gray-600 mt-1">

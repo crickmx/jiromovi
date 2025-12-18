@@ -327,7 +327,7 @@ export function AccesosNacional() {
       <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div className="flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-neutral-800">Accesos Nacional</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-primary-600">Accesos Nacional</h1>
             <p className="text-sm sm:text-base text-neutral-600 mt-1">Credenciales compartidas de acceso nacional</p>
           </div>
           <button

@@ -272,7 +272,7 @@ export default function ComisionesPrepararLote() {
               <ArrowLeft className="w-6 h-6 text-neutral-700" />
             </button>
             <div>
-              <h1 className="text-3xl font-display font-bold text-neutral-900 mb-1">
+              <h1 className="text-3xl font-display font-bold text-primary-600 mb-1">
                 Preparar Lote
               </h1>
               <p className="text-neutral-600">

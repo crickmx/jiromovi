@@ -417,7 +417,7 @@ export default function MiProduccion() {
         <div className="mb-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+              <h1 className="text-3xl font-display font-bold text-primary-600 mb-2">
                 Mi Producción
               </h1>
               <p className="text-neutral-600">

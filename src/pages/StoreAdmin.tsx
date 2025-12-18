@@ -141,7 +141,7 @@ export default function StoreAdmin() {
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Administración del Store</h1>
+            <h1 className="text-3xl font-bold text-primary-600">Administración del Store</h1>
             <p className="text-gray-600 mt-1">Gestiona productos y categorías</p>
           </div>
         </div>

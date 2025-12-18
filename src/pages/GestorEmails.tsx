@@ -292,7 +292,7 @@ export function GestorEmails() {
           <div className="flex items-center space-x-4">
             <Mail className="w-8 h-8 text-primary-600" />
             <div>
-              <h1 className="text-2xl font-display font-bold text-neutral-900">
+              <h1 className="text-2xl font-display font-bold text-primary-600">
                 Mi E-Mail
               </h1>
               {configuracion && (

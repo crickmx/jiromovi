@@ -33,7 +33,7 @@ export function PageHeader({
                 <Icon className="w-6 h-6 text-primary-600" />
               </div>
             )}
-            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight truncate">
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary-600 tracking-tight truncate">
               {title}
             </h1>
           </div>

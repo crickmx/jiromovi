@@ -109,7 +109,7 @@ export default function StorePedidos() {
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Gestión de Pedidos</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary-600">Gestión de Pedidos</h1>
             <p className="text-gray-600 mt-1">
               Administra todos los pedidos del Store
               {pedidos.length > 0 && (

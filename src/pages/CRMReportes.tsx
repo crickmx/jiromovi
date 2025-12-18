@@ -87,7 +87,7 @@ Prima Total,$${reporteData.primaTotal.toLocaleString('es-MX')}`;
           <ArrowLeft className="h-5 w-5 mr-2" />
           Volver a Mi CRM
         </button>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Reportes y Analíticas</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-primary-600">Reportes y Analíticas</h1>
         <p className="text-gray-600 mt-1">Analiza el desempeño de tu CRM</p>
       </div>
 

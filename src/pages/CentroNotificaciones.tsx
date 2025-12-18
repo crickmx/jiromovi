@@ -178,7 +178,7 @@ export function CentroNotificaciones() {
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white">
           <div className="flex items-center gap-3 mb-2">
             <Megaphone className="w-8 h-8" />
-            <h1 className="text-3xl font-bold">Centro de Notificaciones Global</h1>
+            <h1 className="text-3xl font-bold text-white">Centro de Notificaciones Global</h1>
           </div>
           <p className="text-primary-100">
             Envía notificaciones personalizadas a usuarios, oficinas o roles específicos

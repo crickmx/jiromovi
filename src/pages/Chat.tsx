@@ -238,7 +238,7 @@ export function Chat() {
               <MessageSquare className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-neutral-900">Chat</h1>
+              <h1 className="text-2xl font-bold text-primary-600">Chat</h1>
               <p className="text-sm text-neutral-600">Mensajería interna en tiempo real</p>
             </div>
           </div>

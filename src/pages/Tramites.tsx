@@ -124,7 +124,7 @@ export function Tramites() {
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+            <h1 className="text-3xl font-display font-bold text-primary-600 mb-2">
               Gestión de Trámites
             </h1>
             <p className="text-neutral-600">

@@ -103,7 +103,7 @@ export default function MapeoVendedores() {
               <Link2 className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Mapeo de Vendedores</h1>
+              <h1 className="text-2xl font-bold text-primary-600">Mapeo de Vendedores</h1>
               <p className="text-gray-600">
                 Gestiona las relaciones entre vendedores externos y usuarios MOVI
               </p>

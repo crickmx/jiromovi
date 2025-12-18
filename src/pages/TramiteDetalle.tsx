@@ -319,7 +319,7 @@ export function TramiteDetalle() {
         </div>
 
         <div>
-          <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+          <h1 className="text-3xl font-display font-bold text-primary-600 mb-2">
             Tramite {tramite.folio}
           </h1>
           <div className="flex items-center space-x-3">

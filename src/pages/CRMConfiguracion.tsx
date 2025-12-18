@@ -143,7 +143,7 @@ export default function CRMConfiguracion() {
           <ArrowLeft className="h-5 w-5 mr-2" />
           Volver a Mi CRM
         </button>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Configuración del CRM</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-primary-600">Configuración del CRM</h1>
         <p className="text-gray-600 mt-1">Personaliza campos, etiquetas y fuentes de origen</p>
       </div>
 
@@ -174,7 +174,7 @@ export default function CRMConfiguracion() {
           {tab === 'campos' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Campos Personalizados</h2>
+                <h2 className="text-lg font-semibold text-primary-600">Campos Personalizados</h2>
                 <button
                   onClick={agregarCampo}
                   disabled={loading}
@@ -208,7 +208,7 @@ export default function CRMConfiguracion() {
           {tab === 'etiquetas' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Etiquetas de Segmentación</h2>
+                <h2 className="text-lg font-semibold text-primary-600">Etiquetas de Segmentación</h2>
                 <button
                   onClick={agregarEtiqueta}
                   disabled={loading}
@@ -240,7 +240,7 @@ export default function CRMConfiguracion() {
           {tab === 'fuentes' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Fuentes de Origen</h2>
+                <h2 className="text-lg font-semibold text-primary-600">Fuentes de Origen</h2>
                 <button
                   onClick={agregarFuente}
                   disabled={loading}

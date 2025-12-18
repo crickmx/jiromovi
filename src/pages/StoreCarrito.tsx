@@ -107,7 +107,7 @@ export default function StoreCarrito() {
 
         <div className="flex items-center gap-3 mb-6 sm:mb-8">
           <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mi Carrito</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary-600">Mi Carrito</h1>
         </div>
 
         {carrito.length === 0 ? (

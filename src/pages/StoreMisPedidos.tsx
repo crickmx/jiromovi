@@ -58,7 +58,7 @@ export default function StoreMisPedidos() {
 
         <div className="flex items-center gap-3 mb-8">
           <Package className="w-8 h-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Mis Pedidos</h1>
+          <h1 className="text-3xl font-bold text-primary-600">Mis Pedidos</h1>
         </div>
 
         {pedidos.length === 0 ? (

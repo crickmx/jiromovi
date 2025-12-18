@@ -176,7 +176,7 @@ export default function CRMContactoPerfil() {
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-gray-900">{contacto.nombre_completo}</h1>
+              <h1 className="text-2xl font-bold text-primary-600">{contacto.nombre_completo}</h1>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-semibold ${getEstatusColor(contacto.estatus)}`}
               >

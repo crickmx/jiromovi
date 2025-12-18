@@ -168,7 +168,7 @@ export function Dashboard() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-primary-600">
                 Hola, {currentUser?.nombre}
               </h1>
               <p className="text-sm text-gray-600 mt-0.5">
@@ -272,7 +272,7 @@ export function Dashboard() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-primary-600">
               Hola, {currentUser?.nombre}
             </h1>
             <p className="text-sm text-gray-600 mt-0.5">

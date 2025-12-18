@@ -152,7 +152,7 @@ export default function MisComisiones() {
       <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
         <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-1 sm:mb-2">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-primary-600 mb-1 sm:mb-2">
               Mis Comisiones
             </h1>
             <p className="text-sm sm:text-base text-neutral-600">

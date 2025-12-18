@@ -283,7 +283,7 @@ export default function ComisionesLote() {
               <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-700" />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-neutral-900 mb-1 break-words">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-primary-600 mb-1 break-words">
                 {batch.name}
               </h1>
               <p className="text-sm sm:text-base text-neutral-600">
