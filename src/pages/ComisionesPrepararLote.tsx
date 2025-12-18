@@ -244,7 +244,7 @@ export default function ComisionesPrepararLote() {
             Sesión no encontrada
           </h2>
           <button
-            onClick={() => navigate('/comisiones/upload')}
+            onClick={() => navigate('/comisiones/upload-nuevo')}
             className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold"
           >
             Volver a cargar archivo

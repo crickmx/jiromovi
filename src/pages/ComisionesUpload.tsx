@@ -29,6 +29,13 @@ interface ExcelRow {
 export default function ComisionesUpload() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
+
+  // DEPRECATED: Este flujo ya no se usa, redirigir al nuevo flujo basado en nombres
+  useEffect(() => {
+    console.warn('[ComisionesUpload] DEPRECATED: Redirecting to new flow');
+    navigate('/comisiones/upload-nuevo', { replace: true });
+  }, [navigate]);
+
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
