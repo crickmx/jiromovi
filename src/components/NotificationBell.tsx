@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Check, CheckCheck, X, Trash2, Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone } from 'lucide-react';
+import { Bell, Check, CheckCheck, X, Trash2, Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,6 +14,7 @@ const moduleIcons: Record<string, any> = {
   'Publicidad': Palette,
   'Contactos': Users,
   'Sistema': Megaphone,
+  'Store': ShoppingBag,
 };
 
 export function NotificationBell() {

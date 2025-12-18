@@ -620,6 +620,43 @@ export async function crearPedido(
 
   await vaciarCarrito(usuarioId);
 
+  // Obtener información del usuario que realizó el pedido
+  const { data: usuario } = await supabase
+    .from('usuarios')
+    .select('nombre, nombre_completo')
+    .eq('id', usuarioId)
+    .single();
+
+  const nombreUsuario = usuario?.nombre_completo || usuario?.nombre || 'Usuario';
+
+  // Obtener todos los administradores
+  const { data: administradores } = await supabase
+    .from('usuarios')
+    .select('id')
+    .eq('rol', 'Administrador')
+    .eq('estado', 'Activo');
+
+  // Crear notificación para cada administrador
+  if (administradores && administradores.length > 0) {
+    const notificaciones = administradores.map(admin => ({
+      usuario_id: admin.id,
+      titulo: 'Nuevo pedido en Store',
+      mensaje: `${nombreUsuario} realizó un nuevo pedido en Store.`,
+      modulo: 'Store',
+      accion_url: `/store/pedidos/${pedido.id}`,
+      accion_texto: 'Ver pedido',
+      leida: false
+    }));
+
+    const { error: notificacionesError } = await supabase
+      .from('notificaciones')
+      .insert(notificaciones);
+
+    if (notificacionesError) {
+      console.error('Error creando notificaciones:', notificacionesError);
+    }
+  }
+
   return pedido as StorePedido;
 }
 
