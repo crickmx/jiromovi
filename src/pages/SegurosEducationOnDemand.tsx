@@ -511,17 +511,20 @@ export function SegurosEducationOnDemand() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const showToast = (message: string, type: 'success' | 'error') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
     const toast = document.createElement('div');
-    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 ${
-      type === 'success' ? 'bg-emerald-500' : 'bg-red-500'
-    }`;
+    const bgColor = type === 'success'
+      ? 'bg-emerald-500'
+      : type === 'error'
+      ? 'bg-red-500'
+      : 'bg-amber-500';
+    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 max-w-md ${bgColor}`;
     toast.textContent = message;
     document.body.appendChild(toast);
 
     setTimeout(() => {
       toast.remove();
-    }, 3000);
+    }, type === 'warning' ? 5000 : 3000);
   };
 
   if (loading) {
@@ -917,15 +920,20 @@ export function SegurosEducationOnDemand() {
                 <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
                   <input
                     type="file"
-                    accept="video/mp4,video/webm,video/quicktime"
+                    accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
                     onChange={(e) => {
                       const file = e.target.files?.[0] || null;
                       if (file) {
-                        const maxSize = 2 * 1024 * 1024 * 1024;
+                        const maxSize = 5 * 1024 * 1024 * 1024; // 5GB
                         if (file.size > maxSize) {
-                          showToast('El archivo supera el límite de 2GB', 'error');
+                          showToast('El archivo supera el límite de 5GB. Por favor, comprime el video o divide el contenido en lecciones más cortas.', 'error');
                           e.target.value = '';
                           return;
+                        }
+                        // Advertencia para archivos muy grandes
+                        if (file.size > 1024 * 1024 * 1024) { // > 1GB
+                          const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
+                          showToast(`Archivo de ${sizeGB}GB detectado. La subida puede tomar varios minutos. Por favor no cierres esta ventana.`, 'warning');
                         }
                       }
                       setVideoFile(file);
@@ -937,18 +945,21 @@ export function SegurosEducationOnDemand() {
                     <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
                     {videoFile ? (
                       <>
-                        <p className="text-sm text-neutral-900 font-medium">{videoFile.name}</p>
+                        <p className="text-sm text-neutral-900 font-medium truncate max-w-md">{videoFile.name}</p>
                         <p className="text-xs text-neutral-500 mt-1">
-                          {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+                          {videoFile.size >= 1024 * 1024 * 1024
+                            ? `${(videoFile.size / (1024 * 1024 * 1024)).toFixed(2)} GB`
+                            : `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`
+                          }
                         </p>
                       </>
                     ) : (
                       <>
                         <p className="text-sm text-neutral-600">
-                          {editingLesson ? 'Click para cambiar el video (MP4, WebM, MOV)' : 'Click para subir video (MP4, WebM, MOV)'}
+                          {editingLesson ? 'Click para cambiar el video (MP4, WebM, MOV, AVI)' : 'Click para subir video (MP4, WebM, MOV, AVI)'}
                         </p>
                         <p className="text-xs text-neutral-500 mt-1">
-                          Tamaño máximo: 2GB
+                          Tamaño máximo: 5GB
                         </p>
                       </>
                     )}
@@ -986,8 +997,11 @@ export function SegurosEducationOnDemand() {
                       </span>
                       {videoFile && (
                         <span className="text-xs text-primary-600 mt-1">
-                          {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
-                          {videoFile.size > 50 * 1024 * 1024 && ' - Esto puede tomar varios minutos'}
+                          {videoFile.size >= 1024 * 1024 * 1024
+                            ? `${(videoFile.size / (1024 * 1024 * 1024)).toFixed(2)} GB`
+                            : `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`
+                          }
+                          {videoFile.size > 500 * 1024 * 1024 && ' - Esto puede tomar varios minutos'}
                         </span>
                       )}
                     </div>
@@ -999,6 +1013,11 @@ export function SegurosEducationOnDemand() {
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
+                  {videoFile && videoFile.size > 1024 * 1024 * 1024 && (
+                    <p className="text-xs text-primary-700 mt-2">
+                      No cierres esta ventana hasta que termine la subida
+                    </p>
+                  )}
                 </div>
               )}
             </div>
