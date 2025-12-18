@@ -124,11 +124,13 @@ export default function ComisionesPrepararLote() {
 
       if (error) throw error;
 
+      const normalizedName = vendorKey.replace('name:', '');
+
       const { error: mappingError } = await supabase
         .from('vendor_mappings')
         .upsert({
-          source_type: 'vendor_name',
-          source_value: vendorKey.replace('name:', ''),
+          source_type: 'name',
+          source_value: normalizedName,
           movi_user_id: moviUserId,
           status: 'active',
           created_by: usuario?.id,
@@ -138,7 +140,8 @@ export default function ComisionesPrepararLote() {
         });
 
       if (mappingError) {
-        console.warn('Error creating persistent mapping:', mappingError);
+        console.error('Error creating persistent mapping:', mappingError);
+        throw mappingError;
       }
 
       await supabase.rpc('recalculate_staging_session_counters', {
