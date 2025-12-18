@@ -68,10 +68,10 @@ Deno.serve(async (req: Request) => {
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '50');
 
-    // 1. OBTENER ÚLTIMO BATCH EXITOSO
+    // 1. OBTENER ÚLTIMO BATCH EXITOSO (O USAR TODOS LOS REGISTROS)
     console.log('[get-my-production] Fetching latest successful batch...');
 
-    const { data: latestBatch, error: batchError } = await supabase
+    const { data: latestBatch } = await supabase
       .from('production_import_batches')
       .select('id, finished_at, rows_inserted, status')
       .eq('status', 'success')
@@ -80,42 +80,14 @@ Deno.serve(async (req: Request) => {
       .limit(1)
       .maybeSingle();
 
-    if (batchError) {
-      console.error('[get-my-production] Error fetching batch:', batchError);
-    }
+    // Si no hay batch con visible_to_agents, trabajar sin filtro de batch
+    const useBatchFilter = !!latestBatch;
 
-    // Si no hay batch exitoso, retornar mensaje informativo
-    if (!latestBatch) {
-      console.log('[get-my-production] No successful batch found');
-      return new Response(
-        JSON.stringify({
-          success: true,
-          vendor_nombre: null,
-          records: [],
-          pagination: { page, limit, total: 0, totalPages: 0 },
-          kpis: {
-            total_produccion: 0,
-            total_documentos: 0,
-            aseguradora_top: null,
-            ramo_top: null,
-          },
-          charts: {
-            produccion_por_ramo: [],
-            produccion_por_aseguradora: [],
-            evolucion_temporal: [],
-          },
-          fecha_actualizacion: null,
-          batch_info: null,
-          message: 'Aún no hay datos de producción disponibles. Por favor, contacta al administrador para sincronizar los datos.',
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+    if (latestBatch) {
+      console.log('[get-my-production] Latest batch found:', latestBatch.id, 'finished at:', latestBatch.finished_at);
+    } else {
+      console.log('[get-my-production] No batch with visible_to_agents=true, using all production records');
     }
-
-    console.log('[get-my-production] Latest batch found:', latestBatch.id, 'finished at:', latestBatch.finished_at);
 
     // 2. BUSCAR VENDEDOR ASOCIADO AL USUARIO
     let vendorName: string | null = null;
@@ -145,10 +117,15 @@ Deno.serve(async (req: Request) => {
 
         // Intentar cada mapping hasta encontrar registros
         for (const mapping of mappings) {
-          const { data: productionRecord } = await supabase
+          let recordQuery = supabase
             .from('production_records')
-            .select('agente_nombre')
-            .eq('batch_id', latestBatch.id)
+            .select('agente_nombre');
+
+          if (useBatchFilter) {
+            recordQuery = recordQuery.eq('batch_id', latestBatch!.id);
+          }
+
+          const { data: productionRecord } = await recordQuery
             .ilike('agente_nombre', `%${mapping.source_value}%`)
             .limit(1)
             .maybeSingle();
@@ -172,10 +149,15 @@ Deno.serve(async (req: Request) => {
 
       if (usuarioData?.nombre_completo) {
         // Intentar búsqueda directa
-        const { data: directMatch } = await supabase
+        let directQuery = supabase
           .from('production_records')
-          .select('agente_nombre')
-          .eq('batch_id', latestBatch.id)
+          .select('agente_nombre');
+
+        if (useBatchFilter) {
+          directQuery = directQuery.eq('batch_id', latestBatch!.id);
+        }
+
+        const { data: directMatch } = await directQuery
           .ilike('agente_nombre', `%${usuarioData.nombre_completo}%`)
           .limit(1)
           .maybeSingle();
@@ -192,10 +174,15 @@ Deno.serve(async (req: Request) => {
             const primerNombre = nombreParts[0];
             const apellido = nombreParts[nombreParts.length - 1];
 
-            const { data: partialMatch } = await supabase
+            let partialQuery = supabase
               .from('production_records')
-              .select('agente_nombre')
-              .eq('batch_id', latestBatch.id)
+              .select('agente_nombre');
+
+            if (useBatchFilter) {
+              partialQuery = partialQuery.eq('batch_id', latestBatch!.id);
+            }
+
+            const { data: partialMatch } = await partialQuery
               .ilike('agente_nombre', `%${primerNombre}%${apellido}%`)
               .limit(1)
               .maybeSingle();
@@ -229,12 +216,12 @@ Deno.serve(async (req: Request) => {
             produccion_por_aseguradora: [],
             evolucion_temporal: [],
           },
-          fecha_actualizacion: latestBatch.finished_at,
-          batch_info: {
+          fecha_actualizacion: latestBatch?.finished_at || null,
+          batch_info: latestBatch ? {
             batch_id: latestBatch.id,
             finished_at: latestBatch.finished_at,
             total_records: latestBatch.rows_inserted,
-          },
+          } : null,
           message: 'Tu producción está pendiente de asignación. Contacta al administrador para asociar tu usuario con un vendedor.',
         }),
         {
@@ -246,13 +233,15 @@ Deno.serve(async (req: Request) => {
 
     console.log('[get-my-production] Vendedor encontrado:', vendorName);
 
-    // 3. CONSULTAR REGISTROS DEL BATCH FILTRADOS POR VENDEDOR
+    // 3. CONSULTAR REGISTROS FILTRADOS POR VENDEDOR
     let query = supabase
       .from('production_records')
       .select('*', { count: 'exact' });
 
-    // CRÍTICO: Filtrar solo registros del último batch exitoso
-    query = query.eq('batch_id', latestBatch.id);
+    // Filtrar solo registros del último batch exitoso (si existe)
+    if (useBatchFilter) {
+      query = query.eq('batch_id', latestBatch!.id);
+    }
 
     // Filtrar por nombre de vendedor
     query = query.ilike('agente_nombre', `%${vendorName}%`);
@@ -372,15 +361,15 @@ Deno.serve(async (req: Request) => {
           produccion_por_aseguradora: produccionPorAseguradora,
           evolucion_temporal: evolucionTemporal,
         },
-        fecha_actualizacion: latestBatch.finished_at,
-        batch_info: {
+        fecha_actualizacion: latestBatch?.finished_at || new Date().toISOString(),
+        batch_info: latestBatch ? {
           batch_id: latestBatch.id,
           finished_at: latestBatch.finished_at,
           total_records: latestBatch.rows_inserted,
-        },
+        } : null,
         performance: {
           duration_ms: duration,
-          data_source: 'production_records_db_batch',
+          data_source: useBatchFilter ? 'production_records_db_batch' : 'production_records_db_all',
           total_records_found: totalFiltered || 0,
         },
       }),
