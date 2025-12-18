@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { TrendingUp, FileText, Building, Download, AlertCircle, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { TrendingUp, FileText, Building, Download, AlertCircle, ChevronDown, ChevronUp, Search, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
@@ -49,10 +49,12 @@ interface ChartData {
 export default function MiProduccion() {
   const { usuario } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [vendorName, setVendorName] = useState<string | null>(null);
   const [records, setRecords] = useState<ProductionRecord[]>([]);
   const [allRecordsForExport, setAllRecordsForExport] = useState<ProductionRecord[]>([]);
   const [fechaActualizacion, setFechaActualizacion] = useState<string | null>(null);
+  const [batchInfo, setBatchInfo] = useState<any>(null);
   const [kpis, setKpis] = useState<KPIs>({
     total_produccion: 0,
     total_documentos: 0,
@@ -126,6 +128,7 @@ export default function MiProduccion() {
         setTotalPages(result.pagination?.totalPages || 0);
         setMessage(result.message || null);
         setFechaActualizacion(result.fecha_actualizacion || null);
+        setBatchInfo(result.batch_info || null);
 
         if (currentPage === 1) {
           const allRecordsParams = new URLSearchParams({
@@ -160,7 +163,19 @@ export default function MiProduccion() {
 
     } catch (error: any) {
       console.error('[MiProduccion] Error:', error);
-      setMessage(`Error al cargar tu producción: ${error.message}. Por favor, asegúrate de que tu usuario esté asociado a un vendedor en Configuración de Producción.`);
+
+      // Determinar el mensaje de error apropiado
+      let errorMessage = 'Error al cargar tu producción.';
+
+      if (error.message?.includes('HTTP 500') || error.message?.includes('HTTP 503')) {
+        errorMessage = 'No se pudo actualizar la información en este momento. Mostrando última versión disponible.';
+      } else if (error.message?.includes('asociado')) {
+        errorMessage = 'Tu producción está pendiente de asignación. Contacta al administrador.';
+      } else {
+        errorMessage = `Error: ${error.message}`;
+      }
+
+      setMessage(errorMessage);
       setRecords([]);
       setKpis({
         total_produccion: 0,
@@ -240,6 +255,39 @@ export default function MiProduccion() {
     XLSX.writeFile(wb, filename);
   };
 
+  const handleSyncProduction = async () => {
+    if (syncing) return;
+
+    setSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-from-sheets`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMessage(`Sincronización completada: ${result.rows_inserted} registros insertados`);
+        // Recargar datos
+        await loadMyProduction();
+      } else {
+        setMessage(`Error en sincronización: ${result.error || 'Error desconocido'}`);
+      }
+    } catch (error: any) {
+      console.error('[MiProduccion] Error syncing:', error);
+      setMessage(`Error al sincronizar: ${error.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const formatCurrency = (value: number) =>
     `$${value.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
@@ -275,17 +323,36 @@ export default function MiProduccion() {
     <div className="space-y-6">
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
-            Mi Producción
-          </h1>
-          <p className="text-neutral-600">
-            Resumen de tu producción como <span className="font-semibold text-primary-600">{vendorName}</span>
-          </p>
-          {fechaActualizacion && (
-            <p className="text-sm text-neutral-500 mt-2">
-              Última actualización: <span className="font-medium">{new Date(fechaActualizacion).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-            </p>
-          )}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
+                Mi Producción
+              </h1>
+              <p className="text-neutral-600">
+                Resumen de tu producción como <span className="font-semibold text-primary-600">{vendorName}</span>
+              </p>
+              {fechaActualizacion && (
+                <p className="text-sm text-neutral-500 mt-2">
+                  Última actualización: <span className="font-medium">{new Date(fechaActualizacion).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                </p>
+              )}
+            </div>
+
+            {(usuario?.rol === 'admin' || usuario?.rol === 'gerente') && (
+              <button
+                onClick={handleSyncProduction}
+                disabled={syncing}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  syncing
+                    ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                <span>{syncing ? 'Sincronizando...' : 'Recargar información'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {message && (

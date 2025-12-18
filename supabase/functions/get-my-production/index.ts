@@ -6,63 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  
-  result.push(current.trim());
-  return result;
-}
-
-function parseCSV(csvText: string): any[] {
-  const lines = csvText.split('\n').filter(line => line.trim());
-  if (lines.length === 0) return [];
-  
-  const headers = parseCSVLine(lines[0]);
-  const records: any[] = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseCSVLine(lines[i]);
-    const record: any = {};
-    
-    headers.forEach((header, index) => {
-      record[header] = values[index] || '';
-    });
-    
-    records.push(record);
-  }
-  
-  return records;
-}
-
-function parseMoneyValue(value: string): number {
-  if (!value) return 0;
-  const str = value.toString().replace(/[$,]/g, '').trim();
-  const num = parseFloat(str);
-  return isNaN(num) ? 0 : num;
-}
-
-function parsePercentValue(value: string): number | null {
-  if (!value) return null;
-  const str = value.toString().replace(/%/g, '').trim();
-  const num = parseFloat(str);
-  return isNaN(num) ? null : num;
-}
-
 function normalizeVendorName(name: string): string {
   if (!name) return '';
 
@@ -81,105 +24,6 @@ function normalizeVendorName(name: string): string {
   normalized = normalized.replace(/\s+/g, ' ').trim();
 
   return normalized;
-}
-
-function parseDateDMY(dateStr: string): Date | null {
-  if (!dateStr) return null;
-
-  const parts = dateStr.trim().split('/');
-  if (parts.length !== 3) return null;
-
-  const day = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10);
-  const year = parseInt(parts[2], 10);
-
-  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-  if (day < 1 || day > 31) return null;
-  if (month < 1 || month > 12) return null;
-
-  const fecha = new Date(year, month - 1, day);
-
-  if (isNaN(fecha.getTime())) return null;
-
-  return fecha;
-}
-
-function transformRecord(row: any): any | null {
-  try {
-    const fechaValue = row['FechaSimp'] || row['Fecha'] || row['fechasimp'] || row['fecha'];
-    if (!fechaValue) return null;
-
-    let fecha: Date | null = null;
-
-    if (typeof fechaValue === 'string') {
-      fecha = parseDateDMY(fechaValue);
-
-      if (!fecha) {
-        fecha = new Date(fechaValue);
-      }
-    } else if (fechaValue instanceof Date) {
-      fecha = fechaValue;
-    } else if (typeof fechaValue === 'number') {
-      const excelEpoch = new Date(1899, 11, 30);
-      fecha = new Date(excelEpoch.getTime() + fechaValue * 86400000);
-    }
-
-    if (!fecha || isNaN(fecha.getTime())) return null;
-
-    const anio = fecha.getFullYear();
-    const mes = fecha.getMonth() + 1;
-    const dia = fecha.getDate();
-    const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
-    const periodoAnio = anio;
-
-    // Usar ÚNICAMENTE NombreCompleto para el nombre del cliente
-    const clienteNombre = (row['NombreCompleto'] || row['nombrecompleto'] || row['nombre completo'] || '').toString().trim();
-    const gerenciaNombre = (row['GerenciaNombre'] || row['gerencianombre'] || '').toString().trim();
-    const regionNombre = (row['Dirección Regional'] || row['direccion regional'] || row['region'] || '').toString().trim();
-
-    if (!clienteNombre) return null;
-
-    const importePesos = parseMoneyValue(row['IMPORTE PESOS'] || row['importe pesos'] || row['importe'] || '0');
-    const primaConvenio = parseMoneyValue(row['Prima de convenio'] || row['prima de convenio'] || row['prima convenio'] || '0');
-    const primaPonderada = parseMoneyValue(row['Prima Ponderada'] || row['prima ponderada'] || '0');
-    const bono = parseMoneyValue(row['Bono'] || row['bono'] || '0');
-    const porcentajeBono = parsePercentValue(row['% BONO'] || row['porcentaje bono'] || row['porciento bono'] || '');
-
-    const convenioStr = (row['CONVENIO'] || row['convenio'] || '').toString().toLowerCase().trim();
-    const convenioFlag = convenioStr === 'si' || convenioStr === 'sí' || convenioStr === 'yes' || primaConvenio > 0;
-
-    const fechaStr = fecha.toISOString().split('T')[0];
-    const agenteNombre = (row['VendNombre'] || row['vendnombre'] || row['vendedor'] || '').toString().trim();
-    const aseguradoraNombre = (row['Nombre Compañía'] || row['nombre compañia'] || row['nombre compania'] || row['compañia'] || '').toString().trim();
-    const ramoNombre = (row['Sub Ramo'] || row['sub ramo'] || row['subramo'] || row['RamosNombre'] || row['ramos'] || '').toString().trim();
-    const concepto = (row['Concepto'] || row['concepto'] || '').toString().trim() || null;
-
-    return {
-      fecha: fechaStr,
-      anio,
-      mes,
-      dia,
-      periodo_mes: periodoMes,
-      periodo_anio: periodoAnio,
-      desp_nombre_raw: clienteNombre,
-      gerencia_nombre_raw: gerenciaNombre || clienteNombre,
-      region_raw: regionNombre || null,
-      agente_nombre: agenteNombre,
-      aseguradora_nombre: aseguradoraNombre,
-      ramo_nombre: ramoNombre,
-      subramo_nombre: null,
-      concepto: concepto,
-      importe_pesos: importePesos,
-      prima_convenio: primaConvenio,
-      prima_ponderada: primaPonderada,
-      bono: bono,
-      convenio_flag: convenioFlag,
-      porcentaje_bono: porcentajeBono
-    };
-  } catch (error) {
-    console.error('Error transforming record:', error);
-    return null;
-  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -224,93 +68,25 @@ Deno.serve(async (req: Request) => {
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '50');
 
-    // Buscar el vendedor asociado al usuario
-    // ESTRATEGIA DE BÚSQUEDA CON FALLBACKS:
-    // 1. Buscar en production_vendors_cache (más rápido)
-    // 2. Buscar en vendor_mappings directamente
-    // 3. Buscar por coincidencia de nombre en usuarios
+    // 1. OBTENER ÚLTIMO BATCH EXITOSO
+    console.log('[get-my-production] Fetching latest successful batch...');
 
-    let vendorName: string | null = null;
-
-    console.log('[get-my-production] Buscando vendedor para usuario:', user.id);
-
-    // FALLBACK 1: Buscar en cache
-    const { data: vendorCache, error: vendorError } = await supabase
-      .from('production_vendors_cache')
-      .select('vendor_nombre')
-      .eq('movi_user_id', user.id)
+    const { data: latestBatch, error: batchError } = await supabase
+      .from('production_import_batches')
+      .select('id, finished_at, rows_inserted, status')
+      .eq('status', 'success')
+      .eq('visible_to_agents', true)
+      .order('finished_at', { ascending: false, nullsFirst: false })
+      .limit(1)
       .maybeSingle();
 
-    if (vendorError) {
-      console.error('[get-my-production] Error buscando en cache:', vendorError);
+    if (batchError) {
+      console.error('[get-my-production] Error fetching batch:', batchError);
     }
 
-    if (vendorCache?.vendor_nombre) {
-      vendorName = vendorCache.vendor_nombre;
-      console.log('[get-my-production] Vendedor encontrado en cache:', vendorName);
-    }
-
-    // FALLBACK 2: Buscar en vendor_mappings
-    if (!vendorName) {
-      console.log('[get-my-production] No encontrado en cache, buscando en vendor_mappings...');
-
-      // Primero obtener el nombre del usuario
-      const { data: usuarioData } = await supabase
-        .from('usuarios')
-        .select('nombre_completo')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (usuarioData?.nombre_completo) {
-        const nombreNormalizado = normalizeVendorName(usuarioData.nombre_completo);
-        console.log('[get-my-production] Nombre usuario normalizado:', nombreNormalizado);
-
-        // Buscar mapping
-        const { data: mapping } = await supabase
-          .from('vendor_mappings')
-          .select('source_value')
-          .eq('movi_user_id', user.id)
-          .eq('source_type', 'name')
-          .eq('status', 'active')
-          .maybeSingle();
-
-        if (mapping?.source_value) {
-          // Buscar en production_records el nombre original del vendedor
-          const { data: productionRecord } = await supabase
-            .from('production_records')
-            .select('agente_nombre')
-            .ilike('agente_nombre', `%${mapping.source_value}%`)
-            .limit(1)
-            .maybeSingle();
-
-          if (productionRecord?.agente_nombre) {
-            vendorName = productionRecord.agente_nombre;
-            console.log('[get-my-production] Vendedor encontrado via mapping:', vendorName);
-          }
-        }
-
-        // FALLBACK 3: Buscar por coincidencia directa de nombre
-        if (!vendorName) {
-          console.log('[get-my-production] No encontrado en mappings, buscando por nombre directo...');
-
-          const { data: directMatch } = await supabase
-            .from('production_records')
-            .select('agente_nombre')
-            .ilike('agente_nombre', `%${usuarioData.nombre_completo}%`)
-            .limit(1)
-            .maybeSingle();
-
-          if (directMatch?.agente_nombre) {
-            vendorName = directMatch.agente_nombre;
-            console.log('[get-my-production] Vendedor encontrado por nombre directo:', vendorName);
-          }
-        }
-      }
-    }
-
-    // Si después de todos los fallbacks no se encontró vendedor
-    if (!vendorName) {
-      console.log('[get-my-production] No se encontró vendedor para el usuario');
+    // Si no hay batch exitoso, retornar mensaje informativo
+    if (!latestBatch) {
+      console.log('[get-my-production] No successful batch found');
       return new Response(
         JSON.stringify({
           success: true,
@@ -329,7 +105,8 @@ Deno.serve(async (req: Request) => {
             evolucion_temporal: [],
           },
           fecha_actualizacion: null,
-          message: 'Aún no tienes un vendedor asignado. Contacta a administración para que asocien tu nombre del Excel con tu usuario.',
+          batch_info: null,
+          message: 'Aún no hay datos de producción disponibles. Por favor, contacta al administrador para sincronizar los datos.',
         }),
         {
           status: 200,
@@ -338,22 +115,122 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const vendorNameNormalized = normalizeVendorName(vendorName);
-    console.log('[get-my-production] Vendedor encontrado:', vendorName, '(normalizado:', vendorNameNormalized + ')');
+    console.log('[get-my-production] Latest batch found:', latestBatch.id, 'finished at:', latestBatch.finished_at);
 
-    // NUEVO: Consultar directamente desde production_records en lugar de Google Sheets
-    console.log('[get-my-production] Querying production_records from database...');
+    // 2. BUSCAR VENDEDOR ASOCIADO AL USUARIO
+    let vendorName: string | null = null;
 
-    // Construir query con filtros
+    // FALLBACK 1: Buscar en cache
+    const { data: vendorCache } = await supabase
+      .from('production_vendors_cache')
+      .select('vendor_nombre')
+      .eq('movi_user_id', user.id)
+      .maybeSingle();
+
+    if (vendorCache?.vendor_nombre) {
+      vendorName = vendorCache.vendor_nombre;
+      console.log('[get-my-production] Vendedor encontrado en cache:', vendorName);
+    }
+
+    // FALLBACK 2: Buscar en vendor_mappings
+    if (!vendorName) {
+      const { data: usuarioData } = await supabase
+        .from('usuarios')
+        .select('nombre_completo')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (usuarioData?.nombre_completo) {
+        const { data: mapping } = await supabase
+          .from('vendor_mappings')
+          .select('source_value')
+          .eq('movi_user_id', user.id)
+          .eq('source_type', 'name')
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (mapping?.source_value) {
+          const { data: productionRecord } = await supabase
+            .from('production_records')
+            .select('agente_nombre')
+            .eq('batch_id', latestBatch.id)
+            .ilike('agente_nombre', `%${mapping.source_value}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (productionRecord?.agente_nombre) {
+            vendorName = productionRecord.agente_nombre;
+            console.log('[get-my-production] Vendedor encontrado via mapping:', vendorName);
+          }
+        }
+
+        // FALLBACK 3: Buscar por coincidencia directa de nombre
+        if (!vendorName) {
+          const { data: directMatch } = await supabase
+            .from('production_records')
+            .select('agente_nombre')
+            .eq('batch_id', latestBatch.id)
+            .ilike('agente_nombre', `%${usuarioData.nombre_completo}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (directMatch?.agente_nombre) {
+            vendorName = directMatch.agente_nombre;
+            console.log('[get-my-production] Vendedor encontrado por nombre directo:', vendorName);
+          }
+        }
+      }
+    }
+
+    // Si no se encontró vendedor, retornar mensaje específico
+    if (!vendorName) {
+      console.log('[get-my-production] No vendor found for user');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          vendor_nombre: null,
+          records: [],
+          pagination: { page, limit, total: 0, totalPages: 0 },
+          kpis: {
+            total_produccion: 0,
+            total_documentos: 0,
+            aseguradora_top: null,
+            ramo_top: null,
+          },
+          charts: {
+            produccion_por_ramo: [],
+            produccion_por_aseguradora: [],
+            evolucion_temporal: [],
+          },
+          fecha_actualizacion: latestBatch.finished_at,
+          batch_info: {
+            batch_id: latestBatch.id,
+            finished_at: latestBatch.finished_at,
+            total_records: latestBatch.rows_inserted,
+          },
+          message: 'Tu producción está pendiente de asignación. Contacta al administrador para asociar tu usuario con un vendedor.',
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log('[get-my-production] Vendedor encontrado:', vendorName);
+
+    // 3. CONSULTAR REGISTROS DEL BATCH FILTRADOS POR VENDEDOR
     let query = supabase
       .from('production_records')
       .select('*', { count: 'exact' });
 
-    // Filtrar por nombre de vendedor (normalizado)
-    // Usamos ilike con wildcards para match flexible
+    // CRÍTICO: Filtrar solo registros del último batch exitoso
+    query = query.eq('batch_id', latestBatch.id);
+
+    // Filtrar por nombre de vendedor
     query = query.ilike('agente_nombre', `%${vendorName}%`);
 
-    // Aplicar filtros de fecha
+    // Aplicar filtros adicionales
     if (fechaDesde) {
       query = query.gte('fecha', fechaDesde);
     }
@@ -362,12 +239,10 @@ Deno.serve(async (req: Request) => {
       query = query.lte('fecha', fechaHasta);
     }
 
-    // Filtrar por ramos
     if (ramos.length > 0) {
       query = query.in('ramo_nombre', ramos);
     }
 
-    // Filtrar por aseguradoras
     if (aseguradoras.length > 0) {
       query = query.in('aseguradora_nombre', aseguradoras);
     }
@@ -375,16 +250,17 @@ Deno.serve(async (req: Request) => {
     // Ordenar por fecha descendente
     query = query.order('fecha', { ascending: false });
 
-    // Ejecutar query para count y KPIs (sin paginación)
+    // Ejecutar query
     const { data: allRecordsForKPIs, error: recordsError, count: totalFiltered } = await query;
 
     if (recordsError) {
-      throw new Error(`Error consultando production_records: ${recordsError.message}`);
+      console.error('[get-my-production] Error querying records:', recordsError);
+      throw new Error(`Error consultando registros: ${recordsError.message}`);
     }
 
     console.log('[get-my-production] Found', totalFiltered, 'records for vendor:', vendorName);
 
-    // Convertir valores numéricos de string a number
+    // Convertir valores numéricos
     const allRecords = (allRecordsForKPIs || []).map((r: any) => ({
       ...r,
       importe_pesos: parseFloat(r.importe_pesos) || 0,
@@ -394,7 +270,7 @@ Deno.serve(async (req: Request) => {
       porcentaje_bono: r.porcentaje_bono ? parseFloat(r.porcentaje_bono) : null,
     }));
 
-    // Calcular KPIs
+    // 4. CALCULAR KPIs
     const totalProduccion = allRecords.reduce((sum: number, r: any) =>
       sum + (r.importe_pesos > 0 ? r.importe_pesos : r.prima_convenio), 0
     );
@@ -417,14 +293,14 @@ Deno.serve(async (req: Request) => {
     const ramoTop = Array.from(ramoSums.entries())
       .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
-    // Aplicar paginación
+    // 5. APLICAR PAGINACIÓN
     const from = (page - 1) * limit;
     const to = from + limit;
     const paginatedRecords = allRecords.slice(from, to);
 
     const duration = Date.now() - startTime;
 
-    // Calcular datos para gráficas
+    // 6. CALCULAR DATOS PARA GRÁFICAS
     const produccionPorRamo = Array.from(ramoSums.entries())
       .map(([ramo, total]) => ({ ramo, total }))
       .sort((a, b) => b.total - a.total)
@@ -446,16 +322,6 @@ Deno.serve(async (req: Request) => {
     const evolucionTemporal = Array.from(mesSums.entries())
       .map(([mes, total]) => ({ mes, total }))
       .sort((a, b) => a.mes.localeCompare(b.mes));
-
-    // Obtener fecha más reciente de production_records
-    const { data: fechaData } = await supabase
-      .from('production_records')
-      .select('fecha')
-      .order('fecha', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const fechaActualizacion = fechaData?.fecha || null;
 
     return new Response(
       JSON.stringify({
@@ -479,10 +345,15 @@ Deno.serve(async (req: Request) => {
           produccion_por_aseguradora: produccionPorAseguradora,
           evolucion_temporal: evolucionTemporal,
         },
-        fecha_actualizacion: fechaActualizacion,
+        fecha_actualizacion: latestBatch.finished_at,
+        batch_info: {
+          batch_id: latestBatch.id,
+          finished_at: latestBatch.finished_at,
+          total_records: latestBatch.rows_inserted,
+        },
         performance: {
           duration_ms: duration,
-          data_source: 'production_records_db',
+          data_source: 'production_records_db_batch',
           total_records_found: totalFiltered || 0,
         },
       }),
@@ -499,6 +370,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: false,
         error: error.message || 'Error desconocido',
+        error_type: 'internal_error',
         stack: error.stack,
       }),
       {
