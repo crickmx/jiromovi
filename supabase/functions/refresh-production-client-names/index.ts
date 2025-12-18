@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!userData || userData.rol !== 'admin') {
+    if (!userData || userData.rol !== 'Administrador') {
       return new Response(
         JSON.stringify({ success: false, error: 'Solo los administradores pueden ejecutar esta acción. Tu rol es: ' + (userData?.rol || 'desconocido') }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
