@@ -63,6 +63,26 @@ function parsePercentValue(value: string): number | null {
   return isNaN(num) ? null : num;
 }
 
+function normalizeVendorName(name: string): string {
+  if (!name) return '';
+
+  let normalized = name.toLowerCase().trim();
+
+  // Remover acentos
+  normalized = normalized
+    .replace(/[áàäâ]/g, 'a')
+    .replace(/[éèëê]/g, 'e')
+    .replace(/[íìïî]/g, 'i')
+    .replace(/[óòöô]/g, 'o')
+    .replace(/[úùüû]/g, 'u')
+    .replace(/[ñ]/g, 'n');
+
+  // Normalizar espacios
+  normalized = normalized.replace(/\s+/g, ' ').trim();
+
+  return normalized;
+}
+
 function parseDateDMY(dateStr: string): Date | null {
   if (!dateStr) return null;
 
@@ -141,8 +161,8 @@ function transformRecord(row: any): any | null {
       dia,
       periodo_mes: periodoMes,
       periodo_anio: periodoAnio,
-      desp_nombre_raw: clienteNombre, // Ahora usa NombreCompleto
-      gerencia_nombre_raw: gerenciaNombre || clienteNombre, // Fallback a clienteNombre
+      desp_nombre_raw: clienteNombre,
+      gerencia_nombre_raw: gerenciaNombre || clienteNombre,
       region_raw: regionNombre || null,
       agente_nombre: agenteNombre,
       aseguradora_nombre: aseguradoraNombre,
@@ -240,7 +260,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const vendorName = vendorCache.vendor_nombre;
-    console.log('[get-my-production] Vendedor encontrado:', vendorName);
+    const vendorNameNormalized = normalizeVendorName(vendorName);
+    console.log('[get-my-production] Vendedor encontrado:', vendorName, '(normalizado:', vendorNameNormalized + ')');
 
     // Obtener configuración de Google Sheets
     const { data: config, error: configError } = await supabase
@@ -260,7 +281,7 @@ Deno.serve(async (req: Request) => {
     console.log('[get-my-production] Fetching data from Google Sheets...');
     const csvUrl = `https://docs.google.com/spreadsheets/d/${config.sheet_id}/export?format=csv&gid=0`;
     const csvResponse = await fetch(csvUrl);
-    
+
     if (!csvResponse.ok) {
       throw new Error(`Error al obtener datos de Google Sheets: ${csvResponse.status}`);
     }
@@ -269,12 +290,15 @@ Deno.serve(async (req: Request) => {
     const rawRecords = parseCSV(csvText);
     console.log('[get-my-production] Parsed', rawRecords.length, 'rows');
 
-    // Transformar y filtrar por vendedor
+    // Transformar y filtrar por vendedor (usando comparación normalizada)
     let allRecords: any[] = [];
     for (const row of rawRecords) {
       const transformed = transformRecord(row);
-      if (transformed && transformed.agente_nombre === vendorName) {
-        allRecords.push(transformed);
+      if (transformed) {
+        const agenteNormalizado = normalizeVendorName(transformed.agente_nombre);
+        if (agenteNormalizado === vendorNameNormalized) {
+          allRecords.push(transformed);
+        }
       }
     }
 
