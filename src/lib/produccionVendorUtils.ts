@@ -201,60 +201,81 @@ export async function groupProductionByVendor(
 }
 
 /**
- * Obtener lista de vendedores únicos para configuración
+ * Obtener lista de vendedores únicos para configuración (desde cache)
  */
 export async function getUniqueVendorsFromProduction(): Promise<VendorMappingInfo[]> {
-  // Obtener registros de producción
+  console.log('[getUniqueVendorsFromProduction] Obteniendo desde cache...');
+
+  // Obtener directamente desde el cache
+  const { data: cachedVendors, error } = await supabase
+    .from('production_vendors_cache')
+    .select('*')
+    .order('vendor_nombre');
+
+  if (error) {
+    console.error('[getUniqueVendorsFromProduction] Error al obtener cache:', error);
+    throw new Error(`Error al obtener vendedores: ${error.message}`);
+  }
+
+  // Si el cache está vacío, informar al usuario
+  if (!cachedVendors || cachedVendors.length === 0) {
+    console.warn('[getUniqueVendorsFromProduction] Cache vacío, se requiere sincronización');
+    throw new Error('No hay vendedores en cache. Por favor, sincroniza los datos primero.');
+  }
+
+  console.log('[getUniqueVendorsFromProduction] Obtenidos', cachedVendors.length, 'vendedores desde cache');
+
+  // Transformar al formato esperado
+  const vendors: VendorMappingInfo[] = cachedVendors.map(v => ({
+    vendor_nombre: v.vendor_nombre,
+    vendor_nombre_normalized: v.vendor_nombre_normalized,
+    movi_user_id: v.movi_user_id,
+    movi_user_name: v.movi_user_name,
+    oficina_nombre: v.oficina_nombre,
+    mapping_source: (v.mapping_source || 'none') as 'auto' | 'manual' | 'none',
+    total_records: v.total_records || 0,
+  }));
+
+  return vendors;
+}
+
+/**
+ * Sincronizar vendedores desde Google Sheets al cache
+ */
+export async function syncVendorsToCache(): Promise<{
+  success: boolean;
+  synced_count: number;
+  error_count: number;
+  total_vendors: number;
+}> {
+  console.log('[syncVendorsToCache] Iniciando sincronización...');
+
   const { data: { session } } = await supabase.auth.getSession();
-  const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-production-sheets`;
+  const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-vendors-cache`;
 
   const headers = {
     'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
     'Content-Type': 'application/json',
   };
 
-  const response = await fetch(apiUrl, { headers });
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers
+  });
 
   if (!response.ok) {
-    throw new Error('Error al obtener datos de Google Sheets');
+    const errorText = await response.text();
+    throw new Error(`Error al sincronizar: ${response.status} - ${errorText}`);
   }
 
   const result = await response.json();
 
-  if (!result.success || !result.records) {
-    throw new Error('No se recibieron registros del servidor');
+  if (!result.success) {
+    throw new Error(result.error || 'Error desconocido al sincronizar');
   }
 
-  // Obtener vendedores únicos
-  const vendorMap = new Map<string, number>();
-
-  for (const record of result.records) {
-    const vendNombre = record.agente_nombre;
-    if (!vendNombre) continue;
-
-    vendorMap.set(vendNombre, (vendorMap.get(vendNombre) || 0) + 1);
-  }
-
-  // Buscar mapeos para cada vendedor
-  const vendors: VendorMappingInfo[] = [];
-
-  for (const [vendNombre, count] of vendorMap) {
-    const normalized = normalizeVendorName(vendNombre);
-    const mapping = await findVendorMapping(vendNombre);
-
-    vendors.push({
-      vendor_nombre: vendNombre,
-      vendor_nombre_normalized: normalized || '',
-      movi_user_id: mapping.movi_user_id,
-      movi_user_name: mapping.movi_user_name,
-      oficina_nombre: mapping.oficina_nombre,
-      mapping_source: mapping.match_method === 'direct_name' ? 'auto' :
-                      mapping.match_method === 'mapping_name' ? 'manual' : 'none',
-      total_records: count,
-    });
-  }
-
-  return vendors.sort((a, b) => a.vendor_nombre.localeCompare(b.vendor_nombre));
+  console.log('[syncVendorsToCache] Sincronización exitosa:', result);
+  return result;
 }
 
 /**

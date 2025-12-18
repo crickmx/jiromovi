@@ -2,8 +2,8 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Settings, Save, Link as LinkIcon, Check, AlertCircle, Building, Users, UserCheck, UserX, Search } from 'lucide-react';
-import { getUniqueVendorsFromProduction, createOrUpdateVendorMapping, deleteVendorMapping, type VendorMappingInfo } from '../lib/produccionVendorUtils';
+import { Settings, Save, Link as LinkIcon, Check, AlertCircle, Building, Users, UserCheck, UserX, Search, RefreshCw } from 'lucide-react';
+import { getUniqueVendorsFromProduction, syncVendorsToCache, createOrUpdateVendorMapping, deleteVendorMapping, type VendorMappingInfo } from '../lib/produccionVendorUtils';
 import { SearchableUserSelect } from '../components/SearchableUserSelect';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
@@ -50,6 +50,7 @@ export default function ProduccionConfiguracion() {
   // Mapeo de agentes (VendNombre)
   const [vendors, setVendors] = useState<VendorMappingInfo[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(false);
+  const [syncingVendors, setSyncingVendors] = useState(false);
   const [savingVendor, setSavingVendor] = useState<string | null>(null);
   // Estados con persistencia
   const [searchVendor, setSearchVendor] = useState<string>(() => {
@@ -332,6 +333,27 @@ export default function ProduccionConfiguracion() {
       setMessage({ type: 'error', text: 'Error al cargar vendedores: ' + error.message });
     } finally {
       setLoadingVendors(false);
+    }
+  };
+
+  const handleSyncVendors = async () => {
+    setSyncingVendors(true);
+    setMessage({ type: 'info', text: 'Sincronizando vendedores desde Google Sheets...' });
+
+    try {
+      const result = await syncVendorsToCache();
+      setMessage({
+        type: 'success',
+        text: `Sincronización exitosa: ${result.synced_count} vendedores actualizados${result.error_count > 0 ? ` (${result.error_count} errores)` : ''}`
+      });
+
+      // Recargar la lista de vendedores
+      await loadVendors();
+    } catch (error: any) {
+      console.error('Error syncing vendors:', error);
+      setMessage({ type: 'error', text: 'Error al sincronizar vendedores: ' + error.message });
+    } finally {
+      setSyncingVendors(false);
     }
   };
 
@@ -636,25 +658,41 @@ export default function ProduccionConfiguracion() {
 
             <TabsContent value="agents" className="mt-0">
               <div className="space-y-4 sm:space-y-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                   <div>
                     <h2 className="text-base sm:text-lg font-semibold text-neutral-900">Mapeo de Agentes</h2>
                     <p className="text-xs sm:text-sm text-neutral-600">Relaciona VendNombre del Excel con usuarios MOVI</p>
                   </div>
-                  <button
-                    onClick={loadVendors}
-                    disabled={loadingVendors}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                  >
-                    {loadingVendors ? 'Cargando...' : 'Recargar'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSyncVendors}
+                      disabled={syncingVendors || loadingVendors}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      title="Sincronizar desde Google Sheets"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${syncingVendors ? 'animate-spin' : ''}`} />
+                      <span className="hidden sm:inline">{syncingVendors ? 'Sincronizando...' : 'Sincronizar'}</span>
+                    </button>
+                    <button
+                      onClick={loadVendors}
+                      disabled={loadingVendors || syncingVendors}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      title="Recargar desde cache"
+                    >
+                      {loadingVendors ? 'Cargando...' : 'Recargar'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-                  <p className="text-xs sm:text-sm text-blue-800">
+                  <p className="text-xs sm:text-sm text-blue-800 mb-2">
                     Cada VendNombre del Google Sheets puede ser asociado a un usuario de la plataforma MOVI.
                     El sistema intenta hacer la asociación automáticamente por coincidencia de nombre, pero puedes ajustar manualmente.
                     Este mismo mapeo se usa también en el módulo de <strong>Comisiones</strong> para relacionar vendedores del Excel con usuarios.
+                  </p>
+                  <p className="text-xs sm:text-sm text-blue-800 mt-2 pt-2 border-t border-blue-200">
+                    <strong>Sincronizar:</strong> Obtiene la lista actualizada de vendedores desde Google Sheets.
+                    <strong className="ml-2">Recargar:</strong> Actualiza la vista desde el cache local (más rápido).
                   </p>
                 </div>
 
