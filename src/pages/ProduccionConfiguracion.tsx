@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { Settings, Save, Link as LinkIcon, Check, AlertCircle, Building, Users, UserCheck, UserX, Search } from 'lucide-react';
 import { getUniqueVendorsFromProduction, createOrUpdateVendorMapping, deleteVendorMapping, type VendorMappingInfo } from '../lib/produccionVendorUtils';
 import { SearchableUserSelect } from '../components/SearchableUserSelect';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
 interface GoogleSheetsConfig {
   id: string;
@@ -383,7 +384,7 @@ export default function ProduccionConfiguracion() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6">
+    <div className="max-w-6xl mx-auto p-4 sm:p-6">
       <div className="bg-white rounded-2xl sm:rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 py-4">
           <div className="flex items-center gap-3">
@@ -392,14 +393,14 @@ export default function ProduccionConfiguracion() {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-white">Configuración de Producción</h1>
-              <p className="text-xs sm:text-sm text-blue-100">Conecta tu hoja de Google Sheets</p>
+              <p className="text-xs sm:text-sm text-blue-100">Gestiona la conexión y mapeo de datos de producción</p>
             </div>
           </div>
         </div>
 
         <div className="p-4 sm:p-6">
           {message && (
-            <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg flex items-start gap-2 sm:gap-3 ${
+            <div className={`mb-4 p-3 sm:p-4 rounded-lg flex items-start gap-2 sm:gap-3 ${
               message.type === 'success'
                 ? 'bg-green-50 border border-green-200'
                 : 'bg-red-50 border border-red-200'
@@ -423,11 +424,28 @@ export default function ProduccionConfiguracion() {
             </div>
           )}
 
-          <div className="space-y-4 sm:space-y-6">
-            <div>
-              <h2 className="text-base sm:text-lg font-semibold text-neutral-900 mb-3 sm:mb-4">
-                Conexión a Google Sheets
-              </h2>
+          <Tabs defaultValue="config" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsTrigger value="config" className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">Configuración</span>
+              </TabsTrigger>
+              <TabsTrigger value="offices" className="flex items-center gap-2">
+                <Building className="w-4 h-4" />
+                <span className="hidden sm:inline">Mapeo de Oficinas</span>
+              </TabsTrigger>
+              <TabsTrigger value="agents" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Mapeo de Agentes</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="config" className="mt-0">
+              <div className="space-y-4 sm:space-y-6">
+                <div>
+                  <h2 className="text-base sm:text-lg font-semibold text-neutral-900 mb-3 sm:mb-4">
+                    Conexión a Google Sheets
+                  </h2>
               <p className="text-xs sm:text-sm text-neutral-600 mb-3 sm:mb-4">
                 Ingresa el link de tu hoja de Google Sheets que contiene los datos de producción.
                 La hoja debe estar configurada con permisos de "Cualquier persona con el link puede ver".
@@ -488,322 +506,305 @@ export default function ProduccionConfiguracion() {
                     )}
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {config && (
-              <div className="border-t border-neutral-200 pt-4 sm:pt-6">
-                <h3 className="font-semibold text-neutral-900 mb-3 text-sm sm:text-base">Configuración Actual</h3>
-                <div className="bg-neutral-50 rounded-lg p-3 sm:p-4 space-y-2 text-xs sm:text-sm">
-                  <div className="flex justify-between items-center gap-2">
-                    <span className="text-neutral-600">Estado:</span>
-                    <span className="font-medium text-green-600">Activo</span>
-                  </div>
-                  <div className="flex justify-between items-start gap-2">
-                    <span className="text-neutral-600 flex-shrink-0">Sheet ID:</span>
-                    <span className="font-mono text-neutral-900 text-right break-all">{config.sheet_id}</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
-                    <span className="text-neutral-600">Última actualización:</span>
-                    <span className="text-neutral-900 sm:text-right">
-                      {new Date(config.updated_at).toLocaleString('es-MX')}
-                    </span>
-                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      <div className="mt-4 sm:mt-6 bg-white rounded-2xl sm:rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur flex-shrink-0">
-              <Building className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-white">Mapeo de Oficinas</h2>
-              <p className="text-xs sm:text-sm text-green-100">Relaciona las oficinas del sistema con las del Excel</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 sm:p-6">
-          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-            <p className="text-xs sm:text-sm text-blue-800">
-              Los nombres de las oficinas en el Excel pueden no coincidir exactamente con los nombres en la plataforma.
-              Aquí puedes indicar manualmente qué oficina del sistema corresponde a cada oficina del Excel.
-            </p>
-          </div>
-
-          {excelOfficeNames.length === 0 ? (
-            <div className="text-center py-8 text-neutral-500">
-              <Building className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Configura primero la conexión a Google Sheets para cargar los nombres de oficinas del Excel</p>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3">
-                {oficinas.map((oficina) => {
-                  const mapping = mappings.find(m => m.oficina_id === oficina.id);
-                  return (
-                    <div key={oficina.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <label className="block text-xs font-medium text-neutral-600 mb-1">
-                          Oficina en Sistema:
-                        </label>
-                        <p className="text-sm font-medium text-neutral-900 truncate">
-                          {oficina.nombre}
-                        </p>
+                {config && (
+                  <div className="border-t border-neutral-200 pt-4 sm:pt-6">
+                    <h3 className="font-semibold text-neutral-900 mb-3 text-sm sm:text-base">Configuración Actual</h3>
+                    <div className="bg-neutral-50 rounded-lg p-3 sm:p-4 space-y-2 text-xs sm:text-sm">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-neutral-600">Estado:</span>
+                        <span className="font-medium text-green-600">Activo</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <label className="block text-xs font-medium text-neutral-600 mb-1">
-                          Oficina en Excel:
-                        </label>
-                        <select
-                          value={mapping?.excel_office_name || ''}
-                          onChange={(e) => handleMappingChange(oficina.id, e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        >
-                          <option value="">-- Sin mapear --</option>
-                          {excelOfficeNames.map((name) => (
-                            <option key={name} value={name}>{name}</option>
-                          ))}
-                        </select>
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="text-neutral-600 flex-shrink-0">Sheet ID:</span>
+                        <span className="font-mono text-neutral-900 text-right break-all">{config.sheet_id}</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2">
+                        <span className="text-neutral-600">Última actualización:</span>
+                        <span className="text-neutral-900 sm:text-right">
+                          {new Date(config.updated_at).toLocaleString('es-MX')}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                )}
               </div>
+            </TabsContent>
 
-              <div className="mt-4 sm:mt-6 flex items-center justify-end">
-                <button
-                  onClick={handleSaveMappings}
-                  disabled={savingMappings}
-                  className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {savingMappings ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      <span>Guardando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      <span>Guardar Mapeo</span>
-                    </>
-                  )}
-                </button>
+            <TabsContent value="offices" className="mt-0">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-blue-800">
+                    Los nombres de las oficinas en el Excel pueden no coincidir exactamente con los nombres en la plataforma.
+                    Aquí puedes indicar manualmente qué oficina del sistema corresponde a cada oficina del Excel.
+                  </p>
+                </div>
+
+                {excelOfficeNames.length === 0 ? (
+                  <div className="text-center py-8 text-neutral-500">
+                    <Building className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Configura primero la conexión a Google Sheets para cargar los nombres de oficinas del Excel</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      {oficinas.map((oficina) => {
+                        const mapping = mappings.find(m => m.oficina_id === oficina.id);
+                        return (
+                          <div key={oficina.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
+                            <div className="flex-1 min-w-0">
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                Oficina en Sistema:
+                              </label>
+                              <p className="text-sm font-medium text-neutral-900 truncate">
+                                {oficina.nombre}
+                              </p>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                Oficina en Excel:
+                              </label>
+                              <select
+                                value={mapping?.excel_office_name || ''}
+                                onChange={(e) => handleMappingChange(oficina.id, e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                              >
+                                <option value="">-- Sin mapear --</option>
+                                {excelOfficeNames.map((name) => (
+                                  <option key={name} value={name}>{name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-4 sm:mt-6 flex items-center justify-end">
+                      <button
+                        onClick={handleSaveMappings}
+                        disabled={savingMappings}
+                        className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {savingMappings ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                            <span>Guardando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>Guardar Mapeo</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
-            </>
-          )}
-        </div>
-      </div>
+            </TabsContent>
 
-      <div className="mt-4 sm:mt-6 bg-white rounded-2xl sm:rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur flex-shrink-0">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-white">Mapeo de Agentes</h2>
-                <p className="text-xs sm:text-sm text-purple-100">Relaciona VendNombre del Excel con usuarios MOVI</p>
-              </div>
-            </div>
-            <button
-              onClick={loadVendors}
-              disabled={loadingVendors}
-              className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              {loadingVendors ? 'Cargando...' : 'Cargar'}
-            </button>
-          </div>
-        </div>
-
-        <div className="p-4 sm:p-6">
-          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-            <p className="text-xs sm:text-sm text-blue-800">
-              Cada VendNombre del Google Sheets puede ser asociado a un usuario de la plataforma MOVI.
-              El sistema intenta hacer la asociación automáticamente por coincidencia de nombre, pero puedes ajustar manualmente.
-              Este mismo mapeo se usa también en el módulo de <strong>Comisiones</strong> para relacionar vendedores del Excel con usuarios.
-            </p>
-          </div>
-
-          {errorUsuarios && (
-            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-red-900 mb-1">Error al cargar usuarios MOVI</p>
-                  <p className="text-xs text-red-800 mb-2">{errorUsuarios}</p>
+            <TabsContent value="agents" className="mt-0">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-semibold text-neutral-900">Mapeo de Agentes</h2>
+                    <p className="text-xs sm:text-sm text-neutral-600">Relaciona VendNombre del Excel con usuarios MOVI</p>
+                  </div>
                   <button
-                    onClick={loadUsuarios}
-                    className="text-xs font-medium text-red-700 hover:text-red-900 underline"
+                    onClick={loadVendors}
+                    disabled={loadingVendors}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                   >
-                    Intentar de nuevo
+                    {loadingVendors ? 'Cargando...' : 'Recargar'}
                   </button>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {!errorUsuarios && usuarios.length === 0 && !loadingUsuarios && (
-            <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-yellow-900 mb-1">No hay usuarios disponibles</p>
-                  <p className="text-xs text-yellow-800">
-                    No se pudieron cargar los usuarios de la plataforma. Esto podría deberse a un problema de permisos o de conexión.
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-blue-800">
+                    Cada VendNombre del Google Sheets puede ser asociado a un usuario de la plataforma MOVI.
+                    El sistema intenta hacer la asociación automáticamente por coincidencia de nombre, pero puedes ajustar manualmente.
+                    Este mismo mapeo se usa también en el módulo de <strong>Comisiones</strong> para relacionar vendedores del Excel con usuarios.
                   </p>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {vendors.length === 0 && !loadingVendors ? (
-            <div className="text-center py-8 text-neutral-500">
-              <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm mb-3">No hay vendedores cargados</p>
-              <button
-                onClick={loadVendors}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
-              >
-                Cargar Vendedores
-              </button>
-            </div>
-          ) : loadingVendors ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-600 border-t-transparent mx-auto mb-3"></div>
-              <p className="text-sm text-neutral-600">Cargando vendedores desde Google Sheets...</p>
-            </div>
-          ) : (
-            <>
-              <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <UserCheck className="w-4 h-4 text-teal-600" />
-                    <span className="text-xs font-medium text-teal-700">Asignados</span>
-                  </div>
-                  <p className="text-2xl font-bold text-teal-900">
-                    {vendors.filter(v => v.movi_user_id !== null).length}
-                  </p>
-                </div>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <UserX className="w-4 h-4 text-orange-600" />
-                    <span className="text-xs font-medium text-orange-700">Sin Asignar</span>
-                  </div>
-                  <p className="text-2xl font-bold text-orange-900">
-                    {vendors.filter(v => v.movi_user_id === null).length}
-                  </p>
-                </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Users className="w-4 h-4 text-blue-600" />
-                    <span className="text-xs font-medium text-blue-700">Total</span>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-900">
-                    {vendors.length}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mb-4 flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                    <input
-                      type="text"
-                      value={searchVendor}
-                      onChange={(e) => setSearchVendor(e.target.value)}
-                      placeholder="Buscar vendedor..."
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-                <select
-                  value={filterMappingStatus}
-                  onChange={(e) => setFilterMappingStatus(e.target.value as any)}
-                  className="px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="all">Todos</option>
-                  <option value="mapped">Asignados</option>
-                  <option value="unmapped">Sin asignar</option>
-                </select>
-              </div>
-
-              <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                {filteredVendors.map((vendor) => (
-                  <div
-                    key={vendor.vendor_nombre}
-                    className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-neutral-900 truncate">
-                          {vendor.vendor_nombre}
-                        </p>
-                        {vendor.mapping_source === 'auto' && (
-                          <span className="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
-                            Auto
-                          </span>
-                        )}
-                        {vendor.mapping_source === 'manual' && (
-                          <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                            Manual
-                          </span>
-                        )}
+                {errorUsuarios && (
+                  <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-red-900 mb-1">Error al cargar usuarios MOVI</p>
+                        <p className="text-xs text-red-800 mb-2">{errorUsuarios}</p>
+                        <button
+                          onClick={loadUsuarios}
+                          className="text-xs font-medium text-red-700 hover:text-red-900 underline"
+                        >
+                          Intentar de nuevo
+                        </button>
                       </div>
-                      <p className="text-xs text-neutral-500">
-                        {vendor.total_records} registro{vendor.total_records !== 1 ? 's' : ''}
-                      </p>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <SearchableUserSelect
-                        users={usuarios}
-                        value={vendor.movi_user_id}
-                        onChange={(userId) => handleVendorMappingChange(vendor.vendor_nombre, userId)}
-                        disabled={savingVendor === vendor.vendor_nombre}
-                        loading={loadingUsuarios}
-                        placeholder="Buscar por nombre o email..."
-                      />
+                  </div>
+                )}
+
+                {!errorUsuarios && usuarios.length === 0 && !loadingUsuarios && (
+                  <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-yellow-900 mb-1">No hay usuarios disponibles</p>
+                        <p className="text-xs text-yellow-800">
+                          No se pudieron cargar los usuarios de la plataforma. Esto podría deberse a un problema de permisos o de conexión.
+                        </p>
+                      </div>
                     </div>
-                    {savingVendor === vendor.vendor_nombre && (
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-600 border-t-transparent"></div>
+                  </div>
+                )}
+
+                {vendors.length === 0 && !loadingVendors ? (
+                  <div className="text-center py-8 text-neutral-500">
+                    <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm mb-3">No hay vendedores cargados</p>
+                    <button
+                      onClick={loadVendors}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      Cargar Vendedores
+                    </button>
+                  </div>
+                ) : loadingVendors ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-3"></div>
+                    <p className="text-sm text-neutral-600">Cargando vendedores desde Google Sheets...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <UserCheck className="w-4 h-4 text-teal-600" />
+                          <span className="text-xs font-medium text-teal-700">Asignados</span>
+                        </div>
+                        <p className="text-2xl font-bold text-teal-900">
+                          {vendors.filter(v => v.movi_user_id !== null).length}
+                        </p>
+                      </div>
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <UserX className="w-4 h-4 text-orange-600" />
+                          <span className="text-xs font-medium text-orange-700">Sin Asignar</span>
+                        </div>
+                        <p className="text-2xl font-bold text-orange-900">
+                          {vendors.filter(v => v.movi_user_id === null).length}
+                        </p>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Users className="w-4 h-4 text-blue-600" />
+                          <span className="text-xs font-medium text-blue-700">Total</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-900">
+                          {vendors.length}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 flex flex-col sm:flex-row gap-3">
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                          <input
+                            type="text"
+                            value={searchVendor}
+                            onChange={(e) => setSearchVendor(e.target.value)}
+                            placeholder="Buscar vendedor..."
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      <select
+                        value={filterMappingStatus}
+                        onChange={(e) => setFilterMappingStatus(e.target.value as any)}
+                        className="px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="all">Todos</option>
+                        <option value="mapped">Asignados</option>
+                        <option value="unmapped">Sin asignar</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredVendors.map((vendor) => (
+                        <div
+                          key={vendor.vendor_nombre}
+                          className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-neutral-900 truncate">
+                                {vendor.vendor_nombre}
+                              </p>
+                              {vendor.mapping_source === 'auto' && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+                                  Auto
+                                </span>
+                              )}
+                              {vendor.mapping_source === 'manual' && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                                  Manual
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-neutral-500">
+                              {vendor.total_records} registro{vendor.total_records !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <SearchableUserSelect
+                              users={usuarios}
+                              value={vendor.movi_user_id}
+                              onChange={(userId) => handleVendorMappingChange(vendor.vendor_nombre, userId)}
+                              disabled={savingVendor === vendor.vendor_nombre}
+                              loading={loadingUsuarios}
+                              placeholder="Buscar por nombre o email..."
+                            />
+                          </div>
+                          {savingVendor === vendor.vendor_nombre && (
+                            <div className="flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {filteredVendors.length === 0 && (
+                      <div className="text-center py-8 text-neutral-500">
+                        <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">No se encontraron vendedores con ese filtro</p>
                       </div>
                     )}
-                  </div>
-                ))}
+                  </>
+                )}
               </div>
+            </TabsContent>
+          </Tabs>
 
-              {filteredVendors.length === 0 && (
-                <div className="text-center py-8 text-neutral-500">
-                  <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">No se encontraron vendedores con ese filtro</p>
-                </div>
-              )}
-            </>
-          )}
+          <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4">
+            <h3 className="font-semibold text-amber-900 mb-2 flex items-center gap-2 text-sm sm:text-base">
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              Importante
+            </h3>
+            <ul className="text-xs sm:text-sm text-amber-800 space-y-1 list-disc list-inside">
+              <li>Los datos se consultan directamente desde Google Sheets en tiempo real</li>
+              <li>Asegúrate de que la hoja tenga las columnas correctas</li>
+              <li>Los cambios en la hoja se reflejarán inmediatamente en el sistema</li>
+              <li>No es necesario cargar archivos Excel manualmente</li>
+              <li>El mapeo de agentes se usa en ambos módulos: Producción y Comisiones</li>
+            </ul>
+          </div>
         </div>
-      </div>
-
-      <div className="mt-4 sm:mt-6 bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4">
-        <h3 className="font-semibold text-amber-900 mb-2 flex items-center gap-2 text-sm sm:text-base">
-          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-          Importante
-        </h3>
-        <ul className="text-xs sm:text-sm text-amber-800 space-y-1 list-disc list-inside">
-          <li>Los datos se consultan directamente desde Google Sheets en tiempo real</li>
-          <li>Asegúrate de que la hoja tenga las columnas correctas</li>
-          <li>Los cambios en la hoja se reflejarán inmediatamente en el sistema</li>
-          <li>No es necesario cargar archivos Excel manualmente</li>
-          <li>El mapeo de agentes se usa en ambos módulos: Producción y Comisiones</li>
-        </ul>
       </div>
     </div>
   );
