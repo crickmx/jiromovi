@@ -21,8 +21,8 @@ Deno.serve(async (req: Request) => {
 
     console.log('[refresh-production-cache] Starting cache refresh...');
 
-    // 1. Obtener el último batch exitoso
-    const { data: latestBatch, error: batchError } = await supabase
+    // 1. Intentar obtener el último batch exitoso
+    const { data: latestBatch } = await supabase
       .from('production_import_batches')
       .select('id')
       .eq('status', 'success')
@@ -31,34 +31,21 @@ Deno.serve(async (req: Request) => {
       .limit(1)
       .maybeSingle();
 
-    if (batchError) {
-      throw new Error(`Error obteniendo batch: ${batchError.message}`);
-    }
-
-    if (!latestBatch) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'No hay batches de producción disponibles'
-        }),
-        {
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
-    console.log('[refresh-production-cache] Latest batch ID:', latestBatch.id);
-
-    // 2. Obtener vendedores únicos del último batch
-    const { data: vendors, error: vendorsError } = await supabase
+    // 2. Obtener vendedores únicos (del último batch o de todos los registros)
+    let vendorsQuery = supabase
       .from('production_records')
       .select('agente_nombre')
-      .eq('batch_id', latestBatch.id)
       .not('agente_nombre', 'is', null);
+
+    // Si hay batch, filtrar por él. Si no, tomar todos los registros
+    if (latestBatch) {
+      console.log('[refresh-production-cache] Using batch ID:', latestBatch.id);
+      vendorsQuery = vendorsQuery.eq('batch_id', latestBatch.id);
+    } else {
+      console.log('[refresh-production-cache] No batches found, using all production records');
+    }
+
+    const { data: vendors, error: vendorsError } = await vendorsQuery;
 
     if (vendorsError) {
       throw new Error(`Error obteniendo vendedores: ${vendorsError.message}`);
@@ -131,7 +118,7 @@ Deno.serve(async (req: Request) => {
         synced_count: syncedCount,
         error_count: errorCount,
         total_vendors: uniqueVendors.length,
-        batch_id: latestBatch.id,
+        batch_id: latestBatch?.id || null,
         synced_at: syncedAt
       }),
       {
