@@ -1,4 +1,4 @@
-import { X, Calendar, Building, FileText, DollarSign } from 'lucide-react';
+import { X, Calendar, Building2, Shield, Tag, DollarSign, Package } from 'lucide-react';
 
 interface DocumentoDetalle {
   fecha: string;
@@ -32,103 +32,117 @@ export default function DetalleDocumentoModal({
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString('es-MX', {
+      day: '2-digit',
+      month: 'short',
       year: 'numeric',
-      month: 'long',
-      day: 'numeric',
     });
+
+  const InfoItem = ({ icon: Icon, label, value, className = "" }: {
+    icon: any;
+    label: string;
+    value: string | number;
+    className?: string;
+  }) => (
+    <div className={`flex items-start gap-2 ${className}`}>
+      <div className="mt-0.5">
+        <Icon className="w-4 h-4 text-neutral-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-neutral-500 leading-tight">{label}</p>
+        <p className="text-sm font-medium text-neutral-900 truncate">{value}</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-neutral-900">Detalle de Documento</h2>
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3.5 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-white">Detalle de Documento</h2>
+            <p className="text-xs text-blue-100 mt-0.5">{formatDate(documento.fecha)} • {documento.periodo_mes}</p>
+          </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
           >
-            <X className="w-6 h-6 text-neutral-600" />
+            <X className="w-5 h-5 text-white" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="w-5 h-5 text-blue-600" />
-                <p className="text-sm font-medium text-blue-900">Fecha</p>
-              </div>
-              <p className="text-lg font-bold text-blue-900">{formatDate(documento.fecha)}</p>
-              <p className="text-xs text-blue-700 mt-1">Periodo: {documento.periodo_mes}</p>
-            </div>
-
-            <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-5 h-5 text-green-600" />
-                <p className="text-sm font-medium text-green-900">Importe Principal</p>
-              </div>
-              <p className="text-lg font-bold text-green-900">
-                {formatCurrency(documento.importe_pesos > 0 ? documento.importe_pesos : documento.prima_convenio)}
-              </p>
-              {documento.convenio_flag && (
-                <p className="text-xs text-green-700 mt-1">Convenio</p>
-              )}
-            </div>
-          </div>
-
-          <div className="border border-neutral-200 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Building className="w-5 h-5 text-neutral-600" />
-              <h3 className="font-semibold text-neutral-900">Información del Cliente</h3>
-            </div>
-            <div>
-              <p className="text-xs text-neutral-500 mb-1">Cliente</p>
-              <p className="text-sm font-medium text-neutral-900">{documento.desp_nombre_raw}</p>
-            </div>
-          </div>
-
-          <div className="border border-neutral-200 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <FileText className="w-5 h-5 text-neutral-600" />
-              <h3 className="font-semibold text-neutral-900">Detalles del Seguro</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="overflow-y-auto p-5 space-y-4">
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-neutral-500 mb-1">Aseguradora</p>
-                <p className="text-sm font-medium text-neutral-900">{documento.aseguradora_nombre}</p>
+                <p className="text-xs text-green-700 font-medium mb-0.5">Importe Total</p>
+                <p className="text-2xl font-bold text-green-900">
+                  {formatCurrency(documento.importe_pesos > 0 ? documento.importe_pesos : documento.prima_convenio)}
+                </p>
               </div>
-              <div>
-                <p className="text-xs text-neutral-500 mb-1">Ramo</p>
-                <p className="text-sm font-medium text-neutral-900">{documento.ramo_nombre}</p>
-              </div>
-              {documento.subramo_nombre && (
-                <div className="md:col-span-2">
-                  <p className="text-xs text-neutral-500 mb-1">Subramo</p>
-                  <p className="text-sm font-medium text-neutral-900">{documento.subramo_nombre}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="border border-neutral-200 rounded-xl p-4">
-            <h3 className="font-semibold text-neutral-900 mb-3">Desglose Financiero</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-neutral-600">Importe en Pesos</span>
-                <span className="text-sm font-semibold text-neutral-900">
-                  {formatCurrency(documento.importe_pesos)}
-                </span>
+              <div className="flex flex-col gap-1.5">
+                {documento.convenio_flag && (
+                  <span className="px-2.5 py-1 bg-blue-600 text-white text-xs font-medium rounded-full">
+                    Convenio
+                  </span>
+                )}
+                <DollarSign className="w-10 h-10 text-green-600 opacity-20" />
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-neutral-200">
-            <button
-              onClick={onClose}
-              className="px-6 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors font-medium"
-            >
-              Cerrar
-            </button>
+          <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-200">
+              <Building2 className="w-4 h-4 text-blue-600" />
+              <h3 className="font-semibold text-neutral-900 text-sm">Cliente</h3>
+            </div>
+            <p className="text-sm font-medium text-neutral-900 leading-snug">{documento.desp_nombre_raw}</p>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-neutral-50 rounded-lg p-3">
+              <InfoItem
+                icon={Shield}
+                label="Aseguradora"
+                value={documento.aseguradora_nombre}
+              />
+            </div>
+            <div className="bg-neutral-50 rounded-lg p-3">
+              <InfoItem
+                icon={Package}
+                label="Ramo"
+                value={documento.ramo_nombre}
+              />
+            </div>
+          </div>
+
+          {documento.subramo_nombre && (
+            <div className="bg-neutral-50 rounded-lg p-3">
+              <InfoItem
+                icon={Tag}
+                label="Subramo"
+                value={documento.subramo_nombre}
+              />
+            </div>
+          )}
+
+          {documento.region_raw && (
+            <div className="bg-neutral-50 rounded-lg p-3">
+              <InfoItem
+                icon={Building2}
+                label="Región"
+                value={documento.region_raw}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-neutral-200 px-5 py-3 bg-neutral-50 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-neutral-700 text-white text-sm rounded-lg hover:bg-neutral-800 transition-colors font-medium"
+          >
+            Cerrar
+          </button>
         </div>
       </div>
     </div>
