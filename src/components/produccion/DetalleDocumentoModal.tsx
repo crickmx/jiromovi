@@ -4,6 +4,7 @@ interface DocumentoDetalle {
   fecha: string;
   periodo_mes: string;
   desp_nombre_raw: string;
+  nombre_cliente?: string | null;
   gerencia_nombre_raw: string;
   region_raw: string | null;
   aseguradora_nombre: string;
@@ -96,7 +97,17 @@ export default function DetalleDocumentoModal({
               <Building2 className="w-4 h-4 text-blue-600" />
               <h3 className="font-semibold text-neutral-900 text-sm">Cliente</h3>
             </div>
-            <p className="text-sm font-medium text-neutral-900 leading-snug">{documento.desp_nombre_raw}</p>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-neutral-900 leading-snug">
+                {documento.nombre_cliente || documento.desp_nombre_raw}
+              </p>
+              {documento.nombre_cliente && documento.desp_nombre_raw && (
+                <div className="pt-2 border-t border-neutral-200">
+                  <p className="text-xs text-neutral-500">Despacho/Oficina</p>
+                  <p className="text-sm text-neutral-700">{documento.desp_nombre_raw}</p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

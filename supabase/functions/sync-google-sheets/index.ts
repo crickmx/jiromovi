@@ -268,13 +268,17 @@ Deno.serve(async (req: Request) => {
           const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
           const periodoAnio = anio;
 
-          // Usar ÚNICAMENTE NombreCompleto para el nombre del cliente
-          const clienteNombre = (getColumnValue(['NombreCompleto', 'nombrecompleto', 'nombre completo']) || '').toString().trim();
+          // Capturar AMBOS campos: DespNombre (oficina) y NombreCompleto (cliente)
+          const despNombre = (getColumnValue(['DespNombre', 'despnombre', 'desp nombre']) || '').toString().trim();
+          const nombreCompleto = (getColumnValue(['NombreCompleto', 'nombrecompleto', 'nombre completo']) || '').toString().trim();
           const gerenciaNombre = (getColumnValue(['GerenciaNombre', 'gerencianombre']) || '').toString().trim();
           const regionNombre = (getColumnValue(['Dirección Regional', 'direccion regional', 'region']) || '').toString().trim();
 
-          if (!clienteNombre) {
-            skipReasons['Sin NombreCompleto'] = (skipReasons['Sin NombreCompleto'] || 0) + 1;
+          // Usar NombreCompleto o DespNombre como fallback
+          const clienteNombreDisplay = nombreCompleto || despNombre;
+
+          if (!clienteNombreDisplay) {
+            skipReasons['Sin cliente/despacho'] = (skipReasons['Sin cliente/despacho'] || 0) + 1;
             skippedCount++;
             continue;
           }
@@ -296,7 +300,7 @@ Deno.serve(async (req: Request) => {
           const ramoNombre = (getColumnValue(['Sub Ramo', 'sub ramo', 'subramo', 'RamosNombre', 'ramos']) || '').toString().trim();
           const concepto = (getColumnValue(['Concepto', 'concepto']) || '').toString().trim() || null;
 
-          const recordKey = `${fechaStr}|${clienteNombre}|${gerenciaNombre}|${agenteNombre}|${aseguradoraNombre}|${ramoNombre}|${importePesos}`;
+          const recordKey = `${fechaStr}|${clienteNombreDisplay}|${gerenciaNombre}|${agenteNombre}|${aseguradoraNombre}|${ramoNombre}|${importePesos}`;
 
           if (existingRecordsMap.has(recordKey)) {
             skipReasons['Ya existe'] = (skipReasons['Ya existe'] || 0) + 1;
@@ -314,8 +318,9 @@ Deno.serve(async (req: Request) => {
             office_id: null,
             management_id: null,
             region_id: null,
-            desp_nombre_raw: clienteNombre, // Ahora usa NombreCompleto
-            gerencia_nombre_raw: gerenciaNombre || clienteNombre, // Fallback a clienteNombre
+            desp_nombre_raw: despNombre || nombreCompleto, // Nombre del despacho/oficina
+            nombre_cliente: nombreCompleto || null, // Nombre del cliente/asegurado
+            gerencia_nombre_raw: gerenciaNombre || clienteNombreDisplay,
             region_raw: regionNombre || null,
             agente_nombre: agenteNombre,
             aseguradora_nombre: aseguradoraNombre,

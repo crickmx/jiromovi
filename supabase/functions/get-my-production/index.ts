@@ -294,9 +294,9 @@ Deno.serve(async (req: Request) => {
       query = query.in('aseguradora_nombre', aseguradoras);
     }
 
-    // Búsqueda de cliente
+    // Búsqueda de cliente (incluir nombre_cliente en la búsqueda)
     if (clienteSearch) {
-      query = query.or(`desp_nombre_raw.ilike.%${clienteSearch}%,gerencia_nombre_raw.ilike.%${clienteSearch}%`);
+      query = query.or(`desp_nombre_raw.ilike.%${clienteSearch}%,nombre_cliente.ilike.%${clienteSearch}%,gerencia_nombre_raw.ilike.%${clienteSearch}%`);
     }
 
     // Ordenar por fecha descendente

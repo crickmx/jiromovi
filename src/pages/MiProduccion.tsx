@@ -187,6 +187,7 @@ export default function MiProduccion() {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(r =>
         r.desp_nombre_raw?.toLowerCase().includes(search) ||
+        r.nombre_cliente?.toLowerCase().includes(search) ||
         r.aseguradora_nombre?.toLowerCase().includes(search) ||
         r.ramo_nombre?.toLowerCase().includes(search)
       );
@@ -497,7 +498,9 @@ export default function MiProduccion() {
                     <td className="px-4 py-3 text-sm text-neutral-900">
                       {new Date(record.fecha).toLocaleDateString('es-MX')}
                     </td>
-                    <td className="px-4 py-3 text-sm text-neutral-900">{record.desp_nombre_raw}</td>
+                    <td className="px-4 py-3 text-sm text-neutral-900">
+                      {record.nombre_cliente || record.desp_nombre_raw}
+                    </td>
                     <td className="px-4 py-3 text-sm text-neutral-900">{record.ramo_nombre}</td>
                     <td className="px-4 py-3 text-sm text-neutral-900">{record.aseguradora_nombre}</td>
                     <td className="px-4 py-3 text-sm text-right font-semibold text-green-700">
