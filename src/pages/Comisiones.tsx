@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle, Upload, LifeBuoy } from 'lucide-react';
+import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle, Upload } from 'lucide-react';
 import type { CommissionBatch } from '../lib/commissionTypes';
 import { formatCurrency, formatDate } from '../lib/commissionUtils';
-import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 
 export default function Comisiones() {
   const { usuario } = useAuth();
@@ -13,29 +12,12 @@ export default function Comisiones() {
   const [batches, setBatches] = useState<CommissionBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'draft' | 'closed'>('all');
-  const [showTramiteModal, setShowTramiteModal] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState<CommissionBatch | null>(null);
-  const [estatusList, setEstatusList] = useState<any[]>([]);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
   useEffect(() => {
-    loadEstatus();
-  }, []);
-
-  useEffect(() => {
     loadBatches();
   }, []);
-
-  const loadEstatus = async () => {
-    const { data } = await supabase
-      .from('ticket_estatus')
-      .select('*')
-      .eq('activo', true)
-      .order('orden');
-
-    if (data) setEstatusList(data);
-  };
 
   const loadBatches = async () => {
     setLoading(true);
@@ -52,17 +34,6 @@ export default function Comisiones() {
     }
 
     setLoading(false);
-  };
-
-  const handleSolicitarCorreccion = (e: React.MouseEvent, batch: CommissionBatch) => {
-    e.stopPropagation();
-    setSelectedBatch(batch);
-    setShowTramiteModal(true);
-  };
-
-  const handleTramiteSuccess = () => {
-    setShowTramiteModal(false);
-    setSelectedBatch(null);
   };
 
   const filteredBatches = batches.filter(batch => {
@@ -246,38 +217,11 @@ export default function Comisiones() {
                       })}
                     </div>
                   </div>
-
-                  <button
-                    onClick={(e) => handleSolicitarCorreccion(e, batch)}
-                    title="Solicitar corrección de documento"
-                    className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-100 hover:border-orange-300 transition-all font-medium text-sm min-h-[44px] w-full sm:w-auto group"
-                  >
-                    <LifeBuoy className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                    <span className="hidden sm:inline">Solicitar Corrección</span>
-                    <span className="inline sm:hidden">Corrección</span>
-                  </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
-      )}
-
-      {showTramiteModal && selectedBatch && (
-        <NuevoTramiteModal
-          isOpen={showTramiteModal}
-          onClose={() => {
-            setShowTramiteModal(false);
-            setSelectedBatch(null);
-          }}
-          onSuccess={handleTramiteSuccess}
-          estatusList={estatusList}
-          preloadedData={{
-            tipoTramite: 'correccion_comisiones',
-            comisionesLoteId: selectedBatch.id,
-            comisionesLoteLabel: selectedBatch.name
-          }}
-        />
       )}
     </div>
   );

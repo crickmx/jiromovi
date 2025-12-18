@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { DollarSign, Download, FileText, Calendar, Loader2, ChevronDown, ChevronRight, TrendingUp, Shield } from 'lucide-react';
+import { DollarSign, Download, FileText, Calendar, Loader2, ChevronDown, ChevronRight, TrendingUp, Shield, LifeBuoy } from 'lucide-react';
 import type { CommissionBatch, CommissionDetail } from '../lib/commissionTypes';
 import { calculateBatchSummary, formatCurrency, formatDate } from '../lib/commissionUtils';
 import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
+import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
 
@@ -17,10 +18,24 @@ export default function MisComisiones() {
   const [showAllPolicies, setShowAllPolicies] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
+  const [showTramiteModal, setShowTramiteModal] = useState(false);
+  const [selectedBatchForCorrection, setSelectedBatchForCorrection] = useState<CommissionBatch | null>(null);
+  const [estatusList, setEstatusList] = useState<any[]>([]);
 
   useEffect(() => {
     loadCommissions();
+    loadEstatus();
   }, [usuario]);
+
+  const loadEstatus = async () => {
+    const { data } = await supabase
+      .from('ticket_estatus')
+      .select('*')
+      .eq('activo', true)
+      .order('orden');
+
+    if (data) setEstatusList(data);
+  };
 
   const loadCommissions = async () => {
     if (!usuario) return;
@@ -80,6 +95,17 @@ export default function MisComisiones() {
     }
 
     setLoading(false);
+  };
+
+  const handleSolicitarCorreccion = (e: React.MouseEvent, batch: CommissionBatch) => {
+    e.stopPropagation();
+    setSelectedBatchForCorrection(batch);
+    setShowTramiteModal(true);
+  };
+
+  const handleTramiteSuccess = () => {
+    setShowTramiteModal(false);
+    setSelectedBatchForCorrection(null);
   };
 
   const getBatchSummary = (batchId: string) => {
@@ -202,26 +228,37 @@ export default function MisComisiones() {
                       )}
                     </div>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownloadPDF(batch.id);
-                      }}
-                      disabled={generatingPDF === batch.id}
-                      className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] w-full active:scale-[0.98]"
-                    >
-                      {generatingPDF === batch.id ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Generando PDF...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Download className="w-5 h-5" />
-                          <span>Descargar Orden de Pago (PDF)</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadPDF(batch.id);
+                        }}
+                        disabled={generatingPDF === batch.id}
+                        className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] w-full active:scale-[0.98]"
+                      >
+                        {generatingPDF === batch.id ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Generando PDF...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-5 h-5" />
+                            <span>Descargar Orden de Pago (PDF)</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={(e) => handleSolicitarCorreccion(e, batch)}
+                        title="Solicitar corrección de documento"
+                        className="flex items-center justify-center space-x-2 px-4 py-3 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl hover:bg-orange-100 hover:border-orange-300 transition-all font-semibold min-h-[44px] w-full group"
+                      >
+                        <LifeBuoy className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        <span>Solicitar Corrección</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -425,6 +462,23 @@ export default function MisComisiones() {
             );
           })}
         </div>
+      )}
+
+      {showTramiteModal && selectedBatchForCorrection && (
+        <NuevoTramiteModal
+          isOpen={showTramiteModal}
+          onClose={() => {
+            setShowTramiteModal(false);
+            setSelectedBatchForCorrection(null);
+          }}
+          onSuccess={handleTramiteSuccess}
+          estatusList={estatusList}
+          preloadedData={{
+            tipoTramite: 'correccion_comisiones',
+            comisionesLoteId: selectedBatchForCorrection.id,
+            comisionesLoteLabel: selectedBatchForCorrection.name
+          }}
+        />
       )}
     </div>
   );
