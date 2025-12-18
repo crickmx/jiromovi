@@ -51,11 +51,39 @@ export default function ProduccionConfiguracion() {
   const [vendors, setVendors] = useState<VendorMappingInfo[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [savingVendor, setSavingVendor] = useState<string | null>(null);
-  const [searchVendor, setSearchVendor] = useState('');
-  const [filterMappingStatus, setFilterMappingStatus] = useState<'all' | 'mapped' | 'unmapped'>('all');
+  // Estados con persistencia
+  const [searchVendor, setSearchVendor] = useState<string>(() => {
+    return localStorage.getItem('produccion-config-search') || '';
+  });
+
+  const [filterMappingStatus, setFilterMappingStatus] = useState<'all' | 'mapped' | 'unmapped'>(() => {
+    const saved = localStorage.getItem('produccion-config-filter');
+    return (saved as 'all' | 'mapped' | 'unmapped') || 'all';
+  });
+
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return localStorage.getItem('produccion-config-tab') || 'config';
+  });
+
   const [usuarios, setUsuarios] = useState<{ id: string; nombre_completo: string; email_laboral: string; oficina_id: string | null; rol?: string }[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
   const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null);
+
+  // Funciones para manejar cambios con persistencia
+  const handleSearchChange = (value: string) => {
+    setSearchVendor(value);
+    localStorage.setItem('produccion-config-search', value);
+  };
+
+  const handleFilterChange = (value: 'all' | 'mapped' | 'unmapped') => {
+    setFilterMappingStatus(value);
+    localStorage.setItem('produccion-config-filter', value);
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    localStorage.setItem('produccion-config-tab', value);
+  };
 
   useEffect(() => {
     if (usuario?.rol !== 'Administrador') {
@@ -424,7 +452,7 @@ export default function ProduccionConfiguracion() {
             </div>
           )}
 
-          <Tabs defaultValue="config" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="config" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -717,7 +745,7 @@ export default function ProduccionConfiguracion() {
                           <input
                             type="text"
                             value={searchVendor}
-                            onChange={(e) => setSearchVendor(e.target.value)}
+                            onChange={(e) => handleSearchChange(e.target.value)}
                             placeholder="Buscar vendedor..."
                             className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
@@ -725,7 +753,7 @@ export default function ProduccionConfiguracion() {
                       </div>
                       <select
                         value={filterMappingStatus}
-                        onChange={(e) => setFilterMappingStatus(e.target.value as any)}
+                        onChange={(e) => handleFilterChange(e.target.value as 'all' | 'mapped' | 'unmapped')}
                         className="px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="all">Todos</option>
