@@ -1,4 +1,4 @@
-import { X, Calendar, Building2, Shield, Tag, DollarSign, Package } from 'lucide-react';
+import { X, Calendar, Building2, Shield, Tag, DollarSign, Package, FileText } from 'lucide-react';
 
 interface DocumentoDetalle {
   fecha: string;
