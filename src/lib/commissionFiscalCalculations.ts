@@ -2,7 +2,7 @@
  * Módulo de Cálculo Fiscal para Comisiones
  *
  * IMPORTANTE:
- * Los porcentajes usados (1.25% RESICO, 10% Honorarios, IVA 16%, 2/3 de IVA retenido)
+ * Los porcentajes usados (1.25% RESICO, 10% Honorarios, IVA 16%, 2/3 de IVA retenido, 9% dispersión Asimilados)
  * se basan en reglas fiscales vigentes en México para retenciones de ISR e IVA a personas físicas
  * (RESICO y servicios profesionales).
  *
@@ -136,7 +136,7 @@ export function calcularDesgloseFiscal(params: CalculoFiscalParams): DesgloseFis
  *
  * FÓRMULAS OFICIALES:
  * - Retención Contable = Vida × 0.16
- * - Costo de Dispersión = Sin Vida × 0.10
+ * - Costo de Dispersión = Sin Vida × 0.09
  * - IVA = 0 (No aplica)
  * - ISR Vida = (Vida – Retención Contable) × 0.10
  * - ISR Daños = (Sin Vida – Dispersión) × 0.10
@@ -151,7 +151,7 @@ function calcularAsimilados(params: {
   const { comisionBaseTotal, vida, sinVida } = params;
 
   const retContable = roundTo2Decimals(vida * 0.16);
-  const costoDispersion = roundTo2Decimals(sinVida * 0.10);
+  const costoDispersion = roundTo2Decimals(sinVida * 0.09);
 
   const isrVida = roundTo2Decimals((vida - retContable) * 0.10);
   const isrDanios = roundTo2Decimals((sinVida - costoDispersion) * 0.10);
