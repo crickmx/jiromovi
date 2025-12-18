@@ -11,6 +11,7 @@ import { TramitesWidget } from '../components/TramitesWidget';
 import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
 import CalendarioEventos from '../components/CalendarioEventos';
 import { UltimoComunicado } from '../components/UltimoComunicado';
+import RankingVendedor from '../components/RankingVendedor';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -263,6 +264,8 @@ export function Dashboard() {
             </div>
           </a>
         </div>
+
+        <RankingVendedor />
 
         <UltimoComunicado />
 
