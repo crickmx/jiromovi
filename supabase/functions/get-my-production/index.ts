@@ -112,11 +112,16 @@ function transformRecord(row: any): any | null {
     const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
     const periodoAnio = anio;
 
+    // CAMBIO: Priorizar NombreCompleto para el nombre del cliente
+    const nombreCompleto = (row['NombreCompleto'] || row['nombrecompleto'] || row['nombre completo'] || '').toString().trim();
     const despNombre = (row['DespNombre'] || row['despnombre'] || '').toString().trim();
     const gerenciaNombre = (row['GerenciaNombre'] || row['gerencianombre'] || '').toString().trim();
     const regionNombre = (row['Dirección Regional'] || row['direccion regional'] || row['region'] || '').toString().trim();
 
-    if (!despNombre || !gerenciaNombre) return null;
+    // Usar NombreCompleto si está disponible, si no usar despNombre
+    const clienteNombre = nombreCompleto || despNombre;
+    
+    if (!clienteNombre) return null;
 
     const importePesos = parseMoneyValue(row['IMPORTE PESOS'] || row['importe pesos'] || row['importe'] || '0');
     const primaConvenio = parseMoneyValue(row['Prima de convenio'] || row['prima de convenio'] || row['prima convenio'] || '0');
@@ -139,8 +144,8 @@ function transformRecord(row: any): any | null {
       dia,
       periodo_mes: periodoMes,
       periodo_anio: periodoAnio,
-      desp_nombre_raw: despNombre,
-      gerencia_nombre_raw: gerenciaNombre,
+      desp_nombre_raw: clienteNombre, // Ahora usa NombreCompleto
+      gerencia_nombre_raw: gerenciaNombre || clienteNombre, // Fallback a clienteNombre
       region_raw: regionNombre || null,
       agente_nombre: agenteNombre,
       aseguradora_nombre: aseguradoraNombre,

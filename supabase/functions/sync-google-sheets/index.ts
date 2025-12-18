@@ -268,12 +268,17 @@ Deno.serve(async (req: Request) => {
           const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
           const periodoAnio = anio;
 
+          // CAMBIO: Priorizar NombreCompleto para el nombre del cliente
+          const nombreCompleto = (getColumnValue(['NombreCompleto', 'nombrecompleto', 'nombre completo']) || '').toString().trim();
           const despNombre = (getColumnValue(['DespNombre', 'despnombre']) || '').toString().trim();
           const gerenciaNombre = (getColumnValue(['GerenciaNombre', 'gerencianombre']) || '').toString().trim();
           const regionNombre = (getColumnValue(['Dirección Regional', 'direccion regional', 'region']) || '').toString().trim();
 
-          if (!despNombre || !gerenciaNombre) {
-            skipReasons['Sin despacho o gerencia'] = (skipReasons['Sin despacho o gerencia'] || 0) + 1;
+          // Usar NombreCompleto si está disponible, si no usar despNombre
+          const clienteNombre = nombreCompleto || despNombre;
+
+          if (!clienteNombre) {
+            skipReasons['Sin nombre de cliente'] = (skipReasons['Sin nombre de cliente'] || 0) + 1;
             skippedCount++;
             continue;
           }
@@ -294,7 +299,7 @@ Deno.serve(async (req: Request) => {
           const aseguradoraNombre = (getColumnValue(['Nombre Compañía', 'nombre compañia', 'nombre compania', 'compañia']) || '').toString().trim();
           const ramoNombre = (getColumnValue(['Sub Ramo', 'sub ramo', 'subramo', 'RamosNombre', 'ramos']) || '').toString().trim();
 
-          const recordKey = `${fechaStr}|${despNombre}|${gerenciaNombre}|${agenteNombre}|${aseguradoraNombre}|${ramoNombre}|${importePesos}`;
+          const recordKey = `${fechaStr}|${clienteNombre}|${gerenciaNombre}|${agenteNombre}|${aseguradoraNombre}|${ramoNombre}|${importePesos}`;
 
           if (existingRecordsMap.has(recordKey)) {
             skipReasons['Ya existe'] = (skipReasons['Ya existe'] || 0) + 1;
@@ -312,8 +317,8 @@ Deno.serve(async (req: Request) => {
             office_id: null,
             management_id: null,
             region_id: null,
-            desp_nombre_raw: despNombre,
-            gerencia_nombre_raw: gerenciaNombre,
+            desp_nombre_raw: clienteNombre, // Ahora usa NombreCompleto
+            gerencia_nombre_raw: gerenciaNombre || clienteNombre, // Fallback a clienteNombre
             region_raw: regionNombre || null,
             agente_nombre: agenteNombre,
             aseguradora_nombre: aseguradoraNombre,
