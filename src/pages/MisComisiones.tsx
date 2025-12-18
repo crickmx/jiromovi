@@ -182,45 +182,44 @@ export default function MisComisiones() {
             return (
               <div
                 key={batch.id}
-                className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden"
+                className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-shadow"
               >
-                <div
-                  onClick={() => setSelectedBatch(selectedBatch === batch.id ? null : batch.id)}
-                  className="p-4 sm:p-6 cursor-pointer hover:bg-neutral-50 transition-colors active:bg-neutral-100"
-                >
-                  <div className="flex flex-col gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-start space-x-2 sm:space-x-3 mb-3">
-                        <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 flex-shrink-0 mt-0.5" />
-                        <h3 className="text-lg sm:text-xl font-bold text-neutral-900 break-words flex-1">
-                          {batch.name}
-                        </h3>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-neutral-600 mb-4">
-                        <span className="flex items-center space-x-1">
-                          <Calendar className="w-4 h-4 flex-shrink-0" />
-                          <span className="font-medium">Periodo:</span>
-                          <span>{formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}</span>
-                        </span>
-                        <span className="flex items-center space-x-1">
-                          <FileText className="w-4 h-4 flex-shrink-0" />
-                          <span className="font-medium">Pólizas:</span>
-                          <span>{details.length}</span>
-                        </span>
+                <div className="p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                    <div
+                      onClick={() => setSelectedBatch(selectedBatch === batch.id ? null : batch.id)}
+                      className="flex-1 cursor-pointer"
+                    >
+                      <div className="flex items-start space-x-3 mb-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg font-bold text-neutral-900 break-words mb-1">
+                            {batch.name}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-neutral-500">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>{formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}</span>
+                          </div>
+                        </div>
                       </div>
 
                       {summary && (
-                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
-                          <div className="bg-neutral-50 rounded-lg p-3">
-                            <div className="text-xs text-neutral-600 font-medium mb-1">Prima Neta</div>
-                            <div className="text-base sm:text-lg font-bold text-neutral-900 break-words">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2.5">
+                            <div className="text-[10px] sm:text-xs text-blue-700 font-medium mb-0.5">Pólizas</div>
+                            <div className="text-sm sm:text-base font-bold text-blue-900">{details.length}</div>
+                          </div>
+                          <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-lg p-2.5">
+                            <div className="text-[10px] sm:text-xs text-neutral-600 font-medium mb-0.5">Prima Neta</div>
+                            <div className="text-xs sm:text-sm font-bold text-neutral-900 break-words">
                               {formatCurrency(details.reduce((sum, d) => sum + d.prima_neta, 0))}
                             </div>
                           </div>
-                          <div className="bg-green-50 rounded-lg p-3">
-                            <div className="text-xs text-green-700 font-medium mb-1">Comisiones</div>
-                            <div className="text-base sm:text-lg font-bold text-green-700 break-words">
+                          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-2.5">
+                            <div className="text-[10px] sm:text-xs text-green-700 font-medium mb-0.5">Comisiones</div>
+                            <div className="text-xs sm:text-sm font-bold text-green-700 break-words">
                               {formatCurrency(summary.total_neta)}
                             </div>
                           </div>
@@ -228,35 +227,35 @@ export default function MisComisiones() {
                       )}
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDownloadPDF(batch.id);
                         }}
                         disabled={generatingPDF === batch.id}
-                        className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] w-full active:scale-[0.98]"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap"
                       >
                         {generatingPDF === batch.id ? (
                           <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span>Generando PDF...</span>
+                            <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                            <span className="hidden sm:inline">Generando...</span>
                           </>
                         ) : (
                           <>
-                            <Download className="w-5 h-5" />
-                            <span>Descargar Orden de Pago (PDF)</span>
+                            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span>PDF</span>
                           </>
                         )}
                       </button>
 
                       <button
                         onClick={(e) => handleSolicitarCorreccion(e, batch)}
-                        title="Solicitar corrección de documento"
-                        className="flex items-center justify-center space-x-2 px-4 py-3 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl hover:bg-orange-100 hover:border-orange-300 transition-all font-semibold min-h-[44px] w-full group"
+                        title="Solicitar corrección"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-50 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-100 hover:border-orange-300 transition-all font-medium text-xs sm:text-sm whitespace-nowrap group"
                       >
-                        <LifeBuoy className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span>Solicitar Corrección</span>
+                        <LifeBuoy className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform" />
+                        <span>Corrección</span>
                       </button>
                     </div>
                   </div>
