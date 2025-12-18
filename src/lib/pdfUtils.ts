@@ -222,7 +222,8 @@ export async function generateCommissionPDF(
   doc.setTextColor(0);
   doc.text('Agente:', 15, yPosition);
   doc.setFont(undefined, 'bold');
-  doc.text(agent.name, 40, yPosition);
+  const vendorName = agentDetails[0].vendor_name_raw || agent.name;
+  doc.text(vendorName, 40, yPosition);
   doc.setFont(undefined, 'normal');
 
   yPosition += 7;
@@ -443,7 +444,8 @@ export async function generateOrdenDePagoPDF(
   doc.setTextColor(0);
   doc.text('Agente:', marginLeft, yPosition);
   doc.setFont(undefined, 'normal');
-  doc.text(agent.name, marginLeft + 18, yPosition);
+  const vendorNameOrden = agentDetails[0].vendor_name_raw || agent.name;
+  doc.text(vendorNameOrden, marginLeft + 18, yPosition);
 
   yPosition += 5;
 
@@ -592,15 +594,7 @@ export async function generateOrdenDePagoPDF(
     theme: 'grid',
     headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 7 },
     styles: { fontSize: 6, cellPadding: 1 },
-    margin: { left: marginLeft, right: marginRight },
-    columnStyles: {
-      0: { cellWidth: 28 },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 35 },
-      3: { cellWidth: 40 },
-      4: { cellWidth: 22, halign: 'right' },
-      5: { cellWidth: 22, halign: 'right' }
-    }
+    margin: { left: marginLeft, right: marginRight }
   });
 
   const polizaTableFinalY = (doc as any).lastAutoTable.finalY;

@@ -103,6 +103,8 @@ export interface CommissionDetail {
   asimilados_isr_danios?: number | null;
   asimilados_isr_total?: number | null;
   asimilados_comision_final?: number | null;
+  vendor_name_raw?: string | null;
+  vendor_email_raw?: string | null;
 }
 
 export interface CommissionError {
