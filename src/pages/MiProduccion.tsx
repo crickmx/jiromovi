@@ -7,7 +7,6 @@ import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
 import GraficaLinea from '../components/produccion/GraficaLinea';
 import FiltrosProduccionAgente from '../components/produccion/FiltrosProduccionAgente';
-import DetalleDocumentoModal from '../components/produccion/DetalleDocumentoModal';
 
 interface ProductionFilters {
   fechaDesde: string;
@@ -67,7 +66,6 @@ export default function MiProduccion() {
     evolucion_temporal: [],
   });
   const [message, setMessage] = useState<string | null>(null);
-  const [selectedDocument, setSelectedDocument] = useState<ProductionRecord | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [pageSize, setPageSize] = useState(25);
@@ -506,9 +504,7 @@ export default function MiProduccion() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Fecha</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Aseguradora</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Ramo</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-900">Subramo</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-900">Importe</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-900">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -520,23 +516,14 @@ export default function MiProduccion() {
                     </td>
                     <td className="px-4 py-3 text-sm text-neutral-900">{record.aseguradora_nombre}</td>
                     <td className="px-4 py-3 text-sm text-neutral-900">{record.ramo_nombre}</td>
-                    <td className="px-4 py-3 text-sm text-neutral-900">{record.subramo_nombre || '-'}</td>
                     <td className="px-4 py-3 text-sm text-right font-semibold text-green-700">
                       {formatCurrency(record.importe_pesos > 0 ? record.importe_pesos : record.prima_convenio)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => setSelectedDocument(record)}
-                        className="text-primary-600 hover:text-primary-700 font-medium text-sm"
-                      >
-                        Ver detalle
-                      </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-neutral-500">
                     No se encontraron documentos con los filtros aplicados
                   </td>
                 </tr>
@@ -570,12 +557,6 @@ export default function MiProduccion() {
         )}
       </div>
 
-      {selectedDocument && (
-        <DetalleDocumentoModal
-          documento={selectedDocument}
-          onClose={() => setSelectedDocument(null)}
-        />
-      )}
     </div>
   );
 }
