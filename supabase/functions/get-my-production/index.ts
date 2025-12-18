@@ -263,90 +263,63 @@ Deno.serve(async (req: Request) => {
     const vendorNameNormalized = normalizeVendorName(vendorName);
     console.log('[get-my-production] Vendedor encontrado:', vendorName, '(normalizado:', vendorNameNormalized + ')');
 
-    // Obtener configuración de Google Sheets
-    const { data: config, error: configError } = await supabase
-      .from('production_google_sheets_config')
-      .select('*')
-      .eq('activo', true)
-      .maybeSingle();
+    // NUEVO: Consultar directamente desde production_records en lugar de Google Sheets
+    console.log('[get-my-production] Querying production_records from database...');
 
-    if (configError) {
-      throw new Error(`Error obteniendo configuración: ${configError.message}`);
-    }
+    // Construir query con filtros
+    let query = supabase
+      .from('production_records')
+      .select('*', { count: 'exact' });
 
-    if (!config) {
-      throw new Error('No hay una configuración activa de Google Sheets.');
-    }
+    // Filtrar por nombre de vendedor (normalizado)
+    // Usamos ilike con wildcards para match flexible
+    query = query.ilike('agente_nombre', `%${vendorName}%`);
 
-    console.log('[get-my-production] Fetching data from Google Sheets...');
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${config.sheet_id}/export?format=csv&gid=0`;
-    const csvResponse = await fetch(csvUrl);
-
-    if (!csvResponse.ok) {
-      throw new Error(`Error al obtener datos de Google Sheets: ${csvResponse.status}`);
-    }
-
-    const csvText = await csvResponse.text();
-    const rawRecords = parseCSV(csvText);
-    console.log('[get-my-production] Parsed', rawRecords.length, 'rows');
-
-    // Log de los primeros 3 registros para debug
-    if (rawRecords.length > 0) {
-      console.log('[get-my-production] Sample record (first row):', JSON.stringify(rawRecords[0]));
-    }
-
-    // Transformar y filtrar por vendedor (usando comparación normalizada)
-    let allRecords: any[] = [];
-    const uniqueVendors = new Set<string>();
-
-    for (const row of rawRecords) {
-      const transformed = transformRecord(row);
-      if (transformed && transformed.agente_nombre) {
-        const agenteNormalizado = normalizeVendorName(transformed.agente_nombre);
-        uniqueVendors.add(agenteNormalizado);
-
-        if (agenteNormalizado === vendorNameNormalized) {
-          allRecords.push(transformed);
-        }
-      }
-    }
-
-    console.log('[get-my-production] Found', allRecords.length, 'records for vendor:', vendorName);
-    console.log('[get-my-production] Looking for normalized:', vendorNameNormalized);
-    console.log('[get-my-production] Total unique vendors found:', uniqueVendors.size);
-
-    // Log algunos vendedores para comparación
-    const vendorsArray = Array.from(uniqueVendors).slice(0, 10);
-    console.log('[get-my-production] Sample vendors (first 10):', vendorsArray);
-
-    // Aplicar filtros adicionales
+    // Aplicar filtros de fecha
     if (fechaDesde) {
-      const desde = new Date(fechaDesde);
-      allRecords = allRecords.filter((r: any) => new Date(r.fecha) >= desde);
+      query = query.gte('fecha', fechaDesde);
     }
 
     if (fechaHasta) {
-      const hasta = new Date(fechaHasta);
-      allRecords = allRecords.filter((r: any) => new Date(r.fecha) <= hasta);
+      query = query.lte('fecha', fechaHasta);
     }
 
+    // Filtrar por ramos
     if (ramos.length > 0) {
-      allRecords = allRecords.filter((r: any) => ramos.includes(r.ramo_nombre));
+      query = query.in('ramo_nombre', ramos);
     }
 
+    // Filtrar por aseguradoras
     if (aseguradoras.length > 0) {
-      allRecords = allRecords.filter((r: any) => aseguradoras.includes(r.aseguradora_nombre));
+      query = query.in('aseguradora_nombre', aseguradoras);
     }
 
+    // Búsqueda de cliente
     if (clienteSearch) {
-      const searchLower = clienteSearch.toLowerCase();
-      allRecords = allRecords.filter((r: any) =>
-        r.desp_nombre_raw?.toLowerCase().includes(searchLower) ||
-        r.gerencia_nombre_raw?.toLowerCase().includes(searchLower)
-      );
+      query = query.or(`desp_nombre_raw.ilike.%${clienteSearch}%,gerencia_nombre_raw.ilike.%${clienteSearch}%`);
     }
 
-    const totalFiltered = allRecords.length;
+    // Ordenar por fecha descendente
+    query = query.order('fecha', { ascending: false });
+
+    // Ejecutar query para count y KPIs (sin paginación)
+    const { data: allRecordsForKPIs, error: recordsError, count: totalFiltered } = await query;
+
+    if (recordsError) {
+      throw new Error(`Error consultando production_records: ${recordsError.message}`);
+    }
+
+    console.log('[get-my-production] Found', totalFiltered, 'records for vendor:', vendorName);
+
+    // Convertir valores numéricos de string a number
+    const allRecords = (allRecordsForKPIs || []).map((r: any) => ({
+      ...r,
+      importe_pesos: parseFloat(r.importe_pesos) || 0,
+      prima_convenio: parseFloat(r.prima_convenio) || 0,
+      prima_ponderada: parseFloat(r.prima_ponderada) || 0,
+      bono: parseFloat(r.bono) || 0,
+      porcentaje_bono: r.porcentaje_bono ? parseFloat(r.porcentaje_bono) : null,
+    }));
 
     // Calcular KPIs
     const totalProduccion = allRecords.reduce((sum: number, r: any) =>
@@ -445,14 +418,8 @@ Deno.serve(async (req: Request) => {
         },
         performance: {
           duration_ms: duration,
-          total_records_before_filter: rawRecords.length,
-          total_records_after_filter: totalFiltered,
-        },
-        debug: {
-          vendor_normalized: vendorNameNormalized,
-          unique_vendors_found: uniqueVendors.size,
-          sample_vendors: Array.from(uniqueVendors).slice(0, 20),
-          records_before_date_filter: allRecords.length,
+          data_source: 'production_records_db',
+          total_records_found: totalFiltered || 0,
         },
       }),
       {
