@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle, Upload } from 'lucide-react';
+import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle, Upload, LifeBuoy } from 'lucide-react';
 import type { CommissionBatch } from '../lib/commissionTypes';
 import { formatCurrency, formatDate } from '../lib/commissionUtils';
+import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 
 export default function Comisiones() {
   const { usuario } = useAuth();
@@ -12,12 +13,29 @@ export default function Comisiones() {
   const [batches, setBatches] = useState<CommissionBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'draft' | 'closed'>('all');
+  const [showTramiteModal, setShowTramiteModal] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState<CommissionBatch | null>(null);
+  const [estatusList, setEstatusList] = useState<any[]>([]);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
   useEffect(() => {
+    loadEstatus();
+  }, []);
+
+  useEffect(() => {
     loadBatches();
   }, []);
+
+  const loadEstatus = async () => {
+    const { data } = await supabase
+      .from('ticket_estatus')
+      .select('*')
+      .eq('activo', true)
+      .order('orden');
+
+    if (data) setEstatusList(data);
+  };
 
   const loadBatches = async () => {
     setLoading(true);
@@ -34,6 +52,17 @@ export default function Comisiones() {
     }
 
     setLoading(false);
+  };
+
+  const handleSolicitarCorreccion = (e: React.MouseEvent, batch: CommissionBatch) => {
+    e.stopPropagation();
+    setSelectedBatch(batch);
+    setShowTramiteModal(true);
+  };
+
+  const handleTramiteSuccess = () => {
+    setShowTramiteModal(false);
+    setSelectedBatch(null);
   };
 
   const filteredBatches = batches.filter(batch => {
@@ -172,11 +201,13 @@ export default function Comisiones() {
           {filteredBatches.map(batch => (
             <div
               key={batch.id}
-              onClick={() => navigate(`/comisiones/lote/${batch.id}`)}
-              className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6 hover:shadow-medium transition-all duration-200 cursor-pointer active:scale-[0.98]"
+              className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6 hover:shadow-medium transition-all duration-200"
             >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                <div className="flex-1 min-w-0">
+                <div
+                  className="flex-1 min-w-0 cursor-pointer"
+                  onClick={() => navigate(`/comisiones/lote/${batch.id}`)}
+                >
                   <div className="flex items-start space-x-2 sm:space-x-3 mb-3">
                     <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
@@ -203,21 +234,50 @@ export default function Comisiones() {
                   </div>
                 </div>
 
-                <div className="text-left sm:text-right text-xs sm:text-sm text-neutral-500 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
-                  <div className="font-medium">
-                    Creado: {formatDate(batch.created_at)}
+                <div className="flex flex-col gap-2 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
+                  <div className="text-left sm:text-right text-xs sm:text-sm text-neutral-500">
+                    <div className="font-medium">
+                      Creado: {formatDate(batch.created_at)}
+                    </div>
+                    <div className="text-xs mt-1">
+                      {new Date(batch.created_at).toLocaleTimeString('es-MX', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
                   </div>
-                  <div className="text-xs mt-1">
-                    {new Date(batch.created_at).toLocaleTimeString('es-MX', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
+
+                  <button
+                    onClick={(e) => handleSolicitarCorreccion(e, batch)}
+                    title="Solicitar corrección de documento"
+                    className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-100 hover:border-orange-300 transition-all font-medium text-sm min-h-[44px] w-full sm:w-auto group"
+                  >
+                    <LifeBuoy className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    <span className="hidden sm:inline">Solicitar Corrección</span>
+                    <span className="inline sm:hidden">Corrección</span>
+                  </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {showTramiteModal && selectedBatch && (
+        <NuevoTramiteModal
+          isOpen={showTramiteModal}
+          onClose={() => {
+            setShowTramiteModal(false);
+            setSelectedBatch(null);
+          }}
+          onSuccess={handleTramiteSuccess}
+          estatusList={estatusList}
+          preloadedData={{
+            tipoTramite: 'correccion_comisiones',
+            comisionesLoteId: selectedBatch.id,
+            comisionesLoteLabel: selectedBatch.name
+          }}
+        />
       )}
     </div>
   );
