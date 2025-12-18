@@ -112,15 +112,11 @@ function transformRecord(row: any): any | null {
     const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
     const periodoAnio = anio;
 
-    // CAMBIO: Priorizar NombreCompleto para el nombre del cliente
-    const nombreCompleto = (row['NombreCompleto'] || row['nombrecompleto'] || row['nombre completo'] || '').toString().trim();
-    const despNombre = (row['DespNombre'] || row['despnombre'] || '').toString().trim();
+    // Usar ÚNICAMENTE NombreCompleto para el nombre del cliente
+    const clienteNombre = (row['NombreCompleto'] || row['nombrecompleto'] || row['nombre completo'] || '').toString().trim();
     const gerenciaNombre = (row['GerenciaNombre'] || row['gerencianombre'] || '').toString().trim();
     const regionNombre = (row['Dirección Regional'] || row['direccion regional'] || row['region'] || '').toString().trim();
 
-    // Usar NombreCompleto si está disponible, si no usar despNombre
-    const clienteNombre = nombreCompleto || despNombre;
-    
     if (!clienteNombre) return null;
 
     const importePesos = parseMoneyValue(row['IMPORTE PESOS'] || row['importe pesos'] || row['importe'] || '0');

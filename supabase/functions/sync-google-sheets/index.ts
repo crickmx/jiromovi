@@ -268,17 +268,13 @@ Deno.serve(async (req: Request) => {
           const periodoMes = `${anio}-${mes.toString().padStart(2, '0')}`;
           const periodoAnio = anio;
 
-          // CAMBIO: Priorizar NombreCompleto para el nombre del cliente
-          const nombreCompleto = (getColumnValue(['NombreCompleto', 'nombrecompleto', 'nombre completo']) || '').toString().trim();
-          const despNombre = (getColumnValue(['DespNombre', 'despnombre']) || '').toString().trim();
+          // Usar ÚNICAMENTE NombreCompleto para el nombre del cliente
+          const clienteNombre = (getColumnValue(['NombreCompleto', 'nombrecompleto', 'nombre completo']) || '').toString().trim();
           const gerenciaNombre = (getColumnValue(['GerenciaNombre', 'gerencianombre']) || '').toString().trim();
           const regionNombre = (getColumnValue(['Dirección Regional', 'direccion regional', 'region']) || '').toString().trim();
 
-          // Usar NombreCompleto si está disponible, si no usar despNombre
-          const clienteNombre = nombreCompleto || despNombre;
-
           if (!clienteNombre) {
-            skipReasons['Sin nombre de cliente'] = (skipReasons['Sin nombre de cliente'] || 0) + 1;
+            skipReasons['Sin NombreCompleto'] = (skipReasons['Sin NombreCompleto'] || 0) + 1;
             skippedCount++;
             continue;
           }
