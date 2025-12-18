@@ -299,72 +299,66 @@ export default function Comunicados() {
                     className={cn(
                       "bg-white rounded-lg border shadow-ios overflow-hidden",
                       "transition-all duration-200 hover:shadow-ios-md cursor-pointer group",
+                      "max-w-4xl mx-auto",
                       esDeGerente
-                        ? "border-l-4 border-l-primary-500 border-t-neutral-200 border-r-neutral-200 border-b-neutral-200"
+                        ? "border-t-4 border-t-primary-500 border-l-neutral-200 border-r-neutral-200 border-b-neutral-200"
                         : "border-neutral-200 hover:border-primary-300"
                     )}
                     onClick={() => navigate(`/comunicados/${comunicado.id}`)}
                   >
-                    <div className="flex flex-col md:flex-row">
-                      {/* Imagen - Responsive */}
-                      <div className="w-full md:w-64 lg:w-80 h-48 md:h-auto flex-shrink-0 overflow-hidden bg-neutral-100">
-                        <img
-                          src={comunicado.imagen_principal}
-                          alt={comunicado.titulo}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                        />
+                    {/* Imagen - Full width en todas las pantallas */}
+                    <div className="w-full h-64 sm:h-72 md:h-80 overflow-hidden bg-neutral-100">
+                      <img
+                        src={comunicado.imagen_principal}
+                        alt={comunicado.titulo}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    </div>
+
+                    {/* Contenido */}
+                    <div className="p-5 sm:p-6 md:p-8">
+                      {/* Meta info */}
+                      <div className="flex flex-wrap items-center gap-2 mb-4">
+                        {comunicado.fijado && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">
+                            <Pin className="w-3 h-3" />
+                            <span>Destacado</span>
+                          </span>
+                        )}
+                        {esDeGerente && comunicado.oficina_origen && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-50 text-primary-700 border border-primary-200 rounded-full text-xs font-semibold">
+                            <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                            <span>{comunicado.oficina_origen.nombre}</span>
+                          </span>
+                        )}
+                        {comunicado.categoria && (
+                          <span className="inline-flex items-center px-2.5 py-1 bg-primary-50 text-primary-700 rounded-full text-xs font-medium">
+                            {comunicado.categoria.nombre}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1.5 text-neutral-500 text-sm ml-auto">
+                          <Calendar className="w-4 h-4" />
+                          {formatearFecha(comunicado.fecha_publicacion || comunicado.fecha_creacion)}
+                        </span>
                       </div>
 
-                      {/* Contenido */}
-                      <div className="flex-1 p-4 sm:p-6">
-                        {/* Meta info */}
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                          {comunicado.fijado && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">
-                              <Pin className="w-3 h-3" />
-                              <span className="hidden sm:inline">Destacado</span>
-                            </span>
-                          )}
-                          {esDeGerente && comunicado.oficina_origen && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-50 text-primary-700 border border-primary-200 rounded-full text-xs font-semibold">
-                              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-                              <span className="hidden sm:inline">{comunicado.oficina_origen.nombre}</span>
-                            </span>
-                          )}
-                          {comunicado.categoria && (
-                            <span className="inline-flex items-center px-2 py-1 bg-primary-50 text-primary-700 rounded-full text-xs font-medium">
-                              {comunicado.categoria.nombre}
-                            </span>
-                          )}
-                          <span className="inline-flex items-center gap-1 text-neutral-500 text-xs sm:text-sm ml-auto">
-                            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span className="hidden sm:inline">
-                              {formatearFecha(comunicado.fecha_publicacion || comunicado.fecha_creacion)}
-                            </span>
-                            <span className="sm:hidden">
-                              {new Date(comunicado.fecha_publicacion || comunicado.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}
-                            </span>
-                          </span>
-                        </div>
+                      {/* Título */}
+                      <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-neutral-900 mb-3 line-clamp-2 group-hover:text-primary-600 transition-colors">
+                        {comunicado.titulo}
+                      </h2>
 
-                        {/* Título */}
-                        <h2 className="text-lg sm:text-xl font-bold text-neutral-900 mb-2 sm:mb-3 line-clamp-2 group-hover:text-primary-600 transition-colors">
-                          {comunicado.titulo}
-                        </h2>
+                      {/* Extracto */}
+                      <p className="text-base text-neutral-600 mb-5 line-clamp-3 leading-relaxed">
+                        {extraerTextoPlano(comunicado.contenido_html, 250)}
+                      </p>
 
-                        {/* Extracto */}
-                        <p className="text-sm sm:text-base text-neutral-600 mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3 leading-relaxed">
-                          {extraerTextoPlano(comunicado.contenido_html, 200)}
-                        </p>
-
-                        {/* Footer */}
-                        <div className="flex items-center justify-end">
-                          <span className="text-primary-600 group-hover:text-primary-700 font-medium text-sm flex items-center gap-1 transition-colors">
-                            Leer más
-                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                          </span>
-                        </div>
+                      {/* Footer */}
+                      <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+                        <span className="text-primary-600 group-hover:text-primary-700 font-semibold text-sm flex items-center gap-1.5 transition-colors">
+                          Leer más
+                          <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </span>
                       </div>
                     </div>
                   </article>
