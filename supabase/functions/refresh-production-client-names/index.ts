@@ -142,16 +142,27 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verificar que sea admin
-    const { data: userData } = await supabase
+    // Verificar que sea admin usando service role para bypass RLS
+    const { data: userData, error: userError } = await supabase
       .from('usuarios')
       .select('rol')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
+
+    console.log('[refresh-client-names] User ID:', user.id);
+    console.log('[refresh-client-names] User data:', userData);
+    console.log('[refresh-client-names] User error:', userError);
+
+    if (userError) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Error al verificar usuario: ' + userError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!userData || userData.rol !== 'admin') {
       return new Response(
-        JSON.stringify({ success: false, error: 'Solo los administradores pueden ejecutar esta acción' }),
+        JSON.stringify({ success: false, error: 'Solo los administradores pueden ejecutar esta acción. Tu rol es: ' + (userData?.rol || 'desconocido') }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
