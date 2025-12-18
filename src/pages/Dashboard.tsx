@@ -11,7 +11,6 @@ import { TramitesWidget } from '../components/TramitesWidget';
 import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
 import CalendarioEventos from '../components/CalendarioEventos';
 import { UltimoComunicado } from '../components/UltimoComunicado';
-import RankingVendedor from '../components/RankingVendedor';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -215,8 +214,6 @@ export function Dashboard() {
             )}
           </div>
         </div>
-
-        <RankingVendedor />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <a

@@ -7,7 +7,6 @@ import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
 import GraficaLinea from '../components/produccion/GraficaLinea';
 import FiltrosProduccionAgente from '../components/produccion/FiltrosProduccionAgente';
-import RankingVendedor from '../components/RankingVendedor';
 
 interface ProductionFilters {
   fechaDesde: string;
@@ -456,10 +455,6 @@ export default function MiProduccion() {
             </div>
           </div>
         )}
-
-        <div className="mb-6">
-          <RankingVendedor compact />
-        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
