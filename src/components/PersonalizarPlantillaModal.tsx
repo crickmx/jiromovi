@@ -47,7 +47,7 @@ const FUENTES = [
 
 const DEFAULT_STYLE: TextStyle = {
   font: 'Inter',
-  color: '#ffffff',
+  color: '#000000',
   size: 24,
   align: 'center',
   bold: false,
@@ -119,7 +119,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
         const style = plantilla.estilo_texto_default;
         const baseStyle = {
           font: style.font || 'Inter',
-          color: style.color || '#ffffff',
+          color: style.color || '#000000',
           size: style.size || 24,
           align: style.align || 'center',
           bold: false,
