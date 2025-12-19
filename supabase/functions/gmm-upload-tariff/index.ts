@@ -14,7 +14,7 @@ interface ExcelRangeDefinition {
 }
 
 const EXCEL_RANGES: Record<string, ExcelRangeDefinition> = {
-  factor_estado: { sheet: 'Tarifa', range: 'W4:Y38', type: 'table' },
+  factor_estado: { sheet: 'Tarifa', range: 'W4:Z38', type: 'table' },
   factor_nivel_hospitalario: { sheet: 'Tarifa', range: 'AA4:AB6', type: 'table' },
   factor_tabulador: { sheet: 'Tarifa', range: 'AA11:AB16', type: 'table' },
   factor_suma_asegurada: { sheet: 'Tarifa', range: 'N4:O9', type: 'table' },

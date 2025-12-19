@@ -217,7 +217,7 @@ export function calculateQuote(
   input: QuoteInput,
   tables: TariffTables
 ): QuoteCalculationResult {
-  const factorEstado = vlookup(tables.factor_estado, input.estado, 2, 'Factor Estado');
+  const factorEstado = vlookup(tables.factor_estado, input.estado, 3, 'Factor Estado');
   const factorNivel = vlookup(tables.factor_nivel_hospitalario, input.nivel_hospitalario, 1, 'Nivel Hospitalario');
   const factorTabulador = vlookup(tables.factor_tabulador, input.tabulador, 1, 'Tabulador');
   const factorSA = vlookup(tables.factor_suma_asegurada, input.suma_asegurada, 1, 'Suma Asegurada');
