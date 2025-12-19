@@ -531,32 +531,9 @@ export default function GMMCotizador() {
                         const valorActual = input.tope_coaseguro_seleccionado || rango.tope_default;
 
                         return (
-                          <>
-                            <input
-                              type="number"
-                              value={valorActual}
-                              min={rango.tope_min}
-                              max={rango.tope_max}
-                              step={1000}
-                              onChange={(e) => {
-                                const valor = Number(e.target.value);
-                                if (valor >= rango.tope_min && valor <= rango.tope_max) {
-                                  setInput({
-                                    ...input,
-                                    tope_coaseguro_seleccionado: valor
-                                  });
-                                }
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
-                            <div className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
-                              <p className="font-medium mb-1">Rango permitido:</p>
-                              <div className="flex items-center justify-between">
-                                <span>Mínimo: <span className="font-semibold">{formatMoneySafe(rango.tope_min)}</span></span>
-                                <span>Máximo: <span className="font-semibold">{formatMoneySafe(rango.tope_max)}</span></span>
-                              </div>
-                            </div>
-                          </>
+                          <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm font-medium text-gray-900">
+                            {formatMoneySafe(valorActual)}
+                          </div>
                         );
                       })()}
                     </div>
