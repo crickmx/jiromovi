@@ -118,7 +118,7 @@ export interface QuoteInput {
   suma_asegurada: string;
   deducible: string;
   coaseguro: string;
-  forma_pago: string;
+  formas_pago: string[];
 
   insureds: QuoteInputInsured[];
 
@@ -157,9 +157,8 @@ export interface InsuredCalculation {
   prima_total: number;
 }
 
-export interface QuoteCalculationResult {
-  insureds: InsuredCalculation[];
-  prima_neta_total: number;
+export interface PaymentPlanResult {
+  forma_pago: string;
   recargo: number;
   gastos_expedicion: number;
   subtotal: number;
@@ -168,7 +167,13 @@ export interface QuoteCalculationResult {
   primer_recibo: number;
   recibos_subsecuentes: number;
   num_recibos: number;
+}
+
+export interface QuoteCalculationResult {
+  insureds: InsuredCalculation[];
+  prima_neta_total: number;
   tope_coaseguro: number;
+  payment_plans: PaymentPlanResult[];
 }
 
 export interface TariffTables {

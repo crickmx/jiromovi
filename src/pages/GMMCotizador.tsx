@@ -8,6 +8,23 @@ import { supabase } from '../lib/supabase';
 import { calculateQuote, loadTariffTables } from '../lib/gmmCalculationEngine';
 import type { QuoteInput, QuoteInputInsured, QuoteCalculationResult, TariffTables } from '../lib/gmmTypes';
 
+// Función helper para formatear moneda
+function formatCurrency(value: number | string): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num);
+}
+
+// Función helper para formatear porcentaje
+function formatPercentage(value: number | string): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  return `${(num * 100).toFixed(0)}%`;
+}
+
 export default function GMMCotizador() {
   const [tariffPackageId, setTariffPackageId] = useState<string>('');
   const [tariffTables, setTariffTables] = useState<TariffTables | null>(null);
@@ -21,7 +38,7 @@ export default function GMMCotizador() {
     suma_asegurada: '',
     deducible: '',
     coaseguro: '',
-    forma_pago: '',
+    formas_pago: [],
     insureds: [{ nombre: '', sexo: 'Hombre', edad: 30 }],
     coberturas: {},
     montos: {},
@@ -81,7 +98,7 @@ export default function GMMCotizador() {
         setInput(prev => ({ ...prev, coaseguro: loaded.factor_coaseguro[0].col_0 }));
       }
       if (loaded.forma_pago.length > 0) {
-        setInput(prev => ({ ...prev, forma_pago: loaded.forma_pago[0].col_0 }));
+        setInput(prev => ({ ...prev, formas_pago: [loaded.forma_pago[0].col_0] }));
       }
     } catch (error) {
       console.error('Error loading tariff:', error);
@@ -136,8 +153,8 @@ export default function GMMCotizador() {
 
     // Validar que todos los campos principales estén seleccionados
     if (!input.estado || !input.nivel_hospitalario || !input.tabulador ||
-        !input.suma_asegurada || !input.deducible || !input.coaseguro || !input.forma_pago) {
-      alert('Por favor complete todos los parámetros del plan antes de calcular');
+        !input.suma_asegurada || !input.deducible || !input.coaseguro || input.formas_pago.length === 0) {
+      alert('Por favor complete todos los parámetros del plan antes de calcular (incluyendo al menos una forma de pago)');
       return;
     }
 
@@ -165,6 +182,9 @@ export default function GMMCotizador() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No autenticado');
 
+      // Usar el primer plan de pago para campos individuales (compatibilidad con BD)
+      const firstPlan = result.payment_plans[0];
+
       const { data: quote, error: quoteError } = await supabase
         .from('gmm_quotes')
         .insert({
@@ -177,8 +197,8 @@ export default function GMMCotizador() {
           deducible: input.deducible,
           coaseguro: input.coaseguro,
           tope_coaseguro: result.tope_coaseguro,
-          forma_pago: input.forma_pago,
-          num_recibos: result.num_recibos,
+          forma_pago: input.formas_pago.join(', '),
+          num_recibos: firstPlan.num_recibos,
 
           cob_reconocimiento_antiguedad: input.coberturas.reconocimiento_antiguedad || false,
           cob_medicamentos_fuera: input.coberturas.medicamentos_fuera || false,
@@ -200,13 +220,13 @@ export default function GMMCotizador() {
           monto_xtensuz: input.montos?.xtensuz || null,
 
           prima_neta_total: result.prima_neta_total,
-          recargo: result.recargo,
-          gastos_expedicion: result.gastos_expedicion,
-          subtotal: result.subtotal,
-          iva: result.iva,
-          total: result.total,
-          primer_recibo: result.primer_recibo,
-          recibos_subsecuentes: result.recibos_subsecuentes,
+          recargo: firstPlan.recargo,
+          gastos_expedicion: firstPlan.gastos_expedicion,
+          subtotal: firstPlan.subtotal,
+          iva: firstPlan.iva,
+          total: firstPlan.total,
+          primer_recibo: firstPlan.primer_recibo,
+          recibos_subsecuentes: firstPlan.recibos_subsecuentes,
 
           input_json: input,
           result_json: result,
@@ -327,7 +347,7 @@ export default function GMMCotizador() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     {tariffTables.factor_suma_asegurada.map((row) => (
-                      <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
+                      <option key={row.col_0} value={row.col_0}>{formatCurrency(row.col_0)}</option>
                     ))}
                   </select>
                 </div>
@@ -340,7 +360,7 @@ export default function GMMCotizador() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     {tariffTables.factor_deducible.map((row) => (
-                      <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
+                      <option key={row.col_0} value={row.col_0}>{formatCurrency(row.col_0)}</option>
                     ))}
                   </select>
                 </div>
@@ -353,22 +373,32 @@ export default function GMMCotizador() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     {tariffTables.factor_coaseguro.map((row) => (
-                      <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
+                      <option key={row.col_0} value={row.col_0}>{formatPercentage(row.col_0)}</option>
                     ))}
                   </select>
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pago</label>
-                  <select
-                    value={input.forma_pago}
-                    onChange={(e) => setInput({ ...input, forma_pago: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Formas de Pago (selecciona una o más)</label>
+                  <div className="grid grid-cols-2 gap-3">
                     {tariffTables.forma_pago.map((row) => (
-                      <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
+                      <label key={row.col_0} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={input.formas_pago.includes(row.col_0)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setInput({ ...input, formas_pago: [...input.formas_pago, row.col_0] });
+                            } else {
+                              setInput({ ...input, formas_pago: input.formas_pago.filter(fp => fp !== row.col_0) });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>{row.col_0}</span>
+                      </label>
                     ))}
-                  </select>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -488,57 +518,68 @@ export default function GMMCotizador() {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
             {result && (
-              <Card className="p-6 sticky top-6">
-                <h3 className="text-lg font-semibold mb-4">Resumen</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Prima Neta</span>
-                    <span className="font-medium">${result.prima_neta_total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Recargo</span>
-                    <span className="font-medium">${result.recargo.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Gastos Expedición</span>
-                    <span className="font-medium">${result.gastos_expedicion.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">${result.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">IVA</span>
-                    <span className="font-medium">${result.iva.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t pt-3 flex justify-between">
-                    <span className="font-semibold">TOTAL</span>
-                    <span className="font-bold text-lg text-blue-600">${result.total.toFixed(2)}</span>
-                  </div>
-
-                  <div className="border-t pt-3 space-y-2">
+              <>
+                <Card className="p-6 sticky top-6">
+                  <h3 className="text-lg font-semibold mb-4">Resumen General</h3>
+                  <div className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Primer Recibo</span>
-                      <span className="font-medium">${result.primer_recibo.toFixed(2)}</span>
+                      <span className="text-gray-600">Prima Neta Total</span>
+                      <span className="font-medium">${result.prima_neta_total.toFixed(2)}</span>
                     </div>
-                    {result.num_recibos > 1 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Recibos Subsecuentes ({result.num_recibos - 1})</span>
-                        <span className="font-medium">${result.recibos_subsecuentes.toFixed(2)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="border-t pt-3 text-xs text-gray-500">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-xs text-gray-500">
                       <span>Tope Coaseguro</span>
                       <span>${result.tope_coaseguro.toFixed(2)}</span>
                     </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+
+                {result.payment_plans.map((plan, idx) => (
+                  <Card key={idx} className="p-6">
+                    <h3 className="text-lg font-semibold mb-4 text-blue-600">{plan.forma_pago}</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Prima Neta</span>
+                        <span className="font-medium">${result.prima_neta_total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Recargo</span>
+                        <span className="font-medium">${plan.recargo.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Gastos Expedición</span>
+                        <span className="font-medium">${plan.gastos_expedicion.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Subtotal</span>
+                        <span className="font-medium">${plan.subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">IVA</span>
+                        <span className="font-medium">${plan.iva.toFixed(2)}</span>
+                      </div>
+                      <div className="border-t pt-3 flex justify-between">
+                        <span className="font-semibold">TOTAL</span>
+                        <span className="font-bold text-lg text-blue-600">${plan.total.toFixed(2)}</span>
+                      </div>
+
+                      <div className="border-t pt-3 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Primer Recibo</span>
+                          <span className="font-medium">${plan.primer_recibo.toFixed(2)}</span>
+                        </div>
+                        {plan.num_recibos > 1 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Recibos Subsecuentes ({plan.num_recibos - 1})</span>
+                            <span className="font-medium">${plan.recibos_subsecuentes.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </>
             )}
           </div>
         </div>

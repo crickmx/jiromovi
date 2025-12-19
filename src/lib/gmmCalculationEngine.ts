@@ -7,6 +7,7 @@ import type {
   QuoteInput,
   QuoteCalculationResult,
   InsuredCalculation,
+  PaymentPlanResult,
   TariffTables,
 } from './gmmTypes';
 
@@ -82,17 +83,6 @@ export function calculateQuote(
   const factorCoaseguro = vlookup(tables.factor_coaseguro, input.coaseguro, 1, 'Coaseguro');
 
   const topeCoaseguro = vlookup(tables.tope_coaseguro, input.coaseguro, 1, 'Tope Coaseguro');
-
-  const formaPago = tables.forma_pago.find(r => r.col_0 === input.forma_pago);
-  if (!formaPago) {
-    const available = tables.forma_pago.map(r => `"${r.col_0}"`).join(', ');
-    throw new Error(
-      `Forma de pago "${input.forma_pago}" no encontrada.\n` +
-      `Formas de pago disponibles: ${available}`
-    );
-  }
-  const factorFormaPago = Number(formaPago.col_1 || 0);
-  const numRecibos = Number(formaPago.col_2 || 1);
 
   const sumCargas = tables.denominador_cargas.reduce((acc, val) => acc + (Number(val) || 0), 0);
   const denominador = 1 - sumCargas;
@@ -266,33 +256,53 @@ export function calculateQuote(
   });
 
   const primaNetaTotal = roundTo2Decimals(insureds.reduce((acc, ins) => acc + ins.prima_total, 0));
-  const recargo = roundTo2Decimals(primaNetaTotal * factorFormaPago);
-  const gastosExpedicion = tables.gastos_expedicion;
-  const subtotal = roundTo2Decimals(primaNetaTotal + recargo + gastosExpedicion);
-  const iva = roundTo2Decimals(subtotal * tables.iva);
-  const total = roundTo2Decimals(subtotal + iva);
 
-  let primerRecibo = total;
-  let recibosSubsecuentes = 0;
+  // Calcular múltiples planes de pago
+  const paymentPlans = input.formas_pago.map(formaPagoName => {
+    const formaPago = tables.forma_pago.find(r => r.col_0 === formaPagoName);
+    if (!formaPago) {
+      const available = tables.forma_pago.map(r => `"${r.col_0}"`).join(', ');
+      throw new Error(
+        `Forma de pago "${formaPagoName}" no encontrada.\n` +
+        `Formas de pago disponibles: ${available}`
+      );
+    }
+    const factorFormaPago = Number(formaPago.col_1 || 0);
+    const numRecibos = Number(formaPago.col_2 || 1);
 
-  if (numRecibos > 1) {
-    primerRecibo = roundTo2Decimals(((subtotal - gastosExpedicion) / numRecibos + gastosExpedicion) * (1 + tables.iva));
-    const resto = total - primerRecibo;
-    recibosSubsecuentes = roundTo2Decimals(resto / (numRecibos - 1));
-  }
+    const recargo = roundTo2Decimals(primaNetaTotal * factorFormaPago);
+    const gastosExpedicion = tables.gastos_expedicion;
+    const subtotal = roundTo2Decimals(primaNetaTotal + recargo + gastosExpedicion);
+    const iva = roundTo2Decimals(subtotal * tables.iva);
+    const total = roundTo2Decimals(subtotal + iva);
+
+    let primerRecibo = total;
+    let recibosSubsecuentes = 0;
+
+    if (numRecibos > 1) {
+      primerRecibo = roundTo2Decimals(((subtotal - gastosExpedicion) / numRecibos + gastosExpedicion) * (1 + tables.iva));
+      const resto = total - primerRecibo;
+      recibosSubsecuentes = roundTo2Decimals(resto / (numRecibos - 1));
+    }
+
+    return {
+      forma_pago: formaPagoName,
+      recargo,
+      gastos_expedicion: gastosExpedicion,
+      subtotal,
+      iva,
+      total,
+      primer_recibo: primerRecibo,
+      recibos_subsecuentes: recibosSubsecuentes,
+      num_recibos: numRecibos,
+    };
+  });
 
   return {
     insureds,
     prima_neta_total: primaNetaTotal,
-    recargo,
-    gastos_expedicion: gastosExpedicion,
-    subtotal,
-    iva,
-    total,
-    primer_recibo: primerRecibo,
-    recibos_subsecuentes: recibosSubsecuentes,
-    num_recibos: numRecibos,
     tope_coaseguro: topeCoaseguro,
+    payment_plans: paymentPlans,
   };
 }
 
