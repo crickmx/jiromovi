@@ -87,34 +87,42 @@ Deno.serve(async (req: Request) => {
 
       // Guardar email mapping si existe
       if (firstItem.vendor_email_norm) {
-        await supabase
+        const { error: emailMappingError } = await supabase
           .from('vendor_mappings')
           .upsert({
             source_type: 'email',
             source_value: firstItem.vendor_email_norm,
             movi_user_id: moviUserId,
             status: 'active',
-          }, {
-            onConflict: 'source_type,source_value',
+            updated_by: user.id,
+            updated_at: new Date().toISOString(),
           });
 
-        console.log('[assign-vendor-staging] Saved email mapping:', firstItem.vendor_email_norm);
+        if (emailMappingError) {
+          console.error('[assign-vendor-staging] Error saving email mapping:', emailMappingError);
+        } else {
+          console.log('[assign-vendor-staging] Saved email mapping:', firstItem.vendor_email_norm);
+        }
       }
 
       // Guardar name mapping como fallback
       if (firstItem.vendor_name_norm) {
-        await supabase
+        const { error: nameMappingError } = await supabase
           .from('vendor_mappings')
           .upsert({
             source_type: 'name',
             source_value: firstItem.vendor_name_norm,
             movi_user_id: moviUserId,
             status: 'active',
-          }, {
-            onConflict: 'source_type,source_value',
+            updated_by: user.id,
+            updated_at: new Date().toISOString(),
           });
 
-        console.log('[assign-vendor-staging] Saved name mapping:', firstItem.vendor_name_norm);
+        if (nameMappingError) {
+          console.error('[assign-vendor-staging] Error saving name mapping:', nameMappingError);
+        } else {
+          console.log('[assign-vendor-staging] Saved name mapping:', firstItem.vendor_name_norm);
+        }
       }
     }
 
