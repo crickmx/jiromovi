@@ -47,7 +47,7 @@ const FUENTES = [
 
 const DEFAULT_STYLE: TextStyle = {
   font: 'Inter',
-  color: '#000000',
+  color: '#0050D1',
   size: 24,
   align: 'center',
   bold: false,
