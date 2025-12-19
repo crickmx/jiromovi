@@ -134,16 +134,20 @@ export function calcularDesgloseFiscal(params: CalculoFiscalParams): DesgloseFis
 /**
  * Cálculo fiscal para ASIMILADOS
  *
- * FÓRMULAS OFICIALES:
+ * FÓRMULAS OFICIALES (IMAGEN 1):
  * - Retención Contable = Vida × 0.16 (SOLO Vida)
  * - Costo de Dispersión = Sin Vida × 0.09 (SOLO Sin Vida)
  * - IVA = 0 (No aplica)
- * - Base ISR Vida = Vida - Retención Contable
+ * - Base ISR Vida = (Vida - Retención Contable) / 1.09
  * - ISR Vida = Base ISR Vida × 0.10
- * - Base ISR Daños = Sin Vida - Costo Dispersión
+ * - Base ISR Daños = (Sin Vida - Costo Dispersión) / 1.09
  * - ISR Daños = Base ISR Daños × 0.10
  * - ISR Total = ISR Vida + ISR Daños
  * - Total a Pagar = Comisión Base Total - Retención Contable - Costo Dispersión - ISR Total
+ *
+ * CRÍTICO: Esta es la fórmula correcta CON división /1.09 según Imagen 1.
+ * IMPORTANTE: La función de base de datos es la fuente de verdad principal.
+ * Esta función local solo se usa como respaldo o en casos donde no se pueda consultar la BD.
  */
 function calcularAsimilados(params: {
   comisionBaseTotal: number;
@@ -152,13 +156,22 @@ function calcularAsimilados(params: {
 }): DesgloseFiscal {
   const { comisionBaseTotal, vida, sinVida } = params;
 
+  // Retenciones
   const retContable = roundTo2Decimals(vida * 0.16);
   const costoDispersion = roundTo2Decimals(sinVida * 0.09);
 
-  const isrVida = roundTo2Decimals((vida - retContable) * 0.10);
-  const isrDanios = roundTo2Decimals((sinVida - costoDispersion) * 0.10);
+  // ISR Vida: Base = (Vida - Ret. Contable) / 1.09, ISR = Base × 0.10
+  const baseIsrVida = (vida - retContable) / 1.09;
+  const isrVida = roundTo2Decimals(baseIsrVida * 0.10);
+
+  // ISR Daños: Base = (Sin Vida - Costo Dispersión) / 1.09, ISR = Base × 0.10
+  const baseIsrDanios = (sinVida - costoDispersion) / 1.09;
+  const isrDanios = roundTo2Decimals(baseIsrDanios * 0.10);
+
+  // ISR Total
   const isrTotal = roundTo2Decimals(isrVida + isrDanios);
 
+  // Total a Pagar
   const totalAPagar = roundTo2Decimals(
     comisionBaseTotal - retContable - costoDispersion - isrTotal
   );
