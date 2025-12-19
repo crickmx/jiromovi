@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, FileCheck } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -98,6 +98,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Car, show: true },
     { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, show: true },
+    { path: '/gmm/mis-cotizaciones', label: 'Mis Cotizaciones GMM', icon: FileCheck, show: true },
     { path: '/gmm/tarifas', label: 'GMM Tarifas Admin', icon: Settings, show: isAdmin },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/store', label: 'Store', icon: ShoppingBag, show: true },
