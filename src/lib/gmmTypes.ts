@@ -247,9 +247,10 @@ export const EXCEL_RANGES: Record<string, ExcelRangeDefinition> = {
   multiregion_carga_sistema: { sheet: 'Tarifa', range: 'AQ42:AS74', type: 'table' },
   cobertura_internacional_carga_sistema: { sheet: 'Tarifa', range: 'AY42:BA76', type: 'table' },
   maternidad_tasa_por_edad: { sheet: 'Tarifa', range: 'AN18:AO68', type: 'table' },
-  maternidad_threshold: { sheet: 'Tarifa', range: 'AN15', type: 'value' },
+  maternidad_threshold: { sheet: 'Tarifa', range: 'CU2', type: 'value' },
   indemnizacion_eg_tabla: { sheet: 'Tarifa', range: 'BE3:BG50', type: 'table' },
   indemnizacion_eg_monto: { sheet: 'Tarifa', range: 'DK2', type: 'value' },
   xtensuz_factor: { sheet: 'Tarifa', range: 'AJ15:AK18', type: 'table' },
   gastos_expedicion: { sheet: 'Cotizacion', range: 'O67', type: 'value' },
+  iva: { sheet: 'Cotizacion', range: 'O69', type: 'value' },
 };

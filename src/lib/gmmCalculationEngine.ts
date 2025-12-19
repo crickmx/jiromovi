@@ -505,6 +505,6 @@ export function loadTariffTables(tables: any[]): TariffTables {
     indemnizacion_eg_monto: Number(get('indemnizacion_eg_monto')) || 0,
     xtensuz_factor: get('xtensuz_factor') || [],
     gastos_expedicion: Number(get('gastos_expedicion')) || 0,
-    iva: 0.16,
+    iva: Number(get('iva')) || 0.16,
   };
 }
