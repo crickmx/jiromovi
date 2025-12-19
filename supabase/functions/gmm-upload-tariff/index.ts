@@ -86,6 +86,14 @@ function parseRange(workbook: XLSX.WorkBook, sheetName: string, rangeStr: string
   return null;
 }
 
+function sanitizeFilename(filename: string): string {
+  return filename
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_');
+}
+
 async function hashBuffer(buffer: ArrayBuffer): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -138,7 +146,8 @@ Deno.serve(async (req: Request) => {
     const token = authHeader?.replace('Bearer ', '');
     const { data: { user } } = await supabase.auth.getUser(token!);
 
-    const storagePath = `${user!.id}/${Date.now()}_${file.name}`;
+    const sanitizedFilename = sanitizeFilename(file.name);
+    const storagePath = `${user!.id}/${Date.now()}_${sanitizedFilename}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('gmm-tariffs')
       .upload(storagePath, arrayBuffer, {
