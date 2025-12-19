@@ -91,7 +91,6 @@ export interface GMMQuoteInsured {
   nombre: string;
   sexo: 'Hombre' | 'Mujer';
   edad: number;
-  fecha_nacimiento: string | null;
 
   prima_base: number;
   prima_adicionales: number;
@@ -106,8 +105,7 @@ export interface GMMQuoteInsured {
 export interface QuoteInputInsured {
   nombre: string;
   sexo: 'Hombre' | 'Mujer';
-  edad?: number;
-  fecha_nacimiento?: string;
+  edad: number;
 }
 
 export interface QuoteInput {
@@ -177,10 +175,11 @@ export interface QuoteCalculationResult {
   payment_plans: PaymentPlanResult[];
 }
 
-export interface TopeCoaseguroOpcion {
+export interface TopeCoaseguroRango {
   coaseguro: string;
-  default: number;
-  opciones_tope: number[];
+  tope_min: number;
+  tope_max: number;
+  tope_default?: number;
 }
 
 export interface TariffTables {
@@ -191,7 +190,7 @@ export interface TariffTables {
   factor_deducible: any[];
   factor_coaseguro: any[];
   tope_coaseguro: any[];
-  tope_coaseguro_opciones?: TopeCoaseguroOpcion[];
+  tope_coaseguro_rangos?: TopeCoaseguroRango[];
   forma_pago: any[];
   base_intermedia_edad_sexo: any[];
   coef_medicamentos: number;

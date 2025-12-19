@@ -15,7 +15,8 @@ import {
   parseMoney,
   normalizeCoaseguroKey,
   coasegurosMatch,
-  normalizeTopsCoaseguroTable
+  normalizeTopsCoaseguroTable,
+  formatMoneySafe
 } from './gmmParsingUtils';
 
 function roundTo2Decimals(value: number): number {
@@ -132,6 +133,7 @@ function getTopeCoaseguro(
 
 /**
  * Obtiene todas las opciones de tope para un coaseguro dado
+ * @deprecated - Usar getTopeCoaseguroRango en su lugar
  */
 export function getTopeCoaseguroOpciones(
   table: any[],
@@ -161,6 +163,56 @@ export function getTopeCoaseguroOpciones(
   };
 }
 
+/**
+ * Obtiene el rango permitido de tope de coaseguro para un % dado
+ * @param rangos - Array de TopeCoaseguroRango desde tariff_tables
+ * @param coaseguro - Porcentaje de coaseguro (puede ser "10%", 10, 0.10)
+ * @returns Rango {tope_min, tope_max, tope_default} o null si no se encuentra
+ */
+export function getTopeCoaseguroRango(
+  rangos: any[] | undefined,
+  coaseguro: any
+): { tope_min: number; tope_max: number; tope_default: number } | null {
+  if (!rangos || rangos.length === 0) {
+    return null;
+  }
+
+  const coaseguroNormalizado = normalizeCoaseguroKey(coaseguro);
+
+  const rango = rangos.find(r => {
+    const rangoKey = normalizeCoaseguroKey(r.coaseguro);
+    return rangoKey === coaseguroNormalizado;
+  });
+
+  if (!rango) {
+    return null;
+  }
+
+  return {
+    tope_min: rango.tope_min,
+    tope_max: rango.tope_max,
+    tope_default: rango.tope_default || rango.tope_min,
+  };
+}
+
+/**
+ * Valida que un tope de coaseguro esté dentro del rango permitido
+ * @throws Error si el tope está fuera de rango
+ */
+export function validateTopeCoaseguro(
+  topeSeleccionado: number,
+  topeMin: number,
+  topeMax: number,
+  coaseguro: string
+): void {
+  if (topeSeleccionado < topeMin || topeSeleccionado > topeMax) {
+    throw new Error(
+      `Tope de coaseguro ${formatMoneySafe(topeSeleccionado)} fuera de rango.\n` +
+      `Para coaseguro ${coaseguro}, el rango permitido es ${formatMoneySafe(topeMin)} - ${formatMoneySafe(topeMax)}`
+    );
+  }
+}
+
 export function calculateQuote(
   input: QuoteInput,
   tables: TariffTables
@@ -180,17 +232,15 @@ export function calculateQuote(
   const denominador = 1 - sumCargas;
 
   const insureds: InsuredCalculation[] = input.insureds.map(insured => {
-    let edad = insured.edad;
-    if (!edad && insured.fecha_nacimiento) {
-      const nacimiento = new Date(insured.fecha_nacimiento);
-      const hoy = new Date();
-      edad = hoy.getFullYear() - nacimiento.getFullYear();
-      const m = hoy.getMonth() - nacimiento.getMonth();
-      if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
-        edad--;
-      }
+    // CRÍTICO: Usar edad directamente, NUNCA calcular desde fecha_nacimiento
+    const edad = insured.edad;
+
+    if (!edad || edad <= 0) {
+      throw new Error(
+        `Edad obligatoria para asegurado "${insured.nombre}".\n` +
+        `Proporcione un valor de edad válido (número entero positivo).`
+      );
     }
-    if (!edad) throw new Error(`Age required for ${insured.nombre}`);
 
     const baseIntermedia = vlookupByAge(tables.base_intermedia_edad_sexo, edad, insured.sexo);
 

@@ -200,3 +200,52 @@ export function normalizeTopsCoaseguroTable(data: any[]): any[] {
     };
   });
 }
+
+/**
+ * Parsea la tabla de rangos de tope de coaseguro desde Excel
+ * Formato esperado: coaseguro | tope_min | tope_max
+ *
+ * CRÍTICO: Valida que tope_min < tope_max y rechaza Excel si no cumple
+ */
+export function parseTopeCoaseguroRangos(data: any[]): any[] {
+  if (!Array.isArray(data) || data.length === 0) {
+    console.warn('parseTopeCoaseguroRangos: data vacía o inválida');
+    return [];
+  }
+
+  const rangos = [];
+
+  for (const row of data) {
+    // Normalizar coaseguro a formato "10%"
+    const coaseguro = normalizeCoaseguroKey(row.coaseguro || row.col_0);
+
+    // Parsear tope_min (limpiando $, comas, espacios)
+    const topeMin = parseMoney(row.tope_min || row.col_1);
+
+    // Parsear tope_max
+    const topeMax = parseMoney(row.tope_max || row.col_2);
+
+    // VALIDACIÓN CRÍTICA: tope_min debe ser < tope_max
+    if (topeMin >= topeMax) {
+      throw new Error(
+        `EXCEL INVÁLIDO: Para coaseguro "${coaseguro}", tope_min (${topeMin}) debe ser menor que tope_max (${topeMax})`
+      );
+    }
+
+    // Validar que los valores sean números válidos
+    if (isNaN(topeMin) || isNaN(topeMax) || topeMin <= 0 || topeMax <= 0) {
+      throw new Error(
+        `EXCEL INVÁLIDO: Para coaseguro "${coaseguro}", tope_min y tope_max deben ser números positivos válidos`
+      );
+    }
+
+    rangos.push({
+      coaseguro,
+      tope_min: topeMin,
+      tope_max: topeMax,
+      tope_default: topeMin, // Por defecto usar el mínimo
+    });
+  }
+
+  return rangos;
+}

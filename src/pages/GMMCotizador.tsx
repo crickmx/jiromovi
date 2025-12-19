@@ -7,7 +7,7 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { InfoTooltip } from '../components/ui/info-tooltip';
 import { supabase } from '../lib/supabase';
-import { calculateQuote, loadTariffTables, getTopeCoaseguroOpciones } from '../lib/gmmCalculationEngine';
+import { calculateQuote, loadTariffTables, getTopeCoaseguroOpciones, getTopeCoaseguroRango } from '../lib/gmmCalculationEngine';
 import { generateQuotePDF } from '../lib/gmmPdfGenerator';
 import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
@@ -209,9 +209,9 @@ export default function GMMCotizador() {
       return;
     }
 
-    const valid = input.insureds.every(ins => ins.nombre.trim() && (ins.edad || ins.fecha_nacimiento));
+    const valid = input.insureds.every(ins => ins.nombre.trim() && ins.edad && ins.edad > 0);
     if (!valid) {
-      alert('Complete todos los campos de asegurados (nombre y edad o fecha de nacimiento)');
+      alert('Complete todos los campos de asegurados (nombre y edad válida)');
       return;
     }
 
@@ -349,7 +349,6 @@ export default function GMMCotizador() {
         nombre: ins.nombre,
         sexo: ins.sexo,
         edad: ins.edad,
-        fecha_nacimiento: input.insureds[idx].fecha_nacimiento || null,
         prima_base: ins.prima_base,
         prima_adicionales: ins.prima_adicionales,
         prima_xtensuz: ins.prima_xtensuz,
@@ -491,13 +490,11 @@ export default function GMMCotizador() {
                         value={input.coaseguro}
                         onChange={(e) => {
                           const newCoaseguro = e.target.value;
-                          const topeOpciones = tariffTables.tope_coaseguro_opciones?.find(
-                            opt => opt.coaseguro === newCoaseguro
-                          );
+                          const rango = getTopeCoaseguroRango(tariffTables.tope_coaseguro_rangos, newCoaseguro);
                           setInput({
                             ...input,
                             coaseguro: newCoaseguro,
-                            tope_coaseguro_seleccionado: topeOpciones?.default
+                            tope_coaseguro_seleccionado: rango?.tope_default
                           });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
@@ -511,7 +508,7 @@ export default function GMMCotizador() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Tope de Coaseguro
-                        <InfoTooltip content="El tope de coaseguro es el máximo que pagarás en cada evento. Por defecto aplica el tope 'Contratado o Inferior'. Si la atención es en nivel/zona superior, aplica 'Tope Superior'." />
+                        <InfoTooltip content="El tope de coaseguro es el máximo que pagarás en cada evento. Puedes elegir cualquier valor dentro del rango permitido según el porcentaje de coaseguro." />
                       </label>
                       {(() => {
                         if (!input.coaseguro) {
@@ -522,62 +519,44 @@ export default function GMMCotizador() {
                           );
                         }
 
-                        const opciones = getTopeCoaseguroOpciones(tariffTables.tope_coaseguro, input.coaseguro);
+                        const rango = getTopeCoaseguroRango(tariffTables.tope_coaseguro_rangos, input.coaseguro);
 
-                        if (!opciones) {
+                        if (!rango) {
                           return (
                             <div className="text-sm text-red-600 py-2">
-                              No se encontró tope para el coaseguro seleccionado
+                              No se encontró rango de tope para el coaseguro seleccionado
                             </div>
                           );
                         }
 
-                        const topesPosibles: Array<{ value: number; label: string }> = [
-                          { value: opciones.contratado_inferior, label: 'Contratado o Inferior' }
-                        ];
-
-                        if (opciones.superior && opciones.superior !== opciones.contratado_inferior) {
-                          topesPosibles.push({
-                            value: opciones.superior,
-                            label: 'Superior'
-                          });
-                        }
-
-                        const valorSeleccionado = input.tope_coaseguro_seleccionado || opciones.contratado_inferior;
-                        const hayMultiplesOpciones = topesPosibles.length > 1;
+                        const valorActual = input.tope_coaseguro_seleccionado || rango.tope_default;
 
                         return (
                           <>
-                            <select
-                              value={valorSeleccionado}
-                              onChange={(e) => setInput({
-                                ...input,
-                                tope_coaseguro_seleccionado: Number(e.target.value)
-                              })}
+                            <input
+                              type="number"
+                              value={valorActual}
+                              min={rango.tope_min}
+                              max={rango.tope_max}
+                              step={1000}
+                              onChange={(e) => {
+                                const valor = Number(e.target.value);
+                                if (valor >= rango.tope_min && valor <= rango.tope_max) {
+                                  setInput({
+                                    ...input,
+                                    tope_coaseguro_seleccionado: valor
+                                  });
+                                }
+                              }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              {topesPosibles.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {formatMoneySafe(opt.value)} {hayMultiplesOpciones ? `- ${opt.label}` : ''}
-                                </option>
-                              ))}
-                            </select>
-                            {hayMultiplesOpciones && (
-                              <div className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
-                                <p className="font-medium">Opciones disponibles:</p>
-                                <ul className="list-disc list-inside mt-1 space-y-1">
-                                  <li><span className="font-semibold">{formatMoneySafe(opciones.contratado_inferior)}</span> - Nivel contratado o inferior</li>
-                                  {opciones.superior && (
-                                    <li><span className="font-semibold">{formatMoneySafe(opciones.superior)}</span> - Nivel superior al contratado</li>
-                                  )}
-                                </ul>
+                            />
+                            <div className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                              <p className="font-medium mb-1">Rango permitido:</p>
+                              <div className="flex items-center justify-between">
+                                <span>Mínimo: <span className="font-semibold">{formatMoneySafe(rango.tope_min)}</span></span>
+                                <span>Máximo: <span className="font-semibold">{formatMoneySafe(rango.tope_max)}</span></span>
                               </div>
-                            )}
-                            {!hayMultiplesOpciones && (
-                              <p className="mt-1 text-xs text-gray-500">
-                                Tope único según coaseguro seleccionado
-                              </p>
-                            )}
+                            </div>
                           </>
                         );
                       })()}
@@ -634,40 +613,45 @@ export default function GMMCotizador() {
 
                         <div className="grid grid-cols-3 gap-3">
                           <div className="col-span-2">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Nombre completo*</label>
                             <input
                               type="text"
                               placeholder="Nombre completo"
                               value={insured.nombre}
                               onChange={(e) => handleInsuredChange(idx, 'nombre', e.target.value)}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              required
                             />
                           </div>
-                          <select
-                            value={insured.sexo}
-                            onChange={(e) => handleInsuredChange(idx, 'sexo', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                          >
-                            <option value="Hombre">Hombre</option>
-                            <option value="Mujer">Mujer</option>
-                          </select>
                           <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Sexo*</label>
+                            <select
+                              value={insured.sexo}
+                              onChange={(e) => handleInsuredChange(idx, 'sexo', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                              <option value="Hombre">Hombre</option>
+                              <option value="Mujer">Mujer</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Edad*</label>
                             <input
                               type="number"
                               placeholder="Edad"
+                              min="0"
+                              max="99"
                               value={insured.edad || ''}
-                              onChange={(e) => handleInsuredChange(idx, 'edad', parseInt(e.target.value) || undefined)}
+                              onChange={(e) => {
+                                const edad = parseInt(e.target.value);
+                                handleInsuredChange(idx, 'edad', !isNaN(edad) && edad > 0 ? edad : undefined as any);
+                              }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <input
-                              type="date"
-                              value={insured.fecha_nacimiento || ''}
-                              onChange={(e) => handleInsuredChange(idx, 'fecha_nacimiento', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              required
                             />
                           </div>
                         </div>
+                        <p className="mt-2 text-xs text-gray-500">* Campos obligatorios. La edad se usa directamente para los cálculos.</p>
                       </div>
                     ))}
                   </div>
