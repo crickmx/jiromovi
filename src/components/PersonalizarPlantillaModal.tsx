@@ -441,10 +441,17 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
 
       if (disenoError) throw disenoError;
 
+      // Crear URL local del blob para descarga directa
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = publicUrl;
+      link.href = blobUrl;
       link.download = `${plantilla.titulo}-${Date.now()}.png`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+
+      // Liberar el URL del blob después de un breve delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
 
       onSuccess();
       onClose();
