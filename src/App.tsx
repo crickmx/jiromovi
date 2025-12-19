@@ -59,6 +59,9 @@ import ProduccionPorVendedor from './pages/ProduccionPorVendedor';
 import ProduccionConvenio from './pages/ProduccionConvenio';
 import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
 import MiProduccion from './pages/MiProduccion';
+import GMMTarifasAdmin from './pages/GMMTarifasAdmin';
+import GMMCotizador from './pages/GMMCotizador';
+import GMMCotizaciones from './pages/GMMCotizaciones';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -654,6 +657,33 @@ function AppRoutes() {
             <Layout>
               <ProduccionConfiguracion />
             </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/gmm/tarifas"
+        element={
+          <ProtectedRoute requireAdmin>
+            <GMMTarifasAdmin />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/gmm/cotizador"
+        element={
+          <ProtectedRoute>
+            <GMMCotizador />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/gmm/cotizaciones"
+        element={
+          <ProtectedRoute>
+            <GMMCotizaciones />
           </ProtectedRoute>
         }
       />
