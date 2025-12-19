@@ -324,10 +324,9 @@ export function calculateQuote(
     }
 
     if (input.coberturas.multiregion) {
-      const row = tables.multiregion_carga_sistema.find(r => Number(r.col_0) === edad);
+      const row = tables.multiregion_carga_sistema.find(r => r.col_0 === input.estado);
       if (row) {
-        const col = insured.sexo === 'Hombre' ? 'col_1' : 'col_2';
-        const factor = roundTo5Decimals(Number(row[col] || 0));
+        const factor = roundTo5Decimals(Number(row.col_2 || 0));
         const cobertura = roundTo2Decimals(primaBase * factor);
         adicionales.multiregion = cobertura;
         primaAdicionales += cobertura;
