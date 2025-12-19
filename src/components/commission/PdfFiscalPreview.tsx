@@ -45,14 +45,11 @@ export default function PdfFiscalPreview({ regimen, desgloseFiscal }: PdfFiscalP
         if (desgloseFiscal.costoDispersion > 0) {
           rows.push({ label: 'Costo Dispersión', value: desgloseFiscal.costoDispersion, sign: '-' });
         }
-        if (desgloseFiscal.isrTotal > 0) {
-          rows.push({ label: 'Ret. ISR', value: desgloseFiscal.isrTotal, sign: '-' });
-        }
         if (desgloseFiscal.iva > 0) {
           rows.push({ label: 'IVA', value: desgloseFiscal.iva, sign: '+' });
         }
-        if (desgloseFiscal.retIva > 0) {
-          rows.push({ label: 'Ret. IVA', value: desgloseFiscal.retIva, sign: '-' });
+        if (desgloseFiscal.isrTotal > 0) {
+          rows.push({ label: 'ISR Total', value: desgloseFiscal.isrTotal, sign: '-' });
         }
         break;
 
@@ -253,7 +250,7 @@ export default function PdfFiscalPreview({ regimen, desgloseFiscal }: PdfFiscalP
               Campos permitidos en PDF
             </p>
             <p className="text-xs text-blue-700 mt-1">
-              Solo se muestran: Ret. Contable, Costo Dispersión, IVA, Ret. ISR, Ret. IVA, y Total.
+              Solo se muestran: Ret. Contable, Costo Dispersión, IVA, ISR Total, Ret. ISR, Ret. IVA, y Total.
               Los cálculos intermedios (Vida, Sin Vida, ISR Vida, ISR Daños, etc.) nunca aparecen en el PDF.
             </p>
           </div>

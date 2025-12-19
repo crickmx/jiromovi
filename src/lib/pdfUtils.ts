@@ -26,14 +26,15 @@ interface PdfFiscalRow {
  * - Ret. Contable
  * - Costo Dispersión
  * - IVA
- * - Ret. ISR
+ * - ISR Total (para ASIMILADOS)
+ * - Ret. ISR (para HONORARIOS y RESICO)
  * - Ret. IVA
  * - Total
  *
  * NUNCA muestra campos intermedios como:
  * - Prima/Comisión Base Total
  * - Vida/Sin Vida
- * - ISR Vida/Daños
+ * - ISR Vida/Daños (se calculan internamente pero no se muestran)
  * - Bases intermedias
  */
 function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal): PdfFiscalRow[] {
@@ -63,7 +64,7 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       break;
 
     case 'ASIMILADOS':
-      // ASIMILADOS: Ret. Contable, Costo Dispersión, Ret. ISR (solo si aplica como suma del ISR Total)
+      // ASIMILADOS: Ret. Contable, Costo Dispersión, ISR Total
       if (desgloseFiscal.retContable > 0) {
         rows.push({
           label: 'Ret. Contable',
@@ -76,24 +77,18 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
           value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
         });
       }
-      // Para ASIMILADOS, el ISR Total se muestra como "Ret. ISR"
-      if (desgloseFiscal.isrTotal > 0) {
-        rows.push({
-          label: 'Ret. ISR',
-          value: `- ${formatCurrency(desgloseFiscal.isrTotal)}`
-        });
-      }
-      // IVA no aplica para ASIMILADOS pero si existe valor, mostrarlo
+      // IVA = 0 para ASIMILADOS, solo mostrar si es > 0 (caso excepcional)
       if (desgloseFiscal.iva > 0) {
         rows.push({
           label: 'IVA',
           value: `+ ${formatCurrency(desgloseFiscal.iva)}`
         });
       }
-      if (desgloseFiscal.retIva > 0) {
+      // ISR Total = ISR Vida + ISR Daños (calculado internamente, mostrado como total)
+      if (desgloseFiscal.isrTotal > 0) {
         rows.push({
-          label: 'Ret. IVA',
-          value: `- ${formatCurrency(desgloseFiscal.retIva)}`
+          label: 'ISR Total',
+          value: `- ${formatCurrency(desgloseFiscal.isrTotal)}`
         });
       }
       break;
