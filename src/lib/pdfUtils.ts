@@ -19,85 +19,49 @@ interface PdfFiscalRow {
 }
 
 /**
- * CRÍTICO: Construir el desglose fiscal DESDE VALORES YA PERSISTIDOS
+ * CRÍTICO: Consultar el desglose fiscal DESDE LA BASE DE DATOS
  *
- * Esta función NO CALCULA NADA. Solo suma los valores que ya fueron
- * calculados y guardados en la base de datos por el backend.
+ * Esta función NO CALCULA NADA. Consulta la función de base de datos
+ * calcular_desglose_fiscal_asimilados() que es la ÚNICA fuente de verdad
+ * para los cálculos fiscales de ASIMILADOS.
  *
- * Para ASIMILADOS, lee:
- * - asimilados_retencion_contable
- * - costo_dispersion
- * - asimilados_isr_vida
- * - asimilados_isr_danios
- * - asimilados_isr_total
- * - asimilados_comision_final
- *
- * @param details - Detalles de comisiones con valores YA CALCULADOS
- * @param regimen - Régimen fiscal del agente
- * @param totalComisionNeta - Total de comisiones (para validación)
- * @returns DesgloseFiscal construido desde valores persistidos
+ * @param batchId - ID del lote de comisiones
+ * @param agentId - ID del agente
+ * @returns DesgloseFiscal consultado desde la base de datos
  */
-function construirDesgloseFiscalDesdePersistencia(
-  details: CommissionDetail[],
-  regimen: RegimenFiscal,
-  totalComisionNeta: number
-): DesgloseFiscal {
-  let retContable = 0;
-  let costoDispersion = 0;
-  let iva = 0;
-  let retIsr = 0;
-  let retIva = 0;
-  let isrVida = 0;
-  let isrDanios = 0;
-  let isrTotal = 0;
-  let totalAPagar = 0;
-  let vida = 0;
-  let sinVida = 0;
+async function obtenerDesgloseFiscalDesdeDB(
+  batchId: string,
+  agentId: string
+): Promise<DesgloseFiscal> {
+  const { supabase } = await import('./supabase');
 
-  details.forEach(detail => {
-    const comision = detail.is_manual_adjusted
-      ? (detail.adjusted_commission_neta || 0)
-      : detail.commission_neta;
-
-    if (detail.ramo.toLowerCase() === 'vida') {
-      vida += comision;
-    } else {
-      sinVida += comision;
-    }
-
-    if (regimen === 'ASIMILADOS') {
-      retContable += detail.asimilados_retencion_contable || 0;
-      costoDispersion += detail.costo_dispersion || 0;
-      isrVida += detail.asimilados_isr_vida || 0;
-      isrDanios += detail.asimilados_isr_danios || 0;
-      isrTotal += detail.asimilados_isr_total || 0;
-
-      if (detail.asimilados_comision_final !== null && detail.asimilados_comision_final !== undefined) {
-        totalAPagar += detail.asimilados_comision_final;
-      }
-    }
+  const { data, error } = await supabase.rpc('calcular_desglose_fiscal_asimilados', {
+    p_batch_id: batchId,
+    p_agent_id: agentId
   });
 
-  if (regimen === 'ASIMILADOS') {
-    if (totalAPagar === 0) {
-      totalAPagar = totalComisionNeta - retContable - costoDispersion - isrTotal;
-    }
-  } else {
-    totalAPagar = totalComisionNeta;
+  if (error) {
+    console.error('Error al consultar desglose fiscal:', error);
+    throw new Error('Error al obtener el desglose fiscal desde la base de datos');
   }
 
+  if (!data) {
+    throw new Error('No se recibieron datos del desglose fiscal');
+  }
+
+  // El resultado viene como JSON de la función de base de datos
   return {
-    vida: Math.round(vida * 100) / 100,
-    sinVida: Math.round(sinVida * 100) / 100,
-    retContable: Math.round(retContable * 100) / 100,
-    costoDispersion: Math.round(costoDispersion * 100) / 100,
-    iva: Math.round(iva * 100) / 100,
-    retIsr: Math.round(retIsr * 100) / 100,
-    retIva: Math.round(retIva * 100) / 100,
-    isrVida: Math.round(isrVida * 100) / 100,
-    isrDanios: Math.round(isrDanios * 100) / 100,
-    isrTotal: Math.round(isrTotal * 100) / 100,
-    totalAPagar: Math.round(totalAPagar * 100) / 100,
+    vida: parseFloat(data.vida) || 0,
+    sinVida: parseFloat(data.sin_vida) || 0,
+    retContable: parseFloat(data.ret_contable) || 0,
+    costoDispersion: parseFloat(data.dispersion) || 0,
+    iva: parseFloat(data.iva) || 0,
+    retIsr: 0, // No usado en ASIMILADOS
+    retIva: 0, // No usado en ASIMILADOS
+    isrVida: parseFloat(data.isr_vida) || 0,
+    isrDanios: parseFloat(data.isr_danios) || 0,
+    isrTotal: parseFloat(data.isr_total) || 0,
+    totalAPagar: parseFloat(data.total_pagar) || 0,
   };
 }
 
@@ -147,7 +111,8 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       break;
 
     case 'ASIMILADOS':
-      // ASIMILADOS: Ret. Contable, Costo Dispersión, ISR Total
+      // ASIMILADOS: Ret. Contable, Costo Dispersión, IVA (siempre 0), ISR Total
+      // NO MOSTRAR: ISR Vida ni ISR Daños (se calculan internamente pero no se muestran)
       if (desgloseFiscal.retContable > 0) {
         rows.push({
           label: 'Ret. Contable',
@@ -160,14 +125,12 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
           value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
         });
       }
-      // IVA = 0 para ASIMILADOS, solo mostrar si es > 0 (caso excepcional)
-      if (desgloseFiscal.iva > 0) {
-        rows.push({
-          label: 'IVA',
-          value: `+ ${formatCurrency(desgloseFiscal.iva)}`
-        });
-      }
-      // ISR Total = ISR Vida + ISR Daños (calculado internamente, mostrado como total)
+      // IVA siempre es 0 para ASIMILADOS, pero mostrar para claridad
+      rows.push({
+        label: 'IVA',
+        value: formatCurrency(0)
+      });
+      // ISR Total (suma de ISR Vida + ISR Daños calculados en backend)
       if (desgloseFiscal.isrTotal > 0) {
         rows.push({
           label: 'ISR Total',
@@ -695,7 +658,20 @@ export async function generateOrdenDePagoPDF(
   const regimenFiscalName = agent.usuario?.regimen_fiscal?.name || agent.fiscal_regime?.name || 'HONORARIOS';
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
-  const desgloseFiscal = construirDesgloseFiscalDesdePersistencia(agentDetails, regimenFiscal, totalComisionNeta);
+  // CRÍTICO: Para ASIMILADOS, consultar función de base de datos
+  // NO recalcular valores en el frontend
+  let desgloseFiscal: DesgloseFiscal;
+
+  if (regimenFiscal === 'ASIMILADOS') {
+    desgloseFiscal = await obtenerDesgloseFiscalDesdeDB(batch.id, agentDetails[0].agent_id);
+  } else {
+    // Para otros regímenes, usar cálculo directo (por ahora)
+    desgloseFiscal = calcularDesgloseFiscalCore({
+      regimenFiscal,
+      resumenPorRamo: [],
+      totalComisionNeta
+    });
+  }
 
   const availableSpace = pageHeight - yPosition - 8;
 

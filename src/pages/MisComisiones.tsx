@@ -21,6 +21,7 @@ export default function MisComisiones() {
   const [showTramiteModal, setShowTramiteModal] = useState(false);
   const [selectedBatchForCorrection, setSelectedBatchForCorrection] = useState<CommissionBatch | null>(null);
   const [estatusList, setEstatusList] = useState<any[]>([]);
+  const [desgloseFiscal, setDesgloseFiscal] = useState<Map<string, any>>(new Map());
 
   useEffect(() => {
     loadCommissions();
@@ -67,6 +68,8 @@ export default function MisComisiones() {
 
       const detailsMap = new Map<string, CommissionDetail[]>();
 
+      const fiscalMap = new Map<string, any>();
+
       for (const batch of batchesData) {
         const { data: details } = await supabase
           .from('commission_details')
@@ -88,10 +91,26 @@ export default function MisComisiones() {
 
         if (details && details.length > 0) {
           detailsMap.set(batch.id, details);
+
+          // Cargar desglose fiscal desde función de base de datos para ASIMILADOS
+          const agentData = details[0].agent;
+          const regimenFiscal = agentData?.usuario?.regimen_fiscal?.name || agentData?.fiscal_regime?.name || '';
+
+          if (regimenFiscal.toUpperCase().includes('ASIMILAD')) {
+            const { data: fiscal, error: fiscalError } = await supabase.rpc('calcular_desglose_fiscal_asimilados', {
+              p_batch_id: batch.id,
+              p_agent_id: agent.id
+            });
+
+            if (!fiscalError && fiscal) {
+              fiscalMap.set(batch.id, fiscal);
+            }
+          }
         }
       }
 
       setBatchDetails(detailsMap);
+      setDesgloseFiscal(fiscalMap);
     }
 
     setLoading(false);
@@ -263,6 +282,57 @@ export default function MisComisiones() {
 
                 {selectedBatch === batch.id && summary && (
                   <div className="border-t border-neutral-200 p-4 sm:p-6 bg-neutral-50">
+                    {/* Desglose Fiscal para ASIMILADOS */}
+                    {desgloseFiscal.has(batch.id) && (
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 mb-6 border-2 border-blue-200">
+                        <h4 className="text-base sm:text-lg font-bold text-blue-900 mb-3 flex items-center gap-2">
+                          <DollarSign className="w-5 h-5" />
+                          Desglose Fiscal (ASIMILADOS)
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="text-xs text-neutral-600 mb-1">Comisión Total</div>
+                            <div className="text-base font-bold text-green-700">
+                              {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).total_comision))}
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="text-xs text-neutral-600 mb-1">Ret. Contable</div>
+                            <div className="text-base font-semibold text-red-600">
+                              - {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).ret_contable))}
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="text-xs text-neutral-600 mb-1">Costo Dispersión</div>
+                            <div className="text-base font-semibold text-red-600">
+                              - {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).dispersion))}
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="text-xs text-neutral-600 mb-1">IVA</div>
+                            <div className="text-base font-semibold text-neutral-600">
+                              {formatCurrency(0)}
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="text-xs text-neutral-600 mb-1">ISR Total</div>
+                            <div className="text-base font-semibold text-red-600">
+                              - {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).isr_total))}
+                            </div>
+                          </div>
+                          <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 shadow-sm border-2 border-green-300">
+                            <div className="text-xs text-green-800 font-semibold mb-1">Total a Pagar</div>
+                            <div className="text-lg font-bold text-green-900">
+                              {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).total_pagar))}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-blue-700 mt-3 italic">
+                          * Cálculo fiscal automático según régimen ASIMILADOS. Valores calculados por el sistema con fórmulas fiscales vigentes.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                       <GraficaColumnas
                         title="Comisiones por Ramo"
