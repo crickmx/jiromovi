@@ -19,6 +19,89 @@ interface PdfFiscalRow {
 }
 
 /**
+ * CRÍTICO: Construir el desglose fiscal DESDE VALORES YA PERSISTIDOS
+ *
+ * Esta función NO CALCULA NADA. Solo suma los valores que ya fueron
+ * calculados y guardados en la base de datos por el backend.
+ *
+ * Para ASIMILADOS, lee:
+ * - asimilados_retencion_contable
+ * - costo_dispersion
+ * - asimilados_isr_vida
+ * - asimilados_isr_danios
+ * - asimilados_isr_total
+ * - asimilados_comision_final
+ *
+ * @param details - Detalles de comisiones con valores YA CALCULADOS
+ * @param regimen - Régimen fiscal del agente
+ * @param totalComisionNeta - Total de comisiones (para validación)
+ * @returns DesgloseFiscal construido desde valores persistidos
+ */
+function construirDesgloseFiscalDesdePersistencia(
+  details: CommissionDetail[],
+  regimen: RegimenFiscal,
+  totalComisionNeta: number
+): DesgloseFiscal {
+  let retContable = 0;
+  let costoDispersion = 0;
+  let iva = 0;
+  let retIsr = 0;
+  let retIva = 0;
+  let isrVida = 0;
+  let isrDanios = 0;
+  let isrTotal = 0;
+  let totalAPagar = 0;
+  let vida = 0;
+  let sinVida = 0;
+
+  details.forEach(detail => {
+    const comision = detail.is_manual_adjusted
+      ? (detail.adjusted_commission_neta || 0)
+      : detail.commission_neta;
+
+    if (detail.ramo.toLowerCase() === 'vida') {
+      vida += comision;
+    } else {
+      sinVida += comision;
+    }
+
+    if (regimen === 'ASIMILADOS') {
+      retContable += detail.asimilados_retencion_contable || 0;
+      costoDispersion += detail.costo_dispersion || 0;
+      isrVida += detail.asimilados_isr_vida || 0;
+      isrDanios += detail.asimilados_isr_danios || 0;
+      isrTotal += detail.asimilados_isr_total || 0;
+
+      if (detail.asimilados_comision_final !== null && detail.asimilados_comision_final !== undefined) {
+        totalAPagar += detail.asimilados_comision_final;
+      }
+    }
+  });
+
+  if (regimen === 'ASIMILADOS') {
+    if (totalAPagar === 0) {
+      totalAPagar = totalComisionNeta - retContable - costoDispersion - isrTotal;
+    }
+  } else {
+    totalAPagar = totalComisionNeta;
+  }
+
+  return {
+    vida: Math.round(vida * 100) / 100,
+    sinVida: Math.round(sinVida * 100) / 100,
+    retContable: Math.round(retContable * 100) / 100,
+    costoDispersion: Math.round(costoDispersion * 100) / 100,
+    iva: Math.round(iva * 100) / 100,
+    retIsr: Math.round(retIsr * 100) / 100,
+    retIva: Math.round(retIva * 100) / 100,
+    isrVida: Math.round(isrVida * 100) / 100,
+    isrDanios: Math.round(isrDanios * 100) / 100,
+    isrTotal: Math.round(isrTotal * 100) / 100,
+    totalAPagar: Math.round(totalAPagar * 100) / 100,
+  };
+}
+
+/**
  * Genera las filas permitidas para el PDF de desglose fiscal.
  * SOLO muestra los campos permitidos según el régimen fiscal.
  *
@@ -609,22 +692,10 @@ export async function generateOrdenDePagoPDF(
     yPosition += 2;
   }
 
-  const resumenPorRamo: RamoResumen[] = [];
-  ramoMap.forEach((data, ramo) => {
-    resumenPorRamo.push({
-      ramo,
-      comisionNeta: data.comisionNeta,
-    });
-  });
-
   const regimenFiscalName = agent.usuario?.regimen_fiscal?.name || agent.fiscal_regime?.name || 'HONORARIOS';
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
-  const desgloseFiscal = calcularDesgloseFiscalCore({
-    regimenFiscal,
-    resumenPorRamo,
-    totalComisionNeta,
-  });
+  const desgloseFiscal = construirDesgloseFiscalDesdePersistencia(agentDetails, regimenFiscal, totalComisionNeta);
 
   const availableSpace = pageHeight - yPosition - 8;
 
