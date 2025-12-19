@@ -81,7 +81,7 @@ import { getTopeCoaseguroOpciones } from '../lib/gmmCalculationEngine';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
 ```
 
-#### Selector de Tope de Coaseguro (líneas 511-580):
+#### Selector de Tope de Coaseguro (líneas 511-584):
 
 **Validaciones implementadas:**
 - Si no hay coaseguro seleccionado: muestra mensaje "Selecciona un coaseguro primero"
@@ -95,10 +95,14 @@ import { formatMoneySafe } from '../lib/gmmParsingUtils';
    - Aplica cuando la atención es en nivel/zona superior
 
 **Features:**
-- Selector con formato: "$40,000 - Contratado o Inferior"
+- **Siempre editable y funcional** (nunca deshabilitado)
+- Selector con formato inteligente:
+  - Con múltiples opciones: "$40,000 - Contratado o Inferior"
+  - Con una sola opción: "$40,000" (sin etiqueta redundante)
 - Texto informativo con tooltip explicativo
 - Panel informativo azul con lista de opciones (cuando hay múltiples)
-- Deshabilitado automáticamente si solo hay una opción
+- Mensaje "Tope único según coaseguro seleccionado" cuando solo hay una opción
+- Estilos de focus (anillo azul) para mejor UX
 - Usa `formatMoneySafe()` para evitar $NaN
 
 #### Visualización de Resultado (línea 705):

@@ -543,8 +543,8 @@ export default function GMMCotizador() {
                           });
                         }
 
-                        const soloUnaOpcion = topesPosibles.length === 1;
                         const valorSeleccionado = input.tope_coaseguro_seleccionado || opciones.contratado_inferior;
+                        const hayMultiplesOpciones = topesPosibles.length > 1;
 
                         return (
                           <>
@@ -554,16 +554,15 @@ export default function GMMCotizador() {
                                 ...input,
                                 tope_coaseguro_seleccionado: Number(e.target.value)
                               })}
-                              disabled={soloUnaOpcion}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
                               {topesPosibles.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
-                                  {formatMoneySafe(opt.value)} - {opt.label}
+                                  {formatMoneySafe(opt.value)} {hayMultiplesOpciones ? `- ${opt.label}` : ''}
                                 </option>
                               ))}
                             </select>
-                            {!soloUnaOpcion && (
+                            {hayMultiplesOpciones && (
                               <div className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
                                 <p className="font-medium">Opciones disponibles:</p>
                                 <ul className="list-disc list-inside mt-1 space-y-1">
@@ -573,6 +572,11 @@ export default function GMMCotizador() {
                                   )}
                                 </ul>
                               </div>
+                            )}
+                            {!hayMultiplesOpciones && (
+                              <p className="mt-1 text-xs text-gray-500">
+                                Tope único según coaseguro seleccionado
+                              </p>
                             )}
                           </>
                         );
