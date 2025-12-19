@@ -508,7 +508,6 @@ export default function GMMCotizador() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Tope de Coaseguro
-                        <InfoTooltip content="El tope de coaseguro es el máximo que pagarás en cada evento. Puedes elegir cualquier valor dentro del rango permitido según el porcentaje de coaseguro." />
                       </label>
                       {(() => {
                         if (!input.coaseguro) {
@@ -611,8 +610,8 @@ export default function GMMCotizador() {
                           )}
                         </div>
 
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="col-span-2">
+                        <div className="grid grid-cols-12 gap-3">
+                          <div className="col-span-6">
                             <label className="block text-xs font-medium text-gray-600 mb-1">Nombre completo*</label>
                             <input
                               type="text"
@@ -623,7 +622,7 @@ export default function GMMCotizador() {
                               required
                             />
                           </div>
-                          <div>
+                          <div className="col-span-3">
                             <label className="block text-xs font-medium text-gray-600 mb-1">Sexo*</label>
                             <select
                               value={insured.sexo}
@@ -634,7 +633,7 @@ export default function GMMCotizador() {
                               <option value="Mujer">Mujer</option>
                             </select>
                           </div>
-                          <div>
+                          <div className="col-span-3">
                             <label className="block text-xs font-medium text-gray-600 mb-1">Edad*</label>
                             <input
                               type="number"
@@ -651,7 +650,6 @@ export default function GMMCotizador() {
                             />
                           </div>
                         </div>
-                        <p className="mt-2 text-xs text-gray-500">* Campos obligatorios. La edad se usa directamente para los cálculos.</p>
                       </div>
                     ))}
                   </div>
