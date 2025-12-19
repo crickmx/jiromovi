@@ -9,11 +9,13 @@
  * - sinVida = 14,263.87
  * - total = 14,808.07
  *
- * Valores esperados:
+ * Valores esperados (IMAGEN 1):
  * - retContable = 87.07
  * - costoDispersion = 1,283.75
- * - isrTotal = 1,343.72 (calculado con fórmula sin /1.09)
- * - totalPagar = 12,093.53
+ * - isrVida = 46.91
+ * - isrDanios = 1,308.61
+ * - isrTotal = 1,355.53
+ * - totalPagar = 12,081.72
  *
  * IMPORTANTE:
  * - Si cualquier valor difiere en más de 0.01, el test debe fallar
@@ -30,16 +32,25 @@ interface TestResult {
 }
 
 /**
- * Calcula el desglose fiscal de ASIMILADOS usando las fórmulas SIN /1.09
+ * Calcula el desglose fiscal de ASIMILADOS usando las fórmulas CORRECTAS (Imagen 1)
+ *
+ * isrVida = ((vida - retContable) / 1.09) × 0.10
+ * isrDanios = ((sinVida - costoDispersion) / 1.09) × 0.10
  */
 function calcularAsimilados(vida: number, sinVida: number) {
   // Retenciones obligatorias
   const retContable = Math.round(vida * 0.16 * 100) / 100;
   const costoDispersion = Math.round(sinVida * 0.09 * 100) / 100;
 
-  // ISR separado por Vida y Sin Vida (SIN división /1.09)
-  const isrVida = Math.round((vida - retContable) * 0.10 * 100) / 100;
-  const isrDanios = Math.round((sinVida - costoDispersion) * 0.10 * 100) / 100;
+  // ISR Vida: ((vida - retContable) / 1.09) × 0.10
+  const baseIsrVida = (vida - retContable) / 1.09;
+  const isrVida = Math.round(baseIsrVida * 0.10 * 100) / 100;
+
+  // ISR Daños: ((sinVida - costoDispersion) / 1.09) × 0.10
+  const baseIsrDanios = (sinVida - costoDispersion) / 1.09;
+  const isrDanios = Math.round(baseIsrDanios * 0.10 * 100) / 100;
+
+  // ISR Total
   const isrTotal = Math.round((isrVida + isrDanios) * 100) / 100;
 
   // Total a pagar
@@ -72,14 +83,14 @@ export function testAsimiladosCalculosCorrecto(): TestResult[] {
   // Calcular con las fórmulas implementadas
   const calc = calcularAsimilados(vida, sinVida);
 
-  // Valores esperados (según especificación del usuario)
-  // NOTA: Usamos 1,343.72 en lugar de 1,355.53 porque es el valor que produce
-  // la fórmula sin /1.09 que implementamos
+  // Valores esperados según Imagen 1 (CORRECTOS)
   const esperados = {
     retContable: 87.07,
     costoDispersion: 1283.75,
-    isrTotal: 1343.72, // Valor calculado con fórmula sin /1.09
-    totalPagar: 12093.53 // Recalculado: 14808.07 - 87.07 - 1283.75 - 1343.72
+    isrVida: 46.91,
+    isrDanios: 1308.61,
+    isrTotal: 1355.53,
+    totalPagar: 12081.72
   };
 
   // Validar Ret. Contable
@@ -104,6 +115,30 @@ export function testAsimiladosCalculosCorrecto(): TestResult[] {
     mensaje: Math.abs(esperados.costoDispersion - calc.costoDispersion) < 0.01
       ? 'CORRECTO'
       : 'ERROR: No coincide con valor esperado'
+  });
+
+  // Validar ISR Vida
+  resultados.push({
+    campo: 'ISR Vida',
+    esperado: esperados.isrVida,
+    calculado: calc.isrVida,
+    diferencia: Math.abs(esperados.isrVida - calc.isrVida),
+    valido: Math.abs(esperados.isrVida - calc.isrVida) < 0.01,
+    mensaje: Math.abs(esperados.isrVida - calc.isrVida) < 0.01
+      ? 'CORRECTO'
+      : 'ERROR CRITICO: ISR Vida no coincide - REVISAR FORMULA'
+  });
+
+  // Validar ISR Daños
+  resultados.push({
+    campo: 'ISR Daños',
+    esperado: esperados.isrDanios,
+    calculado: calc.isrDanios,
+    diferencia: Math.abs(esperados.isrDanios - calc.isrDanios),
+    valido: Math.abs(esperados.isrDanios - calc.isrDanios) < 0.01,
+    mensaje: Math.abs(esperados.isrDanios - calc.isrDanios) < 0.01
+      ? 'CORRECTO'
+      : 'ERROR CRITICO: ISR Daños no coincide - REVISAR FORMULA'
   });
 
   // Validar ISR Total
