@@ -96,6 +96,8 @@ Deno.serve(async (req: Request) => {
             status: 'active',
             updated_by: user.id,
             updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'source_type,source_value'
           });
 
         if (emailMappingError) {
@@ -116,6 +118,8 @@ Deno.serve(async (req: Request) => {
             status: 'active',
             updated_by: user.id,
             updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'source_type,source_value'
           });
 
         if (nameMappingError) {
