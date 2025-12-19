@@ -7,13 +7,17 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { InfoTooltip } from '../components/ui/info-tooltip';
 import { supabase } from '../lib/supabase';
-import { calculateQuote, loadTariffTables } from '../lib/gmmCalculationEngine';
+import { calculateQuote, loadTariffTables, getTopeCoaseguroOpciones } from '../lib/gmmCalculationEngine';
 import { generateQuotePDF } from '../lib/gmmPdfGenerator';
 import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
+import { formatMoneySafe } from '../lib/gmmParsingUtils';
 import type { QuoteInput, QuoteInputInsured, QuoteCalculationResult, TariffTables, GMMQuote, GMMQuoteInsured } from '../lib/gmmTypes';
 
 function formatCurrency(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) {
+    return '—';
+  }
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
@@ -507,21 +511,45 @@ export default function GMMCotizador() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Tope de Coaseguro
+                        <InfoTooltip content="El tope de coaseguro es el máximo que pagarás en cada evento. Por defecto aplica el tope 'Contratado o Inferior'. Si la atención es en nivel/zona superior, aplica 'Tope Superior'." />
                       </label>
                       {(() => {
-                        const topeDefault = tariffTables.tope_coaseguro.find(
-                          row => row.col_0 === input.coaseguro
-                        )?.col_1;
-                        const topeOpciones = tariffTables.tope_coaseguro_opciones?.find(
-                          opt => opt.coaseguro === input.coaseguro
-                        );
-                        const opciones = topeOpciones?.opciones_tope || [topeDefault];
-                        const soloUnaOpcion = opciones.length === 1;
+                        if (!input.coaseguro) {
+                          return (
+                            <div className="text-sm text-gray-500 italic py-2">
+                              Selecciona un coaseguro primero
+                            </div>
+                          );
+                        }
+
+                        const opciones = getTopeCoaseguroOpciones(tariffTables.tope_coaseguro, input.coaseguro);
+
+                        if (!opciones) {
+                          return (
+                            <div className="text-sm text-red-600 py-2">
+                              No se encontró tope para el coaseguro seleccionado
+                            </div>
+                          );
+                        }
+
+                        const topesPosibles: Array<{ value: number; label: string }> = [
+                          { value: opciones.contratado_inferior, label: 'Contratado o Inferior' }
+                        ];
+
+                        if (opciones.superior && opciones.superior !== opciones.contratado_inferior) {
+                          topesPosibles.push({
+                            value: opciones.superior,
+                            label: 'Superior'
+                          });
+                        }
+
+                        const soloUnaOpcion = topesPosibles.length === 1;
+                        const valorSeleccionado = input.tope_coaseguro_seleccionado || opciones.contratado_inferior;
 
                         return (
                           <>
                             <select
-                              value={input.tope_coaseguro_seleccionado || topeDefault}
+                              value={valorSeleccionado}
                               onChange={(e) => setInput({
                                 ...input,
                                 tope_coaseguro_seleccionado: Number(e.target.value)
@@ -529,16 +557,22 @@ export default function GMMCotizador() {
                               disabled={soloUnaOpcion}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
                             >
-                              {opciones.map((tope) => (
-                                <option key={tope} value={tope}>
-                                  {formatCurrency(tope)}
+                              {topesPosibles.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {formatMoneySafe(opt.value)} - {opt.label}
                                 </option>
                               ))}
                             </select>
-                            {topeDefault && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                Sugerido por tarifa: {formatCurrency(topeDefault)}
-                              </p>
+                            {!soloUnaOpcion && (
+                              <div className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                                <p className="font-medium">Opciones disponibles:</p>
+                                <ul className="list-disc list-inside mt-1 space-y-1">
+                                  <li><span className="font-semibold">{formatMoneySafe(opciones.contratado_inferior)}</span> - Nivel contratado o inferior</li>
+                                  {opciones.superior && (
+                                    <li><span className="font-semibold">{formatMoneySafe(opciones.superior)}</span> - Nivel superior al contratado</li>
+                                  )}
+                                </ul>
+                              </div>
                             )}
                           </>
                         );
@@ -698,7 +732,7 @@ export default function GMMCotizador() {
                         </div>
                         <div className="flex justify-between text-xs text-gray-500">
                           <span>Tope Coaseguro</span>
-                          <span>${result.tope_coaseguro.toFixed(2)}</span>
+                          <span>{formatMoneySafe(result.tope_coaseguro)}</span>
                         </div>
                       </div>
                     </Card>

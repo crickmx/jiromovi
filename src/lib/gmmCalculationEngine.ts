@@ -10,6 +10,13 @@ import type {
   PaymentPlanResult,
   TariffTables,
 } from './gmmTypes';
+import {
+  parsePercentToString,
+  parseMoney,
+  normalizeCoaseguroKey,
+  coasegurosMatch,
+  normalizeTopsCoaseguroTable
+} from './gmmParsingUtils';
 
 function roundTo2Decimals(value: number): number {
   return Math.round(value * 100) / 100;
@@ -71,6 +78,89 @@ function vlookupByAge(table: any[], edad: number, sexo: string): number {
   return Number(row[col] || 0);
 }
 
+/**
+ * Obtiene el tope de coaseguro de forma segura
+ * @param table - Tabla de topes de coaseguro
+ * @param coaseguro - Valor de coaseguro (puede ser "10%", 10, 0.10, etc.)
+ * @param tipo - 'contratado_inferior' o 'superior'
+ * @returns Tope de coaseguro o 0 si no se encuentra
+ */
+function getTopeCoaseguro(
+  table: any[],
+  coaseguro: any,
+  tipo: 'contratado_inferior' | 'superior' = 'contratado_inferior'
+): number {
+  if (!table || table.length === 0) {
+    console.error('getTopeCoaseguro: tabla vacía');
+    return 0;
+  }
+
+  // Normalizar el coaseguro a formato "10%"
+  const coaseguroNormalizado = normalizeCoaseguroKey(coaseguro);
+
+  // Buscar en la tabla usando comparación normalizada
+  const row = table.find(r => {
+    const rowKey = normalizeCoaseguroKey(r.col_0);
+    return rowKey === coaseguroNormalizado;
+  });
+
+  if (!row) {
+    const availableKeys = table.slice(0, 10).map(r => `"${r.col_0}"`).join(', ');
+    console.error(
+      `getTopeCoaseguro: No se encontró tope para coaseguro "${coaseguro}" (normalizado: "${coaseguroNormalizado}").\n` +
+      `Valores disponibles: ${availableKeys}`
+    );
+    return 0;
+  }
+
+  // Obtener el valor correcto según el tipo
+  const colIndex = tipo === 'contratado_inferior' ? 1 : 2;
+  const value = row[`col_${colIndex}`];
+
+  // Parsear el valor (puede venir como "$40,000" o 40000)
+  const parsed = parseMoney(value);
+
+  if (isNaN(parsed) || parsed === 0) {
+    console.error(
+      `getTopeCoaseguro: Valor inválido para coaseguro "${coaseguro}", tipo "${tipo}": ${value}`
+    );
+    return 0;
+  }
+
+  return parsed;
+}
+
+/**
+ * Obtiene todas las opciones de tope para un coaseguro dado
+ */
+export function getTopeCoaseguroOpciones(
+  table: any[],
+  coaseguro: any
+): { contratado_inferior: number; superior: number | null } | null {
+  if (!table || table.length === 0) {
+    return null;
+  }
+
+  const coaseguroNormalizado = normalizeCoaseguroKey(coaseguro);
+
+  const row = table.find(r => {
+    const rowKey = normalizeCoaseguroKey(r.col_0);
+    return rowKey === coaseguroNormalizado;
+  });
+
+  if (!row) {
+    return null;
+  }
+
+  const contratadoInferior = parseMoney(row.col_1);
+  const superior = row.col_2 ? parseMoney(row.col_2) : null;
+
+  return {
+    contratado_inferior: contratadoInferior,
+    superior: superior
+  };
+}
+
 export function calculateQuote(
   input: QuoteInput,
   tables: TariffTables
@@ -82,7 +172,8 @@ export function calculateQuote(
   const factorDeducible = vlookup(tables.factor_deducible, input.deducible, 1, 'Deducible');
   const factorCoaseguro = vlookup(tables.factor_coaseguro, input.coaseguro, 1, 'Coaseguro');
 
-  const topeCoaseguroDefault = vlookup(tables.tope_coaseguro, input.coaseguro, 1, 'Tope Coaseguro');
+  // Tope de coaseguro con manejo seguro
+  const topeCoaseguroDefault = getTopeCoaseguro(tables.tope_coaseguro, input.coaseguro, 'contratado_inferior');
   const topeCoaseguro = input.tope_coaseguro_seleccionado || topeCoaseguroDefault;
 
   const sumCargas = tables.denominador_cargas.reduce((acc, val) => acc + (Number(val) || 0), 0);
@@ -310,6 +401,10 @@ export function calculateQuote(
 export function loadTariffTables(tables: any[]): TariffTables {
   const get = (key: string) => tables.find(t => t.table_key === key)?.data_json;
 
+  // Normalizar la tabla de topes de coaseguro
+  const topeCoaseguroRaw = get('tope_coaseguro') || [];
+  const topeCoaseguro = normalizeTopsCoaseguroTable(topeCoaseguroRaw);
+
   return {
     factor_estado: get('factor_estado') || [],
     factor_nivel_hospitalario: get('factor_nivel_hospitalario') || [],
@@ -317,7 +412,7 @@ export function loadTariffTables(tables: any[]): TariffTables {
     factor_suma_asegurada: get('factor_suma_asegurada') || [],
     factor_deducible: get('factor_deducible') || [],
     factor_coaseguro: get('factor_coaseguro') || [],
-    tope_coaseguro: get('tope_coaseguro') || [],
+    tope_coaseguro: topeCoaseguro,
     tope_coaseguro_opciones: get('tope_coaseguro_opciones'),
     forma_pago: get('forma_pago') || [],
     base_intermedia_edad_sexo: get('base_intermedia_edad_sexo') || [],

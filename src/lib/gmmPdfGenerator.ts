@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { GMMQuote, GMMQuoteInsured } from './gmmTypes';
 import { getCoveragePDFText, COVERAGE_LABELS } from './gmmCoverageHelp';
+import { formatMoneySafe } from './gmmParsingUtils';
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-MX', {
@@ -94,7 +95,7 @@ export async function generateQuotePDF(
     ['Suma Asegurada', quote.suma_asegurada],
     ['Deducible', quote.deducible],
     ['Coaseguro', quote.coaseguro],
-    ['Tope de Coaseguro', formatCurrency(quote.tope_coaseguro)],
+    ['Tope de Coaseguro', formatMoneySafe(quote.tope_coaseguro)],
     ['Forma de Pago', quote.forma_pago],
   ];
 
