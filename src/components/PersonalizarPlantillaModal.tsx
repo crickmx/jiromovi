@@ -492,17 +492,17 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
     <div className="border border-neutral-200 rounded-lg overflow-hidden">
       <button
         onClick={() => toggleSection(id)}
-        className="w-full px-3 py-2 flex items-center justify-between bg-neutral-50 hover:bg-neutral-100 transition-colors"
+        className="w-full px-2.5 py-1.5 flex items-center justify-between bg-neutral-50 hover:bg-neutral-100 transition-colors"
       >
-        <span className="text-sm font-semibold text-neutral-900">{title}</span>
+        <span className="text-xs font-semibold text-neutral-900">{title}</span>
         {openSections[id] ? (
-          <ChevronUp className="w-4 h-4 text-neutral-600" />
+          <ChevronUp className="w-3.5 h-3.5 text-neutral-600" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-neutral-600" />
+          <ChevronDown className="w-3.5 h-3.5 text-neutral-600" />
         )}
       </button>
       {openSections[id] && (
-        <div className="p-3 bg-white">
+        <div className="p-2 bg-white">
           {children}
         </div>
       )}
@@ -516,14 +516,14 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
     style: TextStyle;
     field: 'nombre' | 'jiro' | 'multi'
   }) => (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2">
+    <div className="space-y-1">
+      <div className="grid grid-cols-3 gap-1.5">
         <div>
-          <label className="block text-xs font-medium text-neutral-600 mb-1">Fuente</label>
+          <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">Fuente</label>
           <select
             value={style.font}
             onChange={(e) => updateStyle(field, 'font', e.target.value)}
-            className="w-full px-2 py-1.5 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-1.5 py-1 border border-neutral-300 rounded text-[11px] focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             {FUENTES.map(f => (
               <option key={f} value={f}>{f}</option>
@@ -531,77 +531,69 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-neutral-600 mb-1">Tamaño</label>
+          <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">Tamaño</label>
           <input
             type="number"
             min="10"
             max="100"
             value={style.size}
             onChange={(e) => updateStyle(field, 'size', parseInt(e.target.value))}
-            className="w-full px-2 py-1.5 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-1.5 py-1 border border-neutral-300 rounded text-[11px] focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs font-medium text-neutral-600 mb-1">Color</label>
-          <div className="flex gap-1.5">
+          <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">Color</label>
+          <div className="flex gap-0.5">
             <input
               type="color"
               value={style.color}
               onChange={(e) => updateStyle(field, 'color', e.target.value)}
-              className="h-8 w-10 rounded border border-neutral-300 cursor-pointer"
+              className="h-7 w-7 rounded border border-neutral-300 cursor-pointer"
             />
             <input
               type="text"
               value={style.color}
               onChange={(e) => updateStyle(field, 'color', e.target.value)}
-              className="flex-1 px-2 py-1.5 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="#ffffff"
+              className="flex-1 px-1 py-1 border border-neutral-300 rounded text-[10px] focus:outline-none focus:ring-1 focus:ring-primary-500"
+              placeholder="#fff"
             />
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-neutral-600 mb-1">Alineación</label>
-          <div className="flex gap-1">
-            {(['left', 'center', 'right'] as const).map(a => (
-              <button
-                key={a}
-                onClick={() => updateStyle(field, 'align', a)}
-                className={`flex-1 px-2 py-1.5 border rounded-md text-xs font-medium transition ${
-                  style.align === a
-                    ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
-                }`}
-              >
-                {a === 'left' ? 'Izq' : a === 'center' ? 'Cen' : 'Der'}
-              </button>
-            ))}
           </div>
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-1">
+        {(['left', 'center', 'right'] as const).map(a => (
+          <button
+            key={a}
+            onClick={() => updateStyle(field, 'align', a)}
+            className={`flex-1 px-1.5 py-0.5 border rounded text-[10px] font-medium transition ${
+              style.align === a
+                ? 'bg-primary-600 text-white border-primary-600'
+                : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
+            }`}
+          >
+            {a === 'left' ? 'Izq' : a === 'center' ? 'Cen' : 'Der'}
+          </button>
+        ))}
         <button
           onClick={() => updateStyle(field, 'bold', !style.bold)}
-          className={`flex-1 px-2 py-1.5 border rounded-md text-xs font-bold transition ${
+          className={`flex-1 px-1.5 py-0.5 border rounded text-[10px] font-bold transition ${
             style.bold
               ? 'bg-primary-600 text-white border-primary-600'
               : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
           }`}
         >
-          Negrita
+          B
         </button>
         <button
           onClick={() => updateStyle(field, 'italic', !style.italic)}
-          className={`flex-1 px-2 py-1.5 border rounded-md text-xs italic transition ${
+          className={`flex-1 px-1.5 py-0.5 border rounded text-[10px] italic transition ${
             style.italic
               ? 'bg-primary-600 text-white border-primary-600'
               : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
           }`}
         >
-          Cursiva
+          I
         </button>
       </div>
     </div>
@@ -613,58 +605,58 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
     <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
       <div className="min-h-screen p-2 sm:p-4 flex items-start justify-center">
         <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl my-4">
-          <div className="sticky top-0 z-20 bg-white border-b border-neutral-200 px-4 py-3 rounded-t-xl flex items-center justify-between">
+          <div className="sticky top-0 z-20 bg-white border-b border-neutral-200 px-3 py-2 rounded-t-xl flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-neutral-900">
+              <h2 className="text-base font-bold text-neutral-900">
                 Personalizar: {plantilla.titulo}
               </h2>
-              <p className="text-xs text-neutral-600">
-                Configura tu diseño con vista previa en tiempo real
+              <p className="text-[10px] text-neutral-600">
+                Vista previa en tiempo real
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 p-2 rounded-lg transition-all"
+              className="text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 p-1.5 rounded-lg transition-all"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
           {error && (
-            <div className="mx-4 mt-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+            <div className="mx-3 mt-2 bg-red-50 border border-red-200 text-red-700 px-2.5 py-1.5 rounded-lg text-xs">
               {error}
             </div>
           )}
 
           {saved && (
-            <div className="mx-4 mt-4 bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-sm">
+            <div className="mx-3 mt-2 bg-green-50 border border-green-200 text-green-700 px-2.5 py-1.5 rounded-lg text-xs">
               Valores restablecidos correctamente
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
-            <div className="space-y-3 order-2 lg:order-1">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-neutral-700">Controles</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3">
+            <div className="space-y-2 order-2 lg:order-1">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-xs font-semibold text-neutral-700">Controles</h3>
                 <button
                   onClick={handleReset}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-md transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded transition-colors"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
+                  <RotateCcw className="w-3 h-3" />
                   Restablecer
                 </button>
               </div>
 
               <AccordionSection id="texto" title="Texto Principal">
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div>
-                    <label className="block text-xs font-medium text-neutral-600 mb-1">Nombre completo</label>
+                    <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">Nombre completo</label>
                     <input
                       type="text"
                       value={nombreCompleto}
                       onChange={(e) => setNombreCompleto(e.target.value)}
                       placeholder="Ej: Juan Pérez García"
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
                   <StyleControls style={styleNombre} field="nombre" />
@@ -672,26 +664,26 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
               </AccordionSection>
 
               <AccordionSection id="urls" title="URLs (sin https://)">
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div>
-                    <label className="block text-xs font-medium text-neutral-600 mb-1">URL JIRO</label>
+                    <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">URL JIRO</label>
                     <input
                       type="text"
                       value={urlJiro}
                       onChange={(e) => handleUrlChange(setUrlJiro, e.target.value)}
                       placeholder="www.jiro.mx"
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                     <StyleControls style={styleJiro} field="jiro" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-neutral-600 mb-1">URL Multicotizador</label>
+                    <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">URL Multicotizador</label>
                     <input
                       type="text"
                       value={urlMulticotizador}
                       onChange={(e) => handleUrlChange(setUrlMulticotizador, e.target.value)}
                       placeholder="www.multicotizador.digital"
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                     <StyleControls style={styleMulti} field="multi" />
                   </div>
@@ -699,7 +691,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
               </AccordionSection>
 
               <AccordionSection id="logo" title="Logo">
-                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center hover:border-primary-500 transition-all">
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-3 text-center hover:border-primary-500 transition-all">
                   <input
                     type="file"
                     accept="image/*"
@@ -709,20 +701,20 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                   />
                   <label htmlFor="logo-upload" className="cursor-pointer">
                     {logoPreview ? (
-                      <div className="space-y-2">
-                        <img src={logoPreview} alt="Logo" className="max-h-20 mx-auto rounded" />
+                      <div className="space-y-1.5">
+                        <img src={logoPreview} alt="Logo" className="max-h-16 mx-auto rounded" />
                         <button
                           type="button"
-                          className="text-primary-600 hover:text-primary-700 text-xs font-medium"
+                          className="text-primary-600 hover:text-primary-700 text-[10px] font-medium"
                         >
                           Cambiar logo
                         </button>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        <Upload className="w-10 h-10 text-neutral-400 mx-auto" />
-                        <p className="text-neutral-700 font-medium text-sm">Subir logo</p>
-                        <p className="text-xs text-neutral-500">PNG, JPG o WebP</p>
+                      <div className="space-y-1">
+                        <Upload className="w-8 h-8 text-neutral-400 mx-auto" />
+                        <p className="text-neutral-700 font-medium text-xs">Subir logo</p>
+                        <p className="text-[10px] text-neutral-500">PNG, JPG o WebP</p>
                       </div>
                     )}
                   </label>
@@ -731,14 +723,14 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
             </div>
 
             <div className="order-1 lg:order-2 lg:sticky lg:top-20 lg:self-start">
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
                 Vista Previa
               </label>
               <div className="border-2 border-neutral-300 rounded-lg overflow-hidden bg-neutral-100 shadow-lg">
                 <canvas
                   ref={canvasRef}
                   className="w-full h-auto"
-                  style={{ maxHeight: 'calc(100vh - 280px)', objectFit: 'contain' }}
+                  style={{ maxHeight: 'calc(100vh - 240px)', objectFit: 'contain' }}
                 />
                 <img ref={imgRef} className="hidden" alt="" />
               </div>
@@ -746,9 +738,9 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
               <button
                 onClick={handleDescargar}
                 disabled={loading}
-                className="w-full mt-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm"
+                className="w-full mt-2 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5" />
                 <span>{loading ? 'Generando...' : 'Descargar Diseño'}</span>
               </button>
             </div>
