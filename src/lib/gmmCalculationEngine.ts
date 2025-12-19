@@ -451,9 +451,29 @@ export function calculateQuote(
 export function loadTariffTables(tables: any[]): TariffTables {
   const get = (key: string) => tables.find(t => t.table_key === key)?.data_json;
 
-  // Normalizar la tabla de topes de coaseguro
+  // Normalizar la tabla de topes de coaseguro (tabla antigua)
   const topeCoaseguroRaw = get('tope_coaseguro') || [];
   const topeCoaseguro = normalizeTopsCoaseguroTable(topeCoaseguroRaw);
+
+  // Cargar tabla de rangos de tope de coaseguro (nuevo sistema)
+  // Derivar rangos de la tabla antigua si no existe tabla específica
+  let topeCoaseguroRangos;
+  const rangosExplicit = get('tope_coaseguro_rangos');
+
+  if (rangosExplicit && Array.isArray(rangosExplicit) && rangosExplicit.length > 0) {
+    // Si existe tabla explícita de rangos, usarla
+    topeCoaseguroRangos = rangosExplicit;
+  } else if (topeCoaseguro.length > 0) {
+    // Derivar rangos de la tabla antigua (col_1 = min, col_2 = max)
+    topeCoaseguroRangos = topeCoaseguro.map(row => ({
+      coaseguro: row.col_0,
+      tope_min: row.col_1 || 0,
+      tope_max: row.col_2 || row.col_1 || 0,
+      tope_default: row.col_1 || 0,
+    }));
+  } else {
+    topeCoaseguroRangos = [];
+  }
 
   return {
     factor_estado: get('factor_estado') || [],
@@ -463,7 +483,7 @@ export function loadTariffTables(tables: any[]): TariffTables {
     factor_deducible: get('factor_deducible') || [],
     factor_coaseguro: get('factor_coaseguro') || [],
     tope_coaseguro: topeCoaseguro,
-    tope_coaseguro_opciones: get('tope_coaseguro_opciones'),
+    tope_coaseguro_rangos: topeCoaseguroRangos,
     forma_pago: get('forma_pago') || [],
     base_intermedia_edad_sexo: get('base_intermedia_edad_sexo') || [],
     coef_medicamentos: Number(get('coef_medicamentos')) || 0,
