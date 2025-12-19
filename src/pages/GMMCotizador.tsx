@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download } from 'lucide-react';
+import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, Edit } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { Card } from '../components/ui/card';
@@ -13,6 +13,25 @@ import { generateQuotePDF } from '../lib/gmmPdfGenerator';
 import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
 import type { QuoteInput, QuoteInputInsured, QuoteCalculationResult, TariffTables, GMMQuote, GMMQuoteInsured } from '../lib/gmmTypes';
+
+interface GMMQuotation {
+  id: string;
+  folio: string;
+  usuario_id: string;
+  estado: string;
+  producto: string;
+  cliente_nombre: string | null;
+  asegurado_principal: string;
+  quote_data: QuoteInput;
+  coverage_selections: Record<string, boolean>;
+  prima_neta_total: number;
+  total_a_pagar: number;
+  forma_pago: string;
+  pdf_url: string | null;
+  editada_desde_cotizacion_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 function formatCurrency(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -30,6 +49,14 @@ function formatCurrency(value: number | string): string {
 function formatPercentage(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
   return `${(num * 100).toFixed(0)}%`;
+}
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('es-MX', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 export default function GMMCotizador() {
@@ -66,10 +93,11 @@ export default function GMMCotizador() {
   const [calculating, setCalculating] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [quotes, setQuotes] = useState<GMMQuote[]>([]);
-  const [selectedQuote, setSelectedQuote] = useState<GMMQuote | null>(null);
-  const [insureds, setInsureds] = useState<GMMQuoteInsured[]>([]);
+  const [quotations, setQuotations] = useState<GMMQuotation[]>([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterFormaPago, setFilterFormaPago] = useState<string>('');
+  const [filterEstado, setFilterEstado] = useState<string>('');
 
   useEffect(() => {
     loadActiveTariff();
@@ -90,6 +118,12 @@ export default function GMMCotizador() {
       loadQuotes();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'cotizaciones') {
+      loadQuotes();
+    }
+  }, [filterFormaPago, filterEstado]);
 
   async function loadActiveTariff() {
     try {
@@ -153,42 +187,40 @@ export default function GMMCotizador() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from('gmm_quotes')
+      let query = supabase
+        .from('gmm_quotations')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
+      if (filterEstado) {
+        query = query.eq('estado', filterEstado);
+      }
+
+      if (filterFormaPago) {
+        query = query.eq('forma_pago', filterFormaPago);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      setQuotes(data || []);
+
+      let filtered = data || [];
+
+      if (searchTerm) {
+        filtered = filtered.filter(
+          q =>
+            q.folio.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            q.asegurado_principal.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (q.cliente_nombre && q.cliente_nombre.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+      }
+
+      setQuotations(filtered);
     } catch (error) {
-      console.error('Error loading quotes:', error);
+      console.error('Error loading quotations:', error);
     } finally {
       setLoadingQuotes(false);
-    }
-  }
-
-  async function loadQuoteDetails(quoteId: string) {
-    try {
-      const { data: quote, error: quoteError } = await supabase
-        .from('gmm_quotes')
-        .select('*')
-        .eq('id', quoteId)
-        .single();
-
-      if (quoteError) throw quoteError;
-
-      const { data: insuredsData, error: insuredsError } = await supabase
-        .from('gmm_quote_insureds')
-        .select('*')
-        .eq('quote_id', quoteId)
-        .order('orden');
-
-      if (insuredsError) throw insuredsError;
-
-      setSelectedQuote(quote);
-      setInsureds(insuredsData || []);
-    } catch (error) {
-      console.error('Error loading quote details:', error);
     }
   }
 
@@ -254,10 +286,10 @@ export default function GMMCotizador() {
     }
   }
 
-  async function handleDownloadPDF(quote: GMMQuote) {
+  async function handleDownloadPDF(quotation: GMMQuotation) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No autenticado');
+      if (!user) return;
 
       const { data: usuario } = await supabase
         .from('usuarios')
@@ -265,28 +297,58 @@ export default function GMMCotizador() {
         .eq('id', user.id)
         .maybeSingle();
 
-      const { data: insuredsData } = await supabase
-        .from('gmm_quote_insureds')
-        .select('*')
-        .eq('quote_id', quote.id)
-        .order('orden');
-
-      if (!insuredsData || insuredsData.length === 0) {
-        alert('No se encontraron asegurados para esta cotización');
-        return;
-      }
-
       const asesorInfo = {
         nombre: usuario?.nombre_completo || 'Asesor JIRO',
         celular: usuario?.celular_laboral || '',
       };
 
-      const pdfBlob = await generateQuotePDF(quote, insuredsData, asesorInfo);
+      const quoteForPdf = {
+        quote_number: quotation.folio,
+        created_at: quotation.created_at,
+        estado: quotation.quote_data.estado,
+        nivel_hospitalario: quotation.quote_data.nivel_hospitalario,
+        tabulador: quotation.quote_data.tabulador,
+        suma_asegurada: quotation.quote_data.suma_asegurada,
+        deducible: quotation.quote_data.deducible,
+        coaseguro: quotation.quote_data.coaseguro,
+        tope_coaseguro: (quotation.quote_data as any).tope_coaseguro_seleccionado || 0,
+        forma_pago: quotation.forma_pago,
+        cob_medicamentos_fuera: quotation.coverage_selections.medicamentos_fuera || false,
+        cob_eliminacion_deducible_accidente: quotation.coverage_selections.eliminacion_deducible_accidente || false,
+        cob_multiregion: quotation.coverage_selections.multiregion || false,
+        cob_vip: quotation.coverage_selections.vip || false,
+        cob_emergencia_medica_extranjero: quotation.coverage_selections.emergencia_medica_extranjero || false,
+        cob_reconocimiento_antiguedad: quotation.coverage_selections.reconocimiento_antiguedad || false,
+        cob_complicaciones_no_amparadas: quotation.coverage_selections.complicaciones_no_amparadas || false,
+        cob_padecimientos_preexistentes: quotation.coverage_selections.padecimientos_preexistentes || false,
+        cob_enfermedades_graves_extranjero: quotation.coverage_selections.enfermedades_graves_extranjero || false,
+        cob_cobertura_internacional: quotation.coverage_selections.cobertura_internacional || false,
+        cob_ampliacion_servicios: quotation.coverage_selections.ampliacion_servicios || false,
+        cob_ayuda_diaria: quotation.coverage_selections.ayuda_diaria || false,
+        cob_indemnizacion_eg: quotation.coverage_selections.indemnizacion_eg || false,
+        cob_maternidad: quotation.coverage_selections.maternidad || false,
+        prima_neta_total: quotation.prima_neta_total,
+        subtotal: quotation.prima_neta_total,
+        iva: quotation.total_a_pagar - quotation.prima_neta_total,
+        total: quotation.total_a_pagar,
+      };
+
+      const insuredsData = quotation.quote_data.insureds.map((ins, idx) => ({
+        orden: idx + 1,
+        nombre: ins.nombre,
+        sexo: ins.sexo,
+        edad: ins.edad,
+        prima_base: 0,
+        prima_adicionales: 0,
+        prima_total: 0,
+      }));
+
+      const pdfBlob = await generateQuotePDF(quoteForPdf as any, insuredsData, asesorInfo);
 
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Cotizacion_${quote.quote_number}_${quote.id.substring(0, 8)}.pdf`;
+      link.download = `cotizacion_${quotation.folio}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -294,6 +356,33 @@ export default function GMMCotizador() {
     } catch (error: any) {
       console.error('Error generating PDF:', error);
       alert(`Error al generar PDF: ${error.message}`);
+    }
+  }
+
+  function handleEdit(quotation: GMMQuotation) {
+    setInput(quotation.quote_data);
+    setEditedFromQuotationId(quotation.id);
+    setActiveTab('cotizador');
+  }
+
+  async function handleDelete(quotation: GMMQuotation) {
+    if (!confirm(`¿Está seguro de eliminar la cotización ${quotation.folio}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('gmm_quotations')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', quotation.id);
+
+      if (error) throw error;
+
+      alert('Cotización eliminada exitosamente');
+      loadQuotes();
+    } catch (error: any) {
+      console.error('Error deleting quotation:', error);
+      alert(`Error: ${error.message}`);
     }
   }
 
@@ -343,8 +432,7 @@ export default function GMMCotizador() {
       alert(`Cotización guardada: ${quotation.folio}${editedFromQuotationId ? ' (editada)' : ''}`);
 
       setEditedFromQuotationId(null);
-
-      window.location.href = '/gmm/mis-cotizaciones';
+      setActiveTab('cotizaciones');
     } catch (error: any) {
       console.error('Error saving:', error);
       alert(`Error: ${error.message}`);
@@ -731,235 +819,230 @@ export default function GMMCotizador() {
           </TabsContent>
 
           <TabsContent value="cotizaciones">
-            {loadingQuotes ? (
-              <div className="flex items-center justify-center h-96">
-                <div className="text-gray-500">Cargando cotizaciones...</div>
-              </div>
-            ) : quotes.length === 0 ? (
-              <Card className="p-12 text-center">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No hay cotizaciones guardadas</p>
-                <Button
-                  onClick={() => setActiveTab('cotizador')}
-                  className="mt-4"
-                  variant="outline"
+            <Card className="p-6 mb-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por folio, cliente o asegurado..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyUp={() => loadQuotes()}
+                    className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <select
+                  value={filterFormaPago}
+                  onChange={(e) => setFilterFormaPago(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  Crear nueva cotización
+                  <option value="">Todas las formas de pago</option>
+                  <option value="ANUAL">Anual</option>
+                  <option value="SEMESTRAL">Semestral</option>
+                  <option value="TRIMESTRAL">Trimestral</option>
+                  <option value="MENSUAL">Mensual</option>
+                </select>
+
+                <select
+                  value={filterEstado}
+                  onChange={(e) => setFilterEstado(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="draft">Borrador</option>
+                  <option value="active">Activa</option>
+                  <option value="archived">Archivada</option>
+                </select>
+              </div>
+            </Card>
+
+            {loadingQuotes ? (
+              <Card className="p-12 text-center">
+                <p className="text-gray-500">Cargando cotizaciones...</p>
+              </Card>
+            ) : quotations.length === 0 ? (
+              <Card className="p-12 text-center">
+                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 mb-2">No hay cotizaciones guardadas</p>
+                <Button onClick={() => setActiveTab('cotizador')}>
+                  Crear Primera Cotización
                 </Button>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  {quotes.map((quote) => (
-                    <Card
-                      key={quote.id}
-                      className={`p-4 cursor-pointer transition-colors ${
-                        selectedQuote?.id === quote.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'hover:border-blue-300'
-                      }`}
-                      onClick={() => loadQuoteDetails(quote.id)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 mb-1">{quote.quote_number}</h3>
-                          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                            <Calendar className="w-4 h-4" />
-                            {new Date(quote.created_at).toLocaleDateString('es-MX')}
-                          </div>
-                          <div className="text-sm text-gray-700">
-                            <span className="font-medium">
-                              {quote.result_json?.insureds?.[0]?.nombre || 'Sin nombre'}
-                            </span>
-                          </div>
+              <>
+                <div className="hidden md:block">
+                  <Card className="overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Folio
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cliente / Asegurado
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fecha
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Forma de Pago
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Estado
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acciones
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {quotations.map((q) => (
+                          <tr key={q.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                              {q.folio}
+                              {q.editada_desde_cotizacion_id && (
+                                <span className="ml-2 text-xs text-gray-400">(Editada)</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900">
+                              <div className="font-medium">{q.asegurado_principal}</div>
+                              {q.cliente_nombre && (
+                                <div className="text-gray-500 text-xs">{q.cliente_nombre}</div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {formatDate(q.created_at)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {q.forma_pago}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                              {formatCurrency(q.total_a_pagar)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                  q.estado === 'active'
+                                    ? 'bg-green-100 text-green-800'
+                                    : q.estado === 'draft'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {q.estado === 'active'
+                                  ? 'Activa'
+                                  : q.estado === 'draft'
+                                  ? 'Borrador'
+                                  : 'Archivada'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDownloadPDF(q)}
+                                  title="Descargar PDF"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEdit(q)}
+                                  title="Editar"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDelete(q)}
+                                  title="Eliminar"
+                                  className="text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Card>
+                </div>
+
+                <div className="md:hidden space-y-4">
+                  {quotations.map((q) => (
+                    <Card key={q.id} className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="font-semibold text-blue-600">{q.folio}</div>
+                          <div className="text-sm text-gray-500">{formatDate(q.created_at)}</div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-blue-600">
-                            ${quote.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                          </div>
-                          <div className="text-xs text-gray-500">Total</div>
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            q.estado === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : q.estado === 'draft'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {q.estado === 'active' ? 'Activa' : q.estado === 'draft' ? 'Borrador' : 'Archivada'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="text-sm">
+                          <span className="font-medium text-gray-700">Asegurado:</span>{' '}
+                          <span className="text-gray-900">{q.asegurado_principal}</span>
                         </div>
+                        {q.cliente_nombre && (
+                          <div className="text-sm">
+                            <span className="font-medium text-gray-700">Cliente:</span>{' '}
+                            <span className="text-gray-900">{q.cliente_nombre}</span>
+                          </div>
+                        )}
+                        <div className="text-sm">
+                          <span className="font-medium text-gray-700">Forma de pago:</span>{' '}
+                          <span className="text-gray-900">{q.forma_pago}</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="font-medium text-gray-700">Total:</span>{' '}
+                          <span className="text-gray-900 font-semibold">
+                            {formatCurrency(q.total_a_pagar)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleDownloadPDF(q)} className="flex-1">
+                          <Download className="w-4 h-4 mr-2" />
+                          PDF
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(q)} className="flex-1">
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDelete(q)}
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </Card>
                   ))}
                 </div>
-
-                <div>
-                  {selectedQuote ? (
-                    <Card className="p-6 sticky top-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">Detalle de Cotización</h3>
-                        <Button
-                          onClick={() => handleDownloadPDF(selectedQuote)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          <Download className="w-4 h-4 mr-1" />
-                          PDF
-                        </Button>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-medium text-gray-700 mb-2">Información General</h4>
-                          <div className="space-y-1 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Número:</span>
-                              <span className="font-medium">{selectedQuote.quote_number}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Fecha:</span>
-                              <span className="font-medium">
-                                {new Date(selectedQuote.created_at).toLocaleDateString('es-MX', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                })}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Estado:</span>
-                              <span className="font-medium">{selectedQuote.estado}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Nivel:</span>
-                              <span className="font-medium">{selectedQuote.nivel_hospitalario}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Suma Asegurada:</span>
-                              <span className="font-medium">{selectedQuote.suma_asegurada}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="border-t pt-4">
-                          <h4 className="font-medium text-gray-700 mb-2">Formas de Pago Calculadas</h4>
-                          {selectedQuote.result_json?.payment_plans?.map((plan: any, idx: number) => (
-                            <div key={idx} className="mb-3 p-3 bg-gray-50 rounded">
-                              <div className="font-medium text-sm text-blue-600 mb-2">{plan.forma_pago}</div>
-                              <div className="space-y-1 text-xs">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Total:</span>
-                                  <span className="font-medium">${plan.total.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Primer Recibo:</span>
-                                  <span className="font-medium">${plan.primer_recibo.toFixed(2)}</span>
-                                </div>
-                                {plan.num_recibos > 1 && (
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Subsecuentes ({plan.num_recibos - 1}):</span>
-                                    <span className="font-medium">${plan.recibos_subsecuentes.toFixed(2)}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="border-t pt-4">
-                          <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            Asegurados ({insureds.length})
-                          </h4>
-                          <div className="space-y-2">
-                            {insureds.map((insured) => (
-                              <div key={insured.id} className="bg-gray-50 rounded p-3">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <div className="font-medium text-sm">{insured.nombre}</div>
-                                    <div className="text-xs text-gray-600">
-                                      {insured.sexo}, {insured.edad} años
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="text-sm font-semibold text-blue-600">
-                                      ${insured.prima_total.toFixed(2)}
-                                    </div>
-                                    <div className="text-xs text-gray-500">Prima</div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="border-t pt-4">
-                          <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
-                            <DollarSign className="w-4 h-4" />
-                            Resumen Financiero
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Prima Neta</span>
-                              <span className="font-medium">${selectedQuote.prima_neta_total.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Recargo</span>
-                              <span className="font-medium">${selectedQuote.recargo.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Gastos Expedición</span>
-                              <span className="font-medium">${selectedQuote.gastos_expedicion.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Subtotal</span>
-                              <span className="font-medium">${selectedQuote.subtotal.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">IVA (16%)</span>
-                              <span className="font-medium">${selectedQuote.iva.toFixed(2)}</span>
-                            </div>
-                            <div className="border-t pt-2 flex justify-between">
-                              <span className="font-semibold">TOTAL</span>
-                              <span className="font-bold text-lg text-blue-600">
-                                ${selectedQuote.total.toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="border-t pt-4">
-                          <h4 className="font-medium text-gray-700 mb-2">Coberturas Activas</h4>
-                          <div className="flex flex-wrap gap-1">
-                            {[
-                              { key: 'cob_reconocimiento_antiguedad', label: 'Reconocimiento Antigüedad' },
-                              { key: 'cob_medicamentos_fuera', label: 'Medicamentos Fuera' },
-                              { key: 'cob_complicaciones_no_amparadas', label: 'Complicaciones' },
-                              { key: 'cob_padecimientos_preexistentes', label: 'Preexistentes' },
-                              { key: 'cob_eliminacion_deducible_accidente', label: 'Eliminar Deducible Accidente' },
-                              { key: 'cob_multiregion', label: 'Multiregión' },
-                              { key: 'cob_vip', label: 'VIP' },
-                              { key: 'cob_emergencia_medica_extranjero', label: 'Emergencia Extranjero' },
-                              { key: 'cob_enfermedades_graves_extranjero', label: 'EG Extranjero' },
-                              { key: 'cob_cobertura_internacional', label: 'Internacional' },
-                              { key: 'cob_ampliacion_servicios', label: 'Ampliación Servicios' },
-                              { key: 'cob_ayuda_diaria', label: 'Ayuda Diaria' },
-                              { key: 'cob_indemnizacion_eg', label: 'Indemnización EG' },
-                              { key: 'cob_maternidad', label: 'Maternidad' },
-                              { key: 'cob_xtensuz', label: 'Xtensuz' },
-                            ]
-                              .filter(({ key }) => selectedQuote[key as keyof GMMQuote])
-                              .map(({ key, label }) => (
-                                <span
-                                  key={key}
-                                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
-                                >
-                                  {label}
-                                </span>
-                              ))}
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ) : (
-                    <Card className="p-12 text-center">
-                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Selecciona una cotización para ver detalles</p>
-                    </Card>
-                  )}
-                </div>
-              </div>
+              </>
             )}
           </TabsContent>
         </Tabs>
