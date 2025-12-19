@@ -22,15 +22,50 @@ function roundTo5Decimals(value: number): number {
   return Math.round(value * 100000) / 100000;
 }
 
-function vlookup(table: any[], key: any, valueCol: number = 1): number {
-  const row = table.find(r => r.col_0 === key);
-  if (!row) throw new Error(`Key "${key}" not found in table`);
+function vlookup(table: any[], key: any, valueCol: number = 1, tableName: string = 'unknown'): number {
+  // Intentar búsqueda exacta primero
+  let row = table.find(r => r.col_0 === key);
+
+  // Si no hay coincidencia exacta, intentar comparación numérica si ambos son números
+  if (!row) {
+    const keyNum = Number(key);
+    const isNumericKey = !isNaN(keyNum);
+
+    if (isNumericKey) {
+      row = table.find(r => {
+        const rowNum = Number(r.col_0);
+        return !isNaN(rowNum) && Math.abs(rowNum - keyNum) < 0.0001;
+      });
+    }
+  }
+
+  // Si aún no hay coincidencia, intentar comparación de strings
+  if (!row) {
+    row = table.find(r => String(r.col_0) === String(key));
+  }
+
+  if (!row) {
+    const availableKeys = table.slice(0, 10).map(r => `"${r.col_0}"`).join(', ');
+    const totalKeys = table.length;
+    throw new Error(
+      `Valor "${key}" no encontrado en tabla "${tableName}".\n` +
+      `Valores disponibles (${totalKeys} total): ${availableKeys}${totalKeys > 10 ? '...' : ''}\n` +
+      `Tipo del valor buscado: ${typeof key}`
+    );
+  }
   return Number(row[`col_${valueCol}`] || 0);
 }
 
 function vlookupByAge(table: any[], edad: number, sexo: string): number {
   const row = table.find(r => Number(r.col_0) === edad);
-  if (!row) throw new Error(`Age ${edad} not found`);
+  if (!row) {
+    const minAge = Math.min(...table.map(r => Number(r.col_0)));
+    const maxAge = Math.max(...table.map(r => Number(r.col_0)));
+    throw new Error(
+      `Edad ${edad} no encontrada en tabla de tarifas.\n` +
+      `Rango válido: ${minAge} - ${maxAge} años`
+    );
+  }
   const col = sexo === 'Hombre' ? 'col_1' : 'col_2';
   return Number(row[col] || 0);
 }
@@ -39,17 +74,23 @@ export function calculateQuote(
   input: QuoteInput,
   tables: TariffTables
 ): QuoteCalculationResult {
-  const factorEstado = vlookup(tables.factor_estado, input.estado);
-  const factorNivel = vlookup(tables.factor_nivel_hospitalario, input.nivel_hospitalario);
-  const factorTabulador = vlookup(tables.factor_tabulador, input.tabulador);
-  const factorSA = vlookup(tables.factor_suma_asegurada, input.suma_asegurada);
-  const factorDeducible = vlookup(tables.factor_deducible, input.deducible);
-  const factorCoaseguro = vlookup(tables.factor_coaseguro, input.coaseguro);
+  const factorEstado = vlookup(tables.factor_estado, input.estado, 1, 'Factor Estado');
+  const factorNivel = vlookup(tables.factor_nivel_hospitalario, input.nivel_hospitalario, 1, 'Nivel Hospitalario');
+  const factorTabulador = vlookup(tables.factor_tabulador, input.tabulador, 1, 'Tabulador');
+  const factorSA = vlookup(tables.factor_suma_asegurada, input.suma_asegurada, 1, 'Suma Asegurada');
+  const factorDeducible = vlookup(tables.factor_deducible, input.deducible, 1, 'Deducible');
+  const factorCoaseguro = vlookup(tables.factor_coaseguro, input.coaseguro, 1, 'Coaseguro');
 
-  const topeCoaseguro = vlookup(tables.tope_coaseguro, input.coaseguro);
+  const topeCoaseguro = vlookup(tables.tope_coaseguro, input.coaseguro, 1, 'Tope Coaseguro');
 
   const formaPago = tables.forma_pago.find(r => r.col_0 === input.forma_pago);
-  if (!formaPago) throw new Error(`Forma de pago "${input.forma_pago}" not found`);
+  if (!formaPago) {
+    const available = tables.forma_pago.map(r => `"${r.col_0}"`).join(', ');
+    throw new Error(
+      `Forma de pago "${input.forma_pago}" no encontrada.\n` +
+      `Formas de pago disponibles: ${available}`
+    );
+  }
   const factorFormaPago = Number(formaPago.col_1 || 0);
   const numRecibos = Number(formaPago.col_2 || 1);
 

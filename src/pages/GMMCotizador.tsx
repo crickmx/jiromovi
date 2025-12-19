@@ -130,7 +130,14 @@ export default function GMMCotizador() {
 
     const valid = input.insureds.every(ins => ins.nombre.trim() && (ins.edad || ins.fecha_nacimiento));
     if (!valid) {
-      alert('Complete todos los campos de asegurados');
+      alert('Complete todos los campos de asegurados (nombre y edad o fecha de nacimiento)');
+      return;
+    }
+
+    // Validar que todos los campos principales estén seleccionados
+    if (!input.estado || !input.nivel_hospitalario || !input.tabulador ||
+        !input.suma_asegurada || !input.deducible || !input.coaseguro || !input.forma_pago) {
+      alert('Por favor complete todos los parámetros del plan antes de calcular');
       return;
     }
 
@@ -140,7 +147,8 @@ export default function GMMCotizador() {
       setResult(calculated);
     } catch (error: any) {
       console.error('Error calculating:', error);
-      alert(`Error: ${error.message}`);
+      const message = error.message || 'Error al calcular la cotización';
+      alert(`Error en el cálculo:\n\n${message}`);
     } finally {
       setCalculating(false);
     }
