@@ -135,13 +135,15 @@ export function calcularDesgloseFiscal(params: CalculoFiscalParams): DesgloseFis
  * Cálculo fiscal para ASIMILADOS
  *
  * FÓRMULAS OFICIALES:
- * - Retención Contable = Vida × 0.16
- * - Costo de Dispersión = Sin Vida × 0.09
+ * - Retención Contable = Vida × 0.16 (SOLO Vida)
+ * - Costo de Dispersión = Sin Vida × 0.09 (SOLO Sin Vida)
  * - IVA = 0 (No aplica)
- * - ISR Vida = Vida × 0.10 (10% de la comisión de Vida SIN descuento de retención contable)
- * - ISR Daños = Sin Vida × 0.10 (10% de la comisión de Daños SIN descuento de costo dispersión)
+ * - Base ISR Vida = Vida - Retención Contable
+ * - ISR Vida = Base ISR Vida × 0.10
+ * - Base ISR Daños = Sin Vida - Costo Dispersión
+ * - ISR Daños = Base ISR Daños × 0.10
  * - ISR Total = ISR Vida + ISR Daños
- * - Total a Pagar = Comisión Base Total – Retención Contable – Dispersión – ISR Total
+ * - Total a Pagar = Comisión Base Total - Retención Contable - Costo Dispersión - ISR Total
  */
 function calcularAsimilados(params: {
   comisionBaseTotal: number;
@@ -153,8 +155,8 @@ function calcularAsimilados(params: {
   const retContable = roundTo2Decimals(vida * 0.16);
   const costoDispersion = roundTo2Decimals(sinVida * 0.09);
 
-  const isrVida = roundTo2Decimals(vida * 0.10);
-  const isrDanios = roundTo2Decimals(sinVida * 0.10);
+  const isrVida = roundTo2Decimals((vida - retContable) * 0.10);
+  const isrDanios = roundTo2Decimals((sinVida - costoDispersion) * 0.10);
   const isrTotal = roundTo2Decimals(isrVida + isrDanios);
 
   const totalAPagar = roundTo2Decimals(

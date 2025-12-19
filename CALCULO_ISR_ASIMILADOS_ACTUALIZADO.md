@@ -1,54 +1,86 @@
-# Cálculo ISR para ASIMILADOS - Actualizado
+# Cálculo ISR para ASIMILADOS - Documentación Oficial
 
-## Cambio Implementado
+## Fórmulas Oficiales
 
-Se actualizó el cálculo del ISR para el régimen fiscal **ASIMILADOS** en el PDF de comisiones.
+### Cálculos Principales
 
-## Fórmulas Actualizadas
-
-### Antes (Incorrecto)
 ```
-ISR Vida = (Comisión Vida - Retención Contable) × 10%
-ISR Daños = (Comisión Daños - Costo Dispersión) × 10%
+1. Retención Contable = Comisión Vida × 16% (SOLO Vida)
+2. Costo Dispersión = Comisión Sin Vida × 9% (SOLO Sin Vida)
+
+3. Base ISR Vida = Comisión Vida - Retención Contable
+4. ISR Vida = Base ISR Vida × 10%
+
+5. Base ISR Daños = Comisión Sin Vida - Costo Dispersión
+6. ISR Daños = Base ISR Daños × 10%
+
+7. ISR Total = ISR Vida + ISR Daños
+
+8. Total a Pagar = Comisión Total - Ret. Contable - Costo Dispersión - ISR Total
 ```
 
-### Ahora (Correcto)
-```
-ISR Vida = Comisión Vida × 10%
-ISR Daños = Comisión Daños × 10%
-```
+## Regla de Oro
 
-## Explicación
+**El ISR se calcula sobre la base DESPUÉS de restar los descuentos correspondientes:**
+- ISR Vida: Base = Comisión Vida - Retención Contable
+- ISR Daños: Base = Comisión Sin Vida - Costo Dispersión
 
-El ISR para ASIMILADOS ahora se calcula directamente sobre:
-- **ISR de Vida**: 10% de la comisión de Vida **SIN** restar la retención contable
-- **ISR de Daños**: 10% de la comisión de Daños **SIN** restar el costo de dispersión
+## Ejemplo 1: Comisión Mixta
 
-## Ejemplo de Cálculo
-
-### Caso: Comisión Mixta
+### Datos
 ```
 Comisión Vida:      $5,000
 Comisión Sin Vida:  $7,000
 Total:             $12,000
 ```
 
-### Retenciones y Dispersión
+### Paso 1: Retenciones y Dispersión
 ```
-Retención Contable = 5,000 × 16% = $800
-Costo Dispersión   = 7,000 × 9%  = $630
-```
-
-### ISR (Nueva Fórmula)
-```
-ISR Vida  = 5,000 × 10% = $500
-ISR Daños = 7,000 × 10% = $700
-ISR Total              = $1,200
+Retención Contable = 5,000 × 0.16 = $800
+Costo Dispersión   = 7,000 × 0.09 = $630
 ```
 
-### Total a Pagar
+### Paso 2: Bases ISR
 ```
-Total = 12,000 - 800 - 630 - 1,200 = $9,370
+Base ISR Vida  = 5,000 - 800   = $4,200
+Base ISR Daños = 7,000 - 630   = $6,370
+```
+
+### Paso 3: Cálculo ISR
+```
+ISR Vida  = 4,200 × 0.10 = $420
+ISR Daños = 6,370 × 0.10 = $637
+ISR Total               = $1,057
+```
+
+### Paso 4: Total a Pagar
+```
+Total = 12,000 - 800 - 630 - 1,057 = $9,513
+```
+
+## Ejemplo 2: Caso Real
+
+### Datos
+```
+Comisión Vida:      $544.20
+Comisión Sin Vida: $14,263.87
+Total:            $14,808.07
+```
+
+### Cálculos
+```
+Retención Contable = 544.20 × 0.16        = $87.07
+Costo Dispersión   = 14,263.87 × 0.09     = $1,283.75
+
+Base ISR Vida      = 544.20 - 87.07       = $457.13
+ISR Vida           = 457.13 × 0.10        = $45.71
+
+Base ISR Daños     = 14,263.87 - 1,283.75 = $12,980.12
+ISR Daños          = 12,980.12 × 0.10     = $1,298.01
+
+ISR Total          = 45.71 + 1,298.01     = $1,343.72
+
+Total a Pagar      = 14,808.07 - 87.07 - 1,283.75 - 1,343.72 = $12,093.53
 ```
 
 ## Archivos Modificados
