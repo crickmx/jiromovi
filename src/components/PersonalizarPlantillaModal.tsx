@@ -93,8 +93,8 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
   const [styleMulti, setStyleMulti] = useState<TextStyle>({ ...DEFAULT_STYLE, size: 20 });
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    texto: true,
-    urls: true,
+    texto: false,
+    urls: false,
     logo: false,
     estilo: false
   });
@@ -635,7 +635,30 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3">
-            <div className="space-y-2 order-2 lg:order-1">
+            <div className="order-1 lg:order-1 lg:sticky lg:top-20 lg:self-start">
+              <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                Vista Previa
+              </label>
+              <div className="border-2 border-neutral-300 rounded-lg overflow-hidden bg-neutral-100 shadow-lg">
+                <canvas
+                  ref={canvasRef}
+                  className="w-full h-auto"
+                  style={{ maxHeight: 'calc(100vh - 240px)', objectFit: 'contain' }}
+                />
+                <img ref={imgRef} className="hidden" alt="" />
+              </div>
+
+              <button
+                onClick={handleDescargar}
+                disabled={loading}
+                className="w-full mt-2 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{loading ? 'Generando...' : 'Descargar Diseño'}</span>
+              </button>
+            </div>
+
+            <div className="space-y-2 order-2 lg:order-2">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-xs font-semibold text-neutral-700">Controles</h3>
                 <button
@@ -720,29 +743,6 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                   </label>
                 </div>
               </AccordionSection>
-            </div>
-
-            <div className="order-1 lg:order-2 lg:sticky lg:top-20 lg:self-start">
-              <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                Vista Previa
-              </label>
-              <div className="border-2 border-neutral-300 rounded-lg overflow-hidden bg-neutral-100 shadow-lg">
-                <canvas
-                  ref={canvasRef}
-                  className="w-full h-auto"
-                  style={{ maxHeight: 'calc(100vh - 240px)', objectFit: 'contain' }}
-                />
-                <img ref={imgRef} className="hidden" alt="" />
-              </div>
-
-              <button
-                onClick={handleDescargar}
-                disabled={loading}
-                className="w-full mt-2 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>{loading ? 'Generando...' : 'Descargar Diseño'}</span>
-              </button>
             </div>
           </div>
         </div>
