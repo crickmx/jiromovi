@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { InfoTooltip } from '../components/ui/info-tooltip';
 import { supabase } from '../lib/supabase';
 import { calculateQuote, loadTariffTables } from '../lib/gmmCalculationEngine';
+import { generateQuotePDF } from '../lib/gmmPdfGenerator';
+import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import type { QuoteInput, QuoteInputInsured, QuoteCalculationResult, TariffTables, GMMQuote, GMMQuoteInsured } from '../lib/gmmTypes';
 
 function formatCurrency(value: number | string): string {
@@ -227,6 +230,49 @@ export default function GMMCotizador() {
     }
   }
 
+  async function handleDownloadPDF(quote: GMMQuote) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const { data: usuario } = await supabase
+        .from('usuarios')
+        .select('nombre_completo, celular_laboral')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const { data: insuredsData } = await supabase
+        .from('gmm_quote_insureds')
+        .select('*')
+        .eq('quote_id', quote.id)
+        .order('orden');
+
+      if (!insuredsData || insuredsData.length === 0) {
+        alert('No se encontraron asegurados para esta cotización');
+        return;
+      }
+
+      const asesorInfo = {
+        nombre: usuario?.nombre_completo || 'Asesor JIRO',
+        celular: usuario?.celular_laboral || '',
+      };
+
+      const pdfBlob = await generateQuotePDF(quote, insuredsData, asesorInfo);
+
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Cotizacion_${quote.quote_number}_${quote.id.substring(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      alert(`Error al generar PDF: ${error.message}`);
+    }
+  }
+
   async function handleSave() {
     if (!result) {
       alert('Calcule la cotización primero');
@@ -251,7 +297,7 @@ export default function GMMCotizador() {
           suma_asegurada: input.suma_asegurada,
           deducible: input.deducible,
           coaseguro: input.coaseguro,
-          tope_coaseguro: result.tope_coaseguro,
+          tope_coaseguro: input.tope_coaseguro_seleccionado || result.tope_coaseguro,
           forma_pago: input.formas_pago.join(', '),
           num_recibos: firstPlan.num_recibos,
 
@@ -439,13 +485,64 @@ export default function GMMCotizador() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Coaseguro</label>
                       <select
                         value={input.coaseguro}
-                        onChange={(e) => setInput({ ...input, coaseguro: e.target.value })}
+                        onChange={(e) => {
+                          const newCoaseguro = e.target.value;
+                          const topeOpciones = tariffTables.tope_coaseguro_opciones?.find(
+                            opt => opt.coaseguro === newCoaseguro
+                          );
+                          setInput({
+                            ...input,
+                            coaseguro: newCoaseguro,
+                            tope_coaseguro_seleccionado: topeOpciones?.default
+                          });
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
                       >
                         {tariffTables.factor_coaseguro.map((row) => (
                           <option key={row.col_0} value={row.col_0}>{formatPercentage(row.col_0)}</option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tope de Coaseguro
+                      </label>
+                      {(() => {
+                        const topeDefault = tariffTables.tope_coaseguro.find(
+                          row => row.col_0 === input.coaseguro
+                        )?.col_1;
+                        const topeOpciones = tariffTables.tope_coaseguro_opciones?.find(
+                          opt => opt.coaseguro === input.coaseguro
+                        );
+                        const opciones = topeOpciones?.opciones_tope || [topeDefault];
+                        const soloUnaOpcion = opciones.length === 1;
+
+                        return (
+                          <>
+                            <select
+                              value={input.tope_coaseguro_seleccionado || topeDefault}
+                              onChange={(e) => setInput({
+                                ...input,
+                                tope_coaseguro_seleccionado: Number(e.target.value)
+                              })}
+                              disabled={soloUnaOpcion}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+                            >
+                              {opciones.map((tope) => (
+                                <option key={tope} value={tope}>
+                                  {formatCurrency(tope)}
+                                </option>
+                              ))}
+                            </select>
+                            {topeDefault && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Sugerido por tarifa: {formatCurrency(topeDefault)}
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     <div className="col-span-2">
@@ -540,23 +637,23 @@ export default function GMMCotizador() {
 
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold mb-4">Coberturas Opcionales</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {[
-                      { key: 'reconocimiento_antiguedad', label: 'Reconocimiento de Antigüedad' },
-                      { key: 'medicamentos_fuera', label: 'Medicamentos Fuera de Hospital' },
-                      { key: 'complicaciones_no_amparadas', label: 'Complicaciones No Amparadas' },
-                      { key: 'padecimientos_preexistentes', label: 'Padecimientos Preexistentes' },
-                      { key: 'eliminacion_deducible_accidente', label: 'Eliminación Deducible por Accidente' },
-                      { key: 'multiregion', label: 'Multiregión' },
-                      { key: 'vip', label: 'VIP' },
-                      { key: 'emergencia_medica_extranjero', label: 'Emergencia Médica Extranjero' },
-                      { key: 'enfermedades_graves_extranjero', label: 'Enfermedades Graves Extranjero' },
-                      { key: 'cobertura_internacional', label: 'Cobertura Internacional' },
-                      { key: 'ampliacion_servicios', label: 'Ampliación de Servicios' },
-                      { key: 'ayuda_diaria', label: 'Ayuda Diaria' },
-                      { key: 'indemnizacion_eg', label: 'Indemnización EG' },
-                    ].map(({ key, label }) => (
-                      <label key={key} className="flex items-center gap-2 text-sm">
+                      'reconocimiento_antiguedad',
+                      'medicamentos_fuera',
+                      'complicaciones_no_amparadas',
+                      'padecimientos_preexistentes',
+                      'eliminacion_deducible_accidente',
+                      'multiregion',
+                      'vip',
+                      'emergencia_medica_extranjero',
+                      'enfermedades_graves_extranjero',
+                      'cobertura_internacional',
+                      'ampliacion_servicios',
+                      'ayuda_diaria',
+                      'indemnizacion_eg',
+                    ].map((key) => (
+                      <label key={key} className="flex items-center gap-2 text-sm group cursor-pointer">
                         <input
                           type="checkbox"
                           checked={input.coberturas[key as keyof typeof input.coberturas] || false}
@@ -566,9 +663,10 @@ export default function GMMCotizador() {
                               coberturas: { ...input.coberturas, [key]: e.target.checked },
                             })
                           }
-                          className="rounded"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
                         />
-                        {label}
+                        <span className="flex-1">{COVERAGE_LABELS[key] || key}</span>
+                        <InfoTooltip content={getCoverageHelpText(key)} />
                       </label>
                     ))}
                   </div>
@@ -712,7 +810,17 @@ export default function GMMCotizador() {
                 <div>
                   {selectedQuote ? (
                     <Card className="p-6 sticky top-6">
-                      <h3 className="text-lg font-semibold mb-4">Detalle de Cotización</h3>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">Detalle de Cotización</h3>
+                        <Button
+                          onClick={() => handleDownloadPDF(selectedQuote)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          PDF
+                        </Button>
+                      </div>
 
                       <div className="space-y-4">
                         <div>

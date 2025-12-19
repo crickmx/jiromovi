@@ -118,6 +118,7 @@ export interface QuoteInput {
   suma_asegurada: string;
   deducible: string;
   coaseguro: string;
+  tope_coaseguro_seleccionado?: number;
   formas_pago: string[];
 
   insureds: QuoteInputInsured[];
@@ -176,6 +177,12 @@ export interface QuoteCalculationResult {
   payment_plans: PaymentPlanResult[];
 }
 
+export interface TopeCoaseguroOpcion {
+  coaseguro: string;
+  default: number;
+  opciones_tope: number[];
+}
+
 export interface TariffTables {
   factor_estado: any[];
   factor_nivel_hospitalario: any[];
@@ -184,6 +191,7 @@ export interface TariffTables {
   factor_deducible: any[];
   factor_coaseguro: any[];
   tope_coaseguro: any[];
+  tope_coaseguro_opciones?: TopeCoaseguroOpcion[];
   forma_pago: any[];
   base_intermedia_edad_sexo: any[];
   coef_medicamentos: number;

@@ -82,7 +82,8 @@ export function calculateQuote(
   const factorDeducible = vlookup(tables.factor_deducible, input.deducible, 1, 'Deducible');
   const factorCoaseguro = vlookup(tables.factor_coaseguro, input.coaseguro, 1, 'Coaseguro');
 
-  const topeCoaseguro = vlookup(tables.tope_coaseguro, input.coaseguro, 1, 'Tope Coaseguro');
+  const topeCoaseguroDefault = vlookup(tables.tope_coaseguro, input.coaseguro, 1, 'Tope Coaseguro');
+  const topeCoaseguro = input.tope_coaseguro_seleccionado || topeCoaseguroDefault;
 
   const sumCargas = tables.denominador_cargas.reduce((acc, val) => acc + (Number(val) || 0), 0);
   const denominador = 1 - sumCargas;
@@ -317,6 +318,7 @@ export function loadTariffTables(tables: any[]): TariffTables {
     factor_deducible: get('factor_deducible') || [],
     factor_coaseguro: get('factor_coaseguro') || [],
     tope_coaseguro: get('tope_coaseguro') || [],
+    tope_coaseguro_opciones: get('tope_coaseguro_opciones'),
     forma_pago: get('forma_pago') || [],
     base_intermedia_edad_sexo: get('base_intermedia_edad_sexo') || [],
     coef_medicamentos: Number(get('coef_medicamentos')) || 0,
