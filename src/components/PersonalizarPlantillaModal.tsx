@@ -119,7 +119,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
         const style = plantilla.estilo_texto_default;
         const baseStyle = {
           font: style.font || 'Inter',
-          color: style.color || '#000000',
+          color: style.color || '#0050D1',
           size: style.size || 24,
           align: style.align || 'center',
           bold: false,
