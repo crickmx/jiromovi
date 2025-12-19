@@ -9,6 +9,7 @@ import AjustarComisionModal from '../components/comisiones/AjustarComisionModal'
 import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
+import { calcularDesgloseFiscal, normalizarRegimenFiscal, type RegimenFiscal, type RamoResumen } from '../lib/commissionFiscalCalculations';
 
 export default function ComisionesLote() {
   const { id } = useParams<{ id: string }>();
@@ -118,66 +119,179 @@ export default function ComisionesLote() {
   const handleCloseBatch = async () => {
     if (!batch || !confirm('¿Estás seguro de cerrar este lote? Ya no podrás modificarlo.')) return;
 
-    const { error } = await supabase
-      .from('commission_batches')
-      .update({ status: 'closed' })
-      .eq('id', batch.id);
-
-    if (error) {
-      alert('Error al cerrar el lote');
-      console.error(error);
-      return;
-    }
-
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-commission-batch-notifications`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({ batchId: batch.id })
-        }
-      );
+      // 1. Query commission_details con información del régimen fiscal del agente
+      const { data: detailsWithRegime, error: detailsError } = await supabase
+        .from('commission_details')
+        .select(`
+          *,
+          agent:agent_id(
+            id,
+            name,
+            email,
+            usuario_id,
+            usuario:usuario_id(
+              regimen_fiscal_id,
+              regimen_fiscal:regimen_fiscal_id(name)
+            )
+          )
+        `)
+        .eq('batch_id', batch.id);
 
-      const result = await response.json();
-      console.log('Respuesta de notificaciones:', result);
+      if (detailsError) {
+        console.error('Error loading details:', detailsError);
+        alert('Error al cargar los detalles del lote');
+        return;
+      }
 
-      if (response.ok && result.success) {
-        alert(
-          `✅ Lote cerrado exitosamente!\n\n` +
-          `📧 Notificaciones enviadas a ${result.agents_notified} agentes.\n\n` +
-          `Detalles:\n${result.results.map((r: any) =>
-            `- ${r.agent_name}: ` +
-            `${r.notifications_sent.in_app ? '✓ App' : '✗ App'}, ` +
-            `${r.notifications_sent.email ? '✓ Email' : '✗ Email'}, ` +
-            `${r.notifications_sent.whatsapp ? '✓ WhatsApp' : '✗ WhatsApp'}`
-          ).join('\n')}`
-        );
+      if (!detailsWithRegime || detailsWithRegime.length === 0) {
+        alert('No hay detalles en este lote');
+        return;
+      }
+
+      // 2. Determinar el régimen fiscal (asumiendo que todos los agentes tienen el mismo régimen)
+      const firstAgent = detailsWithRegime[0].agent;
+      const regimeNameRaw = firstAgent?.usuario?.regimen_fiscal?.name;
+      const regimenFiscal = normalizarRegimenFiscal(regimeNameRaw);
+
+      console.log('[ComisionesLote] Régimen fiscal detectado:', regimenFiscal);
+
+      // 3. GUARD CLAUSE: ASIMILADOS no se toca (ya manejado por DB)
+      let fiscalUpdate: any = {
+        status: 'closed'
+      };
+
+      if (regimenFiscal === 'ASIMILADOS') {
+        console.log('[ComisionesLote] ASIMILADOS detectado - NO se calculan campos fiscales en frontend');
+        // Solo cerramos el lote, sin calcular campos fiscales
+      }
+      // 4. Para HONORARIOS o RESICO: Calcular y persistir valores fiscales
+      else if (regimenFiscal === 'HONORARIOS' || regimenFiscal === 'RESICO') {
+        console.log(`[ComisionesLote] Calculando valores fiscales para ${regimenFiscal}...`);
+
+        // Agrupar comisiones por ramo
+        const resumenPorRamo: RamoResumen[] = [];
+        const ramoMap = new Map<string, number>();
+
+        detailsWithRegime.forEach(detail => {
+          const ramo = detail.ramo || 'Sin Ramo';
+          const comision = detail.is_manual_adjusted
+            ? (detail.adjusted_commission_neta || 0)
+            : (detail.commission_neta || 0);
+
+          const current = ramoMap.get(ramo) || 0;
+          ramoMap.set(ramo, current + comision);
+        });
+
+        ramoMap.forEach((comisionNeta, ramo) => {
+          resumenPorRamo.push({ ramo, comisionNeta });
+        });
+
+        // Calcular total de comisión neta
+        const totalComisionNeta = detailsWithRegime.reduce((sum, detail) => {
+          const comision = detail.is_manual_adjusted
+            ? (detail.adjusted_commission_neta || 0)
+            : (detail.commission_neta || 0);
+          return sum + comision;
+        }, 0);
+
+        // Calcular desglose fiscal
+        const desgloseFiscal = calcularDesgloseFiscal({
+          regimenFiscal,
+          resumenPorRamo,
+          totalComisionNeta,
+        });
+
+        console.log('[ComisionesLote] Desglose fiscal calculado:', desgloseFiscal);
+
+        // Agregar campos fiscales al update
+        fiscalUpdate = {
+          status: 'closed',
+          commission_vida: desgloseFiscal.vida,
+          commission_sinvida: desgloseFiscal.sinVida,
+          commission_total: totalComisionNeta,
+          retencion_contable: desgloseFiscal.retContable,
+          costo_dispersion: desgloseFiscal.costoDispersion,
+          iva: desgloseFiscal.iva,
+          ret_isr: desgloseFiscal.retIsr,
+          ret_iva: desgloseFiscal.retIva,
+          total_neto: desgloseFiscal.totalAPagar,
+          regimen_fiscal: regimenFiscal,
+          tax_version: 'v1.0',
+          calculated_at: new Date().toISOString(),
+        };
       } else {
-        console.error('Error en respuesta:', result);
+        console.warn('[ComisionesLote] Régimen desconocido:', regimenFiscal);
+      }
+
+      // 5. Actualizar el lote con status='closed' y valores fiscales (si aplica)
+      const { error: updateError } = await supabase
+        .from('commission_batches')
+        .update(fiscalUpdate)
+        .eq('id', batch.id);
+
+      if (updateError) {
+        console.error('Error updating batch:', updateError);
+        alert('Error al cerrar el lote');
+        return;
+      }
+
+      console.log('[ComisionesLote] Lote actualizado con valores fiscales:', fiscalUpdate);
+
+      // 6. Enviar notificaciones
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-commission-batch-notifications`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({ batchId: batch.id })
+          }
+        );
+
+        const result = await response.json();
+        console.log('Respuesta de notificaciones:', result);
+
+        if (response.ok && result.success) {
+          alert(
+            `✅ Lote cerrado exitosamente!\n\n` +
+            `📧 Notificaciones enviadas a ${result.agents_notified} agentes.\n\n` +
+            `Detalles:\n${result.results.map((r: any) =>
+              `- ${r.agent_name}: ` +
+              `${r.notifications_sent.in_app ? '✓ App' : '✗ App'}, ` +
+              `${r.notifications_sent.email ? '✓ Email' : '✗ Email'}, ` +
+              `${r.notifications_sent.whatsapp ? '✓ WhatsApp' : '✗ WhatsApp'}`
+            ).join('\n')}`
+          );
+        } else {
+          console.error('Error en respuesta:', result);
+          alert(
+            `⚠️ Lote cerrado, pero hubo un problema al enviar notificaciones:\n\n` +
+            `${result.error || 'Error desconocido'}\n\n` +
+            `Revisa la consola para más detalles.`
+          );
+        }
+      } catch (notifError: any) {
+        console.error('Error al enviar notificaciones:', notifError);
         alert(
-          `⚠️ Lote cerrado, pero hubo un problema al enviar notificaciones:\n\n` +
-          `${result.error || 'Error desconocido'}\n\n` +
-          `Revisa la consola para más detalles.`
+          `⚠️ Lote cerrado, pero no se pudieron enviar las notificaciones:\n\n` +
+          `${notifError.message}\n\n` +
+          `Verifica:\n` +
+          `1. Que la plantilla esté activa en Notificaciones Transaccionales\n` +
+          `2. Que los agentes tengan email y teléfono registrados\n` +
+          `3. Que la configuración SMTP y WhatsApp sea correcta`
         );
       }
-    } catch (notifError: any) {
-      console.error('Error al enviar notificaciones:', notifError);
-      alert(
-        `⚠️ Lote cerrado, pero no se pudieron enviar las notificaciones:\n\n` +
-        `${notifError.message}\n\n` +
-        `Verifica:\n` +
-        `1. Que la plantilla esté activa en Notificaciones Transaccionales\n` +
-        `2. Que los agentes tengan email y teléfono registrados\n` +
-        `3. Que la configuración SMTP y WhatsApp sea correcta`
-      );
-    }
 
-    loadBatch();
+      loadBatch();
+    } catch (error: any) {
+      console.error('Error in handleCloseBatch:', error);
+      alert(`Error al cerrar el lote: ${error.message}`);
+    }
   };
 
   const handleDeleteBatch = async () => {

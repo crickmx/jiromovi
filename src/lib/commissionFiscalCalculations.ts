@@ -195,11 +195,13 @@ function calcularAsimilados(params: {
 /**
  * Cálculo fiscal para RESICO (Régimen Simplificado de Confianza)
  *
- * FÓRMULAS OFICIALES:
+ * FÓRMULAS OFICIALES (VERSIÓN CORREGIDA):
+ * - Ret. Contable = 0
+ * - Costo Dispersión = 0
  * - IVA = Sin Vida × 0.16
- * - Retención ISR = Comisión Base Total × 0.0125
- * - Retención IVA = Sin Vida × 0.10667
- * - Total a Pagar = Comisión Base Total + IVA – Retención ISR – Retención IVA
+ * - Ret ISR = Comisión Total × 0.10 (10%, NO 1.25%)
+ * - Ret IVA = Sin Vida × 0.10667
+ * - Total a Pagar = Comisión Base Total + IVA – Ret ISR – Ret IVA
  */
 function calcularResico(params: {
   comisionBaseTotal: number;
@@ -209,12 +211,22 @@ function calcularResico(params: {
   retIvaRate: number;
   resicoIsrRate: number;
 }): DesgloseFiscal {
-  const { comisionBaseTotal, vida, sinVida, ivaRate, retIvaRate, resicoIsrRate } = params;
+  const { comisionBaseTotal, vida, sinVida, ivaRate, retIvaRate } = params;
 
+  // RESICO: Ret. Contable y Costo Dispersión = 0
+  const retContable = 0;
+  const costoDispersion = 0;
+
+  // IVA aplica sobre sin Vida
   const iva = roundTo2Decimals(sinVida * ivaRate);
-  const retIsr = roundTo2Decimals(comisionBaseTotal * resicoIsrRate);
+
+  // Ret ISR = Total × 10% (NO 1.25%)
+  const retIsr = roundTo2Decimals(comisionBaseTotal * 0.10);
+
+  // Ret IVA = Sin Vida × 10.667%
   const retIva = roundTo2Decimals(sinVida * retIvaRate);
 
+  // Total neto
   const totalAPagar = roundTo2Decimals(
     comisionBaseTotal + iva - retIsr - retIva
   );
@@ -222,8 +234,8 @@ function calcularResico(params: {
   return {
     vida,
     sinVida,
-    retContable: 0,
-    costoDispersion: 0,
+    retContable,
+    costoDispersion,
     iva,
     retIsr,
     retIva,
@@ -237,20 +249,15 @@ function calcularResico(params: {
 /**
  * Cálculo fiscal para HONORARIOS (Servicios Profesionales)
  *
- * FÓRMULAS OFICIALES (según formulas_imp):
- * BASE: Prima Total (importe_base), NO comisión neta
+ * FÓRMULAS OFICIALES (VERSIÓN CORREGIDA):
+ * BASE: Comisión Base (NO Prima Total)
  *
- * - Retención Contable = Prima Vida × 0.16 (SOLO Vida)
- * - Costo Dispersión = Prima Sin Vida × 0.09 (SOLO Sin Vida)
- * - ISR Vida = (Prima Vida / 1.16) × 0.10 (NO resta retención)
- * - ISR Daños = (Prima Sin Vida / 1.09) × 0.10
- * - ISR Total = ISR Vida + ISR Daños
- * - Total Final = Prima Total - Retención Contable - Costo Dispersión - ISR Total
- *
- * IMPORTANTE:
- * - La base es Prima Total (sum de importe_base), NO comisión neta
- * - ISR Vida NO resta la retención contable
- * - Costo dispersión es 9%, no 10%
+ * - Ret. Contable = 0
+ * - Costo Dispersión = 0
+ * - IVA = Sin Vida × 0.16
+ * - Ret ISR = Comisión Total × 0.10 (10%)
+ * - Ret IVA = Sin Vida × 0.10667
+ * - Total a Pagar = Comisión Total + IVA – Ret ISR – Ret IVA
  */
 function calcularHonorarios(params: {
   comisionBaseTotal: number;
@@ -260,44 +267,37 @@ function calcularHonorarios(params: {
   retIvaRate: number;
   honorariosIsrRate: number;
 }): DesgloseFiscal {
-  const { comisionBaseTotal, vida, sinVida } = params;
+  const { comisionBaseTotal, vida, sinVida, ivaRate, retIvaRate } = params;
 
-  // Prima Total es la base del cálculo (comisionBaseTotal = suma de importe_base)
-  const primaTotal = comisionBaseTotal;
-  const primaVida = vida;
-  const primaSinVida = sinVida;
+  // HONORARIOS: Ret. Contable y Costo Dispersión = 0
+  const retContable = 0;
+  const costoDispersion = 0;
 
-  // Retención contable: SOLO en Vida
-  const retContable = roundTo2Decimals(primaVida * 0.16);
+  // IVA aplica sobre sin Vida
+  const iva = roundTo2Decimals(sinVida * ivaRate);
 
-  // Costo de dispersión: SOLO en Sin Vida (9%, no 10%)
-  const costoDispersion = roundTo2Decimals(primaSinVida * 0.09);
+  // Ret ISR = Total × 10%
+  const retIsr = roundTo2Decimals(comisionBaseTotal * 0.10);
 
-  // ISR Vida: (Prima Vida / 1.16) × 10% - NO resta retención
-  const isrVida = roundTo2Decimals((primaVida / 1.16) * 0.10);
+  // Ret IVA = Sin Vida × 10.667%
+  const retIva = roundTo2Decimals(sinVida * retIvaRate);
 
-  // ISR Daños: (Prima Sin Vida / 1.09) × 10%
-  const isrDanios = roundTo2Decimals((primaSinVida / 1.09) * 0.10);
-
-  // ISR Total
-  const isrTotal = roundTo2Decimals(isrVida + isrDanios);
-
-  // Total Final = Prima Total - Retención - Dispersión - ISR Total
+  // Total neto
   const totalAPagar = roundTo2Decimals(
-    primaTotal - retContable - costoDispersion - isrTotal
+    comisionBaseTotal + iva - retIsr - retIva
   );
 
   return {
-    vida: primaVida,
-    sinVida: primaSinVida,
+    vida,
+    sinVida,
     retContable,
     costoDispersion,
-    iva: 0, // HONORARIOS no usa IVA en este esquema
-    retIsr: isrTotal, // Para compatibilidad con reportes
-    retIva: 0,
-    isrVida,
-    isrDanios,
-    isrTotal,
+    iva,
+    retIsr,
+    retIva,
+    isrVida: 0,
+    isrDanios: 0,
+    isrTotal: 0,
     totalAPagar,
   };
 }

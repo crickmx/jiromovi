@@ -89,7 +89,15 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
 
   switch (regimen) {
     case 'HONORARIOS':
-      // HONORARIOS: IVA, Ret. ISR, Ret. IVA, Total
+      // HONORARIOS: Ret. Contable (0), Costo Dispersión (0), IVA, Ret. ISR, Ret. IVA, Total
+      rows.push({
+        label: 'Ret. Contable',
+        value: formatCurrency(0)
+      });
+      rows.push({
+        label: 'Costo Dispersión',
+        value: formatCurrency(0)
+      });
       if (desgloseFiscal.iva > 0) {
         rows.push({
           label: 'IVA',
@@ -98,13 +106,13 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       }
       if (desgloseFiscal.retIsr > 0) {
         rows.push({
-          label: 'Ret. ISR',
+          label: 'Ret ISR',
           value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
         });
       }
       if (desgloseFiscal.retIva > 0) {
         rows.push({
-          label: 'Ret. IVA',
+          label: 'Ret IVA',
           value: `- ${formatCurrency(desgloseFiscal.retIva)}`
         });
       }
@@ -140,7 +148,15 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       break;
 
     case 'RESICO':
-      // RESICO: IVA, Ret. ISR, Ret. IVA, Total
+      // RESICO: Ret. Contable (0), Costo Dispersión (0), IVA, Ret. ISR, Ret. IVA, Total
+      rows.push({
+        label: 'Ret. Contable',
+        value: formatCurrency(0)
+      });
+      rows.push({
+        label: 'Costo Dispersión',
+        value: formatCurrency(0)
+      });
       if (desgloseFiscal.iva > 0) {
         rows.push({
           label: 'IVA',
@@ -149,28 +165,14 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       }
       if (desgloseFiscal.retIsr > 0) {
         rows.push({
-          label: 'Ret. ISR',
+          label: 'Ret ISR',
           value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
         });
       }
       if (desgloseFiscal.retIva > 0) {
         rows.push({
-          label: 'Ret. IVA',
+          label: 'Ret IVA',
           value: `- ${formatCurrency(desgloseFiscal.retIva)}`
-        });
-      }
-      // Ret. Contable y Costo Dispersión no aplican para RESICO
-      // pero si existen valores, mostrarlos
-      if (desgloseFiscal.retContable > 0) {
-        rows.push({
-          label: 'Ret. Contable',
-          value: `- ${formatCurrency(desgloseFiscal.retContable)}`
-        });
-      }
-      if (desgloseFiscal.costoDispersion > 0) {
-        rows.push({
-          label: 'Costo Dispersión',
-          value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
         });
       }
       break;
@@ -658,14 +660,40 @@ export async function generateOrdenDePagoPDF(
   const regimenFiscalName = agent.usuario?.regimen_fiscal?.name || agent.fiscal_regime?.name || 'HONORARIOS';
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
-  // CRÍTICO: Para ASIMILADOS, consultar función de base de datos
-  // NO recalcular valores en el frontend
+  // REGLA DE ORO: El desglose fiscal se consulta DESDE EL LOTE, nunca se recalcula
   let desgloseFiscal: DesgloseFiscal;
 
+  // GUARD CLAUSE: ASIMILADOS usa su propio flujo (NO TOCAR)
   if (regimenFiscal === 'ASIMILADOS') {
     desgloseFiscal = await obtenerDesgloseFiscalDesdeDB(batch.id, agentDetails[0].agent_id);
-  } else {
-    // Para otros regímenes, usar cálculo directo (por ahora)
+  }
+  // HONORARIOS y RESICO: Leer del lote (valores ya persistidos)
+  else if (regimenFiscal === 'HONORARIOS' || regimenFiscal === 'RESICO') {
+    // Verificar que el lote tenga cálculos persistidos
+    if (!batch.calculated_at || batch.iva === undefined || batch.ret_isr === undefined || batch.ret_iva === undefined) {
+      throw new Error(
+        `El lote no tiene cálculos fiscales persistidos para ${regimenFiscal}. ` +
+        `Cierre el lote nuevamente para recalcular.`
+      );
+    }
+
+    // Leer valores persistidos del lote
+    desgloseFiscal = {
+      vida: batch.commission_vida || 0,
+      sinVida: batch.commission_sinvida || 0,
+      retContable: batch.retencion_contable || 0,
+      costoDispersion: batch.costo_dispersion || 0,
+      iva: batch.iva || 0,
+      retIsr: batch.ret_isr || 0,
+      retIva: batch.ret_iva || 0,
+      isrVida: 0,
+      isrDanios: 0,
+      isrTotal: 0,
+      totalAPagar: batch.total_neto || 0,
+    };
+  }
+  // Otros regímenes: calcular (fallback, no debería llegar aquí)
+  else {
     desgloseFiscal = calcularDesgloseFiscalCore({
       regimenFiscal,
       resumenPorRamo: [],

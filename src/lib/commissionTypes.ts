@@ -65,6 +65,18 @@ export interface CommissionBatch {
   total_commission?: number;
   created_at: string;
   updated_at?: string;
+  commission_vida?: number;
+  commission_sinvida?: number;
+  commission_total?: number;
+  retencion_contable?: number;
+  costo_dispersion?: number;
+  iva?: number;
+  ret_isr?: number;
+  ret_iva?: number;
+  total_neto?: number;
+  regimen_fiscal?: string;
+  tax_version?: string;
+  calculated_at?: string;
 }
 
 export interface CommissionDetail {
