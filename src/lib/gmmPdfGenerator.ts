@@ -151,7 +151,47 @@ export async function generateQuotePDF(
   yPosition = (doc as any).lastAutoTable.finalY + 12;
 
   // ============================================
-  // COBERTURAS ADICIONALES (CON DESCRIPCIÓN)
+  // COBERTURAS BÁSICAS INCLUIDAS
+  // ============================================
+  const coberturasBasicas = [
+    'Hospitalización por enfermedad o accidente',
+    'Honorarios médicos',
+    'Medicamentos durante la hospitalización',
+    'Estudios de laboratorio y gabinete',
+    'Cirugías y procedimientos quirúrgicos',
+    'Honorarios de anestesiólogo',
+    'Terapias físicas y de rehabilitación (durante hospitalización)',
+    'Ambulancia terrestre',
+    'Sala de urgencias',
+  ];
+
+  if (pageHeight - yPosition < 50) {
+    doc.addPage();
+    yPosition = 20;
+  }
+
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 51, 102);
+  doc.text('Coberturas Básicas Incluidas', marginLeft, yPosition);
+  yPosition += 6;
+
+  doc.setFontSize(8);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(80);
+  coberturasBasicas.forEach((cobertura) => {
+    if (pageHeight - yPosition < 10) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    doc.text(`✓ ${cobertura}`, marginLeft + 2, yPosition);
+    yPosition += 4.5;
+  });
+
+  yPosition += 8;
+
+  // ============================================
+  // COBERTURAS OPCIONALES CONTRATADAS
   // ============================================
   const coberturasActivas: { key: string; label: string; description: string }[] = [];
 
@@ -192,7 +232,7 @@ export async function generateQuotePDF(
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(0, 51, 102);
-    doc.text('Coberturas Adicionales', marginLeft, yPosition);
+    doc.text('Coberturas Opcionales Contratadas', marginLeft, yPosition);
     yPosition += 8;
 
     coberturasActivas.forEach((cob, index) => {
@@ -231,6 +271,44 @@ export async function generateQuotePDF(
 
     yPosition += 8;
   }
+
+  // ============================================
+  // SERVICIOS DE ASISTENCIA INCLUIDOS
+  // ============================================
+  const serviciosAsistencia = [
+    'Orientación médica telefónica 24/7',
+    'Segunda opinión médica',
+    'Asistencia en traslados médicos',
+    'Coordinación de citas médicas',
+    'Envío de medicamentos a domicilio (conforme a condiciones)',
+    'Asistencia en trámites administrativos',
+    'Red de médicos y hospitales preferentes',
+  ];
+
+  if (pageHeight - yPosition < 50) {
+    doc.addPage();
+    yPosition = 20;
+  }
+
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 51, 102);
+  doc.text('Servicios de Asistencia Incluidos', marginLeft, yPosition);
+  yPosition += 6;
+
+  doc.setFontSize(8);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(80);
+  serviciosAsistencia.forEach((servicio) => {
+    if (pageHeight - yPosition < 10) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    doc.text(`✓ ${servicio}`, marginLeft + 2, yPosition);
+    yPosition += 4.5;
+  });
+
+  yPosition += 10;
 
   // ============================================
   // TOTALES

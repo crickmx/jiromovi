@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
@@ -32,7 +33,10 @@ function formatPercentage(value: number | string): string {
 }
 
 export default function GMMCotizador() {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('cotizador');
+  const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
+  const [editedFromQuotationId, setEditedFromQuotationId] = useState<string | null>(null);
 
   const [tariffPackageId, setTariffPackageId] = useState<string>('');
   const [tariffTables, setTariffTables] = useState<TariffTables | null>(null);
@@ -48,7 +52,13 @@ export default function GMMCotizador() {
     coaseguro: '',
     formas_pago: [],
     insureds: [{ nombre: '', sexo: 'Hombre', edad: 30 }],
-    coberturas: {},
+    coberturas: {
+      medicamentos_fuera: true,
+      eliminacion_deducible_accidente: true,
+      multiregion: true,
+      vip: true,
+      emergencia_medica_extranjero: true,
+    },
     montos: {},
   });
 
@@ -64,6 +74,16 @@ export default function GMMCotizador() {
   useEffect(() => {
     loadActiveTariff();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.editQuotation) {
+      const quotation = location.state.editQuotation;
+      setInput(quotation.quote_data);
+      setEditedFromQuotationId(quotation.id);
+      setActiveTab('cotizador');
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   useEffect(() => {
     if (activeTab === 'cotizaciones') {
@@ -283,6 +303,11 @@ export default function GMMCotizador() {
       return;
     }
 
+    if (!input.insureds[0].nombre) {
+      alert('Ingrese el nombre del asegurado principal');
+      return;
+    }
+
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -290,81 +315,36 @@ export default function GMMCotizador() {
 
       const firstPlan = result.payment_plans[0];
 
-      const { data: quote, error: quoteError } = await supabase
-        .from('gmm_quotes')
-        .insert({
-          tariff_package_id: tariffPackageId,
-          zona: input.zona || 'N/A',
-          estado: input.estado,
-          nivel_hospitalario: input.nivel_hospitalario,
-          tabulador: input.tabulador,
-          suma_asegurada: input.suma_asegurada,
-          deducible: input.deducible,
-          coaseguro: input.coaseguro,
-          tope_coaseguro: input.tope_coaseguro_seleccionado || result.tope_coaseguro,
-          forma_pago: input.formas_pago.join(', '),
-          num_recibos: firstPlan.num_recibos,
+      const quotationData = {
+        usuario_id: user.id,
+        estado: 'active',
+        producto: 'GMM BX+',
+        cliente_nombre: null,
+        asegurado_principal: input.insureds[0].nombre,
+        quote_data: {
+          ...input,
+          tope_coaseguro_seleccionado: input.tope_coaseguro_seleccionado || result.tope_coaseguro,
+        },
+        coverage_selections: input.coberturas,
+        prima_neta_total: result.prima_neta_total,
+        total_a_pagar: firstPlan.total,
+        forma_pago: input.formas_pago[0] || 'ANUAL',
+        editada_desde_cotizacion_id: editedFromQuotationId || null,
+      };
 
-          cob_reconocimiento_antiguedad: input.coberturas.reconocimiento_antiguedad || false,
-          cob_medicamentos_fuera: input.coberturas.medicamentos_fuera || false,
-          cob_complicaciones_no_amparadas: input.coberturas.complicaciones_no_amparadas || false,
-          cob_padecimientos_preexistentes: input.coberturas.padecimientos_preexistentes || false,
-          cob_eliminacion_deducible_accidente: input.coberturas.eliminacion_deducible_accidente || false,
-          cob_multiregion: input.coberturas.multiregion || false,
-          cob_vip: input.coberturas.vip || false,
-          cob_emergencia_medica_extranjero: input.coberturas.emergencia_medica_extranjero || false,
-          cob_enfermedades_graves_extranjero: input.coberturas.enfermedades_graves_extranjero || false,
-          cob_cobertura_internacional: input.coberturas.cobertura_internacional || false,
-          cob_ampliacion_servicios: input.coberturas.ampliacion_servicios || false,
-          cob_ayuda_diaria: input.coberturas.ayuda_diaria || false,
-          cob_indemnizacion_eg: input.coberturas.indemnizacion_eg || false,
-          cob_maternidad: input.coberturas.maternidad || false,
-          cob_xtensuz: input.coberturas.xtensuz || false,
-
-          monto_maternidad: input.montos?.maternidad || null,
-          monto_xtensuz: input.montos?.xtensuz || null,
-
-          prima_neta_total: result.prima_neta_total,
-          recargo: firstPlan.recargo,
-          gastos_expedicion: firstPlan.gastos_expedicion,
-          subtotal: firstPlan.subtotal,
-          iva: firstPlan.iva,
-          total: firstPlan.total,
-          primer_recibo: firstPlan.primer_recibo,
-          recibos_subsecuentes: firstPlan.recibos_subsecuentes,
-
-          input_json: input,
-          result_json: result,
-
-          created_by: user.id,
-        })
+      const { data: quotation, error: quotationError } = await supabase
+        .from('gmm_quotations')
+        .insert(quotationData)
         .select()
         .single();
 
-      if (quoteError) throw quoteError;
+      if (quotationError) throw quotationError;
 
-      const insuredsData = result.insureds.map((ins, idx) => ({
-        quote_id: quote.id,
-        orden: idx + 1,
-        nombre: ins.nombre,
-        sexo: ins.sexo,
-        edad: ins.edad,
-        prima_base: ins.prima_base,
-        prima_adicionales: ins.prima_adicionales,
-        prima_xtensuz: ins.prima_xtensuz,
-        prima_total: ins.prima_total,
-        adicionales_json: ins.adicionales_detalle,
-      }));
+      alert(`Cotización guardada: ${quotation.folio}${editedFromQuotationId ? ' (editada)' : ''}`);
 
-      const { error: insuredsError } = await supabase
-        .from('gmm_quote_insureds')
-        .insert(insuredsData);
+      setEditedFromQuotationId(null);
 
-      if (insuredsError) throw insuredsError;
-
-      alert(`Cotización guardada: ${quote.quote_number}`);
-      setActiveTab('cotizaciones');
-      loadQuotes();
+      window.location.href = '/gmm/mis-cotizaciones';
     } catch (error: any) {
       console.error('Error saving:', error);
       alert(`Error: ${error.message}`);

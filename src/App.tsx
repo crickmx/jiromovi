@@ -61,6 +61,7 @@ import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
 import MiProduccion from './pages/MiProduccion';
 import GMMTarifasAdmin from './pages/GMMTarifasAdmin';
 import GMMCotizador from './pages/GMMCotizador';
+import MisCotizaciones from './pages/MisCotizaciones';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -674,6 +675,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <GMMCotizador />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/gmm/mis-cotizaciones"
+        element={
+          <ProtectedRoute>
+            <MisCotizaciones />
           </ProtectedRoute>
         }
       />
