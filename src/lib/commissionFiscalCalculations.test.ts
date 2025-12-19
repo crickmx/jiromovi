@@ -252,6 +252,161 @@ export function testAgrupacionPorPrimaTotal() {
 }
 
 /**
+ * Test Case 7: ASIMILADOS - Solo Vida
+ *
+ * Comisión Vida = 10,000
+ * Comisión Sin Vida = 0
+ *
+ * Esperado:
+ * - Retención Contable = 10,000 × 0.16 = 1,600
+ * - Costo Dispersión = 0
+ * - ISR Vida = 10,000 × 0.10 = 1,000 (SIN restar retención contable)
+ * - ISR Daños = 0
+ * - ISR Total = 1,000
+ * - Total Final = 10,000 - 1,600 - 0 - 1,000 = 7,400
+ */
+export function testAsimiladosSoloVida() {
+  const resumenPorRamo: RamoResumen[] = [
+    { ramo: 'Vida', comisionNeta: 10000 }
+  ];
+
+  const params: CalculoFiscalParams = {
+    regimenFiscal: 'ASIMILADOS',
+    resumenPorRamo,
+    totalComisionNeta: 10000,
+  };
+
+  const resultado = calcularDesgloseFiscal(params);
+
+  const expected = {
+    vida: 10000,
+    sinVida: 0,
+    retContable: 1600,
+    costoDispersion: 0,
+    isrVida: 1000,
+    isrDanios: 0,
+    isrTotal: 1000,
+    totalAPagar: 7400,
+  };
+
+  console.log('\nTest 7: ASIMILADOS Solo Vida');
+  console.log('Resultado:', resultado);
+  console.log('Esperado:', expected);
+  console.log('✓ Retención Contable:', resultado.retContable === expected.retContable);
+  console.log('✓ Costo Dispersión:', resultado.costoDispersion === expected.costoDispersion);
+  console.log('✓ ISR Vida:', resultado.isrVida === expected.isrVida);
+  console.log('✓ ISR Daños:', resultado.isrDanios === expected.isrDanios);
+  console.log('✓ ISR Total:', resultado.isrTotal === expected.isrTotal);
+  console.log('✓ Total Final:', resultado.totalAPagar === expected.totalAPagar);
+
+  return resultado;
+}
+
+/**
+ * Test Case 8: ASIMILADOS - Solo Sin Vida (Daños)
+ *
+ * Comisión Vida = 0
+ * Comisión Sin Vida = 10,000
+ *
+ * Esperado:
+ * - Retención Contable = 0
+ * - Costo Dispersión = 10,000 × 0.09 = 900
+ * - ISR Vida = 0
+ * - ISR Daños = 10,000 × 0.10 = 1,000 (SIN restar costo dispersión)
+ * - ISR Total = 1,000
+ * - Total Final = 10,000 - 0 - 900 - 1,000 = 8,100
+ */
+export function testAsimiladosSoloSinVida() {
+  const resumenPorRamo: RamoResumen[] = [
+    { ramo: 'Daños', comisionNeta: 10000 }
+  ];
+
+  const params: CalculoFiscalParams = {
+    regimenFiscal: 'ASIMILADOS',
+    resumenPorRamo,
+    totalComisionNeta: 10000,
+  };
+
+  const resultado = calcularDesgloseFiscal(params);
+
+  const expected = {
+    vida: 0,
+    sinVida: 10000,
+    retContable: 0,
+    costoDispersion: 900,
+    isrVida: 0,
+    isrDanios: 1000,
+    isrTotal: 1000,
+    totalAPagar: 8100,
+  };
+
+  console.log('\nTest 8: ASIMILADOS Solo Sin Vida');
+  console.log('Resultado:', resultado);
+  console.log('Esperado:', expected);
+  console.log('✓ Retención Contable:', resultado.retContable === expected.retContable);
+  console.log('✓ Costo Dispersión:', resultado.costoDispersion === expected.costoDispersion);
+  console.log('✓ ISR Vida:', resultado.isrVida === expected.isrVida);
+  console.log('✓ ISR Daños:', resultado.isrDanios === expected.isrDanios);
+  console.log('✓ ISR Total:', resultado.isrTotal === expected.isrTotal);
+  console.log('✓ Total Final:', resultado.totalAPagar === expected.totalAPagar);
+
+  return resultado;
+}
+
+/**
+ * Test Case 9: ASIMILADOS - Mixto (Vida + Sin Vida)
+ *
+ * Comisión Vida = 5,000
+ * Comisión Sin Vida = 7,000
+ * Comisión Total = 12,000
+ *
+ * Esperado:
+ * - Retención Contable = 5,000 × 0.16 = 800
+ * - Costo Dispersión = 7,000 × 0.09 = 630
+ * - ISR Vida = 5,000 × 0.10 = 500 (SIN restar retención)
+ * - ISR Daños = 7,000 × 0.10 = 700 (SIN restar dispersión)
+ * - ISR Total = 500 + 700 = 1,200
+ * - Total Final = 12,000 - 800 - 630 - 1,200 = 9,370
+ */
+export function testAsimiladosMixto() {
+  const resumenPorRamo: RamoResumen[] = [
+    { ramo: 'Vida', comisionNeta: 5000 },
+    { ramo: 'Daños', comisionNeta: 7000 }
+  ];
+
+  const params: CalculoFiscalParams = {
+    regimenFiscal: 'ASIMILADOS',
+    resumenPorRamo,
+    totalComisionNeta: 12000,
+  };
+
+  const resultado = calcularDesgloseFiscal(params);
+
+  const expected = {
+    vida: 5000,
+    sinVida: 7000,
+    retContable: 800,
+    costoDispersion: 630,
+    isrVida: 500,
+    isrDanios: 700,
+    isrTotal: 1200,
+    totalAPagar: 9370,
+  };
+
+  console.log('\nTest 9: ASIMILADOS Mixto (Vida + Sin Vida)');
+  console.log('Resultado:', resultado);
+  console.log('Esperado:', expected);
+  console.log('✓ Retención Contable:', resultado.retContable === expected.retContable);
+  console.log('✓ Costo Dispersión:', resultado.costoDispersion === expected.costoDispersion);
+  console.log('✓ ISR Vida:', resultado.isrVida === expected.isrVida);
+  console.log('✓ ISR Daños:', resultado.isrDanios === expected.isrDanios);
+  console.log('✓ ISR Total:', resultado.isrTotal === expected.isrTotal);
+  console.log('✓ Total Final:', resultado.totalAPagar === expected.totalAPagar);
+
+  return resultado;
+}
+
+/**
  * Ejecutar todos los tests
  */
 export function runAllHonorariosTests() {
@@ -266,6 +421,24 @@ export function runAllHonorariosTests() {
   testIsrVidaNoRestaRetencion();
   testCostoDispersion9Porciento();
   testAgrupacionPorPrimaTotal();
+
+  console.log('\n' + '='.repeat(60));
+  console.log('TESTS COMPLETADOS');
+  console.log('='.repeat(60));
+}
+
+/**
+ * Ejecutar tests de ASIMILADOS
+ */
+export function runAllAsimiladosTests() {
+  console.log('='.repeat(60));
+  console.log('TESTS DE CÁLCULO FISCAL PARA ASIMILADOS');
+  console.log('ISR calculado sobre comisión base (SIN restar descuentos)');
+  console.log('='.repeat(60));
+
+  testAsimiladosSoloVida();
+  testAsimiladosSoloSinVida();
+  testAsimiladosMixto();
 
   console.log('\n' + '='.repeat(60));
   console.log('TESTS COMPLETADOS');
