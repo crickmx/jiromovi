@@ -262,6 +262,14 @@ Si las tarifas cambian, las cotizaciones antiguas siguen vinculadas a su versió
 - `/gmm/cotizador`
 - `/gmm/cotizaciones`
 
+### Menú de Navegación
+
+El módulo está visible en el menú lateral después de "Multicotizador Digital":
+
+- **GMM BX+ Cotizador** (todos los usuarios) - Crear nuevas cotizaciones
+- **Mis Cotizaciones GMM** (todos los usuarios) - Ver historial de cotizaciones
+- **GMM Tarifas Admin** (solo administradores) - Gestionar versiones de tarifas
+
 ## Pruebas Recomendadas
 
 1. Cargar archivo Excel de prueba
