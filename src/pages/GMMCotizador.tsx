@@ -8,11 +8,30 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { InfoTooltip } from '../components/ui/info-tooltip';
 import { supabase } from '../lib/supabase';
-import { calculateQuoteV2 as calculateQuote, loadTariffTables, getTopeCoaseguroOpciones, getTopeCoaseguroRango } from '../lib/gmmCalculationEngineV2';
+import {
+  calculateQuoteV2 as calculateQuote,
+  calculateQuoteMultiOption,
+  loadTariffTables,
+  getTopeCoaseguroOpciones,
+  getTopeCoaseguroRango
+} from '../lib/gmmCalculationEngineV2';
 import { generateQuotePDF } from '../lib/gmmPdfGenerator';
 import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
-import type { QuoteInput, QuoteInputInsured, QuoteCalculationResult, TariffTables, GMMQuote, GMMQuoteInsured } from '../lib/gmmTypes';
+import type {
+  QuoteInput,
+  QuoteInputInsured,
+  QuoteCalculationResult,
+  TariffTables,
+  GMMQuote,
+  GMMQuoteInsured,
+  QuoteInputMultiOption,
+  QuoteOption,
+  QuoteOptionPlan,
+  QuoteOptionCoberturas,
+  QuoteOptionResult,
+  QuoteCalculationMultiResult
+} from '../lib/gmmTypes';
 
 interface GMMQuotation {
   id: string;
