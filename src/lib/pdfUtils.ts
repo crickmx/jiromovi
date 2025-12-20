@@ -671,8 +671,14 @@ export async function generateOrdenDePagoPDF(
     yPosition += 2;
   }
 
+  // PRIORIDAD 1: Siempre usar el régimen fiscal ACTUAL del usuario desde la tabla usuarios
+  // Esto asegura que si el régimen fiscal cambió después de cerrar el lote, el PDF refleje el cambio
+  // PRIORIDAD 2: Régimen fiscal del agente (legacy)
+  // PRIORIDAD 3: HONORARIOS como fallback
   const regimenFiscalName = agent.usuario?.regimen_fiscal?.name || agent.fiscal_regime?.name || 'HONORARIOS';
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
+
+  console.log(`[PDF] Generando para ${agent.name}: Régimen fiscal = ${regimenFiscalName} (normalizado: ${regimenFiscal})`);
 
   // REGLA DE ORO: Calcular el desglose fiscal en tiempo real para cada agente
   let desgloseFiscal: DesgloseFiscal;

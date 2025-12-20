@@ -8,6 +8,7 @@ import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
+import { calcularDesgloseFiscal, normalizarRegimenFiscal, agruparComisionesPorRamo } from '../lib/commissionFiscalCalculations';
 
 export default function MisComisiones() {
   const { usuario } = useAuth();
@@ -92,11 +93,13 @@ export default function MisComisiones() {
         if (details && details.length > 0) {
           detailsMap.set(batch.id, details);
 
-          // Cargar desglose fiscal desde función de base de datos para ASIMILADOS
+          // Calcular desglose fiscal según el régimen actual del usuario
           const agentData = details[0].agent;
-          const regimenFiscal = agentData?.usuario?.regimen_fiscal?.name || agentData?.fiscal_regime?.name || '';
+          const regimenFiscalName = agentData?.usuario?.regimen_fiscal?.name || agentData?.fiscal_regime?.name || 'HONORARIOS';
+          const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
-          if (regimenFiscal.toUpperCase().includes('ASIMILAD')) {
+          if (regimenFiscal === 'ASIMILADOS') {
+            // Para ASIMILADOS, usar función de base de datos
             const { data: fiscal, error: fiscalError } = await supabase.rpc('calcular_desglose_fiscal_asimilados', {
               p_batch_id: batch.id,
               p_agent_id: agent.id
@@ -105,6 +108,39 @@ export default function MisComisiones() {
             if (!fiscalError && fiscal) {
               fiscalMap.set(batch.id, fiscal);
             }
+          } else {
+            // Para HONORARIOS y RESICO, calcular en tiempo real
+            const resumenPorRamo = agruparComisionesPorRamo(details.map(detail => ({
+              ramo: detail.ramo,
+              comisionNeta: detail.is_manual_adjusted
+                ? (detail.adjusted_commission_neta || 0)
+                : detail.commission_neta
+            })));
+
+            const totalComisionNeta = details.reduce((sum, d) =>
+              sum + (d.is_manual_adjusted ? (d.adjusted_commission_neta || 0) : d.commission_neta), 0
+            );
+
+            const desglose = calcularDesgloseFiscal({
+              regimenFiscal,
+              resumenPorRamo,
+              totalComisionNeta
+            });
+
+            // Convertir al formato esperado por la UI
+            fiscalMap.set(batch.id, {
+              regimen: regimenFiscalName,
+              total_comision: totalComisionNeta.toString(),
+              vida: desglose.vida.toString(),
+              sin_vida: desglose.sinVida.toString(),
+              ret_contable: desglose.retContable.toString(),
+              dispersion: desglose.costoDispersion.toString(),
+              iva: desglose.iva.toString(),
+              ret_isr: desglose.retIsr.toString(),
+              ret_iva: desglose.retIva.toString(),
+              isr_total: desglose.isrTotal.toString(),
+              total_pagar: desglose.totalAPagar.toString()
+            });
           }
         }
       }
@@ -282,56 +318,129 @@ export default function MisComisiones() {
 
                 {selectedBatch === batch.id && summary && (
                   <div className="border-t border-neutral-200 p-4 sm:p-6 bg-neutral-50">
-                    {/* Desglose Fiscal para ASIMILADOS */}
-                    {desgloseFiscal.has(batch.id) && (
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 mb-6 border-2 border-blue-200">
-                        <h4 className="text-base sm:text-lg font-bold text-blue-900 mb-3 flex items-center gap-2">
-                          <DollarSign className="w-5 h-5" />
-                          Desglose Fiscal (ASIMILADOS)
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          <div className="bg-white rounded-lg p-3 shadow-sm">
-                            <div className="text-xs text-neutral-600 mb-1">Comisión Total</div>
-                            <div className="text-base font-bold text-green-700">
-                              {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).total_comision))}
+                    {/* Desglose Fiscal para todos los regímenes */}
+                    {desgloseFiscal.has(batch.id) && (() => {
+                      const fiscal = desgloseFiscal.get(batch.id);
+                      const regimen = fiscal.regimen || 'HONORARIOS';
+                      const isAsimilados = regimen.toUpperCase().includes('ASIMILAD');
+                      const isResico = regimen.toUpperCase().includes('RESICO');
+                      const isHonorarios = !isAsimilados && !isResico;
+
+                      return (
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 mb-6 border-2 border-blue-200">
+                          <h4 className="text-base sm:text-lg font-bold text-blue-900 mb-3 flex items-center gap-2">
+                            <DollarSign className="w-5 h-5" />
+                            Desglose Fiscal ({regimen.toUpperCase()})
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {/* Comisión Base Total */}
+                            {(isHonorarios || isResico) && (
+                              <div className="bg-white rounded-lg p-3 shadow-sm">
+                                <div className="text-xs text-neutral-600 mb-1">Comisión Base Total</div>
+                                <div className="text-base font-bold text-green-700">
+                                  {formatCurrency(parseFloat(fiscal.total_comision))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Vida */}
+                            {(isHonorarios || isResico) && parseFloat(fiscal.vida) > 0 && (
+                              <div className="bg-white rounded-lg p-3 shadow-sm">
+                                <div className="text-xs text-neutral-600 mb-1">Vida</div>
+                                <div className="text-base font-semibold text-neutral-700">
+                                  {formatCurrency(parseFloat(fiscal.vida))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Comisión Sin Vida */}
+                            {(isHonorarios || isResico) && (
+                              <div className="bg-white rounded-lg p-3 shadow-sm">
+                                <div className="text-xs text-neutral-600 mb-1">Comisión Sin Vida</div>
+                                <div className="text-base font-semibold text-neutral-700">
+                                  {formatCurrency(parseFloat(fiscal.sin_vida))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Ret. Contable (solo ASIMILADOS) */}
+                            {isAsimilados && parseFloat(fiscal.ret_contable) > 0 && (
+                              <div className="bg-white rounded-lg p-3 shadow-sm">
+                                <div className="text-xs text-neutral-600 mb-1">Ret. Contable</div>
+                                <div className="text-base font-semibold text-red-600">
+                                  - {formatCurrency(parseFloat(fiscal.ret_contable))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Costo Dispersión (solo ASIMILADOS) */}
+                            {isAsimilados && parseFloat(fiscal.dispersion) > 0 && (
+                              <div className="bg-white rounded-lg p-3 shadow-sm">
+                                <div className="text-xs text-neutral-600 mb-1">Costo Dispersión</div>
+                                <div className="text-base font-semibold text-red-600">
+                                  - {formatCurrency(parseFloat(fiscal.dispersion))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* IVA */}
+                            <div className="bg-white rounded-lg p-3 shadow-sm">
+                              <div className="text-xs text-neutral-600 mb-1">
+                                {(isHonorarios || isResico) ? 'IVA (16% Sin Vida)' : 'IVA'}
+                              </div>
+                              <div className="text-base font-semibold text-green-600">
+                                {parseFloat(fiscal.iva) > 0
+                                  ? `+ ${formatCurrency(parseFloat(fiscal.iva))}`
+                                  : formatCurrency(0)}
+                              </div>
+                            </div>
+
+                            {/* Ret. ISR (HONORARIOS y RESICO) */}
+                            {(isHonorarios || isResico) && parseFloat(fiscal.ret_isr) > 0 && (
+                              <div className="bg-white rounded-lg p-3 shadow-sm">
+                                <div className="text-xs text-neutral-600 mb-1">
+                                  {isResico ? 'Ret. ISR (1.25% Total)' : 'Ret. ISR (10% Total)'}
+                                </div>
+                                <div className="text-base font-semibold text-red-600">
+                                  - {formatCurrency(parseFloat(fiscal.ret_isr))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Ret. IVA (HONORARIOS y RESICO) */}
+                            {(isHonorarios || isResico) && parseFloat(fiscal.ret_iva) > 0 && (
+                              <div className="bg-white rounded-lg p-3 shadow-sm">
+                                <div className="text-xs text-neutral-600 mb-1">Ret. IVA (10.667% Sin Vida)</div>
+                                <div className="text-base font-semibold text-red-600">
+                                  - {formatCurrency(parseFloat(fiscal.ret_iva))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* ISR Total (solo ASIMILADOS) */}
+                            {isAsimilados && parseFloat(fiscal.isr_total) > 0 && (
+                              <div className="bg-white rounded-lg p-3 shadow-sm">
+                                <div className="text-xs text-neutral-600 mb-1">ISR Total</div>
+                                <div className="text-base font-semibold text-red-600">
+                                  - {formatCurrency(parseFloat(fiscal.isr_total))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Total a Pagar */}
+                            <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 shadow-sm border-2 border-green-300">
+                              <div className="text-xs text-green-800 font-semibold mb-1">Total a Pagar</div>
+                              <div className="text-lg font-bold text-green-900">
+                                {formatCurrency(parseFloat(fiscal.total_pagar))}
+                              </div>
                             </div>
                           </div>
-                          <div className="bg-white rounded-lg p-3 shadow-sm">
-                            <div className="text-xs text-neutral-600 mb-1">Ret. Contable</div>
-                            <div className="text-base font-semibold text-red-600">
-                              - {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).ret_contable))}
-                            </div>
-                          </div>
-                          <div className="bg-white rounded-lg p-3 shadow-sm">
-                            <div className="text-xs text-neutral-600 mb-1">Costo Dispersión</div>
-                            <div className="text-base font-semibold text-red-600">
-                              - {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).dispersion))}
-                            </div>
-                          </div>
-                          <div className="bg-white rounded-lg p-3 shadow-sm">
-                            <div className="text-xs text-neutral-600 mb-1">IVA</div>
-                            <div className="text-base font-semibold text-neutral-600">
-                              {formatCurrency(0)}
-                            </div>
-                          </div>
-                          <div className="bg-white rounded-lg p-3 shadow-sm">
-                            <div className="text-xs text-neutral-600 mb-1">ISR Total</div>
-                            <div className="text-base font-semibold text-red-600">
-                              - {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).isr_total))}
-                            </div>
-                          </div>
-                          <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 shadow-sm border-2 border-green-300">
-                            <div className="text-xs text-green-800 font-semibold mb-1">Total a Pagar</div>
-                            <div className="text-lg font-bold text-green-900">
-                              {formatCurrency(parseFloat(desgloseFiscal.get(batch.id).total_pagar))}
-                            </div>
-                          </div>
+                          <p className="text-xs text-blue-700 mt-3 italic">
+                            * Cálculo fiscal automático según régimen {regimen.toUpperCase()}. Valores calculados en tiempo real según tu régimen fiscal actual.
+                          </p>
                         </div>
-                        <p className="text-xs text-blue-700 mt-3 italic">
-                          * Cálculo fiscal automático según régimen ASIMILADOS. Valores calculados por el sistema con fórmulas fiscales vigentes.
-                        </p>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                       <GraficaColumnas

@@ -62,7 +62,11 @@ export default function ComisionesLote() {
         agent:agent_id(
           *,
           office:office_id(*),
-          fiscal_regime:fiscal_regime_id(*)
+          fiscal_regime:fiscal_regime_id(*),
+          usuario:usuario_id(
+            *,
+            regimen_fiscal:regimen_fiscal_id(*)
+          )
         )
       `).eq('batch_id', id),
       supabase.from('commission_errors').select('*').eq('batch_id', id).eq('resolved', false)
