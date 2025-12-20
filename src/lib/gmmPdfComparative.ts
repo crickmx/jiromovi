@@ -48,10 +48,10 @@ export async function generateComparativeQuotePDF(
   doc.setFontSize(18);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('Cotización Comparativa', pageWidth / 2, yPosition, { align: 'center' });
+  doc.text('Cotizacion Comparativa', pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 6;
   doc.setFontSize(14);
-  doc.text('Únikuz Bx+', pageWidth / 2, yPosition, { align: 'center' });
+  doc.text('Unikuz Bx+', pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 8;
 
   doc.setFontSize(8);
@@ -77,31 +77,7 @@ export async function generateComparativeQuotePDF(
   doc.setFontSize(9);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('👥 ASEGURADOS', marginLeft, yPosition);
-  yPosition += 4;
-
-  doc.setFontSize(7);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(60);
-  if (firstOption?.insureds && firstOption.insureds.length > 0) {
-    const maxInsuredDisplay = Math.min(firstOption.insureds.length, 6);
-    for (let i = 0; i < maxInsuredDisplay; i++) {
-      const ins = firstOption.insureds[i];
-      doc.text(`${i + 1}. ${ins.nombre} - ${ins.sexo} - ${ins.edad} años`, marginLeft + 2, yPosition);
-      yPosition += 3.2;
-    }
-  }
-  yPosition += 2;
-
-  doc.setDrawColor(200);
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-  yPosition += 5;
-
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 51, 102);
-  doc.text('📊 COMPARATIVO DE OPCIONES', marginLeft, yPosition);
+  doc.text('COMPARATIVO DE OPCIONES', marginLeft, yPosition);
   yPosition += 5;
 
   const bestIndex = options.reduce((minIdx, opt, idx) =>
@@ -120,27 +96,27 @@ export async function generateComparativeQuotePDF(
     yPosition = startY;
 
     if (isBest) {
-      doc.setFillColor(220, 252, 231);
       doc.setDrawColor(0, 153, 51);
       doc.setLineWidth(0.8);
+      doc.roundedRect(cardX, yPosition, cardWidth, 95, 2, 2, 'S');
     } else {
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.3);
+      doc.roundedRect(cardX, yPosition, cardWidth, 95, 2, 2, 'FD');
     }
-    doc.roundedRect(cardX, yPosition, cardWidth, 88, 2, 2, 'FD');
 
     yPosition += 4;
     doc.setFontSize(10);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(0, 51, 102);
-    doc.text(`Opción ${String.fromCharCode(65 + i)}`, cardX + cardWidth / 2, yPosition, { align: 'center' });
+    doc.text(`Opcion ${String.fromCharCode(65 + i)}`, cardX + cardWidth / 2, yPosition, { align: 'center' });
 
     if (isBest) {
       yPosition += 3.5;
       doc.setFontSize(7);
       doc.setTextColor(0, 153, 51);
-      doc.text('★ MEJOR PRECIO', cardX + cardWidth / 2, yPosition, { align: 'center' });
+      doc.text('* MEJOR PRECIO', cardX + cardWidth / 2, yPosition, { align: 'center' });
     }
 
     yPosition += 5;
@@ -239,7 +215,7 @@ export async function generateComparativeQuotePDF(
     doc.text(`Pago: ${opt.totales.forma_pago}`, cardX + cardWidth / 2, yPosition, { align: 'center' });
   }
 
-  yPosition = startY + 92;
+  yPosition = startY + 99;
 
   doc.setDrawColor(200);
   doc.setLineWidth(0.3);
@@ -249,25 +225,89 @@ export async function generateComparativeQuotePDF(
   doc.setFontSize(9);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('💊 COBERTURAS BÁSICAS', marginLeft, yPosition);
+  doc.text('ASEGURADOS', marginLeft, yPosition);
+  yPosition += 4;
+
+  doc.setFontSize(7);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(60);
+
+  if (firstOption?.insureds && firstOption.insureds.length > 0) {
+    const numInsuredCols = Math.min(numOptions, 3);
+    const colWidth = contentWidth / numInsuredCols;
+
+    const maxInsuredDisplay = Math.min(firstOption.insureds.length, 6);
+    const startYAsegurados = yPosition;
+
+    for (let i = 0; i < numInsuredCols; i++) {
+      const opt = options[i];
+      const colX = marginLeft + (i * colWidth);
+      yPosition = startYAsegurados;
+
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(0, 102, 204);
+      doc.text(`Opcion ${String.fromCharCode(65 + i)}`, colX + colWidth / 2, yPosition, { align: 'center' });
+      yPosition += 3.5;
+
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(60);
+
+      if (opt.insureds && opt.insureds.length > 0) {
+        for (let j = 0; j < maxInsuredDisplay; j++) {
+          const ins = opt.insureds[j];
+          const primaIndividual = ins.prima_neta || 0;
+
+          const insuredName = ins.nombre.length > 12 ? ins.nombre.substring(0, 12) + '...' : ins.nombre;
+          doc.setFontSize(6.5);
+          doc.text(`${j + 1}. ${insuredName}`, colX + 1, yPosition);
+          yPosition += 2.8;
+
+          doc.setFontSize(6);
+          doc.setTextColor(100);
+          doc.text(`   ${ins.sexo} - ${ins.edad} anos`, colX + 1, yPosition);
+          yPosition += 2.5;
+
+          doc.setTextColor(0, 102, 204);
+          doc.text(`   Prima: ${formatCurrency(primaIndividual)}`, colX + 1, yPosition);
+          yPosition += 3.5;
+        }
+      }
+    }
+
+    yPosition = startYAsegurados + (maxInsuredDisplay * 8.8) + 2;
+  }
+
+  doc.setDrawColor(200);
+  doc.setLineWidth(0.3);
+  doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+  yPosition += 5;
+
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 51, 102);
+  doc.text('COBERTURAS BASICAS', marginLeft, yPosition);
   yPosition += 4;
 
   doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(60);
   const basicCoverages = [
-    'Gastos médicos mayores',
-    'Hospitalización y cirugía',
-    'Medicamentos y material de curación',
-    'Honorarios médicos',
+    'Gastos medicos mayores',
+    'Hospitalizacion y cirugia',
+    'Medicamentos y material de curacion',
+    'Honorarios medicos',
     'Estudios de laboratorio y rayos X'
   ];
 
-  for (const coverage of basicCoverages) {
-    doc.text(`✓ ${coverage}`, marginLeft + 2, yPosition);
-    yPosition += 3.2;
+  const halfBasic = Math.ceil(basicCoverages.length / 2);
+  const colWidth = contentWidth / 2;
+
+  for (let i = 0; i < basicCoverages.length; i++) {
+    const xPos = i < halfBasic ? marginLeft + 2 : marginLeft + colWidth + 2;
+    const yPos = yPosition + ((i % halfBasic) * 3.2);
+    doc.text(`[X] ${basicCoverages[i]}`, xPos, yPos);
   }
-  yPosition += 2;
+  yPosition += (halfBasic * 3.2) + 2;
 
   doc.setDrawColor(200);
   doc.setLineWidth(0.3);
@@ -277,53 +317,61 @@ export async function generateComparativeQuotePDF(
   doc.setFontSize(9);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('✨ COBERTURAS ADICIONALES', marginLeft, yPosition);
+  doc.text('COBERTURAS ADICIONALES', marginLeft, yPosition);
   yPosition += 4;
 
   doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(60);
 
-  const selectedCoverages: string[] = [];
-  if (firstOption?.coberturas) {
-    const coverageMap: Record<string, string> = {
-      maternidad: 'Maternidad',
-      enf_preex: 'Enfermedades preexistentes',
-      dental: 'Gastos dentales',
-      lentes: 'Lentes y aparatos auditivos',
-      medicamentos: 'Medicamentos fuera del hospital',
-      psicologia: 'Atención psicológica',
-      ambulancia: 'Servicio de ambulancia',
-      terapias: 'Terapias de rehabilitación',
-      urgencias_ext: 'Urgencias en el extranjero',
-      muerte_accidental: 'Muerte accidental',
-    };
+  const allCoverages: Array<{ key: string; label: string }> = [
+    { key: 'maternidad', label: 'Maternidad' },
+    { key: 'enf_preex', label: 'Enfermedades preexistentes' },
+    { key: 'dental', label: 'Gastos dentales' },
+    { key: 'lentes', label: 'Lentes y aparatos auditivos' },
+    { key: 'medicamentos', label: 'Medicamentos fuera del hospital' },
+    { key: 'psicologia', label: 'Atencion psicologica' },
+    { key: 'ambulancia', label: 'Servicio de ambulancia' },
+    { key: 'terapias', label: 'Terapias de rehabilitacion' },
+    { key: 'urgencias_ext', label: 'Urgencias en el extranjero' },
+    { key: 'muerte_accidental', label: 'Muerte accidental' },
+  ];
 
-    for (const [key, label] of Object.entries(coverageMap)) {
-      if (firstOption.coberturas[key] === 'SI') {
-        selectedCoverages.push(label);
-        if (selectedCoverages.length >= 15) break;
+  const numCoverageCols = Math.min(numOptions, 3);
+  const coverageColWidth = contentWidth / numCoverageCols;
+  const startYCoverages = yPosition;
+
+  for (let i = 0; i < numCoverageCols; i++) {
+    const opt = options[i];
+    const colX = marginLeft + (i * coverageColWidth);
+    yPosition = startYCoverages;
+
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 102, 204);
+    doc.text(`Opcion ${String.fromCharCode(65 + i)}`, colX + coverageColWidth / 2, yPosition, { align: 'center' });
+    yPosition += 3.5;
+
+    doc.setFont(undefined, 'normal');
+
+    for (const coverage of allCoverages) {
+      const isIncluded = opt.coberturas && opt.coberturas[coverage.key] === 'SI';
+
+      if (isIncluded) {
+        doc.setTextColor(0, 153, 51);
+        doc.text('[X]', colX + 1, yPosition);
+      } else {
+        doc.setTextColor(200, 0, 0);
+        doc.text('[ ]', colX + 1, yPosition);
       }
+
+      doc.setTextColor(60);
+      const truncatedLabel = coverage.label.length > 22 ? coverage.label.substring(0, 22) + '...' : coverage.label;
+      doc.text(truncatedLabel, colX + 6, yPosition);
+      yPosition += 3.2;
     }
   }
 
-  if (selectedCoverages.length > 0) {
-    const maxCoverages = Math.min(selectedCoverages.length, 15);
-    const halfPoint = Math.ceil(maxCoverages / 2);
-    const colWidth = contentWidth / 2;
-
-    for (let i = 0; i < maxCoverages; i++) {
-      const xPos = i < halfPoint ? marginLeft + 2 : marginLeft + colWidth + 2;
-      const yPos = yPosition + ((i % halfPoint) * 3.2);
-      doc.text(`✓ ${selectedCoverages[i]}`, xPos, yPos);
-    }
-    yPosition += (halfPoint * 3.2) + 2;
-  } else {
-    doc.setFontSize(7);
-    doc.setTextColor(120);
-    doc.text('Sin coberturas adicionales seleccionadas', marginLeft + 2, yPosition);
-    yPosition += 4;
-  }
+  yPosition = startYCoverages + (allCoverages.length * 3.2) + 2;
 
   const footerY = pageHeight - 18;
   doc.setDrawColor(0, 51, 102);
@@ -345,7 +393,7 @@ export async function generateComparativeQuotePDF(
   doc.setTextColor(100);
   doc.setFontSize(6.5);
   doc.text(
-    'Este documento es una cotización y no constituye una póliza de seguro. Sujeto a aprobación médica.',
+    'Este documento es una cotizacion y no constituye una poliza de seguro. Sujeto a aprobacion medica.',
     pageWidth / 2,
     footerY + 12,
     { align: 'center' }
