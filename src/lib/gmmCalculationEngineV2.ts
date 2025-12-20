@@ -316,42 +316,42 @@ function obtenerConfiguracionCoberturas(
       nombre: 'vip',
       activa: input.coberturas.vip,
       coeficiente: tables.coef_vip,
-      baseCalculo: 'primaBaseFinal'
+      baseCalculo: 'primaBaseConCargas'
     },
     {
       nombre: 'reconocimiento_antiguedad',
       activa: input.coberturas.reconocimiento_antiguedad,
       coeficiente: tables.coef_antiguedad,
-      baseCalculo: 'primaBaseFinal'
+      baseCalculo: 'primaBaseConCargas'
     },
     {
       nombre: 'emergencia_medica_extranjero',
       activa: input.coberturas.emergencia_medica_extranjero,
       coeficiente: tables.coef_emergencia_ext,
-      baseCalculo: 'primaBaseFinal'
+      baseCalculo: 'primaBaseConCargas'
     },
     {
       nombre: 'enfermedades_graves_extranjero',
       activa: input.coberturas.enfermedades_graves_extranjero,
       coeficiente: tables.coef_enf_graves_ext,
-      baseCalculo: 'primaBaseFinal'
+      baseCalculo: 'primaBaseConCargas'
     },
     {
       nombre: 'ayuda_diaria',
       activa: input.coberturas.ayuda_diaria,
       coeficiente: tables.coef_ayuda_diaria,
-      baseCalculo: 'primaBaseFinal'
+      baseCalculo: 'primaBaseConCargas'
     },
     {
       nombre: 'ampliacion_servicios',
       activa: input.coberturas.ampliacion_servicios,
       coeficiente: tables.coef_ampliacion_servicios,
-      baseCalculo: 'primaBaseFinal'
+      baseCalculo: 'primaBaseConCargas'
     },
     {
       nombre: 'eliminacion_deducible_accidente',
       activa: input.coberturas.eliminacion_deducible_accidente,
-      baseCalculo: 'primaBaseFinal',
+      baseCalculo: 'primaBaseConCargas',
       calcularFactor: (edad, sexo, input, tables) => {
         const key = input.deducible;
         const row = tables.deducible_accidente_keys.findIndex(k => k === key);
@@ -364,7 +364,7 @@ function obtenerConfiguracionCoberturas(
     {
       nombre: 'multiregion',
       activa: input.coberturas.multiregion,
-      baseCalculo: 'primaBaseFinal',
+      baseCalculo: 'primaBaseConCargas',
       calcularFactor: (edad, sexo, input, tables) => {
         const row = tables.multiregion_carga_sistema.find(r => r.col_0 === input.estado);
         if (row) {
@@ -376,7 +376,7 @@ function obtenerConfiguracionCoberturas(
     {
       nombre: 'cobertura_internacional',
       activa: input.coberturas.cobertura_internacional,
-      baseCalculo: 'primaBaseFinal',
+      baseCalculo: 'primaBaseConCargas',
       calcularFactor: (edad, sexo, input, tables) => {
         const row = tables.cobertura_internacional_carga_sistema.find(r => Number(r.col_0) === edad);
         if (row) {
@@ -389,7 +389,7 @@ function obtenerConfiguracionCoberturas(
     {
       nombre: 'indemnizacion_eg',
       activa: input.coberturas.indemnizacion_eg,
-      baseCalculo: 'primaBaseFinal',
+      baseCalculo: 'primaBaseConCargas',
       calcularFactor: (edad, sexo, input, tables) => {
         const row = tables.indemnizacion_eg_tabla.find(r => Number(r.col_0) === edad);
         if (row) {
