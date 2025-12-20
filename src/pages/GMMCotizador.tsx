@@ -17,6 +17,7 @@ import {
   getTopeCoaseguroRango
 } from '../lib/gmmCalculationEngineV2';
 import { generateQuotePDF } from '../lib/gmmPdfGenerator';
+import { generateComparativeQuotePDF } from '../lib/gmmPdfComparative';
 import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
 import type {
@@ -328,7 +329,23 @@ export default function GMMCotizador() {
       const quoteData = quotation.quote_data as any;
 
       if (quoteData.multi_option_result) {
-        alert('Las cotizaciones comparativas no tienen descarga de PDF individual. Use el botón "Descargar Comparativa" en el modo de cotización.');
+        const comparativeQuote = {
+          folio: quotation.folio,
+          created_at: quotation.created_at,
+          asegurado_principal: quotation.asegurado_principal,
+          result: quoteData.multi_option_result,
+        };
+
+        const pdfBlob = await generateComparativeQuotePDF(comparativeQuote, asesorInfo);
+
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `cotizacion_comparativa_${quotation.folio}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
         return;
       }
 
