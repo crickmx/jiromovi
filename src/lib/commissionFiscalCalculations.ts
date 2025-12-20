@@ -195,11 +195,11 @@ function calcularAsimilados(params: {
 /**
  * Cálculo fiscal para RESICO (Régimen Simplificado de Confianza)
  *
- * FÓRMULAS OFICIALES (VERSIÓN CORREGIDA):
+ * FÓRMULAS OFICIALES:
  * - Ret. Contable = 0
  * - Costo Dispersión = 0
  * - IVA = Sin Vida × 0.16
- * - Ret ISR = Comisión Total × 0.10 (10%, NO 1.25%)
+ * - Ret ISR = Comisión Total × 1.25%
  * - Ret IVA = Sin Vida × 0.10667
  * - Total a Pagar = Comisión Base Total + IVA – Ret ISR – Ret IVA
  */
@@ -211,7 +211,7 @@ function calcularResico(params: {
   retIvaRate: number;
   resicoIsrRate: number;
 }): DesgloseFiscal {
-  const { comisionBaseTotal, vida, sinVida, ivaRate, retIvaRate } = params;
+  const { comisionBaseTotal, vida, sinVida, ivaRate, retIvaRate, resicoIsrRate } = params;
 
   // RESICO: Ret. Contable y Costo Dispersión = 0
   const retContable = 0;
@@ -220,8 +220,8 @@ function calcularResico(params: {
   // IVA aplica sobre sin Vida
   const iva = roundTo2Decimals(sinVida * ivaRate);
 
-  // Ret ISR = Total × 10% (NO 1.25%)
-  const retIsr = roundTo2Decimals(comisionBaseTotal * 0.10);
+  // Ret ISR = Total × 1.25%
+  const retIsr = roundTo2Decimals(comisionBaseTotal * resicoIsrRate);
 
   // Ret IVA = Sin Vida × 10.667%
   const retIva = roundTo2Decimals(sinVida * retIvaRate);
