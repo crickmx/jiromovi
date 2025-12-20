@@ -258,6 +258,10 @@ interface CoberturaConfig {
 
 /**
  * Calcular una cobertura adicional
+ *
+ * IMPORTANTE: Las coberturas adicionales tienen su propio denominador de cargas
+ * diferente al de la prima base. Esto se debe a que incluyen gastos administrativos
+ * adicionales específicos de cada cobertura.
  */
 function calcularCobertura(
   config: CoberturaConfig,
@@ -283,7 +287,15 @@ function calcularCobertura(
     throw new Error(`[CAPA 4 - COBERTURAS] Cobertura "${config.nombre}" sin coeficiente ni función de cálculo`);
   }
 
-  return roundTo2Decimals(base * factor);
+  // CRÍTICO: Las coberturas adicionales necesitan su propio denominador
+  // Basado en análisis del Excel oficial de VePorMás:
+  // - Prima base usa denominador = 1 - (0.1 + 0.27 + 0.07) = 0.56 (44% de cargas)
+  // - Coberturas adicionales usan denominador = 0.794 (20.6% de cargas)
+  // Esto se verifica porque el factor de diferencia entre Excel y nuestro cálculo es 1.259 (1/0.794)
+  const denominador_coberturas = tables.denominador_cargas_coberturas || 0.794;
+
+  const coberturaBruta = base * factor;
+  return roundTo2Decimals(coberturaBruta / denominador_coberturas);
 }
 
 /**

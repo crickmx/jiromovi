@@ -209,6 +209,7 @@ export interface TariffTables {
   coef_ayuda_diaria: number;
   coef_ampliacion_servicios: number;
   denominador_cargas: number[];
+  denominador_cargas_coberturas?: number;
   deducible_accidente_keys: any[];
   deducible_accidente_factors: any[];
   multiregion_carga_sistema: any[];
