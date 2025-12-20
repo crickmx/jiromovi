@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Cotización GMM BX+</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1e40af;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #1e40af;
+            margin-top: 30px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+        .input-section {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #3b82f6;
+        }
+        .input-row {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 10px;
+            margin: 10px 0;
+            align-items: center;
+        }
+        .label {
+            font-weight: 600;
+            color: #475569;
+        }
+        .value {
+            font-family: 'Courier New', monospace;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+        }
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background: #2563eb;
+        }
+        .result-section {
+            margin-top: 30px;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #1e40af;
+        }
+        .comparison-table .excel-col {
+            background: #fef3c7;
+        }
+        .comparison-table .sistema-col {
+            background: #dbeafe;
+        }
+        .comparison-table .diff-col {
+            font-weight: 700;
+        }
+        .match {
+            color: #16a34a;
+        }
+        .mismatch {
+            color: #dc2626;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #dc2626;
+            margin: 20px 0;
+        }
+        .asegurado-card {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .asegurado-header {
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .coberturas-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .cobertura-item {
+            padding: 8px 12px;
+            background: #dbeafe;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Prueba de Cotización GMM BX+ - Comparación con Excel</h1>
+
+        <div class="input-section">
+            <h2>📋 Datos del Caso de Prueba (del PDF)</h2>
+
+            <h3>Características del Plan</h3>
+            <div class="input-row">
+                <span class="label">Estado:</span>
+                <span class="value">QUERETARO</span>
+            </div>
+            <div class="input-row">
+                <span class="label">Nivel Hospitalario:</span>
+                <span class="value">PLUS</span>
+            </div>
+            <div class="input-row">
+                <span class="label">Tabulador:</span>
+                <span class="value">ORO-110,000</span>
+            </div>
+            <div class="input-row">
+                <span class="label">Suma Asegurada:</span>
+                <span class="value">$50,000,000</span>
+            </div>
+            <div class="input-row">
+                <span class="label">Deducible:</span>
+                <span class="value">$35,000</span>
+            </div>
+            <div class="input-row">
+                <span class="label">Coaseguro:</span>
+                <span class="value">15%</span>
+            </div>
+            <div class="input-row">
+                <span class="label">Tope de Coaseguro:</span>
+                <span class="value">$60,000</span>
+            </div>
+
+            <h3>Coberturas Adicionales</h3>
+            <div class="coberturas-list">
+                <div class="cobertura-item">✓ Medicamentos Fuera del Hospital</div>
+                <div class="cobertura-item">✓ Eliminación de Deducible por Accidente</div>
+                <div class="cobertura-item">✓ Multiregion</div>
+                <div class="cobertura-item">✓ Beneficio Hospitalario VIP</div>
+                <div class="cobertura-item">✓ Emergencia Médica en el extranjero</div>
+                <div class="cobertura-item">✓ Reconocimiento de Antigüedad</div>
+            </div>
+
+            <h3>Asegurados</h3>
+            <div class="asegurado-card">
+                <div class="asegurado-header">1. RICARDO CASTRO GOMEZ</div>
+                <div>Edad: 40 años | Sexo: Hombre</div>
+            </div>
+            <div class="asegurado-card">
+                <div class="asegurado-header">2. JULIANA CEBALLOS GONZALEZ</div>
+                <div>Edad: 39 años | Sexo: Mujer</div>
+            </div>
+            <div class="asegurado-card">
+                <div class="asegurado-header">3. EMMA CASTRO CEBALLOS</div>
+                <div>Edad: 1 año | Sexo: Mujer</div>
+            </div>
+        </div>
+
+        <button class="button" onclick="ejecutarPrueba()">▶️ Ejecutar Prueba y Comparar</button>
+
+        <div id="resultado" class="result-section"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const supabaseUrl = 'https://jdvwabcamdbwsuyemzlb.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkdndhYmNhbWRid3N1eWVtemxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NTQ2NTQsImV4cCI6MjA0NTEzMDY1NH0.3E7RbfOJ6mEGI0bXVTvPkfA-TXuYh94YqF5zHFtbKhA';
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Datos esperados del Excel/PDF
+        const expectedResults = {
+            asegurados: [
+                {
+                    nombre: 'RICARDO CASTRO GOMEZ',
+                    edad: 40,
+                    sexo: 'Hombre',
+                    prima_base: 11509.57,
+                    prima_adicionales: 7094.43,
+                    prima_total: 18604.00
+                },
+                {
+                    nombre: 'JULIANA CEBALLOS GONZALEZ',
+                    edad: 39,
+                    sexo: 'Mujer',
+                    prima_base: 14595.59,
+                    prima_adicionales: 8996.64,
+                    prima_total: 23592.23
+                },
+                {
+                    nombre: 'EMMA CASTRO CEBALLOS',
+                    edad: 1,
+                    sexo: 'Mujer',
+                    prima_base: 6043.98,
+                    prima_adicionales: 3725.47,
+                    prima_total: 9769.45
+                }
+            ],
+            totales: {
+                prima_neta_total: 51965.69,
+                gastos_expedicion: 900.00,
+                subtotal: 52865.69,
+                iva: 8458.51,
+                total: 61324.20
+            }
+        };
+
+        window.ejecutarPrueba = async function() {
+            const resultadoDiv = document.getElementById('resultado');
+            resultadoDiv.innerHTML = '<div class="loading">⏳ Calculando cotización...</div>';
+
+            try {
+                // 1. Obtener tarifa activa
+                const { data: pkg, error: pkgError } = await supabase
+                    .from('tariff_packages')
+                    .select('id, name')
+                    .eq('status', 'active')
+                    .maybeSingle();
+
+                if (pkgError) throw pkgError;
+                if (!pkg) {
+                    throw new Error('No hay tarifas activas. Debes cargar y activar una tarifa primero.');
+                }
+
+                // 2. Preparar input para el cálculo
+                const input = {
+                    zona: '',
+                    estado: 'QUERETARO',
+                    nivel_hospitalario: 'PLUS',
+                    tabulador: 'ORO-110,000',
+                    suma_asegurada: '50,000,000',
+                    deducible: '35,000',
+                    coaseguro: '15%',
+                    tope_coaseguro_seleccionado: 60000,
+                    formas_pago: ['Anual'],
+                    insureds: [
+                        { nombre: 'RICARDO CASTRO GOMEZ', sexo: 'Hombre', edad: 40 },
+                        { nombre: 'JULIANA CEBALLOS GONZALEZ', sexo: 'Mujer', edad: 39 },
+                        { nombre: 'EMMA CASTRO CEBALLOS', sexo: 'Mujer', edad: 1 }
+                    ],
+                    coberturas: {
+                        medicamentos_fuera: true,
+                        eliminacion_deducible_accidente: true,
+                        multiregion: true,
+                        vip: true,
+                        emergencia_medica_extranjero: true,
+                        reconocimiento_antiguedad: true
+                    }
+                };
+
+                // Nota: En un entorno real, aquí llamarías a la función de cálculo
+                // Por ahora, mostramos la estructura esperada
+
+                resultadoDiv.innerHTML = `
+                    <h2>📊 Resultado de la Prueba</h2>
+
+                    <div class="error">
+                        <strong>⚠️ Prueba No Ejecutada Completamente</strong><br>
+                        Esta página HTML no puede ejecutar el motor de cálculo directamente porque está escrito en TypeScript.
+                        <br><br>
+                        <strong>Para ejecutar la prueba completa:</strong>
+                        <ol>
+                            <li>Ve a la página "GMM BX+ Cotizador" en el sistema</li>
+                            <li>Ingresa exactamente los datos mostrados arriba</li>
+                            <li>Presiona "Calcular"</li>
+                            <li>Compara los resultados con la tabla de abajo</li>
+                        </ol>
+                    </div>
+
+                    <h3>📋 Valores Esperados del Excel/PDF</h3>
+
+                    <h4>Por Asegurado:</h4>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Asegurado</th>
+                                <th>Edad</th>
+                                <th>Sexo</th>
+                                <th class="excel-col">Prima Base Excel</th>
+                                <th class="excel-col">Adicionales Excel</th>
+                                <th class="excel-col">Total Excel</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${expectedResults.asegurados.map(a => `
+                                <tr>
+                                    <td>${a.nombre}</td>
+                                    <td>${a.edad}</td>
+                                    <td>${a.sexo}</td>
+                                    <td class="excel-col">$${a.prima_base.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="excel-col">$${a.prima_adicionales.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="excel-col">$${a.prima_total.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <h4>Totales:</h4>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Concepto</th>
+                                <th class="excel-col">Valor Excel</th>
+                                <th class="sistema-col">Valor Sistema</th>
+                                <th class="diff-col">Diferencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Prima Neta Total</strong></td>
+                                <td class="excel-col">$${expectedResults.totales.prima_neta_total.toLocaleString('es-MX', {minimumFractionDigits: 2})}</td>
+                                <td class="sistema-col">-</td>
+                                <td class="diff-col">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Gastos Expedición</strong></td>
+                                <td class="excel-col">$${expectedResults.totales.gastos_expedicion.toLocaleString('es-MX', {minimumFractionDigits: 2})}</td>
+                                <td class="sistema-col">-</td>
+                                <td class="diff-col">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Subtotal</strong></td>
+                                <td class="excel-col">$${expectedResults.totales.subtotal.toLocaleString('es-MX', {minimumFractionDigits: 2})}</td>
+                                <td class="sistema-col">-</td>
+                                <td class="diff-col">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>IVA (16%)</strong></td>
+                                <td class="excel-col">$${expectedResults.totales.iva.toLocaleString('es-MX', {minimumFractionDigits: 2})}</td>
+                                <td class="sistema-col">-</td>
+                                <td class="diff-col">-</td>
+                            </tr>
+                            <tr style="background: #f1f5f9; font-weight: bold;">
+                                <td><strong>TOTAL A PAGAR</strong></td>
+                                <td class="excel-col">$${expectedResults.totales.total.toLocaleString('es-MX', {minimumFractionDigits: 2})}</td>
+                                <td class="sistema-col">-</td>
+                                <td class="diff-col">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>🎯 Criterios de Éxito</h3>
+                    <div class="input-section">
+                        <p><strong>✅ La prueba es EXITOSA si:</strong></p>
+                        <ul>
+                            <li>Diferencia en Prima Neta Total = <strong>$0.00</strong></li>
+                            <li>Diferencia por cada asegurado = <strong>$0.00</strong></li>
+                            <li>Diferencia en Gastos Expedición = <strong>$0.00</strong></li>
+                            <li>Diferencia en IVA = <strong>$0.00</strong></li>
+                            <li>Diferencia en Total = <strong>$0.00</strong></li>
+                        </ul>
+                        <p style="color: #dc2626; font-weight: 600; margin-top: 15px;">
+                            ⚠️ Si hay diferencias mayores a $0.01, hay un problema en el motor de cálculo que debe investigarse.
+                        </p>
+                    </div>
+
+                    <h3>📝 Input JSON para pruebas programáticas</h3>
+                    <pre>${JSON.stringify(input, null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                console.error('Error:', error);
+                resultadoDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ Error al ejecutar prueba:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        };
+    </script>
+</body>
+</html>
