@@ -671,14 +671,37 @@ export async function generateOrdenDePagoPDF(
     yPosition += 2;
   }
 
-  // PRIORIDAD 1: Siempre usar el régimen fiscal ACTUAL del usuario desde la tabla usuarios
-  // Esto asegura que si el régimen fiscal cambió después de cerrar el lote, el PDF refleje el cambio
-  // PRIORIDAD 2: Régimen fiscal del agente (legacy)
-  // PRIORIDAD 3: HONORARIOS como fallback
-  const regimenFiscalName = agent.usuario?.regimen_fiscal?.name || agent.fiscal_regime?.name || 'HONORARIOS';
+  // ============================================================================
+  // CRÍTICO: USAR RÉGIMEN FISCAL DEL LOTE, NO DEL USUARIO ACTUAL
+  // ============================================================================
+  // El PDF debe reflejar el régimen fiscal que se usó CUANDO SE CALCULÓ EL LOTE,
+  // no el régimen fiscal actual del usuario (que puede haber cambiado después).
+  //
+  // PRIORIDAD 1: Régimen fiscal persistido en commission_batches.regimen_fiscal
+  // PRIORIDAD 2: Régimen fiscal del usuario (fallback para lotes antiguos)
+  // PRIORIDAD 3: HONORARIOS como último recurso
+
+  const { supabase } = await import('./supabase');
+
+  // Obtener régimen fiscal del batch (fuente de verdad)
+  const { data: batchData, error: batchError } = await supabase
+    .from('commission_batches')
+    .select('regimen_fiscal, commission_vida, commission_sinvida, iva, ret_isr, ret_iva, total_neto, tax_version, calculated_at, retencion_contable, costo_dispersion')
+    .eq('id', batch.id)
+    .maybeSingle();
+
+  if (batchError || !batchData) {
+    throw new Error(
+      `No se encontraron datos fiscales persistidos para el lote. ` +
+      `El lote debe ser recalculado antes de generar el PDF.`
+    );
+  }
+
+  // Usar régimen fiscal del lote (no del usuario actual)
+  const regimenFiscalName = batchData.regimen_fiscal || agent.usuario?.regimen_fiscal?.name || agent.fiscal_regime?.name || 'HONORARIOS';
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
-  console.log(`[PDF] Generando para ${agent.name}: Régimen fiscal = ${regimenFiscalName} (normalizado: ${regimenFiscal})`);
+  console.log(`[PDF] Generando para ${agent.name}: Régimen fiscal del lote = ${regimenFiscalName} (normalizado: ${regimenFiscal}), tax_version=${batchData.tax_version}`);
 
   // ============================================================================
   // REGLA ABSOLUTA: PDF SOLO LEE, NUNCA CALCULA
@@ -689,24 +712,8 @@ export async function generateOrdenDePagoPDF(
   if (regimenFiscal === 'ASIMILADOS') {
     desgloseFiscal = await obtenerDesgloseFiscalDesdeDB(batch.id, agentDetails[0].agent_id);
   }
-  // HONORARIOS y RESICO: Leer valores persistidos en commission_batches
+  // HONORARIOS y RESICO: Usar valores ya cargados del batch
   else if (regimenFiscal === 'HONORARIOS' || regimenFiscal === 'RESICO') {
-    // Leer valores del batch (ya calculados por el backend)
-    const { supabase } = await import('./supabase');
-
-    const { data: batchData, error: batchError } = await supabase
-      .from('commission_batches')
-      .select('commission_vida, commission_sinvida, iva, ret_isr, ret_iva, total_neto, tax_version, calculated_at')
-      .eq('id', batch.id)
-      .maybeSingle();
-
-    if (batchError || !batchData) {
-      throw new Error(
-        `No se encontraron datos fiscales persistidos para el lote. ` +
-        `El lote debe ser recalculado antes de generar el PDF.`
-      );
-    }
-
     // Validar que los valores fiscales existen
     if (!batchData.calculated_at || batchData.iva === null || batchData.ret_isr === null || batchData.ret_iva === null || batchData.total_neto === null) {
       const missingFields = [];
@@ -739,7 +746,7 @@ export async function generateOrdenDePagoPDF(
       totalAPagar: batchData.total_neto || 0,
     };
 
-    console.log(`[PDF] Usando valores persistidos del batch: tax_version=${batchData.tax_version}, calculated_at=${batchData.calculated_at}`);
+    console.log(`[PDF] Usando valores persistidos: regimen=${regimenFiscal}, tax_version=${batchData.tax_version}, ret_isr=${batchData.ret_isr}, total=${batchData.total_neto}`);
   }
   // Régimen no reconocido
   else {
