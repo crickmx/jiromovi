@@ -1070,18 +1070,27 @@ export function calculateQuoteMultiOption(
       // Calcular usando motor existente (V2)
       const result = calculateQuoteV2(singleInput, tables);
 
+      // Obtener primer plan de pago para extraer valores
+      const firstPaymentPlan = result.payment_plans && result.payment_plans.length > 0
+        ? result.payment_plans[0]
+        : null;
+
+      if (!firstPaymentPlan) {
+        throw new Error(`No se generaron planes de pago para opción ${i + 1}`);
+      }
+
       // Construir resultado de esta opción
       results.push({
         totales: {
           prima_neta: result.prima_neta_total,
           gastos_expedicion: result.gastos_expedicion,
-          subtotal: result.subtotal,
-          iva: result.iva,
-          total_pagar: result.total_a_pagar,
-          forma_pago: singleInput.formas_pago[0] || 'ANUAL',
-          recargo: result.recargo || 0,
-          primer_recibo: result.primer_recibo || 0,
-          recibos_subsecuentes: result.recibos_subsecuentes || null
+          subtotal: firstPaymentPlan.subtotal,
+          iva: firstPaymentPlan.iva,
+          total_pagar: firstPaymentPlan.total,
+          forma_pago: firstPaymentPlan.forma_pago,
+          recargo: firstPaymentPlan.recargo,
+          primer_recibo: firstPaymentPlan.primer_recibo,
+          recibos_subsecuentes: firstPaymentPlan.recibos_subsecuentes
         },
         prima_neta_total: result.prima_neta_total,
         tope_coaseguro: result.tope_coaseguro || null,

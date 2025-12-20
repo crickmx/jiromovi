@@ -137,6 +137,21 @@ export function MultiOptionQuote({
       return;
     }
 
+    if (formasPago.length === 0) {
+      alert('Seleccione al menos una forma de pago');
+      return;
+    }
+
+    // Validar que todas las opciones tengan los campos requeridos
+    for (let i = 0; i < options.length; i++) {
+      const opt = options[i];
+      if (!opt.plan.estado || !opt.plan.nivel_hospitalario || !opt.plan.tabulador ||
+          !opt.plan.suma_asegurada || !opt.plan.deducible || !opt.plan.coaseguro) {
+        alert(`Complete todos los campos de la Opción ${String.fromCharCode(65 + i)}`);
+        return;
+      }
+    }
+
     // Actualizar formas de pago en todas las opciones
     const updatedOptions = options.map(opt => ({
       ...opt,
