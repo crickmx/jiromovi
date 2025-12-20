@@ -149,25 +149,25 @@ export async function generateComparativeQuotePDF(
     doc.setTextColor(60);
     doc.text('Estado:', cardX + 2, yPosition);
     doc.setFont(undefined, 'normal');
-    doc.text(opt.plan.estado || '-', cardX + cardWidth - 2, yPosition, { align: 'right' });
+    doc.text(String(opt.plan.estado || '-'), cardX + cardWidth - 2, yPosition, { align: 'right' });
     yPosition += 3.5;
 
     doc.setFont(undefined, 'bold');
     doc.text('Nivel:', cardX + 2, yPosition);
     doc.setFont(undefined, 'normal');
-    doc.text(opt.plan.nivel_hospitalario || '-', cardX + cardWidth - 2, yPosition, { align: 'right' });
+    doc.text(String(opt.plan.nivel_hospitalario || '-'), cardX + cardWidth - 2, yPosition, { align: 'right' });
     yPosition += 3.5;
 
     doc.setFont(undefined, 'bold');
     doc.text('Tabulador:', cardX + 2, yPosition);
     doc.setFont(undefined, 'normal');
-    doc.text(opt.plan.tabulador || '-', cardX + cardWidth - 2, yPosition, { align: 'right' });
+    doc.text(String(opt.plan.tabulador || '-'), cardX + cardWidth - 2, yPosition, { align: 'right' });
     yPosition += 3.5;
 
     doc.setFont(undefined, 'bold');
     doc.text('Suma Aseg:', cardX + 2, yPosition);
     doc.setFont(undefined, 'normal');
-    const saText = opt.plan.suma_asegurada || '-';
+    const saText = String(opt.plan.suma_asegurada || '-');
     const truncatedSA = saText.length > 12 ? saText.substring(0, 12) : saText;
     doc.text(truncatedSA, cardX + cardWidth - 2, yPosition, { align: 'right' });
     yPosition += 3.5;
@@ -175,7 +175,7 @@ export async function generateComparativeQuotePDF(
     doc.setFont(undefined, 'bold');
     doc.text('Deducible:', cardX + 2, yPosition);
     doc.setFont(undefined, 'normal');
-    const dedText = opt.plan.deducible || '-';
+    const dedText = String(opt.plan.deducible || '-');
     const truncatedDed = dedText.length > 12 ? dedText.substring(0, 12) : dedText;
     doc.text(truncatedDed, cardX + cardWidth - 2, yPosition, { align: 'right' });
     yPosition += 3.5;
@@ -183,7 +183,7 @@ export async function generateComparativeQuotePDF(
     doc.setFont(undefined, 'bold');
     doc.text('Coaseguro:', cardX + 2, yPosition);
     doc.setFont(undefined, 'normal');
-    doc.text(opt.plan.coaseguro || '-', cardX + cardWidth - 2, yPosition, { align: 'right' });
+    doc.text(String(opt.plan.coaseguro || '-'), cardX + cardWidth - 2, yPosition, { align: 'right' });
     yPosition += 3.5;
 
     doc.setFont(undefined, 'bold');
