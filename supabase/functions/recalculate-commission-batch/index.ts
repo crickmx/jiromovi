@@ -256,6 +256,26 @@ Deno.serve(async (req: Request) => {
       method_changed: updatedDetails.filter((u, i) => u.calculation_method !== details[i].calculation_method).length,
     };
 
+    // ============================================================================
+    // CALCULAR AGREGADOS FISCALES (SOLO HONORARIOS Y RESICO)
+    // ============================================================================
+    console.log('[recalculate] Calculating fiscal aggregates...');
+
+    const { data: fiscalResult, error: fiscalError } = await supabase.rpc(
+      'calculate_batch_fiscal_aggregates',
+      { p_batch_id: batchId }
+    );
+
+    if (fiscalError) {
+      console.error('[recalculate] Error calculating fiscal aggregates:', fiscalError);
+      warnings.push({
+        type: 'fiscal_calculation_error',
+        message: `Error al calcular agregados fiscales: ${fiscalError.message}`
+      });
+    } else {
+      console.log('[recalculate] Fiscal aggregates calculated:', fiscalResult);
+    }
+
     const { error: auditError } = await supabase
       .from('commission_recalculations')
       .insert({
@@ -280,6 +300,7 @@ Deno.serve(async (req: Request) => {
         after_stats: afterStats,
         changes_summary: changesSummary,
         warnings: warnings,
+        fiscal_result: fiscalResult,
       }),
       {
         status: 200,

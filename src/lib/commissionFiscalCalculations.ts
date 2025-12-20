@@ -78,8 +78,27 @@ export function calcularDesgloseFiscal(params: CalculoFiscalParams): DesgloseFis
     usePrimaTotal = false,
   } = params;
 
-  // Para HONORARIOS, comisionNeta contiene Prima Total (importe_base)
-  // Para otros regímenes, comisionNeta contiene la comisión calculada
+  // ===============================================================================
+  // 🚫 GUARD CLAUSE OBLIGATORIO: ASIMILADOS ES INTOCABLE
+  // ===============================================================================
+  if (regimenFiscal === "ASIMILADOS") {
+    throw new Error(
+      "ASIMILADOS es intocable. No usar esta función para ASIMILADOS. " +
+      "Los cálculos de ASIMILADOS ya están implementados y no deben modificarse."
+    );
+  }
+
+  // ===============================================================================
+  // SOLO CONTINUAR SI ES HONORARIOS O RESICO
+  // ===============================================================================
+  if (regimenFiscal !== "HONORARIOS" && regimenFiscal !== "RESICO") {
+    throw new Error(
+      `Régimen fiscal "${regimenFiscal}" no reconocido. ` +
+      "Solo se permiten HONORARIOS o RESICO."
+    );
+  }
+
+  // Calcular vida y sin vida
   const comisionVida = resumenPorRamo
     .filter(r => r.ramo.toLowerCase() === VIDA_KEY)
     .reduce((sum, r) => sum + r.comisionNeta, 0);
