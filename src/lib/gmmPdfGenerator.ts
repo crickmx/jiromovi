@@ -324,7 +324,6 @@ export async function generateQuotePDF(
 
   const totalesData = [
     ['Prima Neta Total', formatCurrency(quote.prima_neta_total)],
-    ['Recargo por forma de pago', formatCurrency(quote.recargo)],
     ['Gastos de expedición', formatCurrency(quote.gastos_expedicion)],
     ['Subtotal', formatCurrency(quote.subtotal)],
     ['IVA', formatCurrency(quote.iva)],
