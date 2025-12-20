@@ -262,3 +262,93 @@ export const EXCEL_RANGES: Record<string, ExcelRangeDefinition> = {
   gastos_expedicion: { sheet: 'Cotizacion', range: 'O67', type: 'value' },
   iva: { sheet: 'Cotizacion', range: 'O69', type: 'value' },
 };
+
+// ============================================================================
+// COTIZACIONES COMPARATIVAS - MÚLTIPLES OPCIONES
+// ============================================================================
+
+/**
+ * Plan de una opción individual (sin asegurados)
+ */
+export interface QuoteOptionPlan {
+  zona: string;
+  estado: string;
+  nivel_hospitalario: string;
+  tabulador: string;
+  suma_asegurada: string;
+  deducible: string;
+  coaseguro: string;
+  tope_coaseguro_seleccionado?: number;
+  formas_pago: string[];
+  montos?: {
+    maternidad?: number;
+    xtensuz?: number;
+  };
+}
+
+/**
+ * Coberturas de una opción individual
+ */
+export interface QuoteOptionCoberturas {
+  reconocimiento_antiguedad?: boolean;
+  medicamentos_fuera?: boolean;
+  complicaciones_no_amparadas?: boolean;
+  padecimientos_preexistentes?: boolean;
+  eliminacion_deducible_accidente?: boolean;
+  multiregion?: boolean;
+  vip?: boolean;
+  emergencia_medica_extranjero?: boolean;
+  enfermedades_graves_extranjero?: boolean;
+  cobertura_internacional?: boolean;
+  ampliacion_servicios?: boolean;
+  ayuda_diaria?: boolean;
+  indemnizacion_eg?: boolean;
+  maternidad?: boolean;
+  xtensuz?: boolean;
+}
+
+/**
+ * Una opción de cotización (plan + coberturas)
+ */
+export interface QuoteOption {
+  plan: QuoteOptionPlan;
+  coberturas: QuoteOptionCoberturas;
+}
+
+/**
+ * Input para cotización con múltiples opciones
+ * Asegurados comunes + array de opciones (1 a 3)
+ */
+export interface QuoteInputMultiOption {
+  insureds: QuoteInputInsured[];
+  options: QuoteOption[];
+}
+
+/**
+ * Resultado de una opción calculada
+ */
+export interface QuoteOptionResult {
+  totales: {
+    prima_neta: number;
+    gastos_expedicion: number;
+    subtotal: number;
+    iva: number;
+    total_pagar: number;
+    forma_pago: string;
+    recargo: number;
+    primer_recibo: number;
+    recibos_subsecuentes: number | null;
+  };
+  insureds: InsuredCalculation[];
+  plan: QuoteOptionPlan;
+  coberturas: QuoteOptionCoberturas;
+}
+
+/**
+ * Resultado de cotización con múltiples opciones calculadas
+ */
+export interface QuoteCalculationMultiResult {
+  options: QuoteOptionResult[];
+  tariff_package_id: string;
+  fecha_cotizacion: string;
+}

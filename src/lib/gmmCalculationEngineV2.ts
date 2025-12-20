@@ -1010,6 +1010,96 @@ export function loadTariffTables(tables: any[]): TariffTables {
 }
 
 // ============================================================================
+// COTIZACIONES COMPARATIVAS - MÚLTIPLES OPCIONES
+// ============================================================================
+
+/**
+ * Calcular cotización con múltiples opciones
+ *
+ * Permite crear hasta 3 opciones diferentes para los mismos asegurados,
+ * variando parámetros del plan y coberturas opcionales.
+ *
+ * @param input - Asegurados + array de opciones (1 a 3)
+ * @param tables - Tablas de tarifas activas
+ * @returns Resultados calculados por cada opción
+ */
+export function calculateQuoteMultiOption(
+  input: import('./gmmTypes').QuoteInputMultiOption,
+  tables: TariffTables
+): import('./gmmTypes').QuoteCalculationMultiResult {
+  // Validaciones
+  if (!input.options || input.options.length === 0) {
+    throw new Error('[MULTI-OPTION] Debe haber al menos 1 opción');
+  }
+
+  if (input.options.length > 3) {
+    throw new Error('[MULTI-OPTION] Máximo 3 opciones permitidas');
+  }
+
+  if (!input.insureds || input.insureds.length === 0) {
+    throw new Error('[MULTI-OPTION] Debe haber al menos 1 asegurado');
+  }
+
+  if (input.insureds.length > 5) {
+    throw new Error('[MULTI-OPTION] Máximo 5 asegurados para PDF comparativo');
+  }
+
+  const results: import('./gmmTypes').QuoteOptionResult[] = [];
+
+  // Calcular cada opción independientemente
+  for (let i = 0; i < input.options.length; i++) {
+    const option = input.options[i];
+
+    try {
+      // Reconstruir QuoteInput individual para esta opción
+      const singleInput: QuoteInput = {
+        zona: option.plan.zona,
+        estado: option.plan.estado,
+        nivel_hospitalario: option.plan.nivel_hospitalario,
+        tabulador: option.plan.tabulador,
+        suma_asegurada: option.plan.suma_asegurada,
+        deducible: option.plan.deducible,
+        coaseguro: option.plan.coaseguro,
+        tope_coaseguro_seleccionado: option.plan.tope_coaseguro_seleccionado,
+        formas_pago: option.plan.formas_pago,
+        insureds: input.insureds,
+        coberturas: option.coberturas,
+        montos: option.plan.montos
+      };
+
+      // Calcular usando motor existente (V2)
+      const result = calculateQuoteV2(singleInput, tables);
+
+      // Construir resultado de esta opción
+      results.push({
+        totales: {
+          prima_neta: result.prima_neta_total,
+          gastos_expedicion: result.gastos_expedicion,
+          subtotal: result.subtotal,
+          iva: result.iva,
+          total_pagar: result.total_a_pagar,
+          forma_pago: singleInput.formas_pago[0] || 'ANUAL',
+          recargo: result.recargo || 0,
+          primer_recibo: result.primer_recibo || 0,
+          recibos_subsecuentes: result.recibos_subsecuentes || null
+        },
+        insureds: result.insureds,
+        plan: option.plan,
+        coberturas: option.coberturas
+      });
+    } catch (error) {
+      throw new Error(`[MULTI-OPTION] Error calculando opción ${i + 1}: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
+  }
+
+  return {
+    options: results,
+    tariff_package_id: tables.package_id,
+    fecha_cotizacion: new Date().toISOString()
+  };
+}
+
+// ============================================================================
 // EXPORTACIONES PARA PRUEBAS Y VALIDACIÓN
 // ============================================================================
 
