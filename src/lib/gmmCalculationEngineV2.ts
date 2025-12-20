@@ -1016,10 +1016,10 @@ export function loadTariffTables(tables: any[]): TariffTables {
 /**
  * Calcular cotización con múltiples opciones
  *
- * Permite crear hasta 3 opciones diferentes para los mismos asegurados,
+ * Permite crear hasta 5 opciones diferentes para los mismos asegurados,
  * variando parámetros del plan y coberturas opcionales.
  *
- * @param input - Asegurados + array de opciones (1 a 3)
+ * @param input - Asegurados + array de opciones (1 a 5)
  * @param tables - Tablas de tarifas activas
  * @returns Resultados calculados por cada opción
  */
@@ -1032,8 +1032,8 @@ export function calculateQuoteMultiOption(
     throw new Error('[MULTI-OPTION] Debe haber al menos 1 opción');
   }
 
-  if (input.options.length > 3) {
-    throw new Error('[MULTI-OPTION] Máximo 3 opciones permitidas');
+  if (input.options.length > 5) {
+    throw new Error('[MULTI-OPTION] Máximo 5 opciones permitidas');
   }
 
   if (!input.insureds || input.insureds.length === 0) {
@@ -1083,6 +1083,8 @@ export function calculateQuoteMultiOption(
           primer_recibo: result.primer_recibo || 0,
           recibos_subsecuentes: result.recibos_subsecuentes || null
         },
+        prima_neta_total: result.prima_neta_total,
+        tope_coaseguro: result.tope_coaseguro || null,
         insureds: result.insureds,
         plan: option.plan,
         coberturas: option.coberturas

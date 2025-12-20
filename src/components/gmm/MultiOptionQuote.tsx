@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Copy, Calculator } from 'lucide-react';
+import { Plus, Trash2, Copy, Calculator, Save, FileText } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -20,6 +20,7 @@ interface MultiOptionQuoteProps {
   onCalculate: (input: QuoteInputMultiOption) => void;
   result: QuoteCalculationMultiResult | null;
   calculating: boolean;
+  onSave?: (result: QuoteCalculationMultiResult) => void;
 }
 
 const ALL_COVERAGES = [
@@ -63,7 +64,8 @@ export function MultiOptionQuote({
   onInsuredsChange,
   onCalculate,
   result,
-  calculating
+  calculating,
+  onSave
 }: MultiOptionQuoteProps) {
   const [options, setOptions] = useState<QuoteOption[]>([
     createDefaultOption(tariffTables),
@@ -421,7 +423,7 @@ export function MultiOptionQuote({
         ))}
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-3">
         <Button
           onClick={handleCalculate}
           disabled={calculating}
@@ -431,7 +433,121 @@ export function MultiOptionQuote({
           <Calculator className="h-5 w-5 mr-2" />
           {calculating ? 'Calculando...' : 'Calcular Todas las Opciones'}
         </Button>
+
+        {result && onSave && (
+          <Button
+            onClick={() => onSave(result)}
+            variant="outline"
+            size="lg"
+            className="px-8"
+          >
+            <Save className="h-5 w-5 mr-2" />
+            Guardar Comparativa
+          </Button>
+        )}
       </div>
+
+      {/* Tabla Comparativa de Resultados */}
+      {result && result.options.length > 0 && (
+        <Card className="p-6 mt-8">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Comparativa de Resultados
+          </h3>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left p-3 font-semibold">Concepto</th>
+                  {result.options.map((_, idx) => (
+                    <th key={idx} className="text-center p-3 font-semibold">
+                      Opción {String.fromCharCode(65 + idx)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                <tr>
+                  <td className="p-3 font-medium">Suma Asegurada</td>
+                  {result.options.map((opt, idx) => (
+                    <td key={idx} className="text-center p-3">
+                      {formatCurrency(opt.plan.suma_asegurada)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="p-3 font-medium">Deducible</td>
+                  {result.options.map((opt, idx) => (
+                    <td key={idx} className="text-center p-3">
+                      {formatCurrency(opt.plan.deducible)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="p-3 font-medium">Coaseguro</td>
+                  {result.options.map((opt, idx) => (
+                    <td key={idx} className="text-center p-3">
+                      {formatPercentage(opt.plan.coaseguro)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="p-3 font-medium">Tope Coaseguro</td>
+                  {result.options.map((opt, idx) => (
+                    <td key={idx} className="text-center p-3">
+                      {opt.tope_coaseguro ? formatCurrency(opt.tope_coaseguro) : 'N/A'}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="bg-blue-50">
+                  <td className="p-3 font-bold">Prima Neta Total</td>
+                  {result.options.map((opt, idx) => (
+                    <td key={idx} className="text-center p-3 font-semibold">
+                      {formatCurrency(opt.prima_neta_total)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="p-3 font-medium">Gastos Expedición</td>
+                  {result.options.map((opt, idx) => (
+                    <td key={idx} className="text-center p-3">
+                      {formatCurrency(opt.totales.gastos_expedicion)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="p-3 font-medium">IVA</td>
+                  {result.options.map((opt, idx) => (
+                    <td key={idx} className="text-center p-3">
+                      {formatCurrency(opt.totales.iva)}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="bg-green-50">
+                  <td className="p-3 font-bold text-lg">Total a Pagar</td>
+                  {result.options.map((opt, idx) => (
+                    <td key={idx} className="text-center p-3 font-bold text-lg text-green-700">
+                      {formatCurrency(opt.totales.total_pagar)}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h4 className="font-semibold mb-2 text-sm">Mejor Opción (Precio más bajo)</h4>
+            <p className="text-sm text-gray-700">
+              {(() => {
+                const minPrice = Math.min(...result.options.map(o => o.totales.total_pagar));
+                const minIdx = result.options.findIndex(o => o.totales.total_pagar === minPrice);
+                return `Opción ${String.fromCharCode(65 + minIdx)} - ${formatCurrency(minPrice)}`;
+              })()}
+            </p>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

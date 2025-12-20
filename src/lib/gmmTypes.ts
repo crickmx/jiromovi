@@ -339,6 +339,8 @@ export interface QuoteOptionResult {
     primer_recibo: number;
     recibos_subsecuentes: number | null;
   };
+  prima_neta_total: number;
+  tope_coaseguro: number | null;
   insureds: InsuredCalculation[];
   plan: QuoteOptionPlan;
   coberturas: QuoteOptionCoberturas;

@@ -488,6 +488,61 @@ export default function GMMCotizador() {
     }
   }
 
+  async function handleSaveMultiOption(multiResult: QuoteCalculationMultiResult) {
+    if (!multiResult || !multiResult.options || multiResult.options.length === 0) {
+      alert('Calcule las opciones primero');
+      return;
+    }
+
+    if (!input.insureds[0].nombre) {
+      alert('Ingrese el nombre del asegurado principal');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      // Usar la primera opción como base para datos principales
+      const firstOption = multiResult.options[0];
+
+      const quotationData = {
+        usuario_id: user.id,
+        estado: 'active',
+        producto: 'GMM BX+ Comparativa',
+        cliente_nombre: null,
+        asegurado_principal: input.insureds[0].nombre,
+        quote_data: {
+          insureds: input.insureds,
+          multi_option_result: multiResult,
+        },
+        coverage_selections: firstOption.coberturas,
+        prima_neta_total: firstOption.prima_neta_total,
+        total_a_pagar: firstOption.totales.total_pagar,
+        forma_pago: firstOption.totales.forma_pago,
+        editada_desde_cotizacion_id: null,
+      };
+
+      const { data: quotation, error: quotationError } = await supabase
+        .from('gmm_quotations')
+        .insert(quotationData)
+        .select()
+        .single();
+
+      if (quotationError) throw quotationError;
+
+      alert(`Cotización comparativa guardada: ${quotation.folio}`);
+      setActiveTab('cotizaciones');
+      loadQuotes();
+    } catch (error: any) {
+      console.error('Error saving multi-option:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <Layout>
@@ -888,6 +943,7 @@ export default function GMMCotizador() {
                 onCalculate={handleCalculateMultiOption}
                 result={multiResult}
                 calculating={calculating}
+                onSave={handleSaveMultiOption}
               />
             )}
           </TabsContent>
