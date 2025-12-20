@@ -353,9 +353,9 @@ function obtenerConfiguracionCoberturas(
       activa: input.coberturas.eliminacion_deducible_accidente,
       baseCalculo: 'primaBaseConCargas',
       calcularFactor: (edad, sexo, input, tables) => {
-        const key = input.deducible;
-        const row = tables.deducible_accidente_keys.findIndex(k => k === key);
-        if (row >= 0 && tables.deducible_accidente_factors[row]) {
+        const keyNum = Number(input.deducible);
+        const row = tables.deducible_accidente_keys.findIndex(k => Number(k) === keyNum);
+        if (row >= 0 && tables.deducible_accidente_factors[row] !== undefined) {
           return roundTo3Decimals(Number(tables.deducible_accidente_factors[row]));
         }
         return 0;
@@ -368,7 +368,7 @@ function obtenerConfiguracionCoberturas(
       calcularFactor: (edad, sexo, input, tables) => {
         const row = tables.multiregion_carga_sistema.find(r => r.col_0 === input.estado);
         if (row) {
-          return roundTo5Decimals(Number(row.col_1 || 0));
+          return roundTo5Decimals(Number(row.col_2 || 0));
         }
         return 0;
       }
@@ -896,26 +896,26 @@ export function loadTariffTables(tables: any[]): TariffTables {
     denominador_cargas: get('denominador_cargas') || [],
     tope_coaseguro: topeCoaseguro,
     tope_coaseguro_rangos: topeCoaseguroRangos,
-    coef_medicamentos: Number(get('coef_medicamentos')?.[0]?.col_0 || 0),
-    coef_preexistentes: Number(get('coef_preexistentes')?.[0]?.col_0 || 0),
-    coef_complicaciones: Number(get('coef_complicaciones')?.[0]?.col_0 || 0),
-    coef_vip: Number(get('coef_vip')?.[0]?.col_0 || 0),
-    coef_antiguedad: Number(get('coef_antiguedad')?.[0]?.col_0 || 0),
-    coef_emergencia_ext: Number(get('coef_emergencia_ext')?.[0]?.col_0 || 0),
-    coef_enf_graves_ext: Number(get('coef_enf_graves_ext')?.[0]?.col_0 || 0),
-    coef_ayuda_diaria: Number(get('coef_ayuda_diaria')?.[0]?.col_0 || 0),
-    coef_ampliacion_servicios: Number(get('coef_ampliacion_servicios')?.[0]?.col_0 || 0),
-    deducible_accidente_keys: (get('deducible_accidente') || []).map((r: any) => r.col_0),
-    deducible_accidente_factors: (get('deducible_accidente') || []).map((r: any) => r.col_1),
+    coef_medicamentos: Number(get('coef_medicamentos') || 0),
+    coef_preexistentes: Number(get('coef_preexistentes') || 0),
+    coef_complicaciones: Number(get('coef_complicaciones') || 0),
+    coef_vip: Number(get('coef_vip') || 0),
+    coef_antiguedad: Number(get('coef_antiguedad') || 0),
+    coef_emergencia_ext: Number(get('coef_emergencia_ext') || 0),
+    coef_enf_graves_ext: Number(get('coef_enf_graves_ext') || 0),
+    coef_ayuda_diaria: Number(get('coef_ayuda_diaria') || 0),
+    coef_ampliacion_servicios: Number(get('coef_ampliacion_servicios') || 0),
+    deducible_accidente_keys: get('deducible_accidente_keys') || [],
+    deducible_accidente_factors: get('deducible_accidente_factors') || [],
     multiregion_carga_sistema: get('multiregion_carga_sistema') || [],
     cobertura_internacional_carga_sistema: get('cobertura_internacional_carga_sistema') || [],
     maternidad_tasa_por_edad: get('maternidad_tasa_por_edad') || [],
-    maternidad_threshold: Number(get('maternidad_threshold')?.[0]?.col_0 || 0),
+    maternidad_threshold: Number(get('maternidad_threshold') || 0),
     indemnizacion_eg_tabla: get('indemnizacion_eg_tabla') || [],
-    indemnizacion_eg_monto: Number(get('indemnizacion_eg_monto')?.[0]?.col_0 || 0),
+    indemnizacion_eg_monto: Number(get('indemnizacion_eg_monto') || 0),
     xtensuz_factor: get('xtensuz_factor') || [],
-    gastos_expedicion: Number(get('gastos_expedicion')?.[0]?.col_0 || 300),
-    iva: Number(get('iva')?.[0]?.col_0 || 0.16)
+    gastos_expedicion: Number(get('gastos_expedicion') || 300),
+    iva: Number(get('iva') || 0.16)
   };
 }
 
