@@ -835,6 +835,7 @@ export function loadTariffTables(tables: any[]): TariffTables {
     factor_suma_asegurada: get('factor_suma_asegurada') || [],
     factor_deducible: get('factor_deducible') || [],
     factor_coaseguro: get('factor_coaseguro') || [],
+    forma_pago: get('forma_pago') || [],
     base_intermedia_edad_sexo: get('base_intermedia_edad_sexo') || [],
     denominador_cargas: get('denominador_cargas') || [],
     tope_coaseguro: topeCoaseguro,
@@ -852,7 +853,13 @@ export function loadTariffTables(tables: any[]): TariffTables {
     deducible_accidente_factors: (get('deducible_accidente') || []).map((r: any) => r.col_1),
     multiregion_carga_sistema: get('multiregion_carga_sistema') || [],
     cobertura_internacional_carga_sistema: get('cobertura_internacional_carga_sistema') || [],
-    indemnizacion_eg_tabla: get('indemnizacion_eg_tabla') || []
+    maternidad_tasa_por_edad: get('maternidad_tasa_por_edad') || [],
+    maternidad_threshold: Number(get('maternidad_threshold')?.[0]?.col_0 || 0),
+    indemnizacion_eg_tabla: get('indemnizacion_eg_tabla') || [],
+    indemnizacion_eg_monto: Number(get('indemnizacion_eg_monto')?.[0]?.col_0 || 0),
+    xtensuz_factor: get('xtensuz_factor') || [],
+    gastos_expedicion: Number(get('gastos_expedicion')?.[0]?.col_0 || 150),
+    iva: Number(get('iva')?.[0]?.col_0 || 0.16)
   };
 }
 
