@@ -456,11 +456,12 @@ function calcularPrimaNetaAsegurado(
  */
 function calcularTotales(
   primaNetaTotal: number,
-  numAsegurados: number
+  numAsegurados: number,
+  tables: TariffTables
 ): { gastosExpedicion: number; subtotal: number; iva: number; totalConIVA: number } {
-  const gastosExpedicion = roundTo2Decimals(numAsegurados * 150);
+  const gastosExpedicion = roundTo2Decimals(numAsegurados * tables.gastos_expedicion);
   const subtotal = roundTo2Decimals(primaNetaTotal + gastosExpedicion);
-  const iva = roundTo2Decimals(subtotal * 0.16);
+  const iva = roundTo2Decimals(subtotal * tables.iva);
   const totalConIVA = roundTo2Decimals(subtotal + iva);
 
   return {
@@ -673,7 +674,7 @@ export function calculateQuoteV2(
 
     // CAPA 5: Prima Neta Asegurado
     const primaNetaAsegurado = calcularPrimaNetaAsegurado(
-      components.primaBaseFinal,
+      cargas.primaBaseConCargas,
       coberturas.total
     );
 
@@ -689,13 +690,23 @@ export function calculateQuoteV2(
       console.log(`[DEBUG] Asegurado ${index + 1} - ${insured.nombre}:`, debugInfo);
     }
 
+    // Calcular suma de coberturas adicionales
+    const primaAdicionales = Object.values(coberturas.adicionales).reduce((sum, val) => sum + val, 0);
+    // Prima Base CON cargas (lo que aparece en el Excel como "Prima Neta Cobertura Básica")
+    const primaBase = cargas.primaBaseConCargas;
+    const primaTotal = primaBase + primaAdicionales;
+
     return {
       nombre: insured.nombre,
       edad,
       sexo: insured.sexo,
       parentesco: insured.parentesco,
       fecha_nacimiento: insured.fecha_nacimiento,
-      prima_base: components.primaBaseFinal,
+      prima_base: primaBase,
+      prima_adicionales: primaAdicionales,
+      adicionales_detalle: coberturas.adicionales,
+      prima_xtensuz: 0,
+      prima_total: primaTotal,
       coberturas_adicionales: coberturas.adicionales,
       prima_neta: primaNetaAsegurado
     };
@@ -703,7 +714,7 @@ export function calculateQuoteV2(
 
   // CAPA 5: Totales generales
   const primaNetaTotal = insureds.reduce((sum, i) => sum + i.prima_neta, 0);
-  const totales = calcularTotales(primaNetaTotal, insureds.length);
+  const totales = calcularTotales(primaNetaTotal, insureds.length, tables);
 
   // Calcular formas de pago para las opciones seleccionadas
   const formasPagoSeleccionadas = input.formas_pago && input.formas_pago.length > 0
