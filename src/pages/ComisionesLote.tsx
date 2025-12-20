@@ -22,6 +22,7 @@ export default function ComisionesLote() {
   const [activeTab, setActiveTab] = useState<'resumen' | 'agentes' | 'polizas' | 'errores'>('resumen');
   const [adjustingDetail, setAdjustingDetail] = useState<CommissionDetail | null>(null);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
+  const [recalculating, setRecalculating] = useState(false);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -272,6 +273,58 @@ export default function ComisionesLote() {
     }
   };
 
+  const handleRecalculateBatch = async () => {
+    if (!batch) return;
+
+    setRecalculating(true);
+
+    try {
+      console.log('[ComisionesLote] Recalculando lote:', batch.id);
+
+      // Llamar a la función SQL que calcula y persiste los valores fiscales
+      const { data: fiscalResult, error: fiscalError } = await supabase.rpc(
+        'calculate_batch_fiscal_aggregates',
+        { p_batch_id: batch.id }
+      );
+
+      if (fiscalError) {
+        console.error('[ComisionesLote] Error al recalcular valores fiscales:', fiscalError);
+        alert(`Error al recalcular: ${fiscalError.message}`);
+        return;
+      }
+
+      if (!fiscalResult || !fiscalResult.success) {
+        if (fiscalResult?.skipped) {
+          alert(`Lote omitido: ${fiscalResult.reason}\n\nRégimen: ${fiscalResult.regimen_fiscal}`);
+        } else {
+          console.error('[ComisionesLote] La función SQL no retornó éxito:', fiscalResult);
+          alert('Error: No se pudieron recalcular los valores fiscales');
+        }
+        return;
+      }
+
+      console.log('[ComisionesLote] Valores fiscales recalculados:', fiscalResult);
+
+      alert(
+        `Lote recalculado exitosamente\n\n` +
+        `Régimen: ${fiscalResult.regimen_fiscal}\n` +
+        `Comisión Total: ${formatCurrency(fiscalResult.commission_total)}\n` +
+        `IVA: ${formatCurrency(fiscalResult.iva)}\n` +
+        `Ret. ISR: ${formatCurrency(fiscalResult.ret_isr)}\n` +
+        `Ret. IVA: ${formatCurrency(fiscalResult.ret_iva)}\n` +
+        `Total Neto: ${formatCurrency(fiscalResult.total_neto)}`
+      );
+
+      // Recargar el lote para ver los valores actualizados
+      await loadBatch();
+    } catch (error: any) {
+      console.error('Error in handleRecalculateBatch:', error);
+      alert(`Error al recalcular el lote: ${error.message}`);
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
   const handleDeleteBatch = async () => {
     if (!batch || !confirm('¿Estás seguro de eliminar este lote? Esta acción no se puede deshacer.')) return;
 
@@ -385,6 +438,24 @@ export default function ComisionesLote() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <button
+              onClick={handleRecalculateBatch}
+              disabled={recalculating}
+              className="flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {recalculating ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Recalculando...</span>
+                </>
+              ) : (
+                <>
+                  <Wrench className="w-5 h-5" />
+                  <span>Recalcular Lote</span>
+                </>
+              )}
+            </button>
+
             {batch.status !== 'closed' ? (
               <>
                 <button
