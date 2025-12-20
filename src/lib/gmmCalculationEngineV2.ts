@@ -368,7 +368,7 @@ function obtenerConfiguracionCoberturas(
       calcularFactor: (edad, sexo, input, tables) => {
         const row = tables.multiregion_carga_sistema.find(r => r.col_0 === input.estado);
         if (row) {
-          return roundTo5Decimals(Number(row.col_2 || 0));
+          return roundTo5Decimals(Number(row.col_1 || 0));
         }
         return 0;
       }
@@ -914,7 +914,7 @@ export function loadTariffTables(tables: any[]): TariffTables {
     indemnizacion_eg_tabla: get('indemnizacion_eg_tabla') || [],
     indemnizacion_eg_monto: Number(get('indemnizacion_eg_monto')?.[0]?.col_0 || 0),
     xtensuz_factor: get('xtensuz_factor') || [],
-    gastos_expedicion: Number(get('gastos_expedicion')?.[0]?.col_0 || 150),
+    gastos_expedicion: Number(get('gastos_expedicion')?.[0]?.col_0 || 300),
     iva: Number(get('iva')?.[0]?.col_0 || 0.16)
   };
 }
