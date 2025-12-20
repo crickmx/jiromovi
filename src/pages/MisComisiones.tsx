@@ -8,7 +8,7 @@ import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
-import { calcularDesgloseFiscal, normalizarRegimenFiscal, agruparComisionesPorRamo } from '../lib/commissionFiscalCalculations';
+import { normalizarRegimenFiscal } from '../lib/commissionFiscalCalculations';
 
 export default function MisComisiones() {
   const { usuario } = useAuth();
@@ -143,25 +143,16 @@ export default function MisComisiones() {
               };
               console.log(`[MisComisiones] Usando valores persistidos del batch ${batch.id}`);
             } else {
-              // Fallback: calcular si no hay datos persistidos
-              console.warn(`[MisComisiones] Batch ${batch.id} no tiene datos fiscales persistidos. Calcular manualmente o recalcular el lote.`);
+              // RECALCULAR AUTOMÁTICAMENTE si no hay datos persistidos
+              console.warn(`[MisComisiones] Batch ${batch.id} no tiene datos fiscales. Recalculando...`);
 
-              const resumenPorRamo = agruparComisionesPorRamo(details.map(detail => ({
-                ramo: detail.ramo,
-                comisionNeta: detail.is_manual_adjusted
-                  ? (detail.adjusted_commission_neta || 0)
-                  : detail.commission_neta
-              })));
+              const { error: recalcError } = await supabase.rpc('calculate_batch_fiscal_aggregates', {
+                p_batch_id: batch.id
+              });
 
-              try {
-                desglose = calcularDesgloseFiscal({
-                  regimenFiscal,
-                  resumenPorRamo,
-                  totalComisionNeta
-                });
-              } catch (error) {
-                console.error(`[MisComisiones] Error al calcular desglose fiscal:`, error);
-                // Usar valores por defecto
+              if (recalcError) {
+                console.error(`[MisComisiones] Error al recalcular:`, recalcError);
+                // Usar valores por defecto si falla el recálculo
                 desglose = {
                   vida: 0,
                   sinVida: totalComisionNeta,
@@ -175,6 +166,45 @@ export default function MisComisiones() {
                   isrTotal: 0,
                   totalAPagar: totalComisionNeta,
                 };
+              } else {
+                // Recargar datos después de recálculo
+                const { data: recalculatedData } = await supabase
+                  .from('commission_batches')
+                  .select('commission_vida, commission_sinvida, iva, ret_isr, ret_iva, total_neto, retencion_contable, costo_dispersion')
+                  .eq('id', batch.id)
+                  .maybeSingle();
+
+                if (recalculatedData) {
+                  desglose = {
+                    vida: recalculatedData.commission_vida || 0,
+                    sinVida: recalculatedData.commission_sinvida || 0,
+                    retContable: recalculatedData.retencion_contable || 0,
+                    costoDispersion: recalculatedData.costo_dispersion || 0,
+                    iva: recalculatedData.iva || 0,
+                    retIsr: recalculatedData.ret_isr || 0,
+                    retIva: recalculatedData.ret_iva || 0,
+                    isrVida: 0,
+                    isrDanios: 0,
+                    isrTotal: 0,
+                    totalAPagar: recalculatedData.total_neto || 0,
+                  };
+                  console.log(`[MisComisiones] Valores recalculados para batch ${batch.id}`);
+                } else {
+                  // Si aún no hay datos, usar valores por defecto
+                  desglose = {
+                    vida: 0,
+                    sinVida: totalComisionNeta,
+                    retContable: 0,
+                    costoDispersion: 0,
+                    iva: 0,
+                    retIsr: 0,
+                    retIva: 0,
+                    isrVida: 0,
+                    isrDanios: 0,
+                    isrTotal: 0,
+                    totalAPagar: totalComisionNeta,
+                  };
+                }
               }
             }
 
@@ -232,6 +262,30 @@ export default function MisComisiones() {
     setGeneratingPDF(batchId);
 
     try {
+      // Validar que el batch tenga valores fiscales antes de generar PDF
+      const { data: batchCheck } = await supabase
+        .from('commission_batches')
+        .select('calculated_at, iva, ret_isr, ret_iva, total_neto')
+        .eq('id', batch.id)
+        .single();
+
+      if (!batchCheck?.calculated_at || batchCheck.iva === null || batchCheck.ret_isr === null) {
+        // Intentar recalcular antes de generar PDF
+        console.log('[MisComisiones] PDF: Valores fiscales faltantes, recalculando...');
+        const { error: recalcError } = await supabase.rpc('calculate_batch_fiscal_aggregates', {
+          p_batch_id: batch.id
+        });
+
+        if (recalcError) {
+          alert('Error: No se puede generar el PDF porque faltan valores fiscales.\n\nContacta al administrador.');
+          setGeneratingPDF(null);
+          return;
+        }
+
+        // Recargar página para mostrar nuevos valores
+        await loadCommissions();
+      }
+
       const pdfBlob = await generateOrdenDePagoPDF(details, batch);
       const fileName = `Orden_de_Pago_${batch.name.replace(/\s+/g, '_')}_${usuario?.nombre_completo?.replace(/\s+/g, '_')}.pdf`;
       downloadPDF(pdfBlob, fileName);

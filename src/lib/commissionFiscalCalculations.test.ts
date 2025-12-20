@@ -495,3 +495,156 @@ export function runAllAsimiladosTests() {
   console.log('TESTS COMPLETADOS');
   console.log('='.repeat(60));
 }
+
+/**
+ * Test Case 11: HONORARIOS - Valores exactos de Imagen 2
+ *
+ * Comisión Total = 14,808.07
+ * Vida = 544.20
+ * Sin Vida = 14,263.87
+ *
+ * Esperado (según imagen oficial):
+ * - IVA = 14,263.87 × 0.16 = 2,282.22
+ * - Ret ISR = 14,808.07 × 0.10 = 1,480.81
+ * - Ret IVA = 14,263.87 × 0.10667 = 1,521.48
+ * - Total a Pagar = 14,808.07 + 2,282.22 - 1,480.81 - 1,521.48 = 14,088.00
+ */
+export function testHonorariosImagenOficial() {
+  const resumenPorRamo: RamoResumen[] = [
+    { ramo: 'Vida', comisionNeta: 544.20 },
+    { ramo: 'Daños', comisionNeta: 14263.87 }
+  ];
+
+  const params: CalculoFiscalParams = {
+    regimenFiscal: 'HONORARIOS',
+    resumenPorRamo,
+    totalComisionNeta: 14808.07,
+  };
+
+  const resultado = calcularDesgloseFiscal(params);
+
+  const expected = {
+    vida: 544.20,
+    sinVida: 14263.87,
+    iva: 2282.22,
+    retIsr: 1480.81,
+    retIva: 1521.48,
+    totalAPagar: 14088.00,
+  };
+
+  console.log('\nTest 11: HONORARIOS - Valores Imagen Oficial');
+  console.log('Comisión Total:', 14808.07);
+  console.log('Vida:', 544.20);
+  console.log('Sin Vida:', 14263.87);
+  console.log('---');
+  console.log('Resultado IVA:', resultado.iva, '| Esperado:', expected.iva);
+  console.log('Resultado Ret ISR:', resultado.retIsr, '| Esperado:', expected.retIsr);
+  console.log('Resultado Ret IVA:', resultado.retIva, '| Esperado:', expected.retIva);
+  console.log('Resultado Total a Pagar:', resultado.totalAPagar, '| Esperado:', expected.totalAPagar);
+  console.log('---');
+  console.log('✓ IVA:', Math.abs(resultado.iva - expected.iva) < 0.01);
+  console.log('✓ Ret ISR:', Math.abs(resultado.retIsr - expected.retIsr) < 0.01);
+  console.log('✓ Ret IVA:', Math.abs(resultado.retIva - expected.retIva) < 0.01);
+  console.log('✓ Total a Pagar:', Math.abs(resultado.totalAPagar - expected.totalAPagar) < 0.01);
+
+  return resultado;
+}
+
+/**
+ * Test Case 12: RESICO - Valores exactos de Imagen 3
+ *
+ * Comisión Total = 14,808.07
+ * Vida = 544.20
+ * Sin Vida = 14,263.87
+ *
+ * Esperado (según imagen oficial):
+ * - IVA = 14,263.87 × 0.16 = 2,282.22
+ * - Ret ISR = 14,808.07 × 0.0125 = 185.10
+ * - Ret IVA = 14,263.87 × 0.10667 = 1,521.48
+ * - Total a Pagar = 14,808.07 + 2,282.22 - 185.10 - 1,521.48 = 15,383.70
+ */
+export function testResicoImagenOficial() {
+  const resumenPorRamo: RamoResumen[] = [
+    { ramo: 'Vida', comisionNeta: 544.20 },
+    { ramo: 'Daños', comisionNeta: 14263.87 }
+  ];
+
+  const params: CalculoFiscalParams = {
+    regimenFiscal: 'RESICO',
+    resumenPorRamo,
+    totalComisionNeta: 14808.07,
+  };
+
+  const resultado = calcularDesgloseFiscal(params);
+
+  const expected = {
+    vida: 544.20,
+    sinVida: 14263.87,
+    iva: 2282.22,
+    retIsr: 185.10,
+    retIva: 1521.48,
+    totalAPagar: 15383.70,
+  };
+
+  console.log('\nTest 12: RESICO - Valores Imagen Oficial');
+  console.log('Comisión Total:', 14808.07);
+  console.log('Vida:', 544.20);
+  console.log('Sin Vida:', 14263.87);
+  console.log('---');
+  console.log('Resultado IVA:', resultado.iva, '| Esperado:', expected.iva);
+  console.log('Resultado Ret ISR:', resultado.retIsr, '| Esperado:', expected.retIsr);
+  console.log('Resultado Ret IVA:', resultado.retIva, '| Esperado:', expected.retIva);
+  console.log('Resultado Total a Pagar:', resultado.totalAPagar, '| Esperado:', expected.totalAPagar);
+  console.log('---');
+  console.log('✓ IVA:', Math.abs(resultado.iva - expected.iva) < 0.01);
+  console.log('✓ Ret ISR:', Math.abs(resultado.retIsr - expected.retIsr) < 0.01);
+  console.log('✓ Ret IVA:', Math.abs(resultado.retIva - expected.retIva) < 0.01);
+  console.log('✓ Total a Pagar:', Math.abs(resultado.totalAPagar - expected.totalAPagar) < 0.01);
+
+  return resultado;
+}
+
+/**
+ * Test Case 13: Validar que ASIMILADOS rechaza cálculo
+ */
+export function testAsimiladosRechazado() {
+  const resumenPorRamo: RamoResumen[] = [
+    { ramo: 'Vida', comisionNeta: 1000 }
+  ];
+
+  const params: CalculoFiscalParams = {
+    regimenFiscal: 'ASIMILADOS',
+    resumenPorRamo,
+    totalComisionNeta: 1000,
+  };
+
+  console.log('\nTest 13: ASIMILADOS debe rechazar cálculo');
+
+  try {
+    const resultado = calcularDesgloseFiscal(params);
+    console.log('✗ FALLÓ: Debió lanzar error pero retornó:', resultado);
+    return { error: false };
+  } catch (error: any) {
+    console.log('✓ CORRECTO: Lanzó error como esperado');
+    console.log('Mensaje:', error.message);
+    return { error: true, message: error.message };
+  }
+}
+
+/**
+ * Ejecutar tests con valores de imágenes oficiales
+ */
+export function runImagenesOficialesTests() {
+  console.log('='.repeat(60));
+  console.log('TESTS CON VALORES DE IMÁGENES OFICIALES');
+  console.log('Validación de fórmulas según imágenes proporcionadas');
+  console.log('='.repeat(60));
+
+  testHonorariosImagenOficial();
+  testResicoImagenOficial();
+  testAsimiladosRechazado();
+
+  console.log('\n' + '='.repeat(60));
+  console.log('TESTS COMPLETADOS');
+  console.log('='.repeat(60));
+}

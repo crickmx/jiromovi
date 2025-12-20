@@ -305,15 +305,23 @@ export default function ComisionesLote() {
 
       console.log('[ComisionesLote] Valores fiscales recalculados:', fiscalResult);
 
-      alert(
-        `Lote recalculado exitosamente\n\n` +
-        `Régimen: ${fiscalResult.regimen_fiscal}\n` +
-        `Comisión Total: ${formatCurrency(fiscalResult.commission_total)}\n` +
-        `IVA: ${formatCurrency(fiscalResult.iva)}\n` +
-        `Ret. ISR: ${formatCurrency(fiscalResult.ret_isr)}\n` +
-        `Ret. IVA: ${formatCurrency(fiscalResult.ret_iva)}\n` +
-        `Total Neto: ${formatCurrency(fiscalResult.total_neto)}`
-      );
+      // Construir mensaje con detalles
+      let message = `✓ Lote recalculado exitosamente\n\n`;
+      message += `Régimen: ${fiscalResult.regimen_fiscal}\n`;
+      if (fiscalResult.manual_adjustments_count > 0) {
+        message += `Ajustes manuales: ${fiscalResult.manual_adjustments_count} de ${fiscalResult.normal_commissions_count + fiscalResult.manual_adjustments_count}\n\n`;
+      } else {
+        message += '\n';
+      }
+      message += `Comisión Total: ${formatCurrency(fiscalResult.commission_total)}\n`;
+      message += `Vida: ${formatCurrency(fiscalResult.commission_vida)}\n`;
+      message += `Sin Vida: ${formatCurrency(fiscalResult.commission_sinvida)}\n\n`;
+      message += `IVA: ${formatCurrency(fiscalResult.iva)}\n`;
+      message += `Ret. ISR: ${formatCurrency(fiscalResult.ret_isr)}\n`;
+      message += `Ret. IVA: ${formatCurrency(fiscalResult.ret_iva)}\n\n`;
+      message += `Total Neto: ${formatCurrency(fiscalResult.total_neto)}`;
+
+      alert(message);
 
       // Recargar el lote para ver los valores actualizados
       await loadBatch();

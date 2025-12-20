@@ -709,9 +709,18 @@ export async function generateOrdenDePagoPDF(
 
     // Validar que los valores fiscales existen
     if (!batchData.calculated_at || batchData.iva === null || batchData.ret_isr === null || batchData.ret_iva === null || batchData.total_neto === null) {
+      const missingFields = [];
+      if (!batchData.calculated_at) missingFields.push('calculated_at');
+      if (batchData.iva === null) missingFields.push('iva');
+      if (batchData.ret_isr === null) missingFields.push('ret_isr');
+      if (batchData.ret_iva === null) missingFields.push('ret_iva');
+      if (batchData.total_neto === null) missingFields.push('total_neto');
+
       throw new Error(
-        `Los valores fiscales no están calculados para este lote. ` +
-        `Por favor, recalcula el lote antes de generar el PDF.`
+        `Los valores fiscales no están calculados para este lote.\n\n` +
+        `Campos faltantes: ${missingFields.join(', ')}\n\n` +
+        `Solución: El sistema recalculará automáticamente. ` +
+        `Si el problema persiste, contacta al administrador.`
       );
     }
 
