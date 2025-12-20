@@ -89,14 +89,12 @@ export async function generateQuotePDF(
   yPosition += 8;
 
   const planData = [
-    ['Estado', quote.estado],
     ['Nivel Hospitalario', quote.nivel_hospitalario],
     ['Tabulador', quote.tabulador],
     ['Suma Asegurada', quote.suma_asegurada],
     ['Deducible', quote.deducible],
     ['Coaseguro', quote.coaseguro],
     ['Tope de Coaseguro', formatMoneySafe(quote.tope_coaseguro)],
-    ['Forma de Pago', quote.forma_pago],
   ];
 
   autoTable(doc, {

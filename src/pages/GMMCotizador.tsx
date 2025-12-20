@@ -96,8 +96,6 @@ export default function GMMCotizador() {
   const [quotations, setQuotations] = useState<GMMQuotation[]>([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterFormaPago, setFilterFormaPago] = useState<string>('');
-  const [filterEstado, setFilterEstado] = useState<string>('');
 
   useEffect(() => {
     loadActiveTariff();
@@ -118,12 +116,6 @@ export default function GMMCotizador() {
       loadQuotes();
     }
   }, [activeTab]);
-
-  useEffect(() => {
-    if (activeTab === 'cotizaciones') {
-      loadQuotes();
-    }
-  }, [filterFormaPago, filterEstado]);
 
   async function loadActiveTariff() {
     try {
@@ -187,21 +179,11 @@ export default function GMMCotizador() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      let query = supabase
+      const { data, error } = await supabase
         .from('gmm_quotations')
         .select('*')
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
-
-      if (filterEstado) {
-        query = query.eq('estado', filterEstado);
-      }
-
-      if (filterFormaPago) {
-        query = query.eq('forma_pago', filterFormaPago);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -840,41 +822,16 @@ export default function GMMCotizador() {
 
           <TabsContent value="cotizaciones">
             <Card className="p-6 mb-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por folio, cliente o asegurado..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyUp={() => loadQuotes()}
-                    className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <select
-                  value={filterFormaPago}
-                  onChange={(e) => setFilterFormaPago(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Todas las formas de pago</option>
-                  <option value="ANUAL">Anual</option>
-                  <option value="SEMESTRAL">Semestral</option>
-                  <option value="TRIMESTRAL">Trimestral</option>
-                  <option value="MENSUAL">Mensual</option>
-                </select>
-
-                <select
-                  value={filterEstado}
-                  onChange={(e) => setFilterEstado(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Todos los estados</option>
-                  <option value="draft">Borrador</option>
-                  <option value="active">Activa</option>
-                  <option value="archived">Archivada</option>
-                </select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Buscar por folio, cliente o asegurado..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyUp={() => loadQuotes()}
+                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
             </Card>
 
@@ -907,13 +864,7 @@ export default function GMMCotizador() {
                             Fecha
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Forma de Pago
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Total
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Estado
                           </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Acciones
@@ -938,28 +889,8 @@ export default function GMMCotizador() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {formatDate(q.created_at)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {q.forma_pago}
-                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                               {formatCurrency(q.total_a_pagar)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                  q.estado === 'active'
-                                    ? 'bg-green-100 text-green-800'
-                                    : q.estado === 'draft'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}
-                              >
-                                {q.estado === 'active'
-                                  ? 'Activa'
-                                  : q.estado === 'draft'
-                                  ? 'Borrador'
-                                  : 'Archivada'}
-                              </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <div className="flex items-center justify-end gap-2">
@@ -1005,17 +936,6 @@ export default function GMMCotizador() {
                           <div className="font-semibold text-blue-600">{q.folio}</div>
                           <div className="text-sm text-gray-500">{formatDate(q.created_at)}</div>
                         </div>
-                        <span
-                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            q.estado === 'active'
-                              ? 'bg-green-100 text-green-800'
-                              : q.estado === 'draft'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {q.estado === 'active' ? 'Activa' : q.estado === 'draft' ? 'Borrador' : 'Archivada'}
-                        </span>
                       </div>
 
                       <div className="space-y-2 mb-4">
@@ -1029,10 +949,6 @@ export default function GMMCotizador() {
                             <span className="text-gray-900">{q.cliente_nombre}</span>
                           </div>
                         )}
-                        <div className="text-sm">
-                          <span className="font-medium text-gray-700">Forma de pago:</span>{' '}
-                          <span className="text-gray-900">{q.forma_pago}</span>
-                        </div>
                         <div className="text-sm">
                           <span className="font-medium text-gray-700">Total:</span>{' '}
                           <span className="text-gray-900 font-semibold">
