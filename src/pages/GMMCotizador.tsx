@@ -8,7 +8,7 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { InfoTooltip } from '../components/ui/info-tooltip';
 import { supabase } from '../lib/supabase';
-import { calculateQuote, loadTariffTables, getTopeCoaseguroOpciones, getTopeCoaseguroRango } from '../lib/gmmCalculationEngine';
+import { calculateQuoteV2 as calculateQuote, loadTariffTables, getTopeCoaseguroOpciones, getTopeCoaseguroRango } from '../lib/gmmCalculationEngineV2';
 import { generateQuotePDF } from '../lib/gmmPdfGenerator';
 import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
