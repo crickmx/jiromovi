@@ -169,60 +169,34 @@ export default function ComisionesLote() {
         console.log('[ComisionesLote] ASIMILADOS detectado - NO se calculan campos fiscales en frontend');
         // Solo cerramos el lote, sin calcular campos fiscales
       }
-      // 4. Para HONORARIOS o RESICO: Calcular y persistir valores fiscales
+      // 4. Para HONORARIOS o RESICO: Llamar a función SQL para calcular y persistir
       else if (regimenFiscal === 'HONORARIOS' || regimenFiscal === 'RESICO') {
-        console.log(`[ComisionesLote] Calculando valores fiscales para ${regimenFiscal}...`);
+        console.log(`[ComisionesLote] Llamando a función SQL para calcular valores fiscales de ${regimenFiscal}...`);
 
-        // Agrupar comisiones por ramo
-        const resumenPorRamo: RamoResumen[] = [];
-        const ramoMap = new Map<string, number>();
+        // Llamar a la función SQL que calcula y persiste los valores fiscales
+        const { data: fiscalResult, error: fiscalError } = await supabase.rpc(
+          'calculate_batch_fiscal_aggregates',
+          { p_batch_id: batch.id }
+        );
 
-        detailsWithRegime.forEach(detail => {
-          const ramo = detail.ramo || 'Sin Ramo';
-          const comision = detail.is_manual_adjusted
-            ? (detail.adjusted_commission_neta || 0)
-            : (detail.commission_neta || 0);
+        if (fiscalError) {
+          console.error('[ComisionesLote] Error al calcular valores fiscales:', fiscalError);
+          alert(`Error al calcular valores fiscales: ${fiscalError.message}`);
+          return;
+        }
 
-          const current = ramoMap.get(ramo) || 0;
-          ramoMap.set(ramo, current + comision);
-        });
+        if (!fiscalResult || !fiscalResult.success) {
+          console.error('[ComisionesLote] La función SQL no retornó éxito:', fiscalResult);
+          alert('Error: No se pudieron calcular los valores fiscales');
+          return;
+        }
 
-        ramoMap.forEach((comisionNeta, ramo) => {
-          resumenPorRamo.push({ ramo, comisionNeta });
-        });
+        console.log('[ComisionesLote] Valores fiscales calculados por SQL:', fiscalResult);
 
-        // Calcular total de comisión neta
-        const totalComisionNeta = detailsWithRegime.reduce((sum, detail) => {
-          const comision = detail.is_manual_adjusted
-            ? (detail.adjusted_commission_neta || 0)
-            : (detail.commission_neta || 0);
-          return sum + comision;
-        }, 0);
-
-        // Calcular desglose fiscal
-        const desgloseFiscal = calcularDesgloseFiscal({
-          regimenFiscal,
-          resumenPorRamo,
-          totalComisionNeta,
-        });
-
-        console.log('[ComisionesLote] Desglose fiscal calculado:', desgloseFiscal);
-
-        // Agregar campos fiscales al update
+        // Los valores ya están persistidos por la función SQL
+        // Solo necesitamos cerrar el lote
         fiscalUpdate = {
-          status: 'closed',
-          commission_vida: desgloseFiscal.vida,
-          commission_sinvida: desgloseFiscal.sinVida,
-          commission_total: totalComisionNeta,
-          retencion_contable: desgloseFiscal.retContable,
-          costo_dispersion: desgloseFiscal.costoDispersion,
-          iva: desgloseFiscal.iva,
-          ret_isr: desgloseFiscal.retIsr,
-          ret_iva: desgloseFiscal.retIva,
-          total_neto: desgloseFiscal.totalAPagar,
-          regimen_fiscal: regimenFiscal,
-          tax_version: 'v1.0',
-          calculated_at: new Date().toISOString(),
+          status: 'closed'
         };
       } else {
         console.warn('[ComisionesLote] Régimen desconocido:', regimenFiscal);

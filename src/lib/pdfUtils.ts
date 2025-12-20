@@ -680,28 +680,61 @@ export async function generateOrdenDePagoPDF(
 
   console.log(`[PDF] Generando para ${agent.name}: Régimen fiscal = ${regimenFiscalName} (normalizado: ${regimenFiscal})`);
 
-  // REGLA DE ORO: Calcular el desglose fiscal en tiempo real para cada agente
+  // ============================================================================
+  // REGLA ABSOLUTA: PDF SOLO LEE, NUNCA CALCULA
+  // ============================================================================
   let desgloseFiscal: DesgloseFiscal;
 
   // GUARD CLAUSE: ASIMILADOS usa su propio flujo de base de datos (NO TOCAR)
   if (regimenFiscal === 'ASIMILADOS') {
     desgloseFiscal = await obtenerDesgloseFiscalDesdeDB(batch.id, agentDetails[0].agent_id);
   }
-  // HONORARIOS y RESICO: Calcular en tiempo real basado en las comisiones del agente
-  else {
-    // Agrupar comisiones por ramo para el cálculo fiscal
-    const resumenPorRamo = agruparComisionesPorRamo(agentDetails.map(detail => ({
-      ramo: detail.ramo,
-      comisionNeta: detail.is_manual_adjusted
-        ? (detail.adjusted_commission_neta || 0)
-        : detail.commission_neta
-    })));
+  // HONORARIOS y RESICO: Leer valores persistidos en commission_batches
+  else if (regimenFiscal === 'HONORARIOS' || regimenFiscal === 'RESICO') {
+    // Leer valores del batch (ya calculados por el backend)
+    const { supabase } = await import('./supabase');
 
-    desgloseFiscal = calcularDesgloseFiscalCore({
-      regimenFiscal,
-      resumenPorRamo,
-      totalComisionNeta
-    });
+    const { data: batchData, error: batchError } = await supabase
+      .from('commission_batches')
+      .select('commission_vida, commission_sinvida, iva, ret_isr, ret_iva, total_neto, tax_version, calculated_at')
+      .eq('id', batch.id)
+      .maybeSingle();
+
+    if (batchError || !batchData) {
+      throw new Error(
+        `No se encontraron datos fiscales persistidos para el lote. ` +
+        `El lote debe ser recalculado antes de generar el PDF.`
+      );
+    }
+
+    // Validar que los valores fiscales existen
+    if (!batchData.calculated_at || batchData.iva === null || batchData.ret_isr === null || batchData.ret_iva === null || batchData.total_neto === null) {
+      throw new Error(
+        `Los valores fiscales no están calculados para este lote. ` +
+        `Por favor, recalcula el lote antes de generar el PDF.`
+      );
+    }
+
+    // Usar valores persistidos (NO recalcular)
+    desgloseFiscal = {
+      vida: batchData.commission_vida || 0,
+      sinVida: batchData.commission_sinvida || 0,
+      retContable: 0, // Siempre 0 para HONORARIOS/RESICO
+      costoDispersion: 0, // Siempre 0 para HONORARIOS/RESICO
+      iva: batchData.iva || 0,
+      retIsr: batchData.ret_isr || 0,
+      retIva: batchData.ret_iva || 0,
+      isrVida: 0, // No usado en HONORARIOS/RESICO
+      isrDanios: 0, // No usado en HONORARIOS/RESICO
+      isrTotal: 0, // No usado en HONORARIOS/RESICO
+      totalAPagar: batchData.total_neto || 0,
+    };
+
+    console.log(`[PDF] Usando valores persistidos del batch: tax_version=${batchData.tax_version}, calculated_at=${batchData.calculated_at}`);
+  }
+  // Régimen no reconocido
+  else {
+    throw new Error(`Régimen fiscal "${regimenFiscal}" no reconocido`);
   }
 
   const availableSpace = pageHeight - yPosition - 8;

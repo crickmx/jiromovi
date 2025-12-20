@@ -109,23 +109,74 @@ export default function MisComisiones() {
               fiscalMap.set(batch.id, fiscal);
             }
           } else {
-            // Para HONORARIOS y RESICO, calcular en tiempo real
-            const resumenPorRamo = agruparComisionesPorRamo(details.map(detail => ({
-              ramo: detail.ramo,
-              comisionNeta: detail.is_manual_adjusted
-                ? (detail.adjusted_commission_neta || 0)
-                : detail.commission_neta
-            })));
+            // ============================================================================
+            // Para HONORARIOS y RESICO: Leer valores persistidos del batch
+            // ============================================================================
+
+            // Primero, leer valores persistidos del batch
+            const { data: batchData } = await supabase
+              .from('commission_batches')
+              .select('commission_vida, commission_sinvida, iva, ret_isr, ret_iva, total_neto, retencion_contable, costo_dispersion, commission_total')
+              .eq('id', batch.id)
+              .maybeSingle();
 
             const totalComisionNeta = details.reduce((sum, d) =>
               sum + (d.is_manual_adjusted ? (d.adjusted_commission_neta || 0) : d.commission_neta), 0
             );
 
-            const desglose = calcularDesgloseFiscal({
-              regimenFiscal,
-              resumenPorRamo,
-              totalComisionNeta
-            });
+            let desglose: any;
+
+            // Si hay datos persistidos, usarlos (NO recalcular)
+            if (batchData && batchData.iva !== null && batchData.ret_isr !== null && batchData.ret_iva !== null && batchData.total_neto !== null) {
+              desglose = {
+                vida: batchData.commission_vida || 0,
+                sinVida: batchData.commission_sinvida || 0,
+                retContable: batchData.retencion_contable || 0,
+                costoDispersion: batchData.costo_dispersion || 0,
+                iva: batchData.iva || 0,
+                retIsr: batchData.ret_isr || 0,
+                retIva: batchData.ret_iva || 0,
+                isrVida: 0,
+                isrDanios: 0,
+                isrTotal: 0,
+                totalAPagar: batchData.total_neto || 0,
+              };
+              console.log(`[MisComisiones] Usando valores persistidos del batch ${batch.id}`);
+            } else {
+              // Fallback: calcular si no hay datos persistidos
+              console.warn(`[MisComisiones] Batch ${batch.id} no tiene datos fiscales persistidos. Calcular manualmente o recalcular el lote.`);
+
+              const resumenPorRamo = agruparComisionesPorRamo(details.map(detail => ({
+                ramo: detail.ramo,
+                comisionNeta: detail.is_manual_adjusted
+                  ? (detail.adjusted_commission_neta || 0)
+                  : detail.commission_neta
+              })));
+
+              try {
+                desglose = calcularDesgloseFiscal({
+                  regimenFiscal,
+                  resumenPorRamo,
+                  totalComisionNeta
+                });
+              } catch (error) {
+                console.error(`[MisComisiones] Error al calcular desglose fiscal:`, error);
+                // Usar valores por defecto
+                desglose = {
+                  vida: 0,
+                  sinVida: totalComisionNeta,
+                  retContable: 0,
+                  costoDispersion: 0,
+                  iva: 0,
+                  retIsr: 0,
+                  retIva: 0,
+                  isrVida: 0,
+                  isrDanios: 0,
+                  isrTotal: 0,
+                  totalAPagar: totalComisionNeta,
+                };
+              }
+            }
 
             // Convertir al formato esperado por la UI
             fiscalMap.set(batch.id, {
