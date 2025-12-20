@@ -172,5 +172,21 @@ Después de aplicar el fix, verificar:
 
 ---
 
+## Fix Adicional: Página en Blanco al Calcular
+
+Durante la corrección del error de carga de tarifas, se identificó y corrigió un segundo bug crítico:
+
+**Problema:** Al dar clic en "Calcular", la página se ponía en blanco.
+
+**Causa:** `result.payment_plans.map is not a function` - El motor V2 devolvía un objeto en lugar de un array.
+
+**Solución:** Se actualizó la función `calcularFormasDePago()` para devolver un array de `PaymentPlanResult[]`.
+
+**Documentación completa:** Ver `FIX_PAGINA_EN_BLANCO_CALCULAR.md`
+
+**Test de verificación:** `/test-gmm-calculo-fix.html`
+
+---
+
 **Fecha del fix:** 2024-12-20
-**Estado:** Resuelto ✅
+**Estado:** Resuelto ✅ (ambos problemas)

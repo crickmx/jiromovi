@@ -398,6 +398,9 @@ export function calculateQuote(
 
   const primaNetaTotal = roundTo2Decimals(insureds.reduce((acc, ins) => acc + ins.prima_total, 0));
 
+  const gastosExpedicionBase = tables.gastos_expedicion;
+  const ivaRate = tables.iva;
+
   // Calcular múltiples planes de pago
   const paymentPlans = input.formas_pago.map(formaPagoName => {
     const formaPago = tables.forma_pago.find(r => r.col_0 === formaPagoName);
@@ -412,16 +415,16 @@ export function calculateQuote(
     const numRecibos = Number(formaPago.col_2 || 1);
 
     const recargo = roundTo2Decimals(primaNetaTotal * factorFormaPago);
-    const gastosExpedicion = tables.gastos_expedicion;
+    const gastosExpedicion = gastosExpedicionBase;
     const subtotal = roundTo2Decimals(primaNetaTotal + recargo + gastosExpedicion);
-    const iva = roundTo2Decimals(subtotal * tables.iva);
+    const iva = roundTo2Decimals(subtotal * ivaRate);
     const total = roundTo2Decimals(subtotal + iva);
 
     let primerRecibo = total;
     let recibosSubsecuentes = 0;
 
     if (numRecibos > 1) {
-      primerRecibo = roundTo2Decimals(((subtotal - gastosExpedicion) / numRecibos + gastosExpedicion) * (1 + tables.iva));
+      primerRecibo = roundTo2Decimals(((subtotal - gastosExpedicion) / numRecibos + gastosExpedicion) * (1 + ivaRate));
       const resto = total - primerRecibo;
       recibosSubsecuentes = roundTo2Decimals(resto / (numRecibos - 1));
     }
@@ -439,9 +442,16 @@ export function calculateQuote(
     };
   });
 
+  // Calcular totales generales (basados en el plan anual por defecto)
+  const planAnual = paymentPlans.find(p => p.forma_pago === 'Anual') || paymentPlans[0];
+
   return {
     insureds,
     prima_neta_total: primaNetaTotal,
+    gastos_expedicion: planAnual?.gastos_expedicion || gastosExpedicionBase,
+    subtotal: planAnual?.subtotal || primaNetaTotal + gastosExpedicionBase,
+    iva: planAnual?.iva || roundTo2Decimals((primaNetaTotal + gastosExpedicionBase) * ivaRate),
+    total_con_iva: planAnual?.total || roundTo2Decimals((primaNetaTotal + gastosExpedicionBase) * (1 + ivaRate)),
     tope_coaseguro: topeCoaseguro,
     payment_plans: paymentPlans,
   };

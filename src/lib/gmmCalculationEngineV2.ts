@@ -705,8 +705,16 @@ export function calculateQuoteV2(
   const primaNetaTotal = insureds.reduce((sum, i) => sum + i.prima_neta, 0);
   const totales = calcularTotales(primaNetaTotal, insureds.length);
 
-  // Calcular formas de pago
-  const paymentPlans = calcularFormasDePago(totales.totalConIVA);
+  // Calcular formas de pago para las opciones seleccionadas
+  const formasPagoSeleccionadas = input.formas_pago && input.formas_pago.length > 0
+    ? input.formas_pago
+    : ['Anual']; // Default a Anual si no hay selección
+
+  const paymentPlans = calcularFormasDePago(
+    primaNetaTotal,
+    totales.gastosExpedicion,
+    formasPagoSeleccionadas
+  );
 
   return {
     insureds,
@@ -723,18 +731,48 @@ export function calculateQuoteV2(
 /**
  * Calcular formas de pago
  */
-function calcularFormasDePago(totalConIVA: number): PaymentPlanResult {
-  const anual = roundTo2Decimals(totalConIVA);
-  const semestral = roundTo2Decimals((totalConIVA * 1.03) / 2);
-  const trimestral = roundTo2Decimals((totalConIVA * 1.05) / 4);
-  const mensual = roundTo2Decimals((totalConIVA * 1.07) / 12);
+function calcularFormasDePago(
+  primaNetaTotal: number,
+  gastosExpedicion: number,
+  formasPagoSeleccionadas: string[]
+): PaymentPlanResult[] {
+  const plans: PaymentPlanResult[] = [];
 
-  return {
-    anual: { per_payment: anual, total_anual: anual },
-    semestral: { per_payment: semestral, total_anual: semestral * 2 },
-    trimestral: { per_payment: trimestral, total_anual: trimestral * 4 },
-    mensual: { per_payment: mensual, total_anual: mensual * 12 }
+  // Definir recargos y número de recibos por forma de pago
+  const formasPagoConfig: Record<string, { recargo: number; numRecibos: number }> = {
+    'Anual': { recargo: 0, numRecibos: 1 },
+    'Semestral': { recargo: 0.03, numRecibos: 2 },
+    'Trimestral': { recargo: 0.05, numRecibos: 4 },
+    'Mensual': { recargo: 0.07, numRecibos: 12 }
   };
+
+  // Generar plan para cada forma de pago seleccionada
+  for (const formaPago of formasPagoSeleccionadas) {
+    const config = formasPagoConfig[formaPago];
+    if (!config) continue;
+
+    const recargo = roundTo2Decimals(primaNetaTotal * config.recargo);
+    const subtotal = roundTo2Decimals(primaNetaTotal + recargo + gastosExpedicion);
+    const iva = roundTo2Decimals(subtotal * 0.16);
+    const total = roundTo2Decimals(subtotal + iva);
+
+    const primerRecibo = roundTo2Decimals(total / config.numRecibos);
+    const recibosSubsecuentes = config.numRecibos > 1 ? primerRecibo : 0;
+
+    plans.push({
+      forma_pago: formaPago,
+      recargo,
+      gastos_expedicion: gastosExpedicion,
+      subtotal,
+      iva,
+      total,
+      primer_recibo: primerRecibo,
+      recibos_subsecuentes: recibosSubsecuentes,
+      num_recibos: config.numRecibos
+    });
+  }
+
+  return plans;
 }
 
 // ============================================================================

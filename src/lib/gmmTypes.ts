@@ -171,6 +171,10 @@ export interface PaymentPlanResult {
 export interface QuoteCalculationResult {
   insureds: InsuredCalculation[];
   prima_neta_total: number;
+  gastos_expedicion: number;
+  subtotal: number;
+  iva: number;
+  total_con_iva: number;
   tope_coaseguro: number;
   payment_plans: PaymentPlanResult[];
 }
