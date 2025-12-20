@@ -70,6 +70,21 @@ const DENOMINADOR_B = 0.702939;
 const AJUSTE_INTERCEPTO = 0.58677;
 const AJUSTE_PENDIENTE = 0.60121;
 
+/**
+ * Coeficiente de "Eliminación de Deducible por Accidente"
+ *
+ * IMPORTANTE: Este coeficiente es CONSTANTE = 0.0733 para TODOS los deducibles.
+ * NO varía con el deducible seleccionado.
+ *
+ * Validación:
+ * - Deducible $17k: Excel usa 0.0733 ✓
+ * - Deducible $29k: Excel usa 0.0733 ✓
+ *
+ * NOTA: La tabla deducible_accidente_factors contiene valores variables (0.0489-0.2443)
+ * pero el Excel oficial NO los usa. Siempre usa 0.0733 fijo.
+ */
+const COEF_ELIMINACION_DEDUCIBLE = 0.0733;
+
 // ============================================================================
 // UTILIDADES DE REDONDEO (Réplica exacta del Excel)
 // ============================================================================
@@ -295,6 +310,7 @@ interface CoberturaConfig {
   coeficiente?: number;
   calcularFactor?: (edad: number, sexo: string, input: QuoteInput, tables: TariffTables) => number;
   baseCalculo: 'primaBaseConCargas' | 'primaBaseFinal';
+  sinDenominador?: boolean;
 }
 
 /**
@@ -328,6 +344,13 @@ function calcularCobertura(
     throw new Error(`[CAPA 4 - COBERTURAS] Cobertura "${config.nombre}" sin coeficiente ni función de cálculo`);
   }
 
+  const coberturaBruta = base * factor;
+
+  // EXCEPCIÓN: Algunas coberturas NO usan denominador (ej: Multiregión)
+  if (config.sinDenominador) {
+    return roundTo2Decimals(coberturaBruta);
+  }
+
   // CRÍTICO: El denominador de coberturas adicionales es DINÁMICO CON AJUSTE LINEAL
   // Se calcula usando constantes globales definidas al inicio de este archivo.
   //
@@ -353,7 +376,6 @@ function calcularCobertura(
   // Paso 3: Calcular denominador ajustado final
   const denominador_coberturas = denominador_base * factor_ajuste;
 
-  const coberturaBruta = base * factor;
   return roundTo2Decimals(coberturaBruta / denominador_coberturas);
 }
 
@@ -423,19 +445,13 @@ function obtenerConfiguracionCoberturas(
       nombre: 'eliminacion_deducible_accidente',
       activa: input.coberturas.eliminacion_deducible_accidente,
       baseCalculo: 'primaBaseConCargas',
-      calcularFactor: (edad, sexo, input, tables) => {
-        const keyNum = Number(input.deducible);
-        const row = tables.deducible_accidente_keys.findIndex(k => Number(k) === keyNum);
-        if (row >= 0 && tables.deducible_accidente_factors[row] !== undefined) {
-          return roundTo3Decimals(Number(tables.deducible_accidente_factors[row]));
-        }
-        return 0;
-      }
+      coeficiente: COEF_ELIMINACION_DEDUCIBLE
     },
     {
       nombre: 'multiregion',
       activa: input.coberturas.multiregion,
       baseCalculo: 'primaBaseConCargas',
+      sinDenominador: true,
       calcularFactor: (edad, sexo, input, tables) => {
         const row = tables.multiregion_carga_sistema.find(r => r.col_0 === input.estado);
         if (row) {
