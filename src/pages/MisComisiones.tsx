@@ -272,18 +272,57 @@ export default function MisComisiones() {
       if (!batchCheck?.calculated_at || batchCheck.iva === null || batchCheck.ret_isr === null) {
         // Intentar recalcular antes de generar PDF
         console.log('[MisComisiones] PDF: Valores fiscales faltantes, recalculando...');
-        const { error: recalcError } = await supabase.rpc('calculate_batch_fiscal_aggregates', {
+        const { data: recalcResult, error: recalcError } = await supabase.rpc('calculate_batch_fiscal_aggregates', {
           p_batch_id: batch.id
         });
 
         if (recalcError) {
-          alert('Error: No se puede generar el PDF porque faltan valores fiscales.\n\nContacta al administrador.');
+          alert('Error al recalcular valores fiscales:\n\n' + recalcError.message + '\n\nContacta al administrador.');
           setGeneratingPDF(null);
           return;
         }
 
-        // Recargar página para mostrar nuevos valores
+        // Verificar resultado del recálculo
+        if (recalcResult?.skipped) {
+          alert('No se puede generar el PDF automáticamente.\n\n' +
+                'Motivo: ' + recalcResult.reason + '\n\n' +
+                'Por favor, contacta al administrador para recalcular este lote manualmente.');
+          setGeneratingPDF(null);
+          return;
+        }
+
+        if (!recalcResult?.success) {
+          alert('Error al recalcular valores fiscales.\n\n' +
+                (recalcResult?.error || 'Error desconocido') + '\n\n' +
+                'Contacta al administrador.');
+          setGeneratingPDF(null);
+          return;
+        }
+
+        console.log('[MisComisiones] PDF: Recálculo exitoso:', recalcResult);
+
+        // Recargar el batch actualizado de BD
+        const { data: updatedBatch, error: reloadError } = await supabase
+          .from('commission_batches')
+          .select('*')
+          .eq('id', batch.id)
+          .single();
+
+        if (reloadError || !updatedBatch) {
+          alert('Error al recargar datos del lote.\n\nIntenta de nuevo.');
+          setGeneratingPDF(null);
+          return;
+        }
+
+        // Usar el batch actualizado para generar PDF
+        const pdfBlob = await generateOrdenDePagoPDF(details, updatedBatch);
+        const fileName = `Orden_de_Pago_${updatedBatch.name.replace(/\s+/g, '_')}_${usuario?.nombre_completo?.replace(/\s+/g, '_')}.pdf`;
+        downloadPDF(pdfBlob, fileName);
+
+        // Recargar toda la vista para actualizar UI
         await loadCommissions();
+
+        return; // Salir aquí para evitar generar PDF dos veces
       }
 
       const pdfBlob = await generateOrdenDePagoPDF(details, batch);
