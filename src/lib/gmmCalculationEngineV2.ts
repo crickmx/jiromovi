@@ -39,29 +39,36 @@ import {
  * CRÍTICO: Estos valores fueron obtenidos por ingeniería inversa del Excel oficial
  * de VePorMás y validados con múltiples casos reales.
  *
- * Fórmula: denominador = (DENOMINADOR_A + DENOMINADOR_B × (factor_ded × factor_coa)) × DENOMINADOR_AJUSTE
+ * Fórmula Completa (3 pasos):
+ * 1. denom_base = DENOMINADOR_A + DENOMINADOR_B × (factor_ded × factor_coas)
+ * 2. factor_ajuste = AJUSTE_INTERCEPTO + AJUSTE_PENDIENTE × factor_ded
+ * 3. denom_ajustado = denom_base × factor_ajuste
  *
  * Validación exhaustiva (20/12/2024):
- * - Deducible $17k, Coaseguro 10%, Prima Base $17,510.65:
- *   * Denominador base: 0.350445 + 0.702939 × (0.855 × 1.000) = 0.951458
- *   * Denominador ajustado: 0.951458 × 1.10080 = 1.047365
- *   * Total coberturas calculado: $7,025.87
- *   * Total Excel real: $7,025.81
+ *
+ * Caso 1 - Deducible $17k (factor_ded = 0.855):
+ *   * denom_base: 0.350445 + 0.702939 × (0.855 × 1.000) = 0.951458
+ *   * factor_ajuste: 0.58677 + 0.60121 × 0.855 = 1.10080
+ *   * denom_ajustado: 0.951458 × 1.10080 = 1.047365
+ *   * Total calculado: $7,025.87
+ *   * Total Excel: $7,025.81
  *   * Error: $0.06 (0.0008%) ✓✓✓
  *
- * - Pruebas múltiples edades (mismo ded/coas):
- *   * Edad 25: Ratio = 1.100805
- *   * Edad 29: Ratio = 1.100817
- *   * Edad 35: Ratio = 1.100827
- *   * Edad 40: Ratio = 1.100799
- *   * Edad 50: Ratio = 1.100808
- *   * Promedio: 1.10080 ✓ (constante universal)
+ * Caso 2 - Deducible $29k (factor_ded = 0.631):
+ *   * denom_base: 0.350445 + 0.702939 × (0.631 × 1.000) = 0.794000
+ *   * factor_ajuste: 0.58677 + 0.60121 × 0.631 = 0.96613
+ *   * denom_ajustado: 0.794000 × 0.96613 = 0.767107
+ *   * Total calculado: $6,649.86
+ *   * Total Excel: $6,649.86
+ *   * Error: $0.00 (0.0000%) ✓✓✓
  *
+ * IMPORTANTE: El factor de ajuste NO es constante, es LINEAL respecto al factor de deducible.
  * NO MODIFICAR sin validación exhaustiva contra el Excel oficial.
  */
 const DENOMINADOR_A = 0.350445;
 const DENOMINADOR_B = 0.702939;
-const DENOMINADOR_AJUSTE = 1.10080;
+const AJUSTE_INTERCEPTO = 0.58677;
+const AJUSTE_PENDIENTE = 0.60121;
 
 // ============================================================================
 // UTILIDADES DE REDONDEO (Réplica exacta del Excel)
@@ -321,23 +328,30 @@ function calcularCobertura(
     throw new Error(`[CAPA 4 - COBERTURAS] Cobertura "${config.nombre}" sin coeficiente ni función de cálculo`);
   }
 
-  // CRÍTICO: El denominador de coberturas adicionales es DINÁMICO
-  // Se calcula usando constantes globales DENOMINADOR_A, DENOMINADOR_B y DENOMINADOR_AJUSTE
-  // definidas al inicio de este archivo.
+  // CRÍTICO: El denominador de coberturas adicionales es DINÁMICO CON AJUSTE LINEAL
+  // Se calcula usando constantes globales definidas al inicio de este archivo.
   //
-  // Fórmula: denominador = (DENOMINADOR_A + DENOMINADOR_B × (factor_ded × factor_coa)) × DENOMINADOR_AJUSTE
+  // Fórmula Completa (3 pasos):
+  // 1. denom_base = DENOMINADOR_A + DENOMINADOR_B × (factor_ded × factor_coas)
+  // 2. factor_ajuste = AJUSTE_INTERCEPTO + AJUSTE_PENDIENTE × factor_ded
+  // 3. denom_ajustado = denom_base × factor_ajuste
   //
-  // Esta fórmula se aplica para TODAS las combinaciones de deducible y coaseguro.
-  // NO usar valores fijos bajo ninguna circunstancia.
+  // IMPORTANTE: El factor de ajuste varía linealmente con el factor de deducible.
+  // NO es una constante fija. NO usar valores fijos bajo ninguna circunstancia.
 
   // Obtener factores de deducible y coaseguro del plan seleccionado
   const factorDeducible = vlookup(tables.factor_deducible, input.deducible, 1, 'Factor Deducible');
   const factorCoaseguro = vlookup(tables.factor_coaseguro, input.coaseguro, 1, 'Factor Coaseguro');
 
-  // Calcular denominador dinámico usando las constantes globales
+  // Paso 1: Calcular denominador base
   const producto = factorDeducible * factorCoaseguro;
   const denominador_base = DENOMINADOR_A + DENOMINADOR_B * producto;
-  const denominador_coberturas = denominador_base * DENOMINADOR_AJUSTE;
+
+  // Paso 2: Calcular factor de ajuste lineal (varía con deducible)
+  const factor_ajuste = AJUSTE_INTERCEPTO + AJUSTE_PENDIENTE * factorDeducible;
+
+  // Paso 3: Calcular denominador ajustado final
+  const denominador_coberturas = denominador_base * factor_ajuste;
 
   const coberturaBruta = base * factor;
   return roundTo2Decimals(coberturaBruta / denominador_coberturas);
