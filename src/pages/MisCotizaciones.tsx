@@ -103,6 +103,17 @@ export default function MisCotizaciones() {
         celular: usuario?.celular_laboral || '',
       };
 
+      const calculationResult = (quotation.quote_data as any).calculation_result;
+
+      if (!calculationResult) {
+        alert('Esta cotización no tiene datos de cálculo completos. Por favor recalcule y guarde nuevamente.');
+        return;
+      }
+
+      const planForFormaPago = calculationResult.payment_plans.find(
+        (p: any) => p.forma_pago === quotation.forma_pago
+      ) || calculationResult.payment_plans[0];
+
       const quoteForPdf = {
         quote_number: quotation.folio,
         created_at: quotation.created_at,
@@ -112,7 +123,7 @@ export default function MisCotizaciones() {
         suma_asegurada: quotation.quote_data.suma_asegurada,
         deducible: quotation.quote_data.deducible,
         coaseguro: quotation.quote_data.coaseguro,
-        tope_coaseguro: (quotation.quote_data as any).tope_coaseguro_seleccionado || 0,
+        tope_coaseguro: (quotation.quote_data as any).tope_coaseguro_seleccionado || calculationResult.tope_coaseguro,
         forma_pago: quotation.forma_pago,
         cob_medicamentos_fuera: quotation.coverage_selections.medicamentos_fuera || false,
         cob_eliminacion_deducible_accidente: quotation.coverage_selections.eliminacion_deducible_accidente || false,
@@ -128,20 +139,25 @@ export default function MisCotizaciones() {
         cob_ayuda_diaria: quotation.coverage_selections.ayuda_diaria || false,
         cob_indemnizacion_eg: quotation.coverage_selections.indemnizacion_eg || false,
         cob_maternidad: quotation.coverage_selections.maternidad || false,
-        prima_neta_total: quotation.prima_neta_total,
-        subtotal: quotation.prima_neta_total,
-        iva: quotation.total_a_pagar - quotation.prima_neta_total,
-        total: quotation.total_a_pagar,
+        prima_neta_total: calculationResult.prima_neta_total,
+        recargo: planForFormaPago.recargo,
+        gastos_expedicion: planForFormaPago.gastos_expedicion,
+        subtotal: planForFormaPago.subtotal,
+        iva: planForFormaPago.iva,
+        total: planForFormaPago.total,
+        num_recibos: planForFormaPago.num_recibos,
+        primer_recibo: planForFormaPago.primer_recibo,
+        recibos_subsecuentes: planForFormaPago.recibos_subsecuentes,
       };
 
-      const insuredsData = quotation.quote_data.insureds.map((ins, idx) => ({
+      const insuredsData = calculationResult.insureds.map((ins: any, idx: number) => ({
         orden: idx + 1,
         nombre: ins.nombre,
         sexo: ins.sexo,
         edad: ins.edad,
-        prima_base: 0,
-        prima_adicionales: 0,
-        prima_total: 0,
+        prima_base: ins.prima_base || 0,
+        prima_adicionales: ins.prima_adicionales || 0,
+        prima_total: ins.prima_total || 0,
       }));
 
       const pdfBlob = await generateQuotePDF(quoteForPdf as any, insuredsData, asesorInfo);
