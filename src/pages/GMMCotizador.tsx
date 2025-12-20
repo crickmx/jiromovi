@@ -325,7 +325,14 @@ export default function GMMCotizador() {
         celular: usuario?.celular_laboral || '',
       };
 
-      const calculationResult = (quotation.quote_data as any).calculation_result;
+      const quoteData = quotation.quote_data as any;
+
+      if (quoteData.multi_option_result) {
+        alert('Las cotizaciones comparativas no tienen descarga de PDF individual. Use el botón "Descargar Comparativa" en el modo de cotización.');
+        return;
+      }
+
+      const calculationResult = quoteData.calculation_result;
 
       if (!calculationResult) {
         alert('Esta cotización no tiene datos de cálculo completos. Por favor recalcule y guarde nuevamente.');

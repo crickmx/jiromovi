@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Plus, Trash2, Copy, Calculator, Save, FileText } from 'lucide-react';
+import { Plus, Trash2, Copy, Calculator, Save, FileText, Download } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { InfoTooltip } from '../ui/info-tooltip';
 import { getCoverageHelpText, getCoverageLabel } from '../../lib/gmmCoverageHelp';
+import { generateComparativeQuotePDF } from '../../lib/gmmPdfComparative';
+import { supabase } from '../../lib/supabase';
 import type {
   QuoteInputMultiOption,
   QuoteOption,
@@ -167,6 +169,50 @@ export function MultiOptionQuote({
     };
 
     onCalculate(multiInput);
+  }
+
+  async function handleDownloadComparativePDF() {
+    if (!result) {
+      alert('Primero debe calcular las opciones');
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: usuario } = await supabase
+        .from('usuarios')
+        .select('nombre_completo, celular_laboral')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const asesorInfo = {
+        nombre: usuario?.nombre_completo || 'Asesor JIRO',
+        celular: usuario?.celular_laboral || '',
+      };
+
+      const quoteData = {
+        folio: `COMP-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        asegurado_principal: insureds[0]?.nombre || 'Sin nombre',
+        result: result,
+      };
+
+      const pdfBlob = await generateComparativeQuotePDF(quoteData, asesorInfo);
+
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cotizacion_comparativa_${quoteData.folio}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      alert(`Error al generar PDF: ${error.message}`);
+    }
   }
 
   return (
@@ -458,6 +504,18 @@ export function MultiOptionQuote({
           >
             <Save className="h-5 w-5 mr-2" />
             Guardar Comparativa
+          </Button>
+        )}
+
+        {result && (
+          <Button
+            onClick={handleDownloadComparativePDF}
+            variant="outline"
+            size="lg"
+            className="px-8"
+          >
+            <Download className="h-5 w-5 mr-2" />
+            Descargar PDF Comparativo
           </Button>
         )}
       </div>
