@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba GMM - Ricardo Castro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #60a5fa;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        h2 {
+            color: #60a5fa;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 22px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(59, 130, 246, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .status {
+            background: #334155;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #3b82f6;
+        }
+        .status.success {
+            border-left-color: #10b981;
+            background: #064e3b;
+        }
+        .status.error {
+            border-left-color: #ef4444;
+            background: #7f1d1d;
+        }
+        .status.warning {
+            border-left-color: #f59e0b;
+            background: #78350f;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #334155;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #475569;
+        }
+        th {
+            background: #1e40af;
+            color: white;
+            font-weight: 600;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+            font-size: 18px;
+        }
+        .spinner {
+            border: 3px solid #334155;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .comparison-row.match td:last-child {
+            color: #10b981;
+            font-weight: 600;
+        }
+        .comparison-row.mismatch td:last-child {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        .instructions {
+            background: #1e3a8a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .instructions ol {
+            margin-left: 25px;
+            margin-top: 10px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+        .totales-row {
+            background: #1e40af;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .check-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #475569;
+        }
+        .check-item:last-child {
+            border-bottom: none;
+        }
+        pre {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+            border: 1px solid #334155;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 PRUEBA GMM BX+ - RICARDO CASTRO GOMEZ</h1>
+
+        <div class="status">
+            <strong>📄 Fuente:</strong> bx+_ricardo_castro_gomez.pdf<br>
+            <strong>🎯 Objetivo:</strong> Verificar que el sistema calcule idéntico al Excel/PDF
+        </div>
+
+        <button id="btnVerificar" class="btn" onclick="verificarInfraestructura()">
+            🔍 Verificar Infraestructura
+        </button>
+
+        <div id="resultado"></div>
+
+        <div class="instructions">
+            <h2>📋 Datos del Caso de Prueba</h2>
+            <strong>Características del Plan:</strong>
+            <ul>
+                <li>Estado: QUERETARO</li>
+                <li>Nivel: PLUS</li>
+                <li>Tabulador: ORO-110,000</li>
+                <li>SA: $50,000,000</li>
+                <li>Deducible: $35,000</li>
+                <li>Coaseguro: 15%</li>
+                <li>Tope: $60,000</li>
+            </ul>
+            <strong style="margin-top: 15px; display: block;">Asegurados:</strong>
+            <ul>
+                <li>Ricardo Castro Gomez (40 años, Hombre)</li>
+                <li>Juliana Ceballos Gonzalez (39 años, Mujer)</li>
+                <li>Emma Castro Ceballos (1 año, Mujer)</li>
+            </ul>
+            <strong style="margin-top: 15px; display: block;">Coberturas Adicionales:</strong>
+            <ul>
+                <li>✓ Medicamentos Fuera del Hospital</li>
+                <li>✓ Eliminación de Deducible por Accidente</li>
+                <li>✓ Multiregion</li>
+                <li>✓ Beneficio Hospitalario VIP</li>
+                <li>✓ Emergencia Médica en el extranjero</li>
+                <li>✓ Reconocimiento de Antigüedad</li>
+            </ul>
+        </div>
+
+        <h2>📊 Valores Esperados del PDF</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Asegurado</th>
+                    <th>Edad</th>
+                    <th>Sexo</th>
+                    <th>Prima Base</th>
+                    <th>Adicionales</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Ricardo Castro Gomez</td>
+                    <td>40</td>
+                    <td>Hombre</td>
+                    <td>$11,509.57</td>
+                    <td>$7,094.43</td>
+                    <td><strong>$18,604.00</strong></td>
+                </tr>
+                <tr>
+                    <td>Juliana Ceballos Gonzalez</td>
+                    <td>39</td>
+                    <td>Mujer</td>
+                    <td>$14,595.59</td>
+                    <td>$8,996.64</td>
+                    <td><strong>$23,592.23</strong></td>
+                </tr>
+                <tr>
+                    <td>Emma Castro Ceballos</td>
+                    <td>1</td>
+                    <td>Mujer</td>
+                    <td>$6,043.98</td>
+                    <td>$3,725.47</td>
+                    <td><strong>$9,769.45</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Concepto</th>
+                    <th>Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Prima Neta Total</td>
+                    <td>$51,965.69</td>
+                </tr>
+                <tr>
+                    <td>Gastos de Expedición</td>
+                    <td>$900.00</td>
+                </tr>
+                <tr>
+                    <td>Subtotal</td>
+                    <td>$52,865.69</td>
+                </tr>
+                <tr>
+                    <td>IVA (16%)</td>
+                    <td>$8,458.51</td>
+                </tr>
+                <tr class="totales-row">
+                    <td>TOTAL A PAGAR</td>
+                    <td>$61,324.20</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const supabaseUrl = 'https://jdvwabcamdbwsuyemzlb.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkdndhYmNhbWRid3N1eWVtemxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NTQ2NTQsImV4cCI6MjA0NTEzMDY1NH0.3E7RbfOJ6mEGI0bXVTvPkfA-TXuYh94YqF5zHFtbKhA';
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        window.verificarInfraestructura = async function() {
+            const btn = document.getElementById('btnVerificar');
+            const resultado = document.getElementById('resultado');
+
+            btn.disabled = true;
+            resultado.innerHTML = '<div class="loading"><div class="spinner"></div>Verificando infraestructura...</div>';
+
+            try {
+                // Verificar tarifas
+                const { data: packages, error: pkgError } = await supabase
+                    .from('tariff_packages')
+                    .select('id, name, status, created_at')
+                    .order('created_at', { ascending: false });
+
+                if (pkgError) throw pkgError;
+
+                if (!packages || packages.length === 0) {
+                    resultado.innerHTML = `
+                        <div class="status error">
+                            <strong>❌ No hay tarifas cargadas</strong><br><br>
+                            <strong>Solución:</strong><br>
+                            1. Ve a "GMM Tarifas Admin"<br>
+                            2. Sube el archivo Excel de tarifas<br>
+                            3. Activa la tarifa<br>
+                            4. Vuelve a verificar
+                        </div>
+                    `;
+                    btn.disabled = false;
+                    return;
+                }
+
+                const activePkg = packages.find(p => p.status === 'active');
+                if (!activePkg) {
+                    resultado.innerHTML = `
+                        <div class="status error">
+                            <strong>❌ No hay tarifas activas</strong><br><br>
+                            Tarifas disponibles: ${packages.length}<br><br>
+                            <strong>Solución:</strong><br>
+                            1. Ve a "GMM Tarifas Admin"<br>
+                            2. Activa una de las tarifas cargadas
+                        </div>
+                    `;
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Verificar tablas
+                const { data: tables, error: tablesError } = await supabase
+                    .from('tariff_tables')
+                    .select('*')
+                    .eq('package_id', activePkg.id);
+
+                if (tablesError) throw tablesError;
+
+                const tariffTables = {};
+                tables.forEach(t => { tariffTables[t.table_name] = t.table_data; });
+
+                const criticalTables = [
+                    'base_age_gender',
+                    'estados',
+                    'nivel_hospitalario',
+                    'tabulador',
+                    'suma_asegurada',
+                    'deducible',
+                    'coaseguro',
+                    'tops_coaseguro'
+                ];
+
+                let checksHTML = '<h2>✅ Verificación de Infraestructura</h2><div class="status success">';
+                checksHTML += `<strong>Tarifa Activa:</strong> ${activePkg.name}<br>`;
+                checksHTML += `<strong>Tablas Cargadas:</strong> ${tables.length}<br><br>`;
+                checksHTML += '<strong>Tablas Críticas:</strong><br>';
+
+                let allOk = true;
+                criticalTables.forEach(name => {
+                    const exists = tariffTables[name];
+                    const status = exists ? '✅' : '❌';
+                    const rows = exists ? tariffTables[name].length : 0;
+                    checksHTML += `<div class="check-item">${status} ${name} ${exists ? `(${rows} filas)` : '- NO ENCONTRADA'}</div>`;
+                    if (!exists) allOk = false;
+                });
+
+                checksHTML += '</div>';
+
+                if (!allOk) {
+                    checksHTML += `<div class="status error">
+                        <strong>⚠️ Faltan tablas críticas</strong><br>
+                        La tarifa Excel no está completa o hay un error en la carga.
+                    </div>`;
+                }
+
+                checksHTML += `
+                    <div class="instructions">
+                        <h2>🎯 Siguiente Paso: Ejecutar Prueba</h2>
+                        <ol>
+                            <li><strong>Ve a la página:</strong> "GMM BX+ Cotizador"</li>
+                            <li><strong>Ingresa los datos:</strong> (ver tabla arriba)</li>
+                            <li><strong>Calcula:</strong> Presiona el botón "Calcular"</li>
+                            <li><strong>Compara:</strong> Los resultados deben coincidir exactamente con la tabla de valores esperados</li>
+                        </ol>
+                        <strong style="margin-top: 15px; display: block;">Criterios de Éxito:</strong>
+                        <ul>
+                            <li>✅ ÉXITO: Diferencia = $0.00 en cada concepto</li>
+                            <li>⚠️  REVISAR: Diferencia > $0.02 (redondeo)</li>
+                            <li>❌ ERROR: Diferencia > $1.00 (problema en motor)</li>
+                        </ul>
+                    </div>
+                `;
+
+                resultado.innerHTML = checksHTML;
+
+            } catch (error) {
+                console.error('Error:', error);
+                resultado.innerHTML = `
+                    <div class="status error">
+                        <strong>❌ Error:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+
+            btn.disabled = false;
+        };
+    </script>
+</body>
+</html>

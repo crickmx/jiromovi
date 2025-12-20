@@ -1,303 +1,377 @@
-# Guía de Validación GMM BX+ Motor V2
+# 🧪 CASO DE PRUEBA: RICARDO CASTRO GOMEZ
 
-## Checklist de Validación
-
-### ✅ Antes de Desplegar
-
-- [ ] El proyecto compila sin errores (`npm run build`)
-- [ ] Las tablas de tarifas están cargadas en Supabase
-- [ ] Al menos 3 casos de prueba validados contra Excel
+**Fuente:** PDF "bx+_ricardo_castro_gomez.pdf"
+**Fecha:** 17 dic 2025
+**Propósito:** Validar que GMM BX+ calcule idéntico al Excel
 
 ---
 
-## Validación Rápida (5 minutos)
+## 📋 DATOS DEL PLAN
 
-### Caso 1: Básico
-
-**Parámetros:**
-- **Asegurado:** Hombre, 30 años
-- **Estado:** Aguascalientes
-- **Nivel hospitalario:** Estándar
-- **Tabulador:** 1
-- **Suma asegurada:** $5,000,000
-- **Deducible:** $20,000
-- **Coaseguro:** 10%
-- **Coberturas:** Ninguna
-
-**Pasos:**
-1. Abrir cotizador GMM
-2. Llenar los datos anteriores
-3. Clic en "Calcular"
-4. Comparar prima neta con Excel
-
-**¿Qué validar?**
-- Prima base por asegurado
-- Prima neta total
-- Gastos de expedición
-- IVA
-- Total con IVA
-
-**Tolerancia:** ≤ $0.01
+| Campo | Valor |
+|-------|-------|
+| **Estado** | QUERETARO |
+| **Nivel Hospitalario** | PLUS |
+| **Tabulador** | ORO-110,000 |
+| **Suma Asegurada** | $50,000,000 |
+| **Deducible** | $35,000 |
+| **Coaseguro** | 15% |
+| **Tope de Coaseguro** | $60,000 |
+| **Forma de Pago** | ANUAL |
 
 ---
 
-### Caso 2: Con Coberturas
+## 👥 ASEGURADOS
 
-**Parámetros:**
-- **Asegurado:** Mujer, 45 años
-- **Estado:** CDMX
-- **Nivel hospitalario:** Premium
-- **Tabulador:** 2
-- **Suma asegurada:** $10,000,000
-- **Deducible:** $50,000
-- **Coaseguro:** 20%
-- **Coberturas:**
-  - ✅ Medicamentos fuera
-  - ✅ VIP
-  - ✅ Emergencia médica extranjero
+### 1. RICARDO CASTRO GOMEZ
+- **Edad:** 40 años
+- **Sexo:** Hombre
+- **Prima Neta Básica:** $11,509.57
+- **Prima Neta Adicionales:** $7,094.43
+- **Prima Neta Total:** $18,604.00
 
-**¿Qué validar?**
-- Prima base correcta
-- Cada cobertura calculada correctamente
-- Prima neta = prima base + coberturas
-- Total final
+### 2. JULIANA CEBALLOS GONZALEZ
+- **Edad:** 39 años
+- **Sexo:** Mujer
+- **Prima Neta Básica:** $14,595.59
+- **Prima Neta Adicionales:** $8,996.64
+- **Prima Neta Total:** $23,592.23
 
----
-
-### Caso 3: Familia
-
-**Parámetros:**
-- **Asegurado 1:** Hombre, 35 años (Titular)
-- **Asegurado 2:** Mujer, 32 años (Cónyuge)
-- **Asegurado 3:** Niño, 5 años (Hijo)
-- **Estado:** Jalisco
-- **Nivel hospitalario:** Estándar Plus
-- **Tabulador:** 1
-- **Suma asegurada:** $7,500,000
-- **Deducible:** $30,000
-- **Coaseguro:** 15%
-- **Coberturas:** Padecimientos preexistentes
-
-**¿Qué validar?**
-- Prima de cada asegurado
-- Suma correcta de primas
-- Gastos de expedición (3 × $150 = $450)
-- Total final
+### 3. EMMA CASTRO CEBALLOS
+- **Edad:** 1 año
+- **Sexo:** Mujer
+- **Prima Neta Básica:** $6,043.98
+- **Prima Neta Adicionales:** $3,725.47
+- **Prima Neta Total:** $9,769.45
 
 ---
 
-## Modo Debug
+## 🛡️ COBERTURAS CONTRATADAS
 
-### Activar en Desarrollo
+### Cobertura Básica
+✅ Incluida (base del plan)
+
+### Servicios de Asistencia (Incluidos sin costo)
+- ✅ Servicio Dental Básico
+- ✅ Servicios de Asistencia Bx+
+- ✅ Asistencia al viajero
+
+### Coberturas Adicionales con Costo
+1. ✅ **Medicamentos Fuera del Hospital**
+2. ✅ **Eliminación de Deducible por Accidente**
+3. ✅ **Multiregion**
+4. ✅ **Beneficio Hospitalario VIP**
+5. ✅ **Emergencia Médica en el extranjero**
+6. ✅ **Reconocimiento de Antigüedad**
+
+### Coberturas NO Contratadas
+- ❌ Padecimientos Preexistentes
+- ❌ Complicaciones No Amparadas
+- ❌ Enfermedades Graves Extranjero
+- ❌ Cobertura Internacional
+- ❌ Ampliación de Servicios
+- ❌ Ayuda Diaria
+- ❌ Indemnización EG
+- ❌ Maternidad
+- ❌ Xtensuz
+
+---
+
+## 💰 TOTALES ESPERADOS (DEL EXCEL/PDF)
+
+| Concepto | Importe |
+|----------|---------|
+| **Prima Neta Total** | $51,965.69 |
+| Descuentos | $0.00 |
+| Recargo por Pago Fraccionado | $0.00 |
+| **Derecho de Póliza** | $900.00 |
+| **Subtotal** | $52,865.69 |
+| **IVA (16%)** | $8,458.51 |
+| **PRIMA TOTAL** | $61,324.20 |
+
+### Forma de Pago ANUAL
+- **Número de Recibos:** 1
+- **Primer Recibo:** $61,324.20
+- **Recibos Subsecuentes:** $0.00
+
+---
+
+## 🔍 ANÁLISIS DE CÁLCULO
+
+### Gastos de Expedición
+```
+Número de asegurados: 3
+Costo por asegurado: $300.00
+Total: 3 × $300 = $900.00
+```
+
+**⚠️ NOTA IMPORTANTE:**
+El PDF muestra "Derecho de Póliza" de $900.00, lo que sugiere:
+- **$300 por asegurado** (no $150 como tenemos configurado)
+- O es un concepto diferente a "Gastos de Expedición"
+
+**VERIFICAR:**
+- ¿Gastos de Expedición = $150 o $300 por asegurado?
+- ¿O hay un concepto adicional "Derecho de Póliza"?
+
+### Cálculo de IVA
+```
+Subtotal: $52,865.69
+IVA (16%): $52,865.69 × 0.16 = $8,458.51 ✓
+```
+
+### Suma de Primas Netas
+```
+Ricardo:  $18,604.00
+Juliana:  $23,592.23
+Emma:     $ 9,769.45
+-------------------
+TOTAL:    $51,965.68 (debería ser $51,965.69)
+```
+
+**⚠️ Diferencia de $0.01**
+Posible error de redondeo acumulado o en el PDF
+
+---
+
+## 📊 DESGLOSE POR ASEGURADO
+
+### RICARDO (40 años, Hombre)
+
+**Prima Base:** $11,509.57
+
+**Proceso de cálculo estimado:**
+```
+1. Base edad/sexo (40, H)     = ?
+2. × Factor Estado (Querétaro) = ?
+3. × Factor Nivel (PLUS)       = ?
+4. × Factor Tabulador (ORO)    = ?
+5. × Factor SA ($50M)          = ?
+6. × Factor Deducible ($35k)   = ?
+7. × Factor Coaseguro (15%)    = ?
+--------------------------------
+Prima Base Final              = $11,509.57
+```
+
+**Coberturas Adicionales:** $7,094.43
+```
+Medicamentos Fuera         = ?
+Elim. Ded. Accidente       = ?
+Multiregion                = ?
+VIP                        = ?
+Emergencia Extranjero      = ?
+Reconocimiento Antigüedad  = ?
+---------------------------
+TOTAL                      = $7,094.43
+```
+
+**¿Porcentaje de adicionales?**
+```
+$7,094.43 / $11,509.57 = 61.63%
+```
+
+### JULIANA (39 años, Mujer)
+
+**Prima Base:** $14,595.59
+**Adicionales:** $8,996.64
+
+**Proporción:**
+```
+$8,996.64 / $14,595.59 = 61.63% (igual que Ricardo)
+```
+
+### EMMA (1 año, Mujer)
+
+**Prima Base:** $6,043.98
+**Adicionales:** $3,725.47
+
+**Proporción:**
+```
+$3,725.47 / $6,043.98 = 61.63% (igual que los demás)
+```
+
+**✅ OBSERVACIÓN:**
+Las coberturas adicionales representan exactamente el **61.63%** de la prima base para los 3 asegurados.
+Esto confirma que las coberturas se calculan con los mismos porcentajes para todos.
+
+---
+
+## 🎯 PRUEBA A EJECUTAR EN GMM BX+
+
+### Paso 1: Ir a "GMM BX+ Cotizador"
+
+### Paso 2: Ingresar Características del Plan
+```
+Estado:             QUERETARO
+Nivel Hospitalario: PLUS
+Tabulador:          ORO-110,000
+Suma Asegurada:     50,000,000 (o $50,000,000)
+Deducible:          35,000 (o $35,000)
+Coaseguro:          15% (o 0.15)
+Tope Coaseguro:     60,000
+```
+
+### Paso 3: Agregar Asegurados
+```
+Asegurado 1:
+  Nombre: RICARDO CASTRO GOMEZ
+  Edad:   40
+  Sexo:   Hombre
+
+Asegurado 2:
+  Nombre: JULIANA CEBALLOS GONZALEZ
+  Edad:   39
+  Sexo:   Mujer
+
+Asegurado 3:
+  Nombre: EMMA CASTRO CEBALLOS
+  Edad:   1
+  Sexo:   Mujer
+```
+
+### Paso 4: Seleccionar Coberturas
+Marcar SOLAMENTE estas coberturas:
+- [x] Medicamentos Fuera del Hospital
+- [x] Eliminación de Deducible por Accidente
+- [x] Multiregion
+- [x] Beneficio Hospitalario VIP
+- [x] Emergencia Médica en el extranjero
+- [x] Reconocimiento de Antigüedad
+
+**Dejar DESMARCADAS todas las demás**
+
+### Paso 5: Forma de Pago
+```
+Seleccionar: ANUAL
+```
+
+### Paso 6: Calcular
+
+---
+
+## ✅ CRITERIOS DE ÉXITO
+
+### Nivel 1: Coincidencia Perfecta (Ideal)
+Todas las diferencias = **$0.00**
+
+| Concepto | Excel | Sistema | Diferencia |
+|----------|-------|---------|------------|
+| Ricardo - Base | $11,509.57 | ? | $0.00 |
+| Ricardo - Adicionales | $7,094.43 | ? | $0.00 |
+| Ricardo - Total | $18,604.00 | ? | $0.00 |
+| Juliana - Base | $14,595.59 | ? | $0.00 |
+| Juliana - Adicionales | $8,996.64 | ? | $0.00 |
+| Juliana - Total | $23,592.23 | ? | $0.00 |
+| Emma - Base | $6,043.98 | ? | $0.00 |
+| Emma - Adicionales | $3,725.47 | ? | $0.00 |
+| Emma - Total | $9,769.45 | ? | $0.00 |
+| **Prima Neta Total** | **$51,965.69** | ? | **$0.00** |
+| Gastos Expedición | $900.00 | ? | $0.00 |
+| Subtotal | $52,865.69 | ? | $0.00 |
+| IVA | $8,458.51 | ? | $0.00 |
+| **TOTAL** | **$61,324.20** | ? | **$0.00** |
+
+### Nivel 2: Tolerancia Aceptable
+Diferencia máxima permitida por redondeo: **±$0.02 por concepto**
+
+### Nivel 3: Problemas en el Motor
+Si diferencias > $1.00 → **Investigar motor de cálculo**
+
+---
+
+## 🔧 SI HAY DIFERENCIAS
+
+### 1. Activar Modo Debug
+Modificar temporalmente el código para ver el desglose:
 
 ```typescript
-// En GMMCotizador.tsx, buscar la llamada a calculateQuote
-const resultado = calculateQuote(quoteInput, tariffTables);
+const result = calculateQuote(input, tables, debug: true);
 ```
 
-Cambiar temporalmente a:
-
-```typescript
-const resultado = calculateQuote(quoteInput, tariffTables, true); // debug = true
-```
-
-### Leer Logs
-
-Abrir consola del navegador (F12) y buscar:
-
-```
-[DEBUG] Asegurado 1 - Juan Pérez: {
+### 2. Revisar Logs en Consola
+El modo debug muestra:
+```javascript
+{
   capa1_datosBase: { ... },
-  capa2_primaBaseFinal: 2500.00,
+  capa2_primaBaseFinal: ...,
   capa3_cargas: { ... },
-  ...
+  capa4_coberturas: { ... },
+  capa5_totales: { ... }
 }
 ```
 
-### Comparar Paso a Paso con Excel
+### 3. Comparar Capa por Capa
 
-| Paso | Excel | Sistema | ¿Coincide? |
-|------|-------|---------|------------|
-| Base edad/sexo | 1500.00 | 1500.00 | ✅ |
-| Factor estado | 1.05 | 1.05 | ✅ |
-| Factor nivel | 1.20 | 1.20 | ✅ |
-| ... | ... | ... | ... |
-| Prima base final | 2500.00 | 2500.00 | ✅ |
-| Prima con cargas | 2800.00 | 2800.00 | ✅ |
-| Cobertura VIP | 150.00 | 150.00 | ✅ |
-| Prima neta | 2950.00 | 2950.00 | ✅ |
+**Si Prima Base es diferente:**
+- Revisar factores en CAPA 1 (lookup)
+- Verificar que el Excel tenga los mismos factores
+- Comprobar que el orden de multiplicación sea correcto
 
----
+**Si Adicionales son diferentes:**
+- Revisar coeficientes en CAPA 4
+- Verificar que los coeficientes del Excel coincidan
+- Comprobar que se apliquen sobre la base correcta
 
-## Errores Comunes
-
-### Error: "Valor no encontrado en tabla"
-
-**Síntoma:**
-```
-[CAPA 1 - LOOKUP] Valor "Aguascalientes" no encontrado en tabla "Factor Estado"
-```
-
-**Solución:**
-1. Verificar que las tablas estén cargadas en Supabase
-2. Verificar el formato del valor (mayúsculas, acentos, espacios)
-3. Verificar que la tabla tenga el valor esperado
+**Si Totales son diferentes:**
+- Verificar Gastos de Expedición ($300 vs $150)
+- Comprobar cálculo de IVA (16%)
+- Revisar redondeo en cada paso
 
 ---
 
-### Error: "Denominador inválido"
+## 📌 PUNTOS CRÍTICOS A VERIFICAR
 
-**Síntoma:**
+### 1. Gastos de Expedición
+❓ **¿$150 o $300 por asegurado?**
+- PDF muestra: $900 / 3 = $300 por asegurado
+- Sistema tiene configurado: $150 por asegurado
+- **ACCIÓN:** Verificar en Excel celda O67 (hoja Cotizacion)
+
+### 2. Tope de Coaseguro
+✓ **Excel muestra $60,000 para 15%**
+- Sistema lee de tabla: T13:U17
+- Debe coincidir
+
+### 3. Coeficientes de Coberturas
+**Verificar que los coeficientes del Excel coincidan con:**
 ```
-[CAPA 3 - CARGAS] Denominador inválido: -0.05
-```
-
-**Causa:** La suma de cargas es ≥ 1
-
-**Solución:**
-1. Revisar la tabla `denominador_cargas` en Supabase
-2. Las cargas deben ser porcentajes < 1 (ej: 0.10, 0.05, 0.03)
-3. La suma de todas las cargas debe ser < 1
-
----
-
-### Error: "Factor = 0"
-
-**Síntoma:**
-```
-[VALIDACIÓN] Factor "factorEstado" = 0 (debe ser > 0)
+medicamentos:            ~20.47%
+eliminacion_deducible:   (tabla AU15:AW23)
+multiregion:             (tabla AQ42:AS74 - Querétaro)
+vip:                     ~3.44%
+emergencia_ext:          ~1.25%
+antiguedad:              ~7.50%
 ```
 
-**Causa:** Un factor no se encontró o es inválido
-
-**Solución:**
-1. Verificar que el valor buscado existe en la tabla
-2. Verificar que la celda en Excel no está vacía
-3. Verificar que el valor es numérico (no texto)
-
----
-
-## Validación de Tablas en Supabase
-
-### Verificar que las Tablas Existan
-
-```sql
-SELECT table_key, jsonb_array_length(data_json) as rows
-FROM gmm_tariff_tables
-WHERE producto = 'BX+'
-ORDER BY table_key;
-```
-
-**Resultado esperado:**
-- `base_intermedia_edad_sexo`: ~80 filas (edades 0-80)
-- `factor_estado`: ~32 filas (32 estados)
-- `factor_nivel_hospitalario`: ~4 filas
-- `factor_tabulador`: ~3 filas
-- `factor_suma_asegurada`: ~8 filas
-- `factor_deducible`: ~6 filas
-- `factor_coaseguro`: ~4 filas
-- `denominador_cargas`: 3-5 valores
-
-### Verificar Coeficientes
-
-```sql
-SELECT table_key, data_json->0->'col_0' as coeficiente
-FROM gmm_tariff_tables
-WHERE table_key LIKE 'coef_%' AND producto = 'BX+'
-ORDER BY table_key;
-```
-
-**Verificar:**
-- Todos los coeficientes son numéricos
-- Ningún coeficiente es NULL
-- Los valores están en el rango esperado (0.01 - 2.00)
+### 4. Factor Estado
+**Querétaro en tabla W4:Z38**
+- Columna 0: Nombre
+- Columna 1: ¿Zona?
+- Columna 2: Factor
+- **Verificar:** ¿Cuál es el factor para Querétaro?
 
 ---
 
-## Checklist de Regresión
+## 📝 SIGUIENTE PASO
 
-Antes de cada actualización, validar que:
-
-- [ ] Las 3 cotizaciones de prueba siguen generando los mismos valores
-- [ ] El PDF se genera correctamente
-- [ ] Las coberturas se muestran correctamente en el PDF
-- [ ] Los totales cuadran con el Excel
-- [ ] El modo debug muestra información coherente
-- [ ] No hay errores en consola
+1. **Ejecutar esta cotización en GMM BX+**
+2. **Capturar resultados del sistema**
+3. **Comparar con tabla de arriba**
+4. **Reportar diferencias**
+5. **Si hay diferencias → Activar modo debug**
 
 ---
 
-## Reportar Discrepancias
+## 🎓 APRENDIZAJES ESPERADOS
 
-Si encuentras una diferencia > $0.01:
-
-1. **Activar modo debug**
-2. **Anotar:**
-   - Parámetros de entrada (edad, estado, coberturas, etc.)
-   - Valor esperado (Excel)
-   - Valor obtenido (sistema)
-   - Logs de debug completos
-3. **Comparar paso a paso** con Excel para identificar dónde divergen
-4. **Verificar tablas** en Supabase
+Esta prueba nos dirá:
+1. ✅ Si el motor de cálculo replica exactamente el Excel
+2. ✅ Si los rangos de celdas están correctos
+3. ✅ Si los coeficientes están correctos
+4. ✅ Si el redondeo está correcto
+5. ✅ Si falta configurar algo (ej: Gastos de Expedición)
 
 ---
 
-## Casos Edge
-
-### Edad límite
-
-- **Mínima:** 0 años (recién nacido)
-- **Máxima:** 80 años
-
-**Validar:**
-- Sistema no acepta edades fuera de rango
-- Error es claro: "Edad 85 no encontrada. Rango válido: 0 - 80 años"
-
-### Coberturas sin coeficiente
-
-Si una cobertura está seleccionada pero no tiene coeficiente en Supabase:
-
-**Comportamiento esperado:**
-- Coeficiente = 0
-- Cobertura se muestra pero con valor $0.00
-- No rompe el cálculo
-
-### Tope de coaseguro fuera de rango
-
-**Comportamiento esperado:**
-- Sistema valida el rango antes de calcular
-- Error: "Tope de coaseguro $500,000 fuera de rango. Para coaseguro 10%, el rango permitido es $50,000 - $300,000"
-
----
-
-## Validación de Formas de Pago
-
-**Fórmulas:**
-- **Anual:** total × 1.00 (sin recargo)
-- **Semestral:** (total × 1.03) / 2
-- **Trimestral:** (total × 1.05) / 4
-- **Mensual:** (total × 1.07) / 12
-
-**Ejemplo:**
-Si total anual = $10,000:
-- Anual: $10,000
-- Semestral: $5,150 × 2 = $10,300
-- Trimestral: $2,625 × 4 = $10,500
-- Mensual: $892 × 12 = $10,700 (aprox)
-
----
-
-## Próximos Pasos
-
-Una vez validado el motor:
-
-1. Marcar esta guía como revisada
-2. Guardar casos de prueba para regresión
-3. Documentar cualquier caso especial encontrado
-4. Actualizar esta guía si se agregan coberturas nuevas
-
----
-
-**Fecha:** 2024-12-20
-**Motor:** V2.0.0
-**Estado:** Listo para validación
+**Estado:** ⏳ Pendiente de ejecución
+**Próximo paso:** Ejecutar en GMM BX+ y reportar resultados
