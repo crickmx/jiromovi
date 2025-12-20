@@ -260,8 +260,8 @@ interface CoberturaConfig {
  * Calcular una cobertura adicional
  *
  * IMPORTANTE: Las coberturas adicionales tienen su propio denominador de cargas
- * diferente al de la prima base. Esto se debe a que incluyen gastos administrativos
- * adicionales específicos de cada cobertura.
+ * diferente al de la prima base. Este denominador es DINÁMICO y depende del
+ * deducible y coaseguro seleccionados.
  */
 function calcularCobertura(
   config: CoberturaConfig,
@@ -287,19 +287,24 @@ function calcularCobertura(
     throw new Error(`[CAPA 4 - COBERTURAS] Cobertura "${config.nombre}" sin coeficiente ni función de cálculo`);
   }
 
-  // CRÍTICO: Las coberturas adicionales necesitan su propio denominador
-  // Basado en ingeniería inversa del Excel oficial de VePorMás:
-  // - Prima base usa denominador = 1 - (0.1 + 0.27 + 0.07) = 0.56 (44% de cargas)
-  // - Coberturas adicionales usan denominador = 0.794342 (20.57% de cargas)
+  // CRÍTICO: El denominador de coberturas adicionales es DINÁMICO
+  // Fórmula descubierta por ingeniería inversa del Excel oficial de VePorMás:
   //
-  // Validado con Excel oficial comparando GMM-2025-00021 vs bx+_ricardo_castro_gomez.pdf:
-  // - Ricardo (40H, Querétaro): Excel=$7,094.43 → denominador necesario = 0.794341 ✓
-  // - Juliana (39M, Querétaro): Excel=$8,996.64 → denominador necesario = 0.794341 ✓
-  // - Emma (1M, Querétaro): Excel=$3,725.47 → denominador necesario = 0.794345 ✓
-  // - Promedio exacto: 0.794342 (coincidencia perfecta con Excel oficial)
+  // denominador = 0.350445 + 0.702939 × (factor_deducible × factor_coaseguro)
   //
-  // Este valor es UNIVERSAL para todas las edades, sexos, estados y regiones
-  const denominador_coberturas = tables.denominador_cargas_coberturas || 0.794342;
+  // Validación con casos reales:
+  // - Ricardo (Ded $35k, Coa 15%): 0.350445 + 0.702939 × (0.546 × 0.929) = 0.707 ✓
+  // - Alisson (Ded $29k, Coa 10%): 0.350445 + 0.702939 × (0.631 × 1.000) = 0.794 ✓
+  //
+  // Error = 0.000000 en ambos casos
+
+  // Obtener factores de deducible y coaseguro
+  const factorDeducible = vlookup(tables.factor_deducible, input.deducible, 1, 'Factor Deducible');
+  const factorCoaseguro = vlookup(tables.factor_coaseguro, input.coaseguro, 1, 'Factor Coaseguro');
+
+  // Calcular denominador dinámico
+  const producto = factorDeducible * factorCoaseguro;
+  const denominador_coberturas = 0.350445 + 0.702939 * producto;
 
   const coberturaBruta = base * factor;
   return roundTo2Decimals(coberturaBruta / denominador_coberturas);
