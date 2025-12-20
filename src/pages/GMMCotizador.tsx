@@ -369,12 +369,15 @@ export default function GMMCotizador() {
     }
 
     try {
-      const { error } = await supabase
-        .from('gmm_quotations')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', quotation.id);
+      const { data, error } = await supabase.rpc('soft_delete_gmm_quotation', {
+        p_quotation_id: quotation.id
+      });
 
       if (error) throw error;
+
+      if (data && !data.success) {
+        throw new Error(data.error || 'Error al eliminar la cotización');
+      }
 
       alert('Cotización eliminada exitosamente');
       loadQuotes();
