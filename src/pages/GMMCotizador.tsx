@@ -418,7 +418,10 @@ export default function GMMCotizador() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No autenticado');
 
-      const firstPlan = result.payment_plans[0];
+      const firstPlan = result.payment_plans?.[0];
+      if (!firstPlan) {
+        throw new Error('No se generaron planes de pago. Verifique que haya seleccionado al menos una forma de pago.');
+      }
 
       const quotationData = {
         usuario_id: user.id,
