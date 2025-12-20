@@ -779,6 +779,8 @@ export default function GMMCotizador() {
                       'ampliacion_servicios',
                       'ayuda_diaria',
                       'indemnizacion_eg',
+                      'maternidad',
+                      'xtensuz'
                     ].map((key) => (
                       <label key={key} className="flex items-center gap-2 text-sm group cursor-pointer">
                         <input

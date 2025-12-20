@@ -3,6 +3,8 @@ import { Plus, Trash2, Copy, Calculator } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { InfoTooltip } from '../ui/info-tooltip';
+import { getCoverageHelpText, getCoverageLabel } from '../../lib/gmmCoverageHelp';
 import type {
   QuoteInputMultiOption,
   QuoteOption,
@@ -20,6 +22,41 @@ interface MultiOptionQuoteProps {
   calculating: boolean;
 }
 
+const ALL_COVERAGES = [
+  'reconocimiento_antiguedad',
+  'medicamentos_fuera',
+  'complicaciones_no_amparadas',
+  'padecimientos_preexistentes',
+  'eliminacion_deducible_accidente',
+  'multiregion',
+  'vip',
+  'emergencia_medica_extranjero',
+  'enfermedades_graves_extranjero',
+  'cobertura_internacional',
+  'ampliacion_servicios',
+  'ayuda_diaria',
+  'indemnizacion_eg',
+  'maternidad',
+  'xtensuz'
+];
+
+function formatCurrency(value: string | number): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '$0';
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(num);
+}
+
+function formatPercentage(value: string | number): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '0%';
+  return `${(num * 100).toFixed(0)}%`;
+}
+
 export function MultiOptionQuote({
   tariffTables,
   insureds,
@@ -32,8 +69,14 @@ export function MultiOptionQuote({
     createDefaultOption(tariffTables),
     createDefaultOption(tariffTables),
   ]);
+  const [formasPago, setFormasPago] = useState<string[]>([tariffTables.forma_pago[0]?.col_0 || 'ANUAL']);
 
   function createDefaultOption(tables: TariffTables): QuoteOption {
+    const defaultCoberturas: Record<string, boolean> = {};
+    ALL_COVERAGES.forEach(key => {
+      defaultCoberturas[key] = ['medicamentos_fuera', 'eliminacion_deducible_accidente', 'multiregion', 'vip', 'emergencia_medica_extranjero'].includes(key);
+    });
+
     return {
       plan: {
         zona: 'ZONA 1',
@@ -46,13 +89,7 @@ export function MultiOptionQuote({
         formas_pago: [tables.forma_pago[0]?.col_0 || 'ANUAL'],
         montos: {},
       },
-      coberturas: {
-        medicamentos_fuera: true,
-        eliminacion_deducible_accidente: true,
-        multiregion: true,
-        vip: true,
-        emergencia_medica_extranjero: true,
-      }
+      coberturas: defaultCoberturas
     };
   }
 
@@ -98,9 +135,18 @@ export function MultiOptionQuote({
       return;
     }
 
+    // Actualizar formas de pago en todas las opciones
+    const updatedOptions = options.map(opt => ({
+      ...opt,
+      plan: {
+        ...opt.plan,
+        formas_pago: formasPago
+      }
+    }));
+
     const multiInput: QuoteInputMultiOption = {
       insureds,
-      options
+      options: updatedOptions
     };
 
     onCalculate(multiInput);
@@ -117,8 +163,9 @@ export function MultiOptionQuote({
         </p>
       </div>
 
+      {/* Asegurados */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Asegurados</h3>
+        <h3 className="text-lg font-semibold mb-4">Asegurados (Comunes a Todas las Opciones)</h3>
         {insureds.map((insured, idx) => (
           <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
             <div>
@@ -189,6 +236,34 @@ export function MultiOptionQuote({
         </div>
       </Card>
 
+      {/* Formas de Pago (común a todas las opciones) */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">Formas de Pago (Aplican a Todas las Opciones)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {tariffTables.forma_pago.map((row) => (
+            <label key={row.col_0} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formasPago.includes(row.col_0)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setFormasPago([...formasPago, row.col_0]);
+                  } else {
+                    if (formasPago.length > 1) {
+                      setFormasPago(formasPago.filter(fp => fp !== row.col_0));
+                    } else {
+                      alert('Debe seleccionar al menos una forma de pago');
+                    }
+                  }
+                }}
+                className="rounded"
+              />
+              <span className="text-sm">{row.col_0}</span>
+            </label>
+          ))}
+        </div>
+      </Card>
+
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Opciones a Comparar</h3>
         <Button onClick={addOption} variant="outline" size="sm">
@@ -197,6 +272,7 @@ export function MultiOptionQuote({
         </Button>
       </div>
 
+      {/* Opciones */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {options.map((option, idx) => (
           <Card key={idx} className="p-6 relative">
@@ -271,7 +347,7 @@ export function MultiOptionQuote({
                   className="w-full px-3 py-2 border rounded-lg text-sm"
                 >
                   {tariffTables.factor_suma_asegurada.map((row) => (
-                    <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
+                    <option key={row.col_0} value={row.col_0}>{formatCurrency(row.col_0)}</option>
                   ))}
                 </select>
               </div>
@@ -284,7 +360,7 @@ export function MultiOptionQuote({
                   className="w-full px-3 py-2 border rounded-lg text-sm"
                 >
                   {tariffTables.factor_deducible.map((row) => (
-                    <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
+                    <option key={row.col_0} value={row.col_0}>{formatCurrency(row.col_0)}</option>
                   ))}
                 </select>
               </div>
@@ -298,43 +374,25 @@ export function MultiOptionQuote({
                 >
                   {tariffTables.factor_coaseguro.map((row) => (
                     <option key={row.col_0} value={row.col_0}>
-                      {(parseFloat(row.col_0) * 100).toFixed(0)}%
+                      {formatPercentage(row.col_0)}
                     </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Forma de Pago</label>
-                <select
-                  value={option.plan.formas_pago[0]}
-                  onChange={(e) => updateOption(idx, 'formas_pago', [e.target.value])}
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                >
-                  {tariffTables.forma_pago.map((row) => (
-                    <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
                   ))}
                 </select>
               </div>
 
               <div className="pt-2 border-t">
                 <h4 className="text-sm font-semibold mb-3">Coberturas Adicionales</h4>
-                <div className="space-y-2">
-                  {[
-                    { key: 'medicamentos_fuera', label: 'Medicamentos Fuera' },
-                    { key: 'eliminacion_deducible_accidente', label: 'Sin Deducible en Accidente' },
-                    { key: 'multiregion', label: 'Multirregión' },
-                    { key: 'vip', label: 'VIP' },
-                    { key: 'emergencia_medica_extranjero', label: 'Emergencia en Extranjero' }
-                  ].map(({ key, label }) => (
-                    <label key={key} className="flex items-center gap-2 text-sm">
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                  {ALL_COVERAGES.map((coverageKey) => (
+                    <label key={coverageKey} className="flex items-center gap-2 text-xs">
                       <input
                         type="checkbox"
-                        checked={option.coberturas[key]}
-                        onChange={(e) => updateOption(idx, `coberturas.${key}`, e.target.checked)}
+                        checked={option.coberturas[coverageKey] || false}
+                        onChange={(e) => updateOption(idx, `coberturas.${coverageKey}`, e.target.checked)}
                         className="rounded"
                       />
-                      <span>{label}</span>
+                      <span className="flex-1">{getCoverageLabel(coverageKey)}</span>
+                      <InfoTooltip content={getCoverageHelpText(coverageKey)} />
                     </label>
                   ))}
                 </div>
@@ -345,21 +403,16 @@ export function MultiOptionQuote({
                   <div className="text-center">
                     <div className="text-xs text-gray-500 mb-1">Total a Pagar</div>
                     <div className="text-2xl font-bold text-blue-600">
-                      {new Intl.NumberFormat('es-MX', {
-                        style: 'currency',
-                        currency: 'MXN',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }).format(result.options[idx].totales.total_pagar)}
+                      {formatCurrency(result.options[idx].totales.total_pagar)}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      Prima Neta: {new Intl.NumberFormat('es-MX', {
-                        style: 'currency',
-                        currency: 'MXN',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }).format(result.options[idx].prima_neta_total)}
+                      Prima Neta: {formatCurrency(result.options[idx].prima_neta_total)}
                     </div>
+                    {result.options[idx].tope_coaseguro && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Tope Coaseguro: {formatCurrency(result.options[idx].tope_coaseguro)}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

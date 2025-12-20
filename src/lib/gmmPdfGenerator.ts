@@ -91,9 +91,9 @@ export async function generateQuotePDF(
   const planData = [
     ['Nivel Hospitalario', quote.nivel_hospitalario],
     ['Tabulador', quote.tabulador],
-    ['Suma Asegurada', quote.suma_asegurada],
-    ['Deducible', quote.deducible],
-    ['Coaseguro', quote.coaseguro],
+    ['Suma Asegurada', formatMoneySafe(parseFloat(quote.suma_asegurada))],
+    ['Deducible', formatMoneySafe(parseFloat(quote.deducible))],
+    ['Coaseguro', `${(parseFloat(quote.coaseguro) * 100).toFixed(0)}%`],
     ['Tope de Coaseguro', formatMoneySafe(quote.tope_coaseguro)],
   ];
 
