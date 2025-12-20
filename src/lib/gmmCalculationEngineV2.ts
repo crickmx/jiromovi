@@ -478,7 +478,10 @@ function calcularTotales(
   numAsegurados: number,
   tables: TariffTables
 ): { gastosExpedicion: number; subtotal: number; iva: number; totalConIVA: number } {
-  const gastosExpedicion = roundTo2Decimals(numAsegurados * tables.gastos_expedicion);
+  // CRÍTICO: Gastos de expedición/Derecho de póliza es un cargo ÚNICO por póliza
+  // NO se multiplica por número de asegurados
+  // Validado con Excel oficial VePorMás: $900 por póliza (no $900 × 3 asegurados)
+  const gastosExpedicion = roundTo2Decimals(tables.gastos_expedicion);
   const subtotal = roundTo2Decimals(primaNetaTotal + gastosExpedicion);
   const iva = roundTo2Decimals(subtotal * tables.iva);
   const totalConIVA = roundTo2Decimals(subtotal + iva);
