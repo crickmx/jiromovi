@@ -149,6 +149,94 @@ export async function generateQuotePDF(
   yPosition = (doc as any).lastAutoTable.finalY + 12;
 
   // ============================================
+  // DESGLOSE DE COBERTURAS ADICIONALES
+  // ============================================
+  const hasAdditionalCoverages = insureds.some(ins => {
+    const addls = ins.coberturas_adicionales || ins.adicionales_detalle || ins.adicionales_json;
+    return addls && Object.keys(addls).length > 0;
+  });
+
+  if (hasAdditionalCoverages) {
+    if (pageHeight - yPosition < 60) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 51, 102);
+    doc.text('Desglose de Coberturas Adicionales', marginLeft, yPosition);
+    yPosition += 6;
+
+    const coverageLabelsMap: Record<string, string> = {
+      medicamentos_fuera: 'Medicamentos fuera del hospital',
+      vip: 'Beneficio VIP',
+      emergencia_medica_extranjero: 'Emergencia médica en el extranjero',
+      eliminacion_deducible_accidente: 'Eliminación deducible por accidente',
+      multiregion: 'Multiregión',
+      padecimientos_preexistentes: 'Padecimientos preexistentes',
+      complicaciones_no_amparadas: 'Complicaciones no amparadas',
+      reconocimiento_antiguedad: 'Reconocimiento de antigüedad',
+      enfermedades_graves_extranjero: 'Enfermedades graves en el extranjero',
+      ayuda_diaria: 'Ayuda diaria',
+      ampliacion_servicios: 'Ampliación de servicios',
+      cobertura_internacional: 'Cobertura internacional',
+      indemnizacion_eg: 'Indemnización EG'
+    };
+
+    insureds.forEach((insured, index) => {
+      const adicionales = insured.coberturas_adicionales || insured.adicionales_detalle || insured.adicionales_json;
+
+      if (adicionales && Object.keys(adicionales).length > 0) {
+        if (pageHeight - yPosition < 40) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(60);
+        doc.text(`${insured.nombre} (${insured.edad} años, ${insured.sexo})`, marginLeft, yPosition);
+        yPosition += 5;
+
+        const desgloseData: string[][] = [];
+        let totalAdicionales = 0;
+
+        Object.entries(adicionales).forEach(([key, value]) => {
+          const label = coverageLabelsMap[key] || key;
+          const amount = Number(value) || 0;
+          totalAdicionales += amount;
+          desgloseData.push([label, formatCurrency(amount)]);
+        });
+
+        desgloseData.push(['TOTAL ADICIONALES', formatCurrency(totalAdicionales)]);
+
+        autoTable(doc, {
+          startY: yPosition,
+          body: desgloseData,
+          theme: 'striped',
+          styles: { fontSize: 7, cellPadding: 1.5 },
+          margin: { left: marginLeft + 5, right: marginRight },
+          columnStyles: {
+            0: { cellWidth: contentWidth * 0.7 },
+            1: { cellWidth: contentWidth * 0.3, halign: 'right', fontStyle: 'bold' },
+          },
+          didParseCell: function(data) {
+            if (data.row.index === desgloseData.length - 1) {
+              data.cell.styles.fillColor = [220, 235, 255];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        });
+
+        yPosition = (doc as any).lastAutoTable.finalY + 8;
+      }
+    });
+
+    yPosition += 4;
+  }
+
+  // ============================================
   // COBERTURAS BÁSICAS INCLUIDAS
   // ============================================
   const coberturasBasicas = [

@@ -98,6 +98,8 @@ export interface GMMQuoteInsured {
   prima_total: number;
 
   adicionales_json: any | null;
+  coberturas_adicionales?: Record<string, number>;
+  adicionales_detalle?: Record<string, number>;
 
   created_at: string;
 }

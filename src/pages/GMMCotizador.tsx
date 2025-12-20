@@ -339,6 +339,7 @@ export default function GMMCotizador() {
         prima_base: ins.prima_base || 0,
         prima_adicionales: ins.prima_adicionales || 0,
         prima_total: ins.prima_total || 0,
+        coberturas_adicionales: ins.coberturas_adicionales || ins.adicionales_detalle || null,
       }));
 
       const pdfBlob = await generateQuotePDF(quoteForPdf as any, insuredsData, asesorInfo);
