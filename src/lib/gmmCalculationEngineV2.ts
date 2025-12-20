@@ -708,7 +708,7 @@ export function calculateQuoteV2(
   // Calcular formas de pago para las opciones seleccionadas
   const formasPagoSeleccionadas = input.formas_pago && input.formas_pago.length > 0
     ? input.formas_pago
-    : ['Anual']; // Default a Anual si no hay selección
+    : ['ANUAL']; // Default a ANUAL si no hay selección
 
   const paymentPlans = calcularFormasDePago(
     primaNetaTotal,
@@ -740,16 +740,23 @@ function calcularFormasDePago(
 
   // Definir recargos y número de recibos por forma de pago
   const formasPagoConfig: Record<string, { recargo: number; numRecibos: number }> = {
+    'ANUAL': { recargo: 0, numRecibos: 1 },
     'Anual': { recargo: 0, numRecibos: 1 },
+    'SEMESTRAL': { recargo: 0.03, numRecibos: 2 },
     'Semestral': { recargo: 0.03, numRecibos: 2 },
+    'TRIMESTRAL': { recargo: 0.05, numRecibos: 4 },
     'Trimestral': { recargo: 0.05, numRecibos: 4 },
+    'MENSUAL': { recargo: 0.07, numRecibos: 12 },
     'Mensual': { recargo: 0.07, numRecibos: 12 }
   };
 
   // Generar plan para cada forma de pago seleccionada
   for (const formaPago of formasPagoSeleccionadas) {
     const config = formasPagoConfig[formaPago];
-    if (!config) continue;
+    if (!config) {
+      console.warn(`Forma de pago no reconocida: "${formaPago}". Valores aceptados:`, Object.keys(formasPagoConfig));
+      continue;
+    }
 
     const recargo = roundTo2Decimals(primaNetaTotal * config.recargo);
     const subtotal = roundTo2Decimals(primaNetaTotal + recargo + gastosExpedicion);

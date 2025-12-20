@@ -13,37 +13,59 @@ Al intentar guardar una cotización en GMM BX+, se producía el siguiente error:
 Error: Cannot read properties of undefined (reading 'total')
 ```
 
+Luego, después del primer fix, el error cambió a:
+
+```
+Error: No se generaron planes de pago. Verifique que haya seleccionado al menos una forma de pago.
+```
+
+**PERO EL USUARIO SÍ HABÍA SELECCIONADO UNA FORMA DE PAGO**
+
 ---
 
-## 🔍 CAUSA RAÍZ
+## 🔍 CAUSA RAÍZ - ANÁLISIS COMPLETO
 
+### Problema 1: Falta de validación (RESUELTO)
 **Archivo:** `src/pages/GMMCotizador.tsx`
 **Línea:** 421-436
 
-El código asumía que `result.payment_plans[0]` siempre existiría, pero en ciertos casos podría ser `undefined`:
+El código asumía que `result.payment_plans[0]` siempre existiría.
+
+### Problema 2: Mismatch de capitalización (CAUSA REAL)
+**Archivo:** `src/lib/gmmCalculationEngineV2.ts`
+**Líneas:** 742-747
+
+El motor de cálculo esperaba formas de pago con capitalización tipo "Anual", "Semestral", etc., pero el Excel/UI enviaba valores en MAYÚSCULAS: "ANUAL", "SEMESTRAL", etc.
 
 ```typescript
 // CÓDIGO PROBLEMÁTICO
-const firstPlan = result.payment_plans[0]; // ❌ Puede ser undefined
-
-const quotationData = {
-  ...
-  total_a_pagar: firstPlan.total, // ❌ Error si firstPlan es undefined
-  ...
+const formasPagoConfig: Record<string, { recargo: number; numRecibos: number }> = {
+  'Anual': { recargo: 0, numRecibos: 1 },      // ❌ Esperaba esto
+  'Semestral': { recargo: 0.03, numRecibos: 2 },
+  'Trimestral': { recargo: 0.05, numRecibos: 4 },
+  'Mensual': { recargo: 0.07, numRecibos: 12 }
 };
+
+for (const formaPago of formasPagoSeleccionadas) {
+  const config = formasPagoConfig[formaPago]; // ❌ Buscaba "ANUAL"
+  if (!config) continue; // ❌ No encontraba match, saltaba
+}
 ```
 
-### Escenarios que Causaban el Error
+### Flujo del Error
 
-1. **No se seleccionó forma de pago** → `payment_plans` vacío
-2. **Error en el motor de cálculo** → `payment_plans` undefined
-3. **Datos incompletos** → No se generaron planes de pago
+1. **UI:** Usuario selecciona "ANUAL" desde `tariffTables.forma_pago`
+2. **Input:** Se guarda en `input.formas_pago = ['ANUAL']`
+3. **Motor:** Busca config para 'ANUAL' pero solo existe 'Anual'
+4. **Resultado:** `if (!config) continue;` → No genera ningún plan
+5. **Salida:** `payment_plans = []` (array vacío)
+6. **Error:** Al intentar guardar, `payment_plans[0]` es undefined
 
 ---
 
-## ✅ SOLUCIÓN
+## ✅ SOLUCIÓN - DOS FIXES
 
-Agregamos validación defensiva para verificar que `firstPlan` existe antes de usarlo:
+### Fix 1: Validación defensiva en GMMCotizador.tsx
 
 ```typescript
 // CÓDIGO CORREGIDO
@@ -52,19 +74,40 @@ const firstPlan = result.payment_plans?.[0]; // ✅ Optional chaining
 if (!firstPlan) {
   throw new Error('No se generaron planes de pago. Verifique que haya seleccionado al menos una forma de pago.');
 }
-
-const quotationData = {
-  ...
-  total_a_pagar: firstPlan.total, // ✅ Seguro, ya validamos que existe
-  ...
-};
 ```
 
-### Cambios Aplicados
+### Fix 2: Soporte para ambas capitalizaciones en gmmCalculationEngineV2.ts
 
-1. **Optional chaining (`?.`)** para acceder a `payment_plans[0]`
-2. **Validación explícita** antes de usar `firstPlan`
-3. **Mensaje de error claro** indicando qué debe hacer el usuario
+```typescript
+// CÓDIGO CORREGIDO
+const formasPagoConfig: Record<string, { recargo: number; numRecibos: number }> = {
+  'ANUAL': { recargo: 0, numRecibos: 1 },       // ✅ Mayúsculas (del Excel)
+  'Anual': { recargo: 0, numRecibos: 1 },       // ✅ Capitalizado (legacy)
+  'SEMESTRAL': { recargo: 0.03, numRecibos: 2 },
+  'Semestral': { recargo: 0.03, numRecibos: 2 },
+  'TRIMESTRAL': { recargo: 0.05, numRecibos: 4 },
+  'Trimestral': { recargo: 0.05, numRecibos: 4 },
+  'MENSUAL': { recargo: 0.07, numRecibos: 12 },
+  'Mensual': { recargo: 0.07, numRecibos: 12 }
+};
+
+for (const formaPago of formasPagoSeleccionadas) {
+  const config = formasPagoConfig[formaPago];
+  if (!config) {
+    console.warn(`Forma de pago no reconocida: "${formaPago}". Valores aceptados:`, Object.keys(formasPagoConfig));
+    continue; // ✅ Ahora con warning para debugging
+  }
+}
+```
+
+### Fix 3: Default consistente
+
+```typescript
+// Cambió de 'Anual' a 'ANUAL'
+const formasPagoSeleccionadas = input.formas_pago && input.formas_pago.length > 0
+  ? input.formas_pago
+  : ['ANUAL']; // ✅ Consistente con valores del Excel
+```
 
 ---
 
