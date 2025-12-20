@@ -30,6 +30,27 @@ import {
 } from './gmmParsingUtils';
 
 // ============================================================================
+// CONSTANTES GLOBALES
+// ============================================================================
+
+/**
+ * Parámetros de la fórmula del denominador dinámico para coberturas adicionales.
+ *
+ * CRÍTICO: Estos valores fueron obtenidos por ingeniería inversa del Excel oficial
+ * de VePorMás y validados con múltiples casos reales.
+ *
+ * Fórmula: denominador = DENOMINADOR_A + DENOMINADOR_B × (factor_ded × factor_coa)
+ *
+ * Validación:
+ * - Ricardo (Ded $35k, Coa 15%): 0.350445 + 0.702939 × (0.546 × 0.929) = 0.707 ✓
+ * - Alisson (Ded $29k, Coa 10%): 0.350445 + 0.702939 × (0.631 × 1.000) = 0.794 ✓
+ *
+ * NO MODIFICAR sin validación exhaustiva contra el Excel oficial.
+ */
+const DENOMINADOR_A = 0.350445;
+const DENOMINADOR_B = 0.702939;
+
+// ============================================================================
 // UTILIDADES DE REDONDEO (Réplica exacta del Excel)
 // ============================================================================
 
@@ -288,23 +309,21 @@ function calcularCobertura(
   }
 
   // CRÍTICO: El denominador de coberturas adicionales es DINÁMICO
-  // Fórmula descubierta por ingeniería inversa del Excel oficial de VePorMás:
+  // Se calcula usando constantes globales DENOMINADOR_A y DENOMINADOR_B
+  // definidas al inicio de este archivo.
   //
-  // denominador = 0.350445 + 0.702939 × (factor_deducible × factor_coaseguro)
+  // Fórmula: denominador = DENOMINADOR_A + DENOMINADOR_B × (factor_ded × factor_coa)
   //
-  // Validación con casos reales:
-  // - Ricardo (Ded $35k, Coa 15%): 0.350445 + 0.702939 × (0.546 × 0.929) = 0.707 ✓
-  // - Alisson (Ded $29k, Coa 10%): 0.350445 + 0.702939 × (0.631 × 1.000) = 0.794 ✓
-  //
-  // Error = 0.000000 en ambos casos
+  // Esta fórmula se aplica para TODAS las combinaciones de deducible y coaseguro.
+  // NO usar valores fijos bajo ninguna circunstancia.
 
-  // Obtener factores de deducible y coaseguro
+  // Obtener factores de deducible y coaseguro del plan seleccionado
   const factorDeducible = vlookup(tables.factor_deducible, input.deducible, 1, 'Factor Deducible');
   const factorCoaseguro = vlookup(tables.factor_coaseguro, input.coaseguro, 1, 'Factor Coaseguro');
 
-  // Calcular denominador dinámico
+  // Calcular denominador dinámico usando las constantes globales
   const producto = factorDeducible * factorCoaseguro;
-  const denominador_coberturas = 0.350445 + 0.702939 * producto;
+  const denominador_coberturas = DENOMINADOR_A + DENOMINADOR_B * producto;
 
   const coberturaBruta = base * factor;
   return roundTo2Decimals(coberturaBruta / denominador_coberturas);

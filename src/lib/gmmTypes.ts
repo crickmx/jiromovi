@@ -209,7 +209,8 @@ export interface TariffTables {
   coef_ayuda_diaria: number;
   coef_ampliacion_servicios: number;
   denominador_cargas: number[];
-  denominador_cargas_coberturas?: number;
+  // denominador_cargas_coberturas YA NO SE USA - ahora se calcula dinámicamente
+  // Fórmula: 0.350445 + 0.702939 × (factor_deducible × factor_coaseguro)
   deducible_accidente_keys: any[];
   deducible_accidente_factors: any[];
   multiregion_carga_sistema: any[];
