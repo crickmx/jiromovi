@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico GMM - Cálculo Detallado</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #1a202c;
+      border-bottom: 3px solid #e53e3e;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #2d3748;
+      margin-top: 30px;
+      padding: 10px;
+      background: #fff5f5;
+      border-left: 4px solid #e53e3e;
+    }
+    .result {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 10px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+    .error {
+      background: #fff5f5;
+      border-color: #fc8181;
+      color: #c53030;
+      font-weight: 600;
+    }
+    .success {
+      background: #f0fff4;
+      border-color: #68d391;
+      color: #2f855a;
+    }
+    .warning {
+      background: #fffaf0;
+      border-color: #f6ad55;
+      color: #c05621;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background: #edf2f7;
+      font-weight: 600;
+      color: #2d3748;
+    }
+    tr:nth-child(even) {
+      background: #f7fafc;
+    }
+    button {
+      background: #e53e3e;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #c53030;
+    }
+    button:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+    }
+    .diagnostic-box {
+      border: 2px solid #feb2b2;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 15px 0;
+      background: #fff5f5;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .comparison-card {
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+      background: white;
+    }
+    .comparison-card h3 {
+      margin-top: 0;
+      color: #2d3748;
+      font-size: 14px;
+      border-bottom: 2px solid #edf2f7;
+      padding-bottom: 8px;
+    }
+    .comparison-card .value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1a202c;
+      margin: 10px 0;
+    }
+    .comparison-card .label {
+      font-size: 12px;
+      color: #718096;
+    }
+    .comparison-card.incorrect {
+      border-color: #fc8181;
+      background: #fff5f5;
+    }
+    .comparison-card.correct {
+      border-color: #68d391;
+      background: #f0fff4;
+    }
+    code {
+      background: #edf2f7;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔬 Diagnóstico GMM BX+ - Cálculo Paso a Paso</h1>
+
+    <div class="diagnostic-box">
+      <p><strong>📊 Análisis del PDF GMM-2025-00014</strong></p>
+      <p><strong>Problema crítico detectado:</strong> Las primas adicionales están infladas 5x (500% en lugar de ~62%)</p>
+      <ul>
+        <li><strong>Asegurado 40:</strong> Prima Base $11,509.57 → Prima Adic. $57,547.85 ❌ (debería ser ~$7,094)</li>
+        <li><strong>Esposa 39:</strong> Prima Base $14,595.59 → Prima Adic. $72,977.95 ❌ (debería ser ~$8,996)</li>
+        <li><strong>Hija 1:</strong> Prima Base $6,043.98 → Prima Adic. $30,219.90 ❌ (debería ser ~$3,725)</li>
+      </ul>
+      <p><strong>Total cobrado:</strong> $224,802.01 ❌<br><strong>Total correcto:</strong> ~$61,324 ✓</p>
+    </div>
+
+    <button id="btnDiagnosticar" onclick="diagnosticar()">🚀 Diagnosticar Coeficientes en BD</button>
+
+    <div id="resultados"></div>
+  </div>
+
+  <script>
+    const supabaseUrl = 'https://ypsrdzqcgjyuxwmxhxzv.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlwc3JkenFjZ2p5dXh3bXhoeHp2Iiwicm9sZSI6ImFub24ta2V5IiwiaWF0IjoxNzI5NjQyMjM3LCJleHAiOjIwNDUyMTgyMzd9.qxZ0OnBtvx-uKHy7y48qqTY5nlBd6JKCu6fRcmyoBzA';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    // Valores objetivo del Excel original
+    const VALORES_CORRECTOS = {
+      // Suma total de las 5 coberturas activas en el PDF
+      suma_esperada: 0.616394, // 61.6394%
+
+      // Aproximaciones individuales (del análisis del Excel)
+      coef_medicamentos: 0.12,     // ~12%
+      coef_vip: 0.05,              // ~5%
+      coef_emergencia_ext: 0.08,   // ~8%
+      // Eliminación Deducible 35k: varía por deducible
+      // Multiregión QRO: varía por estado
+    };
+
+    async function diagnosticar() {
+      const resultados = document.getElementById('resultados');
+      resultados.innerHTML = '<div class="result">⏳ Ejecutando diagnóstico detallado...</div>';
+      document.getElementById('btnDiagnosticar').disabled = true;
+
+      try {
+        // 1. Obtener paquete activo
+        const { data: pkg, error: pkgError } = await supabase
+          .from('tariff_packages')
+          .select('id, name')
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (pkgError) throw pkgError;
+        if (!pkg) {
+          resultados.innerHTML += `
+            <div class="result error">
+              ❌ No hay paquete activo. Debes subir el Excel original primero.
+            </div>
+          `;
+          return;
+        }
+
+        resultados.innerHTML += `<h2>📦 Paquete Activo: ${pkg.name}</h2>`;
+
+        // 2. Obtener TODAS las tablas
+        const { data: tables, error: tablesError } = await supabase
+          .from('tariff_tables')
+          .select('table_key, data_json')
+          .eq('tariff_package_id', pkg.id);
+
+        if (tablesError) throw tablesError;
+
+        const getTable = (key) => tables?.find(t => t.table_key === key)?.data_json;
+
+        // 3. Extraer coeficientes
+        const coefMedicamentos = getTable('coef_medicamentos')?.[0]?.col_0 || 0;
+        const coefVip = getTable('coef_vip')?.[0]?.col_0 || 0;
+        const coefEmergenciaExt = getTable('coef_emergencia_ext')?.[0]?.col_0 || 0;
+        const coefPreexistentes = getTable('coef_preexistentes')?.[0]?.col_0 || 0;
+        const coefComplicaciones = getTable('coef_complicaciones')?.[0]?.col_0 || 0;
+        const coefAntiguedad = getTable('coef_antiguedad')?.[0]?.col_0 || 0;
+        const coefAyudaDiaria = getTable('coef_ayuda_diaria')?.[0]?.col_0 || 0;
+        const coefAmpliacion = getTable('coef_ampliacion_servicios')?.[0]?.col_0 || 0;
+        const coefEnfGravesExt = getTable('coef_enf_graves_ext')?.[0]?.col_0 || 0;
+
+        // Deducible 35k
+        const dedKeys = getTable('deducible_accidente_keys') || [];
+        const dedFactors = getTable('deducible_accidente_factors') || [];
+        const idx35k = dedKeys.findIndex(k => k === 35000);
+        const factorDed35k = idx35k >= 0 ? Number(dedFactors[idx35k]) : 0;
+
+        // Multiregión QRO
+        const multiData = getTable('multiregion_carga_sistema') || [];
+        const qro = multiData.find(r => r.col_0 === 'QUERETARO');
+        const factorMultiQRO = qro ? Number(qro.col_1) : 0;
+
+        // 4. Calcular suma actual
+        const sumaActual = coefMedicamentos + coefVip + coefEmergenciaExt + factorDed35k + factorMultiQRO;
+
+        resultados.innerHTML += `
+          <h2>🔢 Coeficientes en Base de Datos vs Valores Correctos</h2>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Cobertura</th>
+                <th>Valor Actual BD</th>
+                <th>Valor Correcto (Excel)</th>
+                <th>Múltiplo</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Medicamentos Fuera</td>
+                <td><strong>${coefMedicamentos.toFixed(6)}</strong></td>
+                <td>~0.12</td>
+                <td>${(coefMedicamentos / 0.12).toFixed(2)}x</td>
+                <td>${Math.abs(coefMedicamentos - 0.12) < 0.05 ? '✅' : '❌'}</td>
+              </tr>
+              <tr>
+                <td>VIP</td>
+                <td><strong>${coefVip.toFixed(6)}</strong></td>
+                <td>~0.05</td>
+                <td>${(coefVip / 0.05).toFixed(2)}x</td>
+                <td>${Math.abs(coefVip - 0.05) < 0.03 ? '✅' : '❌'}</td>
+              </tr>
+              <tr>
+                <td>Emergencia Extranjero</td>
+                <td><strong>${coefEmergenciaExt.toFixed(6)}</strong></td>
+                <td>~0.08</td>
+                <td>${(coefEmergenciaExt / 0.08).toFixed(2)}x</td>
+                <td>${Math.abs(coefEmergenciaExt - 0.08) < 0.04 ? '✅' : '❌'}</td>
+              </tr>
+              <tr>
+                <td>Eliminación Deducible (35k)</td>
+                <td><strong>${factorDed35k.toFixed(6)}</strong></td>
+                <td>Por verificar en Excel</td>
+                <td>-</td>
+                <td>❓</td>
+              </tr>
+              <tr>
+                <td>Multiregión (QRO col_1)</td>
+                <td><strong>${factorMultiQRO.toFixed(6)}</strong></td>
+                <td>Por verificar en Excel</td>
+                <td>-</td>
+                <td>❓</td>
+              </tr>
+              <tr style="background: #edf2f7; font-weight: bold;">
+                <td>SUMA TOTAL</td>
+                <td>${sumaActual.toFixed(6)}</td>
+                <td>0.616394</td>
+                <td>${(sumaActual / 0.616394).toFixed(2)}x</td>
+                <td>${Math.abs(sumaActual - 0.616394) < 0.001 ? '✅' : '❌'}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+
+        // 5. Comparación visual
+        resultados.innerHTML += `<h2>📊 Comparación Visual</h2>`;
+
+        const primaBase = 11509.57;
+        const primaAdicActual = primaBase * sumaActual;
+        const primaAdicCorrecta = primaBase * 0.616394;
+        const diferencia = primaAdicActual - primaAdicCorrecta;
+        const porcentajeDif = (diferencia / primaAdicCorrecta) * 100;
+
+        resultados.innerHTML += `
+          <div class="comparison-grid">
+            <div class="comparison-card">
+              <h3>Prima Base</h3>
+              <div class="value">$${primaBase.toLocaleString('es-MX', {minimumFractionDigits: 2})}</div>
+              <div class="label">Asegurado 40 años</div>
+            </div>
+            <div class="comparison-card ${Math.abs(sumaActual - 0.616394) < 0.001 ? 'correct' : 'incorrect'}">
+              <h3>Prima Adicional (Actual)</h3>
+              <div class="value">$${primaAdicActual.toLocaleString('es-MX', {minimumFractionDigits: 2})}</div>
+              <div class="label">Usando coefs BD (${(sumaActual * 100).toFixed(2)}%)</div>
+            </div>
+            <div class="comparison-card correct">
+              <h3>Prima Adicional (Correcta)</h3>
+              <div class="value">$${primaAdicCorrecta.toLocaleString('es-MX', {minimumFractionDigits: 2})}</div>
+              <div class="label">Usando Excel (61.64%)</div>
+            </div>
+          </div>
+
+          <div class="result ${diferencia > 100 ? 'error' : 'success'}">
+            <strong>Diferencia:</strong> $${diferencia.toLocaleString('es-MX', {minimumFractionDigits: 2})}
+            (${porcentajeDif >= 0 ? '+' : ''}${porcentajeDif.toFixed(2)}%)
+            ${Math.abs(diferencia) < 100 ? '✅ Dentro del margen' : '❌ FUERA DE RANGO'}
+          </div>
+        `;
+
+        // 6. Diagnóstico final
+        resultados.innerHTML += `<h2>🎯 Diagnóstico y Solución</h2>`;
+
+        if (Math.abs(sumaActual - 0.616394) < 0.001) {
+          resultados.innerHTML += `
+            <div class="result success">
+              ✅ <strong>¡LOS COEFICIENTES SON CORRECTOS!</strong><br><br>
+              La suma de coeficientes (${sumaActual.toFixed(6)}) coincide con el objetivo (0.616394).<br>
+              Las cotizaciones deben calcular correctamente.
+            </div>
+          `;
+        } else {
+          const factorCorreccion = 0.616394 / sumaActual;
+
+          resultados.innerHTML += `
+            <div class="result error">
+              ❌ <strong>LOS COEFICIENTES ESTÁN INCORRECTOS</strong><br><br>
+
+              <strong>Problema:</strong><br>
+              • Suma actual: ${sumaActual.toFixed(6)} (${(sumaActual * 100).toFixed(2)}%)<br>
+              • Suma correcta: 0.616394 (61.64%)<br>
+              • Factor de error: ${(sumaActual / 0.616394).toFixed(2)}x<br><br>
+
+              <strong>Impacto:</strong><br>
+              • El sistema está ${porcentajeDif >= 0 ? 'cobrando' : 'dejando de cobrar'}
+                $${Math.abs(diferencia).toLocaleString('es-MX', {minimumFractionDigits: 2})}
+                ${porcentajeDif >= 0 ? 'DE MÁS' : 'de menos'} por asegurado<br>
+              • En el PDF GMM-2025-00014: cobró $224,802 cuando debió cobrar ~$61,324<br>
+              • Diferencia: <strong style="color: #c53030;">$163,478 de sobrecargo (266% más)</strong><br><br>
+
+              <strong>Causa más probable:</strong><br>
+              Los coeficientes se multiplicaron por ${(sumaActual / 0.616394).toFixed(2)}x al subir el Excel.<br><br>
+
+              <strong>🔧 Solución:</strong><br>
+              1. Multiplicar todos los coeficientes por <code>${factorCorreccion.toFixed(6)}</code><br>
+              2. O mejor: <strong>RE-SUBIR el Excel original</strong> en Admin → Tarifas GMM<br>
+              3. Asegurar que el parser NO multiplique los valores<br>
+              4. Validar con una cotización de prueba
+            </div>
+
+            <h3>📋 Script de Corrección SQL</h3>
+            <div class="result">
+              <code style="display: block; white-space: pre-wrap; font-size: 11px;">-- Corregir coeficientes multiplicando por ${factorCorreccion.toFixed(6)}
+-- IMPORTANTE: BACKUP ANTES DE EJECUTAR
+
+UPDATE tariff_tables
+SET data_json = jsonb_set(
+  data_json,
+  '{0,col_0}',
+  to_jsonb((data_json->0->>'col_0')::numeric * ${factorCorreccion.toFixed(6)})
+)
+WHERE tariff_package_id = '${pkg.id}'
+  AND table_key IN (
+    'coef_medicamentos',
+    'coef_vip',
+    'coef_emergencia_ext',
+    'coef_preexistentes',
+    'coef_complicaciones',
+    'coef_antiguedad',
+    'coef_ayuda_diaria',
+    'coef_ampliacion_servicios',
+    'coef_enf_graves_ext'
+  );
+
+-- Corregir factores de deducible
+UPDATE tariff_tables
+SET data_json = (
+  SELECT jsonb_agg(
+    jsonb_set(item, '{0}', to_jsonb((item->>0)::numeric * ${factorCorreccion.toFixed(6)}))
+  )
+  FROM jsonb_array_elements(data_json) AS item
+)
+WHERE tariff_package_id = '${pkg.id}'
+  AND table_key = 'deducible_accidente_factors';
+
+-- Corregir factores de multiregión (col_1 solamente)
+UPDATE tariff_tables
+SET data_json = (
+  SELECT jsonb_agg(
+    jsonb_set(item, '{col_1}', to_jsonb((item->>'col_1')::numeric * ${factorCorreccion.toFixed(6)}))
+  )
+  FROM jsonb_array_elements(data_json) AS item
+)
+WHERE tariff_package_id = '${pkg.id}'
+  AND table_key = 'multiregion_carga_sistema';</code>
+            </div>
+          `;
+        }
+
+        // 7. Otros coeficientes para referencia
+        resultados.innerHTML += `
+          <h3>📄 Otros Coeficientes en BD (Referencia)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Cobertura</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Padecimientos Preexistentes</td><td>${coefPreexistentes.toFixed(6)}</td></tr>
+              <tr><td>Complicaciones No Amparadas</td><td>${coefComplicaciones.toFixed(6)}</td></tr>
+              <tr><td>Reconocimiento Antigüedad</td><td>${coefAntiguedad.toFixed(6)}</td></tr>
+              <tr><td>Ayuda Diaria</td><td>${coefAyudaDiaria.toFixed(6)}</td></tr>
+              <tr><td>Ampliación Servicios</td><td>${coefAmpliacion.toFixed(6)}</td></tr>
+              <tr><td>Enfermedades Graves Extranjero</td><td>${coefEnfGravesExt.toFixed(6)}</td></tr>
+            </tbody>
+          </table>
+        `;
+
+      } catch (error) {
+        resultados.innerHTML += `
+          <div class="result error">
+            ❌ <strong>Error:</strong> ${error.message}
+          </div>
+        `;
+      } finally {
+        document.getElementById('btnDiagnosticar').disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
