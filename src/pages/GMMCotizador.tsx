@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, Edit } from 'lucide-react';
+import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, Edit, ArrowLeftRight } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { Card } from '../components/ui/card';
@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { InfoTooltip } from '../components/ui/info-tooltip';
 import { supabase } from '../lib/supabase';
+import { MultiOptionQuote } from '../components/gmm/MultiOptionQuote';
 import {
   calculateQuoteV2 as calculateQuote,
   calculateQuoteMultiOption,
@@ -109,8 +110,10 @@ export default function GMMCotizador() {
   });
 
   const [result, setResult] = useState<QuoteCalculationResult | null>(null);
+  const [multiResult, setMultiResult] = useState<QuoteCalculationMultiResult | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isComparativeMode, setIsComparativeMode] = useState(false);
 
   const [quotations, setQuotations] = useState<GMMQuotation[]>([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
@@ -281,6 +284,25 @@ export default function GMMCotizador() {
     } catch (error: any) {
       console.error('Error calculating:', error);
       const message = error.message || 'Error al calcular la cotización';
+      alert(`Error en el cálculo:\n\n${message}`);
+    } finally {
+      setCalculating(false);
+    }
+  }
+
+  function handleCalculateMultiOption(multiInput: QuoteInputMultiOption) {
+    if (!tariffTables) {
+      alert('Tarifas no cargadas');
+      return;
+    }
+
+    setCalculating(true);
+    try {
+      const calculated = calculateQuoteMultiOption(multiInput, tariffTables);
+      setMultiResult(calculated);
+    } catch (error: any) {
+      console.error('Error calculating multi-option:', error);
+      const message = error.message || 'Error al calcular las opciones';
       alert(`Error en el cálculo:\n\n${message}`);
     } finally {
       setCalculating(false);
@@ -507,10 +529,25 @@ export default function GMMCotizador() {
           </TabsList>
 
           <TabsContent value="cotizador">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">Parámetros del Plan</h3>
+            <div className="mb-6 flex justify-end">
+              <Button
+                onClick={() => {
+                  setIsComparativeMode(!isComparativeMode);
+                  setResult(null);
+                  setMultiResult(null);
+                }}
+                variant={isComparativeMode ? "default" : "outline"}
+              >
+                <ArrowLeftRight className="w-4 h-4 mr-2" />
+                {isComparativeMode ? 'Modo Comparativo' : 'Modo Simple'}
+              </Button>
+            </div>
+
+            {!isComparativeMode ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                  <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Parámetros del Plan</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
@@ -841,6 +878,16 @@ export default function GMMCotizador() {
                 )}
               </div>
             </div>
+            ) : (
+              <MultiOptionQuote
+                tariffTables={tariffTables}
+                insureds={input.insureds}
+                onInsuredsChange={(insureds) => setInput({ ...input, insureds })}
+                onCalculate={handleCalculateMultiOption}
+                result={multiResult}
+                calculating={calculating}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="cotizaciones">
