@@ -65,32 +65,20 @@ export default function PublicWebPagePreview({
         }}
       />
 
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50 backdrop-blur-lg bg-white/95">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          {userData.logo_url && (
-            <img
-              src={userData.logo_url}
-              alt="Logo"
-              className="h-10 md:h-12 w-auto object-contain"
-            />
-          )}
-          <div className="flex items-center gap-3">
-            <a
-              href={whatsappLink}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105"
-              style={{ backgroundColor: primaryColor }}
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">WhatsApp</span>
-            </a>
-          </div>
-        </div>
-      </header>
-
       <section className="relative bg-gradient-to-b from-gray-50 to-white py-12 md:py-20 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
             <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+              {userData.logo_url && (
+                <div className="mb-6">
+                  <img
+                    src={userData.logo_url}
+                    alt="Logo"
+                    className="h-16 md:h-20 w-auto object-contain"
+                  />
+                </div>
+              )}
+
               {userData.photo_url && (
                 <div className="mb-6">
                   <img
@@ -101,20 +89,15 @@ export default function PublicWebPagePreview({
                 </div>
               )}
 
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              <h1 className="text-3xl md:text-4xl font-bold mb-3" style={{ color: primaryColor }}>
                 {userData.name}
               </h1>
-              <p className="text-lg md:text-xl text-gray-600 mb-2">
+              <p className="text-lg md:text-xl text-gray-600 mb-6">
                 Asesor Personal de Seguros
               </p>
-              {userData.office_name && (
-                <p className="text-base text-gray-500 mb-6">
-                  {userData.office_name}
-                </p>
-              )}
 
               <div className="mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                <h2 className="text-2xl md:text-3xl font-bold mb-4" style={{ color: primaryColor }}>
                   Protege lo que más importa
                 </h2>
                 <p className="text-gray-600 leading-relaxed max-w-lg">
@@ -144,39 +127,39 @@ export default function PublicWebPagePreview({
 
             <div className="lg:sticky lg:top-24">
               <div
-                className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 border"
+                className="bg-white rounded-2xl shadow-2xl p-5 md:p-6 border"
                 style={{ borderColor: createColorVariant(primaryColor, 0.2) }}
               >
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                <h3 className="text-xl font-bold text-gray-900 mb-1">
                   Solicita tu Cotización
                 </h3>
-                <p className="text-gray-600 mb-6 text-sm">
+                <p className="text-gray-600 mb-4 text-sm">
                   Completa el formulario y te contactaré de inmediato
                 </p>
 
                 {submitStatus === 'success' ? (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="text-center py-6">
+                    <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <h4 className="text-xl font-bold text-gray-900 mb-2">¡Solicitud Recibida!</h4>
-                    <p className="text-gray-600">
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">¡Solicitud Recibida!</h4>
+                    <p className="text-gray-600 text-sm">
                       Gracias por tu solicitud. Te contactaré a la brevedad para ofrecerte la mejor opción.
                     </p>
                   </div>
                 ) : (
-                  <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+                  <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                         Nombre Completo *
                       </label>
                       <input
                         type="text"
                         value={formData.nombre}
                         onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-opacity-100 focus:outline-none transition-colors"
+                        className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-opacity-100 focus:outline-none transition-colors text-sm"
                         style={{ focusBorderColor: primaryColor }}
                         placeholder="Tu nombre"
                         required
@@ -184,41 +167,41 @@ export default function PublicWebPagePreview({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                         Celular *
                       </label>
                       <input
                         type="tel"
                         value={formData.celular}
                         onChange={(e) => setFormData(prev => ({ ...prev, celular: e.target.value }))}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-opacity-100 focus:outline-none transition-colors"
+                        className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-opacity-100 focus:outline-none transition-colors text-sm"
                         placeholder="55 1234 5678"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                         Email *
                       </label>
                       <input
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-opacity-100 focus:outline-none transition-colors"
+                        className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-opacity-100 focus:outline-none transition-colors text-sm"
                         placeholder="tu@email.com"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                         Seguro de Interés *
                       </label>
                       <select
                         value={formData.seguro_interes}
                         onChange={(e) => setFormData(prev => ({ ...prev, seguro_interes: e.target.value }))}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-opacity-100 focus:outline-none transition-colors bg-white"
+                        className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:border-opacity-100 focus:outline-none transition-colors bg-white text-sm"
                         required
                       >
                         <option value="">Selecciona un seguro</option>
@@ -231,7 +214,7 @@ export default function PublicWebPagePreview({
                     </div>
 
                     {submitStatus === 'error' && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 text-xs text-red-700">
                         Error al enviar la solicitud. Por favor intenta nuevamente.
                       </div>
                     )}
@@ -239,7 +222,7 @@ export default function PublicWebPagePreview({
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-4 rounded-xl font-bold text-white transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-3 rounded-lg font-bold text-white transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                       style={{
                         background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
                       }}
@@ -261,7 +244,7 @@ export default function PublicWebPagePreview({
       {insurers.length > 0 && (
         <section className="relative py-20 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+            <h2 className="text-4xl md:text-5xl font-bold text-center mb-4" style={{ color: primaryColor }}>
               Aseguradoras de Confianza
             </h2>
             <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
@@ -339,8 +322,8 @@ export default function PublicWebPagePreview({
       {categories.length > 0 && (
         <section className="relative py-24 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-              Servicios que Ofrezco
+            <h2 className="text-4xl md:text-5xl font-bold text-center mb-4" style={{ color: primaryColor }}>
+              Seguros a tu medida
             </h2>
             <p className="text-center text-gray-600 mb-16 max-w-2xl mx-auto text-lg">
               Protección completa para lo que más valoras
@@ -400,7 +383,7 @@ export default function PublicWebPagePreview({
 
       <section className="relative py-20 px-4 bg-white z-10">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center" style={{ color: primaryColor }}>
             Sobre Mí
           </h2>
 
@@ -416,7 +399,7 @@ export default function PublicWebPagePreview({
 
       <section className="relative py-16 px-4 bg-gray-50 z-10">
         <div className="max-w-4xl mx-auto text-center">
-          <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h3 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: primaryColor }}>
             ¿Listo para proteger lo que más valoras?
           </h3>
           <p className="text-gray-600 mb-8 text-lg">
@@ -449,6 +432,16 @@ export default function PublicWebPagePreview({
           <p className="text-sm text-gray-400 mb-2">
             © {new Date().getFullYear()} {userData.name}. Todos los derechos reservados.
           </p>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <a
+              href="https://jiro.mx/privacidad"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-gray-400 hover:text-white transition-colors"
+            >
+              Aviso de privacidad
+            </a>
+          </div>
           <p className="text-xs text-gray-500">
             Powered by{' '}
             <a href="https://www.movi.digital" className="hover:text-white transition-colors underline">
