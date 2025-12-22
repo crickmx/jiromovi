@@ -85,9 +85,10 @@ export default function PaginaPublicaAsesor() {
   const { user, config, insurers, categories } = data;
   const primaryColor = config.primary_color;
   const secondaryColor = config.secondary_color;
-  const textToDisplay = config.custom_text.filter(t => t.trim()).length > 0
-    ? config.custom_text.filter(t => t.trim())
-    : DEFAULT_TEXT;
+
+  const textToDisplay = typeof config.custom_text === 'string' && config.custom_text.trim()
+    ? config.custom_text.split('\n').filter(t => t.trim())
+    : DEFAULT_TEXT.split('\n').filter(t => t.trim());
 
   const whatsappNumber = user.phone?.replace(/\D/g, '');
   const whatsappLink = whatsappNumber ? `https://wa.me/52${whatsappNumber}` : '#';
