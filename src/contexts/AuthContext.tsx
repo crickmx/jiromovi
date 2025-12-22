@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select(`
           *,
           oficina:oficinas(id, nombre),
-          regimen:regimenes_fiscales(id, nombre)
+          regimen_fiscal:commission_fiscal_regimes(id, name)
         `)
         .eq('id', userId)
         .eq('activo', true)
