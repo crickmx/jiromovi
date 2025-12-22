@@ -713,19 +713,77 @@ function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <Routes>
-          {/* Ruta pública - fuera de AuthProvider */}
-          <Route path="/:slug" element={<PaginaPublicaAsesor />} />
+        <AuthProvider>
+          <NotificationProvider>
+            <Routes>
+              {/* Rutas autenticadas - se evalúan primero */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+              <Route path="/perfil" element={<ProtectedRoute><Layout><Perfil /></Layout></ProtectedRoute>} />
+              <Route path="/directorio" element={<ProtectedRoute requireDirectorioAccess><Layout><Directorio /></Layout></ProtectedRoute>} />
+              <Route path="/directorio-jiro" element={<ProtectedRoute requireDirectorioAccess><DirectorioJiro /></ProtectedRoute>} />
+              <Route path="/usuario/:id" element={<ProtectedRoute requireAdminOrGerente><Layout><PerfilUsuario /></Layout></ProtectedRoute>} />
+              <Route path="/oficinas" element={<ProtectedRoute requireAdmin><Layout><Oficinas /></Layout></ProtectedRoute>} />
+              <Route path="/configuracion" element={<ProtectedRoute requireAdmin><Layout><Configuracion /></Layout></ProtectedRoute>} />
+              <Route path="/notificaciones-transaccionales" element={<ProtectedRoute requireAdmin><Layout><NotificacionesTransaccionales /></Layout></ProtectedRoute>} />
+              <Route path="/centro-correos" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroCorreos /></Layout></ProtectedRoute>} />
+              <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
+              <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
+              <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
+              <Route path="/publicidad" element={<ProtectedRoute><Layout><Publicidad /></Layout></ProtectedRoute>} />
+              <Route path="/gestor-emails" element={<ProtectedRoute><Layout><GestorEmails /></Layout></ProtectedRoute>} />
+              <Route path="/chat" element={<ProtectedRoute><Layout><Chat /></Layout></ProtectedRoute>} />
+              <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
+              <Route path="/seguros-education" element={<ProtectedRoute><SegurosEducation /></ProtectedRoute>} />
+              <Route path="/seguros-education/on-demand" element={<ProtectedRoute><SegurosEducationOnDemand /></ProtectedRoute>} />
+              <Route path="/seguros-education/aula-virtual" element={<ProtectedRoute><SegurosEducationAulaDigital /></ProtectedRoute>} />
+              <Route path="/seguros-education/aula-virtual-old" element={<ProtectedRoute><SegurosEducationAulaVirtual /></ProtectedRoute>} />
+              <Route path="/aula-virtual/sala/:roomId" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
+              <Route path="/centro-notificaciones" element={<ProtectedRoute><CentroNotificaciones /></ProtectedRoute>} />
+              <Route path="/tramites" element={<ProtectedRoute><Layout><Tramites /></Layout></ProtectedRoute>} />
+              <Route path="/tramites/:id" element={<ProtectedRoute><Layout><TramiteDetalle /></Layout></ProtectedRoute>} />
+              <Route path="/mi-crm" element={<ProtectedRoute><Layout><MiCRM /></Layout></ProtectedRoute>} />
+              <Route path="/mi-crm/contactos" element={<ProtectedRoute><Layout><CRMContactos /></Layout></ProtectedRoute>} />
+              <Route path="/mi-crm/contactos/:id" element={<ProtectedRoute><Layout><CRMContactoPerfil /></Layout></ProtectedRoute>} />
+              <Route path="/mi-crm/tareas" element={<ProtectedRoute><Layout><CRMTareas /></Layout></ProtectedRoute>} />
+              <Route path="/mi-crm/reportes" element={<ProtectedRoute><Layout><CRMReportes /></Layout></ProtectedRoute>} />
+              <Route path="/mi-crm/configuracion" element={<ProtectedRoute><Layout><CRMConfiguracion /></Layout></ProtectedRoute>} />
+              <Route path="/comunicados" element={<ProtectedRoute><Layout><Comunicados /></Layout></ProtectedRoute>} />
+              <Route path="/comunicados/categorias" element={<ProtectedRoute requireAdmin><ComunicadoCategorias /></ProtectedRoute>} />
+              <Route path="/comunicados/nuevo" element={<ProtectedRoute><Layout><ComunicadoEditor /></Layout></ProtectedRoute>} />
+              <Route path="/comunicados/editar/:id" element={<ProtectedRoute><Layout><ComunicadoEditor /></Layout></ProtectedRoute>} />
+              <Route path="/comunicados/:id" element={<ProtectedRoute><Layout><ComunicadoDetalle /></Layout></ProtectedRoute>} />
+              <Route path="/store" element={<ProtectedRoute><Store /></ProtectedRoute>} />
+              <Route path="/store/carrito" element={<ProtectedRoute><StoreCarrito /></ProtectedRoute>} />
+              <Route path="/store/mis-pedidos" element={<ProtectedRoute><StoreMisPedidos /></ProtectedRoute>} />
+              <Route path="/store/admin" element={<ProtectedRoute requireAdmin><StoreAdmin /></ProtectedRoute>} />
+              <Route path="/store/pedido/:pedidoId" element={<ProtectedRoute><StorePedidoDetalle /></ProtectedRoute>} />
+              <Route path="/store/pedidos" element={<ProtectedRoute requireAdmin><StorePedidos /></ProtectedRoute>} />
+              <Route path="/comisiones" element={<ProtectedRoute requireAdmin><Layout><Comisiones /></Layout></ProtectedRoute>} />
+              <Route path="/comisiones/lote/:id" element={<ProtectedRoute requireAdmin><Layout><ComisionesLote /></Layout></ProtectedRoute>} />
+              <Route path="/comisiones/upload" element={<ProtectedRoute requireAdmin><Layout><ComisionesUpload /></Layout></ProtectedRoute>} />
+              <Route path="/comisiones/upload-nuevo" element={<ProtectedRoute requireAdmin><Layout><ComisionesUploadNuevo /></Layout></ProtectedRoute>} />
+              <Route path="/comisiones/preparar-lote/:sessionId" element={<ProtectedRoute requireAdmin><Layout><ComisionesPrepararLote /></Layout></ProtectedRoute>} />
+              <Route path="/comisiones/importar-documentos" element={<ProtectedRoute requireAdmin><Layout><DocumentosImportar /></Layout></ProtectedRoute>} />
+              <Route path="/mis-comisiones" element={<ProtectedRoute><Layout><MisComisiones /></Layout></ProtectedRoute>} />
+              <Route path="/produccion/total" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionTotal /></Layout></ProtectedRoute>} />
+              <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />
+              <Route path="/mi-produccion" element={<ProtectedRoute><Layout><MiProduccion /></Layout></ProtectedRoute>} />
+              <Route path="/produccion/por-vendedor" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionPorVendedor /></Layout></ProtectedRoute>} />
+              <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
+              <Route path="/gmm/tarifas" element={<ProtectedRoute requireAdmin><GMMTarifasAdmin /></ProtectedRoute>} />
+              <Route path="/gmm/cotizador" element={<ProtectedRoute><GMMCotizador /></ProtectedRoute>} />
+              <Route path="/catalogos-web" element={<ProtectedRoute requireRole="admin"><Layout><CatalogosWeb /></Layout></ProtectedRoute>} />
+              <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
 
-          {/* Todas las demás rutas dentro de AuthProvider */}
-          <Route path="*" element={
-            <AuthProvider>
-              <NotificationProvider>
-                <AppRoutes />
-              </NotificationProvider>
-            </AuthProvider>
-          } />
-        </Routes>
+              {/* Redirect raíz */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+              {/* Ruta pública - catch-all para slugs */}
+              <Route path="/:slug" element={<PaginaPublicaAsesor />} />
+            </Routes>
+          </NotificationProvider>
+        </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>
   );

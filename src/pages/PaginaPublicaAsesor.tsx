@@ -8,16 +8,6 @@ import type { PublicWebPageData } from '../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../lib/webPagesTypes';
 import { useScrollReveal, useStaggeredReveal, createColorVariant } from '../lib/animationUtils';
 
-const RESERVED_PATHS = [
-  'login', 'dashboard', 'perfil', 'directorio', 'directorio-jiro', 'usuario',
-  'oficinas', 'configuracion', 'notificaciones-transaccionales', 'centro-correos',
-  'vacaciones', 'espacio-jiro', 'multicotizador-digital', 'publicidad',
-  'gestor-emails', 'chat', 'accesos-nacional', 'seguros-education',
-  'aula-virtual', 'centro-notificaciones', 'tramites', 'mi-crm',
-  'comunicados', 'store', 'comisiones', 'mis-comisiones', 'produccion',
-  'mi-produccion', 'gmm', 'catalogos-web', 'mi-pagina-web'
-];
-
 export default function PaginaPublicaAsesor() {
   const { slug } = useParams<{ slug: string }>();
   const [data, setData] = useState<PublicWebPageData | null>(null);
@@ -31,12 +21,6 @@ export default function PaginaPublicaAsesor() {
   useEffect(() => {
     if (!slug) {
       setNotFound(true);
-      setLoading(false);
-      return;
-    }
-
-    // Si el slug es una ruta reservada del sistema, no renderizar esta página
-    if (RESERVED_PATHS.includes(slug)) {
       setLoading(false);
       return;
     }
@@ -80,11 +64,6 @@ export default function PaginaPublicaAsesor() {
     } finally {
       setLoading(false);
     }
-  }
-
-  // Si es una ruta reservada, no renderizar nada (dejar que AppRoutes maneje la ruta)
-  if (slug && RESERVED_PATHS.includes(slug)) {
-    return null;
   }
 
   if (loading) {
