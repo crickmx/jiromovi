@@ -53,6 +53,7 @@ export interface PublicWebPageData {
     email: string;
     phone: string;
     photo_url: string | null;
+    logo_url: string | null;
     office: {
       name: string;
       logo_url: string | null;

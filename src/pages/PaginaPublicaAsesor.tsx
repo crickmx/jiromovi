@@ -150,6 +150,16 @@ export default function PaginaPublicaAsesor() {
             }}
           />
 
+          {user.logo_url && (
+            <div className="absolute top-8 left-8 z-20 animate-in fade-in slide-in-from-left-4 duration-700">
+              <img
+                src={user.logo_url}
+                alt="Logo"
+                className="h-12 md:h-16 w-auto object-contain filter drop-shadow-2xl"
+              />
+            </div>
+          )}
+
           <div className="max-w-5xl mx-auto text-center text-white relative z-10 w-full">
             {user.photo_url && (
               <div className="mb-8 flex justify-center animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -485,49 +495,56 @@ export default function PaginaPublicaAsesor() {
 
         <section
           ref={aboutReveal.ref as React.RefObject<HTMLElement>}
-          className={`relative py-24 px-4 bg-white z-10 transition-all duration-1000 ${
+          className={`relative py-24 px-4 bg-gradient-to-b from-white via-gray-50 to-white z-10 transition-all duration-1000 ${
             aboutReveal.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-bold text-center mb-6 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-              Sobre Mí
-            </h2>
-            <div className="h-1 w-24 mx-auto mb-16 rounded-full" style={{ background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }} />
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+                Sobre Mí
+              </h2>
+              <div className="h-1 w-24 mx-auto rounded-full" style={{ background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }} />
+            </div>
 
-            <div className="grid md:grid-cols-2 gap-8 items-center mb-12">
+            <div className="grid md:grid-cols-2 gap-12 items-start">
               {user.photo_url && (
-                <div className="flex justify-center md:justify-end">
+                <div className="flex justify-center md:justify-start">
                   <div className="relative group">
                     <div
-                      className="absolute inset-0 rounded-3xl blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-500"
-                      style={{ backgroundColor: primaryColor }}
+                      className="absolute -inset-4 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500"
+                      style={{
+                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
+                      }}
                     />
-                    <img
-                      src={user.photo_url}
-                      alt={user.name}
-                      className="relative w-64 h-64 rounded-3xl object-cover shadow-2xl transform group-hover:scale-105 transition-transform duration-500"
-                    />
+                    <div className="relative bg-white rounded-3xl p-4 shadow-xl">
+                      <img
+                        src={user.photo_url}
+                        alt={user.name}
+                        className="w-full h-auto rounded-2xl object-cover transform group-hover:scale-[1.02] transition-transform duration-500"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
 
-              <div className="space-y-6 text-gray-700 leading-relaxed">
-                {textToDisplay.slice(0, 2).map((paragraph, index) => (
-                  <p key={index} className="text-lg" style={{ animationDelay: `${index * 200}ms` }}>
-                    {paragraph}
-                  </p>
+              <div className="space-y-8">
+                {textToDisplay.map((paragraph, index) => (
+                  <div
+                    key={index}
+                    className="relative group"
+                  >
+                    <div
+                      className="absolute -left-4 top-0 bottom-0 w-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      style={{ backgroundColor: primaryColor }}
+                    />
+                    <p className="text-lg text-gray-700 leading-relaxed pl-4 group-hover:translate-x-2 transition-transform duration-300">
+                      {paragraph}
+                    </p>
+                  </div>
                 ))}
               </div>
             </div>
-
-            {textToDisplay.length > 2 && (
-              <div className="space-y-6 text-gray-700 leading-relaxed text-lg">
-                {textToDisplay.slice(2).map((paragraph, index) => (
-                  <p key={index + 2}>{paragraph}</p>
-                ))}
-              </div>
-            )}
           </div>
         </section>
 

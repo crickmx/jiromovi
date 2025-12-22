@@ -270,16 +270,24 @@ export default function MiPaginaWeb() {
           </Card>
 
           <Card className="p-4">
-            <h2 className="text-base font-semibold mb-3">Texto Personalizado</h2>
+            <h2 className="text-base font-semibold mb-3">Sobre Mí</h2>
             <p className="text-xs text-gray-600 mb-3">
-              Describe tus servicios y experiencia. Separa párrafos con líneas vacías.
+              Escribe sobre ti, tu experiencia y lo que haces especial como asesor. Separa párrafos con líneas vacías.
             </p>
-            <textarea
-              value={config.custom_text}
-              onChange={(e) => setConfig(prev => ({ ...prev, custom_text: e.target.value }))}
-              className="w-full px-3 py-2 border rounded-md min-h-[200px] text-sm"
-              placeholder="Como tu asesor personal de seguros..."
-            />
+            <div className="relative">
+              <textarea
+                value={config.custom_text}
+                onChange={(e) => setConfig(prev => ({ ...prev, custom_text: e.target.value }))}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl min-h-[240px] text-sm focus:border-blue-500 focus:outline-none transition-colors resize-none shadow-sm"
+                placeholder="Como tu asesor personal de seguros, mi compromiso es brindarte atención especializada...&#10;&#10;Trabajo con las mejores aseguradoras del mercado...&#10;&#10;Mi objetivo es que tomes decisiones informadas..."
+              />
+              <div className="absolute bottom-3 right-3 text-xs text-gray-400">
+                {config.custom_text.split('\n\n').filter(p => p.trim()).length} párrafo(s)
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+              <span className="font-medium">💡 Tip:</span> Usa doble salto de línea para separar párrafos
+            </p>
           </Card>
 
           <div className="sticky bottom-0 bg-white pt-2 pb-4">
@@ -319,6 +327,7 @@ export default function MiPaginaWeb() {
                     email: usuario?.email_laboral || '',
                     phone: usuario?.celular_laboral || '',
                     photo_url: usuario?.foto_url || null,
+                    logo_url: usuario?.mi_logotipo_url || null,
                     office_name: usuario?.oficina?.nombre || ''
                   }}
                 />
