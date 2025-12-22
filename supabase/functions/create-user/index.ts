@@ -123,10 +123,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const nombre_completo = `${userData.nombre} ${userData.apellidos}`.trim();
+
     const { error: insertError } = await supabaseAdmin.from('usuarios').insert({
       id: authData.user.id,
       nombre: userData.nombre,
       apellidos: userData.apellidos,
+      nombre_completo: nombre_completo,
       rol: userData.rol,
       email_laboral: userData.email_laboral,
       puesto: userData.puesto || '',
