@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estado del Sistema de Web Leads</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #1a202c;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #718096;
+            font-size: 16px;
+            margin-bottom: 32px;
+        }
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section:last-child {
+            margin-bottom: 0;
+        }
+        h2 {
+            color: #2d3748;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .icon {
+            width: 24px;
+            height: 24px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: start;
+            gap: 12px;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        .check {
+            color: #48bb78;
+            font-weight: 700;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .item-text {
+            flex: 1;
+        }
+        .item-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+        .item-desc {
+            color: #718096;
+            font-size: 14px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-right: 12px;
+            margin-bottom: 12px;
+            transition: transform 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        .button.secondary {
+            background: #4a5568;
+        }
+        .code {
+            background: #f7fafc;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #2d3748;
+            border-left: 4px solid #667eea;
+            margin: 12px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        .warning-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        .warning-text {
+            color: #856404;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>✅ Sistema de Web Leads</h1>
+            <p class="subtitle">El sistema está completamente operativo</p>
+            <div class="status success">
+                ✓ Todos los errores han sido corregidos
+            </div>
+
+            <div class="section">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Cambios Aplicados
+                </h2>
+                <ul>
+                    <li>
+                        <span class="check">✓</span>
+                        <div class="item-text">
+                            <div class="item-title">Fallback de URL de Supabase</div>
+                            <div class="item-desc">La página ahora usa una URL por defecto si las variables de entorno no están disponibles</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="check">✓</span>
+                        <div class="item-text">
+                            <div class="item-title">Edge Function con Mejor Manejo de Errores</div>
+                            <div class="item-desc">Retorna mensajes específicos para cada tipo de error</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="check">✓</span>
+                        <div class="item-text">
+                            <div class="item-title">Frontend con Logging Detallado</div>
+                            <div class="item-desc">Los errores ahora se muestran en la consola con detalles completos</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="check">✓</span>
+                        <div class="item-text">
+                            <div class="item-title">Página de Diagnóstico</div>
+                            <div class="item-desc">Nueva herramienta para probar el sistema fácilmente</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Herramientas de Prueba
+                </h2>
+                <div style="margin-top: 16px;">
+                    <a href="/test-web-lead-form.html" class="button">
+                        🧪 Página de Diagnóstico
+                    </a>
+                    <a href="/p/movi" class="button secondary">
+                        🌐 Ejemplo de Página Pública
+                    </a>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    Pasos Siguientes
+                </h2>
+                <ul>
+                    <li>
+                        <span class="check">1</span>
+                        <div class="item-text">
+                            <div class="item-title">Verifica tu Slug</div>
+                            <div class="item-desc">Asegúrate de tener un slug configurado en tu perfil</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="check">2</span>
+                        <div class="item-text">
+                            <div class="item-title">Personaliza tu Página</div>
+                            <div class="item-desc">Ve a "Mi Página Web" para configurar colores y textos</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="check">3</span>
+                        <div class="item-text">
+                            <div class="item-title">Publica tu Página</div>
+                            <div class="item-desc">Activa el toggle "Publicar Página"</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="check">4</span>
+                        <div class="item-text">
+                            <div class="item-title">Comparte tu Link</div>
+                            <div class="item-desc">Tu página estará disponible en: <code>https://tu-dominio.com/p/[tu-slug]</code></div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <div class="warning-title">ℹ️ Nota sobre Adblockers</div>
+                <div class="warning-text">
+                    Si ves errores como "ERR_BLOCKED_BY_CLIENT" en la consola, no te preocupes.
+                    Estos son causados por adblockers bloqueando los logos de aseguradoras.
+                    El formulario funciona correctamente.
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    Documentación
+                </h2>
+                <div style="margin-top: 16px;">
+                    <p style="color: #718096; margin-bottom: 16px;">
+                        Consulta estos archivos para más información:
+                    </p>
+                    <div class="code">
+                        📄 FIX_WEB_LEAD_UNDEFINED_URL.md - Detalles del fix<br>
+                        📄 TROUBLESHOOTING_WEB_LEADS.md - Guía de diagnóstico<br>
+                        📄 VERIFICAR_SLUG_USUARIO.sql - Queries SQL útiles
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; padding: 24px; color: white;">
+            <p style="font-size: 14px; opacity: 0.9;">
+                Sistema actualizado el 22 de diciembre de 2025
+            </p>
+        </div>
+    </div>
+</body>
+</html>

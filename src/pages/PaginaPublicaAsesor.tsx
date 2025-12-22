@@ -89,7 +89,7 @@ export default function PaginaPublicaAsesor() {
     setSubmitStatus('idle');
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qhwvuuyjhcennqccgvse.supabase.co';
       const response = await fetch(`${supabaseUrl}/functions/v1/submit-web-lead`, {
         method: 'POST',
         headers: {
