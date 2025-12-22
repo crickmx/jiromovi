@@ -194,6 +194,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         const result = await response.json();
 
         if (!response.ok) {
+          console.error('Error creating user:', result);
           throw new Error(result.error || 'Error al crear el usuario');
         }
       }
