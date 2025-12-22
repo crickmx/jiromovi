@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Save, Upload, User as UserIcon } from 'lucide-react';
+import { Save, Upload, User as UserIcon, Copy, Check } from 'lucide-react';
 import { CustomFields } from '../components/CustomFields';
 import { PaymentFields } from '../components/PaymentFields';
 import { CorreoIONOSFields } from '../components/CorreoIONOSFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
+import { getMiPaginaWeb } from '../lib/webUrlUtils';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -21,6 +22,7 @@ export function Perfil() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   useEffect(() => {
     if (usuario) {
@@ -253,10 +255,17 @@ export function Perfil() {
     { key: 'extension_telefonica', label: 'Extensión Telefónica', type: 'text' },
     { key: 'equipo_computo', label: 'Equipo de Cómputo', type: 'text' },
     { key: 'equipo_celular', label: 'Equipo Celular', type: 'text' },
-    { key: 'url_web_jiro', label: 'URL Web Jiro', type: 'url' },
-    { key: 'url_web_multicotizador', label: 'URL Web Multicotizador', type: 'url' },
-    { key: 'web_slug', label: 'Slug Página Web', type: 'text' },
+    { key: 'web_slug', label: 'Slug', type: 'text' },
   ];
+
+  const handleCopyUrl = async () => {
+    const miPaginaWeb = getMiPaginaWeb(formData.web_slug);
+    if (miPaginaWeb) {
+      await navigator.clipboard.writeText(`https://${miPaginaWeb}`);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -349,6 +358,42 @@ export function Perfil() {
                 </div>
               );
             })}
+
+            {formData.web_slug && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Mi Página Web
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={getMiPaginaWeb(formData.web_slug)}
+                    readOnly
+                    className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyUrl}
+                    className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                  >
+                    {copiedUrl ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Copiado</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>Copiar URL</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Esta es tu página web pública que puedes compartir con tus clientes
+                </p>
+              </div>
+            )}
 
             <CustomFields usuarioId={usuario.id} editable={true} />
           </div>

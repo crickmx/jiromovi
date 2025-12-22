@@ -3,6 +3,7 @@ import { X, Upload, Download, Image as ImageIcon, ChevronDown, ChevronUp, Rotate
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
+import { getMiPaginaWeb } from '../lib/webUrlUtils';
 
 interface Plantilla {
   id: string;
@@ -56,8 +57,8 @@ const DEFAULT_STYLE: TextStyle = {
 };
 
 const DEFAULT_URLS = {
-  jiro: 'www.jiro.mx',
-  multicotizador: 'www.multicotizador.digital'
+  miPaginaWeb: 'agentedeseguros.online',
+  telefono: ''
 };
 
 function normalizeUrlForDisplay(url: string): string {
@@ -107,6 +108,13 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
       if (usuario) {
         setNombreCompleto(usuario.nombre_completo || '');
 
+        // Auto-rellenar Mi Página Web desde el slug
+        const miPaginaWeb = getMiPaginaWeb(usuario.web_slug);
+        setUrlJiro(miPaginaWeb || DEFAULT_URLS.miPaginaWeb);
+
+        // Auto-rellenar teléfono laboral
+        setUrlMulticotizador(usuario.celular_laboral || DEFAULT_URLS.telefono);
+
         // Cargar el logo efectivo del usuario
         getEffectiveUserLogo(usuario.id).then(logoUrl => {
           // Siempre establecer el logo, incluso si es el logo de JIRO por defecto
@@ -118,10 +126,10 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           // En caso de error, usar logo por defecto
           setLogoPreview('/logojiro.png');
         });
+      } else {
+        setUrlJiro(DEFAULT_URLS.miPaginaWeb);
+        setUrlMulticotizador(DEFAULT_URLS.telefono);
       }
-
-      setUrlJiro(DEFAULT_URLS.jiro);
-      setUrlMulticotizador(DEFAULT_URLS.multicotizador);
 
       if (plantilla.estilos_texto_default_individual) {
         const estilos = plantilla.estilos_texto_default_individual;
@@ -168,9 +176,13 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
     if (confirm('¿Deseas restablecer todos los valores a sus defaults?')) {
       if (usuario) {
         setNombreCompleto(usuario.nombre_completo || '');
+        const miPaginaWeb = getMiPaginaWeb(usuario.web_slug);
+        setUrlJiro(miPaginaWeb || DEFAULT_URLS.miPaginaWeb);
+        setUrlMulticotizador(usuario.celular_laboral || DEFAULT_URLS.telefono);
+      } else {
+        setUrlJiro(DEFAULT_URLS.miPaginaWeb);
+        setUrlMulticotizador(DEFAULT_URLS.telefono);
       }
-      setUrlJiro(DEFAULT_URLS.jiro);
-      setUrlMulticotizador(DEFAULT_URLS.multicotizador);
       setStyleNombre(DEFAULT_STYLE);
       setStyleJiro({ ...DEFAULT_STYLE, size: 20 });
       setStyleMulti({ ...DEFAULT_STYLE, size: 20 });
@@ -706,26 +718,26 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                 </div>
               </AccordionSection>
 
-              <AccordionSection id="urls" title="URLs (sin https://)">
+              <AccordionSection id="urls" title="Información de Contacto">
                 <div className="space-y-2">
                   <div>
-                    <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">URL JIRO</label>
+                    <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">Mi Página Web</label>
                     <input
                       type="text"
                       value={urlJiro}
                       onChange={(e) => handleUrlChange(setUrlJiro, e.target.value)}
-                      placeholder="www.jiro.mx"
+                      placeholder="agentedeseguros.online/ejemplo"
                       className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                     <StyleControls style={styleJiro} field="jiro" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">URL Multicotizador</label>
+                    <label className="block text-[10px] font-medium text-neutral-600 mb-0.5">Teléfono Laboral</label>
                     <input
                       type="text"
                       value={urlMulticotizador}
                       onChange={(e) => handleUrlChange(setUrlMulticotizador, e.target.value)}
-                      placeholder="www.multicotizador.digital"
+                      placeholder="55 1234 5678"
                       className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                     <StyleControls style={styleMulti} field="multi" />

@@ -11,6 +11,7 @@ import { TramitesWidget } from '../components/TramitesWidget';
 import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
 import CalendarioEventos from '../components/CalendarioEventos';
 import { UltimoComunicado } from '../components/UltimoComunicado';
+import { getMiPaginaWebFull } from '../lib/webUrlUtils';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -196,19 +197,19 @@ export function Dashboard() {
               </div>
             )}
 
-            {currentUser?.url_web_jiro ? (
+            {currentUser?.web_slug ? (
               <a
-                href={currentUser.url_web_jiro}
+                href={getMiPaginaWebFull(currentUser.web_slug)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-medium text-sm hover:bg-gray-200 transition-colors"
               >
-                Página web de contacto
+                Mi Página Web
                 <ExternalLink className="w-4 h-4" />
               </a>
             ) : (
               <div className="inline-flex items-center gap-2 bg-gray-100 text-gray-400 px-4 py-2 rounded-lg font-medium text-sm cursor-not-allowed">
-                Página web de contacto
+                Mi Página Web
                 <ExternalLink className="w-4 h-4" />
               </div>
             )}
@@ -300,14 +301,14 @@ export function Dashboard() {
             </div>
           )}
 
-          {currentUser?.url_web_jiro ? (
+          {currentUser?.web_slug ? (
             <a
-              href={currentUser.url_web_jiro}
+              href={getMiPaginaWebFull(currentUser.web_slug)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-medium text-sm hover:bg-gray-200 transition-colors"
             >
-              Página web de contacto
+              Mi Página Web
               <ExternalLink className="w-4 h-4" />
             </a>
           ) : (

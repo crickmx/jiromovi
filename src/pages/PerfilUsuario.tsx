@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Save, Upload, User as UserIcon, ArrowLeft, FileText, Briefcase, Link as LinkIcon, FolderOpen } from 'lucide-react';
+import { Save, Upload, User as UserIcon, ArrowLeft, FileText, Briefcase, Link as LinkIcon, FolderOpen, Copy, Check } from 'lucide-react';
 import { CustomFields } from '../components/CustomFields';
 import { PaymentFields } from '../components/PaymentFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
+import { getMiPaginaWeb } from '../lib/webUrlUtils';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -24,6 +25,7 @@ export function PerfilUsuario() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'laboral' | 'accesos' | 'documentos'>('general');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   const canEditExpediente = currentUser?.rol === 'Administrador' || currentUser?.rol === 'Gerente';
   const isAdmin = currentUser?.rol === 'Administrador';
@@ -600,46 +602,68 @@ export function PerfilUsuario() {
 
               {activeTab === 'accesos' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-slate-900">Accesos y Enlaces</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">Página Web del Agente</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        URL Web JIRO
-                      </label>
-                      <input
-                        type="url"
-                        value={formData.url_web_jiro || ''}
-                        onChange={(e) => setFormData({ ...formData, url_web_jiro: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="https://"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        URL Web Multicotizador
-                      </label>
-                      <input
-                        type="url"
-                        value={formData.url_web_multicotizador || ''}
-                        onChange={(e) => setFormData({ ...formData, url_web_multicotizador: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="https://"
-                      />
-                    </div>
                     {isAdmin && (
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Slug Página Web (opcional)
+                          Slug
                         </label>
                         <input
                           type="text"
                           value={formData.web_slug || ''}
-                          onChange={(e) => setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                          placeholder="ejemplo: segurosstudio"
+                          onChange={(e) => {
+                            setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') });
+                            setHasUnsavedChanges(true);
+                          }}
+                          placeholder="ejemplo: juanperez"
                           className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                        <p className="text-sm text-slate-500 mt-2">
-                          URL pública: <span className="font-mono text-blue-600">agentedeseguros.online/{formData.web_slug || 'slug'}</span>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Solo minúsculas, números y guiones. Sin espacios ni caracteres especiales.
+                        </p>
+                      </div>
+                    )}
+
+                    {formData.web_slug && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Mi Página Web
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={getMiPaginaWeb(formData.web_slug)}
+                            readOnly
+                            className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const miPaginaWeb = getMiPaginaWeb(formData.web_slug);
+                              if (miPaginaWeb) {
+                                navigator.clipboard.writeText(`https://${miPaginaWeb}`);
+                                setCopiedUrl(true);
+                                setTimeout(() => setCopiedUrl(false), 2000);
+                              }
+                            }}
+                            className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                          >
+                            {copiedUrl ? (
+                              <>
+                                <Check className="w-4 h-4" />
+                                <span>Copiado</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                <span>Copiar URL</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Esta es la página web pública del agente que puede compartir con sus clientes
                         </p>
                       </div>
                     )}

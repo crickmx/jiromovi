@@ -35,8 +35,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     celular_laboral: '',
     email_laboral: '',
     extension_telefonica: '',
-    url_web_jiro: '',
-    url_web_multicotizador: '',
     regimen_fiscal_id: '',
     banco: '',
     clabe: '',
@@ -70,8 +68,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         celular_laboral: user.celular_laboral,
         email_laboral: user.email_laboral,
         extension_telefonica: user.extension_telefonica,
-        url_web_jiro: user.url_web_jiro,
-        url_web_multicotizador: user.url_web_multicotizador,
         regimen_fiscal_id: user.regimen_fiscal_id || '',
         banco: user.banco || '',
         clabe: user.clabe || '',
@@ -110,8 +106,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           celular_laboral: formData.celular_laboral,
           email_laboral: formData.email_laboral,
           extension_telefonica: formData.extension_telefonica,
-          url_web_jiro: formData.url_web_jiro,
-          url_web_multicotizador: formData.url_web_multicotizador,
           regimen_fiscal_id: formData.regimen_fiscal_id || null,
           banco: formData.banco,
           clabe: formData.clabe,
@@ -187,8 +181,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 email_personal: formData.email_personal,
                 celular_laboral: formData.celular_laboral,
                 extension_telefonica: formData.extension_telefonica,
-                url_web_jiro: formData.url_web_jiro,
-                url_web_multicotizador: formData.url_web_multicotizador,
                 regimen_fiscal_id: formData.regimen_fiscal_id || null,
                 banco: formData.banco,
                 clabe: formData.clabe,
@@ -463,46 +455,20 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                URL Web Jiro
-              </label>
-              <input
-                type="url"
-                value={formData.url_web_jiro}
-                onChange={(e) => setFormData({ ...formData, url_web_jiro: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                URL Web Multicotizador
-              </label>
-              <input
-                type="url"
-                value={formData.url_web_multicotizador}
-                onChange={(e) =>
-                  setFormData({ ...formData, url_web_multicotizador: e.target.value })
-                }
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
             {isAdmin && (
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Slug Página Web (opcional)
+                  Slug
                 </label>
                 <input
                   type="text"
                   value={formData.web_slug}
                   onChange={(e) => setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                  placeholder="ejemplo: segurosstudio"
+                  placeholder="ejemplo: juanperez"
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-slate-500 mt-1">
-                  URL pública: agentedeseguros.online/{formData.web_slug || 'slug'}
+                  Mi Página Web: <span className="font-mono text-blue-600">agentedeseguros.online/{formData.web_slug || 'slug'}</span>
                 </p>
               </div>
             )}
