@@ -386,7 +386,7 @@ export default function MiPaginaWeb() {
                     email: usuario?.email_laboral || '',
                     phone: usuario?.celular_laboral || '',
                     photo_url: usuario?.foto_url || null,
-                    office_name: usuario?.oficina?.name || ''
+                    office_name: usuario?.oficina?.nombre || ''
                   }}
                 />
               </div>

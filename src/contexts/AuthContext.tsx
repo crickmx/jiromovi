@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data, error } = await supabase
         .from('usuarios')
-        .select('*, oficina:oficinas(id, name)')
+        .select('*, oficina:oficinas(id, nombre)')
         .eq('id', userId)
         .eq('activo', true)
         .eq('is_deleted', false)
