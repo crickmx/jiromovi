@@ -38,18 +38,48 @@ export interface Database {
           nombre: string
           activa: boolean
           created_at: string
+          director: string | null
+          gerente: string | null
+          telefono: string | null
+          email: string | null
+          domicilio: string | null
+          facebook: string | null
+          instagram: string | null
+          es_espacio_jiro: boolean
+          updated_at: string
+          logo_url: string | null
         }
         Insert: {
           id?: string
           nombre: string
           activa?: boolean
           created_at?: string
+          director?: string | null
+          gerente?: string | null
+          telefono?: string | null
+          email?: string | null
+          domicilio?: string | null
+          facebook?: string | null
+          instagram?: string | null
+          es_espacio_jiro?: boolean
+          updated_at?: string
+          logo_url?: string | null
         }
         Update: {
           id?: string
           nombre?: string
           activa?: boolean
           created_at?: string
+          director?: string | null
+          gerente?: string | null
+          telefono?: string | null
+          email?: string | null
+          domicilio?: string | null
+          facebook?: string | null
+          instagram?: string | null
+          es_espacio_jiro?: boolean
+          updated_at?: string
+          logo_url?: string | null
         }
       }
       usuarios: {
@@ -76,6 +106,7 @@ export interface Database {
           activo: boolean
           created_at: string
           updated_at: string
+          mi_logotipo_url: string | null
         }
         Insert: {
           id: string
@@ -100,6 +131,7 @@ export interface Database {
           activo?: boolean
           created_at?: string
           updated_at?: string
+          mi_logotipo_url?: string | null
         }
         Update: {
           id?: string
@@ -124,6 +156,7 @@ export interface Database {
           activo?: boolean
           created_at?: string
           updated_at?: string
+          mi_logotipo_url?: string | null
         }
       }
       campos_personalizados: {
