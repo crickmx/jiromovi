@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
       .from('usuarios')
       .select('id, nombre_completo, email_laboral, celular_laboral, web_slug')
       .eq('web_slug', slug)
-      .eq('estado', 'Activo')
+      .ilike('estado', 'activo')
       .maybeSingle();
 
     if (agenteError || !agente) {
