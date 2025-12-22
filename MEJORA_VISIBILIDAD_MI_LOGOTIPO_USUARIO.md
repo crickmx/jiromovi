@@ -1,15 +1,26 @@
-# Mejora de Visibilidad: Mi Logotipo en Modal de Usuario
+# Mejora de Visibilidad: Mi Logotipo en Modal y Página de Usuario
 
 ## Problema Identificado
 
-La sección "Mi Logotipo" en el modal de creación/edición de usuarios no era visible porque:
-1. Estaba ubicada al final del formulario (después de todos los campos)
-2. Se perdía con el scroll del modal
-3. Solo aparecía al editar usuarios, sin explicación al crear nuevos usuarios
+El usuario reportó: **"sigo sin ver 'mi logotipo' al querer crear o editar usuario desde usuarios"**
+
+Análisis del problema:
+1. **Al crear usuario nuevo (Modal):** La sección existía pero estaba oculta al final del formulario
+2. **Al editar usuario (Directorio → Ver/Editar):** La sección NO existía en absoluto en la página de perfil completa
+3. Solo había funcionalidad de logo en el modal, pero cuando se hace clic en "Ver / Editar" desde el Directorio, se abre una página completa diferente (PerfilUsuario.tsx) que no tenía el editor de logo
+
+**Root Cause:**
+- Había **dos interfaces diferentes** para editar usuarios:
+  - `UserModal.tsx` - Modal usado desde algunos lugares (tenía el editor)
+  - `PerfilUsuario.tsx` - Página completa usada desde Directorio (NO tenía el editor)
+- La página de Directorio usa `PerfilUsuario.tsx`, no `UserModal.tsx`
+- Por eso el usuario no veía "Mi Logotipo" al dar clic en editar desde usuarios
 
 ## Solución Implementada
 
-### 1. Reorganización del Layout
+### Enfoque Dual: Arreglar Ambas Interfaces
+
+#### Solución 1: UserModal.tsx (Reorganización)
 
 **Antes:**
 ```
@@ -30,6 +41,19 @@ La sección "Mi Logotipo" en el modal de creación/edición de usuarios no era v
 5. Campos de Pago
 6. Gestión de Vacaciones
 ```
+
+#### Solución 2: PerfilUsuario.tsx (Agregar Funcionalidad)
+
+**Antes:**
+- NO existía la sección "Mi Logotipo" en absoluto
+- Usuarios no podían subir logo desde la página de edición principal
+
+**Ahora:**
+- Agregada sección completa "📸 Mi Logotipo Personal"
+- Ubicada en pestaña "Información General"
+- Después de "Campos Personalizados"
+- Con separador visual y descripción clara
+- Funcionalidad completa de subir/cambiar/eliminar logo
 
 ### 2. Mejoras Visuales
 
@@ -116,27 +140,61 @@ Esta jerarquía se aplica automáticamente en:
 
 ## Ubicación en la Interfaz
 
+### Método 1: Crear Nuevo Usuario (Modal)
+
 **Ruta:** https://app.movi.digital/directorio
 
 **Acciones:**
-1. **Crear Usuario:** Click en "Nuevo Usuario" → Ver mensaje informativo sobre el logo
-2. **Editar Usuario:** Click en cualquier usuario → Scroll hacia abajo → Ver "Mi Logotipo Personal" con editor completo
+1. Click en botón "Nuevo Usuario"
+2. Se abre modal de creación
+3. Ver sección "📸 Mi Logotipo Personal" con mensaje informativo
+4. El mensaje explica que se debe crear el usuario primero y luego editar para subir el logo
+
+### Método 2: Editar Usuario Existente (Página Completa)
+
+**Ruta:** https://app.movi.digital/directorio → Click en "Ver / Editar" en cualquier usuario
+
+**Acciones:**
+1. Click en botón "Ver / Editar" de cualquier usuario
+2. Se abre página completa de perfil de usuario
+3. Ir a pestaña "Información General" (activa por defecto)
+4. Hacer scroll hacia abajo después de "Campos Personalizados"
+5. Ver sección "📸 Mi Logotipo Personal" con:
+   - Título destacado con icono
+   - Descripción del propósito
+   - Componente completo de carga de logo
+   - Vista previa del logo actual
+   - Botones para subir/cambiar/eliminar
 
 ## Flujo de Trabajo Recomendado
 
-### Para Administradores
-1. Crear el nuevo usuario con todos sus datos
-2. Guardar el usuario
-3. Volver a abrir el usuario en modo edición
-4. Subir el logotipo personal en la sección "Mi Logotipo Personal"
-5. El logo aparecerá automáticamente en todos los PDFs del usuario
+### Para Administradores - Crear y Configurar Usuario Nuevo
+
+**Opción A: Usando Modal (Directorio)**
+1. Ir a Directorio y click en "Nuevo Usuario"
+2. Llenar todos los datos del usuario
+3. Guardar usuario
+4. Click en "Ver / Editar" del usuario recién creado
+5. Ir a pestaña "Información General"
+6. Scroll a "Mi Logotipo Personal"
+7. Subir logotipo personal
+
+**Opción B: Editar Usuario Existente**
+1. Ir a Directorio
+2. Click en "Ver / Editar" del usuario
+3. Ir a pestaña "Información General"
+4. Scroll a "Mi Logotipo Personal"
+5. Subir/cambiar/eliminar logotipo
 
 ### Para Usuarios (Editar su propio perfil)
-1. Ir a su perfil personal
-2. Buscar la sección "Mi Logotipo Personal"
-3. Subir su logo usando el botón "Subir logotipo"
-4. Ver vista previa inmediata
-5. El logo se aplicará a todos sus documentos
+1. Ir a su perfil personal desde el menú
+2. Buscar pestaña "Información General"
+3. Scroll a "Mi Logotipo Personal"
+4. Subir su logo usando el botón "Subir logotipo"
+5. Ver vista previa inmediata
+6. El logo se aplicará a todos sus documentos
+
+**Nota:** Los usuarios también pueden tener acceso a su perfil desde diferentes rutas según los permisos configurados.
 
 ## Integración con PDFs
 
@@ -154,38 +212,67 @@ Los cambios en este modal se integran perfectamente con la corrección de distor
 
 ## Testing Recomendado
 
-### Test 1: Crear Usuario Sin Logo
-1. Crear nuevo usuario desde Directorio
-2. Verificar que se muestre mensaje informativo sobre el logo
-3. Guardar usuario
-4. Verificar que se pueda editar después
+### Test 1: Crear Usuario Sin Logo (Modal)
+1. Ir a Directorio → Click "Nuevo Usuario"
+2. Verificar que se muestre sección "📸 Mi Logotipo Personal"
+3. Verificar mensaje informativo gris
+4. Guardar usuario
+5. Verificar que se pueda editar después
 
-### Test 2: Editar Usuario y Subir Logo
-1. Abrir usuario existente en modo edición
-2. Verificar que aparezca la sección "Mi Logotipo Personal" destacada
-3. Verificar banner azul informativo
-4. Subir un logo (PNG/JPG)
-5. Verificar vista previa inmediata
+### Test 2: Editar Usuario en Página Completa
+1. Ir a Directorio → Click "Ver / Editar" en cualquier usuario
+2. Verificar que se abra página completa (no modal)
+3. Verificar pestaña "Información General" activa por defecto
+4. Scroll hacia abajo después de campos personalizados
+5. Verificar sección "📸 Mi Logotipo Personal" visible
 
-### Test 3: Cambiar Logo Existente
-1. Editar usuario que ya tiene logo
-2. Verificar que se muestre el logo actual
-3. Usar botón "Cambiar logotipo"
-4. Subir nuevo logo
-5. Verificar que se actualice
+### Test 3: Subir Logo en Página de Perfil
+1. Abrir usuario en página completa (Ver / Editar)
+2. Ir a "Información General"
+3. Verificar que aparezca la sección "Mi Logotipo Personal"
+4. Verificar descripción: "Tu logotipo personal aparecerá..."
+5. Subir un logo (PNG/JPG)
+6. Verificar vista previa inmediata
+7. Click "Guardar Cambios" en la parte superior
+8. Verificar mensaje de éxito
 
-### Test 4: Eliminar Logo
-1. Editar usuario con logo
-2. Usar botón "Eliminar"
-3. Confirmar eliminación
-4. Verificar que desaparezca el logo personal
-5. El sistema debe usar logo de oficina o JIRO
+### Test 4: Cambiar Logo Existente
+1. Editar usuario que ya tiene logo (Ver / Editar)
+2. Ir a "Información General" → "Mi Logotipo Personal"
+3. Verificar que se muestre el logo actual
+4. Usar botón "Cambiar logotipo"
+5. Subir nuevo logo
+6. Verificar que se actualice la vista previa
+7. Guardar cambios
 
-### Test 5: Visibilidad en Scroll
-1. Abrir modal de edición de usuario
-2. Verificar que la sección "Mi Logotipo Personal" sea visible sin mucho scroll
-3. El icono 📸 debe ser fácil de identificar
-4. No debe estar oculto al final del formulario
+### Test 5: Eliminar Logo
+1. Editar usuario con logo (Ver / Editar)
+2. Ir a "Mi Logotipo Personal"
+3. Usar botón "Eliminar"
+4. Confirmar eliminación
+5. Verificar que desaparezca el logo personal
+6. El sistema debe usar logo de oficina o JIRO
+7. Guardar cambios
+
+### Test 6: Visibilidad en Ambas Interfaces
+**Modal (Crear):**
+- Sección visible con mensaje informativo
+- No oculta al final del formulario
+- Icono 📸 fácil de identificar
+
+**Página Completa (Editar):**
+- Sección en pestaña "Información General"
+- Después de "Campos Personalizados"
+- Separador visual claro (border-top)
+- Título destacado con descripción
+- Editor completo funcional
+
+### Test 7: Integración con PDFs
+1. Usuario con logo personal
+2. Generar PDF de comisiones
+3. Verificar que aparezca su logo (no distorsionado)
+4. Usuario sin logo personal
+5. Verificar que use logo de oficina o JIRO
 
 ## Archivos Modificados
 
@@ -194,6 +281,12 @@ Los cambios en este modal se integran perfectamente con la corrección de distor
    - Banner informativo azul (editar)
    - Mensaje informativo gris (crear)
    - Título con icono 📸
+
+2. **src/pages/PerfilUsuario.tsx**
+   - Agregado import de `MiLogotipoEditor`
+   - Nueva sección "Mi Logotipo Personal" en pestaña "Información General"
+   - Ubicada después de "Campos Personalizados"
+   - Con separador visual (border-top) y descripción clara
 
 ## Estado del Build
 

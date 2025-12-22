@@ -6,6 +6,7 @@ import { Save, Upload, User as UserIcon, ArrowLeft, FileText, Briefcase, Link as
 import { CustomFields } from '../components/CustomFields';
 import { PaymentFields } from '../components/PaymentFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
+import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -444,6 +445,25 @@ export function PerfilUsuario() {
                   </div>
 
                   <CustomFields usuarioId={usuario.id} editable={true} />
+
+                  <div className="mt-8 pt-8 border-t border-slate-200">
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-2">
+                        <span className="text-2xl">📸</span>
+                        Mi Logotipo Personal
+                      </h3>
+                      <p className="text-sm text-slate-600">
+                        Tu logotipo personal aparecerá en tus PDFs de comisiones y materiales oficiales.
+                      </p>
+                    </div>
+                    <MiLogotipoEditor
+                      userId={usuario.id}
+                      currentLogoUrl={usuario.mi_logotipo_url}
+                      onLogoChange={async () => {
+                        await loadData();
+                      }}
+                    />
+                  </div>
                 </div>
               )}
 
