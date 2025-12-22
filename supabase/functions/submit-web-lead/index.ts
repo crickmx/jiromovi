@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
     const { data: existingContact, error: searchError } = await supabase
       .from('crm_contactos')
       .select('id')
-      .eq('usuario_id', agente.id)
+      .eq('creado_por', agente.id)
       .or(`celular.eq.${celular},email.eq.${email}`)
       .maybeSingle();
 
@@ -78,11 +78,12 @@ Deno.serve(async (req: Request) => {
       const { data: updatedContact, error: updateError } = await supabase
         .from('crm_contactos')
         .update({
-          nombre,
+          nombre_completo: nombre,
           celular,
           email,
-          tipo_seguro: seguro_interes,
-          ultima_interaccion: new Date().toISOString(),
+          campos_personalizados: {
+            tipo_seguro: seguro_interes,
+          },
         })
         .eq('id', existingContact.id)
         .select('id')
@@ -108,14 +109,16 @@ Deno.serve(async (req: Request) => {
       const { data: newContact, error: insertError } = await supabase
         .from('crm_contactos')
         .insert({
-          usuario_id: agente.id,
-          nombre,
+          creado_por: agente.id,
+          tipo_contacto: 'Persona',
+          nombre_completo: nombre,
           celular,
           email,
           estatus: 'Prospecto',
-          tipo_seguro: seguro_interes,
-          origen: 'Mi Página Web',
-          ultima_interaccion: new Date().toISOString(),
+          fuente_origen: 'Mi Página Web',
+          campos_personalizados: {
+            tipo_seguro: seguro_interes,
+          },
         })
         .select('id')
         .single();
@@ -145,14 +148,13 @@ Deno.serve(async (req: Request) => {
     const { error: taskError } = await supabase
       .from('crm_tareas')
       .insert({
-        usuario_id: agente.id,
+        creado_por: agente.id,
         contacto_id: contactId,
-        titulo: `Seguimiento: Lead desde Mi Página Web`,
-        descripcion: `Solicitud desde Mi Página Web. Seguro de interés: ${seguro_interes}. Contactar al cliente para cotización.\n\nDatos:\n• Nombre: ${nombre}\n• Celular: ${celular}\n• Email: ${email}`,
-        tipo: 'Llamada',
+        descripcion: `Seguimiento: Lead desde Mi Página Web\n\nSolicitud desde Mi Página Web. Seguro de interés: ${seguro_interes}. Contactar al cliente para cotización.\n\nDatos:\n• Nombre: ${nombre}\n• Celular: ${celular}\n• Email: ${email}`,
+        tipo_actividad: 'Llamada',
         prioridad: 'Alta',
-        estado: 'Pendiente',
-        fecha_vencimiento: tomorrow.toISOString().split('T')[0],
+        estatus: 'Pendiente',
+        fecha_vencimiento: tomorrow.toISOString(),
       });
 
     if (taskError) {
