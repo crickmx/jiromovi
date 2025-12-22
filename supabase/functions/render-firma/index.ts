@@ -6,6 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+// Helper para generar Mi Página Web desde slug
+function getMiPaginaWeb(slug: string | null | undefined): string {
+  if (!slug) return '';
+  return `agentedeseguros.online/${slug}`;
+}
+
 // Simple Handlebars-like template engine
 function renderTemplate(template: string, data: any): string {
   let result = template;
@@ -162,8 +168,8 @@ Deno.serve(async (req: Request) => {
       email_laboral: usuario.email_laboral || '',
       celular_laboral: usuario.celular_laboral || '',
       extension_telefonica: usuario.extension_telefonica || '',
-      url_web_jiro: usuario.url_web_jiro || '',
-      url_web_multicotizador: usuario.url_web_multicotizador || '',
+      mi_pagina_web: getMiPaginaWeb(usuario.web_slug),
+      web_slug: usuario.web_slug || '',
       imagen_perfil: usuario.imagen_perfil_url || '',
     };
 

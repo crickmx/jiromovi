@@ -181,6 +181,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 email_personal: formData.email_personal,
                 celular_laboral: formData.celular_laboral,
                 extension_telefonica: formData.extension_telefonica,
+                web_slug: formData.web_slug,
                 regimen_fiscal_id: formData.regimen_fiscal_id || null,
                 banco: formData.banco,
                 clabe: formData.clabe,

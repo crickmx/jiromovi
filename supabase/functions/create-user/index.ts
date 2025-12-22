@@ -21,8 +21,7 @@ interface CreateUserRequest {
     email_personal?: string;
     celular_laboral?: string;
     extension_telefonica?: string;
-    url_web_jiro?: string;
-    url_web_multicotizador?: string;
+    web_slug?: string;
     regimen_fiscal_id?: string | null;
     banco?: string;
     clabe?: string;
@@ -138,8 +137,7 @@ Deno.serve(async (req: Request) => {
       email_personal: userData.email_personal || '',
       celular_laboral: userData.celular_laboral || '',
       extension_telefonica: userData.extension_telefonica || '',
-      url_web_jiro: userData.url_web_jiro || '',
-      url_web_multicotizador: userData.url_web_multicotizador || '',
+      web_slug: userData.web_slug || '',
       regimen_fiscal_id: userData.regimen_fiscal_id || null,
       banco: userData.banco || '',
       clabe: userData.clabe || '',
