@@ -704,10 +704,8 @@ function AppRoutes() {
         }
       />
 
-      <Route path="/soy/:slug" element={<PaginaPublicaAsesor />} />
-
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/:slug" element={<PaginaPublicaAsesor />} />
     </Routes>
   );
 }
