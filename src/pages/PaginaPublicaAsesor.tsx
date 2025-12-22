@@ -104,8 +104,11 @@ export default function PaginaPublicaAsesor() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Error al enviar la solicitud');
+      const responseData = await response.json();
+
+      if (!response.ok || !responseData.success) {
+        console.error('Error response:', responseData);
+        throw new Error(responseData.error || 'Error al enviar la solicitud');
       }
 
       setSubmitStatus('success');

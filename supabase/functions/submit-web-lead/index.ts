@@ -60,12 +60,16 @@ Deno.serve(async (req: Request) => {
     }
 
     // 2. Verificar si el contacto ya existe (anti-duplicados)
-    const { data: existingContact } = await supabase
+    const { data: existingContact, error: searchError } = await supabase
       .from('crm_contactos')
       .select('id')
       .eq('usuario_id', agente.id)
       .or(`celular.eq.${celular},email.eq.${email}`)
       .maybeSingle();
+
+    if (searchError) {
+      console.error('Error searching for existing contact:', searchError);
+    }
 
     let contactId: string;
 
@@ -86,7 +90,16 @@ Deno.serve(async (req: Request) => {
 
       if (updateError) {
         console.error('Error updating contact:', updateError);
-        throw updateError;
+        return new Response(
+          JSON.stringify({
+            error: 'Error al actualizar el contacto',
+            details: updateError.message,
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
       }
 
       contactId = updatedContact.id;
@@ -109,7 +122,16 @@ Deno.serve(async (req: Request) => {
 
       if (insertError) {
         console.error('Error creating contact:', insertError);
-        throw insertError;
+        return new Response(
+          JSON.stringify({
+            error: 'Error al crear el contacto en el CRM',
+            details: insertError.message,
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
       }
 
       contactId = newContact.id;
