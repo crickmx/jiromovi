@@ -296,7 +296,7 @@ export function Directorio() {
                           <div className="text-sm font-medium text-slate-900">
                             {usuario.nombre} {usuario.apellidos}
                           </div>
-                          {usuario.estado === 'registrado' && (
+                          {usuario.estado === 'pendiente' && (
                             <span className="px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 rounded">
                               Pendiente
                             </span>

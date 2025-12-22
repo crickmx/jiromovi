@@ -28,7 +28,7 @@ export function UsuariosPendientes() {
     const { data, error } = await supabase
       .from('usuarios')
       .select('*, oficinas(nombre)')
-      .eq('estado', 'registrado')
+      .eq('estado', 'pendiente')
       .order('created_at', { ascending: false });
 
     if (error) {
