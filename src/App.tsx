@@ -66,7 +66,7 @@ import CatalogosWeb from './pages/CatalogosWeb';
 import MiPaginaWeb from './pages/MiPaginaWeb';
 import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 
-function ProtectedRoutes() {
+function AppRoutes() {
   const { usuario, loading } = useAuth();
 
   if (loading) {
@@ -705,6 +705,7 @@ function ProtectedRoutes() {
       />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/:slug" element={<PaginaPublicaAsesor />} />
     </Routes>
   );
 }
@@ -713,17 +714,11 @@ function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/:slug" element={<PaginaPublicaAsesor />} />
-
-          <Route path="/*" element={
-            <AuthProvider>
-              <NotificationProvider>
-                <ProtectedRoutes />
-              </NotificationProvider>
-            </AuthProvider>
-          } />
-        </Routes>
+        <AuthProvider>
+          <NotificationProvider>
+            <AppRoutes />
+          </NotificationProvider>
+        </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>
   );

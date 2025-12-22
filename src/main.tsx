@@ -5,7 +5,6 @@ import App from './App.tsx';
 import './index.css';
 
 const PUBLIC_HOSTS = new Set(["agentedeseguros.online", "www.agentedeseguros.online"]);
-const APP_HOSTS = new Set(["app.movi.digital", "www.app.movi.digital", "localhost"]);
 const MAIN_REDIRECT = "https://www.movi.digital";
 
 function normalizeHost(h: string) {
@@ -29,11 +28,6 @@ function getSlug(path: string) {
 
 (function domainGate() {
   const host = normalizeHost(window.location.host);
-
-  if (APP_HOSTS.has(host)) {
-    return;
-  }
-
   if (!PUBLIC_HOSTS.has(host)) return;
 
   const path = window.location.pathname || "/";
