@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Crear Usuario</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin: 5px;
+    }
+    button:hover { background: #45a049; }
+    button.secondary { background: #2196F3; }
+    button.danger { background: #f44336; }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .success { color: green; }
+    .error { color: red; }
+    .info { color: blue; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Diagnóstico - Crear Usuario</h1>
+
+  <div class="section">
+    <h3>1. Login de Administrador</h3>
+    <input type="email" id="email" placeholder="Email" value="admin@test.com">
+    <input type="password" id="password" placeholder="Password" value="admin123">
+    <button onclick="login()">Login</button>
+    <div id="loginStatus"></div>
+  </div>
+
+  <div class="section">
+    <h3>2. Datos del Nuevo Usuario</h3>
+    <input type="text" id="nombre" placeholder="Nombre" value="Test">
+    <input type="text" id="apellidos" placeholder="Apellidos" value="Usuario">
+    <input type="email" id="userEmail" placeholder="Email Laboral" value="testuser@test.com">
+    <input type="password" id="userPassword" placeholder="Password" value="test123">
+    <input type="text" id="web_slug" placeholder="Slug (ej: testusuario)" value="testusuario">
+    <select id="rol">
+      <option value="Empleado">Empleado</option>
+      <option value="Agente">Agente</option>
+      <option value="Gerente">Gerente</option>
+      <option value="Administrador">Administrador</option>
+    </select>
+    <button onclick="createUser()">Crear Usuario</button>
+    <div id="createStatus"></div>
+  </div>
+
+  <div class="section">
+    <h3>3. Verificar Usuario Creado</h3>
+    <button onclick="checkUser()">Verificar Usuario</button>
+    <div id="checkStatus"></div>
+  </div>
+
+  <div class="section">
+    <h3>4. Log Completo</h3>
+    <button class="danger" onclick="clearLog()">Limpiar Log</button>
+    <pre id="log"></pre>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://hfnbrjxkddkvtwuiqipl.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmbmJyanhrbh';
+
+    let supabase;
+    let sessionToken = null;
+
+    function log(msg, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEl = document.getElementById('log');
+      const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : '📋';
+      logEl.textContent += `\n[${timestamp}] ${prefix} ${msg}`;
+      console.log(msg);
+    }
+
+    function clearLog() {
+      document.getElementById('log').textContent = '';
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const statusEl = document.getElementById('loginStatus');
+
+      try {
+        log('Iniciando login...');
+
+        if (!supabase) {
+          supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          log('Cliente Supabase inicializado');
+        }
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) {
+          statusEl.innerHTML = `<span class="error">❌ ${error.message}</span>`;
+          log(`Error en login: ${error.message}`, 'error');
+          return;
+        }
+
+        sessionToken = data.session.access_token;
+        statusEl.innerHTML = `<span class="success">✅ Login exitoso</span>`;
+        log(`Login exitoso. Token: ${sessionToken.substring(0, 20)}...`, 'success');
+
+        // Verificar rol del usuario
+        const { data: userData, error: userError } = await supabase
+          .from('usuarios')
+          .select('nombre, apellidos, rol')
+          .eq('id', data.user.id)
+          .single();
+
+        if (userError) {
+          log(`Error al verificar rol: ${userError.message}`, 'error');
+        } else {
+          log(`Usuario autenticado: ${userData.nombre} ${userData.apellidos} (${userData.rol})`, 'success');
+        }
+
+      } catch (err) {
+        statusEl.innerHTML = `<span class="error">❌ ${err.message}</span>`;
+        log(`Exception en login: ${err.message}`, 'error');
+      }
+    }
+
+    async function createUser() {
+      const statusEl = document.getElementById('createStatus');
+
+      if (!sessionToken) {
+        statusEl.innerHTML = '<span class="error">❌ Debes hacer login primero</span>';
+        log('No hay token de sesión. Haz login primero.', 'error');
+        return;
+      }
+
+      try {
+        const userData = {
+          nombre: document.getElementById('nombre').value,
+          apellidos: document.getElementById('apellidos').value,
+          rol: document.getElementById('rol').value,
+          email_laboral: document.getElementById('userEmail').value,
+          web_slug: document.getElementById('web_slug').value,
+          puesto: 'Test',
+          oficina_id: null,
+          fecha_nacimiento: null,
+          fecha_ingreso: null,
+          celular_personal: '',
+          email_personal: '',
+          celular_laboral: '',
+          extension_telefonica: '',
+          regimen_fiscal_id: null,
+          banco: '',
+          clabe: '',
+          dias_vacaciones_disponibles: 0,
+        };
+
+        const requestBody = {
+          password: document.getElementById('userPassword').value,
+          userData: userData
+        };
+
+        log('Enviando request a create-user...');
+        log(`Body: ${JSON.stringify(requestBody, null, 2)}`);
+
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/create-user`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${sessionToken}`,
+            },
+            body: JSON.stringify(requestBody),
+          }
+        );
+
+        log(`Response status: ${response.status}`);
+        log(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers), null, 2)}`);
+
+        const responseText = await response.text();
+        log(`Response body (raw): ${responseText}`);
+
+        let result;
+        try {
+          result = JSON.parse(responseText);
+          log(`Response body (parsed): ${JSON.stringify(result, null, 2)}`);
+        } catch (parseError) {
+          log(`Error al parsear respuesta: ${parseError.message}`, 'error');
+          log(`Respuesta no es JSON válido. Contenido: ${responseText}`, 'error');
+          statusEl.innerHTML = `<span class="error">❌ Respuesta inválida del servidor</span>`;
+          return;
+        }
+
+        if (!response.ok) {
+          statusEl.innerHTML = `<span class="error">❌ ${result.error || 'Error desconocido'}</span>`;
+          log(`Error al crear usuario: ${result.error}`, 'error');
+          return;
+        }
+
+        statusEl.innerHTML = `<span class="success">✅ Usuario creado: ${result.userId}</span>`;
+        log(`Usuario creado exitosamente. ID: ${result.userId}`, 'success');
+
+      } catch (err) {
+        statusEl.innerHTML = `<span class="error">❌ ${err.message}</span>`;
+        log(`Exception al crear usuario: ${err.message}`, 'error');
+        log(`Stack: ${err.stack}`, 'error');
+      }
+    }
+
+    async function checkUser() {
+      const statusEl = document.getElementById('checkStatus');
+      const email = document.getElementById('userEmail').value;
+
+      try {
+        log('Verificando usuario en la base de datos...');
+
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('id, nombre, apellidos, email_laboral, rol, web_slug, estado')
+          .eq('email_laboral', email)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            statusEl.innerHTML = '<span class="error">❌ Usuario no encontrado</span>';
+            log('Usuario no encontrado en la base de datos', 'error');
+          } else {
+            statusEl.innerHTML = `<span class="error">❌ ${error.message}</span>`;
+            log(`Error al verificar usuario: ${error.message}`, 'error');
+          }
+          return;
+        }
+
+        statusEl.innerHTML = `<span class="success">✅ Usuario encontrado</span>`;
+        log(`Usuario encontrado:`, 'success');
+        log(JSON.stringify(data, null, 2));
+
+      } catch (err) {
+        statusEl.innerHTML = `<span class="error">❌ ${err.message}</span>`;
+        log(`Exception al verificar usuario: ${err.message}`, 'error');
+      }
+    }
+
+    // Inicializar al cargar
+    window.onload = () => {
+      log('Página de diagnóstico cargada');
+      log(`Supabase URL: ${SUPABASE_URL}`);
+    };
+  </script>
+</body>
+</html>

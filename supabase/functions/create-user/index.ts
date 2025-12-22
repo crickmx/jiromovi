@@ -137,7 +137,7 @@ Deno.serve(async (req: Request) => {
       email_personal: userData.email_personal || '',
       celular_laboral: userData.celular_laboral || '',
       extension_telefonica: userData.extension_telefonica || '',
-      web_slug: userData.web_slug || '',
+      web_slug: userData.web_slug && userData.web_slug.trim() !== '' ? userData.web_slug.trim() : null,
       regimen_fiscal_id: userData.regimen_fiscal_id || null,
       banco: userData.banco || '',
       clabe: userData.clabe || '',
