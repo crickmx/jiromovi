@@ -370,24 +370,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               )}
             </div>
 
-            {isAdmin && (
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Slug Página Web (opcional)
-                </label>
-                <input
-                  type="text"
-                  value={formData.web_slug}
-                  onChange={(e) => setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                  placeholder="ejemplo: segurosstudio"
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  URL pública: agentedeseguros.online/soy/{formData.web_slug || 'slug'}
-                </p>
-              </div>
-            )}
-
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Fecha de Nacimiento
@@ -506,6 +488,24 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            {isAdmin && (
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Slug Página Web (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.web_slug}
+                  onChange={(e) => setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                  placeholder="ejemplo: segurosstudio"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  URL pública: agentedeseguros.online/soy/{formData.web_slug || 'slug'}
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

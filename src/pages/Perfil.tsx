@@ -255,6 +255,7 @@ export function Perfil() {
     { key: 'equipo_celular', label: 'Equipo Celular', type: 'text' },
     { key: 'url_web_jiro', label: 'URL Web Jiro', type: 'url' },
     { key: 'url_web_multicotizador', label: 'URL Web Multicotizador', type: 'url' },
+    { key: 'web_slug', label: 'Slug Página Web', type: 'text' },
   ];
 
   return (

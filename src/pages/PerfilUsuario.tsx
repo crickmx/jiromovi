@@ -104,6 +104,7 @@ export function PerfilUsuario() {
       equipo_celular: formData.equipo_celular,
       url_web_jiro: formData.url_web_jiro,
       url_web_multicotizador: formData.url_web_multicotizador,
+      web_slug: formData.web_slug || null,
       regimen_fiscal_id: formData.regimen_fiscal_id || null,
       banco: formData.banco || null,
       clabe: formData.clabe || null,
@@ -625,6 +626,23 @@ export function PerfilUsuario() {
                         placeholder="https://"
                       />
                     </div>
+                    {isAdmin && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Slug Página Web (opcional)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.web_slug || ''}
+                          onChange={(e) => setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                          placeholder="ejemplo: segurosstudio"
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-sm text-slate-500 mt-2">
+                          URL pública: <span className="font-mono text-blue-600">agentedeseguros.online/soy/{formData.web_slug || 'slug'}</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
