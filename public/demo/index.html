@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo - Sistema de Gestión para Agentes de Seguros</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in {
+      animation: fadeIn 0.6s ease-out forwards;
+    }
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .card-hover {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+
+  <!-- Header -->
+  <header class="gradient-bg text-white py-8 shadow-xl">
+    <div class="container mx-auto px-6">
+      <div class="flex items-center justify-between">
+        <div class="fade-in">
+          <h1 class="text-4xl font-bold mb-2">Sistema de Gestión para Agentes de Seguros</h1>
+          <p class="text-blue-100 text-lg">Plataforma integral para la administración de tu oficina</p>
+        </div>
+        <a href="/" class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg">
+          Acceder al Sistema
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-6 py-12">
+
+    <!-- Hero Section -->
+    <section class="mb-16 fade-in text-center">
+      <h2 class="text-3xl font-bold text-slate-800 mb-4">Bienvenido a la Demo</h2>
+      <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+        Explora las características principales de nuestra plataforma diseñada específicamente
+        para agentes y oficinas de seguros
+      </p>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+
+      <!-- Feature 1 -->
+      <div class="bg-white rounded-xl shadow-lg p-8 card-hover fade-in">
+        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+          <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-3">Gestión de Comisiones</h3>
+        <p class="text-slate-600 leading-relaxed">
+          Sistema completo para cargar, calcular y distribuir comisiones. Incluye cálculos fiscales automatizados y generación de PDFs.
+        </p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="bg-white rounded-xl shadow-lg p-8 card-hover fade-in" style="animation-delay: 0.1s">
+        <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-3">Reportes de Producción</h3>
+        <p class="text-slate-600 leading-relaxed">
+          Visualiza la producción de tu oficina con gráficas interactivas. Filtros avanzados por vendedor, periodo y tipo de póliza.
+        </p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="bg-white rounded-xl shadow-lg p-8 card-hover fade-in" style="animation-delay: 0.2s">
+        <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+          <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-3">Cotizador GMM</h3>
+        <p class="text-slate-600 leading-relaxed">
+          Cotizador de Gastos Médicos Mayores con múltiples opciones. Genera cotizaciones profesionales en PDF con tu logo.
+        </p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="bg-white rounded-xl shadow-lg p-8 card-hover fade-in" style="animation-delay: 0.3s">
+        <div class="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-3">CRM de Contactos</h3>
+        <p class="text-slate-600 leading-relaxed">
+          Gestiona tus clientes y prospectos. Sistema de tareas tipo Kanban para seguimiento de oportunidades de venta.
+        </p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="bg-white rounded-xl shadow-lg p-8 card-hover fade-in" style="animation-delay: 0.4s">
+        <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+          <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-3">Centro de Notificaciones</h3>
+        <p class="text-slate-600 leading-relaxed">
+          Notificaciones en tiempo real. Integración con WhatsApp y correo electrónico para comunicación con tu equipo.
+        </p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="bg-white rounded-xl shadow-lg p-8 card-hover fade-in" style="animation-delay: 0.5s">
+        <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+          <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-3">Aula Virtual</h3>
+        <p class="text-slate-600 leading-relaxed">
+          Capacitación en línea para tu equipo. Cursos on-demand, sesiones en vivo y seguimiento de progreso.
+        </p>
+      </div>
+
+    </section>
+
+    <!-- CTA Section -->
+    <section class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-2xl p-12 text-center text-white fade-in">
+      <h2 class="text-3xl font-bold mb-4">¿Listo para comenzar?</h2>
+      <p class="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+        Accede al sistema completo y descubre todas las herramientas disponibles para tu oficina
+      </p>
+      <a href="/" class="inline-block bg-white text-blue-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-50 transition-colors shadow-xl hover:shadow-2xl transform hover:scale-105">
+        Ingresar al Sistema
+      </a>
+    </section>
+
+    <!-- Additional Info -->
+    <section class="mt-16 grid md:grid-cols-3 gap-8 text-center">
+      <div class="fade-in" style="animation-delay: 0.6s">
+        <div class="text-4xl font-bold text-blue-600 mb-2">100%</div>
+        <div class="text-slate-600">Basado en la nube</div>
+      </div>
+      <div class="fade-in" style="animation-delay: 0.7s">
+        <div class="text-4xl font-bold text-blue-600 mb-2">24/7</div>
+        <div class="text-slate-600">Acceso en todo momento</div>
+      </div>
+      <div class="fade-in" style="animation-delay: 0.8s">
+        <div class="text-4xl font-bold text-blue-600 mb-2">∞</div>
+        <div class="text-slate-600">Usuarios ilimitados</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-slate-800 text-slate-300 py-8 mt-16">
+    <div class="container mx-auto px-6 text-center">
+      <p>&copy; 2024 Sistema de Gestión para Agentes de Seguros. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+
+</body>
+</html>
