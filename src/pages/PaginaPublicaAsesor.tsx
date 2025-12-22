@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Phone, Mail, MessageCircle, FileText, Loader2 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
 import type { PublicWebPageData } from '../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../lib/webPagesTypes';
@@ -81,7 +82,7 @@ export default function PaginaPublicaAsesor() {
         <meta property="og:type" content="profile" />
         {user.photo_url && <meta property="og:image" content={user.photo_url} />}
         <meta name="robots" content="index, follow" />
-        <link rel="canonical" href={`https://agentedeseguros.online/soy/${slug}`} />
+        <link rel="canonical" href={`https://agentedeseguros.online/${slug}`} />
       </Helmet>
 
       <div className="bg-white min-h-screen">
@@ -218,36 +219,43 @@ export default function PaginaPublicaAsesor() {
             <div className="max-w-6xl mx-auto">
               <h2 className="text-3xl font-bold text-center mb-12">Servicios que Ofrezco</h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categories.map(category => (
-                  <div
-                    key={category.id}
-                    className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    {category.icon_url && (
-                      <div className="mb-4">
-                        <img
-                          src={category.icon_url}
-                          alt={category.name}
-                          className="w-12 h-12 object-contain"
-                        />
-                      </div>
-                    )}
-                    <h3 className="text-xl font-bold mb-3" style={{ color: primaryColor }}>
-                      {category.card_title}
-                    </h3>
-                    <p className="text-gray-600 mb-4">{category.card_description}</p>
-                    <a
-                      href={whatsappLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 font-semibold hover:underline"
-                      style={{ color: secondaryColor }}
+                {categories.map(category => {
+                  const IconComponent = category.lucide_icon && (LucideIcons as any)[category.lucide_icon];
+                  return (
+                    <div
+                      key={category.id}
+                      className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow"
                     >
-                      Cotizar {category.name}
-                      <MessageCircle className="w-4 h-4" />
-                    </a>
-                  </div>
-                ))}
+                      {IconComponent && (
+                        <div
+                          className="mb-4 w-14 h-14 rounded-lg flex items-center justify-center"
+                          style={{
+                            background: `linear-gradient(135deg, ${primaryColor}15, ${secondaryColor}15)`
+                          }}
+                        >
+                          <IconComponent
+                            className="w-8 h-8"
+                            style={{ color: primaryColor }}
+                          />
+                        </div>
+                      )}
+                      <h3 className="text-xl font-bold mb-3" style={{ color: primaryColor }}>
+                        {category.card_title}
+                      </h3>
+                      <p className="text-gray-600 mb-4">{category.card_description}</p>
+                      <a
+                        href={whatsappLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 font-semibold hover:underline"
+                        style={{ color: secondaryColor }}
+                      >
+                        Cotizar {category.name}
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>

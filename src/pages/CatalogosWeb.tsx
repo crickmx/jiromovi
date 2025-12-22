@@ -8,7 +8,8 @@ import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Switch } from '../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Plus, Edit2, Save, X, GripVertical, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Save, X, GripVertical, Image as ImageIcon, Car, Home, Bike, HeartPulse, Heart, Ambulance, CarTaxiFront, GraduationCap, Wheat, Laptop, CarFront, Truck, Bus, BarChart3, Shield, Briefcase, Ship, Tractor, Users, Stethoscope, ShieldCheck, Hospital, DollarSign, Activity, Plane } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import {
   getAllInsurers,
   getAllCategories,
@@ -40,7 +41,7 @@ export default function CatalogosWeb() {
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     slug: '',
-    icon_url: '',
+    lucide_icon: '',
     card_title: '',
     card_description: '',
     display_order: 0,
@@ -123,14 +124,9 @@ export default function CatalogosWeb() {
     try {
       setUploading(true);
 
-      let icon_url = categoryForm.icon_url;
-      if (iconFile) {
-        icon_url = await uploadImage(iconFile, 'web-page-assets', 'categories/icon');
-      }
-
       const categoryData = {
         ...categoryForm,
-        icon_url: icon_url || null
+        lucide_icon: categoryForm.lucide_icon || null
       };
 
       if (editingCategory) {
@@ -204,7 +200,7 @@ export default function CatalogosWeb() {
       setCategoryForm({
         name: category.name,
         slug: category.slug,
-        icon_url: category.icon_url || '',
+        lucide_icon: category.lucide_icon || '',
         card_title: category.card_title,
         card_description: category.card_description,
         display_order: category.display_order,
@@ -215,7 +211,7 @@ export default function CatalogosWeb() {
       setCategoryForm({
         name: '',
         slug: '',
-        icon_url: '',
+        lucide_icon: '',
         card_title: '',
         card_description: '',
         display_order: categories.length,
@@ -336,49 +332,48 @@ export default function CatalogosWeb() {
           </div>
 
           <div className="grid gap-4">
-            {categories.map(category => (
-              <Card key={category.id} className="p-4">
-                <div className="flex items-center gap-4">
-                  <GripVertical className="w-5 h-5 text-gray-400 cursor-move" />
+            {categories.map(category => {
+              const IconComponent = category.lucide_icon && (LucideIcons as any)[category.lucide_icon];
+              return (
+                <Card key={category.id} className="p-4">
+                  <div className="flex items-center gap-4">
+                    <GripVertical className="w-5 h-5 text-gray-400 cursor-move" />
 
-                  <div className="w-12 h-12 bg-gray-50 rounded flex items-center justify-center">
-                    {category.icon_url ? (
-                      <img
-                        src={category.icon_url}
-                        alt={category.name}
-                        className="w-8 h-8 object-contain"
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
+                      {IconComponent ? (
+                        <IconComponent className="w-6 h-6 text-blue-600" />
+                      ) : (
+                        <ImageIcon className="w-6 h-6 text-gray-400" />
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{category.card_title}</h3>
+                      <p className="text-sm text-gray-600">{category.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">{category.card_description}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600 mr-2">
+                        {category.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                      <Switch
+                        checked={category.is_active}
+                        onCheckedChange={() => toggleCategoryActive(category)}
                       />
-                    ) : (
-                      <ImageIcon className="w-6 h-6 text-gray-300" />
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{category.card_title}</h3>
-                    <p className="text-sm text-gray-600">{category.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">{category.card_description}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openCategoryModal(category)}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 mr-2">
-                      {category.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                    <Switch
-                      checked={category.is_active}
-                      onCheckedChange={() => toggleCategoryActive(category)}
-                    />
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openCategoryModal(category)}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
 
             {categories.length === 0 && (
               <Card className="p-12 text-center text-gray-500">
@@ -503,22 +498,29 @@ export default function CatalogosWeb() {
             </div>
 
             <div>
-              <Label htmlFor="category-icon">Icono (opcional)</Label>
+              <Label htmlFor="category-icon">Icono de Lucide (opcional)</Label>
               <Input
                 id="category-icon"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setIconFile(e.target.files?.[0] || null)}
+                value={categoryForm.lucide_icon}
+                onChange={(e) => setCategoryForm(prev => ({ ...prev, lucide_icon: e.target.value }))}
+                placeholder="Ej: Car, Home, Heart"
               />
-              {categoryForm.icon_url && !iconFile && (
-                <div className="mt-2 p-2 border rounded bg-gray-50">
-                  <img
-                    src={categoryForm.icon_url}
-                    alt="Preview"
-                    className="h-12 object-contain"
-                  />
-                </div>
-              )}
+              <p className="text-xs text-gray-500 mt-1">
+                Ingresa el nombre del icono de Lucide React. Ejemplos: Car, Home, Heart, Shield, Truck
+              </p>
+              {categoryForm.lucide_icon && (() => {
+                const IconPreview = (LucideIcons as any)[categoryForm.lucide_icon];
+                return IconPreview ? (
+                  <div className="mt-2 p-3 border rounded bg-gradient-to-br from-blue-50 to-blue-100 flex items-center gap-2">
+                    <IconPreview className="w-6 h-6 text-blue-600" />
+                    <span className="text-sm text-gray-700">Vista previa del icono</span>
+                  </div>
+                ) : (
+                  <div className="mt-2 p-2 border rounded bg-red-50 text-red-600 text-xs">
+                    Icono no encontrado. Verifica el nombre.
+                  </div>
+                );
+              })()}
             </div>
 
             <div>

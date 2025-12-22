@@ -14,6 +14,7 @@ export interface WebPageCategory {
   name: string;
   slug: string;
   icon_url: string | null;
+  lucide_icon: string | null;
   card_title: string;
   card_description: string;
   display_order: number;
@@ -74,6 +75,7 @@ export interface PublicWebPageData {
     name: string;
     slug: string;
     icon_url: string | null;
+    lucide_icon: string | null;
     card_title: string;
     card_description: string;
   }> | null;
