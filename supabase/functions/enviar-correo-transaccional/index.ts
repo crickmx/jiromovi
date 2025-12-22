@@ -8,10 +8,15 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  tipo: string;
-  destinatario: string;
-  datos: Record<string, any>;
+  tipo?: string;
+  destinatario?: string;
+  datos?: Record<string, any>;
   evento_id?: string;
+  // Formato directo para notificaciones transaccionales
+  to_email?: string;
+  to_name?: string;
+  subject?: string;
+  html_body?: string;
 }
 
 Deno.serve(async (req) => {
@@ -27,7 +32,64 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { tipo, destinatario, datos, evento_id } = await req.json() as EmailRequest;
+    const requestBody = await req.json() as EmailRequest;
+
+    // Soporte para formato directo (usado por notificaciones transaccionales)
+    if (requestBody.to_email && requestBody.subject && requestBody.html_body) {
+      console.log('Procesando correo transaccional directo:', { to: requestBody.to_email, subject: requestBody.subject });
+
+      const { data: config, error: configError } = await supabaseClient
+        .from('correo_configuracion')
+        .select('*')
+        .eq('activo', true)
+        .single();
+
+      if (configError || !config) {
+        console.error('Error configuración:', configError);
+        throw new Error('No hay configuración de correo activa');
+      }
+
+      const resendApiKey = Deno.env.get('RESEND_API_KEY') || config.resend_api_key;
+
+      if (!resendApiKey) {
+        throw new Error('RESEND_API_KEY no está configurada');
+      }
+
+      const resend = new Resend(resendApiKey);
+      const fromEmail = config.remitente_email;
+      const fromName = config.remitente_nombre || 'MOVI Digital';
+
+      console.log('Enviando correo con Resend desde:', `${fromName} <${fromEmail}>`);
+
+      const { data, error } = await resend.emails.send({
+        from: `${fromName} <${fromEmail}>`,
+        to: [requestBody.to_email],
+        subject: requestBody.subject,
+        html: requestBody.html_body,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Correo transaccional enviado exitosamente:', data.id);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Correo enviado exitosamente',
+          resend_id: data.id,
+          destinatario: requestBody.to_email
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Formato legacy (con plantillas)
+    const { tipo, destinatario, datos, evento_id } = requestBody;
 
     console.log('Procesando solicitud de correo:', { tipo, destinatario });
 

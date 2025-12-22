@@ -7,10 +7,13 @@ const corsHeaders = {
 };
 
 interface WhatsAppRequest {
-  tipo: string;
-  numero: string;
-  datos: Record<string, any>;
+  tipo?: string;
+  numero?: string;
+  datos?: Record<string, any>;
   evento_id?: string;
+  // Formato directo para notificaciones transaccionales
+  phone?: string;
+  message?: string;
 }
 
 Deno.serve(async (req) => {
@@ -26,7 +29,84 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { tipo, numero, datos, evento_id } = await req.json() as WhatsAppRequest;
+    const requestBody = await req.json() as WhatsAppRequest;
+
+    // Soporte para formato directo (usado por notificaciones transaccionales)
+    if (requestBody.phone && requestBody.message) {
+      console.log('=== INICIO ENVÍO WHATSAPP TRANSACCIONAL ===');
+      console.log('Número:', requestBody.phone);
+
+      const { data: config, error: configError } = await supabaseClient
+        .from('whatsapp_configuracion')
+        .select('*')
+        .eq('activo', true)
+        .single();
+
+      if (configError || !config) {
+        console.error('Error configuración:', configError);
+        throw new Error('No hay configuración de WhatsApp activa');
+      }
+
+      let numeroNormalizado = requestBody.phone.replace(/[^0-9]/g, '');
+
+      if (numeroNormalizado.length === 10) {
+        numeroNormalizado = '521' + numeroNormalizado;
+      }
+
+      console.log('Número normalizado:', numeroNormalizado);
+
+      if (!config.channel_id_uuid) {
+        throw new Error('El Channel ID (UUID) no está configurado');
+      }
+
+      const wazzupPayload = {
+        channelId: config.channel_id_uuid,
+        chatId: numeroNormalizado,
+        chatType: 'whatsapp',
+        text: requestBody.message
+      };
+
+      console.log('Enviando a Wazzup24:', wazzupPayload);
+
+      const wazzupResponse = await fetch('https://api.wazzup24.com/v3/message', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.api_key}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(wazzupPayload)
+      });
+
+      const responseText = await wazzupResponse.text();
+      let wazzupData;
+      try {
+        wazzupData = JSON.parse(responseText);
+      } catch (e) {
+        wazzupData = { raw_response: responseText };
+      }
+
+      console.log('Respuesta Wazzup24:', wazzupData);
+
+      const success = wazzupResponse.ok;
+
+      console.log('=== FIN ENVÍO WHATSAPP TRANSACCIONAL ===');
+
+      return new Response(
+        JSON.stringify({
+          success,
+          message: success ? 'Mensaje de WhatsApp enviado exitosamente' : 'Error al enviar mensaje',
+          numero_normalizado: numeroNormalizado,
+          response: wazzupData
+        }),
+        {
+          status: success ? 200 : 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Formato legacy (con plantillas)
+    const { tipo, numero, datos, evento_id } = requestBody;
 
     console.log('=== INICIO ENVÍO WHATSAPP ===');
     console.log('Tipo:', tipo);

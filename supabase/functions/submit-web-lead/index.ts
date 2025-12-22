@@ -162,7 +162,7 @@ Deno.serve(async (req: Request) => {
       // No fallar si no se puede crear la tarea
     }
 
-    // 4. Enviar notificaciones usando la plantilla
+    // 4. Enviar notificaciones transaccionales por todos los canales
     const variables = {
       agent_name: agente.nombre_completo,
       client_name: nombre,
@@ -171,8 +171,8 @@ Deno.serve(async (req: Request) => {
       insurance_type: seguro_interes,
     };
 
-    // Llamar a la función de notificaciones
-    const { error: notifError } = await supabase.rpc('enviar_notificacion_completa', {
+    // Llamar a la función de notificaciones transaccionales
+    const { data: notifId, error: notifError } = await supabase.rpc('send_transactional_notification', {
       p_event_key: 'web_lead_nuevo',
       p_user_id: agente.id,
       p_variables: variables,
@@ -182,6 +182,8 @@ Deno.serve(async (req: Request) => {
     if (notifError) {
       console.error('Error sending notifications:', notifError);
       // No fallar si las notificaciones fallan
+    } else {
+      console.log('Notifications sent successfully. In-app notification ID:', notifId);
     }
 
     return new Response(
