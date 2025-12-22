@@ -146,9 +146,10 @@ Deno.serve(async (req: Request) => {
     });
 
     if (insertError) {
+      console.error('Database insert error:', insertError);
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       return new Response(
-        JSON.stringify({ error: insertError.message }),
+        JSON.stringify({ error: 'Database error: ' + insertError.message }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -230,8 +231,9 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
+    console.error('Unexpected error in create-user:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Server error: ' + error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
