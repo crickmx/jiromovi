@@ -38,6 +38,14 @@ export default function PublicWebPagePreview({
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [formData, setFormData] = useState({
+    nombre: '',
+    celular: '',
+    email: '',
+    seguro_interes: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const handlePrevSlide = () => {
     setCurrentSlide(prev => (prev - 1 + Math.ceil(insurers.length / 4)) % Math.ceil(insurers.length / 4));
@@ -79,57 +87,171 @@ export default function PublicWebPagePreview({
         </div>
       </header>
 
-      <section className="relative bg-gradient-to-b from-gray-50 to-white py-20 md:py-32 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center gap-12">
-            {userData.photo_url && (
-              <div className="flex-shrink-0">
-                <img
-                  src={userData.photo_url}
-                  alt={userData.name}
-                  className="w-48 h-48 md:w-64 md:h-64 rounded-2xl object-cover shadow-2xl"
-                />
-              </div>
-            )}
+      <section className="relative bg-gradient-to-b from-gray-50 to-white py-12 md:py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+            <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+              {userData.photo_url && (
+                <div className="mb-6">
+                  <img
+                    src={userData.photo_url}
+                    alt={userData.name}
+                    className="w-32 h-32 md:w-40 md:h-40 rounded-2xl object-cover shadow-xl"
+                  />
+                </div>
+              )}
 
-            <div className="flex-1 text-center md:text-left">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
                 {userData.name}
               </h1>
-              <p className="text-xl md:text-2xl text-gray-600 mb-6">
+              <p className="text-lg md:text-xl text-gray-600 mb-2">
                 Asesor Personal de Seguros
               </p>
               {userData.office_name && (
-                <p className="text-lg text-gray-500 mb-8">
+                <p className="text-base text-gray-500 mb-6">
                   {userData.office_name}
                 </p>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+              <div className="mb-8">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                  Protege lo que más importa
+                </h2>
+                <p className="text-gray-600 leading-relaxed max-w-lg">
+                  Te ayudo a encontrar el seguro perfecto para ti y tu familia. Cotizaciones personalizadas, asesoría profesional y atención inmediata por WhatsApp.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                 <a
                   href={whatsappLink}
-                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                  className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  <MessageCircle className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                  <MessageCircle className="w-4 h-4 group-hover:rotate-12 transition-transform" />
                   WhatsApp
                 </a>
                 <a
                   href={`tel:${userData.phone?.replace(/\D/g, '')}`}
-                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                  className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
                   style={{ borderColor: primaryColor, color: primaryColor }}
                 >
-                  <Phone className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                  <Phone className="w-4 h-4 group-hover:rotate-12 transition-transform" />
                   Llamar
                 </a>
-                <a
-                  href={`mailto:${userData.email}`}
-                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
-                  style={{ borderColor: secondaryColor, color: secondaryColor }}
-                >
-                  <Mail className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                  Email
-                </a>
+              </div>
+            </div>
+
+            <div className="lg:sticky lg:top-24">
+              <div
+                className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 border"
+                style={{ borderColor: createColorVariant(primaryColor, 0.2) }}
+              >
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  Solicita tu Cotización
+                </h3>
+                <p className="text-gray-600 mb-6 text-sm">
+                  Completa el formulario y te contactaré de inmediato
+                </p>
+
+                {submitStatus === 'success' ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">¡Solicitud Recibida!</h4>
+                    <p className="text-gray-600">
+                      Gracias por tu solicitud. Te contactaré a la brevedad para ofrecerte la mejor opción.
+                    </p>
+                  </div>
+                ) : (
+                  <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Nombre Completo *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.nombre}
+                        onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-opacity-100 focus:outline-none transition-colors"
+                        style={{ focusBorderColor: primaryColor }}
+                        placeholder="Tu nombre"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Celular *
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.celular}
+                        onChange={(e) => setFormData(prev => ({ ...prev, celular: e.target.value }))}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-opacity-100 focus:outline-none transition-colors"
+                        placeholder="55 1234 5678"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Email *
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-opacity-100 focus:outline-none transition-colors"
+                        placeholder="tu@email.com"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Seguro de Interés *
+                      </label>
+                      <select
+                        value={formData.seguro_interes}
+                        onChange={(e) => setFormData(prev => ({ ...prev, seguro_interes: e.target.value }))}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-opacity-100 focus:outline-none transition-colors bg-white"
+                        required
+                      >
+                        <option value="">Selecciona un seguro</option>
+                        {categories.map(category => (
+                          <option key={category.id} value={category.name}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {submitStatus === 'error' && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                        Error al enviar la solicitud. Por favor intenta nuevamente.
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-4 rounded-xl font-bold text-white transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
+                      }}
+                    >
+                      {isSubmitting ? 'Enviando...' : 'Solicitar Cotización'}
+                    </button>
+
+                    <p className="text-xs text-gray-500 text-center">
+                      Al enviar, aceptas que te contactemos para ofrecerte información sobre seguros.
+                    </p>
+                  </form>
+                )}
               </div>
             </div>
           </div>
