@@ -18,6 +18,10 @@ export default function PaginaPublicaAsesor() {
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
   const carouselRef = useRef<HTMLDivElement>(null);
 
+  // Hooks de animación DEBEN estar aquí, antes de cualquier early return
+  const aboutReveal = useScrollReveal();
+  const servicesStagger = useStaggeredReveal(data?.categories?.length || 0, 150);
+
   useEffect(() => {
     if (!slug) {
       setNotFound(true);
@@ -132,9 +136,6 @@ export default function PaginaPublicaAsesor() {
     setIsAutoScrolling(false);
     setCurrentSlide(prev => (prev + 1) % Math.ceil(insurers!.length / 4));
   };
-
-  const aboutReveal = useScrollReveal();
-  const servicesStagger = useStaggeredReveal(categories?.length || 0, 150);
 
   return (
     <>
