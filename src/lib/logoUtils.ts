@@ -270,6 +270,41 @@ export async function getEffectiveUserLogo(userId: string): Promise<string> {
 }
 
 /**
+ * Gets office logo for a user (ignores personal logo)
+ * Hierarchy: Logo Oficina → Logo JIRO
+ */
+export async function getOfficeLogo(userId: string): Promise<string> {
+  try {
+    // Get user's office
+    const { data: userData, error: userError } = await supabase
+      .from('usuarios')
+      .select('oficina_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (userError || !userData?.oficina_id) {
+      return '/logojiro.png';
+    }
+
+    // Get office logo
+    const { data: officeData, error: officeError } = await supabase
+      .from('oficinas')
+      .select('logo_url')
+      .eq('id', userData.oficina_id)
+      .maybeSingle();
+
+    if (officeError || !officeData?.logo_url) {
+      return '/logojiro.png';
+    }
+
+    return officeData.logo_url;
+  } catch (error) {
+    console.error('Error getting office logo:', error);
+    return '/logojiro.png';
+  }
+}
+
+/**
  * Counts how many users would be affected by changing an office logo
  */
 export async function countUsersAffectedByOfficeLogo(officeId: string): Promise<number> {

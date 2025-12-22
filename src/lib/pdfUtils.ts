@@ -10,7 +10,7 @@ import {
   type RamoResumen,
   type RegimenFiscal
 } from './commissionFiscalCalculations';
-import { getEffectiveUserLogo } from './logoUtils';
+import { getOfficeLogo } from './logoUtils';
 
 interface PdfFiscalRow {
   label: string;
@@ -299,9 +299,9 @@ export async function generateCommissionPDF(
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPosition = 20;
 
-  // Cargar el logo del usuario con dimensiones correctas
+  // Cargar el logo de oficina del usuario con dimensiones correctas
   try {
-    const logoUrl = await getEffectiveUserLogo(agent.id);
+    const logoUrl = await getOfficeLogo(agent.id);
     const logoData = await loadImageWithDimensions(logoUrl);
 
     // Calcular dimensiones manteniendo proporción (max 40mm ancho x 20mm alto)
@@ -321,7 +321,7 @@ export async function generateCommissionPDF(
       dimensions.height
     );
   } catch (error) {
-    console.warn('No se pudo cargar el logo del usuario:', error);
+    console.warn('No se pudo cargar el logo de oficina:', error);
   }
 
   doc.setFontSize(10);
@@ -550,9 +550,9 @@ export async function generateOrdenDePagoPDF(
   const contentWidth = pageWidth - marginLeft - marginRight;
   let yPosition = 15;
 
-  // Cargar el logo del usuario con dimensiones correctas
+  // Cargar el logo de oficina del usuario con dimensiones correctas
   try {
-    const logoUrl = await getEffectiveUserLogo(agent.id);
+    const logoUrl = await getOfficeLogo(agent.id);
     const logoData = await loadImageWithDimensions(logoUrl);
 
     // Calcular dimensiones manteniendo proporción (max 35mm ancho x 18mm alto)
@@ -572,7 +572,7 @@ export async function generateOrdenDePagoPDF(
       dimensions.height
     );
   } catch (error) {
-    console.warn('No se pudo cargar el logo del usuario:', error);
+    console.warn('No se pudo cargar el logo de oficina:', error);
   }
 
   doc.setFontSize(18);
