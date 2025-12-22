@@ -705,7 +705,6 @@ function AppRoutes() {
       />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/:slug" element={<PaginaPublicaAsesor />} />
     </Routes>
   );
 }
@@ -714,11 +713,19 @@ function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <AuthProvider>
-          <NotificationProvider>
-            <AppRoutes />
-          </NotificationProvider>
-        </AuthProvider>
+        <Routes>
+          {/* Ruta pública - fuera de AuthProvider */}
+          <Route path="/:slug" element={<PaginaPublicaAsesor />} />
+
+          {/* Todas las demás rutas dentro de AuthProvider */}
+          <Route path="*" element={
+            <AuthProvider>
+              <NotificationProvider>
+                <AppRoutes />
+              </NotificationProvider>
+            </AuthProvider>
+          } />
+        </Routes>
       </BrowserRouter>
     </HelmetProvider>
   );
