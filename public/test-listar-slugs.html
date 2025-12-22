@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Listar Slugs Disponibles</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      color: #1a202c;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .status.loading {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .card h2 {
+      color: #2563eb;
+      margin-bottom: 20px;
+      font-size: 24px;
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 10px;
+    }
+
+    .slug-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .slug-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      padding: 20px;
+      color: white;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+    }
+
+    .slug-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+    }
+
+    .slug-card .name {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .slug-card .slug {
+      font-size: 14px;
+      opacity: 0.9;
+      font-family: 'Monaco', 'Courier New', monospace;
+      background: rgba(255,255,255,0.2);
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    .slug-card .email {
+      font-size: 13px;
+      opacity: 0.85;
+    }
+
+    .slug-card .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .slug-card .status-badge.published {
+      background: #10b981;
+      color: white;
+    }
+
+    .slug-card .status-badge.draft {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0,0,0,0.1);
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .alert {
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    .alert.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border-left: 4px solid #2563eb;
+    }
+
+    .alert.warning {
+      background: #fef3c7;
+      color: #92400e;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #64748b;
+    }
+
+    .empty svg {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      color: #cbd5e1;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat {
+      background: #f8fafc;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 4px solid #2563eb;
+    }
+
+    .stat .label {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .stat .value {
+      font-size: 32px;
+      color: #1e293b;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔗 Listar Slugs Disponibles</h1>
+      <div id="status" class="status loading">
+        <span class="loading-spinner"></span> Cargando usuarios...
+      </div>
+      <p style="color: #64748b; margin-top: 10px;">
+        Todos los usuarios con páginas públicas configuradas
+      </p>
+    </div>
+
+    <div id="alerts"></div>
+
+    <div id="content"></div>
+  </div>
+
+  <script type="module">
+    const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjA5OTAsImV4cCI6MjA3NzI5Njk5MH0.bIlGsgeAC6oxGUalODg0C5-l6KaJip0wWa9IbQ7MjTQ';
+
+    const statusEl = document.getElementById('status');
+    const alertsEl = document.getElementById('alerts');
+    const contentEl = document.getElementById('content');
+
+    function showAlert(type, message) {
+      const alert = document.createElement('div');
+      alert.className = `alert ${type}`;
+      alert.textContent = message;
+      alertsEl.appendChild(alert);
+    }
+
+    async function listSlugs() {
+      try {
+        console.log('🚀 Cargando usuarios con web_slug...');
+
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/usuarios?select=id,nombre_completo,email_laboral,web_slug,estado,user_web_pages(is_published,primary_color,secondary_color)&web_slug=not.is.null&order=nombre_completo`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const users = await response.json();
+        console.log('✅ Usuarios cargados:', users.length);
+
+        statusEl.className = 'status success';
+        statusEl.innerHTML = `✅ ${users.length} usuario(s) encontrado(s)`;
+
+        if (users.length === 0) {
+          contentEl.innerHTML = `
+            <div class="card">
+              <div class="empty">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 style="font-size: 20px; margin-bottom: 8px; color: #1e293b;">No hay páginas públicas</h3>
+                <p>Ningún usuario ha configurado su página pública todavía.</p>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        // Estadísticas
+        const published = users.filter(u => u.user_web_pages && u.user_web_pages[0]?.is_published).length;
+        const draft = users.length - published;
+        const active = users.filter(u => u.estado === 'activo').length;
+
+        let html = `
+          <div class="card">
+            <h2>📊 Estadísticas</h2>
+            <div class="stats">
+              <div class="stat">
+                <div class="label">Total de Usuarios</div>
+                <div class="value">${users.length}</div>
+              </div>
+              <div class="stat">
+                <div class="label">Páginas Publicadas</div>
+                <div class="value">${published}</div>
+              </div>
+              <div class="stat">
+                <div class="label">Borradores</div>
+                <div class="value">${draft}</div>
+              </div>
+              <div class="stat">
+                <div class="label">Usuarios Activos</div>
+                <div class="value">${active}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>🌐 Páginas Públicas Disponibles</h2>
+            <div class="alert info">
+              Click en cualquier tarjeta para abrir la página pública del usuario.
+            </div>
+            <div class="slug-grid">
+        `;
+
+        users.forEach(user => {
+          const config = user.user_web_pages?.[0];
+          const isPublished = config?.is_published || false;
+          const primaryColor = config?.primary_color || '#667eea';
+
+          // Determinar dominio según configuración
+          const isDev = window.location.hostname === 'localhost';
+          const baseUrl = isDev
+            ? `http://localhost:5173`
+            : `https://app.movi.digital`;
+          const url = `${baseUrl}/${user.web_slug}`;
+
+          html += `
+            <a href="${url}" target="_blank" class="slug-card" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${config?.secondary_color || '#764ba2'} 100%);">
+              <div class="name">${user.nombre_completo}</div>
+              <div class="slug">/${user.web_slug}</div>
+              <div class="email">${user.email_laboral}</div>
+              <span class="status-badge ${isPublished ? 'published' : 'draft'}">
+                ${isPublished ? '✅ Publicada' : '📝 Borrador'}
+              </span>
+              ${user.estado !== 'activo' ? '<span class="status-badge" style="background: #ef4444;">⚠️ Inactivo</span>' : ''}
+            </a>
+          `;
+        });
+
+        html += `
+            </div>
+          </div>
+        `;
+
+        // Lista de URLs para copiar
+        html += `
+          <div class="card">
+            <h2>📋 URLs Directas</h2>
+            <div class="alert info">
+              <strong>Base URL:</strong> <code style="background: white; padding: 4px 8px; border-radius: 4px; color: #2563eb;">https://app.movi.digital/</code>
+            </div>
+            <div style="background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 12px; font-family: 'Monaco', monospace; font-size: 13px; line-height: 1.8;">
+        `;
+
+        users.forEach(user => {
+          const config = user.user_web_pages?.[0];
+          const isPublished = config?.is_published || false;
+          const status = isPublished ? '✅' : '📝';
+          html += `${status} <a href="https://app.movi.digital/${user.web_slug}" target="_blank" style="color: #60a5fa; text-decoration: none;">https://app.movi.digital/${user.web_slug}</a><br>`;
+        });
+
+        html += `
+            </div>
+          </div>
+        `;
+
+        contentEl.innerHTML = html;
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        statusEl.className = 'status error';
+        statusEl.textContent = '❌ Error al cargar datos';
+
+        showAlert('error', `Error: ${error.message}`);
+
+        contentEl.innerHTML = `
+          <div class="card">
+            <h2>❌ Error</h2>
+            <div class="alert error">
+              <strong>No se pudieron cargar los usuarios:</strong><br>
+              ${error.message}
+            </div>
+            <pre style="background: #1e293b; color: #ef4444; padding: 20px; border-radius: 12px; overflow-x: auto;">${error.stack || error.toString()}</pre>
+          </div>
+        `;
+      }
+    }
+
+    // Ejecutar
+    listSlugs();
+  </script>
+</body>
+</html>
