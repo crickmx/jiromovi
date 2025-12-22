@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Switch } from '../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Plus, Edit2, Save, X, GripVertical, Image as ImageIcon, Car, Home, Bike, HeartPulse, Heart, Ambulance, CarTaxiFront, GraduationCap, Wheat, Laptop, CarFront, Truck, Bus, BarChart3, Shield, Briefcase, Ship, Tractor, Users, Stethoscope, ShieldCheck, Hospital, DollarSign, Activity, Plane } from 'lucide-react';
+import { Plus, Edit2, Save, X, GripVertical, Image as ImageIcon, Trash2, Car, Home, Bike, HeartPulse, Heart, Ambulance, CarTaxiFront, GraduationCap, Wheat, Laptop, CarFront, Truck, Bus, BarChart3, Shield, Briefcase, Ship, Tractor, Users, Stethoscope, ShieldCheck, Hospital, DollarSign, Activity, Plane } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import {
   getAllInsurers,
@@ -16,7 +16,9 @@ import {
   createInsurer,
   updateInsurer,
   createCategory,
-  updateCategory
+  updateCategory,
+  deleteInsurer,
+  deleteCategory
 } from '../lib/webPagesUtils';
 import type { WebPageInsurer, WebPageCategory } from '../lib/webPagesTypes';
 import { supabase } from '../lib/supabase';
@@ -33,7 +35,6 @@ export default function CatalogosWeb() {
   const [insurerForm, setInsurerForm] = useState({
     name: '',
     logo_url: '',
-    website_url: '',
     display_order: 0,
     is_active: true
   });
@@ -100,7 +101,7 @@ export default function CatalogosWeb() {
       const insurerData = {
         ...insurerForm,
         logo_url,
-        website_url: insurerForm.website_url || null
+        website_url: null
       };
 
       if (editingInsurer) {
@@ -164,13 +165,40 @@ export default function CatalogosWeb() {
     }
   }
 
+  async function handleDeleteInsurer(insurer: WebPageInsurer) {
+    if (!confirm(`¿Estás seguro de eliminar la aseguradora "${insurer.name}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      await deleteInsurer(insurer.id);
+      setInsurers(prev => prev.filter(i => i.id !== insurer.id));
+    } catch (error) {
+      console.error('Error deleting insurer:', error);
+      alert('Error al eliminar la aseguradora');
+    }
+  }
+
+  async function handleDeleteCategory(category: WebPageCategory) {
+    if (!confirm(`¿Estás seguro de eliminar el ramo "${category.card_title}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      await deleteCategory(category.id);
+      setCategories(prev => prev.filter(c => c.id !== category.id));
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      alert('Error al eliminar el ramo');
+    }
+  }
+
   function openInsurerModal(insurer?: WebPageInsurer) {
     if (insurer) {
       setEditingInsurer(insurer);
       setInsurerForm({
         name: insurer.name,
         logo_url: insurer.logo_url,
-        website_url: insurer.website_url || '',
         display_order: insurer.display_order,
         is_active: insurer.is_active
       });
@@ -179,7 +207,6 @@ export default function CatalogosWeb() {
       setInsurerForm({
         name: '',
         logo_url: '',
-        website_url: '',
         display_order: insurers.length,
         is_active: true
       });
@@ -310,6 +337,15 @@ export default function CatalogosWeb() {
                   >
                     <Edit2 className="w-4 h-4" />
                   </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeleteInsurer(insurer)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -370,6 +406,15 @@ export default function CatalogosWeb() {
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteCategory(category)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </Card>
               );
@@ -420,17 +465,6 @@ export default function CatalogosWeb() {
                   />
                 </div>
               )}
-            </div>
-
-            <div>
-              <Label htmlFor="insurer-website">Sitio Web (opcional)</Label>
-              <Input
-                id="insurer-website"
-                type="url"
-                value={insurerForm.website_url}
-                onChange={(e) => setInsurerForm(prev => ({ ...prev, website_url: e.target.value }))}
-                placeholder="https://ejemplo.com"
-              />
             </div>
 
             <div>
