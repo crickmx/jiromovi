@@ -24,9 +24,8 @@ export default function PublicWebPagePreview({
 }: PublicWebPagePreviewProps) {
   const primaryColor = config.primary_color;
   const secondaryColor = config.secondary_color;
-  const textToDisplay = config.custom_text.filter(t => t.trim()).length > 0
-    ? config.custom_text.filter(t => t.trim())
-    : DEFAULT_TEXT;
+  const customText = config.custom_text?.trim() || DEFAULT_TEXT;
+  const paragraphs = customText.split('\n').filter(p => p.trim());
 
   const whatsappNumber = userData.phone?.replace(/\D/g, '');
   const whatsappLink = whatsappNumber ? `https://wa.me/52${whatsappNumber}` : '#';
@@ -213,7 +212,7 @@ export default function PublicWebPagePreview({
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">Sobre Mí</h2>
           <div className="space-y-4 text-gray-700 leading-relaxed">
-            {textToDisplay.map((paragraph, index) => (
+            {paragraphs.map((paragraph, index) => (
               <p key={index} className="text-lg">
                 {paragraph}
               </p>

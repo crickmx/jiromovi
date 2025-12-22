@@ -151,7 +151,7 @@ export async function getUserWebPageConfig(userId: string): Promise<UserWebPageC
     id: webPage.id,
     primary_color: webPage.primary_color,
     secondary_color: webPage.secondary_color,
-    custom_text: webPage.custom_text || [],
+    custom_text: webPage.custom_text || '',
     is_published: webPage.is_published,
     selected_insurer_ids: insurers?.map(i => i.insurer_id) || [],
     selected_category_ids: categories?.map(c => c.category_id) || []
