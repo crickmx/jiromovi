@@ -502,7 +502,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-slate-500 mt-1">
-                  URL pública: agentedeseguros.online/soy/{formData.web_slug || 'slug'}
+                  URL pública: agentedeseguros.online/{formData.web_slug || 'slug'}
                 </p>
               </div>
             )}

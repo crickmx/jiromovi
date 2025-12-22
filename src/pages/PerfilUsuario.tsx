@@ -639,7 +639,7 @@ export function PerfilUsuario() {
                           className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-sm text-slate-500 mt-2">
-                          URL pública: <span className="font-mono text-blue-600">agentedeseguros.online/soy/{formData.web_slug || 'slug'}</span>
+                          URL pública: <span className="font-mono text-blue-600">agentedeseguros.online/{formData.web_slug || 'slug'}</span>
                         </p>
                       </div>
                     )}
