@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -61,6 +62,9 @@ import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
 import MiProduccion from './pages/MiProduccion';
 import GMMTarifasAdmin from './pages/GMMTarifasAdmin';
 import GMMCotizador from './pages/GMMCotizador';
+import CatalogosWeb from './pages/CatalogosWeb';
+import MiPaginaWeb from './pages/MiPaginaWeb';
+import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -678,6 +682,30 @@ function AppRoutes() {
         }
       />
 
+      <Route
+        path="/catalogos-web"
+        element={
+          <ProtectedRoute requireRole="admin">
+            <Layout>
+              <CatalogosWeb />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-pagina-web"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MiPaginaWeb />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="/soy/:slug" element={<PaginaPublicaAsesor />} />
+
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
@@ -686,13 +714,15 @@ function AppRoutes() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <NotificationProvider>
-          <AppRoutes />
-        </NotificationProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <HelmetProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <NotificationProvider>
+            <AppRoutes />
+          </NotificationProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </HelmetProvider>
   );
 }
 

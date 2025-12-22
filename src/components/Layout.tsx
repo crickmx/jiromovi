@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Globe2, Database } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -99,6 +99,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Car, show: true },
     { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, show: true },
     { path: '/gmm/tarifas', label: 'GMM Tarifas Admin', icon: Settings, show: isAdmin },
+    { path: '/mi-pagina-web', label: 'Mi Página Web', icon: Globe2, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/store', label: 'Store', icon: ShoppingBag, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
@@ -110,6 +111,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/centro-notificaciones', label: 'Centro de Notificaciones', icon: Bell, show: isAdmin },
     { path: '/notificaciones-transaccionales', label: 'Notificaciones Transaccionales', icon: Mail, show: isAdmin },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
+    { path: '/catalogos-web', label: 'Catálogos Web', icon: Database, show: isAdmin },
     // { path: '/configuracion/mapeo-vendedores', label: 'Mapeo de Agentes', icon: Users, show: isAdmin },
     { path: '/configuracion', label: 'Configuración', icon: Settings, show: isAdmin },
   ];
