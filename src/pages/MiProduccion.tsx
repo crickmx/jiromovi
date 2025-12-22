@@ -261,6 +261,11 @@ export default function MiProduccion() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
+      if (!import.meta.env.VITE_SUPABASE_URL) {
+        setMessage('Error de configuración: La URL de Supabase no está configurada. Verifica las variables de entorno.');
+        return;
+      }
+
       // Usar la función rápida que lee desde la base de datos
       const cacheApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refresh-production-cache`;
       const cacheResponse = await fetch(cacheApiUrl, {
@@ -270,6 +275,14 @@ export default function MiProduccion() {
           'Content-Type': 'application/json',
         }
       });
+
+      if (!cacheResponse.ok) {
+        const contentType = cacheResponse.headers.get('content-type');
+        if (contentType?.includes('text/html')) {
+          throw new Error(`La función de actualización no está disponible (HTTP ${cacheResponse.status}). Verifica que las variables de entorno estén configuradas correctamente en Netlify.`);
+        }
+        throw new Error(`HTTP ${cacheResponse.status}: ${cacheResponse.statusText}`);
+      }
 
       const cacheResult = await cacheResponse.json();
 
@@ -295,6 +308,11 @@ export default function MiProduccion() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
+      if (!import.meta.env.VITE_SUPABASE_URL) {
+        setMessage('Error de configuración: La URL de Supabase no está configurada. Verifica las variables de entorno.');
+        return;
+      }
+
       // Paso 1: Sincronizar datos de Google Sheets
       setMessage('Sincronizando datos desde Google Sheets...');
       const syncApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-production-from-sheets`;
@@ -305,6 +323,14 @@ export default function MiProduccion() {
           'Content-Type': 'application/json',
         }
       });
+
+      if (!syncResponse.ok) {
+        const contentType = syncResponse.headers.get('content-type');
+        if (contentType?.includes('text/html')) {
+          throw new Error(`La función de Supabase no está disponible (HTTP ${syncResponse.status}). Verifica que las variables de entorno estén configuradas correctamente en Netlify.`);
+        }
+        throw new Error(`HTTP ${syncResponse.status}: ${syncResponse.statusText}`);
+      }
 
       const syncResult = await syncResponse.json();
 
@@ -323,6 +349,14 @@ export default function MiProduccion() {
           'Content-Type': 'application/json',
         }
       });
+
+      if (!cacheResponse.ok) {
+        const contentType = cacheResponse.headers.get('content-type');
+        if (contentType?.includes('text/html')) {
+          throw new Error(`La función de actualización de cache no está disponible (HTTP ${cacheResponse.status}). Verifica que las variables de entorno estén configuradas correctamente en Netlify.`);
+        }
+        throw new Error(`HTTP ${cacheResponse.status}: ${cacheResponse.statusText}`);
+      }
 
       const cacheResult = await cacheResponse.json();
 
