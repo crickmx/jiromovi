@@ -98,24 +98,24 @@ export function MultiOptionQuote({
   }
 
   function addOption() {
-    if (options.length >= 5) {
-      alert('Máximo 5 opciones permitidas');
+    if (options.length >= 3) {
+      alert('Máximo 3 opciones permitidas');
       return;
     }
     setOptions([...options, createDefaultOption(tariffTables)]);
   }
 
   function removeOption(index: number) {
-    if (options.length <= 2) {
-      alert('Mínimo 2 opciones requeridas para comparación');
+    if (options.length <= 1) {
+      alert('Mínimo 1 opción requerida para comparación');
       return;
     }
     setOptions(options.filter((_, i) => i !== index));
   }
 
   function duplicateOption(index: number) {
-    if (options.length >= 5) {
-      alert('Máximo 5 opciones permitidas');
+    if (options.length >= 3) {
+      alert('Máximo 3 opciones permitidas');
       return;
     }
     const newOption = JSON.parse(JSON.stringify(options[index]));
