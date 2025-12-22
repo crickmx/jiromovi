@@ -10,7 +10,7 @@ interface MiLogotipoEditorProps {
   onLogoChange?: (newUrl: string | null) => void;
 }
 
-export default function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLogotipoEditorProps) {
+export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLogotipoEditorProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(currentLogoUrl || null);
   const [effectiveLogoUrl, setEffectiveLogoUrl] = useState<string>('/logojiro.png');
   const [uploading, setUploading] = useState(false);

@@ -109,11 +109,14 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
 
         // Cargar el logo efectivo del usuario
         getEffectiveUserLogo(usuario.id).then(logoUrl => {
-          if (logoUrl && logoUrl !== '/logojiro.png') {
+          // Siempre establecer el logo, incluso si es el logo de JIRO por defecto
+          if (logoUrl) {
             setLogoPreview(logoUrl);
           }
         }).catch(error => {
           console.error('Error loading user logo:', error);
+          // En caso de error, usar logo por defecto
+          setLogoPreview('/logojiro.png');
         });
       }
 

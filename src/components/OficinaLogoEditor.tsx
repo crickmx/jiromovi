@@ -11,7 +11,7 @@ interface OficinaLogoEditorProps {
   onLogoChange?: (newUrl: string | null) => void;
 }
 
-export default function OficinaLogoEditor({
+export function OficinaLogoEditor({
   officeId,
   officeName,
   currentLogoUrl,

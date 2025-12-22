@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
+import { MiLogotipoEditor } from './MiLogotipoEditor';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -495,6 +496,27 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               editable={true}
             />
           </div>
+
+          {user && (
+            <div>
+              <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Mi Logotipo</h3>
+              <MiLogotipoEditor
+                userId={user.id}
+                currentLogoUrl={user.mi_logotipo_url}
+                onLogoChange={async () => {
+                  // Recargar los datos después de cambiar el logo
+                  const { data } = await supabase
+                    .from('usuarios')
+                    .select('mi_logotipo_url')
+                    .eq('id', user.id)
+                    .single();
+                  if (data) {
+                    user.mi_logotipo_url = data.mi_logotipo_url;
+                  }
+                }}
+              />
+            </div>
+          )}
 
           {currentUser?.rol === 'Administrador' && (
             <div>

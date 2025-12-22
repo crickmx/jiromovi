@@ -6,7 +6,7 @@ import { CustomFields } from '../components/CustomFields';
 import { PaymentFields } from '../components/PaymentFields';
 import { CorreoIONOSFields } from '../components/CorreoIONOSFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
-import MiLogotipoEditor from '../components/MiLogotipoEditor';
+import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { AreasManager } from '../components/AreasManager';
-import OficinaLogoEditor from '../components/OficinaLogoEditor';
+import { OficinaLogoEditor } from '../components/OficinaLogoEditor';
 
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
