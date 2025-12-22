@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
@@ -151,7 +151,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           if (!session) throw new Error('No hay sesión activa');
 
           const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-password`,
+            `${supabaseUrl}/functions/v1/update-user-password`,
             {
               method: 'POST',
               headers: {
@@ -185,7 +185,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         }
 
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+          `${supabaseUrl}/functions/v1/create-user`,
           {
             method: 'POST',
             headers: {
