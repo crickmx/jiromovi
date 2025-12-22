@@ -215,34 +215,20 @@ export default function PaginaPublicaAsesor() {
           }}
         />
 
-        <header className="bg-white border-b border-gray-100 sticky top-0 z-50 backdrop-blur-lg bg-white/95">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            {user.logo_url && (
-              <img
-                src={user.logo_url}
-                alt="Logo"
-                className="h-10 md:h-12 w-auto object-contain"
-              />
-            )}
-            <div className="flex items-center gap-3">
-              <a
-                href={whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">WhatsApp</span>
-              </a>
-            </div>
-          </div>
-        </header>
-
         <section className="relative bg-gradient-to-b from-gray-50 to-white py-12 md:py-20 px-4">
           <div className="max-w-7xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
               <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+                {user.logo_url && (
+                  <div className="mb-6">
+                    <img
+                      src={user.logo_url}
+                      alt="Logo"
+                      className="h-16 md:h-20 w-auto object-contain"
+                    />
+                  </div>
+                )}
+
                 {user.photo_url && (
                   <div className="mb-6">
                     <img
@@ -253,20 +239,15 @@ export default function PaginaPublicaAsesor() {
                   </div>
                 )}
 
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                <h1 className="text-3xl md:text-4xl font-bold mb-3" style={{ color: primaryColor }}>
                   {user.name}
                 </h1>
-                <p className="text-lg md:text-xl text-gray-600 mb-2">
+                <p className="text-lg md:text-xl text-gray-600 mb-6">
                   Asesor Personal de Seguros
                 </p>
-                {user.office?.name && (
-                  <p className="text-base text-gray-500 mb-6">
-                    {user.office.name}
-                  </p>
-                )}
 
                 <div className="mb-8">
-                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                  <h2 className="text-2xl md:text-3xl font-bold mb-4" style={{ color: primaryColor }}>
                     Protege lo que más importa
                   </h2>
                   <p className="text-gray-600 leading-relaxed max-w-lg">
@@ -298,18 +279,18 @@ export default function PaginaPublicaAsesor() {
 
               <div className="lg:sticky lg:top-24">
                 <div
-                  className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 border"
+                  className="bg-white rounded-2xl shadow-2xl p-5 md:p-6 border"
                   style={{ borderColor: createColorVariant(primaryColor, 0.2) }}
                 >
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h3 className="text-xl font-bold mb-1" style={{ color: primaryColor }}>
                     Solicita tu Cotización
                   </h3>
-                  <p className="text-gray-600 mb-6 text-sm">
+                  <p className="text-gray-600 mb-4 text-sm">
                     Completa el formulario y te contactaré de inmediato
                   </p>
 
                   {submitStatus === 'success' ? (
-                    <div className="text-center py-8">
+                    <div className="text-center py-6">
                       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -321,57 +302,57 @@ export default function PaginaPublicaAsesor() {
                       </p>
                     </div>
                   ) : (
-                    <form className="space-y-4" onSubmit={handleSubmitLead}>
+                    <form className="space-y-3" onSubmit={handleSubmitLead}>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
                           Nombre Completo *
                         </label>
                         <input
                           type="text"
                           value={formData.nombre}
                           onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors"
+                          className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none transition-colors text-sm"
                           placeholder="Tu nombre"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
                           Celular *
                         </label>
                         <input
                           type="tel"
                           value={formData.celular}
                           onChange={(e) => setFormData(prev => ({ ...prev, celular: e.target.value }))}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors"
+                          className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none transition-colors text-sm"
                           placeholder="55 1234 5678"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
                           Email *
                         </label>
                         <input
                           type="email"
                           value={formData.email}
                           onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors"
+                          className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none transition-colors text-sm"
                           placeholder="tu@email.com"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
                           Seguro de Interés *
                         </label>
                         <select
                           value={formData.seguro_interes}
                           onChange={(e) => setFormData(prev => ({ ...prev, seguro_interes: e.target.value }))}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors bg-white"
+                          className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none transition-colors bg-white text-sm"
                           required
                         >
                           <option value="">Selecciona un seguro</option>
@@ -414,7 +395,7 @@ export default function PaginaPublicaAsesor() {
         {insurers && insurers.length > 0 && (
           <section className="relative py-20 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+              <h2 className="text-4xl md:text-5xl font-bold text-center mb-4" style={{ color: primaryColor }}>
                 Aseguradoras de Confianza
               </h2>
               <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
@@ -503,8 +484,8 @@ export default function PaginaPublicaAsesor() {
             className="relative py-24 px-4 bg-gradient-to-b from-gray-50 to-white z-10"
           >
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                Servicios que Ofrezco
+              <h2 className="text-4xl md:text-5xl font-bold text-center mb-4" style={{ color: primaryColor }}>
+                Seguros a tu medida
               </h2>
               <p className="text-center text-gray-600 mb-16 max-w-2xl mx-auto text-lg">
                 Protección completa para lo que más valoras
@@ -577,7 +558,7 @@ export default function PaginaPublicaAsesor() {
           }`}
         >
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center" style={{ color: primaryColor }}>
               Sobre Mí
             </h2>
 
@@ -593,7 +574,7 @@ export default function PaginaPublicaAsesor() {
 
         <section className="relative py-16 px-4 bg-gray-50 z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h3 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: primaryColor }}>
               ¿Listo para proteger lo que más valoras?
             </h3>
             <p className="text-gray-600 mb-8 text-lg">
@@ -628,6 +609,16 @@ export default function PaginaPublicaAsesor() {
             <p className="text-sm text-gray-400 mb-2">
               © {new Date().getFullYear()} {user.name}. Todos los derechos reservados.
             </p>
+            <div className="flex items-center justify-center gap-4 mb-2">
+              <a
+                href="https://jiro.mx/privacidad"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gray-500 hover:text-white transition-colors underline"
+              >
+                Aviso de privacidad
+              </a>
+            </div>
             <p className="text-xs text-gray-500">
               Powered by{' '}
               <a href="https://www.movi.digital" className="hover:text-white transition-colors underline">
