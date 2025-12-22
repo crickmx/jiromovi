@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
 
     const nombre_completo = `${userData.nombre} ${userData.apellidos}`.trim();
 
-    const { error: insertError } = await supabaseAdmin.from('usuarios').insert({
+    const insertData = {
       id: authData.user.id,
       nombre: userData.nombre,
       apellidos: userData.apellidos,
@@ -146,13 +146,17 @@ Deno.serve(async (req: Request) => {
       clabe: userData.clabe || '',
       dias_vacaciones_disponibles: userData.dias_vacaciones_disponibles || 0,
       estado: isGerente ? 'pendiente' : 'activo',
-    });
+    };
+
+    console.log('Attempting to insert user with data:', JSON.stringify(insertData, null, 2));
+
+    const { error: insertError } = await supabaseAdmin.from('usuarios').insert(insertData);
 
     if (insertError) {
-      console.error('Database insert error:', insertError);
+      console.error('Database insert error:', JSON.stringify(insertError, null, 2));
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       return new Response(
-        JSON.stringify({ error: 'Database error: ' + insertError.message }),
+        JSON.stringify({ error: 'Database error creating new user', details: insertError.message, code: insertError.code }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
