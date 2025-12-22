@@ -488,6 +488,59 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           </div>
 
           <div>
+            <h3 className="text-base font-semibold text-slate-800 mb-3 pb-2 border-b border-slate-200 flex items-center gap-2">
+              <span className="text-blue-600">📸</span>
+              Mi Logotipo Personal
+            </h3>
+            {user ? (
+              <>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-800 mb-2">
+                    <strong>Importante:</strong> Tu logotipo personal aparecerá en tus PDFs de comisiones y materiales oficiales.
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    Si no subes un logo personal, se usará el logo de tu oficina o el logo JIRO por defecto.
+                  </p>
+                </div>
+                <MiLogotipoEditor
+                  userId={user.id}
+                  currentLogoUrl={user.mi_logotipo_url}
+                  onLogoChange={async () => {
+                    // Recargar los datos después de cambiar el logo
+                    const { data } = await supabase
+                      .from('usuarios')
+                      .select('mi_logotipo_url')
+                      .eq('id', user.id)
+                      .single();
+                    if (data) {
+                      user.mi_logotipo_url = data.mi_logotipo_url;
+                    }
+                  }}
+                />
+              </>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-700 font-medium mb-1">
+                      Subir Logotipo Personal
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Primero crea el usuario. Luego podrás editarlo para subir su logotipo personal.
+                      El logotipo se usará en PDFs de comisiones y materiales oficiales.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
             <PaymentFields
               regimenFiscalId={formData.regimen_fiscal_id}
               banco={formData.banco}
@@ -496,27 +549,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               editable={true}
             />
           </div>
-
-          {user && (
-            <div>
-              <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Mi Logotipo</h3>
-              <MiLogotipoEditor
-                userId={user.id}
-                currentLogoUrl={user.mi_logotipo_url}
-                onLogoChange={async () => {
-                  // Recargar los datos después de cambiar el logo
-                  const { data } = await supabase
-                    .from('usuarios')
-                    .select('mi_logotipo_url')
-                    .eq('id', user.id)
-                    .single();
-                  if (data) {
-                    user.mi_logotipo_url = data.mi_logotipo_url;
-                  }
-                }}
-              />
-            </div>
-          )}
 
           {currentUser?.rol === 'Administrador' && (
             <div>
