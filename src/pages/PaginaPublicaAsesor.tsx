@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Phone, Mail, MessageCircle, FileText, Loader2, ChevronLeft, ChevronRight, ArrowUp, User } from 'lucide-react';
+import { Phone, Mail, MessageCircle, Loader2, ChevronLeft, ChevronRight, ArrowUp } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
 import type { PublicWebPageData } from '../lib/webPagesTypes';
@@ -112,9 +112,7 @@ export default function PaginaPublicaAsesor() {
     setCurrentSlide(prev => (prev + 1) % Math.ceil(insurers!.length / 4));
   };
 
-  const heroReveal = useScrollReveal();
   const aboutReveal = useScrollReveal();
-  const formReveal = useScrollReveal();
   const servicesStagger = useStaggeredReveal(categories?.length || 0, 150);
 
   return (
@@ -139,84 +137,86 @@ export default function PaginaPublicaAsesor() {
           }}
         />
 
-        <section
-          className="relative min-h-[85vh] flex items-center px-4 py-20 overflow-hidden"
-          style={{
-            background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
-          }}
-        >
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }}
-          />
-
-          {user.logo_url && (
-            <div className="absolute top-8 left-8 z-20 animate-in fade-in slide-in-from-left-4 duration-700">
+        <header className="bg-white border-b border-gray-100 sticky top-0 z-50 backdrop-blur-lg bg-white/95">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            {user.logo_url && (
               <img
                 src={user.logo_url}
                 alt="Logo"
-                className="h-12 md:h-16 w-auto object-contain filter drop-shadow-2xl"
+                className="h-10 md:h-12 w-auto object-contain"
               />
-            </div>
-          )}
-
-          <div className="max-w-5xl mx-auto text-center text-white relative z-10 w-full">
-            {user.photo_url && (
-              <div className="mb-8 flex justify-center animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="relative group">
-                  <div
-                    className="absolute inset-0 rounded-full blur-2xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
-                    style={{
-                      background: `radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)`
-                    }}
-                  />
-                  <img
-                    src={user.photo_url}
-                    alt={user.name}
-                    className="relative w-36 h-36 md:w-44 md:h-44 rounded-full object-cover border-4 border-white/80 shadow-2xl backdrop-blur-sm transform group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              </div>
             )}
-
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-4 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
-              {user.name}
-            </h1>
-            <p className="text-2xl md:text-3xl mb-3 opacity-95 font-light animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
-              Asesor Personal de Seguros
-            </p>
-            {user.office?.name && (
-              <p className="text-lg md:text-xl mb-10 opacity-90 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300">
-                {user.office.name}
-              </p>
-            )}
-
-            <div className="flex flex-wrap justify-center gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-500">
+            <div className="flex items-center gap-3">
               <a
                 href={whatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center gap-2 bg-white text-gray-900 px-8 py-4 rounded-full font-semibold hover:scale-105 hover:shadow-2xl transition-all duration-300 shadow-xl"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105"
+                style={{ backgroundColor: primaryColor }}
               >
-                <MessageCircle className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                Contáctame por WhatsApp
-              </a>
-              <a
-                href="#cotizar"
-                className="group inline-flex items-center gap-2 bg-white/20 backdrop-blur-md text-white px-8 py-4 rounded-full font-semibold hover:bg-white/30 transition-all duration-300 border-2 border-white/60 hover:border-white shadow-xl hover:shadow-2xl hover:scale-105"
-              >
-                <FileText className="w-5 h-5 group-hover:rotate-6 transition-transform" />
-                Cotizar Ahora
+                <MessageCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">WhatsApp</span>
               </a>
             </div>
           </div>
+        </header>
 
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/60 animate-bounce">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
+        <section className="relative bg-gradient-to-b from-gray-50 to-white py-20 md:py-32 px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center gap-12">
+              {user.photo_url && (
+                <div className="flex-shrink-0">
+                  <img
+                    src={user.photo_url}
+                    alt={user.name}
+                    className="w-48 h-48 md:w-64 md:h-64 rounded-2xl object-cover shadow-2xl"
+                  />
+                </div>
+              )}
+
+              <div className="flex-1 text-center md:text-left">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
+                  {user.name}
+                </h1>
+                <p className="text-xl md:text-2xl text-gray-600 mb-6">
+                  Asesor Personal de Seguros
+                </p>
+                {user.office?.name && (
+                  <p className="text-lg text-gray-500 mb-8">
+                    {user.office.name}
+                  </p>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+                  <a
+                    href={whatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <MessageCircle className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                    WhatsApp
+                  </a>
+                  <a
+                    href={`tel:${user.phone?.replace(/\D/g, '')}`}
+                    className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                    style={{ borderColor: primaryColor, color: primaryColor }}
+                  >
+                    <Phone className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                    Llamar
+                  </a>
+                  <a
+                    href={`mailto:${user.email}`}
+                    className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                    style={{ borderColor: secondaryColor, color: secondaryColor }}
+                  >
+                    <Mail className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                    Email
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -305,122 +305,6 @@ export default function PaginaPublicaAsesor() {
           </section>
         )}
 
-        <section
-          id="cotizar"
-          ref={formReveal.ref as React.RefObject<HTMLElement>}
-          className={`relative py-24 px-4 bg-white z-10 transition-all duration-1000 ${
-            formReveal.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
-        >
-          <div className="max-w-2xl mx-auto">
-            <div
-              className="relative bg-gradient-to-br from-white to-gray-50 p-10 rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
-              style={{
-                boxShadow: `0 20px 60px -15px ${createColorVariant(primaryColor, 0.2)}`
-              }}
-            >
-              <div
-                className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-10"
-                style={{ backgroundColor: primaryColor }}
-              />
-              <div
-                className="absolute bottom-0 left-0 w-64 h-64 rounded-full blur-3xl opacity-10"
-                style={{ backgroundColor: secondaryColor }}
-              />
-
-              <div className="relative z-10">
-                <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                  Cotiza y Contrata
-                </h2>
-                <p className="text-center text-gray-600 mb-10 text-lg">
-                  Completa el formulario y te contactaré para ofrecerte la mejor opción
-                </p>
-
-                <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-                  {categories && categories.length > 0 && (
-                    <div className="group">
-                      <label className="block text-sm font-semibold mb-3 text-gray-700">
-                        Tipo de Seguro
-                      </label>
-                      <select
-                        className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-opacity-100 transition-all duration-300 focus:outline-none bg-white shadow-sm hover:shadow-md"
-                        style={{
-                          focusBorderColor: primaryColor
-                        }}
-                      >
-                        <option>Selecciona un ramo</option>
-                        {categories.map(category => (
-                          <option key={category.id} value={category.slug}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  <div className="group">
-                    <label className="block text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
-                      <User className="w-4 h-4" style={{ color: primaryColor }} />
-                      Nombre Completo
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-opacity-100 transition-all duration-300 focus:outline-none shadow-sm hover:shadow-md"
-                      placeholder="Tu nombre"
-                      style={{
-                        focusBorderColor: primaryColor
-                      }}
-                    />
-                  </div>
-
-                  <div className="group">
-                    <label className="block text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
-                      <Mail className="w-4 h-4" style={{ color: primaryColor }} />
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-opacity-100 transition-all duration-300 focus:outline-none shadow-sm hover:shadow-md"
-                      placeholder="tu@email.com"
-                      style={{
-                        focusBorderColor: primaryColor
-                      }}
-                    />
-                  </div>
-
-                  <div className="group">
-                    <label className="block text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
-                      <Phone className="w-4 h-4" style={{ color: primaryColor }} />
-                      Celular
-                    </label>
-                    <input
-                      type="tel"
-                      className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-opacity-100 transition-all duration-300 focus:outline-none shadow-sm hover:shadow-md"
-                      placeholder="55 1234 5678"
-                      style={{
-                        focusBorderColor: primaryColor
-                      }}
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="group relative w-full py-5 rounded-xl font-bold text-white hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:scale-[1.02] active:scale-[0.98]"
-                    style={{
-                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
-                    }}
-                  >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      Enviar Solicitud de Cotización
-                      <FileText className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                    </span>
-                    <div className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {categories && categories.length > 0 && (
           <section
@@ -497,140 +381,63 @@ export default function PaginaPublicaAsesor() {
 
         <section
           ref={aboutReveal.ref as React.RefObject<HTMLElement>}
-          className={`relative py-24 px-4 bg-gradient-to-b from-white via-gray-50 to-white z-10 transition-all duration-1000 ${
+          className={`relative py-20 px-4 bg-white z-10 transition-all duration-1000 ${
             aboutReveal.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                Sobre Mí
-              </h2>
-              <div className="h-1 w-24 mx-auto rounded-full" style={{ background: `linear-gradient(90deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }} />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-12 items-start">
-              {user.photo_url && (
-                <div className="flex justify-center md:justify-start">
-                  <div className="relative group">
-                    <div
-                      className="absolute -inset-4 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500"
-                      style={{
-                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
-                      }}
-                    />
-                    <div className="relative bg-white rounded-3xl p-4 shadow-xl">
-                      <img
-                        src={user.photo_url}
-                        alt={user.name}
-                        className="w-full h-auto rounded-2xl object-cover transform group-hover:scale-[1.02] transition-transform duration-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-8">
-                {textToDisplay.map((paragraph, index) => (
-                  <div
-                    key={index}
-                    className="relative group"
-                  >
-                    <div
-                      className="absolute -left-4 top-0 bottom-0 w-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      style={{ backgroundColor: primaryColor }}
-                    />
-                    <p className="text-lg text-gray-700 leading-relaxed pl-4 group-hover:translate-x-2 transition-transform duration-300">
-                      {paragraph}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="relative py-16 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
           <div className="max-w-4xl mx-auto">
-            <div
-              className="relative bg-white rounded-3xl shadow-2xl p-12 overflow-hidden"
-              style={{
-                boxShadow: `0 20px 60px -15px ${createColorVariant(primaryColor, 0.2)}`
-              }}
-            >
-              <div
-                className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-10"
-                style={{ backgroundColor: secondaryColor }}
-              />
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8 text-center">
+              Sobre Mí
+            </h2>
 
-              <div className="relative z-10 text-center">
-                <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                  ¿Listo para proteger lo que más valoras?
-                </h3>
-                <p className="text-gray-600 mb-10 text-lg max-w-2xl mx-auto">
-                  {seoText}
+            <div className="prose prose-lg max-w-none">
+              {textToDisplay.map((paragraph, index) => (
+                <p key={index} className="text-gray-700 leading-relaxed mb-4">
+                  {paragraph}
                 </p>
-
-                <div className="flex flex-wrap justify-center gap-6 mb-8">
-                  <a
-                    href={whatsappLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex items-center gap-3 px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                    style={{
-                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
-                    }}
-                  >
-                    <MessageCircle className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />
-                    <div className="text-left">
-                      <div className="text-sm text-white/80 font-medium">WhatsApp</div>
-                      <div className="text-white font-bold">{user.phone}</div>
-                    </div>
-                  </a>
-
-                  <a
-                    href={`mailto:${user.email}`}
-                    className="group flex items-center gap-3 bg-white px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 transform hover:scale-105"
-                    style={{ borderColor: createColorVariant(primaryColor, 0.2) }}
-                  >
-                    <Mail className="w-6 h-6 group-hover:rotate-6 transition-transform" style={{ color: primaryColor }} />
-                    <div className="text-left">
-                      <div className="text-sm text-gray-500 font-medium">Email</div>
-                      <div className="font-bold" style={{ color: primaryColor }}>{user.email}</div>
-                    </div>
-                  </a>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        <footer
-          className="relative py-12 px-4 text-white overflow-hidden"
-          style={{
-            background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
-          }}
-        >
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }}
-          />
+        <section className="relative py-16 px-4 bg-gray-50 z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              ¿Listo para proteger lo que más valoras?
+            </h3>
+            <p className="text-gray-600 mb-8 text-lg">
+              {seoText}
+            </p>
 
-          <div className="relative z-10 max-w-6xl mx-auto text-center">
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold mb-2">{user.name}</h3>
-              <p className="text-white/80">Asesor Personal de Seguros</p>
-              {user.office?.name && <p className="text-white/70 text-sm mt-1">{user.office.name}</p>}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a
+                href={whatsappLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <MessageCircle className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                Contáctame por WhatsApp
+              </a>
+              <a
+                href={`tel:${user.phone?.replace(/\D/g, '')}`}
+                className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                style={{ borderColor: primaryColor, color: primaryColor }}
+              >
+                <Phone className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                Llamar Ahora
+              </a>
             </div>
+          </div>
+        </section>
 
-            <div className="h-px w-32 mx-auto bg-white/30 mb-6" />
-
-            <p className="text-sm text-white/80 mb-2">
+        <footer className="bg-gray-900 py-8 px-4 text-white">
+          <div className="max-w-6xl mx-auto text-center">
+            <p className="text-sm text-gray-400 mb-2">
               © {new Date().getFullYear()} {user.name}. Todos los derechos reservados.
             </p>
-            <p className="text-xs text-white/60">
+            <p className="text-xs text-gray-500">
               Powered by{' '}
               <a href="https://www.movi.digital" className="hover:text-white transition-colors underline">
                 MOVI Digital
@@ -643,14 +450,12 @@ export default function PaginaPublicaAsesor() {
           href={whatsappLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden md:flex fixed bottom-8 right-8 items-center justify-center w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-110 z-50 group animate-pulse hover:animate-none"
-          style={{
-            background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
-          }}
+          className="hidden md:flex fixed bottom-8 right-8 items-center justify-center w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 z-50 group"
+          style={{ backgroundColor: primaryColor }}
         >
-          <MessageCircle className="w-7 h-7 text-white group-hover:rotate-12 transition-transform" />
+          <MessageCircle className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />
           <span className="absolute -top-12 right-0 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            Contáctame por WhatsApp
+            WhatsApp
           </span>
         </a>
 
@@ -664,25 +469,33 @@ export default function PaginaPublicaAsesor() {
           <ArrowUp className="w-5 h-5" style={{ color: primaryColor }} />
         </button>
 
-        <div className="fixed bottom-0 left-0 right-0 md:hidden backdrop-blur-lg bg-white/90 border-t border-gray-200 shadow-2xl z-50">
-          <div className="flex">
+        <div className="fixed bottom-0 left-0 right-0 md:hidden backdrop-blur-lg bg-white border-t border-gray-200 shadow-lg z-50">
+          <div className="flex divide-x divide-gray-200">
             <a
               href={whatsappLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 py-4 font-bold text-white active:scale-95 transition-transform"
-              style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}
+              className="flex-1 flex items-center justify-center gap-2 py-4 font-semibold text-white active:scale-95 transition-transform"
+              style={{ backgroundColor: primaryColor }}
             >
               <MessageCircle className="w-5 h-5" />
               WhatsApp
             </a>
             <a
-              href={`tel:${user.phone}`}
-              className="flex-1 flex items-center justify-center gap-2 py-4 font-bold border-l border-white/20 text-white active:scale-95 transition-transform"
-              style={{ background: `linear-gradient(135deg, ${secondaryColor} 0%, ${primaryColor} 100%)` }}
+              href={`tel:${user.phone?.replace(/\D/g, '')}`}
+              className="flex-1 flex items-center justify-center gap-2 py-4 font-semibold active:scale-95 transition-transform"
+              style={{ color: primaryColor }}
             >
               <Phone className="w-5 h-5" />
               Llamar
+            </a>
+            <a
+              href={`mailto:${user.email}`}
+              className="flex-1 flex items-center justify-center gap-2 py-4 font-semibold active:scale-95 transition-transform"
+              style={{ color: secondaryColor }}
+            >
+              <Mail className="w-5 h-5" />
+              Email
             </a>
           </div>
         </div>
