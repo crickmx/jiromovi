@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
       banco: userData.banco || '',
       clabe: userData.clabe || '',
       dias_vacaciones_disponibles: userData.dias_vacaciones_disponibles || 0,
-      estado: isGerente ? 'registrado' : 'activo',
+      estado: isGerente ? 'pendiente' : 'activo',
     });
 
     if (insertError) {
