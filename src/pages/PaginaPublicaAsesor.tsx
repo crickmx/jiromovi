@@ -393,31 +393,31 @@ export default function PaginaPublicaAsesor() {
         </section>
 
         {insurers && insurers.length > 0 && (
-          <section className="relative py-20 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
+          <section className="relative py-16 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-4xl md:text-5xl font-bold text-center mb-4" style={{ color: primaryColor }}>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-3 px-4" style={{ color: primaryColor }}>
                 Aseguradoras de Confianza
               </h2>
-              <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+              <p className="text-center text-gray-600 mb-8 sm:mb-12 max-w-2xl mx-auto text-base sm:text-lg px-4">
                 Trabajo con las mejores aseguradoras del mercado para ofrecerte opciones competitivas
               </p>
 
-              <div className="relative" onMouseEnter={() => setIsAutoScrolling(false)} onMouseLeave={() => setIsAutoScrolling(true)}>
+              <div className="relative px-4" onMouseEnter={() => setIsAutoScrolling(false)} onMouseLeave={() => setIsAutoScrolling(true)}>
                 {insurers.length > 4 && (
                   <>
                     <button
                       onClick={handlePrevSlide}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+                      className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-2 sm:p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
                       style={{ color: primaryColor }}
                     >
-                      <ChevronLeft className="w-6 h-6" />
+                      <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
                     </button>
                     <button
                       onClick={handleNextSlide}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+                      className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-2 sm:p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
                       style={{ color: primaryColor }}
                     >
-                      <ChevronRight className="w-6 h-6" />
+                      <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
                     </button>
                   </>
                 )}
@@ -431,20 +431,19 @@ export default function PaginaPublicaAsesor() {
                   >
                     {Array.from({ length: Math.ceil(insurers.length / 4) }).map((_, slideIndex) => (
                       <div key={slideIndex} className="w-full flex-shrink-0">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 px-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6 px-2">
                           {insurers.slice(slideIndex * 4, slideIndex * 4 + 4).map((insurer, idx) => (
                             <div
                               key={insurer.id}
-                              className="group bg-white p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 flex items-center justify-center transform hover:-translate-y-2 hover:scale-105"
+                              className="group bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 flex items-center justify-center transform hover:-translate-y-2 hover:scale-105 min-h-[100px] sm:min-h-[120px]"
                               style={{
-                                animationDelay: `${idx * 100}ms`,
-                                animation: 'fadeInUp 0.6s ease-out forwards'
+                                animationDelay: `${idx * 100}ms`
                               }}
                             >
                               <img
                                 src={insurer.logo_url}
                                 alt={insurer.name}
-                                className="max-w-full max-h-16 object-contain filter grayscale group-hover:grayscale-0 transition-all duration-300"
+                                className="max-w-full max-h-12 sm:max-h-14 md:max-h-16 object-contain filter grayscale group-hover:grayscale-0 transition-all duration-300"
                               />
                             </div>
                           ))}
@@ -455,7 +454,7 @@ export default function PaginaPublicaAsesor() {
                 </div>
 
                 {insurers.length > 4 && (
-                  <div className="flex justify-center gap-2 mt-8">
+                  <div className="flex justify-center gap-2 mt-6 sm:mt-8">
                     {Array.from({ length: Math.ceil(insurers.length / 4) }).map((_, idx) => (
                       <button
                         key={idx}
@@ -463,7 +462,7 @@ export default function PaginaPublicaAsesor() {
                           setCurrentSlide(idx);
                           setIsAutoScrolling(false);
                         }}
-                        className="w-2 h-2 rounded-full transition-all duration-300"
+                        className="h-2 rounded-full transition-all duration-300"
                         style={{
                           backgroundColor: currentSlide === idx ? primaryColor : '#D1D5DB',
                           width: currentSlide === idx ? '2rem' : '0.5rem'
@@ -478,32 +477,30 @@ export default function PaginaPublicaAsesor() {
         )}
 
 
-        {categories && categories.length > 0 && (
-          <section
-            ref={servicesStagger.ref as React.RefObject<HTMLElement>}
-            className="relative py-24 px-4 bg-gradient-to-b from-gray-50 to-white z-10"
-          >
-            <div className="max-w-6xl mx-auto">
-              <h2 className="text-4xl md:text-5xl font-bold text-center mb-4" style={{ color: primaryColor }}>
-                Seguros a tu medida
-              </h2>
-              <p className="text-center text-gray-600 mb-16 max-w-2xl mx-auto text-lg">
-                Protección completa para lo que más valoras
-              </p>
+        <section className="relative py-16 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-3 px-4" style={{ color: primaryColor }}>
+              Ramos que Ofrezco
+            </h2>
+            <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto text-base sm:text-lg px-4">
+              Protección completa para lo que más valoras
+            </p>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {!categories || categories.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No hay ramos configurados</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-4">
                 {categories.map((category, idx) => {
                   const IconComponent = category.lucide_icon && (LucideIcons as any)[category.lucide_icon];
-                  const isVisible = servicesStagger.visibleItems.has(idx);
 
                   return (
                     <div
                       key={category.id}
-                      className={`group relative bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 ${
-                        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                      }`}
+                      className="group relative bg-white p-6 sm:p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2"
                       style={{
-                        transitionDelay: `${idx * 100}ms`
+                        animationDelay: `${idx * 100}ms`
                       }}
                     >
                       <div
@@ -516,19 +513,19 @@ export default function PaginaPublicaAsesor() {
                       <div className="relative z-10">
                         {IconComponent && (
                           <div
-                            className="mb-6 w-16 h-16 rounded-2xl flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg"
+                            className="mb-4 sm:mb-6 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg"
                             style={{
                               background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
                             }}
                           >
-                            <IconComponent className="w-8 h-8 text-white" />
+                            <IconComponent className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                           </div>
                         )}
 
-                        <h3 className="text-2xl font-bold mb-4 group-hover:text-opacity-90 transition-all" style={{ color: primaryColor }}>
+                        <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 group-hover:text-opacity-90 transition-all" style={{ color: primaryColor }}>
                           {category.card_title}
                         </h3>
-                        <p className="text-gray-600 mb-6 leading-relaxed">
+                        <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed">
                           {category.card_description}
                         </p>
 
@@ -536,68 +533,69 @@ export default function PaginaPublicaAsesor() {
                           href={whatsappLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 font-bold hover:gap-3 transition-all duration-300 group/link"
+                          className="inline-flex items-center gap-2 text-sm sm:text-base font-bold hover:gap-3 transition-all duration-300 group/link"
                           style={{ color: secondaryColor }}
                         >
                           Cotizar {category.name}
-                          <MessageCircle className="w-5 h-5 group-hover/link:rotate-12 transition-transform" />
+                          <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 group-hover/link:rotate-12 transition-transform" />
                         </a>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
-          </section>
-        )}
-
-        <section
-          ref={aboutReveal.ref as React.RefObject<HTMLElement>}
-          className={`relative py-20 px-4 bg-white z-10 transition-all duration-1000 ${
-            aboutReveal.isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
-        >
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center" style={{ color: primaryColor }}>
-              Sobre Mí
-            </h2>
-
-            <div className="prose prose-lg max-w-none">
-              {textToDisplay.map((paragraph, index) => (
-                <p key={index} className="text-gray-700 leading-relaxed mb-4">
-                  {paragraph}
-                </p>
-              ))}
-            </div>
+            )}
           </div>
         </section>
 
-        <section className="relative py-16 px-4 bg-gray-50 z-10">
+        <section className="relative py-16 px-4 bg-white z-10">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 sm:mb-8 text-center px-4" style={{ color: primaryColor }}>
+              Sobre Mí
+            </h2>
+
+            {!textToDisplay || textToDisplay.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No hay información disponible</p>
+              </div>
+            ) : (
+              <div className="space-y-4 px-4">
+                {textToDisplay.map((paragraph, index) => (
+                  <p key={index} className="text-base sm:text-lg text-gray-700 leading-relaxed">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="relative py-12 sm:py-16 px-4 bg-gray-50 z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: primaryColor }}>
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-4" style={{ color: primaryColor }}>
               ¿Listo para proteger lo que más valoras?
             </h3>
-            <p className="text-gray-600 mb-8 text-lg">
+            <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-6 sm:mb-8 px-4">
               {seoText}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
               <a
                 href={whatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base"
                 style={{ backgroundColor: primaryColor }}
               >
-                <MessageCircle className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform" />
                 Contáctame por WhatsApp
               </a>
               <a
                 href={`tel:${user.phone?.replace(/\D/g, '')}`}
-                className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base"
                 style={{ borderColor: primaryColor, color: primaryColor }}
               >
-                <Phone className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform" />
                 Llamar Ahora
               </a>
             </div>
