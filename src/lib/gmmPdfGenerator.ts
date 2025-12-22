@@ -24,6 +24,25 @@ interface AsesorInfo {
 }
 
 /**
+ * Convierte imagen a Base64 para incluir en PDF
+ */
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error loading image:', error);
+    return null;
+  }
+}
+
+/**
  * Genera un PDF profesional de cotización GMM BX+
  *
  * Incluye:
@@ -33,11 +52,13 @@ interface AsesorInfo {
  * - Coberturas (con descripción breve)
  * - Totales
  * - Pie de página con info del asesor
+ * - Logo del asesor (jerárquico: Mi Logotipo → Logo Oficina → Logo JIRO)
  */
 export async function generateQuotePDF(
   quote: GMMQuote,
   insureds: GMMQuoteInsured[],
-  asesor: AsesorInfo
+  asesor: AsesorInfo,
+  logoUrl?: string
 ): Promise<Blob> {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -51,6 +72,22 @@ export async function generateQuotePDF(
   const marginRight = 15;
   const contentWidth = pageWidth - marginLeft - marginRight;
   let yPosition = 20;
+
+  // ============================================
+  // LOGO
+  // ============================================
+  if (logoUrl) {
+    const logoBase64 = await loadImageAsBase64(logoUrl);
+    if (logoBase64) {
+      try {
+        const logoWidth = 30;
+        const logoHeight = 20;
+        doc.addImage(logoBase64, 'PNG', marginLeft, yPosition - 5, logoWidth, logoHeight);
+      } catch (error) {
+        console.error('Error adding logo to PDF:', error);
+      }
+    }
+  }
 
   // ============================================
   // ENCABEZADO

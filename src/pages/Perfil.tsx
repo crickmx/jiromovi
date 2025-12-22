@@ -6,6 +6,7 @@ import { CustomFields } from '../components/CustomFields';
 import { PaymentFields } from '../components/PaymentFields';
 import { CorreoIONOSFields } from '../components/CorreoIONOSFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
+import MiLogotipoEditor from '../components/MiLogotipoEditor';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -374,6 +375,14 @@ export function Perfil() {
               clabe={formData.clabe || ''}
               onChange={(field, value) => setFormData({ ...formData, [field]: value })}
               editable={true}
+            />
+          </div>
+
+          <div className="mt-8">
+            <MiLogotipoEditor
+              userId={usuario.id}
+              currentLogoUrl={formData.mi_logotipo_url}
+              onLogoChange={(url) => setFormData({ ...formData, mi_logotipo_url: url })}
             />
           </div>
 

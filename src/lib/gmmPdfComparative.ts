@@ -28,9 +28,29 @@ interface ComparativeQuote {
   result: QuoteCalculationMultiResult;
 }
 
+/**
+ * Convierte imagen a Base64 para incluir en PDF
+ */
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error loading image:', error);
+    return null;
+  }
+}
+
 export async function generateComparativeQuotePDF(
   quote: ComparativeQuote,
-  asesor: AsesorInfo
+  asesor: AsesorInfo,
+  logoUrl?: string
 ): Promise<Blob> {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -44,6 +64,22 @@ export async function generateComparativeQuotePDF(
   const marginRight = 12;
   const contentWidth = pageWidth - marginLeft - marginRight;
   let yPosition = 15;
+
+  // ============================================
+  // LOGO
+  // ============================================
+  if (logoUrl) {
+    const logoBase64 = await loadImageAsBase64(logoUrl);
+    if (logoBase64) {
+      try {
+        const logoWidth = 25;
+        const logoHeight = 17;
+        doc.addImage(logoBase64, 'PNG', marginLeft, yPosition - 3, logoWidth, logoHeight);
+      } catch (error) {
+        console.error('Error adding logo to PDF:', error);
+      }
+    }
+  }
 
   doc.setFontSize(18);
   doc.setFont(undefined, 'bold');

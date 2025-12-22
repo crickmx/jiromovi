@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { AreasManager } from '../components/AreasManager';
+import OficinaLogoEditor from '../components/OficinaLogoEditor';
 
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -631,6 +632,19 @@ export function Oficinas() {
                     />
                   </div>
                 ))}
+
+                {selectedOficina && (
+                  <div className="md:col-span-2">
+                    <OficinaLogoEditor
+                      officeId={selectedOficina.id}
+                      officeName={selectedOficina.nombre}
+                      currentLogoUrl={selectedOficina.logo_url}
+                      onLogoChange={async () => {
+                        await loadData();
+                      }}
+                    />
+                  </div>
+                )}
 
                 <div className="md:col-span-2 flex items-center space-x-3">
                   <input

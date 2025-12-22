@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Upload, Download, Image as ImageIcon, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { getEffectiveUserLogo } from '../lib/logoUtils';
 
 interface Plantilla {
   id: string;
@@ -105,6 +106,15 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
     } else {
       if (usuario) {
         setNombreCompleto(usuario.nombre_completo || '');
+
+        // Cargar el logo efectivo del usuario
+        getEffectiveUserLogo(usuario.id).then(logoUrl => {
+          if (logoUrl && logoUrl !== '/logojiro.png') {
+            setLogoPreview(logoUrl);
+          }
+        }).catch(error => {
+          console.error('Error loading user logo:', error);
+        });
       }
 
       setUrlJiro(DEFAULT_URLS.jiro);

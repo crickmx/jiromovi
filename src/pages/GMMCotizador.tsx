@@ -20,6 +20,7 @@ import { generateQuotePDF } from '../lib/gmmPdfGenerator';
 import { generateComparativeQuotePDF } from '../lib/gmmPdfComparative';
 import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
+import { getEffectiveUserLogo } from '../lib/logoUtils';
 import type {
   QuoteInput,
   QuoteInputInsured,
@@ -326,6 +327,9 @@ export default function GMMCotizador() {
         celular: usuario?.celular_laboral || '',
       };
 
+      // Obtener el logo efectivo del usuario
+      const logoUrl = await getEffectiveUserLogo(user.id);
+
       const quoteData = quotation.quote_data as any;
 
       if (quoteData.multi_option_result) {
@@ -336,7 +340,7 @@ export default function GMMCotizador() {
           result: quoteData.multi_option_result,
         };
 
-        const pdfBlob = await generateComparativeQuotePDF(comparativeQuote, asesorInfo);
+        const pdfBlob = await generateComparativeQuotePDF(comparativeQuote, asesorInfo, logoUrl);
 
         const url = URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
@@ -407,7 +411,7 @@ export default function GMMCotizador() {
         coberturas_adicionales: ins.coberturas_adicionales || ins.adicionales_detalle || null,
       }));
 
-      const pdfBlob = await generateQuotePDF(quoteForPdf as any, insuredsData, asesorInfo);
+      const pdfBlob = await generateQuotePDF(quoteForPdf as any, insuredsData, asesorInfo, logoUrl);
 
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
