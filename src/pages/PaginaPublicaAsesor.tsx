@@ -282,7 +282,8 @@ export default function PaginaPublicaAsesor() {
                     href={multicotizadorUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold bg-gray-900 text-white transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                    className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                    style={{ backgroundColor: secondaryColor }}
                   >
                     <Car className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     Ir a Multicotizador de Autos
