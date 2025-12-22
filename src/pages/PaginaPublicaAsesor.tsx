@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Phone, Mail, MessageCircle, Loader2, ChevronLeft, ChevronRight, ArrowUp } from 'lucide-react';
+import { Phone, Mail, MessageCircle, Loader2, ChevronLeft, ChevronRight, ArrowUp, Car } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
 import type { PublicWebPageData } from '../lib/webPagesTypes';
@@ -173,6 +173,7 @@ export default function PaginaPublicaAsesor() {
 
   const whatsappNumber = user.phone?.replace(/\D/g, '');
   const whatsappLink = whatsappNumber ? `https://wa.me/52${whatsappNumber}` : '#';
+  const multicotizadorUrl = `https://multicotizador.digital/cotiza/${slug}`;
 
   const categoriesText = categories?.map(c => c.name.toLowerCase()).join(', ') || '';
   const seoText = `${user.name} de ${user.office?.name || 'JIRO'} te ayuda a cotizar y contratar seguros de ${categoriesText} con atención personalizada por WhatsApp.`;
@@ -255,24 +256,36 @@ export default function PaginaPublicaAsesor() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+                <div className="flex flex-col items-center lg:items-start gap-3">
+                  <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+                    <a
+                      href={whatsappLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      <MessageCircle className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                      WhatsApp
+                    </a>
+                    <a
+                      href={`tel:${user.phone?.replace(/\D/g, '')}`}
+                      className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
+                      style={{ borderColor: primaryColor, color: primaryColor }}
+                    >
+                      <Phone className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                      Llamar
+                    </a>
+                  </div>
+
                   <a
-                    href={whatsappLink}
+                    href={multicotizadorUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
-                    style={{ backgroundColor: primaryColor }}
+                    className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold bg-gray-900 text-white transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
                   >
-                    <MessageCircle className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-                    WhatsApp
-                  </a>
-                  <a
-                    href={`tel:${user.phone?.replace(/\D/g, '')}`}
-                    className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold bg-white border-2 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-lg text-sm"
-                    style={{ borderColor: primaryColor, color: primaryColor }}
-                  >
-                    <Phone className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-                    Llamar
+                    <Car className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    Ir a Multicotizador de Autos
                   </a>
                 </div>
               </div>

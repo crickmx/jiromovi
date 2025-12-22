@@ -328,7 +328,8 @@ export default function MiPaginaWeb() {
                     phone: usuario?.celular_laboral || '',
                     photo_url: usuario?.imagen_perfil_url || null,
                     logo_url: usuario?.mi_logotipo_url || null,
-                    office_name: usuario?.oficina?.nombre || ''
+                    office_name: usuario?.oficina?.nombre || '',
+                    web_slug: usuario?.web_slug || null
                   }}
                 />
               </div>
