@@ -85,12 +85,38 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     if (data) setOficinas(data);
   };
 
+  const validateSlug = (slug: string): boolean => {
+    if (!slug) return true;
+    const slugRegex = /^[a-z0-9-]+$/;
+    return slugRegex.test(slug);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
+      if (formData.web_slug && !validateSlug(formData.web_slug)) {
+        setError('El slug solo puede contener letras minúsculas, números y guiones');
+        setLoading(false);
+        return;
+      }
+
+      if (formData.web_slug) {
+        const { data: existingSlug } = await supabase
+          .from('usuarios')
+          .select('id')
+          .eq('web_slug', formData.web_slug)
+          .maybeSingle();
+
+        if (existingSlug && (!user || existingSlug.id !== user.id)) {
+          setError(`El slug "${formData.web_slug}" ya está en uso. Por favor elige otro.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       if (user) {
         const updateData: Partial<Usuario> = {
           nombre: formData.nombre,
@@ -460,7 +486,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             {isAdmin && (
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Slug
+                  Slug (Opcional)
                 </label>
                 <input
                   type="text"
@@ -470,7 +496,11 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-slate-500 mt-1">
-                  Mi Página Web: <span className="font-mono text-blue-600">agentedeseguros.online/{formData.web_slug || 'slug'}</span>
+                  {formData.web_slug ? (
+                    <>Mi Página Web: <span className="font-mono text-blue-600">agentedeseguros.online/{formData.web_slug}</span></>
+                  ) : (
+                    <>Solo letras minúsculas, números y guiones. Debe ser único.</>
+                  )}
                 </p>
               </div>
             )}
