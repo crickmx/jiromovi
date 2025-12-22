@@ -24,7 +24,7 @@ import {
 import PublicWebPagePreview from '../components/webPages/PublicWebPagePreview';
 
 export default function MiPaginaWeb() {
-  const { user } = useAuth();
+  const { user, usuario } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [insurers, setInsurers] = useState<WebPageInsurer[]>([]);
@@ -153,15 +153,15 @@ export default function MiPaginaWeb() {
           <Card className="p-6">
             <h2 className="text-lg font-semibold mb-4">Estado de Publicación</h2>
 
-            {!user?.web_slug ? (
+            {!usuario?.web_slug ? (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                 <div className="flex gap-3">
                   <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-yellow-800">Slug no configurado</p>
                     <p className="text-sm text-yellow-700 mt-1">
-                      Contacta al administrador para que te asigne un slug personalizado.
-                      Con el slug podrás publicar tu página en agentedeseguros.online/soy/tu-slug
+                      Contacta a tu gerente para que te asigne un slug personalizado.
+                      Con el slug podrás publicar tu página en agentedeseguros.online/tu-slug
                     </p>
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export default function MiPaginaWeb() {
                     <Switch
                       checked={config.is_published}
                       onCheckedChange={(checked) => setConfig(prev => ({ ...prev, is_published: checked }))}
-                      disabled={!user.web_slug}
+                      disabled={!usuario?.web_slug}
                     />
                     <div>
                       <Label className="text-base">
@@ -195,13 +195,13 @@ export default function MiPaginaWeb() {
                       <div>
                         <p className="font-medium text-green-800 mb-2">Tu página está en línea</p>
                         <a
-                          href={`https://agentedeseguros.online/soy/${user.web_slug}`}
+                          href={`https://agentedeseguros.online/${usuario?.web_slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-2 text-sm text-green-700 hover:text-green-800 font-medium"
                         >
                           <ExternalLink className="w-4 h-4" />
-                          agentedeseguros.online/soy/{user.web_slug}
+                          agentedeseguros.online/{usuario?.web_slug}
                         </a>
                       </div>
                     </div>
@@ -372,7 +372,7 @@ export default function MiPaginaWeb() {
                   <div className="w-2 h-2 rounded-full bg-green-400"></div>
                 </div>
                 <span className="flex-1 text-center">
-                  agentedeseguros.online/soy/{user?.web_slug || 'tu-slug'}
+                  agentedeseguros.online/{usuario?.web_slug || 'tu-slug'}
                 </span>
               </div>
 
@@ -382,11 +382,11 @@ export default function MiPaginaWeb() {
                   insurers={insurers.filter(i => config.selected_insurer_ids.includes(i.id))}
                   categories={categories.filter(c => config.selected_category_ids.includes(c.id))}
                   userData={{
-                    name: user?.nombre_completo || '',
-                    email: user?.email_laboral || '',
-                    phone: user?.celular_laboral || '',
-                    photo_url: user?.foto_url || null,
-                    office_name: user?.oficina?.name || ''
+                    name: usuario?.nombre_completo || '',
+                    email: usuario?.email_laboral || '',
+                    phone: usuario?.celular_laboral || '',
+                    photo_url: usuario?.foto_url || null,
+                    office_name: usuario?.oficina?.name || ''
                   }}
                 />
               </div>
