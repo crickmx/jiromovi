@@ -78,7 +78,8 @@ export default function PaginaPublicaAsesor() {
   }
 
   if (notFound || !data) {
-    return <Navigate to="https://www.movi.digital" replace />;
+    window.location.replace("https://www.movi.digital");
+    return null;
   }
 
   const { user, config, insurers, categories } = data;
