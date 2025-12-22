@@ -10,6 +10,7 @@ import {
   type RamoResumen,
   type RegimenFiscal
 } from './commissionFiscalCalculations';
+import { getEffectiveUserLogo } from './logoUtils';
 
 interface PdfFiscalRow {
   label: string;
@@ -203,7 +204,18 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
   return rows;
 }
 
+interface ImageData {
+  base64: string;
+  width: number;
+  height: number;
+}
+
 async function loadImageAsBase64(url: string): Promise<string> {
+  const imageData = await loadImageWithDimensions(url);
+  return imageData.base64;
+}
+
+async function loadImageWithDimensions(url: string): Promise<ImageData> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -220,7 +232,11 @@ async function loadImageAsBase64(url: string): Promise<string> {
       ctx.drawImage(img, 0, 0);
       try {
         const dataURL = canvas.toDataURL('image/png');
-        resolve(dataURL);
+        resolve({
+          base64: dataURL,
+          width: img.width,
+          height: img.height
+        });
       } catch (error) {
         reject(error);
       }
@@ -232,6 +248,38 @@ async function loadImageAsBase64(url: string): Promise<string> {
 
     img.src = url;
   });
+}
+
+/**
+ * Calcula las dimensiones del logo manteniendo la proporción de aspecto
+ * @param originalWidth Ancho original de la imagen
+ * @param originalHeight Alto original de la imagen
+ * @param maxWidth Ancho máximo deseado en el PDF
+ * @param maxHeight Alto máximo deseado en el PDF
+ * @returns Objeto con las dimensiones finales y posición centrada
+ */
+function calculateLogoDimensions(
+  originalWidth: number,
+  originalHeight: number,
+  maxWidth: number,
+  maxHeight: number
+): { width: number; height: number; x: number; y: number } {
+  const aspectRatio = originalWidth / originalHeight;
+
+  let finalWidth = maxWidth;
+  let finalHeight = maxWidth / aspectRatio;
+
+  // Si la altura excede el máximo, ajustar por altura
+  if (finalHeight > maxHeight) {
+    finalHeight = maxHeight;
+    finalWidth = maxHeight * aspectRatio;
+  }
+
+  // Centrar horizontalmente si es más pequeño que maxWidth
+  const x = 15 + (maxWidth - finalWidth) / 2;
+  const y = 10;
+
+  return { width: finalWidth, height: finalHeight, x, y };
 }
 
 export async function generateCommissionPDF(
@@ -251,11 +299,29 @@ export async function generateCommissionPDF(
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPosition = 20;
 
+  // Cargar el logo del usuario con dimensiones correctas
   try {
-    const logoBase64 = await loadImageAsBase64('https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png');
-    doc.addImage(logoBase64, 'PNG', 15, 10, 40, 15);
+    const logoUrl = await getEffectiveUserLogo(agent.id);
+    const logoData = await loadImageWithDimensions(logoUrl);
+
+    // Calcular dimensiones manteniendo proporción (max 40mm ancho x 20mm alto)
+    const dimensions = calculateLogoDimensions(
+      logoData.width,
+      logoData.height,
+      40,
+      20
+    );
+
+    doc.addImage(
+      logoData.base64,
+      'PNG',
+      dimensions.x,
+      dimensions.y,
+      dimensions.width,
+      dimensions.height
+    );
   } catch (error) {
-    console.warn('No se pudo cargar el logo:', error);
+    console.warn('No se pudo cargar el logo del usuario:', error);
   }
 
   doc.setFontSize(10);
@@ -483,6 +549,31 @@ export async function generateOrdenDePagoPDF(
   const marginRight = 12;
   const contentWidth = pageWidth - marginLeft - marginRight;
   let yPosition = 15;
+
+  // Cargar el logo del usuario con dimensiones correctas
+  try {
+    const logoUrl = await getEffectiveUserLogo(agent.id);
+    const logoData = await loadImageWithDimensions(logoUrl);
+
+    // Calcular dimensiones manteniendo proporción (max 35mm ancho x 18mm alto)
+    const dimensions = calculateLogoDimensions(
+      logoData.width,
+      logoData.height,
+      35,
+      18
+    );
+
+    doc.addImage(
+      logoData.base64,
+      'PNG',
+      marginLeft,
+      8,
+      dimensions.width,
+      dimensions.height
+    );
+  } catch (error) {
+    console.warn('No se pudo cargar el logo del usuario:', error);
+  }
 
   doc.setFontSize(18);
   doc.setFont(undefined, 'bold');
