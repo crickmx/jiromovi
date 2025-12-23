@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, Building2, Calendar, Cake, Award, ExternalLink, Sparkles, TrendingUp, Settings } from 'lucide-react';
+import {
+  Users, Building2, Cake, Award, ExternalLink, Sparkles, TrendingUp,
+  Settings, DollarSign, Receipt, BarChart3, Calculator, UserPlus,
+  MessageSquare, FileText, Package, Clock
+} from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
 import { ResumenVacaciones } from '../components/ResumenVacaciones';
@@ -199,22 +203,51 @@ export function Dashboard() {
           </div>
         </div>
 
-        <a
-          href="/seguros-education"
-          className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-        >
-          <div className="aspect-video bg-gray-50 flex items-center justify-center p-6">
-            <img
-              src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
-              alt="Seguros Education"
-              className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform"
-            />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div
+            onClick={() => navigate('/mis-comisiones')}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <DollarSign className="w-8 h-8 text-green-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">Mis Comisiones</p>
+            <p className="text-xs text-gray-600 mt-1">Ver historial</p>
           </div>
-          <div className="p-4 border-t border-gray-100">
-            <h3 className="font-semibold text-gray-900 text-base">Seguros Education</h3>
-            <p className="text-sm text-gray-600 mt-0.5">Plataforma de capacitación</p>
+
+          <div
+            onClick={() => navigate('/mi-produccion')}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <BarChart3 className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">Mi Producción</p>
+            <p className="text-xs text-gray-600 mt-1">Ver métricas</p>
           </div>
-        </a>
+
+          <div
+            onClick={() => navigate('/cotizador-gmm')}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <Calculator className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">Cotizador GMM</p>
+            <p className="text-xs text-gray-600 mt-1">Nueva cotización</p>
+          </div>
+
+          <div
+            onClick={() => navigate('/mi-crm')}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <UserPlus className="w-8 h-8 text-orange-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">Mi CRM</p>
+            <p className="text-xs text-gray-600 mt-1">Gestionar contactos</p>
+          </div>
+        </div>
 
         <UltimoComunicado />
 
@@ -224,8 +257,8 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <ResumenVacaciones />
           <TramitesWidget />
+          <ResumenVacaciones />
           <ProximasReservas />
         </div>
       </div>
@@ -270,10 +303,10 @@ export function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div
           onClick={() => navigate('/directorio')}
-          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-shadow"
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
-            <Users className="w-8 h-8 text-blue-500" />
+            <Users className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
           </div>
           <p className="text-2xl font-bold text-gray-900">{totalUsuarios}</p>
           <p className="text-xs text-gray-600 mt-1">
@@ -284,10 +317,10 @@ export function Dashboard() {
         {!isGerente && (
           <div
             onClick={() => navigate('/oficinas')}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between mb-2">
-              <Building2 className="w-8 h-8 text-green-500" />
+              <Building2 className="w-8 h-8 text-green-500 group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-2xl font-bold text-gray-900">{totalOficinas}</p>
             <p className="text-xs text-gray-600 mt-1">Oficinas</p>
@@ -299,7 +332,7 @@ export function Dashboard() {
             <Cake className="w-8 h-8 text-purple-500" />
           </div>
           <p className="text-2xl font-bold text-gray-900">{proximosCumpleanos.length}</p>
-          <p className="text-xs text-gray-600 mt-1">Cumpleaños</p>
+          <p className="text-xs text-gray-600 mt-1">Cumpleaños próximos</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
@@ -311,53 +344,85 @@ export function Dashboard() {
         </div>
       </div>
 
-      <a
-        href="/seguros-education"
-        className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-      >
-        <div className="aspect-video bg-gray-50 flex items-center justify-center p-6">
-          <img
-            src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
-            alt="Seguros Education"
-            className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform"
-          />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div
+          onClick={() => navigate('/comisiones')}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <Receipt className="w-8 h-8 text-green-500 group-hover:scale-110 transition-transform" />
+          </div>
+          <p className="text-sm font-semibold text-gray-900">Comisiones</p>
+          <p className="text-xs text-gray-600 mt-1">Gestionar lotes</p>
         </div>
-        <div className="p-4 border-t border-gray-100">
-          <h3 className="font-semibold text-gray-900 text-base">Seguros Education</h3>
-          <p className="text-sm text-gray-600 mt-0.5">Plataforma de capacitación</p>
+
+        <div
+          onClick={() => navigate('/produccion/total')}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <TrendingUp className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
+          </div>
+          <p className="text-sm font-semibold text-gray-900">Producción</p>
+          <p className="text-xs text-gray-600 mt-1">Ver reportes</p>
         </div>
-      </a>
+
+        <div
+          onClick={() => navigate('/tramites')}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <FileText className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
+          </div>
+          <p className="text-sm font-semibold text-gray-900">Trámites</p>
+          <p className="text-xs text-gray-600 mt-1">Ver todos</p>
+        </div>
+
+        <div
+          onClick={() => navigate('/comunicados')}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <MessageSquare className="w-8 h-8 text-orange-500 group-hover:scale-110 transition-transform" />
+          </div>
+          <p className="text-sm font-semibold text-gray-900">Comunicados</p>
+          <p className="text-xs text-gray-600 mt-1">Publicar nuevo</p>
+        </div>
+      </div>
 
       {currentUser?.rol === 'Administrador' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div
             onClick={() => navigate('/produccion/configuracion')}
-            className="group bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-5 cursor-pointer hover:shadow-md transition-all"
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
-                <Settings className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Configurar Producción</h3>
+            <div className="flex items-center justify-between mb-2">
+              <Settings className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
             </div>
-            <p className="text-sm text-gray-700">
-              Conecta Google Sheets con datos de producción
-            </p>
+            <p className="text-sm font-semibold text-gray-900">Config Producción</p>
+            <p className="text-xs text-gray-600 mt-1">Google Sheets</p>
           </div>
 
           <div
-            onClick={() => navigate('/produccion/total')}
-            className="group bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-sm border border-green-200 p-5 cursor-pointer hover:shadow-md transition-all"
+            onClick={() => navigate('/mapeo-vendedores')}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Producción Total</h3>
+            <div className="flex items-center justify-between mb-2">
+              <Package className="w-8 h-8 text-indigo-500 group-hover:scale-110 transition-transform" />
             </div>
-            <p className="text-sm text-gray-700">
-              Consulta métricas y reportes de producción
-            </p>
+            <p className="text-sm font-semibold text-gray-900">Mapeo Vendedores</p>
+            <p className="text-xs text-gray-600 mt-1">Vincular usuarios</p>
+          </div>
+
+          <div
+            onClick={() => navigate('/notificaciones-transaccionales')}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <MessageSquare className="w-8 h-8 text-pink-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">Notificaciones</p>
+            <p className="text-xs text-gray-600 mt-1">Configurar plantillas</p>
           </div>
         </div>
       )}
@@ -369,9 +434,10 @@ export function Dashboard() {
         <ProximasCapacitaciones />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <TramitesWidget />
         <ResumenVacaciones />
+        <ProximasReservas />
       </div>
 
       {currentUser?.rol === 'Administrador' && <UsuariosPendientes />}
