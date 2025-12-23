@@ -5,8 +5,9 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { InfoTooltip } from '../ui/info-tooltip';
 import { getCoverageHelpText, getCoverageLabel } from '../../lib/gmmCoverageHelp';
-import { generateComparativeQuotePDF } from '../../lib/gmmPdfComparative';
+import { generateUnifiedQuotePDF } from '../../lib/gmmPdfUnified';
 import { supabase } from '../../lib/supabase';
+import { getEffectiveUserLogo } from '../../lib/logoUtils';
 import type {
   QuoteInputMultiOption,
   QuoteOption,
@@ -183,28 +184,36 @@ export function MultiOptionQuote({
 
       const { data: usuario } = await supabase
         .from('usuarios')
-        .select('nombre_completo, celular_laboral')
+        .select('nombre_completo, celular_laboral, web_slug')
         .eq('id', user.id)
         .maybeSingle();
 
       const asesorInfo = {
         nombre: usuario?.nombre_completo || 'Asesor JIRO',
         celular: usuario?.celular_laboral || '',
+        web_slug: usuario?.web_slug || '',
       };
 
-      const quoteData = {
+      const quoteInfo = {
         folio: `COMP-${Date.now()}`,
         created_at: new Date().toISOString(),
         asegurado_principal: insureds[0]?.nombre || 'Sin nombre',
-        result: result,
       };
 
-      const pdfBlob = await generateComparativeQuotePDF(quoteData, asesorInfo);
+      // Obtener logo efectivo (jerarquía: Mi Logotipo → Logo Oficina → Logo JIRO)
+      const logoUrl = await getEffectiveUserLogo(user.id);
+
+      const pdfBlob = await generateUnifiedQuotePDF(
+        result.options,
+        quoteInfo,
+        asesorInfo,
+        logoUrl
+      );
 
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `cotizacion_comparativa_${quoteData.folio}.pdf`;
+      link.download = `cotizacion_comparativa_${quoteInfo.folio}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

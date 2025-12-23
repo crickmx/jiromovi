@@ -16,8 +16,7 @@ import {
   getTopeCoaseguroOpciones,
   getTopeCoaseguroRango
 } from '../lib/gmmCalculationEngineV2';
-import { generateQuotePDF } from '../lib/gmmPdfGenerator';
-import { generateComparativeQuotePDF } from '../lib/gmmPdfComparative';
+import { generateUnifiedQuotePDF } from '../lib/gmmPdfUnified';
 import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
@@ -318,13 +317,14 @@ export default function GMMCotizador() {
 
       const { data: usuario } = await supabase
         .from('usuarios')
-        .select('nombre_completo, celular_laboral')
+        .select('nombre_completo, celular_laboral, web_slug')
         .eq('id', user.id)
         .maybeSingle();
 
       const asesorInfo = {
         nombre: usuario?.nombre_completo || 'Asesor JIRO',
         celular: usuario?.celular_laboral || '',
+        web_slug: usuario?.web_slug || '',
       };
 
       // Obtener el logo efectivo del usuario
@@ -333,14 +333,18 @@ export default function GMMCotizador() {
       const quoteData = quotation.quote_data as any;
 
       if (quoteData.multi_option_result) {
-        const comparativeQuote = {
+        const quoteInfo = {
           folio: quotation.folio,
           created_at: quotation.created_at,
           asegurado_principal: quotation.asegurado_principal,
-          result: quoteData.multi_option_result,
         };
 
-        const pdfBlob = await generateComparativeQuotePDF(comparativeQuote, asesorInfo, logoUrl);
+        const pdfBlob = await generateUnifiedQuotePDF(
+          quoteData.multi_option_result.options,
+          quoteInfo,
+          asesorInfo,
+          logoUrl
+        );
 
         const url = URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
@@ -364,17 +368,19 @@ export default function GMMCotizador() {
         (p: any) => p.forma_pago === quotation.forma_pago
       ) || calculationResult.payment_plans[0];
 
-      const quoteForPdf = {
-        quote_number: quotation.folio,
-        created_at: quotation.created_at,
-        estado: quotation.quote_data.estado,
-        nivel_hospitalario: quotation.quote_data.nivel_hospitalario,
-        tabulador: quotation.quote_data.tabulador,
-        suma_asegurada: quotation.quote_data.suma_asegurada,
-        deducible: quotation.quote_data.deducible,
-        coaseguro: quotation.quote_data.coaseguro,
-        tope_coaseguro: (quotation.quote_data as any).tope_coaseguro_seleccionado || calculationResult.tope_coaseguro,
-        forma_pago: quotation.forma_pago,
+      // Construir opción única en formato QuoteOptionResult
+      const singleOption = {
+        plan: {
+          zona: 'ZONA 1',
+          estado: quotation.quote_data.estado,
+          nivel_hospitalario: quotation.quote_data.nivel_hospitalario,
+          tabulador: quotation.quote_data.tabulador,
+          suma_asegurada: quotation.quote_data.suma_asegurada,
+          deducible: quotation.quote_data.deducible,
+          coaseguro: quotation.quote_data.coaseguro,
+          formas_pago: [quotation.forma_pago],
+          montos: {}
+        },
         cob_medicamentos_fuera: quotation.coverage_selections.medicamentos_fuera || false,
         cob_eliminacion_deducible_accidente: quotation.coverage_selections.eliminacion_deducible_accidente || false,
         cob_multiregion: quotation.coverage_selections.multiregion || false,
@@ -389,29 +395,45 @@ export default function GMMCotizador() {
         cob_ayuda_diaria: quotation.coverage_selections.ayuda_diaria || false,
         cob_indemnizacion_eg: quotation.coverage_selections.indemnizacion_eg || false,
         cob_maternidad: quotation.coverage_selections.maternidad || false,
-        prima_neta_total: calculationResult.prima_neta_total,
-        recargo: planForFormaPago.recargo,
-        gastos_expedicion: planForFormaPago.gastos_expedicion,
-        subtotal: planForFormaPago.subtotal,
-        iva: planForFormaPago.iva,
-        total: planForFormaPago.total,
-        num_recibos: planForFormaPago.num_recibos,
-        primer_recibo: planForFormaPago.primer_recibo,
-        recibos_subsecuentes: planForFormaPago.recibos_subsecuentes,
+        cob_xtensuz: quotation.coverage_selections.xtensuz || false,
+        tope_coaseguro: (quotation.quote_data as any).tope_coaseguro_seleccionado || calculationResult.tope_coaseguro,
+        insureds: calculationResult.insureds.map((ins: any) => ({
+          nombre: ins.nombre,
+          sexo: ins.sexo,
+          edad: ins.edad,
+          prima_base: ins.prima_base || 0,
+          prima_adicionales: ins.prima_adicionales || 0,
+          prima_neta: ins.prima_total || 0,
+          prima_total: ins.prima_total || 0,
+          coberturas_adicionales: ins.coberturas_adicionales || ins.adicionales_detalle || null,
+        })),
+        totales: {
+          prima_neta: calculationResult.prima_neta_total,
+          recargo: planForFormaPago.recargo,
+          gastos_expedicion: planForFormaPago.gastos_expedicion,
+          subtotal: planForFormaPago.subtotal,
+          iva: planForFormaPago.iva,
+          total_pagar: planForFormaPago.total,
+          forma_pago: quotation.forma_pago,
+          num_recibos: planForFormaPago.num_recibos,
+          primer_recibo: planForFormaPago.primer_recibo,
+          recibos_subsecuentes: planForFormaPago.recibos_subsecuentes,
+        },
+        coberturas: {}
       };
 
-      const insuredsData = calculationResult.insureds.map((ins: any, idx: number) => ({
-        orden: idx + 1,
-        nombre: ins.nombre,
-        sexo: ins.sexo,
-        edad: ins.edad,
-        prima_base: ins.prima_base || 0,
-        prima_adicionales: ins.prima_adicionales || 0,
-        prima_total: ins.prima_total || 0,
-        coberturas_adicionales: ins.coberturas_adicionales || ins.adicionales_detalle || null,
-      }));
+      const quoteInfo = {
+        folio: quotation.folio,
+        created_at: quotation.created_at,
+        asegurado_principal: quotation.asegurado_principal,
+      };
 
-      const pdfBlob = await generateQuotePDF(quoteForPdf as any, insuredsData, asesorInfo, logoUrl);
+      const pdfBlob = await generateUnifiedQuotePDF(
+        [singleOption],
+        quoteInfo,
+        asesorInfo,
+        logoUrl
+      );
 
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
