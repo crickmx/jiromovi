@@ -494,7 +494,7 @@ export default function PaginaPublicaAsesor() {
         <section className="relative py-16 px-4 bg-gradient-to-b from-gray-50 to-white z-10">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-3 px-4" style={{ color: primaryColor }}>
-              Ramos que Ofrezco
+              Seguros a tu medida
             </h2>
             <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto text-base sm:text-lg px-4">
               Protección completa para lo que más valoras
