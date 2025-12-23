@@ -37,12 +37,12 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'tramite_comentarios',
-          filter: `tramite_id=eq.${tramiteId}`
+          table: 'ticket_comentarios',
+          filter: `ticket_id=eq.${tramiteId}`
         },
         async (payload) => {
           const { data } = await supabase
-            .from('tramite_comentarios')
+            .from('ticket_comentarios')
             .select('*, usuario:usuario_id(id, nombre_completo, rol)')
             .eq('id', payload.new.id)
             .single();
@@ -79,9 +79,9 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
 
   const loadComentarios = async () => {
     const { data } = await supabase
-      .from('tramite_comentarios')
+      .from('ticket_comentarios')
       .select('*, usuario:usuario_id(id, nombre_completo, rol)')
-      .eq('tramite_id', tramiteId)
+      .eq('ticket_id', tramiteId)
       .order('fecha_hora', { ascending: true });
 
     if (data) {
@@ -110,19 +110,19 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
         const fileName = `${tramiteId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('tramite-archivos')
+          .from('ticket-archivos')
           .upload(fileName, archivo);
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-          .from('tramite-archivos')
+          .from('ticket-archivos')
           .getPublicUrl(fileName);
 
         const { error: archivoError } = await supabase
-          .from('tramite_archivos')
+          .from('ticket_archivos')
           .insert({
-            tramite_id: tramiteId,
+            ticket_id: tramiteId,
             usuario_id: usuario.id,
             nombre: archivo.name,
             url: publicUrl,
@@ -155,9 +155,9 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
       setArchivo(null);
 
       const { data, error } = await supabase
-        .from('tramite_comentarios')
+        .from('ticket_comentarios')
         .insert({
-          tramite_id: tramiteId,
+          ticket_id: tramiteId,
           usuario_id: usuario.id,
           mensaje: mensajeTexto
         })

@@ -355,20 +355,20 @@ export function NuevoTramiteModal({
           const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
-            .from('tramite-archivos')
+            .from('ticket-archivos')
             .upload(fileName, pf.file);
 
           if (uploadError) throw uploadError;
 
           const { data: { publicUrl } } = supabase.storage
-            .from('tramite-archivos')
+            .from('ticket-archivos')
             .getPublicUrl(fileName);
 
           // Guardar registro del archivo
           const { error: archivoError } = await supabase
-            .from('tramite_archivos')
+            .from('ticket_archivos')
             .insert({
-              tramite_id: ticket.id,
+              ticket_id: ticket.id,
               usuario_id: usuario.id,
               nombre: pf.file.name,
               url: publicUrl,
@@ -382,12 +382,11 @@ export function NuevoTramiteModal({
           const comentarioTexto = `📎 Documento adjunto:\n• Nombre: ${pf.file.name}\n• Aseguradora: ${pf.aseguradora}\n• Clave de agente: ${pf.claveAgente}`;
 
           const { error: comentarioError } = await supabase
-            .from('tramite_comentarios')
+            .from('ticket_comentarios')
             .insert({
-              tramite_id: ticket.id,
+              ticket_id: ticket.id,
               usuario_id: usuario.id,
-              comentario: comentarioTexto,
-              es_sistema: false
+              mensaje: comentarioTexto
             });
 
           if (comentarioError) throw comentarioError;
@@ -400,19 +399,19 @@ export function NuevoTramiteModal({
             const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
-              .from('tramite-archivos')
+              .from('ticket-archivos')
               .upload(fileName, archivo);
 
             if (uploadError) throw uploadError;
 
             const { data: { publicUrl } } = supabase.storage
-              .from('tramite-archivos')
+              .from('ticket-archivos')
               .getPublicUrl(fileName);
 
             const { error: archivoError } = await supabase
-              .from('tramite_archivos')
+              .from('ticket_archivos')
               .insert({
-                tramite_id: ticket.id,
+                ticket_id: ticket.id,
                 usuario_id: usuario.id,
                 nombre: archivo.name,
                 url: publicUrl,

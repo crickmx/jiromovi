@@ -35,12 +35,12 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'tramite_archivos',
-          filter: `tramite_id=eq.${tramiteId}`
+          table: 'ticket_archivos',
+          filter: `ticket_id=eq.${tramiteId}`
         },
         async (payload) => {
           const { data } = await supabase
-            .from('tramite_archivos')
+            .from('ticket_archivos')
             .select('*, usuario:usuario_id(nombre_completo)')
             .eq('id', payload.new.id)
             .single();
@@ -63,9 +63,9 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
 
   const loadArchivos = async () => {
     const { data } = await supabase
-      .from('tramite_archivos')
+      .from('ticket_archivos')
       .select('*, usuario:usuario_id(nombre_completo)')
-      .eq('tramite_id', tramiteId)
+      .eq('ticket_id', tramiteId)
       .order('fecha_subida', { ascending: false });
 
     if (data) setArchivos(data as Archivo[]);
@@ -101,19 +101,19 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
         const fileName = `${tramiteId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('tramite-archivos')
+          .from('ticket-archivos')
           .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-          .from('tramite-archivos')
+          .from('ticket-archivos')
           .getPublicUrl(fileName);
 
         const { data, error: dbError } = await supabase
-          .from('tramite_archivos')
+          .from('ticket_archivos')
           .insert({
-            tramite_id: tramiteId,
+            ticket_id: tramiteId,
             usuario_id: usuario.id,
             nombre: file.name,
             url: publicUrl,
