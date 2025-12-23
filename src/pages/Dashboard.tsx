@@ -180,29 +180,12 @@ export function Dashboard() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {currentUser?.url_web_multicotizador ? (
-              <a
-                href={currentUser.url_web_multicotizador}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
-              >
-                Multicotizador Digital
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            ) : (
-              <div className="inline-flex items-center gap-2 bg-gray-100 text-gray-400 px-4 py-2 rounded-lg font-medium text-sm cursor-not-allowed">
-                Multicotizador Digital
-                <ExternalLink className="w-4 h-4" />
-              </div>
-            )}
-
             {currentUser?.web_slug ? (
               <a
                 href={getMiPaginaWebFull(currentUser.web_slug)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-medium text-sm hover:bg-gray-200 transition-colors"
+                className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
               >
                 Mi Página Web
                 <ExternalLink className="w-4 h-4" />
@@ -216,41 +199,22 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <a
-            href="/seguros-education"
-            className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-          >
-            <div className="aspect-video bg-gray-50 flex items-center justify-center p-6">
-              <img
-                src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
-                alt="Seguros Education"
-                className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform"
-              />
-            </div>
-            <div className="p-4 border-t border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-base">Seguros Education</h3>
-              <p className="text-sm text-gray-600 mt-0.5">Plataforma de capacitación</p>
-            </div>
-          </a>
-
-          <a
-            href="/multicotizador-digital"
-            className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-          >
-            <div className="aspect-video bg-gray-50 flex items-center justify-center p-6">
-              <img
-                src="https://movi.digital/wp-content/uploads/2025/02/Logo_MCD_v1-1.png"
-                alt="Multicotizador Digital"
-                className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform"
-              />
-            </div>
-            <div className="p-4 border-t border-gray-100">
-              <h3 className="font-semibold text-gray-900 text-base">Multicotizador Digital</h3>
-              <p className="text-sm text-gray-600 mt-0.5">Herramienta de cotización</p>
-            </div>
-          </a>
-        </div>
+        <a
+          href="/seguros-education"
+          className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+        >
+          <div className="aspect-video bg-gray-50 flex items-center justify-center p-6">
+            <img
+              src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
+              alt="Seguros Education"
+              className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform"
+            />
+          </div>
+          <div className="p-4 border-t border-gray-100">
+            <h3 className="font-semibold text-gray-900 text-base">Seguros Education</h3>
+            <p className="text-sm text-gray-600 mt-0.5">Plataforma de capacitación</p>
+          </div>
+        </a>
 
         <UltimoComunicado />
 
@@ -284,36 +248,19 @@ export function Dashboard() {
         </div>
 
         <div className="flex flex-wrap gap-2 mt-4">
-          {currentUser?.url_web_multicotizador ? (
-            <a
-              href={currentUser.url_web_multicotizador}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
-            >
-              Multicotizador Digital
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          ) : (
-            <div className="inline-flex items-center gap-2 bg-gray-100 text-gray-400 px-4 py-2 rounded-lg font-medium text-sm cursor-not-allowed">
-              Multicotizador Digital
-              <ExternalLink className="w-4 h-4" />
-            </div>
-          )}
-
           {currentUser?.web_slug ? (
             <a
               href={getMiPaginaWebFull(currentUser.web_slug)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-medium text-sm hover:bg-gray-200 transition-colors"
+              className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
             >
               Mi Página Web
               <ExternalLink className="w-4 h-4" />
             </a>
           ) : (
             <div className="inline-flex items-center gap-2 bg-gray-100 text-gray-400 px-4 py-2 rounded-lg font-medium text-sm cursor-not-allowed">
-              Página web de contacto
+              Mi Página Web
               <ExternalLink className="w-4 h-4" />
             </div>
           )}
@@ -364,41 +311,22 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <a
-          href="/seguros-education"
-          className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-        >
-          <div className="aspect-video bg-gray-50 flex items-center justify-center p-6">
-            <img
-              src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
-              alt="Seguros Education"
-              className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform"
-            />
-          </div>
-          <div className="p-4 border-t border-gray-100">
-            <h3 className="font-semibold text-gray-900 text-base">Seguros Education</h3>
-            <p className="text-sm text-gray-600 mt-0.5">Plataforma de capacitación</p>
-          </div>
-        </a>
-
-        <a
-          href="/multicotizador-digital"
-          className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-        >
-          <div className="aspect-video bg-gray-50 flex items-center justify-center p-6">
-            <img
-              src="https://movi.digital/wp-content/uploads/2025/02/Logo_MCD_v1-1.png"
-              alt="Multicotizador Digital"
-              className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform"
-            />
-          </div>
-          <div className="p-4 border-t border-gray-100">
-            <h3 className="font-semibold text-gray-900 text-base">Multicotizador Digital</h3>
-            <p className="text-sm text-gray-600 mt-0.5">Herramienta de cotización</p>
-          </div>
-        </a>
-      </div>
+      <a
+        href="/seguros-education"
+        className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+      >
+        <div className="aspect-video bg-gray-50 flex items-center justify-center p-6">
+          <img
+            src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
+            alt="Seguros Education"
+            className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform"
+          />
+        </div>
+        <div className="p-4 border-t border-gray-100">
+          <h3 className="font-semibold text-gray-900 text-base">Seguros Education</h3>
+          <p className="text-sm text-gray-600 mt-0.5">Plataforma de capacitación</p>
+        </div>
+      </a>
 
       {currentUser?.rol === 'Administrador' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
