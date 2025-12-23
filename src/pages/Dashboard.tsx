@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Users, Building2, Cake, Award, ExternalLink, Sparkles, TrendingUp,
-  Settings, DollarSign, Receipt, BarChart3, Image, UserPlus,
+  Settings, DollarSign, Receipt, ClipboardList, Image, UserPlus,
   MessageSquare, FileText, Package, Clock
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
@@ -216,14 +216,14 @@ export function Dashboard() {
           </div>
 
           <div
-            onClick={() => navigate('/mi-produccion')}
+            onClick={() => navigate('/tramites')}
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between mb-2">
-              <BarChart3 className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
+              <ClipboardList className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
             </div>
-            <p className="text-sm font-semibold text-gray-900">Mi Producción</p>
-            <p className="text-xs text-gray-600 mt-1">Ver métricas</p>
+            <p className="text-sm font-semibold text-gray-900">Trámites</p>
+            <p className="text-xs text-gray-600 mt-1">Ver todos</p>
           </div>
 
           <div
