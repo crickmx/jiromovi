@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2 } from 'lucide-react';
+import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
@@ -37,6 +37,13 @@ interface CommissionDocument {
 
 interface Aseguradora {
   nombre: string;
+}
+
+interface PolizaFile {
+  id: string;
+  file: File | null;
+  aseguradora: string;
+  claveAgente: string;
 }
 
 interface NuevoTramiteModalProps {
@@ -77,13 +84,10 @@ export function NuevoTramiteModal({
   const [documentosLote, setDocumentosLote] = useState<CommissionDocument[]>([]);
   const [loadingDocumentos, setLoadingDocumentos] = useState(false);
 
-  const [aseguradoraSeleccionada, setAseguradoraSeleccionada] = useState('');
-  const [claveAgente, setClaveAgente] = useState('');
-  const [numeroPolizaRegistro, setNumeroPolizaRegistro] = useState('');
-  const [clienteRegistro, setClienteRegistro] = useState('');
-  const [vigenciaInicio, setVigenciaInicio] = useState('');
-  const [vigenciaFin, setVigenciaFin] = useState('');
   const [aseguradoras, setAseguradoras] = useState<Aseguradora[]>([]);
+  const [polizaFiles, setPolizaFiles] = useState<PolizaFile[]>([
+    { id: '1', file: null, aseguradora: '', claveAgente: '' }
+  ]);
 
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
@@ -142,34 +146,16 @@ export function NuevoTramiteModal({
     setDescripcion('');
     setArchivos([]);
     setPolizaNumero('');
-
-    if (preloadedData?.comisionesLoteId) {
-      setLoteSeleccionado(preloadedData.comisionesLoteId);
-    } else {
-      setLoteSeleccionado('');
-    }
+    setLoteSeleccionado('');
     setDocumentoSeleccionado('');
-
-    setAseguradoraSeleccionada('');
-    setClaveAgente('');
-    setNumeroPolizaRegistro('');
-    setClienteRegistro('');
-    setVigenciaInicio('');
-    setVigenciaFin('');
+    setPolizaFiles([{ id: '1', file: null, aseguradora: '', claveAgente: '' }]);
     setError('');
   };
 
   const loadUsuarios = async () => {
-    if (isAgent) {
-      setUsuariosDisponibles([]);
-      return;
-    }
-
     const { data } = await supabase
       .from('usuarios')
       .select('id, nombre_completo, rol')
-      .in('rol', ['Agente', 'Empleado', 'Gerente', 'Administrador'])
-      .eq('estado', 'activo')
       .order('nombre_completo');
 
     if (data) setUsuariosDisponibles(data);
@@ -178,30 +164,33 @@ export function NuevoTramiteModal({
   const loadLotesDisponibles = async () => {
     if (!usuario) return;
 
-    const { data, error } = await supabase
-      .rpc('get_available_commission_batches_for_user', { p_user_id: usuario.id });
+    const { data } = await supabase
+      .from('commission_batches')
+      .select('*')
+      .eq('status', 'completed')
+      .order('date_from', { ascending: false })
+      .limit(20);
 
-    if (error) {
-      console.error('Error loading lotes:', error);
-    } else if (data) {
-      setLotesDisponibles(data);
-    }
+    if (data) setLotesDisponibles(data);
   };
 
   const loadDocumentosLote = async () => {
     if (!loteSeleccionado) return;
 
     setLoadingDocumentos(true);
-    const { data, error } = await supabase
-      .rpc('get_commission_documents_for_batch', { p_batch_id: loteSeleccionado });
+    try {
+      const { data } = await supabase
+        .from('commission_details')
+        .select('id, poliza, nombre_asegurado, aseguradora, importe_base, prima_neta, date_fpago, concepto')
+        .eq('batch_id', loteSeleccionado)
+        .order('poliza');
 
-    if (error) {
-      console.error('Error loading documentos:', error);
-      setError('Error al cargar documentos del lote');
-    } else if (data) {
-      setDocumentosLote(data);
+      if (data) setDocumentosLote(data);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    } finally {
+      setLoadingDocumentos(false);
     }
-    setLoadingDocumentos(false);
   };
 
   const loadAseguradoras = async () => {
@@ -224,10 +213,38 @@ export function NuevoTramiteModal({
     }
 
     setArchivos(prev => [...prev, ...files]);
+    setError('');
   };
 
   const removeFile = (index: number) => {
     setArchivos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addPolizaFile = () => {
+    if (polizaFiles.length >= 10) {
+      setError('Máximo 10 archivos permitidos');
+      return;
+    }
+
+    setPolizaFiles(prev => [
+      ...prev,
+      { id: Date.now().toString(), file: null, aseguradora: '', claveAgente: '' }
+    ]);
+    setError('');
+  };
+
+  const removePolizaFile = (id: string) => {
+    if (polizaFiles.length === 1) {
+      setError('Debe haber al menos un archivo');
+      return;
+    }
+    setPolizaFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const updatePolizaFile = (id: string, field: keyof PolizaFile, value: any) => {
+    setPolizaFiles(prev => prev.map(f =>
+      f.id === id ? { ...f, [field]: value } : f
+    ));
   };
 
   const validateForm = (): boolean => {
@@ -253,17 +270,22 @@ export function NuevoTramiteModal({
     }
 
     if (tipoTramite === 'registro_poliza') {
-      if (!aseguradoraSeleccionada) {
-        setError('La aseguradora es obligatoria');
-        return false;
-      }
-      if (!claveAgente || !/^[a-zA-Z0-9]+$/.test(claveAgente)) {
-        setError('La clave de agente es obligatoria y debe ser alfanumérica');
-        return false;
-      }
-      if (archivos.length === 0) {
+      const filesWithData = polizaFiles.filter(f => f.file !== null);
+
+      if (filesWithData.length === 0) {
         setError('Debe adjuntar al menos 1 archivo');
         return false;
+      }
+
+      for (const pf of filesWithData) {
+        if (!pf.aseguradora) {
+          setError('Todos los archivos deben tener una aseguradora seleccionada');
+          return false;
+        }
+        if (!pf.claveAgente || !/^[a-zA-Z0-9]+$/.test(pf.claveAgente)) {
+          setError('Todos los archivos deben tener una clave de agente válida (alfanumérica)');
+          return false;
+        }
       }
     }
 
@@ -313,15 +335,6 @@ export function NuevoTramiteModal({
         };
       }
 
-      if (tipoTramite === 'registro_poliza') {
-        ticketData.registro_aseguradora = aseguradoraSeleccionada;
-        ticketData.registro_clave_agente = claveAgente.trim();
-        ticketData.registro_numero_poliza = numeroPolizaRegistro.trim() || null;
-        ticketData.registro_cliente = clienteRegistro.trim() || null;
-        ticketData.registro_vigencia_inicio = vigenciaInicio || null;
-        ticketData.registro_vigencia_fin = vigenciaFin || null;
-      }
-
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .insert(ticketData)
@@ -330,14 +343,20 @@ export function NuevoTramiteModal({
 
       if (ticketError) throw ticketError;
 
-      if (archivos.length > 0) {
-        for (const archivo of archivos) {
-          const fileExt = archivo.name.split('.').pop();
+      // Procesar archivos según el tipo de trámite
+      if (tipoTramite === 'registro_poliza') {
+        const filesWithData = polizaFiles.filter(f => f.file !== null);
+
+        for (const pf of filesWithData) {
+          if (!pf.file) continue;
+
+          // Subir archivo
+          const fileExt = pf.file.name.split('.').pop();
           const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from('tramite-archivos')
-            .upload(fileName, archivo);
+            .upload(fileName, pf.file);
 
           if (uploadError) throw uploadError;
 
@@ -345,18 +364,64 @@ export function NuevoTramiteModal({
             .from('tramite-archivos')
             .getPublicUrl(fileName);
 
+          // Guardar registro del archivo
           const { error: archivoError } = await supabase
             .from('tramite_archivos')
             .insert({
               tramite_id: ticket.id,
               usuario_id: usuario.id,
-              nombre: archivo.name,
+              nombre: pf.file.name,
               url: publicUrl,
-              tipo: archivo.type,
-              tamano: archivo.size
+              tipo: pf.file.type,
+              tamano: pf.file.size
             });
 
           if (archivoError) throw archivoError;
+
+          // Crear comentario con la información del archivo
+          const comentarioTexto = `📎 Documento adjunto:\n• Nombre: ${pf.file.name}\n• Aseguradora: ${pf.aseguradora}\n• Clave de agente: ${pf.claveAgente}`;
+
+          const { error: comentarioError } = await supabase
+            .from('tramite_comentarios')
+            .insert({
+              tramite_id: ticket.id,
+              usuario_id: usuario.id,
+              comentario: comentarioTexto,
+              es_sistema: false
+            });
+
+          if (comentarioError) throw comentarioError;
+        }
+      } else {
+        // Para otros tipos de trámite, subir archivos normalmente
+        if (archivos.length > 0) {
+          for (const archivo of archivos) {
+            const fileExt = archivo.name.split('.').pop();
+            const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('tramite-archivos')
+              .upload(fileName, archivo);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('tramite-archivos')
+              .getPublicUrl(fileName);
+
+            const { error: archivoError } = await supabase
+              .from('tramite_archivos')
+              .insert({
+                tramite_id: ticket.id,
+                usuario_id: usuario.id,
+                nombre: archivo.name,
+                url: publicUrl,
+                tipo: archivo.type,
+                tamano: archivo.size
+              });
+
+            if (archivoError) throw archivoError;
+          }
         }
       }
 
@@ -383,95 +448,74 @@ export function NuevoTramiteModal({
     }
   };
 
-  const footer = (
-    <>
-      <button
-        onClick={onClose}
-        className="px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded-lg text-sm font-medium transition-all"
-      >
-        Cancelar
-      </button>
-      <button
-        onClick={handleSubmit}
-        disabled={loading}
-        className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-all disabled:opacity-50"
-      >
-        {loading ? 'Creando...' : 'Crear Trámite'}
-      </button>
-    </>
-  );
-
   return (
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
       title="Nuevo Trámite"
-      footer={footer}
-      maxWidth="3xl"
+      maxWidth="4xl"
     >
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-4 flex items-start space-x-2">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <span>{error}</span>
-        </div>
-      )}
+      <div className="space-y-6">
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
 
-      <div className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-neutral-900 mb-2">
-            <Package className="w-4 h-4 inline mr-2" />
-            Tipo de Trámite *
+            Tipo de Trámite
           </label>
           <select
             value={tipoTramite}
             onChange={(e) => setTipoTramite(e.target.value)}
             disabled={!!preloadedData?.tipoTramite}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-100"
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed"
           >
             <option value="correccion_poliza_registrada">Corrección de póliza registrada</option>
             <option value="correccion_comisiones">Corrección de comisiones</option>
             <option value="registro_poliza">Registro de póliza</option>
           </select>
-          <p className="text-xs text-neutral-500 mt-1">{getTipoLabel(tipoTramite)}</p>
+          <p className="text-xs text-neutral-500 mt-1">
+            {getTipoLabel(tipoTramite)}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {canAssignOthers && (
-            <div>
-              <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                <User className="w-4 h-4 inline mr-2" />
-                Asignar a *
-              </label>
-              <select
-                value={asignado}
-                onChange={(e) => setAsignado(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Selecciona un usuario</option>
-                {usuariosDisponibles.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.nombre_completo} ({u.rol})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
+        {canAssignOthers && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              <AlertCircle className="w-4 h-4 inline mr-2" />
-              Prioridad *
+              <User className="w-4 h-4 inline mr-2" />
+              Asignar a
             </label>
             <select
-              value={prioridad}
-              onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+              value={asignado}
+              onChange={(e) => setAsignado(e.target.value)}
               className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="Baja">Baja</option>
-              <option value="Media">Media</option>
-              <option value="Alta">Alta</option>
+              <option value="">Selecciona un usuario</option>
+              {usuariosDisponibles.map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre_completo} ({u.rol})
+                </option>
+              ))}
             </select>
           </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            Prioridad
+          </label>
+          <select
+            value={prioridad}
+            onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="Baja">Baja</option>
+            <option value="Media">Media</option>
+            <option value="Alta">Alta</option>
+          </select>
         </div>
 
         {tipoTramite === 'correccion_poliza_registrada' && (
@@ -484,7 +528,7 @@ export function NuevoTramiteModal({
               type="text"
               value={polizaNumero}
               onChange={(e) => setPolizaNumero(e.target.value)}
-              placeholder="Ej: POL-2024-001"
+              placeholder="Ingresa el número de póliza"
               className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -494,7 +538,7 @@ export function NuevoTramiteModal({
           <>
             <div>
               <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                <DollarSign className="w-4 h-4 inline mr-2" />
+                <Package className="w-4 h-4 inline mr-2" />
                 Lote de Comisiones *
               </label>
               <select
@@ -515,13 +559,14 @@ export function NuevoTramiteModal({
             {loteSeleccionado && (
               <div>
                 <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  <FileText className="w-4 h-4 inline mr-2" />
-                  Documento/Póliza a Corregir *
+                  <DollarSign className="w-4 h-4 inline mr-2" />
+                  Documento del Lote *
                 </label>
                 {loadingDocumentos ? (
-                  <div className="text-sm text-neutral-500">Cargando documentos...</div>
-                ) : documentosLote.length === 0 ? (
-                  <div className="text-sm text-orange-600">Este lote no tiene documentos</div>
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
+                    <p className="text-sm text-neutral-600 mt-2">Cargando documentos...</p>
+                  </div>
                 ) : (
                   <select
                     value={documentoSeleccionado}
@@ -542,96 +587,101 @@ export function NuevoTramiteModal({
         )}
 
         {tipoTramite === 'registro_poliza' && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  <Building2 className="w-4 h-4 inline mr-2" />
-                  Aseguradora *
-                </label>
-                <select
-                  value={aseguradoraSeleccionada}
-                  onChange={(e) => setAseguradoraSeleccionada(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">Selecciona una aseguradora</option>
-                  {aseguradoras.map(aseg => (
-                    <option key={aseg.nombre} value={aseg.nombre}>
-                      {aseg.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  Clave de Agente *
-                </label>
-                <input
-                  type="text"
-                  value={claveAgente}
-                  onChange={(e) => setClaveAgente(e.target.value)}
-                  placeholder="Ej: ABC123"
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <p className="text-xs text-neutral-500 mt-1">Solo letras y números</p>
-              </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-semibold text-neutral-900">
+                Documentos a Registrar *
+              </label>
+              <span className="text-xs text-neutral-500">
+                {polizaFiles.filter(f => f.file !== null).length} de 10 archivos
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  Número de Póliza
-                </label>
-                <input
-                  type="text"
-                  value={numeroPolizaRegistro}
-                  onChange={(e) => setNumeroPolizaRegistro(e.target.value)}
-                  placeholder="Opcional"
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
+            <div className="space-y-3">
+              {polizaFiles.map((pf, index) => (
+                <div key={pf.id} className="border border-neutral-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-neutral-700">
+                      Documento {index + 1}
+                    </span>
+                    {polizaFiles.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removePolizaFile(pf.id)}
+                        className="text-red-600 hover:text-red-700 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  Cliente
-                </label>
-                <input
-                  type="text"
-                  value={clienteRegistro}
-                  onChange={(e) => setClienteRegistro(e.target.value)}
-                  placeholder="Opcional"
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Archivo *
+                    </label>
+                    <input
+                      type="file"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        updatePolizaFile(pf.id, 'file', file);
+                      }}
+                      className="w-full text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                    />
+                    {pf.file && (
+                      <p className="text-xs text-green-600 mt-1">
+                        ✓ {pf.file.name}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        <Building2 className="w-4 h-4 inline mr-1" />
+                        Aseguradora *
+                      </label>
+                      <select
+                        value={pf.aseguradora}
+                        onChange={(e) => updatePolizaFile(pf.id, 'aseguradora', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value="">Selecciona...</option>
+                        {aseguradoras.map(aseg => (
+                          <option key={aseg.nombre} value={aseg.nombre}>
+                            {aseg.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Clave de Agente *
+                      </label>
+                      <input
+                        type="text"
+                        value={pf.claveAgente}
+                        onChange={(e) => updatePolizaFile(pf.id, 'claveAgente', e.target.value)}
+                        placeholder="Ej: ABC123"
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  Vigencia Inicio
-                </label>
-                <input
-                  type="date"
-                  value={vigenciaInicio}
-                  onChange={(e) => setVigenciaInicio(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  Vigencia Fin
-                </label>
-                <input
-                  type="date"
-                  value={vigenciaFin}
-                  onChange={(e) => setVigenciaFin(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-            </div>
-          </>
+            {polizaFiles.length < 10 && (
+              <button
+                type="button"
+                onClick={addPolizaFile}
+                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-primary-500 hover:text-primary-600 transition-all flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Añadir otro documento
+              </button>
+            )}
+          </div>
         )}
 
         <div>
@@ -647,54 +697,86 @@ export function NuevoTramiteModal({
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-neutral-900 mb-2">
-            <Upload className="w-4 h-4 inline mr-2" />
-            Archivos Adjuntos {tipoTramite === 'registro_poliza' && '*'}
-            <span className="text-xs font-normal text-neutral-500 ml-2">(Máximo 5)</span>
-          </label>
-          <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-primary-500 transition-all">
-            <input
-              type="file"
-              multiple
-              onChange={handleFileChange}
-              className="hidden"
-              id="file-upload"
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-            />
-            <label htmlFor="file-upload" className="cursor-pointer">
-              <Upload className="w-10 h-10 text-neutral-400 mx-auto mb-2" />
-              <p className="text-neutral-700 font-medium text-sm">Haz clic para subir archivos</p>
-              <p className="text-xs text-neutral-500 mt-1">PDF, imágenes, documentos</p>
+        {tipoTramite !== 'registro_poliza' && (
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">
+              <Upload className="w-4 h-4 inline mr-2" />
+              Archivos Adjuntos
+              <span className="text-xs font-normal text-neutral-500 ml-2">(Máximo 5)</span>
             </label>
-          </div>
-
-          {archivos.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {archivos.map((archivo, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-200"
-                >
-                  <div className="flex items-center space-x-3">
-                    <FileText className="w-5 h-5 text-neutral-500" />
-                    <div>
-                      <p className="text-sm font-medium text-neutral-900">{archivo.name}</p>
-                      <p className="text-xs text-neutral-500">
-                        {(archivo.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => removeFile(index)}
-                    className="text-red-600 hover:text-red-700 p-1 rounded-lg hover:bg-red-50 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              ))}
+            <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-primary-500 transition-all">
+              <input
+                type="file"
+                multiple
+                onChange={handleFileChange}
+                className="hidden"
+                id="file-upload"
+              />
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer flex flex-col items-center justify-center"
+              >
+                <Upload className="w-10 h-10 text-neutral-400 mb-2" />
+                <p className="text-sm text-neutral-600 mb-1">
+                  Haz clic para seleccionar archivos
+                </p>
+                <p className="text-xs text-neutral-500">
+                  PDF, imágenes, documentos (máx. 5 archivos)
+                </p>
+              </label>
             </div>
-          )}
+
+            {archivos.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {archivos.map((archivo, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <FileText className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-neutral-900 truncate">{archivo.name}</p>
+                        <p className="text-xs text-neutral-500">
+                          {(archivo.size / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="text-red-600 hover:text-red-700 ml-2 flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="px-6 py-2.5 text-neutral-700 bg-white border border-neutral-300 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                Creando...
+              </>
+            ) : (
+              'Crear Trámite'
+            )}
+          </button>
         </div>
       </div>
     </BaseModal>
