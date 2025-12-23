@@ -45,8 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           details: error.details,
           hint: error.hint
         });
+        // No cerramos la sesión aquí, solo logueamos el error
         setUsuario(null);
-        return;
+        throw error; // Propagamos el error para que signIn lo maneje
       }
 
       if (!data) {
@@ -56,9 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('  2. User activo field is false');
         console.warn('  3. User was deleted');
 
+        // Solo cerramos sesión si el usuario realmente no existe o no está activo
         await supabase.auth.signOut();
         setUsuario(null);
-        return;
+        throw new Error('Usuario no encontrado o inactivo');
       }
 
       console.log('[AuthContext] Usuario loaded successfully:', {
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error('[AuthContext] Unexpected error fetching usuario:', err);
       setUsuario(null);
+      throw err; // Propagamos el error
     }
   };
 
@@ -142,8 +145,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         console.log('[AuthContext] Waiting for usuario to load...');
         setUser(data.user);
-        await fetchUsuario(data.user.id);
-        console.log('[AuthContext] Usuario loaded, ready to navigate');
+        try {
+          await fetchUsuario(data.user.id);
+          console.log('[AuthContext] Usuario loaded, ready to navigate');
+        } catch (fetchError) {
+          console.error('[AuthContext] Error loading usuario profile:', fetchError);
+          // Si falla cargar el perfil, cerramos la sesión
+          await supabase.auth.signOut();
+          return {
+            error: {
+              name: 'ProfileError',
+              message: 'No se pudo cargar tu perfil. Verifica que tu usuario esté activo.',
+              status: 403
+            } as AuthError
+          };
+        }
       }
 
       return { error: null };
