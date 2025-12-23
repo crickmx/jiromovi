@@ -75,11 +75,46 @@ Deno.serve(async (req: Request) => {
     const isGerente = currentUserData?.rol === 'Gerente';
     const isAdmin = currentUserData?.rol === 'Administrador';
 
-    const { password, userData }: CreateUserRequest = await req.json();
+    const body = await req.json();
+    console.log('[create-user] Request body:', JSON.stringify(body, null, 2));
+
+    const { password, userData }: CreateUserRequest = body;
+
+    if (!userData) {
+      return new Response(
+        JSON.stringify({ error: 'userData is required' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     if (!userData.email_laboral || !password) {
       return new Response(
-        JSON.stringify({ error: 'Email laboral and password are required' }),
+        JSON.stringify({
+          error: 'Email laboral and password are required',
+          details: {
+            email_laboral: userData.email_laboral ? 'provided' : 'missing',
+            password: password ? 'provided' : 'missing'
+          }
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (!userData.nombre || !userData.apellidos) {
+      return new Response(
+        JSON.stringify({
+          error: 'Nombre y apellidos son requeridos',
+          details: {
+            nombre: userData.nombre ? 'provided' : 'missing',
+            apellidos: userData.apellidos ? 'provided' : 'missing'
+          }
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -104,6 +139,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (authError) {
+      console.error('[create-user] Auth error:', authError);
       return new Response(
         JSON.stringify({ error: authError.message }),
         {
@@ -148,15 +184,15 @@ Deno.serve(async (req: Request) => {
       estado: isGerente ? 'pendiente' : 'activo',
     };
 
-    console.log('Attempting to insert user with data:', JSON.stringify(insertData, null, 2));
+    console.log('[create-user] Attempting to insert user with data:', JSON.stringify(insertData, null, 2));
 
     const { error: insertError } = await supabaseAdmin.from('usuarios').insert(insertData);
 
     if (insertError) {
-      console.error('Database insert error:', JSON.stringify(insertError, null, 2));
+      console.error('[create-user] Database insert error:', JSON.stringify(insertError, null, 2));
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       return new Response(
-        JSON.stringify({ error: 'Database error creating new user', details: insertError.message, code: insertError.code }),
+        JSON.stringify({ error: 'Error al crear usuario: ' + insertError.message, details: insertError.message, code: insertError.code }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -190,9 +226,9 @@ Deno.serve(async (req: Request) => {
       );
 
       if (!welcomeResponse.ok) {
-        console.error('Error sending welcome email:', await welcomeResponse.text());
+        console.error('[create-user] Error sending welcome email:', await welcomeResponse.text());
       } else {
-        console.log('Welcome email sent successfully');
+        console.log('[create-user] Welcome email sent successfully');
       }
 
       if (userData.celular_personal || userData.celular_laboral) {
@@ -221,13 +257,13 @@ Deno.serve(async (req: Request) => {
         );
 
         if (!whatsappResponse.ok) {
-          console.error('Error sending welcome WhatsApp:', await whatsappResponse.text());
+          console.error('[create-user] Error sending welcome WhatsApp:', await whatsappResponse.text());
         } else {
-          console.log('Welcome WhatsApp sent successfully');
+          console.log('[create-user] Welcome WhatsApp sent successfully');
         }
       }
     } catch (notifError) {
-      console.error('Failed to send welcome notifications:', notifError);
+      console.error('[create-user] Failed to send welcome notifications:', notifError);
     }
 
     return new Response(
@@ -238,7 +274,7 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('Unexpected error in create-user:', error);
+    console.error('[create-user] Unexpected error:', error);
     return new Response(
       JSON.stringify({ error: 'Server error: ' + error.message }),
       {

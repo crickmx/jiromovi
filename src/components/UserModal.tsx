@@ -184,6 +184,31 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           return;
         }
 
+        const requestBody = {
+          password: formData.password,
+          userData: {
+            nombre: formData.nombre,
+            apellidos: formData.apellidos,
+            rol: formData.rol,
+            email_laboral: formData.email_laboral,
+            puesto: formData.puesto,
+            oficina_id: formData.oficina_id || null,
+            fecha_nacimiento: formData.fecha_nacimiento || null,
+            fecha_ingreso: formData.fecha_ingreso || null,
+            celular_personal: formData.celular_personal,
+            email_personal: formData.email_personal,
+            celular_laboral: formData.celular_laboral,
+            extension_telefonica: formData.extension_telefonica,
+            web_slug: formData.web_slug,
+            regimen_fiscal_id: formData.regimen_fiscal_id || null,
+            banco: formData.banco,
+            clabe: formData.clabe,
+            dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
+          },
+        };
+
+        console.log('[UserModal] Creating user with:', requestBody);
+
         const response = await fetch(
           `${supabaseUrl}/functions/v1/create-user`,
           {
@@ -192,37 +217,20 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({
-              password: formData.password,
-              userData: {
-                nombre: formData.nombre,
-                apellidos: formData.apellidos,
-                rol: formData.rol,
-                email_laboral: formData.email_laboral,
-                puesto: formData.puesto,
-                oficina_id: formData.oficina_id || null,
-                fecha_nacimiento: formData.fecha_nacimiento || null,
-                fecha_ingreso: formData.fecha_ingreso || null,
-                celular_personal: formData.celular_personal,
-                email_personal: formData.email_personal,
-                celular_laboral: formData.celular_laboral,
-                extension_telefonica: formData.extension_telefonica,
-                web_slug: formData.web_slug,
-                regimen_fiscal_id: formData.regimen_fiscal_id || null,
-                banco: formData.banco,
-                clabe: formData.clabe,
-                dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
-              },
-            }),
+            body: JSON.stringify(requestBody),
           }
         );
 
         const result = await response.json();
 
         if (!response.ok) {
-          console.error('Error creating user:', result);
-          throw new Error(result.error || 'Error al crear el usuario');
+          console.error('[UserModal] Error creating user:', result);
+          const errorMessage = result.error || 'Error al crear el usuario';
+          const detailsMessage = result.details ? ` (${result.details})` : '';
+          throw new Error(errorMessage + detailsMessage);
         }
+
+        console.log('[UserModal] User created successfully:', result);
       }
 
       onSave();
