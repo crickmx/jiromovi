@@ -142,14 +142,14 @@ export async function generateUnifiedQuotePDF(
   logoUrl?: string
 ): Promise<Blob> {
   const doc = new jsPDF({
-    orientation: 'landscape',
+    orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 10;
+  const margin = 8;
   const contentWidth = pageWidth - (margin * 2);
   let yPos = margin;
 
@@ -158,14 +158,14 @@ export async function generateUnifiedQuotePDF(
   // ============================================
   // HEADER: Logo, Título y Folio
   // ============================================
-  const headerHeight = 20;
+  const headerHeight = 18;
 
   // Logo (izquierda)
   if (logoUrl) {
     const logoBase64 = await loadImageAsBase64(logoUrl);
     if (logoBase64) {
       try {
-        doc.addImage(logoBase64, 'PNG', margin, yPos, 30, 15);
+        doc.addImage(logoBase64, 'PNG', margin, yPos, 25, 12);
       } catch (error) {
         console.error('Error adding logo:', error);
       }
@@ -173,28 +173,28 @@ export async function generateUnifiedQuotePDF(
   }
 
   // Título principal (centro)
-  doc.setFontSize(18);
+  doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('Comparativo de Opciones Únikuz Bx+', pageWidth / 2, yPos + 8, { align: 'center' });
+  doc.text('Comparativo de Opciones Únikuz Bx+', pageWidth / 2, yPos + 7, { align: 'center' });
 
   // Folio y fecha (derecha)
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(80);
   const infoX = pageWidth - margin;
   if (quoteInfo.folio) {
-    doc.text(`Folio: ${quoteInfo.folio}`, infoX, yPos + 5, { align: 'right' });
+    doc.text(`Folio: ${quoteInfo.folio}`, infoX, yPos + 4, { align: 'right' });
   }
-  doc.text(`${formatDate(quoteInfo.created_at)}`, infoX, yPos + 10, { align: 'right' });
+  doc.text(`${formatDate(quoteInfo.created_at)}`, infoX, yPos + 8, { align: 'right' });
 
   yPos += headerHeight;
 
   // Línea separadora
   doc.setDrawColor(0, 51, 102);
-  doc.setLineWidth(0.5);
+  doc.setLineWidth(0.4);
   doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
+  yPos += 3;
 
   // ============================================
   // TABLA COMPARATIVA PRINCIPAL
@@ -232,21 +232,38 @@ export async function generateUnifiedQuotePDF(
   // Fila: Suma Asegurada
   const sumaRow = ['Suma Asegurada'];
   options.slice(0, numOptions).forEach(opt => {
-    sumaRow.push(safeString(opt.plan?.suma_asegurada));
+    const sumaValue = safeString(opt.plan?.suma_asegurada);
+    // Si el valor es numérico, formatearlo como moneda
+    if (sumaValue !== '-' && !sumaValue.includes('$') && !isNaN(parseFloat(sumaValue.replace(/,/g, '')))) {
+      const numValue = parseFloat(sumaValue.replace(/,/g, ''));
+      sumaRow.push(formatCurrency(numValue));
+    } else {
+      sumaRow.push(sumaValue);
+    }
   });
   tableData.push(sumaRow);
 
   // Fila: Deducible
   const deducibleRow = ['Deducible'];
   options.slice(0, numOptions).forEach(opt => {
-    deducibleRow.push(safeString(opt.plan?.deducible));
+    const deducibleValue = safeString(opt.plan?.deducible);
+    // Si el valor es numérico, formatearlo como moneda
+    if (deducibleValue !== '-' && !deducibleValue.includes('$') && !isNaN(parseFloat(deducibleValue.replace(/,/g, '')))) {
+      const numValue = parseFloat(deducibleValue.replace(/,/g, ''));
+      deducibleRow.push(formatCurrency(numValue));
+    } else {
+      deducibleRow.push(deducibleValue);
+    }
   });
   tableData.push(deducibleRow);
 
   // Fila: Coaseguro
   const coaseguroRow = ['Coaseguro'];
   options.slice(0, numOptions).forEach(opt => {
-    coaseguroRow.push(safeString(opt.plan?.coaseguro));
+    const coaseguroValue = safeString(opt.plan?.coaseguro);
+    // Agregar % si no lo tiene
+    const formattedCoaseguro = coaseguroValue.includes('%') ? coaseguroValue : coaseguroValue !== '-' ? `${coaseguroValue}%` : '-';
+    coaseguroRow.push(formattedCoaseguro);
   });
   tableData.push(coaseguroRow);
 
@@ -300,9 +317,35 @@ export async function generateUnifiedQuotePDF(
 
   const coberturasBasicasRow = ['COBERTURAS BÁSICAS'];
   for (let i = 0; i < numOptions; i++) {
-    coberturasBasicasRow.push('✓ INCLUIDAS\nHospitalización, Honorarios,\nMedicamentos, Cirugías, etc.');
+    coberturasBasicasRow.push('');
   }
   tableData.push(coberturasBasicasRow);
+
+  // Lista completa de coberturas básicas incluidas
+  const coberturasBasicas = [
+    'Hospitalización',
+    'Honorarios médicos',
+    'Medicamentos en hospital',
+    'Cirugías',
+    'Análisis clínicos',
+    'Estudios de gabinete',
+    'Ambulancias terrestre y aérea',
+    'Terapias físicas',
+    'Enfermería privada',
+    'Urgencias por accidente',
+    'Urgencias por enfermedad',
+    'Gastos funerarios',
+    'Segunda opinión médica'
+  ];
+
+  // Agregar cada cobertura básica
+  coberturasBasicas.forEach(cobertura => {
+    const cobBasicaRow = [cobertura];
+    for (let i = 0; i < numOptions; i++) {
+      cobBasicaRow.push('✓');
+    }
+    tableData.push(cobBasicaRow);
+  });
 
   // ============================================
   // SECCIÓN 4: COBERTURAS ADICIONALES
@@ -354,14 +397,19 @@ export async function generateUnifiedQuotePDF(
   // ============================================
 
   // Calcular anchos de columna
-  const labelColWidth = 50;
-  const optionColWidth = (contentWidth - labelColWidth) / numOptions;
+  const labelColWidth = 70;
+
+  // Si solo hay 1 opción, usar solo 33% del ancho disponible
+  const availableWidth = contentWidth - labelColWidth;
+  const optionColWidth = numOptions === 1
+    ? availableWidth * 0.33  // Solo 33% para una opción
+    : availableWidth / numOptions;
 
   const columnStyles: any = {
     0: {
       cellWidth: labelColWidth,
       fontStyle: 'bold',
-      fontSize: 7,
+      fontSize: 6.5,
       fillColor: [240, 240, 245]
     }
   };
@@ -370,7 +418,7 @@ export async function generateUnifiedQuotePDF(
     columnStyles[i] = {
       cellWidth: optionColWidth,
       halign: 'center',
-      fontSize: 7
+      fontSize: 6.5
     };
   }
 
@@ -379,11 +427,13 @@ export async function generateUnifiedQuotePDF(
     body: tableData,
     theme: 'grid',
     styles: {
-      fontSize: 6.5,
-      cellPadding: 2.5,
+      fontSize: 5.5,
+      cellPadding: 1.5,
       lineColor: [200, 200, 200],
-      lineWidth: 0.2,
-      valign: 'middle'
+      lineWidth: 0.1,
+      valign: 'middle',
+      overflow: 'linebreak',
+      cellWidth: 'wrap'
     },
     columnStyles,
     margin: { left: margin, right: margin },
@@ -391,15 +441,16 @@ export async function generateUnifiedQuotePDF(
       const rowText = String(data.cell.raw || '');
 
       // Header de secciones (INFORMACIÓN DEL PLAN, ASEGURADOS, etc.)
-      if (data.column.index === 0 && rowText.includes('INFORMACIÓN') ||
+      if (data.column.index === 0 && (rowText.includes('INFORMACIÓN') ||
           rowText.includes('ASEGURADOS') ||
           rowText.includes('COBERTURAS BÁSICAS') ||
           rowText.includes('COBERTURAS ADICIONALES') ||
-          rowText.includes('TOTAL A PAGAR')) {
+          rowText.includes('TOTAL A PAGAR'))) {
         data.cell.styles.fillColor = [0, 51, 102];
         data.cell.styles.textColor = [255, 255, 255];
         data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fontSize = 8;
+        data.cell.styles.fontSize = 7;
+        data.cell.styles.cellPadding = 1.5;
       }
 
       // Opciones en header (★ OPCIÓN A, OPCIÓN B, etc.)
@@ -408,18 +459,25 @@ export async function generateUnifiedQuotePDF(
         data.cell.styles.fillColor = isBest ? [0, 153, 51] : [0, 102, 204];
         data.cell.styles.textColor = [255, 255, 255];
         data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fontSize = 9;
+        data.cell.styles.fontSize = 7.5;
       }
 
-      // Coberturas: colorear ✓ y ✗
-      if (data.column.index > 0 && (rowText.includes('✓') || rowText.includes('✗'))) {
-        if (rowText.includes('✓')) {
+      // Coberturas básicas: checkmarks verdes
+      if (data.column.index > 0 && rowText === '✓') {
+        data.cell.styles.textColor = [0, 153, 51];
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 7;
+      }
+
+      // Coberturas adicionales: colorear ✓ SÍ y ✗ NO
+      if (data.column.index > 0 && (rowText.includes('✓ SÍ') || rowText.includes('✗ NO'))) {
+        if (rowText.includes('✓ SÍ')) {
           data.cell.styles.textColor = [0, 153, 51];
           data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fontSize = 8;
-        } else if (rowText.includes('✗')) {
+          data.cell.styles.fontSize = 6;
+        } else if (rowText.includes('✗ NO')) {
           data.cell.styles.textColor = [200, 50, 50];
-          data.cell.styles.fontSize = 8;
+          data.cell.styles.fontSize = 6;
         }
       }
 
@@ -432,7 +490,7 @@ export async function generateUnifiedQuotePDF(
         data.cell.styles.fillColor = [255, 250, 230];
         data.cell.styles.textColor = [0, 102, 51];
         data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fontSize = 10;
+        data.cell.styles.fontSize = 8;
       }
 
       // Asegurados: resaltar nombre
@@ -441,11 +499,10 @@ export async function generateUnifiedQuotePDF(
       }
 
       // Coberturas adicionales: descripción más pequeña
-      if (data.column.index === 0 && rowText.includes('\n') && !rowText.includes('COBERT')) {
+      if (data.column.index === 0 && rowText.includes('\n') && !rowText.includes('COBERT') && !rowText.includes('ASEGURADOS')) {
         const lines = rowText.split('\n');
         if (lines.length === 2) {
-          // Estilizar para que la segunda línea (descripción) sea más pequeña
-          data.cell.styles.fontSize = 6;
+          data.cell.styles.fontSize = 5;
           data.cell.styles.textColor = [100, 100, 100];
         }
       }
@@ -456,7 +513,7 @@ export async function generateUnifiedQuotePDF(
         const cellText = String(data.cell.raw || '');
         if (cellText.includes('★')) {
           doc.setDrawColor(0, 153, 51);
-          doc.setLineWidth(0.8);
+          doc.setLineWidth(0.6);
           doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
         }
       }
@@ -469,27 +526,27 @@ export async function generateUnifiedQuotePDF(
   // FOOTER: Notas y Contacto
   // ============================================
 
-  const footerStartY = pageHeight - margin - 15;
+  const footerStartY = pageHeight - margin - 10;
 
   // Si la tabla es muy larga, ajustar
-  if (finalY < footerStartY - 3) {
-    yPos = finalY + 3;
+  if (finalY < footerStartY - 2) {
+    yPos = finalY + 2;
   } else {
-    yPos = footerStartY - 3;
+    yPos = footerStartY - 2;
   }
 
   // Línea separadora
   doc.setDrawColor(200);
-  doc.setLineWidth(0.3);
-  doc.line(margin, footerStartY - 3, pageWidth - margin, footerStartY - 3);
+  doc.setLineWidth(0.2);
+  doc.line(margin, footerStartY - 2, pageWidth - margin, footerStartY - 2);
 
   // Notas
-  doc.setFontSize(5.5);
+  doc.setFontSize(4.5);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(60);
-  doc.text('Notas importantes:', margin, footerStartY);
+  doc.text('Notas importantes:', margin, footerStartY + 1);
 
-  doc.setFontSize(5);
+  doc.setFontSize(4);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(100);
   const notaText = 'Cotización válida 15 días. Aceptación sujeta a políticas de suscripción. Coberturas según Condiciones Generales CNSF. Documento ilustrativo, no contractual.';
@@ -497,16 +554,16 @@ export async function generateUnifiedQuotePDF(
   let notaY = footerStartY + 3;
   notaLines.forEach((line: string) => {
     doc.text(line, margin, notaY);
-    notaY += 2.5;
+    notaY += 2;
   });
 
   // Contacto del asesor
-  const contactY = pageHeight - margin - 4;
+  const contactY = pageHeight - margin - 2;
   doc.setDrawColor(220);
-  doc.setLineWidth(0.2);
-  doc.line(margin, contactY - 2, pageWidth - margin, contactY - 2);
+  doc.setLineWidth(0.1);
+  doc.line(margin, contactY - 1.5, pageWidth - margin, contactY - 1.5);
 
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
 
