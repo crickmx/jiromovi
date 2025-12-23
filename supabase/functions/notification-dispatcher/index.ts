@@ -283,7 +283,7 @@ async function processEmailNotification(
 
   const { data: plantilla } = await supabase
     .from('correo_plantillas')
-    .select('html_plantilla')
+    .select('html_cuerpo')
     .eq('tipo_notificacion_id', (await supabase
       .from('correo_tipos_notificacion')
       .select('id')
@@ -292,7 +292,7 @@ async function processEmailNotification(
     )?.data?.id)
     .maybeSingle();
 
-  let cuerpoHtml = plantilla?.html_plantilla || '<p>{{mensaje}}</p>';
+  let cuerpoHtml = plantilla?.html_cuerpo || '<p>{{mensaje}}</p>';
 
   Object.keys(job.payload).forEach(key => {
     const value = job.payload[key];
@@ -359,7 +359,7 @@ async function processWhatsAppNotification(
 
   const { data: plantilla } = await supabase
     .from('correo_plantillas')
-    .select('whatsapp_plantilla')
+    .select('whatsapp_cuerpo')
     .eq('tipo_notificacion_id', (await supabase
       .from('correo_tipos_notificacion')
       .select('id')
@@ -368,7 +368,7 @@ async function processWhatsAppNotification(
     )?.data?.id)
     .maybeSingle();
 
-  let mensaje = plantilla?.whatsapp_plantilla || '{{nombre}}, tienes una nueva notificación en MOVI Digital.';
+  let mensaje = plantilla?.whatsapp_cuerpo || '{{nombre}}, tienes una nueva notificación en MOVI Digital.';
 
   Object.keys(job.payload).forEach(key => {
     const value = job.payload[key];
