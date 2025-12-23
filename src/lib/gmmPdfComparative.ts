@@ -390,7 +390,7 @@ export async function generateComparativeQuotePDF(
     doc.setFont(undefined, 'normal');
 
     for (const coverage of allCoverages) {
-      const isIncluded = opt.coberturas && opt.coberturas[coverage.key] === 'SI';
+      const isIncluded = opt.coberturas && (opt.coberturas[coverage.key] === true || opt.coberturas[coverage.key] === 'true');
 
       if (isIncluded) {
         doc.setTextColor(0, 153, 51);

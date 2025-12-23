@@ -56,77 +56,77 @@ async function loadImageAsBase64(url: string): Promise<string | null> {
 
 const COBERTURAS_ADICIONALES = [
   {
-    key: 'cob_maternidad',
+    key: 'maternidad',
     label: 'Maternidad',
     description: 'Gastos de parto y complicaciones'
   },
   {
-    key: 'cob_reconocimiento_antiguedad',
+    key: 'reconocimiento_antiguedad',
     label: 'Reconocimiento de antigüedad',
     description: 'Periodo de espera reducido'
   },
   {
-    key: 'cob_medicamentos_fuera',
+    key: 'medicamentos_fuera',
     label: 'Medicamentos ambulatorios',
     description: 'Reembolso fuera del hospital'
   },
   {
-    key: 'cob_complicaciones_no_amparadas',
+    key: 'complicaciones_no_amparadas',
     label: 'Complicaciones no amparadas',
     description: 'Derivadas de padecimientos excluidos'
   },
   {
-    key: 'cob_padecimientos_preexistentes',
+    key: 'padecimientos_preexistentes',
     label: 'Padecimientos preexistentes',
     description: 'Previos a la póliza'
   },
   {
-    key: 'cob_eliminacion_deducible_accidente',
+    key: 'eliminacion_deducible_accidente',
     label: 'Sin deducible por accidente',
     description: 'Elimina deducible en accidentes'
   },
   {
-    key: 'cob_multiregion',
+    key: 'multiregion',
     label: 'Multiregión',
     description: 'Diferentes estados de la república'
   },
   {
-    key: 'cob_vip',
+    key: 'vip',
     label: 'Beneficio VIP',
     description: 'Servicios premium'
   },
   {
-    key: 'cob_emergencia_medica_extranjero',
+    key: 'emergencia_medica_extranjero',
     label: 'Emergencias en extranjero',
     description: 'Cobertura internacional de urgencias'
   },
   {
-    key: 'cob_enfermedades_graves_extranjero',
+    key: 'enfermedades_graves_extranjero',
     label: 'Enf. graves en extranjero',
     description: 'Tratamiento fuera de México'
   },
   {
-    key: 'cob_cobertura_internacional',
+    key: 'cobertura_internacional',
     label: 'Cobertura internacional',
     description: 'Atención en cualquier país'
   },
   {
-    key: 'cob_ampliacion_servicios',
+    key: 'ampliacion_servicios',
     label: 'Ampliación de servicios',
     description: 'Servicios médicos adicionales'
   },
   {
-    key: 'cob_ayuda_diaria',
+    key: 'ayuda_diaria',
     label: 'Ayuda diaria hospitalización',
     description: 'Pago por día hospitalizado'
   },
   {
-    key: 'cob_indemnizacion_eg',
+    key: 'indemnizacion_eg',
     label: 'Indemnización enf. graves',
     description: 'Pago único al diagnóstico'
   },
   {
-    key: 'cob_xtensuz',
+    key: 'xtensuz',
     label: 'Xtensuz',
     description: 'Extensión de servicios'
   }
@@ -360,7 +360,9 @@ export async function generateUnifiedQuotePDF(
     const cobRow = [`${cobertura.label}\n${cobertura.description}`];
 
     options.slice(0, numOptions).forEach(opt => {
-      const isIncluded = (opt as any)[cobertura.key] === true || (opt as any)[cobertura.key] === 'true';
+      // Buscar en opt.coberturas en lugar de en opt directamente
+      const coberturas = (opt as any).coberturas || {};
+      const isIncluded = coberturas[cobertura.key] === true || coberturas[cobertura.key] === 'true';
       cobRow.push(isIncluded ? '✓ SÍ' : '✗ NO');
     });
 
