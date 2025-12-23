@@ -2,18 +2,28 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { QuoteOptionResult } from './gmmTypes';
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number | null | undefined): string {
+  const numValue = typeof value === 'number' && !isNaN(value) ? value : 0;
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(numValue);
 }
 
 function formatDate(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function safeNumber(value: any, defaultValue: number = 0): number {
+  const num = typeof value === 'number' ? value : parseFloat(value);
+  return !isNaN(num) && isFinite(num) ? num : defaultValue;
+}
+
+function safeString(value: any, defaultValue: string = '-'): string {
+  return value != null && String(value).trim() !== '' ? String(value) : defaultValue;
 }
 
 interface AsesorInfo {
@@ -229,9 +239,11 @@ export async function generateUnifiedQuotePDF(
   const columnWidth = (contentWidth - totalGapWidth) / numOptions;
 
   // Determinar mejor precio
-  const bestIndex = options.reduce((minIdx, opt, idx) =>
-    opt.totales.total_pagar < options[minIdx].totales.total_pagar ? idx : minIdx
-  , 0);
+  const bestIndex = options.reduce((minIdx, opt, idx) => {
+    const currentTotal = safeNumber(opt.totales?.total_pagar);
+    const minTotal = safeNumber(options[minIdx]?.totales?.total_pagar);
+    return currentTotal < minTotal ? idx : minIdx;
+  }, 0);
 
   // Dibujar cada opción
   for (let i = 0; i < numOptions; i++) {
@@ -242,7 +254,7 @@ export async function generateUnifiedQuotePDF(
 
     // Borde de la columna
     doc.setFillColor(250, 250, 252);
-    doc.setDrawColor(isBest ? [0, 153, 51] : [200, 200, 200]);
+    doc.setDrawColor(isBest ? 0 : 200, isBest ? 153 : 200, isBest ? 51 : 200);
     doc.setLineWidth(isBest ? 0.5 : 0.2);
     doc.roundedRect(colX, colY, columnWidth, optionsBlockHeight, 1.5, 1.5, 'FD');
 
@@ -270,10 +282,14 @@ export async function generateUnifiedQuotePDF(
     doc.setFontSize(6);
     doc.setTextColor(60);
 
+    const topeCoasStr = opt.tope_coaseguro
+      ? formatCurrency(opt.tope_coaseguro).replace('.00', '')
+      : '-';
+
     const planInfo = [
-      `${opt.plan.estado || '-'} · ${opt.plan.nivel_hospitalario || '-'}`,
-      `${opt.plan.suma_asegurada || '-'} · Ded: ${opt.plan.deducible || '-'}`,
-      `Coas: ${opt.plan.coaseguro || '-'} · Tope: ${opt.tope_coaseguro ? formatCurrency(opt.tope_coaseguro).replace('.00', '') : '-'}`
+      `${safeString(opt.plan?.estado)} · ${safeString(opt.plan?.nivel_hospitalario)}`,
+      `${safeString(opt.plan?.suma_asegurada)} · Ded: ${safeString(opt.plan?.deducible)}`,
+      `Coas: ${safeString(opt.plan?.coaseguro)} · Tope: ${topeCoasStr}`
     ];
 
     planInfo.forEach(line => {
@@ -302,8 +318,12 @@ export async function generateUnifiedQuotePDF(
       doc.setTextColor(40);
 
       opt.insureds.forEach((ins) => {
-        const primaIndividual = ins.prima_neta || 0;
-        const insuredName = ins.nombre.length > 20 ? ins.nombre.substring(0, 18) + '..' : ins.nombre;
+        const primaIndividual = safeNumber(ins.prima_neta, 0);
+        const insuredName = safeString(ins.nombre).length > 20
+          ? safeString(ins.nombre).substring(0, 18) + '..'
+          : safeString(ins.nombre);
+        const insuredSexo = safeString(ins.sexo, 'N/A');
+        const insuredEdad = safeNumber(ins.edad, 0);
 
         // Nombre
         doc.setFont(undefined, 'bold');
@@ -313,7 +333,7 @@ export async function generateUnifiedQuotePDF(
         // Edad y sexo
         doc.setFont(undefined, 'normal');
         doc.setTextColor(100);
-        doc.text(`${ins.sexo} - ${ins.edad} años`, colX + 4, colY);
+        doc.text(`${insuredSexo} - ${insuredEdad} años`, colX + 4, colY);
         colY += 2.5;
 
         // Prima
@@ -336,14 +356,15 @@ export async function generateUnifiedQuotePDF(
     doc.setFont(undefined, 'bold');
     doc.setTextColor(0, 102, 51);
     doc.text('TOTAL:', colX + 2, colY);
-    doc.text(formatCurrency(opt.totales.total_pagar).replace('.00', ''), colX + columnWidth - 2, colY, { align: 'right' });
+    const totalPagar = safeNumber(opt.totales?.total_pagar, 0);
+    doc.text(formatCurrency(totalPagar).replace('.00', ''), colX + columnWidth - 2, colY, { align: 'right' });
     colY += 3;
 
     // Forma de pago
     doc.setFontSize(5.5);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(80);
-    doc.text(`${opt.totales.forma_pago || 'Anual'}`, colX + columnWidth / 2, colY, { align: 'center' });
+    doc.text(safeString(opt.totales?.forma_pago, 'Anual'), colX + columnWidth / 2, colY, { align: 'center' });
   }
 
   yPosition = optionStartY + optionsBlockHeight + 3;
