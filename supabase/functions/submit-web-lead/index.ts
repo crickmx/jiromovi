@@ -176,7 +176,7 @@ Deno.serve(async (req: Request) => {
       p_event_key: 'web_lead_nuevo',
       p_user_id: agente.id,
       p_variables: variables,
-      p_link_url: `/crm/contactos/${contactId}`,
+      p_link_url: `/mi-crm/contactos/${contactId}`,
     });
 
     if (notifError) {
