@@ -132,19 +132,19 @@ const COBERTURAS_ADICIONALES = [
  * Coberturas básicas incluidas en todos los planes
  */
 const COBERTURAS_BASICAS = [
-  'Hospitalización por enfermedad o accidente',
+  'Hospitalización',
   'Honorarios médicos',
-  'Medicamentos durante la hospitalización',
-  'Estudios de laboratorio y gabinete',
-  'Cirugías y procedimientos quirúrgicos',
-  'Honorarios de anestesiólogo',
-  'Terapias físicas y de rehabilitación',
-  'Ambulancia terrestre',
-  'Sala de urgencias'
+  'Medicamentos hospitalarios',
+  'Laboratorio y gabinete',
+  'Cirugías',
+  'Anestesia',
+  'Terapias',
+  'Ambulancia',
+  'Urgencias'
 ];
 
 /**
- * Genera PDF unificado de cotización GMM
+ * Genera PDF unificado de cotización GMM - UNA SOLA PÁGINA HORIZONTAL
  * Funciona tanto para modo simple (1 opción) como comparativo (2-3 opciones)
  */
 export async function generateUnifiedQuotePDF(
@@ -153,312 +153,247 @@ export async function generateUnifiedQuotePDF(
   asesor: AsesorInfo,
   logoUrl?: string
 ): Promise<Blob> {
+  // ============================================
+  // CONFIGURACIÓN: A4 HORIZONTAL
+  // ============================================
   const doc = new jsPDF({
-    orientation: 'portrait',
+    orientation: 'landscape',
     unit: 'mm',
     format: 'a4',
   });
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const marginLeft = 15;
-  const marginRight = 15;
+  const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
+  const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
+  const marginLeft = 8.5; // ~24px
+  const marginRight = 8.5;
+  const marginTop = 7; // ~20px
+  const marginBottom = 7;
   const contentWidth = pageWidth - marginLeft - marginRight;
-  let yPosition = 20;
+  let yPosition = marginTop;
+
+  const numOptions = Math.min(options.length, 3);
 
   // ============================================
-  // LOGO (jerarquía: Mi Logotipo → Oficina → JIRO)
+  // ENCABEZADO: LOGO Y TÍTULO
   // ============================================
+  const headerHeight = 18;
+
+  // Logo (izquierda)
   if (logoUrl) {
     const logoBase64 = await loadImageAsBase64(logoUrl);
     if (logoBase64) {
       try {
-        const logoWidth = 35;
-        const logoHeight = 23;
-        doc.addImage(logoBase64, 'PNG', marginLeft, yPosition - 5, logoWidth, logoHeight);
+        const logoHeight = 12;
+        const logoWidth = 24;
+        doc.addImage(logoBase64, 'PNG', marginLeft, yPosition, logoWidth, logoHeight);
       } catch (error) {
         console.error('Error adding logo to PDF:', error);
       }
     }
   }
 
-  // ============================================
-  // ENCABEZADO
-  // ============================================
-  doc.setFontSize(22);
+  // Título (centro)
+  doc.setFontSize(16);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('Cotización Únikuz Bx+', pageWidth / 2, yPosition + 3, { align: 'center' });
+  doc.text('Cotización Únikuz Bx+', pageWidth / 2, yPosition + 6, { align: 'center' });
 
-  yPosition += 10;
-
-  doc.setFontSize(9);
+  // Info adicional (derecha/centro)
+  doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(80);
-  doc.text(`Fecha de cotización: ${formatDate(quoteInfo.created_at)}`, pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 4;
-
+  let infoY = yPosition + 11;
   if (quoteInfo.folio) {
-    doc.text(`Folio: ${quoteInfo.folio}`, pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 4;
+    doc.text(`Folio: ${quoteInfo.folio}`, pageWidth / 2, infoY, { align: 'center' });
+    infoY += 3;
   }
+  doc.text(`Fecha: ${formatDate(quoteInfo.created_at)}`, pageWidth / 2, infoY, { align: 'center' });
 
-  if (quoteInfo.asegurado_principal) {
-    doc.text(`Cliente: ${quoteInfo.asegurado_principal}`, pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 4;
-  }
+  yPosition += headerHeight;
 
-  yPosition += 5;
-  doc.setDrawColor(0, 51, 102);
-  doc.setLineWidth(0.5);
+  // Línea separadora
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.3);
   doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-  yPosition += 10;
+  yPosition += 3;
 
   // ============================================
-  // OPCIONES DE COTIZACIÓN (1 a 3 opciones)
+  // BLOQUE DE OPCIONES CON ASEGURADOS (GRID)
   // ============================================
-  const numOptions = Math.min(options.length, 3);
+  const optionsBlockHeight = 75;
+  const optionStartY = yPosition;
+
+  // Calcular ancho de columnas según número de opciones
+  const columnGap = 3;
+  const totalGapWidth = (numOptions - 1) * columnGap;
+  const columnWidth = (contentWidth - totalGapWidth) / numOptions;
 
   // Determinar mejor precio
   const bestIndex = options.reduce((minIdx, opt, idx) =>
     opt.totales.total_pagar < options[minIdx].totales.total_pagar ? idx : minIdx
   , 0);
 
-  if (numOptions > 1) {
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 51, 102);
-    doc.text('COMPARATIVO DE OPCIONES', marginLeft, yPosition);
-    yPosition += 8;
-  }
-
-  // Calcular ancho de tarjetas según número de opciones
-  const cardGap = 4;
-  const totalGapWidth = (numOptions - 1) * cardGap;
-  const cardWidth = (contentWidth - totalGapWidth) / numOptions;
-  const startY = yPosition;
-
-  // Dibujar tarjetas de opciones
+  // Dibujar cada opción
   for (let i = 0; i < numOptions; i++) {
     const opt = options[i];
-    const cardX = marginLeft + (i * (cardWidth + cardGap));
+    const colX = marginLeft + (i * (columnWidth + columnGap));
     const isBest = numOptions > 1 && i === bestIndex;
+    let colY = optionStartY;
 
-    yPosition = startY;
+    // Borde de la columna
+    doc.setFillColor(250, 250, 252);
+    doc.setDrawColor(isBest ? [0, 153, 51] : [200, 200, 200]);
+    doc.setLineWidth(isBest ? 0.5 : 0.2);
+    doc.roundedRect(colX, colY, columnWidth, optionsBlockHeight, 1.5, 1.5, 'FD');
 
-    // Borde de la tarjeta
-    if (isBest) {
-      doc.setDrawColor(0, 153, 51);
-      doc.setLineWidth(1);
-      doc.roundedRect(cardX, yPosition, cardWidth, 110, 2, 2, 'S');
-    } else {
-      doc.setFillColor(250, 250, 252);
-      doc.setDrawColor(180, 180, 180);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(cardX, yPosition, cardWidth, 110, 2, 2, 'FD');
-    }
-
-    yPosition += 5;
+    colY += 3;
 
     // Título de la opción
-    doc.setFontSize(12);
+    doc.setFontSize(10);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(0, 51, 102);
     const optionLabel = numOptions > 1 ? `Opción ${String.fromCharCode(65 + i)}` : 'Cotización';
-    doc.text(optionLabel, cardX + cardWidth / 2, yPosition, { align: 'center' });
-    yPosition += 4;
+    doc.text(optionLabel, colX + columnWidth / 2, colY, { align: 'center' });
+    colY += 2;
 
     // Badge de mejor precio
     if (isBest) {
-      doc.setFontSize(7);
+      doc.setFontSize(6);
       doc.setTextColor(0, 153, 51);
-      doc.setFont(undefined, 'bold');
-      doc.text('★ MEJOR PRECIO', cardX + cardWidth / 2, yPosition, { align: 'center' });
-      yPosition += 3;
+      doc.text('★ MEJOR PRECIO', colX + columnWidth / 2, colY, { align: 'center' });
+      colY += 2;
     }
 
-    yPosition += 3;
+    colY += 2;
 
-    // Datos del plan
-    doc.setFontSize(7.5);
-    doc.setFont(undefined, 'bold');
+    // Datos del plan (compactos)
+    doc.setFontSize(6);
     doc.setTextColor(60);
 
-    const planDetails = [
-      { label: 'Estado:', value: opt.plan.estado || '-' },
-      { label: 'Nivel:', value: opt.plan.nivel_hospitalario || '-' },
-      { label: 'Tabulador:', value: opt.plan.tabulador || '-' },
-      { label: 'Suma Aseg:', value: opt.plan.suma_asegurada || '-' },
-      { label: 'Deducible:', value: opt.plan.deducible || '-' },
-      { label: 'Coaseguro:', value: opt.plan.coaseguro || '-' },
-      { label: 'Tope Coas:', value: opt.tope_coaseguro ? formatCurrency(opt.tope_coaseguro) : '-' }
+    const planInfo = [
+      `${opt.plan.estado || '-'} · ${opt.plan.nivel_hospitalario || '-'}`,
+      `${opt.plan.suma_asegurada || '-'} · Ded: ${opt.plan.deducible || '-'}`,
+      `Coas: ${opt.plan.coaseguro || '-'} · Tope: ${opt.tope_coaseguro ? formatCurrency(opt.tope_coaseguro).replace('.00', '') : '-'}`
     ];
 
-    planDetails.forEach(detail => {
-      doc.setFont(undefined, 'bold');
-      doc.text(detail.label, cardX + 3, yPosition);
+    planInfo.forEach(line => {
       doc.setFont(undefined, 'normal');
-      const valueText = String(detail.value);
-      const maxWidth = cardWidth - 6;
-      const truncatedValue = valueText.length > 15 ? valueText.substring(0, 13) + '..' : valueText;
-      doc.text(truncatedValue, cardX + cardWidth - 3, yPosition, { align: 'right' });
-      yPosition += 3.5;
+      doc.text(line, colX + columnWidth / 2, colY, { align: 'center', maxWidth: columnWidth - 4 });
+      colY += 2.5;
     });
 
-    yPosition += 2;
+    colY += 1;
 
     // Separador
-    doc.setDrawColor(200);
-    doc.setLineWidth(0.2);
-    doc.line(cardX + 3, yPosition, cardX + cardWidth - 3, yPosition);
-    yPosition += 4;
+    doc.setDrawColor(220);
+    doc.setLineWidth(0.1);
+    doc.line(colX + 2, colY, colX + columnWidth - 2, colY);
+    colY += 3;
 
-    // Total
-    doc.setFontSize(10);
+    // ASEGURADOS
+    doc.setFontSize(7);
     doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 102, 51);
-    doc.text('TOTAL:', cardX + 3, yPosition);
-    doc.text(formatCurrency(opt.totales.total_pagar), cardX + cardWidth - 3, yPosition, { align: 'right' });
-    yPosition += 5;
+    doc.setTextColor(0, 51, 102);
+    doc.text('ASEGURADOS', colX + columnWidth / 2, colY, { align: 'center' });
+    colY += 3;
 
-    // Forma de pago
-    doc.setFontSize(6.5);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(80);
-    doc.text(`Pago: ${opt.totales.forma_pago || 'Anual'}`, cardX + cardWidth / 2, yPosition, { align: 'center' });
-  }
-
-  yPosition = startY + 115;
-
-  // ============================================
-  // ASEGURADOS POR OPCIÓN
-  // ============================================
-  if (pageHeight - yPosition < 80) {
-    doc.addPage();
-    yPosition = 20;
-  }
-
-  doc.setDrawColor(0, 51, 102);
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-  yPosition += 8;
-
-  doc.setFontSize(11);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 51, 102);
-  doc.text('ASEGURADOS', marginLeft, yPosition);
-  yPosition += 7;
-
-  const colWidth = contentWidth / numOptions;
-  const startYAsegurados = yPosition;
-
-  for (let i = 0; i < numOptions; i++) {
-    const opt = options[i];
-    const colX = marginLeft + (i * colWidth);
-    yPosition = startYAsegurados;
-
-    // Título de la opción
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 102, 204);
-    const optLabel = numOptions > 1 ? `Opción ${String.fromCharCode(65 + i)}` : '';
-    if (optLabel) {
-      doc.text(optLabel, colX + colWidth / 2, yPosition, { align: 'center' });
-      yPosition += 5;
-    }
-
-    // Lista de asegurados
     if (opt.insureds && opt.insureds.length > 0) {
-      doc.setFont(undefined, 'normal');
-      doc.setTextColor(60);
-      doc.setFontSize(7);
+      doc.setFontSize(5.5);
+      doc.setTextColor(40);
 
-      opt.insureds.forEach((ins, idx) => {
+      opt.insureds.forEach((ins) => {
         const primaIndividual = ins.prima_neta || 0;
-        const insuredName = ins.nombre.length > 18 ? ins.nombre.substring(0, 16) + '..' : ins.nombre;
+        const insuredName = ins.nombre.length > 20 ? ins.nombre.substring(0, 18) + '..' : ins.nombre;
 
         // Nombre
         doc.setFont(undefined, 'bold');
-        doc.setTextColor(40);
-        doc.text(`${idx + 1}. ${insuredName}`, colX + 2, yPosition);
-        yPosition += 3.5;
+        doc.text(insuredName, colX + 2, colY);
+        colY += 2.5;
 
         // Edad y sexo
         doc.setFont(undefined, 'normal');
         doc.setTextColor(100);
-        doc.setFontSize(6.5);
-        doc.text(`${ins.sexo} - ${ins.edad} años`, colX + 5, yPosition);
-        yPosition += 3;
+        doc.text(`${ins.sexo} - ${ins.edad} años`, colX + 4, colY);
+        colY += 2.5;
 
         // Prima
         doc.setTextColor(0, 102, 204);
         doc.setFont(undefined, 'bold');
-        doc.text(`Prima: ${formatCurrency(primaIndividual)}`, colX + 5, yPosition);
-        yPosition += 5;
-
-        doc.setFontSize(7);
+        doc.text(`Prima: ${formatCurrency(primaIndividual).replace('.00', '')}`, colX + 4, colY);
+        colY += 3.5;
       });
     }
+
+    // Separador
+    colY = optionStartY + optionsBlockHeight - 12;
+    doc.setDrawColor(220);
+    doc.setLineWidth(0.1);
+    doc.line(colX + 2, colY, colX + columnWidth - 2, colY);
+    colY += 3;
+
+    // TOTAL A PAGAR
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 102, 51);
+    doc.text('TOTAL:', colX + 2, colY);
+    doc.text(formatCurrency(opt.totales.total_pagar).replace('.00', ''), colX + columnWidth - 2, colY, { align: 'right' });
+    colY += 3;
+
+    // Forma de pago
+    doc.setFontSize(5.5);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(80);
+    doc.text(`${opt.totales.forma_pago || 'Anual'}`, colX + columnWidth / 2, colY, { align: 'center' });
   }
 
-  // Calcular máxima altura de asegurados
-  const maxInsuredHeight = Math.max(...options.map(opt =>
-    opt.insureds ? opt.insureds.length * 11.5 : 0
-  ));
-  yPosition = startYAsegurados + maxInsuredHeight + 10;
+  yPosition = optionStartY + optionsBlockHeight + 3;
 
   // ============================================
-  // COBERTURAS BÁSICAS INCLUIDAS
+  // COBERTURAS BÁSICAS INCLUIDAS (COMPACTAS)
   // ============================================
-  if (pageHeight - yPosition < 60) {
-    doc.addPage();
-    yPosition = 20;
-  }
-
-  doc.setDrawColor(0, 51, 102);
-  doc.setLineWidth(0.3);
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.2);
   doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-  yPosition += 8;
+  yPosition += 3;
 
-  doc.setFontSize(11);
+  doc.setFontSize(8);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
   doc.text('COBERTURAS BÁSICAS INCLUIDAS', marginLeft, yPosition);
-  yPosition += 7;
+  yPosition += 3.5;
 
-  doc.setFontSize(7.5);
+  // Mostrar coberturas en línea horizontal compacta
+  doc.setFontSize(6);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(60);
 
-  // Mostrar coberturas en dos columnas
-  const halfBasic = Math.ceil(COBERTURAS_BASICAS.length / 2);
-  const basicColWidth = contentWidth / 2;
+  const numCols = 3;
+  const basicColWidth = contentWidth / numCols;
+  const itemsPerCol = Math.ceil(COBERTURAS_BASICAS.length / numCols);
 
   for (let i = 0; i < COBERTURAS_BASICAS.length; i++) {
-    const xPos = i < halfBasic ? marginLeft + 2 : marginLeft + basicColWidth + 2;
-    const yPos = yPosition + ((i % halfBasic) * 4);
+    const col = Math.floor(i / itemsPerCol);
+    const row = i % itemsPerCol;
+    const xPos = marginLeft + (col * basicColWidth) + 2;
+    const yPos = yPosition + (row * 3);
     doc.text(`✓ ${COBERTURAS_BASICAS[i]}`, xPos, yPos);
   }
-  yPosition += (halfBasic * 4) + 5;
+
+  yPosition += (itemsPerCol * 3) + 2;
 
   // ============================================
-  // TABLA DE COBERTURAS ADICIONALES
+  // TABLA DE COBERTURAS ADICIONALES COMPARATIVA
   // ============================================
-  if (pageHeight - yPosition < 100) {
-    doc.addPage();
-    yPosition = 20;
-  }
-
-  doc.setDrawColor(0, 51, 102);
-  doc.setLineWidth(0.3);
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.2);
   doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-  yPosition += 8;
+  yPosition += 3;
 
-  doc.setFontSize(11);
+  doc.setFontSize(8);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
   doc.text('COBERTURAS ADICIONALES', marginLeft, yPosition);
-  yPosition += 7;
+  yPosition += 3;
 
   // Crear tabla de coberturas adicionales
   const tableData: any[][] = [];
@@ -484,21 +419,21 @@ export async function generateUnifiedQuotePDF(
     headers.push(numOptions > 1 ? `Opción ${String.fromCharCode(65 + i)}` : 'Incluida');
   }
 
-  // Calcular anchos de columna
-  const nameColWidth = numOptions === 1 ? 45 : 40;
-  const descColWidth = numOptions === 1 ? 95 : 80;
-  const optionColWidth = (contentWidth - nameColWidth - descColWidth) / numOptions;
+  // Calcular anchos de columna dinámicamente
+  const nameColWidth = 32;
+  const descColWidth = contentWidth - nameColWidth - (numOptions * 15);
+  const optionColWidth = 15;
 
   const columnStyles: any = {
-    0: { cellWidth: nameColWidth, fontStyle: 'bold' },
-    1: { cellWidth: descColWidth, fontSize: 6 }
+    0: { cellWidth: nameColWidth, fontStyle: 'bold', fontSize: 5.5 },
+    1: { cellWidth: descColWidth, fontSize: 5 }
   };
 
   for (let i = 0; i < numOptions; i++) {
     columnStyles[i + 2] = {
       cellWidth: optionColWidth,
       halign: 'center',
-      fontSize: 10
+      fontSize: 8
     };
   }
 
@@ -510,13 +445,14 @@ export async function generateUnifiedQuotePDF(
     headStyles: {
       fillColor: [0, 51, 102],
       textColor: 255,
-      fontSize: 8,
-      fontStyle: 'bold'
+      fontSize: 6.5,
+      fontStyle: 'bold',
+      cellPadding: 1
     },
     styles: {
-      fontSize: 7,
-      cellPadding: 2,
-      lineColor: [200, 200, 200],
+      fontSize: 5.5,
+      cellPadding: 1.5,
+      lineColor: [220, 220, 220],
       lineWidth: 0.1
     },
     margin: { left: marginLeft, right: marginRight },
@@ -534,81 +470,74 @@ export async function generateUnifiedQuotePDF(
     }
   });
 
-  yPosition = (doc as any).lastAutoTable.finalY + 15;
+  yPosition = (doc as any).lastAutoTable.finalY + 2;
 
   // ============================================
   // NOTAS IMPORTANTES
   // ============================================
-  if (pageHeight - yPosition < 30) {
-    doc.addPage();
-    yPosition = 20;
+  const notasStartY = pageHeight - marginBottom - 12;
+
+  if (yPosition > notasStartY - 2) {
+    // Si no cabe, reducir espacio de tabla
+    yPosition = notasStartY - 2;
   }
 
-  doc.setFontSize(7);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(80);
-  doc.text('Notas importantes:', marginLeft, yPosition);
-  yPosition += 4;
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft, notasStartY - 2, pageWidth - marginRight, notasStartY - 2);
 
   doc.setFontSize(5.5);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(80);
+  doc.text('Notas importantes:', marginLeft, notasStartY);
+
+  doc.setFontSize(4.5);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(100);
 
   const notas = [
-    '1. La presente cotización tiene vigencia de 15 días contados a partir de la fecha de cotización.',
-    '2. La aceptación de los Asegurados está sujeta a las políticas de suscripción vigentes de la compañía.',
-    '3. Las coberturas amparadas en la presente cotización están sujetas a las Condiciones Generales registradas ante la CNSF.',
-    '4. Esta cotización es de carácter ilustrativa y no forma parte del contrato de seguro y se considerará únicamente a las personas y coberturas señaladas en este documento, por lo que no se garantiza la emisión de la póliza de seguro ni los términos y condiciones aquí sugeridos.'
+    '1. Cotización válida 15 días. 2. Aceptación sujeta a políticas de suscripción. 3. Coberturas sujetas a Condiciones Generales CNSF. 4. Documento ilustrativo, no contractual, no garantiza emisión de póliza.'
   ];
 
+  let notaY = notasStartY + 3;
   notas.forEach(nota => {
     const lines = doc.splitTextToSize(nota, contentWidth);
     lines.forEach((line: string) => {
-      if (pageHeight - yPosition < 10) {
-        doc.addPage();
-        yPosition = 20;
-      }
-      doc.text(line, marginLeft, yPosition);
-      yPosition += 3;
+      doc.text(line, marginLeft, notaY);
+      notaY += 2.5;
     });
   });
 
   // ============================================
-  // PIE DE PÁGINA (TODAS LAS PÁGINAS)
+  // FOOTER FIJO
   // ============================================
-  const totalPages = (doc as any).internal.getNumberOfPages();
+  const footerY = pageHeight - marginBottom - 2;
 
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft, footerY - 2, pageWidth - marginRight, footerY - 2);
 
-    const footerY = pageHeight - 12;
+  doc.setFontSize(6);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(60);
 
-    doc.setDrawColor(0, 51, 102);
-    doc.setLineWidth(0.3);
-    doc.line(marginLeft, footerY - 3, pageWidth - marginRight, footerY - 3);
+  // Formato: Nombre | agentedeseguros.online/slug | Teléfono
+  const footerParts: string[] = [];
 
-    doc.setFontSize(7);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(60);
-
-    // Formato: Nombre | agentedeseguros.online/slug | Teléfono
-    const footerParts: string[] = [];
-
-    if (asesor.nombre) {
-      footerParts.push(asesor.nombre);
-    }
-
-    if (asesor.web_slug) {
-      footerParts.push(`agentedeseguros.online/${asesor.web_slug}`);
-    }
-
-    if (asesor.celular) {
-      footerParts.push(asesor.celular);
-    }
-
-    const footerText = footerParts.join(' | ');
-    doc.text(footerText, pageWidth / 2, footerY + 2, { align: 'center' });
+  if (asesor.nombre) {
+    footerParts.push(asesor.nombre);
   }
+
+  if (asesor.web_slug) {
+    footerParts.push(`agentedeseguros.online/${asesor.web_slug}`);
+  }
+
+  if (asesor.celular) {
+    footerParts.push(asesor.celular);
+  }
+
+  const footerText = footerParts.join(' | ');
+  doc.text(footerText, pageWidth / 2, footerY, { align: 'center' });
 
   const pdfBlob = doc.output('blob');
   return pdfBlob;
