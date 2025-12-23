@@ -45,26 +45,26 @@ function showConfigError() {
                 <svg style="width: 20px; height: 20px;" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                 </svg>
-                Pasos para Administradores
+                Configuración para Bolt.new
               </p>
               <ol style="margin: 0; padding-left: 20px; font-size: 14px; color: #1e3a8a; line-height: 1.8;">
-                <li>Accede al panel de tu plataforma de hosting (Netlify, Vercel, etc.)</li>
-                <li>Ve a la sección "Environment Variables" o "Variables de Entorno"</li>
-                <li>Agrega las dos variables listadas arriba</li>
-                <li><strong>Importante:</strong> Realiza un nuevo deploy después de agregar las variables</li>
+                <li>Esta aplicación está diseñada para funcionar en Bolt.new con Supabase</li>
+                <li>Las variables están en el archivo <code>.env</code> en la raíz del proyecto</li>
+                <li>Si despliegas en otro hosting, configura las variables de entorno allí</li>
+                <li><strong>Importante:</strong> Nunca compartas las credenciales de Supabase públicamente</li>
               </ol>
             </div>
             <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 32px;">
               <p style="margin: 0; font-size: 14px; color: #475569; line-height: 1.6;">
                 <strong style="color: #0f172a;">📖 Guía Completa:</strong> Lee el archivo
-                <code style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; color: #0f172a; font-weight: 600;">CONFIGURAR_VARIABLES_ENTORNO.md</code>
+                <code style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; color: #0f172a; font-weight: 600;">CONFIGURACION_BOLT_SUPABASE.md</code>
                 en el repositorio para instrucciones detalladas paso a paso.
               </p>
             </div>
             <div style="border-top: 2px solid #e2e8f0; padding-top: 24px;">
               <p style="margin: 0; font-size: 14px; color: #64748b; line-height: 1.6;">
                 ¿No eres administrador? Contacta al equipo de sistemas para resolver este problema.<br/>
-                <strong style="color: #334155;">Dominio:</strong> <code style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; color: #0f172a;">app.movi.digital</code>
+                <strong style="color: #334155;">Plataforma:</strong> <code style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; color: #0f172a;">Bolt.new + Supabase</code>
               </p>
             </div>
           </div>
@@ -73,11 +73,11 @@ function showConfigError() {
     }
   }
   console.error('❌ ERROR: Variables de entorno de Supabase no configuradas');
-  console.error('📍 Dominio actual:', window.location.hostname);
+  console.error('📍 Entorno actual:', window.location.hostname);
   console.error('🔧 Configuración requerida:');
   console.error('   - VITE_SUPABASE_URL');
   console.error('   - VITE_SUPABASE_ANON_KEY');
-  console.info('📚 Consulta el archivo CONFIGURAR_VARIABLES_ENTORNO.md para instrucciones completas');
+  console.info('📚 Consulta el archivo CONFIGURACION_BOLT_SUPABASE.md para instrucciones completas');
 }
 
 // Verificar que las variables existan y crear el cliente

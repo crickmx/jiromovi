@@ -1,42 +1,29 @@
-# ⚠️ IMPORTANTE: Antes de Desplegar a app.movi.digital
+# ⚠️ IMPORTANTE: Configuración de MOVI Digital
 
-## 🚨 PROBLEMA: La app NO carga en app.movi.digital
+## 🎯 Plataforma: Bolt.new + Supabase
 
-Si la aplicación funciona en el preview local pero muestra pantalla en blanco o error en app.movi.digital, es porque:
+Esta aplicación está configurada para funcionar en **Bolt.new** con **Supabase** como backend.
 
-**Las variables de entorno NO están configuradas en tu plataforma de hosting**
+## ✅ Configuración Actual
 
-## ✅ SOLUCIÓN RÁPIDA (3 minutos)
+### Variables de Entorno
 
-### 1. Configurar Variables de Entorno
-
-Dependiendo de dónde esté desplegado app.movi.digital:
-
-#### Si usas Netlify:
-1. Ve a: https://app.netlify.com/
-2. Selecciona tu sitio
-3. Site Settings → Environment Variables
-4. Agrega estas dos variables:
+El archivo `.env` en la raíz contiene:
 
 ```
-VITE_SUPABASE_URL=https://akkbisolbjkusbuihrad.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFra2Jpc29sYmprdXNidWlocmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNzkwNDAsImV4cCI6MjA3NjY1NTA0MH0.iJf04oJv0ERuyWyY0gLpd7ntP6bITJ8LWxGFKJNSLvQ
+VITE_SUPABASE_URL=https://qhwvuuyjhcennqccgvse.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGci...
 ```
 
-5. Guarda
-6. Deploys → Trigger deploy → Clear cache and deploy site
+**En Bolt.new:** Estas variables se leen automáticamente del archivo `.env`
 
-#### Si usas Vercel:
-1. Ve a: https://vercel.com/dashboard
-2. Selecciona tu proyecto
-3. Settings → Environment Variables
-4. Agrega las dos variables de arriba
-5. Marca: Production, Preview, Development
-6. Save
-7. Deployments → Redeploy
+### Si Despliegas en Otro Hosting
 
-#### Si usas otra plataforma:
-Ver archivo `CONFIGURACION_DOMINIO.md` para instrucciones específicas.
+Si decides desplegar en Vercel, Render u otra plataforma:
+
+1. Configura las variables de entorno en la plataforma
+2. Nombres exactos: `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`
+3. Haz un nuevo deploy después de configurarlas
 
 ### 2. Configurar Supabase
 
