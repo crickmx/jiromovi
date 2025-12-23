@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Users, Building2, Cake, Award, ExternalLink, Sparkles, TrendingUp,
-  Settings, DollarSign, Receipt, BarChart3, Calculator, UserPlus,
+  Settings, DollarSign, Receipt, BarChart3, Image, UserPlus,
   MessageSquare, FileText, Package, Clock
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
@@ -227,14 +227,14 @@ export function Dashboard() {
           </div>
 
           <div
-            onClick={() => navigate('/cotizador-gmm')}
+            onClick={() => navigate('/publicidad')}
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between mb-2">
-              <Calculator className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
+              <Image className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
             </div>
-            <p className="text-sm font-semibold text-gray-900">Cotizador GMM</p>
-            <p className="text-xs text-gray-600 mt-1">Nueva cotización</p>
+            <p className="text-sm font-semibold text-gray-900">Publicidad</p>
+            <p className="text-xs text-gray-600 mt-1">Ver materiales</p>
           </div>
 
           <div
