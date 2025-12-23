@@ -144,7 +144,7 @@ export async function crearEvento(
   if (errorUsuarios) {
     console.error('Error obteniendo usuarios autorizados:', errorUsuarios);
   } else if (usuariosAutorizados && usuariosAutorizados.length > 0) {
-    const linkEvento = `/seguros-education-aula-digital?evento=${eventoCreado.id}`;
+    const linkEvento = `/seguros-education/aula-virtual`;
     const usuarioIds = usuariosAutorizados.map((u: any) => u.usuario_id);
 
     // Usar el nuevo motor centralizado de notificaciones
