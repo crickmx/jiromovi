@@ -321,31 +321,29 @@ export async function generateUnifiedQuotePDF(
   }
   tableData.push(coberturasBasicasRow);
 
-  // Lista completa de coberturas básicas incluidas
-  const coberturasBasicas = [
-    'Hospitalización',
-    'Honorarios médicos',
-    'Medicamentos en hospital',
-    'Cirugías',
-    'Análisis clínicos',
-    'Estudios de gabinete',
-    'Ambulancias terrestre y aérea',
-    'Terapias físicas',
-    'Enfermería privada',
-    'Urgencias por accidente',
-    'Urgencias por enfermedad',
-    'Gastos funerarios',
-    'Segunda opinión médica'
-  ];
+  // Lista completa de coberturas básicas en una sola celda
+  const coberturasBasicasTexto = [
+    '✓ Hospitalización',
+    '✓ Honorarios médicos',
+    '✓ Medicamentos en hospital',
+    '✓ Cirugías',
+    '✓ Análisis clínicos',
+    '✓ Estudios de gabinete',
+    '✓ Ambulancias terrestre y aérea',
+    '✓ Terapias físicas',
+    '✓ Enfermería privada',
+    '✓ Urgencias por accidente',
+    '✓ Urgencias por enfermedad',
+    '✓ Gastos funerarios',
+    '✓ Segunda opinión médica'
+  ].join('\n');
 
-  // Agregar cada cobertura básica
-  coberturasBasicas.forEach(cobertura => {
-    const cobBasicaRow = [cobertura];
-    for (let i = 0; i < numOptions; i++) {
-      cobBasicaRow.push('✓');
-    }
-    tableData.push(cobBasicaRow);
-  });
+  // Agregar todas las coberturas básicas en una sola fila
+  const cobBasicaRow = [coberturasBasicasTexto];
+  for (let i = 0; i < numOptions; i++) {
+    cobBasicaRow.push('✓ INCLUIDAS');
+  }
+  tableData.push(cobBasicaRow);
 
   // ============================================
   // SECCIÓN 4: COBERTURAS ADICIONALES
@@ -462,11 +460,21 @@ export async function generateUnifiedQuotePDF(
         data.cell.styles.fontSize = 7.5;
       }
 
-      // Coberturas básicas: checkmarks verdes
-      if (data.column.index > 0 && rowText === '✓') {
+      // Coberturas básicas: lista completa en columna izquierda
+      if (data.column.index === 0 && rowText.includes('✓ Hospitalización')) {
+        data.cell.styles.textColor = [0, 153, 51];
+        data.cell.styles.fontSize = 5.5;
+        data.cell.styles.valign = 'top';
+        data.cell.styles.cellPadding = 2;
+      }
+
+      // Coberturas básicas: "✓ INCLUIDAS" en columnas de opciones
+      if (data.column.index > 0 && rowText === '✓ INCLUIDAS') {
         data.cell.styles.textColor = [0, 153, 51];
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fontSize = 7;
+        data.cell.styles.halign = 'center';
+        data.cell.styles.valign = 'middle';
       }
 
       // Coberturas adicionales: colorear ✓ SÍ y ✗ NO
