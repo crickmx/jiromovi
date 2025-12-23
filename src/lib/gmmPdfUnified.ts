@@ -38,9 +38,6 @@ interface QuoteInfo {
   asegurado_principal?: string;
 }
 
-/**
- * Convierte imagen a Base64 para incluir en PDF
- */
 async function loadImageAsBase64(url: string): Promise<string | null> {
   try {
     const response = await fetch(url);
@@ -57,105 +54,86 @@ async function loadImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
-/**
- * Lista de las 15 coberturas adicionales con descripciones
- */
 const COBERTURAS_ADICIONALES = [
   {
     key: 'cob_maternidad',
     label: 'Maternidad',
-    description: 'Cobertura para gastos de parto y complicaciones del embarazo'
+    description: 'Gastos de parto y complicaciones'
   },
   {
     key: 'cob_reconocimiento_antiguedad',
     label: 'Reconocimiento de antigüedad',
-    description: 'Periodo de espera reducido por antigüedad en seguros previos'
+    description: 'Periodo de espera reducido'
   },
   {
     key: 'cob_medicamentos_fuera',
-    label: 'Medicamentos fuera del hospital',
-    description: 'Reembolso de medicamentos prescritos para uso ambulatorio'
+    label: 'Medicamentos ambulatorios',
+    description: 'Reembolso fuera del hospital'
   },
   {
     key: 'cob_complicaciones_no_amparadas',
     label: 'Complicaciones no amparadas',
-    description: 'Cubre complicaciones derivadas de padecimientos no cubiertos'
+    description: 'Derivadas de padecimientos excluidos'
   },
   {
     key: 'cob_padecimientos_preexistentes',
     label: 'Padecimientos preexistentes',
-    description: 'Cobertura para enfermedades diagnosticadas antes de la póliza'
+    description: 'Previos a la póliza'
   },
   {
     key: 'cob_eliminacion_deducible_accidente',
-    label: 'Eliminación de deducible por accidente',
-    description: 'Elimina el deducible en caso de accidente'
+    label: 'Sin deducible por accidente',
+    description: 'Elimina deducible en accidentes'
   },
   {
     key: 'cob_multiregion',
     label: 'Multiregión',
-    description: 'Atención médica en diferentes estados de la república'
+    description: 'Diferentes estados de la república'
   },
   {
     key: 'cob_vip',
     label: 'Beneficio VIP',
-    description: 'Servicios premium y atención preferente'
+    description: 'Servicios premium'
   },
   {
     key: 'cob_emergencia_medica_extranjero',
-    label: 'Emergencia médica en el extranjero',
-    description: 'Cobertura para emergencias médicas fuera de México'
+    label: 'Emergencias en extranjero',
+    description: 'Cobertura internacional de urgencias'
   },
   {
     key: 'cob_enfermedades_graves_extranjero',
-    label: 'Enfermedades graves en el extranjero',
-    description: 'Tratamiento de enfermedades graves en el extranjero'
+    label: 'Enf. graves en extranjero',
+    description: 'Tratamiento fuera de México'
   },
   {
     key: 'cob_cobertura_internacional',
     label: 'Cobertura internacional',
-    description: 'Atención médica en cualquier parte del mundo'
+    description: 'Atención en cualquier país'
   },
   {
     key: 'cob_ampliacion_servicios',
     label: 'Ampliación de servicios',
-    description: 'Servicios médicos adicionales no contemplados en el plan base'
+    description: 'Servicios médicos adicionales'
   },
   {
     key: 'cob_ayuda_diaria',
-    label: 'Ayuda diaria por hospitalización',
-    description: 'Pago diario por cada día de hospitalización'
+    label: 'Ayuda diaria hospitalización',
+    description: 'Pago por día hospitalizado'
   },
   {
     key: 'cob_indemnizacion_eg',
-    label: 'Indemnización por enfermedades graves',
-    description: 'Pago único al diagnóstico de enfermedades graves'
+    label: 'Indemnización enf. graves',
+    description: 'Pago único al diagnóstico'
   },
   {
     key: 'cob_xtensuz',
     label: 'Xtensuz',
-    description: 'Extensión de cobertura para servicios especializados'
+    description: 'Extensión de servicios'
   }
 ];
 
 /**
- * Coberturas básicas incluidas en todos los planes
- */
-const COBERTURAS_BASICAS = [
-  'Hospitalización',
-  'Honorarios médicos',
-  'Medicamentos hospitalarios',
-  'Laboratorio y gabinete',
-  'Cirugías',
-  'Anestesia',
-  'Terapias',
-  'Ambulancia',
-  'Urgencias'
-];
-
-/**
- * Genera PDF unificado de cotización GMM - UNA SOLA PÁGINA HORIZONTAL
- * Funciona tanto para modo simple (1 opción) como comparativo (2-3 opciones)
+ * Genera PDF comparativo de cotizaciones GMM - DISEÑO TABLA COMPARATIVA
  */
 export async function generateUnifiedQuotePDF(
   options: QuoteOptionResult[],
@@ -163,80 +141,64 @@ export async function generateUnifiedQuotePDF(
   asesor: AsesorInfo,
   logoUrl?: string
 ): Promise<Blob> {
-  // ============================================
-  // CONFIGURACIÓN: A4 HORIZONTAL
-  // ============================================
   const doc = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
     format: 'a4',
   });
 
-  const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
-  const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
-  const marginLeft = 8.5; // ~24px
-  const marginRight = 8.5;
-  const marginTop = 7; // ~20px
-  const marginBottom = 7;
-  const contentWidth = pageWidth - marginLeft - marginRight;
-  let yPosition = marginTop;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
+  const contentWidth = pageWidth - (margin * 2);
+  let yPos = margin;
 
   const numOptions = Math.min(options.length, 3);
 
   // ============================================
-  // ENCABEZADO: LOGO Y TÍTULO
+  // HEADER: Logo, Título y Folio
   // ============================================
-  const headerHeight = 18;
+  const headerHeight = 20;
 
   // Logo (izquierda)
   if (logoUrl) {
     const logoBase64 = await loadImageAsBase64(logoUrl);
     if (logoBase64) {
       try {
-        const logoHeight = 12;
-        const logoWidth = 24;
-        doc.addImage(logoBase64, 'PNG', marginLeft, yPosition, logoWidth, logoHeight);
+        doc.addImage(logoBase64, 'PNG', margin, yPos, 30, 15);
       } catch (error) {
-        console.error('Error adding logo to PDF:', error);
+        console.error('Error adding logo:', error);
       }
     }
   }
 
-  // Título (centro)
-  doc.setFontSize(16);
+  // Título principal (centro)
+  doc.setFontSize(18);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('Cotización Únikuz Bx+', pageWidth / 2, yPosition + 6, { align: 'center' });
+  doc.text('Comparativo de Opciones Únikuz Bx+', pageWidth / 2, yPos + 8, { align: 'center' });
 
-  // Info adicional (derecha/centro)
-  doc.setFontSize(7);
+  // Folio y fecha (derecha)
+  doc.setFontSize(8);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(80);
-  let infoY = yPosition + 11;
+  const infoX = pageWidth - margin;
   if (quoteInfo.folio) {
-    doc.text(`Folio: ${quoteInfo.folio}`, pageWidth / 2, infoY, { align: 'center' });
-    infoY += 3;
+    doc.text(`Folio: ${quoteInfo.folio}`, infoX, yPos + 5, { align: 'right' });
   }
-  doc.text(`Fecha: ${formatDate(quoteInfo.created_at)}`, pageWidth / 2, infoY, { align: 'center' });
+  doc.text(`${formatDate(quoteInfo.created_at)}`, infoX, yPos + 10, { align: 'right' });
 
-  yPosition += headerHeight;
+  yPos += headerHeight;
 
   // Línea separadora
-  doc.setDrawColor(220);
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-  yPosition += 3;
+  doc.setDrawColor(0, 51, 102);
+  doc.setLineWidth(0.5);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 5;
 
   // ============================================
-  // BLOQUE DE OPCIONES CON ASEGURADOS (GRID)
+  // TABLA COMPARATIVA PRINCIPAL
   // ============================================
-  const optionsBlockHeight = 75;
-  const optionStartY = yPosition;
-
-  // Calcular ancho de columnas según número de opciones
-  const columnGap = 3;
-  const totalGapWidth = (numOptions - 1) * columnGap;
-  const columnWidth = (contentWidth - totalGapWidth) / numOptions;
 
   // Determinar mejor precio
   const bestIndex = options.reduce((minIdx, opt, idx) => {
@@ -245,321 +207,316 @@ export async function generateUnifiedQuotePDF(
     return currentTotal < minTotal ? idx : minIdx;
   }, 0);
 
-  // Dibujar cada opción
-  for (let i = 0; i < numOptions; i++) {
-    const opt = options[i];
-    const colX = marginLeft + (i * (columnWidth + columnGap));
-    const isBest = numOptions > 1 && i === bestIndex;
-    let colY = optionStartY;
-
-    // Borde de la columna
-    doc.setFillColor(250, 250, 252);
-    doc.setDrawColor(isBest ? 0 : 200, isBest ? 153 : 200, isBest ? 51 : 200);
-    doc.setLineWidth(isBest ? 0.5 : 0.2);
-    doc.roundedRect(colX, colY, columnWidth, optionsBlockHeight, 1.5, 1.5, 'FD');
-
-    colY += 3;
-
-    // Título de la opción
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 51, 102);
-    const optionLabel = numOptions > 1 ? `Opción ${String.fromCharCode(65 + i)}` : 'Cotización';
-    doc.text(optionLabel, colX + columnWidth / 2, colY, { align: 'center' });
-    colY += 2;
-
-    // Badge de mejor precio
-    if (isBest) {
-      doc.setFontSize(6);
-      doc.setTextColor(0, 153, 51);
-      doc.text('★ MEJOR PRECIO', colX + columnWidth / 2, colY, { align: 'center' });
-      colY += 2;
-    }
-
-    colY += 2;
-
-    // Datos del plan (compactos)
-    doc.setFontSize(6);
-    doc.setTextColor(60);
-
-    const topeCoasStr = opt.tope_coaseguro
-      ? formatCurrency(opt.tope_coaseguro).replace('.00', '')
-      : '-';
-
-    const planInfo = [
-      `${safeString(opt.plan?.estado)} · ${safeString(opt.plan?.nivel_hospitalario)}`,
-      `${safeString(opt.plan?.suma_asegurada)} · Ded: ${safeString(opt.plan?.deducible)}`,
-      `Coas: ${safeString(opt.plan?.coaseguro)} · Tope: ${topeCoasStr}`
-    ];
-
-    planInfo.forEach(line => {
-      doc.setFont(undefined, 'normal');
-      doc.text(line, colX + columnWidth / 2, colY, { align: 'center', maxWidth: columnWidth - 4 });
-      colY += 2.5;
-    });
-
-    colY += 1;
-
-    // Separador
-    doc.setDrawColor(220);
-    doc.setLineWidth(0.1);
-    doc.line(colX + 2, colY, colX + columnWidth - 2, colY);
-    colY += 3;
-
-    // ASEGURADOS
-    doc.setFontSize(7);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 51, 102);
-    doc.text('ASEGURADOS', colX + columnWidth / 2, colY, { align: 'center' });
-    colY += 3;
-
-    if (opt.insureds && opt.insureds.length > 0) {
-      doc.setFontSize(5.5);
-      doc.setTextColor(40);
-
-      opt.insureds.forEach((ins) => {
-        const primaIndividual = safeNumber(ins.prima_neta, 0);
-        const insuredName = safeString(ins.nombre).length > 20
-          ? safeString(ins.nombre).substring(0, 18) + '..'
-          : safeString(ins.nombre);
-        const insuredSexo = safeString(ins.sexo, 'N/A');
-        const insuredEdad = safeNumber(ins.edad, 0);
-
-        // Nombre
-        doc.setFont(undefined, 'bold');
-        doc.text(insuredName, colX + 2, colY);
-        colY += 2.5;
-
-        // Edad y sexo
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(100);
-        doc.text(`${insuredSexo} - ${insuredEdad} años`, colX + 4, colY);
-        colY += 2.5;
-
-        // Prima
-        doc.setTextColor(0, 102, 204);
-        doc.setFont(undefined, 'bold');
-        doc.text(`Prima: ${formatCurrency(primaIndividual).replace('.00', '')}`, colX + 4, colY);
-        colY += 3.5;
-      });
-    }
-
-    // Separador
-    colY = optionStartY + optionsBlockHeight - 12;
-    doc.setDrawColor(220);
-    doc.setLineWidth(0.1);
-    doc.line(colX + 2, colY, colX + columnWidth - 2, colY);
-    colY += 3;
-
-    // TOTAL A PAGAR
-    doc.setFontSize(8);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 102, 51);
-    doc.text('TOTAL:', colX + 2, colY);
-    const totalPagar = safeNumber(opt.totales?.total_pagar, 0);
-    doc.text(formatCurrency(totalPagar).replace('.00', ''), colX + columnWidth - 2, colY, { align: 'right' });
-    colY += 3;
-
-    // Forma de pago
-    doc.setFontSize(5.5);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(80);
-    doc.text(safeString(opt.totales?.forma_pago, 'Anual'), colX + columnWidth / 2, colY, { align: 'center' });
-  }
-
-  yPosition = optionStartY + optionsBlockHeight + 3;
-
-  // ============================================
-  // COBERTURAS BÁSICAS INCLUIDAS (COMPACTAS)
-  // ============================================
-  doc.setDrawColor(220);
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-  yPosition += 3;
-
-  doc.setFontSize(8);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 51, 102);
-  doc.text('COBERTURAS BÁSICAS INCLUIDAS', marginLeft, yPosition);
-  yPosition += 3.5;
-
-  // Mostrar coberturas en línea horizontal compacta
-  doc.setFontSize(6);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(60);
-
-  const numCols = 3;
-  const basicColWidth = contentWidth / numCols;
-  const itemsPerCol = Math.ceil(COBERTURAS_BASICAS.length / numCols);
-
-  for (let i = 0; i < COBERTURAS_BASICAS.length; i++) {
-    const col = Math.floor(i / itemsPerCol);
-    const row = i % itemsPerCol;
-    const xPos = marginLeft + (col * basicColWidth) + 2;
-    const yPos = yPosition + (row * 3);
-    doc.text(`✓ ${COBERTURAS_BASICAS[i]}`, xPos, yPos);
-  }
-
-  yPosition += (itemsPerCol * 3) + 2;
-
-  // ============================================
-  // TABLA DE COBERTURAS ADICIONALES COMPARATIVA
-  // ============================================
-  doc.setDrawColor(220);
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-  yPosition += 3;
-
-  doc.setFontSize(8);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 51, 102);
-  doc.text('COBERTURAS ADICIONALES', marginLeft, yPosition);
-  yPosition += 3;
-
-  // Crear tabla de coberturas adicionales
+  // Preparar datos de la tabla
   const tableData: any[][] = [];
 
-  COBERTURAS_ADICIONALES.forEach(cobertura => {
-    const row: any[] = [
-      cobertura.label,
-      cobertura.description
-    ];
+  // ============================================
+  // SECCIÓN 1: INFORMACIÓN DEL PLAN
+  // ============================================
 
-    // Agregar indicador para cada opción
-    options.slice(0, numOptions).forEach(opt => {
-      const isIncluded = (opt as any)[cobertura.key] === true || (opt as any)[cobertura.key] === 'true';
-      row.push(isIncluded ? '✓' : '✗');
-    });
-
-    tableData.push(row);
-  });
-
-  // Construir headers
-  const headers: any[] = ['Cobertura', 'Descripción'];
+  // Fila: Encabezado de sección
+  const headerRow = ['INFORMACIÓN DEL PLAN'];
   for (let i = 0; i < numOptions; i++) {
-    headers.push(numOptions > 1 ? `Opción ${String.fromCharCode(65 + i)}` : 'Incluida');
+    const isBest = numOptions > 1 && i === bestIndex;
+    headerRow.push(isBest ? `★ OPCIÓN ${String.fromCharCode(65 + i)}` : `OPCIÓN ${String.fromCharCode(65 + i)}`);
+  }
+  tableData.push(headerRow);
+
+  // Fila: Estado y Nivel
+  const estadoRow = ['Estado y Nivel'];
+  options.slice(0, numOptions).forEach(opt => {
+    estadoRow.push(`${safeString(opt.plan?.estado)}\n${safeString(opt.plan?.nivel_hospitalario)}`);
+  });
+  tableData.push(estadoRow);
+
+  // Fila: Suma Asegurada
+  const sumaRow = ['Suma Asegurada'];
+  options.slice(0, numOptions).forEach(opt => {
+    sumaRow.push(safeString(opt.plan?.suma_asegurada));
+  });
+  tableData.push(sumaRow);
+
+  // Fila: Deducible
+  const deducibleRow = ['Deducible'];
+  options.slice(0, numOptions).forEach(opt => {
+    deducibleRow.push(safeString(opt.plan?.deducible));
+  });
+  tableData.push(deducibleRow);
+
+  // Fila: Coaseguro
+  const coaseguroRow = ['Coaseguro'];
+  options.slice(0, numOptions).forEach(opt => {
+    coaseguroRow.push(safeString(opt.plan?.coaseguro));
+  });
+  tableData.push(coaseguroRow);
+
+  // Fila: Tope de Coaseguro
+  const topeRow = ['Tope de Coaseguro'];
+  options.slice(0, numOptions).forEach(opt => {
+    const tope = opt.tope_coaseguro ? formatCurrency(opt.tope_coaseguro) : '-';
+    topeRow.push(tope);
+  });
+  tableData.push(topeRow);
+
+  // ============================================
+  // SECCIÓN 2: ASEGURADOS
+  // ============================================
+
+  // Encontrar el máximo número de asegurados
+  const maxInsureds = Math.max(...options.slice(0, numOptions).map(opt => opt.insureds?.length || 0));
+
+  if (maxInsureds > 0) {
+    // Header de asegurados
+    const aseguradosHeaderRow = ['ASEGURADOS'];
+    for (let i = 0; i < numOptions; i++) {
+      aseguradosHeaderRow.push('');
+    }
+    tableData.push(aseguradosHeaderRow);
+
+    // Una fila por cada asegurado
+    for (let i = 0; i < maxInsureds; i++) {
+      const insuredRow = [`Asegurado ${i + 1}`];
+
+      options.slice(0, numOptions).forEach(opt => {
+        const insured = opt.insureds?.[i];
+        if (insured) {
+          const nombre = safeString(insured.nombre, 'Sin nombre');
+          const edad = safeNumber(insured.edad, 0);
+          const sexo = safeString(insured.sexo, 'N/A');
+          const prima = formatCurrency(safeNumber(insured.prima_neta, 0));
+          insuredRow.push(`${nombre}\n${sexo}, ${edad} años\nPrima: ${prima}`);
+        } else {
+          insuredRow.push('-');
+        }
+      });
+
+      tableData.push(insuredRow);
+    }
   }
 
-  // Calcular anchos de columna dinámicamente
-  const nameColWidth = 32;
-  const descColWidth = contentWidth - nameColWidth - (numOptions * 15);
-  const optionColWidth = 15;
+  // ============================================
+  // SECCIÓN 3: COBERTURAS BÁSICAS
+  // ============================================
+
+  const coberturasBasicasRow = ['COBERTURAS BÁSICAS'];
+  for (let i = 0; i < numOptions; i++) {
+    coberturasBasicasRow.push('✓ INCLUIDAS\nHospitalización, Honorarios,\nMedicamentos, Cirugías, etc.');
+  }
+  tableData.push(coberturasBasicasRow);
+
+  // ============================================
+  // SECCIÓN 4: COBERTURAS ADICIONALES
+  // ============================================
+
+  const coberturasAddHeaderRow = ['COBERTURAS ADICIONALES'];
+  for (let i = 0; i < numOptions; i++) {
+    coberturasAddHeaderRow.push('');
+  }
+  tableData.push(coberturasAddHeaderRow);
+
+  // Una fila por cada cobertura adicional
+  COBERTURAS_ADICIONALES.forEach(cobertura => {
+    const cobRow = [`${cobertura.label}\n${cobertura.description}`];
+
+    options.slice(0, numOptions).forEach(opt => {
+      const isIncluded = (opt as any)[cobertura.key] === true || (opt as any)[cobertura.key] === 'true';
+      cobRow.push(isIncluded ? '✓ SÍ' : '✗ NO');
+    });
+
+    tableData.push(cobRow);
+  });
+
+  // ============================================
+  // SECCIÓN 5: TOTAL Y FORMA DE PAGO
+  // ============================================
+
+  const totalHeaderRow = ['TOTAL A PAGAR'];
+  for (let i = 0; i < numOptions; i++) {
+    totalHeaderRow.push('');
+  }
+  tableData.push(totalHeaderRow);
+
+  const totalRow = ['Prima Total'];
+  options.slice(0, numOptions).forEach(opt => {
+    const total = formatCurrency(safeNumber(opt.totales?.total_pagar, 0));
+    totalRow.push(total);
+  });
+  tableData.push(totalRow);
+
+  const formaPagoRow = ['Forma de Pago'];
+  options.slice(0, numOptions).forEach(opt => {
+    formaPagoRow.push(safeString(opt.totales?.forma_pago, 'Anual'));
+  });
+  tableData.push(formaPagoRow);
+
+  // ============================================
+  // GENERAR TABLA CON AUTOTABLE
+  // ============================================
+
+  // Calcular anchos de columna
+  const labelColWidth = 50;
+  const optionColWidth = (contentWidth - labelColWidth) / numOptions;
 
   const columnStyles: any = {
-    0: { cellWidth: nameColWidth, fontStyle: 'bold', fontSize: 5.5 },
-    1: { cellWidth: descColWidth, fontSize: 5 }
+    0: {
+      cellWidth: labelColWidth,
+      fontStyle: 'bold',
+      fontSize: 7,
+      fillColor: [240, 240, 245]
+    }
   };
 
-  for (let i = 0; i < numOptions; i++) {
-    columnStyles[i + 2] = {
+  for (let i = 1; i <= numOptions; i++) {
+    columnStyles[i] = {
       cellWidth: optionColWidth,
       halign: 'center',
-      fontSize: 8
+      fontSize: 7
     };
   }
 
   autoTable(doc, {
-    startY: yPosition,
-    head: [headers],
+    startY: yPos,
     body: tableData,
     theme: 'grid',
-    headStyles: {
-      fillColor: [0, 51, 102],
-      textColor: 255,
-      fontSize: 6.5,
-      fontStyle: 'bold',
-      cellPadding: 1
-    },
     styles: {
-      fontSize: 5.5,
-      cellPadding: 1.5,
-      lineColor: [220, 220, 220],
-      lineWidth: 0.1
+      fontSize: 6.5,
+      cellPadding: 2.5,
+      lineColor: [200, 200, 200],
+      lineWidth: 0.2,
+      valign: 'middle'
     },
-    margin: { left: marginLeft, right: marginRight },
     columnStyles,
+    margin: { left: margin, right: margin },
     didParseCell: function(data) {
-      // Colorear indicadores
-      if (data.column.index >= 2) {
-        if (data.cell.text[0] === '✓') {
+      const rowText = String(data.cell.raw || '');
+
+      // Header de secciones (INFORMACIÓN DEL PLAN, ASEGURADOS, etc.)
+      if (data.column.index === 0 && rowText.includes('INFORMACIÓN') ||
+          rowText.includes('ASEGURADOS') ||
+          rowText.includes('COBERTURAS BÁSICAS') ||
+          rowText.includes('COBERTURAS ADICIONALES') ||
+          rowText.includes('TOTAL A PAGAR')) {
+        data.cell.styles.fillColor = [0, 51, 102];
+        data.cell.styles.textColor = [255, 255, 255];
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 8;
+      }
+
+      // Opciones en header (★ OPCIÓN A, OPCIÓN B, etc.)
+      if (data.row.index === 0 && data.column.index > 0) {
+        const isBest = rowText.includes('★');
+        data.cell.styles.fillColor = isBest ? [0, 153, 51] : [0, 102, 204];
+        data.cell.styles.textColor = [255, 255, 255];
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 9;
+      }
+
+      // Coberturas: colorear ✓ y ✗
+      if (data.column.index > 0 && (rowText.includes('✓') || rowText.includes('✗'))) {
+        if (rowText.includes('✓')) {
           data.cell.styles.textColor = [0, 153, 51];
           data.cell.styles.fontStyle = 'bold';
-        } else if (data.cell.text[0] === '✗') {
-          data.cell.styles.textColor = [200, 0, 0];
+          data.cell.styles.fontSize = 8;
+        } else if (rowText.includes('✗')) {
+          data.cell.styles.textColor = [200, 50, 50];
+          data.cell.styles.fontSize = 8;
+        }
+      }
+
+      // Total a pagar: resaltar
+      if (rowText.includes('Prima Total')) {
+        data.cell.styles.fillColor = [255, 250, 230];
+      }
+      if (data.row.section === 'body' && data.cell.raw && String(data.cell.raw).includes('$') &&
+          String(tableData[data.row.index]?.[0]).includes('Prima Total')) {
+        data.cell.styles.fillColor = [255, 250, 230];
+        data.cell.styles.textColor = [0, 102, 51];
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 10;
+      }
+
+      // Asegurados: resaltar nombre
+      if (data.column.index === 0 && rowText.includes('Asegurado')) {
+        data.cell.styles.fillColor = [245, 245, 250];
+      }
+
+      // Coberturas adicionales: descripción más pequeña
+      if (data.column.index === 0 && rowText.includes('\n') && !rowText.includes('COBERT')) {
+        const lines = rowText.split('\n');
+        if (lines.length === 2) {
+          // Estilizar para que la segunda línea (descripción) sea más pequeña
+          data.cell.styles.fontSize = 6;
+          data.cell.styles.textColor = [100, 100, 100];
+        }
+      }
+    },
+    didDrawCell: function(data) {
+      // Agregar borde más grueso a las mejores opciones
+      if (data.row.index === 0 && data.column.index > 0) {
+        const cellText = String(data.cell.raw || '');
+        if (cellText.includes('★')) {
+          doc.setDrawColor(0, 153, 51);
+          doc.setLineWidth(0.8);
+          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
         }
       }
     }
   });
 
-  yPosition = (doc as any).lastAutoTable.finalY + 2;
+  const finalY = (doc as any).lastAutoTable.finalY;
 
   // ============================================
-  // NOTAS IMPORTANTES
+  // FOOTER: Notas y Contacto
   // ============================================
-  const notasStartY = pageHeight - marginBottom - 12;
 
-  if (yPosition > notasStartY - 2) {
-    // Si no cabe, reducir espacio de tabla
-    yPosition = notasStartY - 2;
+  const footerStartY = pageHeight - margin - 15;
+
+  // Si la tabla es muy larga, ajustar
+  if (finalY < footerStartY - 3) {
+    yPos = finalY + 3;
+  } else {
+    yPos = footerStartY - 3;
   }
 
-  doc.setDrawColor(220);
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft, notasStartY - 2, pageWidth - marginRight, notasStartY - 2);
+  // Línea separadora
+  doc.setDrawColor(200);
+  doc.setLineWidth(0.3);
+  doc.line(margin, footerStartY - 3, pageWidth - margin, footerStartY - 3);
 
+  // Notas
   doc.setFontSize(5.5);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(80);
-  doc.text('Notas importantes:', marginLeft, notasStartY);
+  doc.setTextColor(60);
+  doc.text('Notas importantes:', margin, footerStartY);
 
-  doc.setFontSize(4.5);
+  doc.setFontSize(5);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(100);
-
-  const notas = [
-    '1. Cotización válida 15 días. 2. Aceptación sujeta a políticas de suscripción. 3. Coberturas sujetas a Condiciones Generales CNSF. 4. Documento ilustrativo, no contractual, no garantiza emisión de póliza.'
-  ];
-
-  let notaY = notasStartY + 3;
-  notas.forEach(nota => {
-    const lines = doc.splitTextToSize(nota, contentWidth);
-    lines.forEach((line: string) => {
-      doc.text(line, marginLeft, notaY);
-      notaY += 2.5;
-    });
+  const notaText = 'Cotización válida 15 días. Aceptación sujeta a políticas de suscripción. Coberturas según Condiciones Generales CNSF. Documento ilustrativo, no contractual.';
+  const notaLines = doc.splitTextToSize(notaText, contentWidth);
+  let notaY = footerStartY + 3;
+  notaLines.forEach((line: string) => {
+    doc.text(line, margin, notaY);
+    notaY += 2.5;
   });
 
-  // ============================================
-  // FOOTER FIJO
-  // ============================================
-  const footerY = pageHeight - marginBottom - 2;
-
+  // Contacto del asesor
+  const contactY = pageHeight - margin - 4;
   doc.setDrawColor(220);
   doc.setLineWidth(0.2);
-  doc.line(marginLeft, footerY - 2, pageWidth - marginRight, footerY - 2);
+  doc.line(margin, contactY - 2, pageWidth - margin, contactY - 2);
 
-  doc.setFontSize(6);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(60);
+  doc.setFontSize(7);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 51, 102);
 
-  // Formato: Nombre | agentedeseguros.online/slug | Teléfono
-  const footerParts: string[] = [];
+  const contactParts: string[] = [];
+  if (asesor.nombre) contactParts.push(asesor.nombre);
+  if (asesor.web_slug) contactParts.push(`agentedeseguros.online/${asesor.web_slug}`);
+  if (asesor.celular) contactParts.push(asesor.celular);
 
-  if (asesor.nombre) {
-    footerParts.push(asesor.nombre);
-  }
+  const contactText = contactParts.join('  |  ');
+  doc.text(contactText, pageWidth / 2, contactY, { align: 'center' });
 
-  if (asesor.web_slug) {
-    footerParts.push(`agentedeseguros.online/${asesor.web_slug}`);
-  }
-
-  if (asesor.celular) {
-    footerParts.push(asesor.celular);
-  }
-
-  const footerText = footerParts.join(' | ');
-  doc.text(footerText, pageWidth / 2, footerY, { align: 'center' });
-
-  const pdfBlob = doc.output('blob');
-  return pdfBlob;
+  return doc.output('blob');
 }
