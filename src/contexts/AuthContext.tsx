@@ -137,6 +137,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.user?.email
       });
 
+      // CRITICAL: Esperar a que el usuario se cargue antes de retornar
+      // Esto previene la race condition donde navegamos antes de que fetchUsuario termine
+      if (data.user) {
+        console.log('[AuthContext] Waiting for usuario to load...');
+        setUser(data.user);
+        await fetchUsuario(data.user.id);
+        console.log('[AuthContext] Usuario loaded, ready to navigate');
+      }
+
       return { error: null };
     } catch (err: any) {
       console.error('[AuthContext] Network or unexpected error:', {
