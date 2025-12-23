@@ -218,72 +218,7 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[create-user] ✅ User inserted successfully:', insertedData);
-
-    try {
-      const welcomeResponse = await fetch(
-        `${supabaseUrl}/functions/v1/enviar-correo-transaccional`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-          },
-          body: JSON.stringify({
-            tipo: 'bienvenida',
-            destinatario: userData.email_laboral,
-            datos: {
-              nombre: userData.nombre,
-              apellidos: userData.apellidos,
-              email_laboral: userData.email_laboral,
-              rol: userData.rol,
-              puesto: userData.puesto || '',
-              nombre_plataforma: 'MOVI Digital',
-              fecha: new Date().toLocaleDateString('es-MX'),
-            },
-          }),
-        }
-      );
-
-      if (!welcomeResponse.ok) {
-        console.error('[create-user] Error sending welcome email:', await welcomeResponse.text());
-      } else {
-        console.log('[create-user] Welcome email sent successfully');
-      }
-
-      if (userData.celular_personal || userData.celular_laboral) {
-        const whatsappResponse = await fetch(
-          `${supabaseUrl}/functions/v1/enviar-whatsapp`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-            },
-            body: JSON.stringify({
-              tipo: 'bienvenida',
-              numero: userData.celular_personal || userData.celular_laboral,
-              datos: {
-                nombre: userData.nombre,
-                apellidos: userData.apellidos,
-                email_laboral: userData.email_laboral,
-                rol: userData.rol,
-                puesto: userData.puesto || '',
-                nombre_plataforma: 'MOVI Digital',
-                fecha: new Date().toLocaleDateString('es-MX'),
-              },
-            }),
-          }
-        );
-
-        if (!whatsappResponse.ok) {
-          console.error('[create-user] Error sending welcome WhatsApp:', await whatsappResponse.text());
-        } else {
-          console.log('[create-user] Welcome WhatsApp sent successfully');
-        }
-      }
-    } catch (notifError) {
-      console.error('[create-user] Failed to send welcome notifications:', notifError);
-    }
+    console.log('[create-user] Welcome notifications will be sent when user status changes to active');
 
     return new Response(
       JSON.stringify({ success: true, userId: authData.user.id }),
