@@ -132,6 +132,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log('[create-user] Creating auth user...');
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: userData.email_laboral,
       password,
@@ -141,7 +142,7 @@ Deno.serve(async (req: Request) => {
     if (authError) {
       console.error('[create-user] Auth error:', authError);
       return new Response(
-        JSON.stringify({ error: authError.message }),
+        JSON.stringify({ error: 'Error en autenticación: ' + authError.message }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -151,13 +152,15 @@ Deno.serve(async (req: Request) => {
 
     if (!authData.user) {
       return new Response(
-        JSON.stringify({ error: 'Failed to create user' }),
+        JSON.stringify({ error: 'Failed to create auth user' }),
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
+
+    console.log('[create-user] Auth user created:', authData.user.id);
 
     const insertData = {
       id: authData.user.id,
@@ -181,21 +184,40 @@ Deno.serve(async (req: Request) => {
       estado: isGerente ? 'pendiente' : 'activo',
     };
 
-    console.log('[create-user] Attempting to insert user with data:', JSON.stringify(insertData, null, 2));
+    console.log('[create-user] Inserting into usuarios table...');
+    console.log('[create-user] Insert data:', JSON.stringify(insertData, null, 2));
 
-    const { error: insertError } = await supabaseAdmin.from('usuarios').insert(insertData);
+    const { error: insertError, data: insertedData } = await supabaseAdmin
+      .from('usuarios')
+      .insert(insertData)
+      .select()
+      .single();
 
     if (insertError) {
-      console.error('[create-user] Database insert error:', JSON.stringify(insertError, null, 2));
+      console.error('[create-user] ❌ Database insert error:');
+      console.error('[create-user] Error message:', insertError.message);
+      console.error('[create-user] Error code:', insertError.code);
+      console.error('[create-user] Error details:', insertError.details);
+      console.error('[create-user] Error hint:', insertError.hint);
+      console.error('[create-user] Full error:', JSON.stringify(insertError, null, 2));
+      
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      
       return new Response(
-        JSON.stringify({ error: 'Error al crear usuario: ' + insertError.message, details: insertError.message, code: insertError.code }),
+        JSON.stringify({ 
+          error: 'Error al insertar usuario en BD: ' + insertError.message,
+          details: insertError.details || insertError.message,
+          code: insertError.code,
+          hint: insertError.hint
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
+
+    console.log('[create-user] ✅ User inserted successfully:', insertedData);
 
     try {
       const welcomeResponse = await fetch(
@@ -271,9 +293,10 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('[create-user] Unexpected error:', error);
+    console.error('[create-user] ❌ Unexpected error:', error);
+    console.error('[create-user] Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: 'Server error: ' + error.message }),
+      JSON.stringify({ error: 'Server error: ' + error.message, stack: error.stack }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
