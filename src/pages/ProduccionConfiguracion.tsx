@@ -73,6 +73,9 @@ export default function ProduccionConfiguracion() {
   const [refreshingNames, setRefreshingNames] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  const [syncingInsurers, setSyncingInsurers] = useState(false);
+  const [insurersSyncMessage, setInsurersSyncMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
   // Funciones para manejar cambios con persistencia
   const handleSearchChange = (value: string) => {
     setSearchVendor(value);
@@ -331,6 +334,49 @@ export default function ProduccionConfiguracion() {
       });
     } finally {
       setRefreshingNames(false);
+    }
+  };
+
+  const handleSyncInsurers = async () => {
+    if (!confirm('¿Estás seguro de que deseas sincronizar las aseguradoras desde Google Sheets? Esto actualizará el catálogo de aseguradoras.')) {
+      return;
+    }
+
+    setSyncingInsurers(true);
+    setInsurersSyncMessage(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No hay sesión activa');
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-insurers-from-sheets`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Error al sincronizar aseguradoras');
+      }
+
+      setInsurersSyncMessage({
+        type: 'success',
+        text: `Aseguradoras sincronizadas: ${result.inserted} nuevas, ${result.updated} actualizadas, ${result.deactivated} desactivadas. Total únicas: ${result.total_unique}.`
+      });
+    } catch (error: any) {
+      console.error('Error syncing insurers:', error);
+      setInsurersSyncMessage({
+        type: 'error',
+        text: error.message || 'Error al sincronizar aseguradoras'
+      });
+    } finally {
+      setSyncingInsurers(false);
     }
   };
 
@@ -660,6 +706,44 @@ export default function ProduccionConfiguracion() {
                           : 'bg-red-50 text-red-800 border border-red-200'
                       }`}>
                         {refreshMessage.text}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {config && (
+                  <div className="border-t border-neutral-200 pt-4 sm:pt-6">
+                    <h3 className="font-semibold text-neutral-900 mb-3 text-sm sm:text-base">Sincronizar Aseguradoras</h3>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-3">
+                      <p className="text-xs sm:text-sm text-blue-800">
+                        Extrae las aseguradoras únicas del Google Sheets y actualiza el catálogo.
+                        Este catálogo se usa en el registro de pólizas en Trámites.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleSyncInsurers}
+                      disabled={syncingInsurers}
+                      className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
+                    >
+                      {syncingInsurers ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                          <span>Sincronizando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4" />
+                          <span>Sincronizar Aseguradoras</span>
+                        </>
+                      )}
+                    </button>
+                    {insurersSyncMessage && (
+                      <div className={`mt-3 p-3 rounded-lg text-xs sm:text-sm ${
+                        insurersSyncMessage.type === 'success'
+                          ? 'bg-green-50 text-green-800 border border-green-200'
+                          : 'bg-red-50 text-red-800 border border-red-200'
+                      }`}>
+                        {insurersSyncMessage.text}
                       </div>
                     )}
                   </div>
