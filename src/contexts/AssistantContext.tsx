@@ -160,18 +160,6 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           setConversationId(activeConversationId);
         }
 
-        const tempUserMessage: AssistantMessage = {
-          id: `temp-user-${Date.now()}`,
-          conversacion_id: activeConversationId,
-          rol: 'user',
-          contenido: text,
-          respuesta_estructurada_json: null,
-          tiene_acciones: false,
-          created_at: new Date().toISOString(),
-        };
-
-        setMessages((prev) => [...prev, tempUserMessage]);
-
         const params = extractRouteParams(location.pathname);
 
         const response = await sendMessageService({

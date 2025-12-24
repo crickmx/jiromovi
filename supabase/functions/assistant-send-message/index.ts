@@ -430,9 +430,31 @@ Deno.serve(async (req: Request) => {
   try {
     const { conversacion_id, mensaje, modulo, ruta, parametros } = await req.json();
 
+    if (!conversacion_id || !mensaje) {
+      return new Response(
+        JSON.stringify({ error: 'conversacion_id y mensaje son requeridos' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { error: userMessageError } = await supabase
+      .from('mensajes_chatgpt')
+      .insert({
+        conversacion_id,
+        rol: 'user',
+        contenido: mensaje,
+        respuesta_estructurada_json: null,
+        tiene_acciones: false,
+      });
+
+    if (userMessageError) {
+      console.error('Error saving user message:', userMessageError);
+      throw new Error(`Error al guardar mensaje de usuario: ${userMessageError.message}`);
+    }
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -567,30 +589,45 @@ EJEMPLO DE RESPUESTA ESPERADA:
 
       if (openaiResponse.ok) {
         const data = await openaiResponse.json();
-        respuestaTexto = data.choices[0]?.message?.content || 'No pude generar una respuesta.';
+        const rawContent = data.choices?.[0]?.message?.content;
+
+        if (!rawContent) {
+          throw new Error('OpenAI no devolvió contenido en la respuesta');
+        }
+
+        respuestaTexto = rawContent;
 
         try {
           let jsonText = respuestaTexto.trim();
-          
+
           const markdownMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
           if (markdownMatch) {
             jsonText = markdownMatch[1].trim();
           }
-          
+
           const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             jsonText = jsonMatch[0];
           }
-          
+
           respuestaEstructurada = JSON.parse(jsonText);
-          
+
           if (respuestaEstructurada && respuestaEstructurada.type) {
             respuestaTexto = getTextFromStructuredResponse(respuestaEstructurada);
           }
         } catch (e) {
           console.error('Error parsing JSON:', e);
           console.log('Raw response:', respuestaTexto);
+          respuestaEstructurada = {
+            type: 'text',
+            text: respuestaTexto,
+            actions: []
+          };
         }
+      } else {
+        const errorData = await openaiResponse.json().catch(() => ({}));
+        console.error('OpenAI API error:', errorData);
+        throw new Error(`Error de OpenAI: ${openaiResponse.status} - ${JSON.stringify(errorData)}`);
       }
     } else {
       respuestaTexto = 'Por favor configura la API de OpenAI para usar el asistente.';
