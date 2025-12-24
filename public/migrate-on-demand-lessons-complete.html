@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Migrar Lecciones On Demand - Seguros Education</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; }
+    button { padding: 10px 20px; margin: 5px; font-size: 16px; cursor: pointer; }
+    .success { background: #4CAF50; color: white; }
+    .danger { background: #f44336; color: white; }
+    .primary { background: #2196F3; color: white; }
+    #output { margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 5px; white-space: pre-wrap; }
+    .step { margin: 15px 0; padding: 10px; background: white; border-left: 4px solid #2196F3; }
+    .error { color: red; }
+    .success-msg { color: green; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
+    th { background: #2196F3; color: white; }
+    img { max-width: 100px; max-height: 60px; }
+  </style>
+</head>
+<body>
+  <h1>Migración Completa de Lecciones On Demand</h1>
+
+  <div class="step">
+    <h2>Paso 1: Listar Archivos Disponibles</h2>
+    <button class="primary" onclick="listFiles()">Listar Videos y Miniaturas</button>
+  </div>
+
+  <div class="step">
+    <h2>Paso 2: Eliminar Lecciones Actuales</h2>
+    <button class="danger" onclick="deleteCurrentLessons()">Eliminar 29 Lecciones Actuales</button>
+  </div>
+
+  <div class="step">
+    <h2>Paso 3: Crear Nuevas Lecciones</h2>
+    <button class="success" onclick="createNewLessons()">Crear Nuevas Lecciones desde Storage</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    const supabaseUrl = 'https://lcsjaejpenwecoitbthb.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxjc2phZWpwZW53ZWNvaXRidGhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyOTU2MDY5MiwiZXhwIjoyMDQ1MTM2NjkyfQ.KuRZcyW_8e3HUdIXCmcpZSftwf52HhbqvQb9PJSl0_8';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    const categoriaId = '058c4297-3721-4847-a069-6c03f815bd7c'; // Academia de Negocios 2025
+    const logoDefault = 'https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png';
+
+    let videosData = [];
+    let thumbnailsData = [];
+
+    function log(message, type = 'info') {
+      const output = document.getElementById('output');
+      const className = type === 'error' ? 'error' : type === 'success' ? 'success-msg' : '';
+      output.innerHTML += `<div class="${className}">${message}</div>`;
+      console.log(message);
+    }
+
+    function generateTitle(filename) {
+      // Remove extension
+      let title = filename.replace(/\.[^/.]+$/, '');
+
+      // Replace underscores and hyphens with spaces
+      title = title.replace(/[_-]/g, ' ');
+
+      // Capitalize first letter of each word
+      title = title.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+
+      return title;
+    }
+
+    function findMatchingThumbnail(videoName) {
+      const videoBase = videoName.replace(/\.[^/.]+$/, '').toLowerCase();
+
+      const match = thumbnailsData.find(thumb => {
+        const thumbBase = thumb.name.replace(/\.[^/.]+$/, '').toLowerCase();
+        return thumbBase === videoBase || thumbBase.includes(videoBase) || videoBase.includes(thumbBase);
+      });
+
+      if (match) {
+        return `${supabaseUrl}/storage/v1/object/public/thumbnails-seguros-education/${match.name}`;
+      }
+
+      return logoDefault;
+    }
+
+    async function listFiles() {
+      log('=== PASO 1: LISTANDO ARCHIVOS ===\n');
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+
+      try {
+        // Listar videos
+        log('Listando videos...');
+        const { data: videos, error: videosError } = await supabase
+          .storage
+          .from('videos-seguros-education')
+          .list('', { limit: 1000, sortBy: { column: 'name', order: 'asc' } });
+
+        if (videosError) {
+          log(`ERROR listando videos: ${videosError.message}`, 'error');
+          return;
+        }
+
+        videosData = videos.filter(v => v.name && !v.name.startsWith('.'));
+        log(`✅ ${videosData.length} videos encontrados\n`, 'success');
+
+        // Listar thumbnails
+        log('Listando miniaturas...');
+        const { data: thumbnails, error: thumbnailsError } = await supabase
+          .storage
+          .from('thumbnails-seguros-education')
+          .list('', { limit: 1000, sortBy: { column: 'name', order: 'asc' } });
+
+        if (thumbnailsError) {
+          log(`ERROR listando miniaturas: ${thumbnailsError.message}`, 'error');
+          return;
+        }
+
+        thumbnailsData = thumbnails.filter(t => t.name && !t.name.startsWith('.'));
+        log(`✅ ${thumbnailsData.length} miniaturas encontradas\n`, 'success');
+
+        // Generar tabla de matching
+        let tableHTML = '<h3>Preview de Lecciones a Crear:</h3>';
+        tableHTML += '<table>';
+        tableHTML += '<tr><th>#</th><th>Título</th><th>Video</th><th>Miniatura</th><th>Preview</th></tr>';
+
+        videosData.forEach((video, index) => {
+          const title = generateTitle(video.name);
+          const thumbnailUrl = findMatchingThumbnail(video.name);
+          const videoUrl = `${supabaseUrl}/storage/v1/object/public/videos-seguros-education/${video.name}`;
+
+          tableHTML += `<tr>
+            <td>${index + 1}</td>
+            <td>${title}</td>
+            <td style="font-size: 11px;">${video.name}</td>
+            <td style="font-size: 11px;">${thumbnailUrl === logoDefault ? '(Logo default)' : thumbnailUrl.split('/').pop()}</td>
+            <td><img src="${thumbnailUrl}" alt="${title}"/></td>
+          </tr>`;
+        });
+
+        tableHTML += '</table>';
+        output.innerHTML += tableHTML;
+
+        log(`\n✅ Preview generado. Total: ${videosData.length} lecciones\n`, 'success');
+
+      } catch (error) {
+        log(`ERROR: ${error.message}`, 'error');
+        console.error('Error:', error);
+      }
+    }
+
+    async function deleteCurrentLessons() {
+      log('\n=== PASO 2: ELIMINANDO LECCIONES ACTUALES ===\n');
+
+      if (!confirm('¿Estás seguro de eliminar las 29 lecciones actuales de Academia de Negocios 2025?')) {
+        log('Operación cancelada por el usuario');
+        return;
+      }
+
+      try {
+        log('Obteniendo lecciones actuales...');
+        const { data: lessons, error: fetchError } = await supabase
+          .from('seguros_lessons')
+          .select('id, titulo')
+          .eq('categoria_id', categoriaId);
+
+        if (fetchError) {
+          log(`ERROR al obtener lecciones: ${fetchError.message}`, 'error');
+          return;
+        }
+
+        log(`Encontradas ${lessons.length} lecciones para eliminar\n`);
+
+        // Eliminar progreso asociado primero
+        log('Eliminando progreso de usuarios...');
+        for (const lesson of lessons) {
+          const { error: progressError } = await supabase
+            .from('seguros_progress')
+            .delete()
+            .eq('lesson_id', lesson.id);
+
+          if (progressError) {
+            log(`⚠️  Error eliminando progreso de "${lesson.titulo}": ${progressError.message}`, 'error');
+          }
+        }
+        log('✅ Progreso eliminado\n', 'success');
+
+        // Eliminar lecciones
+        log('Eliminando lecciones...');
+        const { error: deleteError } = await supabase
+          .from('seguros_lessons')
+          .delete()
+          .eq('categoria_id', categoriaId);
+
+        if (deleteError) {
+          log(`ERROR al eliminar lecciones: ${deleteError.message}`, 'error');
+          return;
+        }
+
+        log(`✅ ${lessons.length} lecciones eliminadas exitosamente\n`, 'success');
+
+      } catch (error) {
+        log(`ERROR: ${error.message}`, 'error');
+        console.error('Error:', error);
+      }
+    }
+
+    async function createNewLessons() {
+      log('\n=== PASO 3: CREANDO NUEVAS LECCIONES ===\n');
+
+      if (videosData.length === 0) {
+        log('⚠️  Primero ejecuta el Paso 1 para listar los archivos', 'error');
+        return;
+      }
+
+      if (!confirm(`¿Crear ${videosData.length} nuevas lecciones desde los videos de Storage?`)) {
+        log('Operación cancelada por el usuario');
+        return;
+      }
+
+      try {
+        const newLessons = [];
+
+        videosData.forEach((video, index) => {
+          const title = generateTitle(video.name);
+          const videoUrl = `${supabaseUrl}/storage/v1/object/public/videos-seguros-education/${video.name}`;
+          const thumbnailUrl = findMatchingThumbnail(video.name);
+
+          newLessons.push({
+            titulo: title,
+            categoria_id: categoriaId,
+            video_url: videoUrl,
+            miniatura_url: thumbnailUrl,
+            orden: index + 1,
+            es_grabacion: false,
+            descripcion: `Lección: ${title}`,
+          });
+        });
+
+        log(`Insertando ${newLessons.length} lecciones...`);
+
+        const { data, error } = await supabase
+          .from('seguros_lessons')
+          .insert(newLessons)
+          .select();
+
+        if (error) {
+          log(`ERROR al insertar lecciones: ${error.message}`, 'error');
+          return;
+        }
+
+        log(`✅ ${data.length} lecciones creadas exitosamente\n`, 'success');
+
+        // Mostrar resumen
+        log('=== RESUMEN FINAL ===');
+        log(`Total de lecciones creadas: ${data.length}`);
+        log(`Categoría: Academia de Negocios 2025`);
+        log(`Videos desde: videos-seguros-education`);
+        log(`Miniaturas desde: thumbnails-seguros-education`);
+        log('✅ Migración completada exitosamente!', 'success');
+
+      } catch (error) {
+        log(`ERROR: ${error.message}`, 'error');
+        console.error('Error:', error);
+      }
+    }
+  </script>
+</body>
+</html>
