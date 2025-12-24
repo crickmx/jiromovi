@@ -208,12 +208,12 @@ export function AssistantModal() {
                       <div
                         className={`max-w-[80%] rounded-lg p-3 ${
                           isUser
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-blue-600 text-white [&_*]:text-white'
                             : 'bg-gray-100 text-gray-900'
                         }`}
                       >
                         {isUser ? (
-                          <p className="text-sm whitespace-pre-wrap">{message.contenido}</p>
+                          <p className="text-sm whitespace-pre-wrap text-white">{message.contenido}</p>
                         ) : structuredResponse ? (
                           <ResponseMessage response={structuredResponse} />
                         ) : (

@@ -444,18 +444,18 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                   <div
                     className={`rounded-2xl px-4 py-2 ${
                       isMine
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-blue-600 text-white [&_*]:text-white'
                         : 'bg-white text-neutral-900 border border-neutral-200'
                     }`}
                   >
                     {message.eliminado ? (
-                      <p className="italic text-sm opacity-70">
+                      <p className={`italic text-sm opacity-70 ${isMine ? 'text-white' : ''}`}>
                         Este mensaje fue eliminado
                       </p>
                     ) : (
                       <>
                         {message.mensaje && (
-                          <p className="whitespace-pre-wrap break-words">{message.mensaje}</p>
+                          <p className={`whitespace-pre-wrap break-words ${isMine ? 'text-white' : ''}`}>{message.mensaje}</p>
                         )}
 
                         {/* Archivo adjunto */}
@@ -474,13 +474,13 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                                 <button
                                   onClick={() => handleDownloadFile(message.archivo_url, message.archivo_nombre)}
                                   className={`flex items-center space-x-2 text-sm ${
-                                    isMine ? 'text-blue-100 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'
+                                    isMine ? 'text-white hover:text-blue-100' : 'text-neutral-600 hover:text-neutral-900'
                                   }`}
                                 >
                                   <Download className="w-4 h-4" />
-                                  <span>{message.archivo_nombre}</span>
+                                  <span className="text-white">{message.archivo_nombre}</span>
                                   {message.archivo_tamano && (
-                                    <span className="text-xs opacity-70">
+                                    <span className="text-xs opacity-70 text-white">
                                       ({formatFileSize(message.archivo_tamano)})
                                     </span>
                                   )}
@@ -491,7 +491,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                                 onClick={() => handleDownloadFile(message.archivo_url, message.archivo_nombre)}
                                 className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${
                                   isMine
-                                    ? 'bg-blue-500 hover:bg-blue-400'
+                                    ? 'bg-blue-500 hover:bg-blue-400 text-white'
                                     : 'bg-neutral-100 hover:bg-neutral-200'
                                 }`}
                               >
@@ -499,21 +499,21 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                                   {getFileIcon(message.archivo_tipo || '')}
                                 </div>
                                 <div className="flex-1 text-left">
-                                  <p className="text-sm font-medium">{message.archivo_nombre}</p>
+                                  <p className={`text-sm font-medium ${isMine ? 'text-white' : ''}`}>{message.archivo_nombre}</p>
                                   {message.archivo_tamano && (
-                                    <p className="text-xs opacity-70">
+                                    <p className={`text-xs opacity-70 ${isMine ? 'text-white' : ''}`}>
                                       {formatFileSize(message.archivo_tamano)}
                                     </p>
                                   )}
                                 </div>
-                                <Download className="w-4 h-4" />
+                                <Download className={`w-4 h-4 ${isMine ? 'text-white' : ''}`} />
                               </button>
                             )}
                           </div>
                         )}
 
                         {message.editado && (
-                          <p className="text-xs opacity-70 mt-1">(editado)</p>
+                          <p className={`text-xs opacity-70 mt-1 ${isMine ? 'text-white' : ''}`}>(editado)</p>
                         )}
                       </>
                     )}
