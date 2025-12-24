@@ -161,6 +161,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           setConversationId(activeConversationId);
         }
 
+        const tempUserMessage: AssistantMessage = {
+          id: `temp-user-${Date.now()}`,
+          conversacion_id: activeConversationId,
+          rol: 'user',
+          contenido: text,
+          respuesta_estructurada_json: null,
+          tiene_acciones: false,
+          created_at: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, tempUserMessage]);
+
         const params = extractRouteParams(location.pathname);
 
         const response = await sendMessageService({
@@ -174,10 +186,24 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         if (response) {
           await loadMessages(activeConversationId);
           await loadConversationsList();
+        } else {
+          throw new Error('No se recibió respuesta del asistente');
         }
       } catch (error) {
         console.error('Error sending message:', error);
-        alert('Error al enviar el mensaje. Por favor intenta de nuevo.');
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `temp-error-${Date.now()}`,
+            conversacion_id: activeConversationId!,
+            rol: 'assistant',
+            contenido: 'Lo siento, ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.',
+            respuesta_estructurada_json: null,
+            tiene_acciones: false,
+            created_at: new Date().toISOString(),
+          },
+        ]);
       } finally {
         setIsSendingMessage(false);
       }

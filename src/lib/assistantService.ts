@@ -131,10 +131,18 @@ export async function sendMessage(
     });
 
     if (response.error) {
+      console.error('Edge function error:', response.error);
       throw response.error;
     }
 
     const { data } = response;
+
+    if (!data) {
+      console.error('No data received from edge function');
+      throw new Error('No se recibió respuesta del asistente');
+    }
+
+    console.log('Assistant response:', data);
 
     if (data.respuesta_estructurada) {
       const parsed = parseStructuredResponse(data.respuesta_estructurada);
