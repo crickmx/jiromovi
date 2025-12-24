@@ -59,48 +59,51 @@ function generarTitulo(nombreArchivo: string): string {
   return titulo.substring(0, 100);
 }
 
-async function listarArchivosGoogleDrive(folderId: string, apiKey: string): Promise<GoogleDriveFile[]> {
-  const archivos: GoogleDriveFile[] = [];
-  let pageToken: string | null = null;
+async function leerArchivosDesdeSheet(sheetUrl: string): Promise<GoogleDriveFile[]> {
+  try {
+    console.log('[INFO] Leyendo archivos desde Google Sheet...');
+    const response = await fetch(sheetUrl);
 
-  do {
-    const url = new URL('https://www.googleapis.com/drive/v3/files');
-    url.searchParams.set('q', `'${folderId}' in parents and trashed=false`);
-    url.searchParams.set('fields', 'nextPageToken, files(id, name, mimeType, size, modifiedTime, webContentLink)');
-    url.searchParams.set('pageSize', '100');
-    url.searchParams.set('key', apiKey);
-    if (pageToken) {
-      url.searchParams.set('pageToken', pageToken);
+    if (!response.ok) {
+      throw new Error(`Error accediendo al Sheet: ${response.status}`);
     }
 
-    let intentos = 0;
-    let response: Response | null = null;
+    const text = await response.text();
+    const lines = text.split('\n').slice(1);
 
-    while (intentos < 3) {
-      try {
-        response = await fetch(url.toString());
-        if (response.ok) break;
-        intentos++;
-        if (intentos < 3) {
-          await new Promise((resolve) => setTimeout(resolve, Math.pow(2, intentos) * 1000));
+    const archivos: GoogleDriveFile[] = [];
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+
+      const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+
+      if (parts.length >= 2 && parts[0] && parts[1]) {
+        const fileName = parts[0];
+        const fileId = parts[1];
+
+        let mimeType = 'application/octet-stream';
+        if (/\.(mp4|mov|avi|webm|mkv)$/i.test(fileName)) {
+          mimeType = 'video/mp4';
+        } else if (/\.(jpg|jpeg|png|webp|gif)$/i.test(fileName)) {
+          mimeType = 'image/jpeg';
         }
-      } catch (error) {
-        intentos++;
-        if (intentos >= 3) throw error;
-        await new Promise((resolve) => setTimeout(resolve, Math.pow(2, intentos) * 1000));
+
+        archivos.push({
+          id: fileId,
+          name: fileName,
+          mimeType,
+          modifiedTime: new Date().toISOString(),
+        });
       }
     }
 
-    if (!response || !response.ok) {
-      throw new Error(`Error al listar archivos de Google Drive: ${response?.status}`);
-    }
-
-    const data = await response.json();
-    archivos.push(...(data.files || []));
-    pageToken = data.nextPageToken || null;
-  } while (pageToken);
-
-  return archivos;
+    console.log(`[INFO] Archivos encontrados en Sheet: ${archivos.length}`);
+    return archivos;
+  } catch (error) {
+    console.error('Error leyendo Google Sheet:', error);
+    throw new Error(`No se pudo leer el Sheet: ${error.message}`);
+  }
 }
 
 function emparejarArchivos(archivos: GoogleDriveFile[]): { pares: FileMatch[]; sinPareja: GoogleDriveFile[] } {
@@ -138,14 +141,32 @@ function emparejarArchivos(archivos: GoogleDriveFile[]): { pares: FileMatch[]; s
   return { pares, sinPareja };
 }
 
-async function descargarArchivo(fileId: string, nombreArchivo: string, apiKey: string): Promise<string> {
-  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+async function descargarArchivo(fileId: string, nombreArchivo: string): Promise<string> {
+  const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+  console.log(`[DESCARGA] Iniciando descarga: ${nombreArchivo}`);
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), 120000);
 
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    let response = await fetch(url, {
+      signal: controller.signal,
+      redirect: 'follow'
+    });
+
+    if (!response.ok || response.url.includes('confirm')) {
+      const text = await response.text();
+      const confirmMatch = text.match(/confirm=([^&"]+)/);
+
+      if (confirmMatch) {
+        const confirmUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=${confirmMatch[1]}`;
+        response = await fetch(confirmUrl, {
+          signal: controller.signal,
+          redirect: 'follow'
+        });
+      }
+    }
 
     if (!response.ok) {
       throw new Error(`Error descargando archivo: ${response.status}`);
@@ -156,7 +177,14 @@ async function descargarArchivo(fileId: string, nombreArchivo: string, apiKey: s
 
     await Deno.writeFile(tempPath, new Uint8Array(arrayBuffer));
 
+    console.log(`[DESCARGA OK] ${nombreArchivo} - ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)} MB`);
+
     return tempPath;
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error(`Timeout descargando ${nombreArchivo}`);
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
@@ -173,6 +201,8 @@ async function subirArchivo(
     const fileData = await Deno.readFile(tempPath);
     const blob = new Blob([fileData], { type: contentType });
 
+    console.log(`[SUBIDA] Subiendo a ${bucket}: ${nombreDestino} - ${(fileData.byteLength / 1024 / 1024).toFixed(2)} MB`);
+
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(nombreDestino, blob, {
@@ -187,6 +217,7 @@ async function subirArchivo(
       .from(bucket)
       .getPublicUrl(data.path);
 
+    console.log(`[SUBIDA OK] ${nombreDestino}`);
     return publicUrlData.publicUrl;
   } catch (error) {
     console.error(`Error subiendo archivo a ${bucket}:`, error);
@@ -199,8 +230,7 @@ async function procesarArchivos(
   adminUserId: string,
   categoriaId: string,
   pares: FileMatch[],
-  sinPareja: GoogleDriveFile[],
-  apiKey: string
+  sinPareja: GoogleDriveFile[]
 ) {
   const state: ProcessState = {
     total_videos_drive: pares.length + sinPareja.length,
@@ -229,12 +259,12 @@ async function procesarArchivos(
     let imagenUrl: string | null = null;
 
     try {
-      videoPath = await descargarArchivo(par.videoFile.id, par.videoFile.name, apiKey);
+      videoPath = await descargarArchivo(par.videoFile.id, par.videoFile.name);
       state.archivos_descargados_exitosos++;
 
       if (par.imageFile) {
         try {
-          imagenPath = await descargarArchivo(par.imageFile.id, par.imageFile.name, apiKey);
+          imagenPath = await descargarArchivo(par.imageFile.id, par.imageFile.name);
           state.archivos_descargados_exitosos++;
         } catch (error) {
           console.error(`Error descargando miniatura ${par.imageFile.name}:`, error);
@@ -346,7 +376,7 @@ async function procesarArchivos(
     let videoUrl: string | null = null;
 
     try {
-      videoPath = await descargarArchivo(video.id, video.name, apiKey);
+      videoPath = await descargarArchivo(video.id, video.name);
       state.archivos_descargados_exitosos++;
 
       const timestamp = Date.now();
@@ -461,23 +491,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
-    if (!googleApiKey) {
-      return new Response(
-        JSON.stringify({
-          error: 'Google API Key no configurada',
-          mensaje: 'Por favor configura la variable de entorno GOOGLE_API_KEY en el proyecto de Supabase'
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const sheetId = '1n1n1zVhSzPEiNZyPR21LCmJBNvCk9Wt5h4ZNqjfkQV4';
+    const sheetGid = '0';
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${sheetGid}`;
 
-    const folderId = '1D064yj7jbC__ZWV5hb1xzvcpFB6mrLXV';
     const timestampInicio = new Date().toISOString();
 
     console.log(`[${timestampInicio}] [INICIO] Iniciando carga masiva desde Google Drive`);
 
-    const archivos = await listarArchivosGoogleDrive(folderId, googleApiKey);
+    const archivos = await leerArchivosDesdeSheet(sheetUrl);
     console.log(`[${new Date().toISOString()}] [INFO] Archivos encontrados: ${archivos.length}`);
 
     const { pares, sinPareja } = emparejarArchivos(archivos);
@@ -525,8 +547,7 @@ Deno.serve(async (req: Request) => {
           usuario.id,
           categoria.id,
           pares,
-          sinPareja,
-          googleApiKey
+          sinPareja
         );
 
         const timestampFin = new Date().toISOString();
@@ -556,7 +577,6 @@ Deno.serve(async (req: Request) => {
         });
 
         await new Promise((resolve) => setTimeout(resolve, 100));
-        const tempFiles = [];
         for await (const entry of Deno.readDir('/tmp')) {
           if (entry.isFile) {
             const filePath = `/tmp/${entry.name}`;
