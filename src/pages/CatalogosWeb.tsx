@@ -439,8 +439,12 @@ export default function CatalogosWeb() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={showInsurerModal} onOpenChange={setShowInsurerModal}>
-        <DialogContent className="max-w-xl">
+      <Dialog open={showInsurerModal} onOpenChange={(open) => {
+        if (!uploading) {
+          setShowInsurerModal(open);
+        }
+      }}>
+        <DialogContent className="max-w-xl" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               {editingInsurer ? 'Editar Aseguradora' : 'Nueva Aseguradora'}
@@ -460,17 +464,23 @@ export default function CatalogosWeb() {
 
             <div>
               <Label htmlFor="insurer-logo">Logo *</Label>
-              <Input
+              <input
                 id="insurer-logo"
                 type="file"
                 accept="image/*"
+                className="w-full px-3 py-2 border rounded-md text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 onChange={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setLogoFile(e.target.files?.[0] || null);
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setLogoFile(file);
+                  }
                 }}
-                onClick={(e) => e.stopPropagation()}
               />
+              {logoFile && (
+                <div className="mt-2 p-2 border rounded bg-green-50 text-green-700 text-sm">
+                  Archivo seleccionado: {logoFile.name}
+                </div>
+              )}
               {insurerForm.logo_url && !logoFile && (
                 <div className="mt-2 p-2 border rounded bg-gray-50">
                   <img
