@@ -361,17 +361,12 @@
             renderLessons();
             updateProgress(completed, total, `Migrando: ${lesson.titulo}`);
 
-            const supabase = initSupabase();
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-              throw new Error('No hay sesión activa. Por favor inicia sesión.');
-            }
-
             const response = await fetch(`${SUPABASE_URL}/functions/v1/migrate-video-to-storage`, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${session.access_token}`,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
               },
               body: JSON.stringify({
                 lessonId: lesson.id,
