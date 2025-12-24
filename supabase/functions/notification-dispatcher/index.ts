@@ -255,6 +255,7 @@ async function processInAppNotification(
       tipo: 'info',
       modulo: job.payload.modulo || event.module || 'Sistema',
       accion_url: accionUrl,
+      url: accionUrl, // Mantener compatibilidad con campo legacy
       leida: false,
       prioridad: 'normal'
     })
