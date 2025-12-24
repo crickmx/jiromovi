@@ -57,23 +57,26 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
     const { data: comisiones } = await supabase
       .from('commission_details')
       .select('*')
-      .eq('usuario_id', userId)
+      .eq('movi_user_id', userId)
       .order('created_at', { ascending: false })
       .limit(10);
 
     if (comisiones && comisiones.length > 0) {
-      const total = comisiones.reduce((sum: number, c: any) => sum + (c.comision_neta || 0), 0);
+      const total = comisiones.reduce((sum: number, c: any) => sum + (c.commission_neta || 0), 0);
       context.comisiones = {
         total_ultimas: total,
         cantidad_registros: comisiones.length,
         detalle: comisiones.map((c: any) => ({
           cliente: c.nombre_asegurado,
-          monto: c.comision_neta,
+          aseguradora: c.aseguradora,
+          ramo: c.ramo,
+          poliza: c.poliza,
+          monto: c.commission_neta,
           fecha: c.created_at
         }))
       };
     } else {
-      context.comisiones = { mensaje: 'No se encontraron comisiones registradas' };
+      context.comisiones = { mensaje: 'No se encontraron comisiones registradas para tu usuario' };
     }
   }
 
@@ -81,22 +84,25 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
     const { data: produccion } = await supabase
       .from('production_records')
       .select('*')
-      .eq('usuario_id', userId)
+      .eq('movi_user_id', userId)
       .order('fecha_emision', { ascending: false })
       .limit(10);
 
     if (produccion && produccion.length > 0) {
+      const totalPrima = produccion.reduce((sum: number, p: any) => sum + (p.prima_total || 0), 0);
       context.produccion = {
         total_polizas: produccion.length,
+        prima_total: totalPrima,
         detalle: produccion.map((p: any) => ({
           cliente: p.nombre_cliente,
           concepto: p.concepto,
+          aseguradora: p.aseguradora,
           prima: p.prima_total,
           fecha: p.fecha_emision
         }))
       };
     } else {
-      context.produccion = { mensaje: 'No se encontraron registros de producción' };
+      context.produccion = { mensaje: 'No se encontraron registros de producción para tu usuario' };
     }
   }
 
