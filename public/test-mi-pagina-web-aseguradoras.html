@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico - Mi Página Web Aseguradoras</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; margin-bottom: 10px; }
+    h2 { color: #666; margin-top: 30px; }
+    .status { padding: 15px; margin: 15px 0; border-radius: 6px; }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 10px 10px 0;
+    }
+    button:hover { background: #45a049; }
+    .insurer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .insurer-card {
+      background: #f9f9f9;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+    .insurer-card.loaded {
+      border-color: #4CAF50;
+    }
+    .insurer-card.missing {
+      border-color: #f44336;
+      opacity: 0.5;
+    }
+    .insurer-logo {
+      width: 100%;
+      height: 80px;
+      object-fit: contain;
+      margin-bottom: 10px;
+      background: white;
+      padding: 5px;
+      border-radius: 4px;
+    }
+    .insurer-name {
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    .insurer-meta {
+      font-size: 12px;
+      color: #666;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    .count {
+      font-size: 24px;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+    .count.warning {
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Diagnóstico: Mi Página Web - Aseguradoras</h1>
+    <p>Verifica qué aseguradoras se cargan desde Catálogos Web</p>
+
+    <button onclick="runTest()">Ejecutar Diagnóstico Completo</button>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const supabaseUrl = 'https://zctgzhnzhhvvibegkwhl.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjdGd6aG56aGh2dmliZWdrd2hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NDU4MzIsImV4cCI6MjA0NTEyMTgzMn0.qpG1NI1pgopkkpgQfJdN_9dLlArzc9qdKhqh1p5IAfk';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    // Lista esperada de aseguradoras según tu última actualización
+    const expectedInsurers = [
+      'GNP Seguros',
+      'ANA Seguros',
+      'Chubb',
+      'Bupa',
+      'BX+',
+      'Chubb Seguros',
+      'Afirme Seguros',
+      'Inbursa',
+      'Mapfre',
+      'Qualitas',
+      'Allianz',
+      'Seguros Atlas',
+      'Zurich'
+    ];
+
+    async function runTest() {
+      const results = document.getElementById('results');
+      results.innerHTML = '<div class="status info">Ejecutando diagnóstico...</div>';
+
+      try {
+        // 1. Verificar sesión
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError || !session) {
+          results.innerHTML = '<div class="status error">No hay sesión activa. Por favor inicia sesión primero.</div>';
+          return;
+        }
+
+        let html = '<h2>Resultados del Diagnóstico</h2>';
+
+        // 2. Probar query 1: Todas las aseguradoras (sin filtro)
+        const { data: allInsurers, error: allError } = await supabase
+          .from('web_page_insurers')
+          .select('*')
+          .order('display_order');
+
+        if (allError) {
+          html += `<div class="status error">
+            <strong>Error al cargar todas las aseguradoras:</strong><br>
+            ${allError.message}
+          </div>`;
+        } else {
+          html += `<div class="status success">
+            <strong>✓ Query 1 - Todas las aseguradoras:</strong><br>
+            <span class="count">${allInsurers.length}</span> aseguradoras encontradas
+          </div>`;
+        }
+
+        // 3. Probar query 2: Solo aseguradoras activas (como en Mi Página Web)
+        const { data: activeInsurers, error: activeError } = await supabase
+          .from('web_page_insurers')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order');
+
+        if (activeError) {
+          html += `<div class="status error">
+            <strong>Error al cargar aseguradoras activas:</strong><br>
+            ${activeError.message}
+          </div>`;
+        } else {
+          const isComplete = activeInsurers.length === expectedInsurers.length;
+          html += `<div class="status ${isComplete ? 'success' : 'warning'}">
+            <strong>${isComplete ? '✓' : '⚠'} Query 2 - Aseguradoras activas (getActiveInsurers):</strong><br>
+            <span class="count ${isComplete ? '' : 'warning'}">${activeInsurers.length}</span> de ${expectedInsurers.length} esperadas
+          </div>`;
+
+          if (!isComplete) {
+            html += '<div class="status warning">';
+            html += '<strong>⚠ Aseguradoras faltantes:</strong><br>';
+            const loadedNames = activeInsurers.map(i => i.name);
+            const missing = expectedInsurers.filter(name => !loadedNames.includes(name));
+            html += missing.map(name => `- ${name}`).join('<br>');
+            html += '</div>';
+          }
+        }
+
+        // 4. Mostrar comparación visual
+        html += '<h2>Comparación Visual</h2>';
+        html += '<div class="insurer-grid">';
+
+        expectedInsurers.forEach(expectedName => {
+          const insurer = activeInsurers?.find(i => i.name === expectedName);
+          const isLoaded = !!insurer;
+
+          html += `
+            <div class="insurer-card ${isLoaded ? 'loaded' : 'missing'}">
+              ${isLoaded
+                ? `<img src="${insurer.logo_url}" alt="${insurer.name}" class="insurer-logo" onerror="this.style.display='none'">`
+                : `<div class="insurer-logo" style="background: #f5f5f5; display: flex; align-items: center; justify-content: center; color: #999;">Sin logo</div>`
+              }
+              <div class="insurer-name">${expectedName}</div>
+              <div class="insurer-meta">
+                ${isLoaded
+                  ? `✓ Cargada<br>Orden: ${insurer.display_order}<br>Activa: ${insurer.is_active ? 'Sí' : 'No'}`
+                  : '✗ NO ENCONTRADA'
+                }
+              </div>
+            </div>
+          `;
+        });
+
+        html += '</div>';
+
+        // 5. Detalles técnicos
+        html += '<h2>Detalles Técnicos</h2>';
+
+        if (activeInsurers) {
+          html += '<h3>Aseguradoras en Base de Datos (activas):</h3>';
+          html += '<pre>' + JSON.stringify(activeInsurers.map(i => ({
+            name: i.name,
+            display_order: i.display_order,
+            is_active: i.is_active,
+            logo_url: i.logo_url
+          })), null, 2) + '</pre>';
+        }
+
+        // 6. Verificar estado de cada aseguradora esperada
+        html += '<h3>Estado Individual:</h3>';
+        html += '<pre>';
+        for (const name of expectedInsurers) {
+          const found = allInsurers?.find(i => i.name === name);
+          if (found) {
+            html += `✓ ${name}: Existe, is_active=${found.is_active}\n`;
+          } else {
+            html += `✗ ${name}: NO EXISTE en la base de datos\n`;
+          }
+        }
+        html += '</pre>';
+
+        // 7. Recomendaciones
+        if (activeInsurers && activeInsurers.length < expectedInsurers.length) {
+          html += '<div class="status warning">';
+          html += '<strong>Recomendaciones:</strong><br>';
+          html += '1. Verifica que las aseguradoras estén marcadas como activas (is_active = true)<br>';
+          html += '2. Verifica las políticas RLS de la tabla web_page_insurers<br>';
+          html += '3. Ejecuta la migración que agrega las aseguradoras faltantes';
+          html += '</div>';
+        } else if (activeInsurers && activeInsurers.length === expectedInsurers.length) {
+          html += '<div class="status success">';
+          html += '<strong>✓ Todo correcto!</strong><br>';
+          html += 'Todas las aseguradoras se están cargando correctamente en "Mi Página Web".';
+          html += '</div>';
+        }
+
+        results.innerHTML = html;
+
+      } catch (error) {
+        results.innerHTML += `<div class="status error">Error inesperado: ${error.message}</div>`;
+      }
+    }
+
+    // Auto-ejecutar al cargar
+    window.addEventListener('load', () => {
+      runTest();
+    });
+  </script>
+</body>
+</html>
