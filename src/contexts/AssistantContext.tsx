@@ -147,11 +147,10 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     async (text: string, explicitIntent?: IntentCode) => {
       if (!user?.id) return;
 
+      let activeConversationId = conversationId;
       setIsSendingMessage(true);
 
       try {
-        let activeConversationId = conversationId;
-
         if (!activeConversationId) {
           const conversation = await getOrCreateConversation(user.id, currentModule);
           if (!conversation) {
@@ -192,18 +191,20 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Error sending message:', error);
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `temp-error-${Date.now()}`,
-            conversacion_id: activeConversationId!,
-            rol: 'assistant',
-            contenido: 'Lo siento, ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.',
-            respuesta_estructurada_json: null,
-            tiene_acciones: false,
-            created_at: new Date().toISOString(),
-          },
-        ]);
+        if (activeConversationId) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `temp-error-${Date.now()}`,
+              conversacion_id: activeConversationId,
+              rol: 'assistant',
+              contenido: 'Lo siento, ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.',
+              respuesta_estructurada_json: null,
+              tiene_acciones: false,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+        }
       } finally {
         setIsSendingMessage(false);
       }
