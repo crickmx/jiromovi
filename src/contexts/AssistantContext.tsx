@@ -193,8 +193,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             : `📎 Archivos adjuntos:\n${filesList}`;
         }
 
-        const optimisticMessage: AssistantMessage = {
-          id: `temp-${Date.now()}`,
+        const optimisticUserMessage: AssistantMessage = {
+          id: `temp-user-${Date.now()}`,
           conversacion_id: activeConversationId,
           rol: 'user',
           contenido: messageText,
@@ -203,7 +203,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           created_at: new Date().toISOString(),
         };
 
-        setMessages((prev) => [...prev, optimisticMessage]);
+        setMessages((prev) => [...prev, optimisticUserMessage]);
 
         const params = extractRouteParams(location.pathname);
 
@@ -217,7 +217,27 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (response) {
-          await loadMessages(activeConversationId);
+          setMessages((prev) => [
+            ...prev.filter(m => !m.id.startsWith('temp-user-')),
+            {
+              id: `msg-user-${Date.now()}`,
+              conversacion_id: activeConversationId,
+              rol: 'user',
+              contenido: messageText,
+              respuesta_estructurada_json: null,
+              tiene_acciones: false,
+              created_at: new Date().toISOString(),
+            },
+            {
+              id: response.id || `msg-assistant-${Date.now()}`,
+              conversacion_id: activeConversationId,
+              rol: 'assistant',
+              contenido: response.contenido || '',
+              respuesta_estructurada_json: response.respuesta_estructurada_json,
+              tiene_acciones: response.tiene_acciones || false,
+              created_at: response.created_at || new Date().toISOString(),
+            }
+          ]);
           await loadConversationsList();
         } else {
           throw new Error('No se recibió respuesta del asistente');

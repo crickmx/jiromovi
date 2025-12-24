@@ -141,7 +141,8 @@ export function AssistantModal() {
               variant="outline"
               size="sm"
               onClick={startNewConversation}
-              disabled={isEmpty}
+              disabled={isSendingMessage}
+              title="Nueva conversación"
             >
               <Plus className="h-4 w-4" />
             </Button>

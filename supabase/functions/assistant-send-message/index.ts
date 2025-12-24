@@ -8,18 +8,47 @@ const corsHeaders = {
 
 async function extractTextFromPDF(buffer: Uint8Array): Promise<string> {
   try {
-    const pdfParse = await import('npm:pdf-parse@1.1.1');
+    console.log('🔍 Attempting to extract PDF text...');
 
-    const data = await pdfParse.default(buffer);
+    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@3.11.174/build/pdf.min.mjs');
 
-    if (data.text && data.text.trim().length > 0) {
-      return `📄 Contenido del PDF (${data.numpages} página${data.numpages !== 1 ? 's' : ''}):\n\n${data.text.trim()}`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+
+    const loadingTask = pdfjsLib.getDocument({ data: buffer });
+    const pdf = await loadingTask.promise;
+
+    console.log(`📄 PDF loaded: ${pdf.numPages} páginas`);
+
+    let fullText = '';
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      try {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+
+        const pageText = textContent.items
+          .map((item: any) => item.str || '')
+          .join(' ');
+
+        if (pageText.trim()) {
+          fullText += `\n--- Página ${pageNum} ---\n${pageText.trim()}\n`;
+        }
+      } catch (pageError) {
+        console.error(`Error en página ${pageNum}:`, pageError);
+        fullText += `\n--- Página ${pageNum}: Error al extraer texto ---\n`;
+      }
+    }
+
+    if (fullText.trim().length > 0) {
+      console.log('✅ PDF text extracted successfully');
+      return `📄 Contenido del PDF (${pdf.numPages} página${pdf.numPages !== 1 ? 's' : ''}):\n${fullText.trim()}`;
     } else {
+      console.log('⚠️ PDF has no extractable text');
       return '[PDF sin contenido de texto extraíble - puede ser un PDF de imagen o protegido]';
     }
   } catch (error) {
-    console.error('Error parsing PDF:', error);
-    return '[Error al extraer texto del PDF - el archivo puede estar protegido, corrupto, o ser un PDF de imágenes]';
+    console.error('❌ Error parsing PDF:', error);
+    return '[Error al extraer texto del PDF. El archivo puede estar protegido, corrupto, o ser un PDF escaneado sin texto. Por favor, describe el contenido manualmente.]';
   }
 }
 
