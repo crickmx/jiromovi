@@ -50,7 +50,8 @@ export default function MapeoVendedores() {
     (m) =>
       m.source_value.toLowerCase().includes(busqueda.toLowerCase()) ||
       m.usuarios?.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()) ||
-      m.usuarios?.email.toLowerCase().includes(busqueda.toLowerCase())
+      m.usuarios?.email_laboral?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      m.usuarios?.email_personal?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
   const handleMarkUnsaved = (id: string) => {
@@ -432,7 +433,9 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
             </div>
             <div>
               <p className="font-medium text-gray-900">{mapeo.usuarios?.nombre_completo}</p>
-              <p className="text-sm text-gray-500">{mapeo.usuarios?.email}</p>
+              <p className="text-sm text-gray-500">
+                {mapeo.usuarios?.email_laboral || mapeo.usuarios?.email_personal || 'Sin email'}
+              </p>
             </div>
           </div>
         )}

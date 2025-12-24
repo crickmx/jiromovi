@@ -36,7 +36,7 @@ export default function MapeoVendedoresAdmin() {
     try {
       const { data, error } = await supabase
         .from('vendor_mappings')
-        .select('*, usuarios(nombre_completo, email)')
+        .select('*, usuarios(nombre_completo, email_laboral, email_personal)')
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -98,7 +98,8 @@ export default function MapeoVendedoresAdmin() {
       searchQuery === '' ||
       mapping.source_value.toLowerCase().includes(searchQuery.toLowerCase()) ||
       mapping.usuarios?.nombre_completo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mapping.usuarios?.email.toLowerCase().includes(searchQuery.toLowerCase());
+      mapping.usuarios?.email_laboral?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      mapping.usuarios?.email_personal?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesType = filterType === 'all' || mapping.source_type === filterType;
     const matchesStatus = filterStatus === 'all' || mapping.status === filterStatus;
@@ -278,7 +279,9 @@ export default function MapeoVendedoresAdmin() {
                           <p className="text-sm font-medium text-gray-900">
                             {mapping.usuarios.nombre_completo}
                           </p>
-                          <p className="text-xs text-gray-600">{mapping.usuarios.email}</p>
+                          <p className="text-xs text-gray-600">
+                            {mapping.usuarios.email_laboral || mapping.usuarios.email_personal || 'Sin email'}
+                          </p>
                         </div>
                       ) : (
                         <span className="text-sm text-gray-400">Usuario no encontrado</span>
