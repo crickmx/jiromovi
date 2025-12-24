@@ -141,7 +141,7 @@ export function PerfilUsuario() {
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${id}-${Date.now()}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
+    const filePath = fileName; // No incluir 'avatars/' ya que es el nombre del bucket
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
