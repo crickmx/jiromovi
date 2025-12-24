@@ -127,12 +127,18 @@
     </form>
 
     <div class="quick-login">
-      <h3>🚀 Acceso Rápido</h3>
-      <button class="quick-btn" onclick="quickLogin('victor.guzman@example.com', 'pass123')">
-        Victor Guzmán (Gerente)
+      <h3>🚀 Usuarios Disponibles (usa tu contraseña)</h3>
+      <button class="quick-btn" onclick="quickLogin('cdcjimenez@gmail.com')">
+        Christofer Prueba (Agente)
       </button>
-      <button class="quick-btn" onclick="quickLogin('admin@jiro.com', 'admin123')">
-        Administrador
+      <button class="quick-btn" onclick="quickLogin('ccjimenez@jiro.com.mx')">
+        Christofer Cruz (Administrador)
+      </button>
+      <button class="quick-btn" onclick="quickLogin('djimenez@jiro.mx')">
+        Diego Jiménez (Agente)
+      </button>
+      <button class="quick-btn" onclick="quickLogin('zacatecas@jiro.mx')">
+        Pablo Jiménez (Agente)
       </button>
     </div>
 
@@ -145,8 +151,8 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    const supabaseUrl = 'https://pxrkvtaixkaglnkrhbkg.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4cmt2dGFpeGthZ2xua3JoYmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk2MzA4OTksImV4cCI6MjA0NTIwNjg5OX0.xVtchxstuYe18vJDcNvVS5Q-eKOg8CqK6pzPqDYOiWA';
+    const supabaseUrl = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjA5OTAsImV4cCI6MjA3NzI5Njk5MH0.bIlGsgeAC6oxGUalODg0C5-l6KaJip0wWa9IbQ7MjTQ';
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Verificar si ya hay sesión
@@ -188,10 +194,9 @@
       }
     });
 
-    window.quickLogin = async function(email, password) {
+    window.quickLogin = function(email) {
       document.getElementById('email').value = email;
-      document.getElementById('password').value = password;
-      document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+      document.getElementById('password').focus();
     };
 
     function showMessage(text, type) {
