@@ -84,21 +84,21 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
     const { data: produccion } = await supabase
       .from('production_records')
       .select('*')
-      .eq('movi_user_id', userId)
-      .order('fecha_emision', { ascending: false })
+      .eq('user_id', userId)
+      .order('fecha', { ascending: false })
       .limit(10);
 
     if (produccion && produccion.length > 0) {
-      const totalPrima = produccion.reduce((sum: number, p: any) => sum + (p.prima_total || 0), 0);
+      const totalPrima = produccion.reduce((sum: number, p: any) => sum + (p.importe_pesos || 0), 0);
       context.produccion = {
-        total_polizas: produccion.length,
-        prima_total: totalPrima,
+        total_registros: produccion.length,
+        importe_total: totalPrima,
         detalle: produccion.map((p: any) => ({
-          cliente: p.nombre_cliente,
-          concepto: p.concepto,
-          aseguradora: p.aseguradora,
-          prima: p.prima_total,
-          fecha: p.fecha_emision
+          agente: p.agente_nombre,
+          aseguradora: p.aseguradora_nombre,
+          ramo: p.ramo_nombre,
+          importe: p.importe_pesos,
+          fecha: p.fecha
         }))
       };
     } else {
