@@ -37,23 +37,30 @@ Deno.serve(async (req: Request) => {
       throw new Error('Could not extract video file ID from URL');
     }
 
-    // Convert to direct download URL
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${videoFileId}`;
+    // Convert to direct download URL with confirm parameter
+    const downloadUrl = `https://drive.google.com/uc?export=download&id=${videoFileId}&confirm=t`;
 
     // Download video from Google Drive
     console.log(`[migrate-video] Downloading video ${videoFileId}`);
-    const videoResponse = await fetch(downloadUrl);
-    
+    const videoResponse = await fetch(downloadUrl, {
+      redirect: 'follow'
+    });
+
     if (!videoResponse.ok) {
       throw new Error(`Failed to download video: ${videoResponse.statusText}`);
+    }
+
+    // Check if we received HTML instead of the video
+    const contentType = videoResponse.headers.get('content-type') || 'video/mp4';
+    console.log(`[migrate-video] Content-Type: ${contentType}`);
+
+    if (contentType.includes('text/html')) {
+      throw new Error('Google Drive returned HTML (confirmation page). File may be too large or not publicly accessible.');
     }
 
     const videoBlob = await videoResponse.blob();
     const videoSize = videoBlob.size;
     console.log(`[migrate-video] Downloaded video: ${(videoSize / 1024 / 1024).toFixed(2)} MB`);
-
-    // Determine file extension from content type
-    const contentType = videoResponse.headers.get('content-type') || 'video/mp4';
     const extension = contentType.includes('quicktime') ? 'mov' : 'mp4';
     
     // Upload video to Supabase Storage
@@ -84,30 +91,38 @@ Deno.serve(async (req: Request) => {
     if (thumbnailUrl) {
       const thumbnailFileId = extractFileId(thumbnailUrl);
       if (thumbnailFileId) {
-        const thumbnailDownloadUrl = `https://drive.google.com/uc?export=download&id=${thumbnailFileId}`;
+        const thumbnailDownloadUrl = `https://drive.google.com/uc?export=download&id=${thumbnailFileId}&confirm=t`;
         console.log(`[migrate-video] Downloading thumbnail ${thumbnailFileId}`);
-        const thumbnailResponse = await fetch(thumbnailDownloadUrl);
-        
-        if (thumbnailResponse.ok) {
-          const thumbnailBlob = await thumbnailResponse.blob();
-          const thumbnailContentType = thumbnailResponse.headers.get('content-type') || 'image/jpeg';
-          const thumbnailExt = thumbnailContentType.includes('png') ? 'png' : 'jpg';
-          const thumbnailPath = `lessons/${lessonId}.${thumbnailExt}`;
-          
-          console.log(`[migrate-video] Uploading thumbnail to ${thumbnailPath}`);
-          const { error: thumbnailUploadError } = await supabase.storage
-            .from('thumbnails-seguros-education')
-            .upload(thumbnailPath, thumbnailBlob, {
-              contentType: thumbnailContentType,
-              upsert: true,
-            });
+        const thumbnailResponse = await fetch(thumbnailDownloadUrl, {
+          redirect: 'follow'
+        });
 
-          if (!thumbnailUploadError) {
-            const { data: thumbnailData } = supabase.storage
+        if (thumbnailResponse.ok) {
+          const thumbnailContentType = thumbnailResponse.headers.get('content-type') || 'image/jpeg';
+
+          // Skip if HTML was returned
+          if (thumbnailContentType.includes('text/html')) {
+            console.log(`[migrate-video] Skipping thumbnail (HTML returned)`);
+          } else {
+            const thumbnailBlob = await thumbnailResponse.blob();
+            const thumbnailExt = thumbnailContentType.includes('png') ? 'png' : 'jpg';
+            const thumbnailPath = `lessons/${lessonId}.${thumbnailExt}`;
+
+            console.log(`[migrate-video] Uploading thumbnail to ${thumbnailPath}`);
+            const { error: thumbnailUploadError } = await supabase.storage
               .from('thumbnails-seguros-education')
-              .getPublicUrl(thumbnailPath);
-            newThumbnailUrl = thumbnailData.publicUrl;
-            console.log(`[migrate-video] Thumbnail uploaded: ${newThumbnailUrl}`);
+              .upload(thumbnailPath, thumbnailBlob, {
+                contentType: thumbnailContentType,
+                upsert: true,
+              });
+
+            if (!thumbnailUploadError) {
+              const { data: thumbnailData } = supabase.storage
+                .from('thumbnails-seguros-education')
+                .getPublicUrl(thumbnailPath);
+              newThumbnailUrl = thumbnailData.publicUrl;
+              console.log(`[migrate-video] Thumbnail uploaded: ${newThumbnailUrl}`);
+            }
           }
         }
       }
