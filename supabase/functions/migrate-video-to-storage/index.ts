@@ -37,9 +37,12 @@ Deno.serve(async (req: Request) => {
       throw new Error('Could not extract video file ID from URL');
     }
 
+    // Convert to direct download URL
+    const downloadUrl = `https://drive.google.com/uc?export=download&id=${videoFileId}`;
+
     // Download video from Google Drive
     console.log(`[migrate-video] Downloading video ${videoFileId}`);
-    const videoResponse = await fetch(videoUrl);
+    const videoResponse = await fetch(downloadUrl);
     
     if (!videoResponse.ok) {
       throw new Error(`Failed to download video: ${videoResponse.statusText}`);
@@ -81,8 +84,9 @@ Deno.serve(async (req: Request) => {
     if (thumbnailUrl) {
       const thumbnailFileId = extractFileId(thumbnailUrl);
       if (thumbnailFileId) {
+        const thumbnailDownloadUrl = `https://drive.google.com/uc?export=download&id=${thumbnailFileId}`;
         console.log(`[migrate-video] Downloading thumbnail ${thumbnailFileId}`);
-        const thumbnailResponse = await fetch(thumbnailUrl);
+        const thumbnailResponse = await fetch(thumbnailDownloadUrl);
         
         if (thumbnailResponse.ok) {
           const thumbnailBlob = await thumbnailResponse.blob();
