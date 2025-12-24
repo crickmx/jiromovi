@@ -30,8 +30,16 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
       id,
       nombre,
       apellidos,
+      nombre_completo,
       email,
       rol,
+      celular,
+      celular_laboral,
+      puesto,
+      fecha_ingreso,
+      regimen_fiscal,
+      banco,
+      clabe,
       oficinas:oficina_id(nombre)
     `)
     .eq('id', conv.usuario_id)
@@ -49,124 +57,366 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
   };
 }
 
-async function getRelevantData(supabase: any, userId: string, mensaje: string, modulo: string) {
-  const mensajeNorm = mensaje.toLowerCase();
+async function getCompleteUserContext(supabase: any, userId: string) {
   const context: any = {};
 
-  if (mensajeNorm.includes('comision') || mensajeNorm.includes('pago') || mensajeNorm.includes('ultimas comisiones') || mensajeNorm.includes('resumen') || mensajeNorm.includes('cuanto') && modulo === 'comisiones') {
+  const mesActual = new Date().toISOString().substring(0, 7);
+  const hoy = new Date().toISOString().split('T')[0];
+  const en30Dias = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  try {
     const { data: comisiones } = await supabase
       .from('commission_details')
       .select('*')
       .eq('movi_user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(20);
 
     if (comisiones && comisiones.length > 0) {
-      const total = comisiones.reduce((sum: number, c: any) => sum + (c.commission_neta || 0), 0);
+      const totalNeta = comisiones.reduce((sum: number, c: any) => sum + (c.commission_neta || 0), 0);
+      const totalBruta = comisiones.reduce((sum: number, c: any) => sum + (c.commission_bruta || 0), 0);
+
+      const comisionesMes = comisiones.filter((c: any) => c.created_at?.startsWith(mesActual));
+      const totalMes = comisionesMes.reduce((sum: number, c: any) => sum + (c.commission_neta || 0), 0);
+
       context.comisiones = {
-        total_ultimas: total,
-        cantidad_registros: comisiones.length,
-        detalle: comisiones.map((c: any) => ({
+        total_neta_ultimas_20: totalNeta,
+        total_bruta_ultimas_20: totalBruta,
+        total_mes_actual: totalMes,
+        cantidad_mes_actual: comisionesMes.length,
+        cantidad_total: comisiones.length,
+        ultimas_5: comisiones.slice(0, 5).map((c: any) => ({
+          id: c.id,
           cliente: c.nombre_asegurado,
           aseguradora: c.aseguradora,
           ramo: c.ramo,
           poliza: c.poliza,
-          monto: c.commission_neta,
+          monto_neto: c.commission_neta,
+          monto_bruto: c.commission_bruta,
           fecha: c.created_at
         }))
       };
-    } else {
-      context.comisiones = { mensaje: 'No se encontraron comisiones registradas para tu usuario' };
     }
+  } catch (e) {
+    console.error('Error fetching comisiones:', e);
   }
 
-  if (mensajeNorm.includes('produccion') || mensajeNorm.includes('ventas') || mensajeNorm.includes('poliza')) {
+  try {
     const { data: produccion } = await supabase
       .from('production_records')
       .select('*')
       .eq('user_id', userId)
       .order('fecha', { ascending: false })
-      .limit(10);
+      .limit(20);
 
     if (produccion && produccion.length > 0) {
       const totalPrima = produccion.reduce((sum: number, p: any) => sum + (p.importe_pesos || 0), 0);
+      const produccionMes = produccion.filter((p: any) => p.fecha?.startsWith(mesActual));
+      const totalMes = produccionMes.reduce((sum: number, p: any) => sum + (p.importe_pesos || 0), 0);
+
+      const porRamo: Record<string, number> = {};
+      produccionMes.forEach((p: any) => {
+        const ramo = p.ramo_nombre || 'Sin ramo';
+        porRamo[ramo] = (porRamo[ramo] || 0) + (p.importe_pesos || 0);
+      });
+
       context.produccion = {
-        total_registros: produccion.length,
-        importe_total: totalPrima,
-        detalle: produccion.map((p: any) => ({
+        total_ultimas_20: totalPrima,
+        total_mes_actual: totalMes,
+        cantidad_mes_actual: produccionMes.length,
+        por_ramo: porRamo,
+        ultimas_5: produccion.slice(0, 5).map((p: any) => ({
           agente: p.agente_nombre,
           aseguradora: p.aseguradora_nombre,
           ramo: p.ramo_nombre,
+          cliente: p.nombre_cliente,
           importe: p.importe_pesos,
           fecha: p.fecha
         }))
       };
-    } else {
-      context.produccion = { mensaje: 'No se encontraron registros de producción para tu usuario' };
     }
+  } catch (e) {
+    console.error('Error fetching produccion:', e);
   }
 
-  if (mensajeNorm.includes('cafe') || mensajeNorm.includes('tienda') || mensajeNorm.includes('producto') || mensajeNorm.includes('cuanto cuesta') || mensajeNorm.includes('precio') || mensajeNorm.includes('bolsa')) {
-    const { data: productos } = await supabase
-      .from('store_productos')
-      .select('*')
-      .eq('disponible', true);
-
-    if (productos && productos.length > 0) {
-      context.productos_tienda = productos.map((p: any) => ({
-        nombre: p.nombre,
-        precio: p.precio,
-        categoria: p.categoria,
-        descripcion: p.descripcion
-      }));
-    } else {
-      context.productos_tienda = { mensaje: 'No hay productos disponibles en la tienda' };
-    }
-  }
-
-  if (mensajeNorm.includes('cliente') || mensajeNorm.includes('contacto') || modulo === 'crm') {
+  try {
     const { data: contactos } = await supabase
       .from('crm_contactos')
       .select('*')
       .eq('creado_por', userId)
       .order('fecha_creacion', { ascending: false })
-      .limit(10);
+      .limit(15);
 
     if (contactos && contactos.length > 0) {
-      context.contactos = {
+      const porEstatus: Record<string, number> = {};
+      contactos.forEach((c: any) => {
+        porEstatus[c.estatus || 'sin_estatus'] = (porEstatus[c.estatus || 'sin_estatus'] || 0) + 1;
+      });
+
+      context.crm_contactos = {
         total: contactos.length,
-        detalle: contactos.map((c: any) => ({
+        por_estatus: porEstatus,
+        ultimos_5: contactos.slice(0, 5).map((c: any) => ({
+          id: c.id,
           nombre: c.nombre_completo,
           telefono: c.celular,
           email: c.email,
-          estatus: c.estatus
+          estatus: c.estatus,
+          fecha_creacion: c.fecha_creacion
         }))
       };
     }
+  } catch (e) {
+    console.error('Error fetching contactos:', e);
   }
 
-  if (mensajeNorm.includes('tarea') || mensajeNorm.includes('pendiente') || mensajeNorm.includes('hacer')) {
+  try {
+    const { data: cotizacionesCrm } = await supabase
+      .from('crm_cotizaciones')
+      .select('*, crm_contactos(nombre_completo)')
+      .eq('creado_por', userId)
+      .order('fecha_cotizacion', { ascending: false })
+      .limit(10);
+
+    if (cotizacionesCrm && cotizacionesCrm.length > 0) {
+      const totalMonto = cotizacionesCrm.reduce((sum: number, c: any) => sum + (c.monto || 0), 0);
+
+      context.crm_cotizaciones = {
+        total: cotizacionesCrm.length,
+        monto_total: totalMonto,
+        ultimas_5: cotizacionesCrm.slice(0, 5).map((c: any) => ({
+          cliente: c.crm_contactos?.nombre_completo,
+          aseguradora: c.aseguradora,
+          ramo: c.ramo,
+          monto: c.monto,
+          estatus: c.estatus,
+          fecha: c.fecha_cotizacion
+        }))
+      };
+    }
+  } catch (e) {
+    console.error('Error fetching cotizaciones CRM:', e);
+  }
+
+  try {
     const { data: tareas } = await supabase
       .from('crm_tareas')
       .select('*')
       .eq('creado_por', userId)
       .eq('completada', false)
       .order('fecha_vencimiento', { ascending: true })
-      .limit(5);
+      .limit(10);
 
     if (tareas && tareas.length > 0) {
-      context.tareas_pendientes = {
-        total: tareas.length,
-        detalle: tareas.map((t: any) => ({
+      const tareasHoy = tareas.filter((t: any) => t.fecha_vencimiento === hoy);
+      const tareasVencidas = tareas.filter((t: any) => t.fecha_vencimiento < hoy);
+      const tareasPorPrioridad: Record<string, number> = {};
+
+      tareas.forEach((t: any) => {
+        tareasPorPrioridad[t.prioridad || 'media'] = (tareasPorPrioridad[t.prioridad || 'media'] || 0) + 1;
+      });
+
+      context.crm_tareas = {
+        total_pendientes: tareas.length,
+        hoy: tareasHoy.length,
+        vencidas: tareasVencidas.length,
+        por_prioridad: tareasPorPrioridad,
+        proximas_5: tareas.slice(0, 5).map((t: any) => ({
+          id: t.id,
           descripcion: t.descripcion,
-          tipo_actividad: t.tipo_actividad,
-          fecha_vencimiento: t.fecha_vencimiento,
-          prioridad: t.prioridad
+          tipo: t.tipo_actividad,
+          vencimiento: t.fecha_vencimiento,
+          prioridad: t.prioridad,
+          contacto_nombre: t.contacto_nombre
         }))
       };
-    } else {
-      context.tareas_pendientes = { mensaje: 'No tienes tareas pendientes' };
     }
+  } catch (e) {
+    console.error('Error fetching tareas:', e);
+  }
+
+  try {
+    const { data: polizas } = await supabase
+      .from('crm_polizas')
+      .select('*, crm_contactos(nombre_completo)')
+      .eq('creado_por', userId)
+      .order('fecha_vencimiento', { ascending: true })
+      .limit(15);
+
+    if (polizas && polizas.length > 0) {
+      const renovacionesProximas = polizas.filter((p: any) =>
+        p.fecha_vencimiento && p.fecha_vencimiento <= en30Dias && p.fecha_vencimiento >= hoy
+      );
+
+      context.crm_polizas = {
+        total: polizas.length,
+        renovaciones_proximas_30_dias: renovacionesProximas.length,
+        proximas_renovaciones: renovacionesProximas.slice(0, 5).map((p: any) => ({
+          numero: p.numero_poliza,
+          cliente: p.crm_contactos?.nombre_completo,
+          aseguradora: p.aseguradora,
+          ramo: p.ramo,
+          vencimiento: p.fecha_vencimiento,
+          suma_asegurada: p.suma_asegurada
+        }))
+      };
+    }
+  } catch (e) {
+    console.error('Error fetching polizas:', e);
+  }
+
+  try {
+    const { data: tickets } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('creado_por', userId)
+      .neq('estado', 'cerrado')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (tickets && tickets.length > 0) {
+      const porTipo: Record<string, number> = {};
+      const porEstado: Record<string, number> = {};
+
+      tickets.forEach((t: any) => {
+        porTipo[t.tipo || 'general'] = (porTipo[t.tipo || 'general'] || 0) + 1;
+        porEstado[t.estado || 'nuevo'] = (porEstado[t.estado || 'nuevo'] || 0) + 1;
+      });
+
+      context.tickets_tramites = {
+        total_abiertos: tickets.length,
+        por_tipo: porTipo,
+        por_estado: porEstado,
+        ultimos_5: tickets.slice(0, 5).map((t: any) => ({
+          id: t.id,
+          titulo: t.titulo,
+          tipo: t.tipo,
+          estado: t.estado,
+          prioridad: t.prioridad,
+          fecha_creacion: t.created_at
+        }))
+      };
+    }
+  } catch (e) {
+    console.error('Error fetching tickets:', e);
+  }
+
+  try {
+    const { data: pedidos } = await supabase
+      .from('store_pedidos')
+      .select('*')
+      .eq('usuario_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (pedidos && pedidos.length > 0) {
+      const totalGastado = pedidos.reduce((sum: number, p: any) => sum + (p.total || 0), 0);
+
+      context.store_pedidos = {
+        total_pedidos: pedidos.length,
+        total_gastado: totalGastado,
+        ultimo_pedido: pedidos[0] ? {
+          id: pedidos[0].id,
+          total: pedidos[0].total,
+          estado: pedidos[0].estado,
+          fecha: pedidos[0].created_at
+        } : null
+      };
+    }
+  } catch (e) {
+    console.error('Error fetching pedidos:', e);
+  }
+
+  try {
+    const { data: cotizaciones } = await supabase
+      .from('gmm_quotations')
+      .select('*')
+      .eq('usuario_id', userId)
+      .eq('activa', true)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (cotizaciones && cotizaciones.length > 0) {
+      context.cotizaciones_gmm = {
+        total: cotizaciones.length,
+        ultimas_3: cotizaciones.slice(0, 3).map((c: any) => ({
+          folio: c.folio,
+          aseguradora: c.aseguradora,
+          plan: c.plan,
+          suma_asegurada: c.suma_asegurada,
+          prima_anual: c.prima_anual,
+          fecha: c.created_at
+        }))
+      };
+    }
+  } catch (e) {
+    console.error('Error fetching cotizaciones GMM:', e);
+  }
+
+  try {
+    const { data: reservas } = await supabase
+      .from('reservas_espacio')
+      .select('*, espacios_jiro(nombre)')
+      .eq('creado_por', userId)
+      .gte('fecha_inicio', hoy)
+      .order('fecha_inicio', { ascending: true })
+      .limit(5);
+
+    if (reservas && reservas.length > 0) {
+      context.reservas_espacios = {
+        total: reservas.length,
+        proximas: reservas.map((r: any) => ({
+          espacio: r.espacios_jiro?.nombre,
+          fecha: r.fecha_inicio,
+          hora_inicio: r.hora_inicio,
+          hora_fin: r.hora_fin,
+          estado: r.estado
+        }))
+      };
+    }
+  } catch (e) {
+    console.error('Error fetching reservas:', e);
+  }
+
+  try {
+    const { data: notificaciones } = await supabase
+      .from('notificaciones_internas')
+      .select('*')
+      .eq('usuario_id', userId)
+      .eq('leida', false)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (notificaciones && notificaciones.length > 0) {
+      context.notificaciones_pendientes = {
+        total: notificaciones.length,
+        ultimas: notificaciones.map((n: any) => ({
+          titulo: n.titulo,
+          mensaje: n.mensaje,
+          tipo: n.tipo,
+          fecha: n.created_at
+        }))
+      };
+    }
+  } catch (e) {
+    console.error('Error fetching notificaciones:', e);
+  }
+
+  try {
+    const { data: productos } = await supabase
+      .from('store_productos')
+      .select('nombre, precio, categoria, descripcion')
+      .eq('disponible', true)
+      .order('nombre', { ascending: true });
+
+    if (productos && productos.length > 0) {
+      context.productos_tienda = {
+        total: productos.length,
+        productos: productos
+      };
+    }
+  } catch (e) {
+    console.error('Error fetching productos:', e);
   }
 
   return context;
@@ -191,24 +441,38 @@ Deno.serve(async (req: Request) => {
 
     if (openaiApiKey) {
       const userContext = await getUserContext(supabase, conversacion_id);
-      const relevantData = userContext ? await getRelevantData(supabase, userContext.id, mensaje, modulo) : {};
+      const completeContext = userContext ? await getCompleteUserContext(supabase, userContext.id) : {};
 
-      const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual para agentes de seguros.
+      const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual inteligente para agentes de seguros.
 
 PERSONALIDAD:
 - Profesional pero cercano y amigable
 - Claro, conciso y orientado a la acción
 - Hablas en español mexicano usando "tú"
+- Proactivo: ofrece información relevante incluso si no la piden directamente
+
+CAPACIDADES:
+Tienes acceso COMPLETO a todos los datos del usuario incluyendo:
+- Comisiones (últimas 20, totales, por mes)
+- Producción (últimas 20, totales por mes, desglose por ramo)
+- CRM (contactos, tareas, pólizas, cotizaciones)
+- Trámites/Tickets abiertos
+- Pedidos de la tienda
+- Cotizaciones GMM
+- Reservas de espacios
+- Notificaciones pendientes
+- Productos disponibles en tienda
 
 REGLAS ESTRICTAS:
-1. USA los datos reales que te proporciono en el contexto
-2. Si tienes datos reales, responde directamente con esa información
-3. Si NO tienes datos, guía al usuario a dónde puede encontrarlos
-4. Responde SOLO con JSON válido, sin texto adicional, sin markdown, sin bloques de código
-5. NO uses \`\`\`json, responde únicamente el JSON puro
-6. Sé conversacional y útil
-7. Incluye acciones concretas que el usuario pueda hacer ahora
-8. USA ÚNICAMENTE las rutas de la lista RUTAS DISPONIBLES (abajo)
+1. ANALIZA toda la información disponible en el CONTEXTO COMPLETO DE DATOS
+2. Responde con DATOS REALES y específicos (números, nombres, fechas exactas)
+3. Si tienes datos, responde directamente - NO digas "no tengo acceso" si los datos están en el contexto
+4. Si NO tienes los datos exactos que busca el usuario, guíalo a la sección correcta
+5. Sé PROACTIVO: si ves algo relevante en los datos (como tareas vencidas, renovaciones próximas, etc.), menciónalo
+6. Responde SOLO con JSON válido, sin texto adicional, sin markdown, sin bloques de código
+7. NO uses \`\`\`json, responde únicamente el JSON puro
+8. Incluye acciones concretas y relevantes
+9. USA ÚNICAMENTE las rutas de la lista RUTAS DISPONIBLES (abajo)
 
 RUTAS DISPONIBLES EN LA PLATAFORMA:
 - /dashboard - Panel principal
@@ -241,25 +505,48 @@ Siempre responde con JSON con esta estructura:
 ICONOS DISPONIBLES (Lucide React):
 Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar, GraduationCap, Calculator, BookOpen, Bell, Settings`;
 
-      let userPrompt = `DATOS DEL USUARIO:
-- Nombre: ${userContext?.nombre} ${userContext?.apellidos}
+      const { data: fullUserProfile } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', userContext.id)
+        .single();
+
+      let userPrompt = `INFORMACIÓN PERSONAL DEL USUARIO:
+- Nombre completo: ${userContext?.nombre} ${userContext?.apellidos}
 - Email: ${userContext?.email}
 - Rol: ${userContext?.rol}
-${userContext?.oficina_nombre ? `- Oficina: ${userContext.oficina_nombre}` : ''}
+- Oficina: ${userContext?.oficina_nombre || 'No asignada'}
+- Teléfono: ${fullUserProfile?.celular || 'No registrado'}
+- Puesto: ${fullUserProfile?.puesto || 'No especificado'}
+- Régimen Fiscal: ${fullUserProfile?.regimen_fiscal || 'No especificado'}
+- Banco: ${fullUserProfile?.banco || 'No registrado'}
 
-DATOS REALES DISPONIBLES:
-${JSON.stringify(relevantData, null, 2)}
+CONTEXTO COMPLETO DE DATOS DEL USUARIO:
+${JSON.stringify(completeContext, null, 2)}
 
-CONTEXTO: El usuario está en ${modulo} (ruta: ${ruta})
+INFORMACIÓN DE NAVEGACIÓN:
+- Módulo actual: ${modulo}
+- Ruta actual: ${ruta}
 
 PREGUNTA DEL USUARIO: ${mensaje}
 
-INSTRUCCIONES:
-- Si tienes datos reales arriba, úsalos directamente en tu respuesta
-- Sé específico con números, nombres y fechas cuando los tengas
-- Si no tienes los datos exactos que pide, guíalo a dónde puede verlos
-- Sé conversacional y amigable
-- Responde únicamente con JSON válido, sin texto adicional.`;
+INSTRUCCIONES FINALES:
+1. REVISA cuidadosamente el CONTEXTO COMPLETO arriba - ahí están TODOS los datos reales
+2. Si el usuario pregunta por comisiones, producción, tareas, etc., busca esa información en el contexto
+3. RESPONDE con datos específicos: montos exactos, nombres de clientes, fechas, números
+4. Si ves información relevante adicional (ej: tareas vencidas, renovaciones próximas), menciónala
+5. Formato de respuesta: JSON puro sin markdown
+6. Incluye acciones útiles para que el usuario navegue
+
+EJEMPLO DE RESPUESTA ESPERADA:
+{
+  "type": "text",
+  "text": "Este mes has generado $45,230 en comisiones netas, con 12 registros. Tu última comisión fue de GNP por $3,450 del cliente Juan Pérez. También tienes 3 tareas vencidas que requieren atención.",
+  "actions": [
+    {"type": "navigate", "label": "Ver mis comisiones", "destination": "/mis-comisiones", "icon": "DollarSign"},
+    {"type": "navigate", "label": "Ver tareas pendientes", "destination": "/mi-crm/tareas", "icon": "CheckSquare"}
+  ]
+}`;
 
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
