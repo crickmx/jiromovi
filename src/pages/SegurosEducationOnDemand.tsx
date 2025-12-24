@@ -490,14 +490,40 @@ export function SegurosEducationOnDemand() {
   };
 
   const handleCargaMasiva = async () => {
-    const confirmCarga = window.confirm(
-      'Esto procesará todos los archivos de Google Drive y puede tomar varios minutos. ¿Continuar?'
-    );
-
-    if (!confirmCarga) return;
-
     try {
       setLoadingMassive(true);
+
+      const { data: fileExists } = await supabase.storage
+        .from('seguros-videos')
+        .list('', {
+          search: 'lista-archivos-drive.csv',
+        });
+
+      if (!fileExists || fileExists.length === 0) {
+        setLoadingMassive(false);
+        const openHelper = window.confirm(
+          '⚠️ No se encontró el archivo lista-archivos-drive.csv en Storage.\n\n' +
+          '¿Quieres abrir la guía para crear el archivo CSV?\n\n' +
+          'Necesitas:\n' +
+          '1. Crear un CSV con tus archivos de Google Drive\n' +
+          '2. Subirlo al bucket seguros-videos con el nombre lista-archivos-drive.csv'
+        );
+
+        if (openHelper) {
+          window.open('/generar-lista-drive.html', '_blank');
+        }
+        return;
+      }
+
+      const confirmCarga = window.confirm(
+        'Esto procesará todos los archivos listados en el CSV y puede tomar varios minutos. ¿Continuar?'
+      );
+
+      if (!confirmCarga) {
+        setLoadingMassive(false);
+        return;
+      }
+
       showToast('Iniciando carga masiva desde Google Drive...', 'warning');
 
       const { data: sessionData } = await supabase.auth.getSession();

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generar Lista de Archivos de Google Drive</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 16px;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+    }
+
+    .section h2 {
+      color: #667eea;
+      font-size: 20px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #667eea;
+    }
+
+    .step-number {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    .step-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .step-description {
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .code-block {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      overflow-x: auto;
+      margin: 15px 0;
+    }
+
+    .code-block pre {
+      margin: 0;
+      white-space: pre-wrap;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      resize: vertical;
+      transition: border-color 0.3s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: inline-block;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 15px 0;
+    }
+
+    .info-box strong {
+      color: #1976d2;
+    }
+
+    .warning-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 15px 0;
+    }
+
+    .warning-box strong {
+      color: #ff9800;
+    }
+
+    .success-box {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 15px 0;
+      display: none;
+    }
+
+    .success-box strong {
+      color: #155724;
+    }
+
+    #contadorArchivos {
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .ejemplo {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📁 Generador de Lista de Google Drive</h1>
+      <p>Crea el archivo CSV necesario para la carga masiva</p>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <h2>🎯 Instrucciones</h2>
+
+        <div class="step">
+          <span class="step-number">1</span>
+          <div class="step-title">Haz tus archivos públicos en Google Drive</div>
+          <div class="step-description">
+            • Selecciona todos los archivos (videos e imágenes)<br>
+            • Clic derecho → "Compartir" → "Cualquier persona con el enlace"<br>
+            • Cambia a "Lector" y copia el enlace
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-number">2</span>
+          <div class="step-title">Obtén el ID de cada archivo</div>
+          <div class="step-description">
+            El ID está en el enlace del archivo:<br>
+            <code>https://drive.google.com/file/d/<strong>1ABC123XYZ</strong>/view</code><br>
+            Copia solo la parte marcada en negrita
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-number">3</span>
+          <div class="step-title">Llena el formulario abajo</div>
+          <div class="step-description">
+            Escribe cada archivo en una línea: <code>nombre.mp4,ID_DEL_ARCHIVO</code>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-number">4</span>
+          <div class="step-title">Descarga el archivo CSV</div>
+          <div class="step-description">
+            Presiona el botón "Descargar CSV" y guárdalo como <code>lista-archivos-drive.csv</code>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-number">5</span>
+          <div class="step-title">Súbelo a Supabase Storage</div>
+          <div class="step-description">
+            Ve al bucket <code>seguros-videos</code> en Supabase y sube el archivo CSV
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>📝 Editor de Lista</h2>
+
+        <div class="info-box">
+          <strong>Formato:</strong> nombre_archivo.extensión,ID_de_Google_Drive<br>
+          <strong>Importante:</strong> Los videos e imágenes con el mismo nombre se emparejarán automáticamente
+        </div>
+
+        <textarea id="listaArchivos" placeholder="Ejemplo:
+01-Introduccion.mp4,1A2B3C4D5E6F7G8H9I0J
+01-Introduccion.jpg,9Z8Y7X6W5V4U3T2S1R0Q
+02-Tema-Principal.mp4,1K2L3M4N5O6P7Q8R9S0T"></textarea>
+
+        <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span id="contadorArchivos">0 archivos</span>
+          </div>
+          <button class="btn" onclick="descargarCSV()">⬇️ Descargar CSV</button>
+        </div>
+
+        <div class="success-box" id="successBox">
+          <strong>✅ ¡Archivo descargado!</strong> Ahora súbelo al bucket seguros-videos en Supabase
+        </div>
+      </div>
+
+      <div class="section ejemplo">
+        <h2>💡 Ejemplo Completo</h2>
+        <div class="code-block">
+          <pre># Videos con miniaturas
+01-Bienvenida.mp4,1D064yj7jbC__ZWV5hb1xzvcpFB6mrLXV
+01-Bienvenida.jpg,2E175kz8kcD__aXW6ic2yawdqGC7nsMAW
+
+# Video sin miniatura
+02-Introduccion-Seguros.mp4,3F286la9ldE__bYX7jd3zbxerHD8otNBX
+
+# Más videos
+03-Tipos-De-Polizas.mp4,4G397mb0meF__cZY8ke4acyfsSE9puOCY
+03-Tipos-De-Polizas.png,5H408nc1nfG__dAZ9lf5bdzhutF0qvPDZ</pre>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>⚠️ Notas Importantes</h2>
+
+        <div class="warning-box">
+          <strong>Nombrado de archivos:</strong> Para que un video y su miniatura se emparejen, deben tener el mismo nombre base:<br>
+          • <code>video.mp4</code> + <code>video.jpg</code> ✅<br>
+          • <code>Video-01.mp4</code> + <code>Video-01.png</code> ✅<br>
+          • <code>clase.mp4</code> + <code>portada.jpg</code> ❌
+        </div>
+
+        <div class="info-box">
+          <strong>Formatos soportados:</strong><br>
+          • Videos: mp4, mov, avi, webm, mkv<br>
+          • Imágenes: jpg, jpeg, png, webp, gif
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const textarea = document.getElementById('listaArchivos');
+    const contador = document.getElementById('contadorArchivos');
+    const successBox = document.getElementById('successBox');
+
+    textarea.addEventListener('input', actualizarContador);
+
+    function actualizarContador() {
+      const lineas = textarea.value
+        .split('\n')
+        .filter(line => line.trim() && !line.trim().startsWith('#'));
+
+      const archivos = lineas.filter(line => {
+        const parts = line.split(',');
+        return parts.length >= 2 && parts[0].trim() && parts[1].trim();
+      });
+
+      contador.textContent = `${archivos.length} archivos`;
+      successBox.style.display = 'none';
+    }
+
+    function descargarCSV() {
+      const contenido = textarea.value.trim();
+
+      if (!contenido) {
+        alert('Por favor, escribe al menos un archivo en la lista');
+        return;
+      }
+
+      const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'lista-archivos-drive.csv');
+      link.style.visibility = 'hidden';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      successBox.style.display = 'block';
+      setTimeout(() => {
+        successBox.style.display = 'none';
+      }, 5000);
+    }
+
+    actualizarContador();
+  </script>
+</body>
+</html>

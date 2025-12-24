@@ -59,123 +59,71 @@ function generarTitulo(nombreArchivo: string): string {
   return titulo.substring(0, 100);
 }
 
-async function leerArchivosDesdeCarpeta(folderId: string): Promise<GoogleDriveFile[]> {
+async function leerArchivosDesdeSupabase(supabase: any): Promise<GoogleDriveFile[]> {
   try {
-    console.log('[INFO] Leyendo archivos desde carpeta pública de Google Drive...');
+    console.log('[INFO] Leyendo lista de archivos desde Supabase Storage...');
 
-    const folderUrl = `https://drive.google.com/drive/folders/${folderId}`;
-    const response = await fetch(folderUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-    });
+    const { data, error } = await supabase.storage
+      .from('seguros-videos')
+      .download('lista-archivos-drive.csv');
 
-    if (!response.ok) {
-      throw new Error(`Error accediendo a la carpeta: ${response.status}`);
+    if (error) {
+      throw new Error(`No se encontró el archivo lista-archivos-drive.csv en el bucket seguros-videos. Por favor, súbelo primero.`);
     }
 
-    const html = await response.text();
+    const text = await data.text();
+    const lines = text.split('\n').filter(line => line.trim());
+
+    if (lines.length === 0) {
+      throw new Error('El archivo CSV está vacío');
+    }
 
     const archivos: GoogleDriveFile[] = [];
 
-    // Buscar el array de datos JSON embebido en el HTML
-    // Google Drive pone los datos en una variable JavaScript
-    const keyMatch = html.match(/key:\s*'ds:(\d+)'/g);
-    const dataMatch = html.match(/data:function\(\){return\s+(\[.*?\])\}/gs);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line || line.startsWith('#')) continue;
 
-    if (dataMatch) {
-      for (const match of dataMatch) {
-        try {
-          const jsonStr = match.match(/return\s+(\[.*?\])/s)?.[1];
-          if (!jsonStr) continue;
+      const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
 
-          const data = JSON.parse(jsonStr);
-
-          // Buscar arrays que contengan información de archivos
-          const extractFiles = (obj: any): void => {
-            if (!obj) return;
-
-            if (Array.isArray(obj)) {
-              // Buscar patrones que indiquen un archivo
-              // [nombre, id, mimeType, ...]
-              if (obj.length >= 2 && typeof obj[0] === 'string' && typeof obj[1] === 'string') {
-                const potentialName = obj[0];
-                const potentialId = obj[1];
-
-                // Validar que sea un nombre de archivo válido
-                if (/\.(mp4|mov|avi|webm|mkv|jpg|jpeg|png|webp|gif)$/i.test(potentialName)) {
-                  // Validar que el ID tenga formato de Google Drive (aprox 33 caracteres)
-                  if (potentialId.length > 20 && /^[\w-]+$/.test(potentialId)) {
-                    let mimeType = 'application/octet-stream';
-                    if (/\.(mp4|mov|avi|webm|mkv)$/i.test(potentialName)) {
-                      mimeType = 'video/mp4';
-                    } else if (/\.(jpg|jpeg|png|webp|gif)$/i.test(potentialName)) {
-                      mimeType = 'image/jpeg';
-                    }
-
-                    // Evitar duplicados
-                    if (!archivos.find(f => f.id === potentialId)) {
-                      archivos.push({
-                        id: potentialId,
-                        name: potentialName,
-                        mimeType,
-                        modifiedTime: new Date().toISOString(),
-                      });
-                    }
-                  }
-                }
-              }
-
-              // Recursivamente buscar en subarrays
-              obj.forEach(item => extractFiles(item));
-            }
-          };
-
-          extractFiles(data);
-        } catch (e) {
-          // Ignorar errores de parsing de JSON individual
-        }
+      if (parts.length < 2) {
+        console.warn(`[WARNING] Línea ${i + 1} inválida: ${line}`);
+        continue;
       }
+
+      const fileName = parts[0];
+      const fileId = parts[1];
+
+      if (!fileName || !fileId) {
+        console.warn(`[WARNING] Línea ${i + 1} con datos vacíos`);
+        continue;
+      }
+
+      let mimeType = 'application/octet-stream';
+      if (/\.(mp4|mov|avi|webm|mkv)$/i.test(fileName)) {
+        mimeType = 'video/mp4';
+      } else if (/\.(jpg|jpeg|png|webp|gif)$/i.test(fileName)) {
+        mimeType = 'image/jpeg';
+      }
+
+      archivos.push({
+        id: fileId,
+        name: fileName,
+        mimeType,
+        modifiedTime: new Date().toISOString(),
+      });
     }
 
-    // Método alternativo: buscar en el HTML directo
-    if (archivos.length === 0) {
-      const fileRegex = /\["([\w\s\-\.]+\.(mp4|mov|avi|webm|mkv|jpg|jpeg|png|webp|gif))","([\w-]{25,})"/gi;
-      let match;
-
-      while ((match = fileRegex.exec(html)) !== null) {
-        const fileName = match[1];
-        const fileId = match[3];
-
-        let mimeType = 'application/octet-stream';
-        if (/\.(mp4|mov|avi|webm|mkv)$/i.test(fileName)) {
-          mimeType = 'video/mp4';
-        } else if (/\.(jpg|jpeg|png|webp|gif)$/i.test(fileName)) {
-          mimeType = 'image/jpeg';
-        }
-
-        if (!archivos.find(f => f.id === fileId)) {
-          archivos.push({
-            id: fileId,
-            name: fileName,
-            mimeType,
-            modifiedTime: new Date().toISOString(),
-          });
-        }
-      }
-    }
-
-    console.log(`[INFO] Archivos encontrados en carpeta: ${archivos.length}`);
+    console.log(`[INFO] Archivos encontrados en CSV: ${archivos.length}`);
 
     if (archivos.length === 0) {
-      console.log('[WARNING] No se encontraron archivos. HTML preview:', html.substring(0, 500));
-      throw new Error('No se encontraron archivos en la carpeta. Verifica que la carpeta sea pública y contenga archivos.');
+      throw new Error('No se encontraron archivos válidos en el CSV');
     }
 
     return archivos;
   } catch (error) {
-    console.error('Error leyendo carpeta de Google Drive:', error);
-    throw new Error(`No se pudo leer la carpeta: ${error.message}`);
+    console.error('Error leyendo CSV desde Supabase:', error);
+    throw error;
   }
 }
 
@@ -564,13 +512,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const folderId = '1D064yj7jbC__ZWV5hb1xzvcpFB6mrLXV';
-
     const timestampInicio = new Date().toISOString();
 
-    console.log(`[${timestampInicio}] [INICIO] Iniciando carga masiva desde carpeta pública de Google Drive`);
+    console.log(`[${timestampInicio}] [INICIO] Iniciando carga masiva desde lista CSV en Supabase`);
 
-    const archivos = await leerArchivosDesdeCarpeta(folderId);
+    const archivos = await leerArchivosDesdeSupabase(supabase);
     console.log(`[${new Date().toISOString()}] [INFO] Archivos encontrados: ${archivos.length}`);
 
     const { pares, sinPareja } = emparejarArchivos(archivos);
