@@ -468,8 +468,6 @@ Deno.serve(async (req: Request) => {
         conversacion_id,
         rol: 'user',
         contenido: mensaje,
-        respuesta_estructurada_json: null,
-        tiene_acciones: false,
       });
 
     if (userMessageError) {
@@ -670,8 +668,6 @@ EJEMPLO DE RESPUESTA ESPERADA:
         conversacion_id,
         rol: 'assistant',
         contenido: respuestaTexto,
-        respuesta_estructurada_json: respuestaEstructurada,
-        tiene_acciones: respuestaEstructurada?.actions?.length > 0,
       })
       .select()
       .single();
