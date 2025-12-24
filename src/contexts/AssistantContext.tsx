@@ -32,7 +32,7 @@ interface AssistantContextType {
   isSendingMessage: boolean;
   openAssistant: (module?: ModuleName) => Promise<void>;
   closeAssistant: () => void;
-  sendMessage: (text: string, explicitIntent?: IntentCode) => Promise<void>;
+  sendMessage: (text: string, explicitIntent?: IntentCode, files?: File[]) => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => Promise<void>;
@@ -144,7 +144,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sendMessage = useCallback(
-    async (text: string, explicitIntent?: IntentCode) => {
+    async (text: string, explicitIntent?: IntentCode, files?: File[]) => {
       if (!user?.id) return;
 
       let activeConversationId = conversationId;
@@ -160,11 +160,42 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           setConversationId(activeConversationId);
         }
 
+        let uploadedFileNames: string[] = [];
+
+        if (files && files.length > 0) {
+          const { supabase } = await import('../lib/supabase');
+
+          for (const file of files) {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `${user.id}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('assistant-files')
+              .upload(filePath, file);
+
+            if (uploadError) {
+              console.error('Error uploading file:', uploadError);
+              throw new Error(`Error al subir archivo: ${file.name}`);
+            }
+
+            uploadedFileNames.push(file.name);
+          }
+        }
+
+        let messageText = text;
+        if (uploadedFileNames.length > 0) {
+          const filesList = uploadedFileNames.map(name => `- ${name}`).join('\n');
+          messageText = text
+            ? `${text}\n\n📎 Archivos adjuntos:\n${filesList}`
+            : `📎 Archivos adjuntos:\n${filesList}`;
+        }
+
         const params = extractRouteParams(location.pathname);
 
         const response = await sendMessageService({
           conversacion_id: activeConversationId,
-          mensaje: text,
+          mensaje: messageText,
           modulo: currentModule,
           ruta: location.pathname,
           parametros: params,

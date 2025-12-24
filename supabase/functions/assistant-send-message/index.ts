@@ -16,7 +16,6 @@ interface RoutingDecision {
     layer2_intent: string;
     layer3_factors: string[];
   };
-  requiresWebSearch: boolean;
 }
 
 class IntelligentRouter {
@@ -115,11 +114,6 @@ class IntelligentRouter {
     let chatgptScore = keywordResults.chatgptScore + intentAnalysis.chatgptBoost;
     let moviScore = keywordResults.moviScore + intentAnalysis.moviBoost;
 
-    const requiresWebSearch = this.requiresWebSearch(message);
-    if (requiresWebSearch) {
-      chatgptScore += 20;
-    }
-
     if (message.includes('cómo') && (message.includes('usar') || message.includes('funciona'))) {
       if (keywordResults.matchedKeywords.length > 0) {
         moviScore += 20;
@@ -145,9 +139,6 @@ class IntelligentRouter {
       factors.push(`Matched ${keywordResults.matchedKeywords.length} keywords`);
     }
     factors.push(`Intent: ${intentAnalysis.intent}`);
-    if (requiresWebSearch) {
-      factors.push('Requires web search');
-    }
     if (confidence < 20) {
       factors.push('Low confidence - close scores');
     }
@@ -161,80 +152,10 @@ class IntelligentRouter {
         layer1_keywords: keywordResults.matchedKeywords,
         layer2_intent: intentAnalysis.intent,
         layer3_factors: factors
-      },
-      requiresWebSearch
+      }
     };
   }
 
-  private static requiresWebSearch(message: string): boolean {
-    const webSearchIndicators = [
-      'último', 'última', 'reciente', 'actual', 'hoy',
-      'noticia', 'noticias', 'nuevo', 'nueva',
-      '2024', '2025', 'actualizado', 'tendencia'
-    ];
-
-    return webSearchIndicators.some(indicator => message.includes(indicator));
-  }
-}
-
-async function performWebSearch(query: string): Promise<{ results: any[], answer?: string }> {
-  try {
-    const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
-    if (!tavilyApiKey) {
-      console.log('Tavily API key not configured, skipping web search');
-      return { results: [] };
-    }
-
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        api_key: tavilyApiKey,
-        query,
-        max_results: 3,
-        include_answer: true,
-        include_raw_content: false
-      }),
-      signal: AbortSignal.timeout(5000)
-    });
-
-    if (!response.ok) {
-      console.error('Web search failed:', response.statusText);
-      return { results: [] };
-    }
-
-    const data = await response.json();
-    return {
-      results: data.results || [],
-      answer: data.answer
-    };
-  } catch (error) {
-    console.error('Web search error:', error);
-    return { results: [] };
-  }
-}
-
-function formatWebSearchContext(searchResults: any[], answer?: string): string {
-  if (!searchResults || searchResults.length === 0) {
-    return '';
-  }
-
-  let context = '\n\n--- Información actualizada de la web ---\n\n';
-
-  if (answer) {
-    context += `Resumen: ${answer}\n\n`;
-  }
-
-  context += 'Fuentes:\n';
-  searchResults.slice(0, 3).forEach((result: any, index: number) => {
-    context += `${index + 1}. ${result.title}\n`;
-    context += `   ${result.content?.substring(0, 200)}...\n`;
-    context += `   Fuente: ${result.url}\n\n`;
-  });
-
-  return context;
 }
 
 interface UserContext {
@@ -791,7 +712,6 @@ Deno.serve(async (req: Request) => {
     let respuestaTexto = '';
     let respuestaEstructurada = null;
     let routingDecision: RoutingDecision | null = null;
-    let webSearchResults: any[] = [];
 
     if (openaiApiKey) {
       console.log('Getting user context with admin client...');
@@ -853,19 +773,11 @@ Deno.serve(async (req: Request) => {
           matched_keywords: routingDecision.reasoning.layer1_keywords
         });
 
-      if (routingDecision.requiresWebSearch && routingDecision.selectedMode === 'chatgpt') {
-        console.log('Performing web search...');
-        const searchResult = await performWebSearch(mensaje);
-        webSearchResults = searchResult.results || [];
-        console.log(`Web search completed: ${webSearchResults.length} results`);
-      }
-
       console.log('Getting complete user context...');
       const completeContext = await getCompleteUserContext(supabaseAdmin, userContext.id);
       console.log('Complete context obtained');
 
       const modeLabel = routingDecision?.selectedMode === 'chatgpt' ? 'Modo ChatGPT (Conocimiento General)' : 'Modo MOVI (Datos del Sistema)';
-      const webContext = webSearchResults.length > 0 ? formatWebSearchContext(webSearchResults) : '';
 
       const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual inteligente para agentes de seguros.
 
@@ -965,7 +877,6 @@ INFORMACIÓN DE NAVEGACIÓN:
 - Ruta actual: ${ruta}
 
 PREGUNTA DEL USUARIO: ${mensaje}
-${webContext}
 
 INSTRUCCIONES FINALES:
 1. REVISA cuidadosamente el CONTEXTO COMPLETO arriba - ahí están TODOS los datos reales
@@ -1066,12 +977,7 @@ EJEMPLO DE RESPUESTA ESPERADA:
         rol: 'assistant',
         contenido: respuestaTexto,
         modo_usado: routingDecision?.selectedMode || 'chatgpt',
-        router_confidence: routingDecision?.confidence || 0,
-        web_sources: webSearchResults.length > 0 ? JSON.stringify(webSearchResults.map(r => ({
-          title: r.title,
-          url: r.url,
-          snippet: r.content?.substring(0, 150)
-        }))) : '[]'
+        router_confidence: routingDecision?.confidence || 0
       })
       .select()
       .single();
@@ -1105,12 +1011,7 @@ EJEMPLO DE RESPUESTA ESPERADA:
         respuesta: respuestaTexto,
         respuesta_estructurada: respuestaEstructurada,
         modo_usado: routingDecision?.selectedMode || 'chatgpt',
-        router_confidence: routingDecision?.confidence || 0,
-        web_sources: webSearchResults.length > 0 ? webSearchResults.map(r => ({
-          title: r.title,
-          url: r.url,
-          snippet: r.content?.substring(0, 150)
-        })) : []
+        router_confidence: routingDecision?.confidence || 0
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

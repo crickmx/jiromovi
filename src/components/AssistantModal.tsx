@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Sparkles, Trash2, Plus, Send } from 'lucide-react';
+import { X, Sparkles, Trash2, Plus, Send, Paperclip, FileText, X as XIcon } from 'lucide-react';
 import { useAssistant } from '../contexts/AssistantContext';
 import { useLocation } from 'react-router-dom';
 import { getSuggestionsForRoute } from '../lib/suggestionsService';
@@ -33,6 +33,8 @@ export function AssistantModal() {
   const [inputText, setInputText] = useState('');
   const [suggestions, setSuggestions] = useState<AssistantSuggestion[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,10 +57,15 @@ export function AssistantModal() {
   };
 
   const handleSend = async () => {
-    if (!inputText.trim() || isSendingMessage) return;
+    if ((!inputText.trim() && attachedFiles.length === 0) || isSendingMessage) return;
+
     const text = inputText.trim();
+    const files = [...attachedFiles];
+
     setInputText('');
-    await sendMessage(text);
+    setAttachedFiles([]);
+
+    await sendMessage(text, undefined, files);
   };
 
   const handleSuggestionClick = async (suggestion: AssistantSuggestion) => {
@@ -80,6 +87,30 @@ export function AssistantModal() {
         setShowHistory(false);
       }
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(file => {
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert(`El archivo ${file.name} excede el tamaño máximo de 10MB`);
+        return false;
+      }
+      return true;
+    });
+    setAttachedFiles(prev => [...prev, ...validFiles]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
   };
 
   if (!isOpen) return null;
@@ -238,28 +269,6 @@ export function AssistantModal() {
                         ) : (
                           <p className="text-sm whitespace-pre-wrap">{message.contenido}</p>
                         )}
-
-                        {!isUser && message.web_sources && message.web_sources.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs font-medium text-gray-600 mb-2">🌐 Fuentes consultadas:</p>
-                            <div className="space-y-2">
-                              {message.web_sources.map((source, idx) => (
-                                <a
-                                  key={idx}
-                                  href={source.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="block text-xs p-2 bg-white rounded border border-gray-200 hover:border-blue-300 transition-colors"
-                                >
-                                  <div className="font-medium text-blue-600 hover:text-blue-800 mb-1">
-                                    {source.title}
-                                  </div>
-                                  <div className="text-gray-500 line-clamp-2">{source.snippet}</div>
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
@@ -301,25 +310,68 @@ export function AssistantModal() {
             )}
 
             <div className="p-4 border-t">
+              {attachedFiles.length > 0 && (
+                <div className="mb-3 space-y-2">
+                  {attachedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                    >
+                      <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{file.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile(index)}
+                        className="p-1 hover:bg-gray-200 rounded"
+                        type="button"
+                      >
+                        <XIcon className="h-4 w-4 text-gray-500" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.txt,.xlsx,.xls,.csv,.png,.jpg,.jpeg"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleAttachClick}
+                  disabled={isSendingMessage}
+                  title="Adjuntar documento"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
                 <Input
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Escribe tu pregunta..."
+                  placeholder="Escribe tu pregunta o adjunta documentos..."
                   disabled={isSendingMessage}
                   className="flex-1"
                 />
                 <Button
                   onClick={handleSend}
-                  disabled={!inputText.trim() || isSendingMessage}
+                  disabled={(!inputText.trim() && attachedFiles.length === 0) || isSendingMessage}
                   size="icon"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Presiona Enter para enviar, Shift+Enter para nueva línea
+                Presiona Enter para enviar, Shift+Enter para nueva línea. Máx 10MB por archivo.
               </p>
             </div>
           </div>
