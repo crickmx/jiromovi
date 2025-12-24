@@ -128,17 +128,18 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
     const { data: contactos } = await supabase
       .from('crm_contactos')
       .select('*')
-      .eq('usuario_id', userId)
-      .order('created_at', { ascending: false })
+      .eq('creado_por', userId)
+      .order('fecha_creacion', { ascending: false })
       .limit(10);
 
     if (contactos && contactos.length > 0) {
       context.contactos = {
         total: contactos.length,
         detalle: contactos.map((c: any) => ({
-          nombre: c.nombre,
-          telefono: c.telefono,
-          email: c.email
+          nombre: c.nombre_completo,
+          telefono: c.celular,
+          email: c.email,
+          estatus: c.estatus
         }))
       };
     }
@@ -148,7 +149,7 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
     const { data: tareas } = await supabase
       .from('crm_tareas')
       .select('*')
-      .eq('usuario_id', userId)
+      .eq('creado_por', userId)
       .eq('completada', false)
       .order('fecha_vencimiento', { ascending: true })
       .limit(5);
@@ -157,11 +158,14 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
       context.tareas_pendientes = {
         total: tareas.length,
         detalle: tareas.map((t: any) => ({
-          titulo: t.titulo,
+          descripcion: t.descripcion,
+          tipo_actividad: t.tipo_actividad,
           fecha_vencimiento: t.fecha_vencimiento,
           prioridad: t.prioridad
         }))
       };
+    } else {
+      context.tareas_pendientes = { mensaje: 'No tienes tareas pendientes' };
     }
   }
 
