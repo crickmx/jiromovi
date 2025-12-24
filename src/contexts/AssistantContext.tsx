@@ -193,8 +193,9 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             : `📎 Archivos adjuntos:\n${filesList}`;
         }
 
+        const tempUserId = `temp-user-${Date.now()}`;
         const optimisticUserMessage: AssistantMessage = {
-          id: `temp-user-${Date.now()}`,
+          id: tempUserId,
           conversacion_id: activeConversationId,
           rol: 'user',
           contenido: messageText,
@@ -203,13 +204,14 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           created_at: new Date().toISOString(),
         };
 
+        // Show user message immediately
         setMessages((prev) => [...prev, optimisticUserMessage]);
 
         const params = extractRouteParams(location.pathname);
 
         const response = await sendMessageService({
           conversacion_id: activeConversationId,
-          mensaje: messageText,
+          mensaje: text, // Send original text without file list
           modulo: currentModule,
           ruta: location.pathname,
           parametros: params,
@@ -217,33 +219,44 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (response) {
-          setMessages((prev) => [
-            ...prev.filter(m => !m.id.startsWith('temp-user-')),
-            {
-              id: `msg-user-${Date.now()}`,
-              conversacion_id: activeConversationId,
-              rol: 'user',
-              contenido: messageText,
-              respuesta_estructurada_json: null,
-              tiene_acciones: false,
-              created_at: new Date().toISOString(),
-            },
-            {
-              id: response.id || `msg-assistant-${Date.now()}`,
-              conversacion_id: activeConversationId,
-              rol: 'assistant',
-              contenido: response.contenido || '',
-              respuesta_estructurada_json: response.respuesta_estructurada_json,
-              tiene_acciones: response.tiene_acciones || false,
-              created_at: response.created_at || new Date().toISOString(),
-            }
-          ]);
+          // Replace temp user message with real messages
+          setMessages((prev) => {
+            const withoutTemp = prev.filter(m => m.id !== tempUserId);
+            return [
+              ...withoutTemp,
+              {
+                id: `msg-user-${Date.now()}`,
+                conversacion_id: activeConversationId,
+                rol: 'user',
+                contenido: messageText,
+                respuesta_estructurada_json: null,
+                tiene_acciones: false,
+                created_at: new Date().toISOString(),
+              },
+              {
+                id: response.mensaje_id || `msg-assistant-${Date.now()}`,
+                conversacion_id: activeConversationId,
+                rol: 'assistant',
+                contenido: response.respuesta || '',
+                respuesta_estructurada_json: response.respuesta_estructurada || null,
+                tiene_acciones: !!(response.respuesta_estructurada && response.respuesta_estructurada.actions),
+                created_at: new Date().toISOString(),
+                modo_usado: response.modo_usado,
+                router_confidence: response.router_confidence,
+              }
+            ];
+          });
           await loadConversationsList();
         } else {
           throw new Error('No se recibió respuesta del asistente');
         }
       } catch (error: any) {
-        console.error('Error sending message:', error);
+        console.error('❌ Error sending message:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        });
 
         // Extract meaningful error message
         let errorMessage = 'Lo siento, ocurrió un error al procesar tu mensaje.';
@@ -251,33 +264,39 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         if (error.message) {
           // Use the actual error message from the backend
           if (error.message.includes('sesión ha expirado')) {
-            errorMessage = 'Tu sesión ha expirado. Por favor cierra sesión y vuelve a iniciar sesión.';
+            errorMessage = '🔒 Tu sesión ha expirado. Por favor cierra sesión y vuelve a iniciar sesión.';
           } else if (error.message.includes('No autenticado')) {
-            errorMessage = 'No estás autenticado. Por favor inicia sesión nuevamente.';
+            errorMessage = '🔒 No estás autenticado. Por favor inicia sesión nuevamente.';
           } else if (error.message.includes('contexto del usuario')) {
-            errorMessage = 'No se pudo acceder a tu perfil. Por favor contacta al administrador.';
+            errorMessage = '⚠️ No se pudo acceder a tu perfil. Por favor contacta al administrador.';
           } else if (error.message.includes('permiso')) {
-            errorMessage = 'No tienes permisos para realizar esta acción.';
+            errorMessage = '🚫 No tienes permisos para realizar esta acción.';
+          } else if (error.message.includes('extraer texto del PDF')) {
+            errorMessage = '📄 No pude leer el contenido de uno o más PDFs adjuntos. Por favor intenta con archivos diferentes o describe manualmente su contenido.';
           } else {
-            errorMessage = `Error: ${error.message}`;
+            errorMessage = `❌ Error: ${error.message}\n\nPor favor revisa la consola del navegador para más detalles.`;
           }
         }
 
         console.error('Showing error to user:', errorMessage);
 
         if (activeConversationId) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `temp-error-${Date.now()}`,
-              conversacion_id: activeConversationId,
-              rol: 'assistant',
-              contenido: errorMessage,
-              respuesta_estructurada_json: null,
-              tiene_acciones: false,
-              created_at: new Date().toISOString(),
-            },
-          ]);
+          setMessages((prev) => {
+            // Remove temp user message if still present
+            const withoutTemp = prev.filter(m => !m.id.startsWith('temp-user-'));
+            return [
+              ...withoutTemp,
+              {
+                id: `temp-error-${Date.now()}`,
+                conversacion_id: activeConversationId,
+                rol: 'assistant',
+                contenido: errorMessage,
+                respuesta_estructurada_json: null,
+                tiene_acciones: false,
+                created_at: new Date().toISOString(),
+              },
+            ];
+          });
         }
       } finally {
         setIsSendingMessage(false);
