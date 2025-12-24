@@ -102,16 +102,16 @@
     </div>
 
     <h2>1️⃣ Diagnóstico del Sistema</h2>
-    <button class="btn" onclick="runDiagnostic()">▶️ Ejecutar Diagnóstico Completo</button>
+    <button class="btn" id="btnDiagnostic">▶️ Ejecutar Diagnóstico Completo</button>
     <div id="diagnosticResult"></div>
 
     <h2>2️⃣ Migración Automática</h2>
-    <button class="btn" onclick="runAutoMigration()" id="migrationBtn">🚀 Iniciar Migración Automática</button>
+    <button class="btn" id="btnMigration">🚀 Iniciar Migración Automática</button>
     <div id="migrationProgress"></div>
     <div id="migrationResult"></div>
 
     <h2>3️⃣ Verificación Post-Migración</h2>
-    <button class="btn" onclick="verifyMigration()">✓ Verificar Lecciones</button>
+    <button class="btn" id="btnVerify">✓ Verificar Lecciones</button>
     <div id="verificationResult"></div>
   </div>
 
@@ -119,7 +119,24 @@
     const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1MjkzMzAsImV4cCI6MjA0NTEwNTMzMH0.ybuGuC_CD8Wg0IP95wDLVi8VS6ms_gQb_B1EVhorXh0';
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let supabase;
+
+    // Inicializar cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+      // Verificar que Supabase esté cargado
+      if (typeof window.supabase === 'undefined') {
+        document.getElementById('diagnosticResult').innerHTML =
+          '<div class="error">❌ Error: Supabase no se cargó correctamente. Recarga la página.</div>';
+        return;
+      }
+
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // Asignar event listeners
+      document.getElementById('btnDiagnostic').addEventListener('click', runDiagnostic);
+      document.getElementById('btnMigration').addEventListener('click', runAutoMigration);
+      document.getElementById('btnVerify').addEventListener('click', verifyMigration);
+    });
 
     // Normalizar nombres de archivo
     function normalizeFilename(filename) {
@@ -288,7 +305,7 @@
 
     // Migración automática
     async function runAutoMigration() {
-      const btn = document.getElementById('migrationBtn');
+      const btn = document.getElementById('btnMigration');
       const progressDiv = document.getElementById('migrationProgress');
       const resultDiv = document.getElementById('migrationResult');
 
