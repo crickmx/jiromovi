@@ -59,28 +59,93 @@ function generarTitulo(nombreArchivo: string): string {
   return titulo.substring(0, 100);
 }
 
-async function leerArchivosDesdeSheet(sheetUrl: string): Promise<GoogleDriveFile[]> {
+async function leerArchivosDesdeCarpeta(folderId: string): Promise<GoogleDriveFile[]> {
   try {
-    console.log('[INFO] Leyendo archivos desde Google Sheet...');
-    const response = await fetch(sheetUrl);
+    console.log('[INFO] Leyendo archivos desde carpeta pública de Google Drive...');
+
+    const folderUrl = `https://drive.google.com/drive/folders/${folderId}`;
+    const response = await fetch(folderUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
 
     if (!response.ok) {
-      throw new Error(`Error accediendo al Sheet: ${response.status}`);
+      throw new Error(`Error accediendo a la carpeta: ${response.status}`);
     }
 
-    const text = await response.text();
-    const lines = text.split('\n').slice(1);
+    const html = await response.text();
 
     const archivos: GoogleDriveFile[] = [];
 
-    for (const line of lines) {
-      if (!line.trim()) continue;
+    // Buscar el array de datos JSON embebido en el HTML
+    // Google Drive pone los datos en una variable JavaScript
+    const keyMatch = html.match(/key:\s*'ds:(\d+)'/g);
+    const dataMatch = html.match(/data:function\(\){return\s+(\[.*?\])\}/gs);
 
-      const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+    if (dataMatch) {
+      for (const match of dataMatch) {
+        try {
+          const jsonStr = match.match(/return\s+(\[.*?\])/s)?.[1];
+          if (!jsonStr) continue;
 
-      if (parts.length >= 2 && parts[0] && parts[1]) {
-        const fileName = parts[0];
-        const fileId = parts[1];
+          const data = JSON.parse(jsonStr);
+
+          // Buscar arrays que contengan información de archivos
+          const extractFiles = (obj: any): void => {
+            if (!obj) return;
+
+            if (Array.isArray(obj)) {
+              // Buscar patrones que indiquen un archivo
+              // [nombre, id, mimeType, ...]
+              if (obj.length >= 2 && typeof obj[0] === 'string' && typeof obj[1] === 'string') {
+                const potentialName = obj[0];
+                const potentialId = obj[1];
+
+                // Validar que sea un nombre de archivo válido
+                if (/\.(mp4|mov|avi|webm|mkv|jpg|jpeg|png|webp|gif)$/i.test(potentialName)) {
+                  // Validar que el ID tenga formato de Google Drive (aprox 33 caracteres)
+                  if (potentialId.length > 20 && /^[\w-]+$/.test(potentialId)) {
+                    let mimeType = 'application/octet-stream';
+                    if (/\.(mp4|mov|avi|webm|mkv)$/i.test(potentialName)) {
+                      mimeType = 'video/mp4';
+                    } else if (/\.(jpg|jpeg|png|webp|gif)$/i.test(potentialName)) {
+                      mimeType = 'image/jpeg';
+                    }
+
+                    // Evitar duplicados
+                    if (!archivos.find(f => f.id === potentialId)) {
+                      archivos.push({
+                        id: potentialId,
+                        name: potentialName,
+                        mimeType,
+                        modifiedTime: new Date().toISOString(),
+                      });
+                    }
+                  }
+                }
+              }
+
+              // Recursivamente buscar en subarrays
+              obj.forEach(item => extractFiles(item));
+            }
+          };
+
+          extractFiles(data);
+        } catch (e) {
+          // Ignorar errores de parsing de JSON individual
+        }
+      }
+    }
+
+    // Método alternativo: buscar en el HTML directo
+    if (archivos.length === 0) {
+      const fileRegex = /\["([\w\s\-\.]+\.(mp4|mov|avi|webm|mkv|jpg|jpeg|png|webp|gif))","([\w-]{25,})"/gi;
+      let match;
+
+      while ((match = fileRegex.exec(html)) !== null) {
+        const fileName = match[1];
+        const fileId = match[3];
 
         let mimeType = 'application/octet-stream';
         if (/\.(mp4|mov|avi|webm|mkv)$/i.test(fileName)) {
@@ -89,20 +154,28 @@ async function leerArchivosDesdeSheet(sheetUrl: string): Promise<GoogleDriveFile
           mimeType = 'image/jpeg';
         }
 
-        archivos.push({
-          id: fileId,
-          name: fileName,
-          mimeType,
-          modifiedTime: new Date().toISOString(),
-        });
+        if (!archivos.find(f => f.id === fileId)) {
+          archivos.push({
+            id: fileId,
+            name: fileName,
+            mimeType,
+            modifiedTime: new Date().toISOString(),
+          });
+        }
       }
     }
 
-    console.log(`[INFO] Archivos encontrados en Sheet: ${archivos.length}`);
+    console.log(`[INFO] Archivos encontrados en carpeta: ${archivos.length}`);
+
+    if (archivos.length === 0) {
+      console.log('[WARNING] No se encontraron archivos. HTML preview:', html.substring(0, 500));
+      throw new Error('No se encontraron archivos en la carpeta. Verifica que la carpeta sea pública y contenga archivos.');
+    }
+
     return archivos;
   } catch (error) {
-    console.error('Error leyendo Google Sheet:', error);
-    throw new Error(`No se pudo leer el Sheet: ${error.message}`);
+    console.error('Error leyendo carpeta de Google Drive:', error);
+    throw new Error(`No se pudo leer la carpeta: ${error.message}`);
   }
 }
 
@@ -491,15 +564,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const sheetId = '1n1n1zVhSzPEiNZyPR21LCmJBNvCk9Wt5h4ZNqjfkQV4';
-    const sheetGid = '0';
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${sheetGid}`;
+    const folderId = '1D064yj7jbC__ZWV5hb1xzvcpFB6mrLXV';
 
     const timestampInicio = new Date().toISOString();
 
-    console.log(`[${timestampInicio}] [INICIO] Iniciando carga masiva desde Google Drive`);
+    console.log(`[${timestampInicio}] [INICIO] Iniciando carga masiva desde carpeta pública de Google Drive`);
 
-    const archivos = await leerArchivosDesdeSheet(sheetUrl);
+    const archivos = await leerArchivosDesdeCarpeta(folderId);
     console.log(`[${new Date().toISOString()}] [INFO] Archivos encontrados: ${archivos.length}`);
 
     const { pares, sinPareja } = emparejarArchivos(archivos);
