@@ -100,19 +100,28 @@ interface RoutingDecision {
 
 class IntelligentRouter {
   private static readonly KEYWORD_RULES = [
-    { keywords: ['comisiones', 'comisión', 'pago', 'pagos', 'cuenta', 'saldo'], mode: 'movi', weight: 40, category: 'comisiones' },
-    { keywords: ['producción', 'primas', 'póliza', 'pólizas', 'vendedor', 'vendedores'], mode: 'movi', weight: 40, category: 'produccion' },
-    { keywords: ['crm', 'contacto', 'contactos', 'cliente', 'clientes', 'tarea', 'tareas'], mode: 'movi', weight: 40, category: 'crm' },
-    { keywords: ['cotización', 'cotizaciones', 'gmm', 'seguro', 'prima'], mode: 'movi', weight: 35, category: 'cotizaciones' },
-    { keywords: ['perfil', 'información', 'datos personales', 'configuración'], mode: 'movi', weight: 35, category: 'perfil' },
-    { keywords: ['comunicado', 'comunicados', 'notificación', 'notificaciones'], mode: 'movi', weight: 35, category: 'comunicados' },
-    { keywords: ['directorio', 'oficina', 'oficinas', 'equipo', 'compañeros'], mode: 'movi', weight: 30, category: 'directorio' },
-    { keywords: ['trámite', 'trámites', 'ticket', 'tickets', 'solicitud'], mode: 'movi', weight: 35, category: 'tramites' },
-    { keywords: ['reunión', 'reuniones', 'calendario', 'eventos', 'agenda'], mode: 'movi', weight: 30, category: 'calendario' },
-    { keywords: ['qué es', 'cómo funciona', 'explica', 'explicar', 'definición'], mode: 'chatgpt', weight: 30, category: 'explicaciones' },
+    // MOVI Mode - System data
+    { keywords: ['mis comisiones', 'mi comisión', 'mi pago', 'mi cuenta', 'mi saldo'], mode: 'movi', weight: 45, category: 'comisiones' },
+    { keywords: ['mi producción', 'mi prima', 'mis pólizas', 'mi vendedor'], mode: 'movi', weight: 45, category: 'produccion' },
+    { keywords: ['mis contactos', 'mis clientes', 'mis tareas'], mode: 'movi', weight: 45, category: 'crm' },
+    { keywords: ['mis cotizaciones', 'mi cotización'], mode: 'movi', weight: 40, category: 'cotizaciones' },
+    { keywords: ['mi perfil', 'mis datos', 'mi información personal'], mode: 'movi', weight: 40, category: 'perfil' },
+    { keywords: ['comunicado', 'comunicados', 'notificación interna'], mode: 'movi', weight: 35, category: 'comunicados' },
+    { keywords: ['directorio', 'compañeros', 'mi oficina', 'mi equipo'], mode: 'movi', weight: 35, category: 'directorio' },
+    { keywords: ['mi trámite', 'mis trámites', 'mi ticket', 'mis tickets'], mode: 'movi', weight: 35, category: 'tramites' },
+    { keywords: ['mi reunión', 'mis reuniones', 'mi agenda'], mode: 'movi', weight: 30, category: 'calendario' },
+
+    // ChatGPT Mode - General insurance knowledge
+    { keywords: ['teléfono', 'número', 'contacto de', 'dirección de', 'ubicación de'], mode: 'chatgpt', weight: 40, category: 'contactos_externos' },
+    { keywords: ['siniestro', 'siniestros', 'reclamación', 'reclamaciones', 'ajustador'], mode: 'chatgpt', weight: 40, category: 'siniestros' },
+    { keywords: ['cobertura', 'coberturas', 'qué cubre', 'qué no cubre', 'deducible'], mode: 'chatgpt', weight: 40, category: 'coberturas' },
+    { keywords: ['gnp', 'qualitas', 'axa', 'mapfre', 'metlife', 'zurich', 'chubb', 'ana seguros', 'bupa', 'allianz'], mode: 'chatgpt', weight: 35, category: 'aseguradoras' },
+    { keywords: ['vida', 'auto', 'gastos médicos', 'hogar', 'ahorro', 'inversión'], mode: 'chatgpt', weight: 30, category: 'ramos' },
+    { keywords: ['qué es', 'cómo funciona', 'explica', 'explicar', 'definición'], mode: 'chatgpt', weight: 35, category: 'explicaciones' },
     { keywords: ['consejo', 'consejos', 'recomendación', 'sugerencia', 'estrategia'], mode: 'chatgpt', weight: 35, category: 'consejos' },
-    { keywords: ['comparar', 'diferencia', 'versus', 'vs', 'mejor opción'], mode: 'chatgpt', weight: 30, category: 'comparaciones' },
+    { keywords: ['comparar', 'diferencia', 'versus', 'vs', 'mejor opción'], mode: 'chatgpt', weight: 35, category: 'comparaciones' },
     { keywords: ['tendencia', 'tendencias', 'mercado', 'industria', 'actualidad'], mode: 'chatgpt', weight: 35, category: 'tendencias' },
+    { keywords: ['procedimiento', 'proceso', 'trámite de', 'requisitos', 'documentos necesarios'], mode: 'chatgpt', weight: 35, category: 'procedimientos' },
   ];
 
   private static readonly INTENT_PATTERNS = {
@@ -194,12 +203,28 @@ class IntelligentRouter {
     let chatgptScore = keywordResults.chatgptScore + intentAnalysis.chatgptBoost;
     let moviScore = keywordResults.moviScore + intentAnalysis.moviBoost;
 
+    // Si no hay palabras clave de MOVI, dar ventaja a ChatGPT
+    if (moviScore === 0 && chatgptScore === 0) {
+      chatgptScore = 50; // Base score for general questions
+    }
+
+    // Detectar preguntas que claramente son de conocimiento general
     if (message.includes('cómo') && (message.includes('usar') || message.includes('funciona'))) {
       if (keywordResults.matchedKeywords.length > 0) {
-        moviScore += 20;
+        // Si hay keywords, depende del contexto
+        if (message.includes('movi') || message.includes('plataforma')) {
+          moviScore += 20;
+        } else {
+          chatgptScore += 15;
+        }
       } else {
-        chatgptScore += 15;
+        chatgptScore += 20;
       }
+    }
+
+    // Preguntas con "qué es" o "cuál es" sin contexto de MOVI van a ChatGPT
+    if ((message.includes('qué es') || message.includes('cuál es') || message.includes('qué significa')) && moviScore < 20) {
+      chatgptScore += 25;
     }
 
     const total = chatgptScore + moviScore;
@@ -207,8 +232,9 @@ class IntelligentRouter {
       chatgptScore = (chatgptScore / total) * 100;
       moviScore = (moviScore / total) * 100;
     } else {
-      chatgptScore = 60;
-      moviScore = 40;
+      // Si no hay puntaje, default a ChatGPT
+      chatgptScore = 70;
+      moviScore = 30;
     }
 
     const confidence = Math.abs(chatgptScore - moviScore);
@@ -217,6 +243,8 @@ class IntelligentRouter {
     const factors: string[] = [];
     if (keywordResults.matchedKeywords.length > 0) {
       factors.push(`Matched ${keywordResults.matchedKeywords.length} keywords`);
+    } else {
+      factors.push('No specific keywords - default to general knowledge');
     }
     factors.push(`Intent: ${intentAnalysis.intent}`);
     if (confidence < 20) {
@@ -896,8 +924,11 @@ Deno.serve(async (req: Request) => {
 
 MODO ACTIVO: ${modeLabel}
 ${routingDecision?.selectedMode === 'chatgpt' ?
-  '- Estás en modo ChatGPT: proporciona conocimiento general, explicaciones, consejos y recomendaciones sobre seguros.' :
-  '- Estás en modo MOVI: enfócate en los datos específicos del usuario en el sistema (comisiones, producción, CRM, etc.).'
+  `- Estás en modo ChatGPT: proporciona conocimiento general sobre el sector asegurador
+- Puedes responder sobre: teléfonos de atención, información de aseguradoras, coberturas, procedimientos, conceptos de seguros
+- Proporciona información precisa y útil basada en tu conocimiento general
+- Si conoces información de contacto específica (teléfonos de siniestros, atención a clientes, etc.), compártela` :
+  '- Estás en modo MOVI: enfócate en los datos específicos del usuario en el sistema (comisiones, producción, CRM, etc.)'
 }
 
 PERSONALIDAD:
@@ -966,6 +997,10 @@ Siempre responde con JSON con esta estructura:
   ]
 }
 
+NOTA SOBRE ACTIONS:
+- En modo MOVI: SIEMPRE incluye acciones relevantes para navegar
+- En modo ChatGPT: incluye acciones SOLO si son relevantes (puede ser un array vacío [])
+
 ICONOS DISPONIBLES (Lucide React):
 Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar, GraduationCap, Calculator, BookOpen, Bell, Settings`;
 
@@ -975,7 +1010,32 @@ Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar,
         .eq('id', userContext.id)
         .single();
 
-      let userPrompt = `INFORMACIÓN PERSONAL DEL USUARIO:
+      let userPrompt = '';
+
+      if (routingDecision?.selectedMode === 'chatgpt') {
+        // Modo ChatGPT - Preguntas generales
+        userPrompt = `INFORMACIÓN DEL USUARIO:
+- Nombre: ${userContext.nombre} ${userContext.apellidos}
+- Rol: ${userContext.rol}
+
+PREGUNTA DEL USUARIO: ${mensaje}${attachedFilesContent}
+
+INSTRUCCIONES:
+1. Responde la pregunta usando tu conocimiento general sobre seguros
+2. Si es una pregunta sobre contactos, teléfonos o información de aseguradoras, proporciona datos específicos si los conoces
+3. Sé claro, preciso y útil
+4. Formato: JSON puro sin markdown
+5. Incluye actions SOLO si son relevantes
+
+EJEMPLO:
+{
+  "type": "text",
+  "text": "El teléfono de siniestros de Qualitas es 800 800 4000, disponible 24/7. También puedes reportar siniestros a través de su app móvil o en su sitio web.",
+  "actions": []
+}`;
+      } else {
+        // Modo MOVI - Datos del sistema
+        userPrompt = `INFORMACIÓN PERSONAL DEL USUARIO:
 - Nombre completo: ${userContext.nombre} ${userContext.apellidos}
 - Email: ${userContext.email}
 - Rol: ${userContext.rol}
@@ -1000,7 +1060,7 @@ INSTRUCCIONES FINALES:
 3. RESPONDE con datos específicos: montos exactos, nombres de clientes, fechas, números
 4. Si ves información relevante adicional (ej: tareas vencidas, renovaciones próximas), menciónala
 5. Formato de respuesta: JSON puro sin markdown
-6. Incluye acciones útiles para que el usuario navegue
+6. SIEMPRE incluye acciones útiles para que el usuario navegue
 
 EJEMPLO DE RESPUESTA ESPERADA:
 {
@@ -1011,6 +1071,7 @@ EJEMPLO DE RESPUESTA ESPERADA:
     {"type": "navigate", "label": "Ver tareas pendientes", "destination": "/mi-crm/tareas", "icon": "CheckSquare"}
   ]
 }`;
+      }
 
       console.log('Calling OpenAI API...');
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
