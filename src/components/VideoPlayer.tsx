@@ -27,6 +27,31 @@ export function VideoPlayer({
 
   const isGoogleDriveUrl = videoUrl.includes('drive.google.com');
 
+  const getEmbedUrl = (url: string): string => {
+    if (!url.includes('drive.google.com')) return url;
+
+    // Extract file ID from various Google Drive URL formats
+    let fileId: string | null = null;
+
+    // Format: https://drive.google.com/uc?export=download&id=FILE_ID
+    const ucMatch = url.match(/[?&]id=([^&]+)/);
+    if (ucMatch) {
+      fileId = ucMatch[1];
+    }
+
+    // Format: https://drive.google.com/file/d/FILE_ID/...
+    const fileMatch = url.match(/\/file\/d\/([^\/]+)/);
+    if (fileMatch) {
+      fileId = fileMatch[1];
+    }
+
+    if (fileId) {
+      return `https://drive.google.com/file/d/${fileId}/preview`;
+    }
+
+    return url;
+  };
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -144,13 +169,15 @@ export function VideoPlayer({
   };
 
   if (isGoogleDriveUrl) {
+    const embedUrl = getEmbedUrl(videoUrl);
+
     return (
       <div
         ref={containerRef}
         className="relative bg-black aspect-video overflow-hidden"
       >
         <iframe
-          src={videoUrl}
+          src={embedUrl}
           className="w-full h-full"
           allow="autoplay; encrypted-media"
           allowFullScreen
