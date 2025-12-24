@@ -450,8 +450,8 @@
       const { data, error } = await supabaseClient
         .from('seguros_lessons')
         .select('*')
-        .eq('category_id', category.id)
-        .order('order_index');
+        .eq('categoria_id', category.id)
+        .order('created_at');
 
       if (error) {
         log(`Error al cargar lecciones: ${error.message}`, 'error');
