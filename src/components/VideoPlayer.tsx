@@ -25,6 +25,8 @@ export function VideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const isGoogleDriveUrl = videoUrl.includes('drive.google.com');
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -140,6 +142,23 @@ export function VideoPlayer({
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  if (isGoogleDriveUrl) {
+    return (
+      <div
+        ref={containerRef}
+        className="relative bg-black aspect-video overflow-hidden"
+      >
+        <iframe
+          src={videoUrl}
+          className="w-full h-full"
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+          title="Video Player"
+        />
+      </div>
+    );
+  }
 
   return (
     <div
