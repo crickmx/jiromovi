@@ -119,7 +119,7 @@
     const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1MjkzMzAsImV4cCI6MjA0NTEwNTMzMH0.ybuGuC_CD8Wg0IP95wDLVi8VS6ms_gQb_B1EVhorXh0';
 
-    let supabase;
+    let supabaseClient;
 
     // Inicializar cuando el DOM esté listo
     document.addEventListener('DOMContentLoaded', function() {
@@ -130,7 +130,7 @@
         return;
       }
 
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       // Asignar event listeners
       document.getElementById('btnDiagnostic').addEventListener('click', runDiagnostic);
@@ -205,11 +205,11 @@
 
       try {
         // 1. Verificar Storage
-        const { data: videos, error: videosError } = await supabase.storage
+        const { data: videos, error: videosError } = await supabaseClient.storage
           .from('videos-seguros-education')
           .list();
 
-        const { data: thumbnails, error: thumbsError } = await supabase.storage
+        const { data: thumbnails, error: thumbsError } = await supabaseClient.storage
           .from('thumbnails-seguros-education')
           .list();
 
@@ -219,13 +219,13 @@
         }
 
         // 2. Verificar categorías
-        const { data: categories, error: catError } = await supabase
+        const { data: categories, error: catError } = await supabaseClient
           .from('seguros_education_categories')
           .select('*')
           .order('orden');
 
         // 3. Verificar lecciones
-        const { data: lessons, error: lessonsError } = await supabase
+        const { data: lessons, error: lessonsError } = await supabaseClient
           .from('seguros_education_lessons')
           .select('*, seguros_education_categories(nombre)');
 
@@ -315,11 +315,11 @@
 
       try {
         // 1. Obtener archivos de Storage
-        const { data: videos } = await supabase.storage
+        const { data: videos } = await supabaseClient.storage
           .from('videos-seguros-education')
           .list();
 
-        const { data: thumbnails } = await supabase.storage
+        const { data: thumbnails } = await supabaseClient.storage
           .from('thumbnails-seguros-education')
           .list();
 
@@ -327,7 +327,7 @@
         const validThumbs = thumbnails.filter(t => /\.(png|jpg|jpeg)$/i.test(t.name));
 
         // 2. Verificar/Crear categoría
-        let { data: categories } = await supabase
+        let { data: categories } = await supabaseClient
           .from('seguros_education_categories')
           .select('*')
           .eq('nombre', 'Academia de Negocios 2025')
@@ -336,7 +336,7 @@
         if (!categories) {
           progressDiv.innerHTML += '<div class="info">📁 Creando categoría "Academia de Negocios 2025"...</div>';
 
-          const { data: newCat, error: catError } = await supabase
+          const { data: newCat, error: catError } = await supabaseClient
             .from('seguros_education_categories')
             .insert({
               nombre: 'Academia de Negocios 2025',
@@ -374,7 +374,7 @@
 
           try {
             // Verificar si ya existe
-            const { data: existing } = await supabase
+            const { data: existing } = await supabaseClient
               .from('seguros_education_lessons')
               .select('id')
               .eq('titulo', video.name.replace('.mp4', ''))
@@ -389,21 +389,21 @@
             const thumbnail = findThumbnail(video.name, validThumbs);
 
             // Obtener URL pública del video
-            const { data: videoUrl } = supabase.storage
+            const { data: videoUrl } = supabaseClient.storage
               .from('videos-seguros-education')
               .getPublicUrl(video.name);
 
             // Obtener URL pública del thumbnail (si existe)
             let thumbnailUrl = null;
             if (thumbnail) {
-              const { data: thumbData } = supabase.storage
+              const { data: thumbData } = supabaseClient.storage
                 .from('thumbnails-seguros-education')
                 .getPublicUrl(thumbnail.name);
               thumbnailUrl = thumbData.publicUrl;
             }
 
             // Insertar lección
-            const { error: insertError } = await supabase
+            const { error: insertError } = await supabaseClient
               .from('seguros_education_lessons')
               .insert({
                 categoria_id: categories.id,
@@ -478,7 +478,7 @@
       resultDiv.innerHTML = '<div class="info">⏳ Verificando lecciones...</div>';
 
       try {
-        const { data: lessons, error } = await supabase
+        const { data: lessons, error } = await supabaseClient
           .from('seguros_education_lessons')
           .select('*, seguros_education_categories(nombre)')
           .order('orden');
