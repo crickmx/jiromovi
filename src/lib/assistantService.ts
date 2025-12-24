@@ -123,53 +123,73 @@ export async function sendMessage(
 
     console.log('Session active, calling edge function...');
 
-    const response = await supabase.functions.invoke('assistant-send-message', {
-      body: {
+    // Use fetch directly to capture full error response body
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const url = `${supabaseUrl}/functions/v1/assistant-send-message`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
         conversacion_id,
         mensaje,
         modulo,
         ruta,
         parametros: parametros || {},
-      },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      }),
     });
 
-    if (response.error) {
-      console.error('Edge function error:', response.error);
-      const errorMsg = response.error.message || 'Error desconocido';
-      const errorDetails = response.error.details || '';
+    // Always try to read the response body
+    const text = await res.text();
+    let json: any = null;
+
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch (parseError) {
+      console.error('Could not parse response as JSON:', text);
+    }
+
+    // Handle non-OK responses with detailed error info
+    if (!res.ok) {
+      console.error('❌ Edge function failed:', res.status);
+      console.error('Response body:', json ?? text);
+
+      // Extract detailed error message
+      const errorMessage = json?.error || json?.message || text || `HTTP ${res.status}`;
+      const errorDetails = json?.details || json?.hint || '';
+
+      console.error('Error message:', errorMessage);
       console.error('Error details:', errorDetails);
-      throw new Error(errorMsg);
+
+      throw new Error(`${errorMessage}${errorDetails ? ` (${errorDetails})` : ''}`);
     }
 
-    const { data } = response;
-
-    // Check if data contains an error field (backend returned error)
-    if (data && data.error) {
-      console.error('Backend returned error:', data.error);
-      console.error('Error details:', data.details);
-      const errorMsg = data.error || 'Error del servidor';
-      throw new Error(errorMsg);
+    // Check if backend returned an error in a 200 response
+    if (json && json.error) {
+      console.error('Backend returned error:', json.error);
+      console.error('Error details:', json.details);
+      throw new Error(json.error);
     }
 
-    if (!data) {
+    if (!json) {
       console.error('No data received from edge function');
       throw new Error('No se recibió respuesta del asistente');
     }
 
-    console.log('Assistant response received successfully');
+    console.log('✅ Assistant response received successfully');
 
-    if (data.respuesta_estructurada) {
-      const parsed = parseStructuredResponse(data.respuesta_estructurada);
+    if (json.respuesta_estructurada) {
+      const parsed = parseStructuredResponse(json.respuesta_estructurada);
       return {
-        ...data,
+        ...json,
         respuesta_estructurada: parsed,
       };
     }
 
-    return data;
+    return json;
   } catch (error: any) {
     console.error('Error sending message:', error);
     console.error('Error details:', {

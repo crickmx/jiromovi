@@ -25,17 +25,19 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
     .maybeSingle();
 
   if (convError) {
-    console.error('Error fetching conversation:', convError);
+    console.error('❌ Error fetching conversation:', convError.message);
+    console.error('Hint: RLS blocked conversaciones_chatgpt or table does not exist');
     return null;
   }
 
   if (!conv) {
-    console.error('Conversation not found:', conversacionId);
+    console.error('❌ Conversation not found:', conversacionId);
+    console.error('Hint: conversacion_id does not exist or RLS blocked access');
     return null;
   }
 
   if (!conv.usuario_id) {
-    console.error('Conversation has no usuario_id:', conversacionId);
+    console.error('❌ Conversation has no usuario_id:', conversacionId);
     return null;
   }
 
@@ -48,16 +50,18 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
     .maybeSingle();
 
   if (userError) {
-    console.error('Error fetching user:', userError);
+    console.error('❌ Error fetching user:', userError.message);
+    console.error('Hint: RLS blocked usuarios table. Need policy for authenticated users to read.');
     return null;
   }
 
   if (!user) {
-    console.error('User not found:', conv.usuario_id);
+    console.error('❌ User not found:', conv.usuario_id);
+    console.error('Hint: usuario_id does not exist in usuarios table');
     return null;
   }
 
-  console.log('User found:', user.email);
+  console.log('✅ User found:', user.email);
 
   // Get oficina name separately if needed
   let oficinaNombre = null;
@@ -537,8 +541,13 @@ Deno.serve(async (req: Request) => {
     if (userMessageError) {
       console.error('Error saving user message:', userMessageError);
       return new Response(
-        JSON.stringify({ error: 'Error al guardar mensaje', details: userMessageError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: 'No se pudo guardar el mensaje del usuario',
+          details: userMessageError.message,
+          table: 'mensajes_chatgpt',
+          hint: 'Verifica RLS policies o que conversacion_id sea válida'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -559,7 +568,11 @@ Deno.serve(async (req: Request) => {
       if (!userContext) {
         console.error('Failed to get user context');
         return new Response(
-          JSON.stringify({ error: 'No se pudo obtener el contexto del usuario. Tu perfil no está accesible.' }),
+          JSON.stringify({
+            error: 'No se pudo obtener el contexto del usuario',
+            details: 'Tu perfil no está accesible. Verifica que tu usuario esté activo.',
+            hint: 'Revisa RLS en tabla usuarios o que el usuario_id en conversaciones_chatgpt sea correcto'
+          }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -770,8 +783,13 @@ EJEMPLO DE RESPUESTA ESPERADA:
     if (mensajeError) {
       console.error('Error saving assistant message:', mensajeError);
       return new Response(
-        JSON.stringify({ error: 'Error al guardar respuesta', details: mensajeError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: 'No se pudo guardar la respuesta del asistente',
+          details: mensajeError.message,
+          table: 'mensajes_chatgpt',
+          hint: 'Verifica RLS policies para INSERT en mensajes_chatgpt'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
