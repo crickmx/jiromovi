@@ -7,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Switch } from '../components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog';
 import { Plus, Edit2, Save, X, GripVertical, Image as ImageIcon, Trash2, Car, Home, Bike, HeartPulse, Heart, Ambulance, CarTaxiFront, GraduationCap, Wheat, Laptop, CarFront, Truck, Bus, BarChart3, Shield, Briefcase, Ship, Tractor, Users, Stethoscope, ShieldCheck, Hospital, DollarSign, Activity, Plane } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import {
@@ -449,6 +449,11 @@ export default function CatalogosWeb() {
             <DialogTitle>
               {editingInsurer ? 'Editar Aseguradora' : 'Nueva Aseguradora'}
             </DialogTitle>
+            <DialogDescription>
+              {editingInsurer
+                ? 'Modifica la información de la aseguradora'
+                : 'Agrega una nueva aseguradora al catálogo web'}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -534,6 +539,11 @@ export default function CatalogosWeb() {
             <DialogTitle>
               {editingCategory ? 'Editar Ramo' : 'Nuevo Ramo'}
             </DialogTitle>
+            <DialogDescription>
+              {editingCategory
+                ? 'Modifica la información del ramo de seguro'
+                : 'Agrega un nuevo ramo de seguro al catálogo web'}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
