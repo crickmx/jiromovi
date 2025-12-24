@@ -16,11 +16,13 @@ interface UserContext {
 }
 
 async function getUserContext(supabase: any, conversacionId: string): Promise<UserContext | null> {
+  console.log('Getting conversation:', conversacionId);
+
   const { data: conv, error: convError } = await supabase
     .from('conversaciones_chatgpt')
     .select('usuario_id')
     .eq('id', conversacionId)
-    .single();
+    .maybeSingle();
 
   if (convError) {
     console.error('Error fetching conversation:', convError);
@@ -36,6 +38,8 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
     console.error('Conversation has no usuario_id:', conversacionId);
     return null;
   }
+
+  console.log('Getting user:', conv.usuario_id);
 
   const { data: user, error: userError } = await supabase
     .from('usuarios')
@@ -56,7 +60,7 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
       oficinas:oficina_id(nombre)
     `)
     .eq('id', conv.usuario_id)
-    .single();
+    .maybeSingle();
 
   if (userError) {
     console.error('Error fetching user:', userError);
