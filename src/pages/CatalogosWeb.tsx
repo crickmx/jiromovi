@@ -171,11 +171,16 @@ export default function CatalogosWeb() {
     }
 
     try {
+      setLoading(true);
       await deleteInsurer(insurer.id);
+      // Solo actualizar el estado si la eliminación fue exitosa
       setInsurers(prev => prev.filter(i => i.id !== insurer.id));
-    } catch (error) {
+      alert('Aseguradora eliminada correctamente');
+    } catch (error: any) {
       console.error('Error deleting insurer:', error);
-      alert('Error al eliminar la aseguradora');
+      alert(error?.message || 'Error al eliminar la aseguradora. Verifica que tengas permisos de administrador.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -185,11 +190,16 @@ export default function CatalogosWeb() {
     }
 
     try {
+      setLoading(true);
       await deleteCategory(category.id);
+      // Solo actualizar el estado si la eliminación fue exitosa
       setCategories(prev => prev.filter(c => c.id !== category.id));
-    } catch (error) {
+      alert('Ramo eliminado correctamente');
+    } catch (error: any) {
       console.error('Error deleting category:', error);
-      alert('Error al eliminar el ramo');
+      alert(error?.message || 'Error al eliminar el ramo. Verifica que tengas permisos de administrador.');
+    } finally {
+      setLoading(false);
     }
   }
 

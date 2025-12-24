@@ -62,7 +62,10 @@ export async function deleteInsurer(id: string): Promise<void> {
     .delete()
     .eq('id', id);
 
-  if (error) throw error;
+  if (error) {
+    console.error('Delete insurer error:', error);
+    throw new Error(`Error al eliminar aseguradora: ${error.message}`);
+  }
 }
 
 export async function getActiveCategories(): Promise<WebPageCategory[]> {
@@ -120,7 +123,10 @@ export async function deleteCategory(id: string): Promise<void> {
     .delete()
     .eq('id', id);
 
-  if (error) throw error;
+  if (error) {
+    console.error('Delete category error:', error);
+    throw new Error(`Error al eliminar ramo: ${error.message}`);
+  }
 }
 
 export async function getUserWebPageConfig(userId: string): Promise<UserWebPageConfig | null> {
