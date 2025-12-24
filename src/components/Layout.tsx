@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Globe2, Database } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
+import { FloatingAssistantButton } from './FloatingAssistantButton';
+import { AssistantModal } from './AssistantModal';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -353,6 +355,9 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
         )}>
           {children}
         </main>
+
+        <FloatingAssistantButton />
+        <AssistantModal />
       </div>
     </div>
   );

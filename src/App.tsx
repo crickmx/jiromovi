@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { AssistantProvider } from './contexts/AssistantContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
@@ -716,7 +717,8 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <NotificationProvider>
-            <Routes>
+            <AssistantProvider>
+              <Routes>
               {/* Rutas autenticadas - se evalúan primero */}
               <Route path="/login" element={<Login />} />
               <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
@@ -784,6 +786,7 @@ function App() {
               {/* Ruta pública - catch-all para slugs */}
               <Route path="/:slug" element={<PaginaPublicaAsesor />} />
             </Routes>
+            </AssistantProvider>
           </NotificationProvider>
         </AuthProvider>
       </BrowserRouter>
