@@ -436,11 +436,16 @@
     async function loadLessons() {
       log('Cargando lecciones desde la base de datos...', 'info');
 
-      const { data: category } = await supabaseClient
+      const { data: category, error: categoryError } = await supabaseClient
         .from('seguros_categories')
         .select('id')
         .eq('nombre', 'Academia de Negocios 2025')
-        .single();
+        .maybeSingle();
+
+      if (categoryError) {
+        log(`Error al buscar categoría: ${categoryError.message}`, 'error');
+        return;
+      }
 
       if (!category) {
         log('No se encontró la categoría Academia de Negocios 2025', 'error');
