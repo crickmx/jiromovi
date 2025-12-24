@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Sparkles, Trash2, Plus, Send, Paperclip, FileText, X as XIcon } from 'lucide-react';
+import { X, Sparkles, Trash2, Send, Paperclip, FileText, X as XIcon } from 'lucide-react';
 import { useAssistant } from '../contexts/AssistantContext';
 import { useLocation } from 'react-router-dom';
 import { getSuggestionsForRoute } from '../lib/suggestionsService';
@@ -136,15 +136,6 @@ export function AssistantModal() {
               onClick={() => setShowHistory(!showHistory)}
             >
               Historial
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={startNewConversation}
-              disabled={isSendingMessage}
-              title="Nueva conversación"
-            >
-              <Plus className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" onClick={closeAssistant}>
               <X className="h-5 w-5" />
