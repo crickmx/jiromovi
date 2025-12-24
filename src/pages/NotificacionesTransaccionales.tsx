@@ -16,10 +16,9 @@ import {
 import { ConfiguracionSMTP } from '../components/notificaciones/ConfiguracionSMTP';
 import { ConfiguracionWhatsApp } from '../components/notificaciones/ConfiguracionWhatsApp';
 import { TiposNotificaciones } from '../components/notificaciones/TiposNotificaciones';
-import { GestionPlantillas } from '../components/notificaciones/GestionPlantillas';
 import { HistorialEnvios } from '../components/notificaciones/HistorialEnvios';
 
-type Tab = 'configuracion' | 'whatsapp' | 'notificaciones' | 'plantillas' | 'historial';
+type Tab = 'configuracion' | 'whatsapp' | 'notificaciones' | 'historial';
 
 interface Config {
   id: string;
@@ -260,19 +259,8 @@ export function NotificacionesTransaccionales() {
                   : 'text-neutral-600 hover:text-neutral-800'
               }`}
             >
-              <Mail className="w-5 h-5" />
-              Tipos de Notificaciones
-            </button>
-            <button
-              onClick={() => setActiveTab('plantillas')}
-              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'plantillas'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
-                  : 'text-neutral-600 hover:text-neutral-800'
-              }`}
-            >
               <FileText className="w-5 h-5" />
-              Plantillas
+              Plantillas y Notificaciones
             </button>
             <button
               onClick={() => setActiveTab('historial')}
@@ -303,9 +291,6 @@ export function NotificacionesTransaccionales() {
           )}
           {activeTab === 'notificaciones' && (
             <TiposNotificaciones onUpdate={fetchData} />
-          )}
-          {activeTab === 'plantillas' && (
-            <GestionPlantillas />
           )}
           {activeTab === 'historial' && (
             <HistorialEnvios />

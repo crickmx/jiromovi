@@ -387,6 +387,9 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         <div className="flex items-center gap-2 mb-4">
           <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
           <h3 className="text-lg font-bold text-neutral-900">Notificaciones Programadas</h3>
+          <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full">
+            Editar plantillas de Email, WhatsApp y Campanita en un solo lugar
+          </span>
         </div>
 
         {tipos.map((tipo) => {
@@ -413,10 +416,10 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                 <button
                   onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre })}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-100 text-primary-700 hover:bg-primary-200 transition-colors"
-                  title="Editar plantilla"
+                  title="Editar plantillas de todos los canales"
                 >
                   <Edit className="w-4 h-4" />
-                  Editar Plantilla
+                  Editar Plantillas
                 </button>
                 <button
                   onClick={() => toggleActivo(tipo.id, tipo.activo)}

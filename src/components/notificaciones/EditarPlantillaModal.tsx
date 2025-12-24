@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { X, Mail, MessageCircle, AlertCircle, Save } from 'lucide-react';
+import { X, Mail, MessageCircle, AlertCircle, Save, Bell } from 'lucide-react';
 
 interface Plantilla {
   id: string;
@@ -8,8 +8,11 @@ interface Plantilla {
   asunto: string;
   html_cuerpo: string;
   whatsapp_plantilla: string | null;
+  notificacion_titulo: string | null;
+  notificacion_cuerpo: string | null;
   variables_disponibles: string[] | null;
   whatsapp_variables_disponibles: string[] | null;
+  notificacion_variables_disponibles: string[] | null;
 }
 
 interface EditarPlantillaModalProps {
@@ -26,7 +29,9 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
   const [asunto, setAsunto] = useState('');
   const [cuerpoEmail, setCuerpoEmail] = useState('');
   const [mensajeWhatsApp, setMensajeWhatsApp] = useState('');
-  const [previewTab, setPreviewTab] = useState<'email' | 'whatsapp'>('email');
+  const [tituloNotificacion, setTituloNotificacion] = useState('');
+  const [cuerpoNotificacion, setCuerpoNotificacion] = useState('');
+  const [previewTab, setPreviewTab] = useState<'email' | 'whatsapp' | 'notificacion'>('email');
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
@@ -49,6 +54,8 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
         setAsunto(data.asunto || '');
         setCuerpoEmail(data.html_cuerpo || '');
         setMensajeWhatsApp(data.whatsapp_plantilla || '');
+        setTituloNotificacion(data.notificacion_titulo || '');
+        setCuerpoNotificacion(data.notificacion_cuerpo || '');
       }
     } catch (error: any) {
       console.error('Error al cargar plantilla:', error);
@@ -68,8 +75,8 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
         return;
       }
 
-      if (!cuerpoEmail.trim() && !mensajeWhatsApp.trim()) {
-        setMessage({ type: 'error', text: 'Debes completar al menos una plantilla (email o WhatsApp)' });
+      if (!cuerpoEmail.trim() && !mensajeWhatsApp.trim() && !cuerpoNotificacion.trim()) {
+        setMessage({ type: 'error', text: 'Debes completar al menos una plantilla (email, WhatsApp o notificación interna)' });
         return;
       }
 
@@ -83,6 +90,8 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
             asunto: asunto.trim(),
             html_cuerpo: cuerpoEmail.trim(),
             whatsapp_plantilla: mensajeWhatsApp.trim() || null,
+            notificacion_titulo: tituloNotificacion.trim() || null,
+            notificacion_cuerpo: cuerpoNotificacion.trim() || null,
             actualizado_por: user?.id,
             ultima_actualizacion: new Date().toISOString()
           })
@@ -98,6 +107,8 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
             asunto: asunto.trim(),
             html_cuerpo: cuerpoEmail.trim(),
             whatsapp_plantilla: mensajeWhatsApp.trim() || null,
+            notificacion_titulo: tituloNotificacion.trim() || null,
+            notificacion_cuerpo: cuerpoNotificacion.trim() || null,
             es_plantilla_default: true,
             actualizado_por: user?.id,
             ultima_actualizacion: new Date().toISOString()
@@ -120,11 +131,13 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
     }
   };
 
-  const insertVariable = (variable: string, tipo: 'email' | 'whatsapp') => {
+  const insertVariable = (variable: string, tipo: 'email' | 'whatsapp' | 'notificacion') => {
     if (tipo === 'email') {
       setCuerpoEmail(prev => prev + variable);
-    } else {
+    } else if (tipo === 'whatsapp') {
       setMensajeWhatsApp(prev => prev + variable);
+    } else {
+      setCuerpoNotificacion(prev => prev + variable);
     }
   };
 
@@ -146,6 +159,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
   ];
 
   const variablesWhatsApp = plantilla?.whatsapp_variables_disponibles || variablesEmail;
+  const variablesNotificacion = plantilla?.notificacion_variables_disponibles || variablesEmail;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -208,7 +222,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                   }`}
                 >
                   <Mail className="w-4 h-4" />
-                  Plantilla Email
+                  Email
                 </button>
                 <button
                   onClick={() => setPreviewTab('whatsapp')}
@@ -219,7 +233,18 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                   }`}
                 >
                   <MessageCircle className="w-4 h-4" />
-                  Plantilla WhatsApp
+                  WhatsApp
+                </button>
+                <button
+                  onClick={() => setPreviewTab('notificacion')}
+                  className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium transition-colors ${
+                    previewTab === 'notificacion'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-neutral-600 hover:text-neutral-800'
+                  }`}
+                >
+                  <Bell className="w-4 h-4" />
+                  Campanita
                 </button>
               </div>
             </div>
@@ -296,6 +321,59 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                   </div>
                   <p className="text-xs text-neutral-500 mt-2">
                     Click en una variable para insertarla en el mensaje
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Notificación Interna Tab */}
+            {previewTab === 'notificacion' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                    Título de la Notificación
+                  </label>
+                  <input
+                    type="text"
+                    value={tituloNotificacion}
+                    onChange={(e) => setTituloNotificacion(e.target.value)}
+                    placeholder="Ej: Nueva notificación para {{nombre}}"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                    Cuerpo de la Notificación
+                  </label>
+                  <textarea
+                    value={cuerpoNotificacion}
+                    onChange={(e) => setCuerpoNotificacion(e.target.value)}
+                    rows={8}
+                    placeholder="Hola {{nombre}}, tu mensaje aquí..."
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Este mensaje aparecerá en el centro de notificaciones (campanita)
+                  </p>
+                </div>
+
+                {/* Variables Notificación */}
+                <div>
+                  <p className="text-sm font-semibold text-neutral-700 mb-2">Variables Disponibles:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {variablesNotificacion.map((variable) => (
+                      <button
+                        key={variable}
+                        onClick={() => insertVariable(variable, 'notificacion')}
+                        className="px-3 py-1 text-xs font-mono bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        {variable}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-neutral-500 mt-2">
+                    Click en una variable para insertarla en la notificación
                   </p>
                 </div>
               </div>
