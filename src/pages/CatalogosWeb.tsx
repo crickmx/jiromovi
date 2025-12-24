@@ -464,7 +464,12 @@ export default function CatalogosWeb() {
                 id="insurer-logo"
                 type="file"
                 accept="image/*"
-                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setLogoFile(e.target.files?.[0] || null);
+                }}
+                onClick={(e) => e.stopPropagation()}
               />
               {insurerForm.logo_url && !logoFile && (
                 <div className="mt-2 p-2 border rounded bg-gray-50">
@@ -496,11 +501,12 @@ export default function CatalogosWeb() {
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={closeInsurerModal}>
+              <Button type="button" variant="outline" onClick={closeInsurerModal}>
                 <X className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
               <Button
+                type="button"
                 onClick={handleSaveInsurer}
                 disabled={!insurerForm.name || (!insurerForm.logo_url && !logoFile) || uploading}
               >
@@ -607,11 +613,12 @@ export default function CatalogosWeb() {
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={closeCategoryModal}>
+              <Button type="button" variant="outline" onClick={closeCategoryModal}>
                 <X className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
               <Button
+                type="button"
                 onClick={handleSaveCategory}
                 disabled={!categoryForm.name || !categoryForm.slug || !categoryForm.card_title || !categoryForm.card_description || uploading}
               >
