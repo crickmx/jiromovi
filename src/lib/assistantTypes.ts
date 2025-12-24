@@ -336,6 +336,7 @@ export interface SendMessageRequest {
   modulo: ModuleName;
   ruta: string;
   parametros?: Record<string, string>;
+  file_paths?: string[];
 }
 
 export interface SendMessageResponse {

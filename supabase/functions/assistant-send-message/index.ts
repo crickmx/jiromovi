@@ -6,6 +6,66 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+async function extractTextFromPDF(buffer: Uint8Array): Promise<string> {
+  try {
+    const pdfjsLib = await import('npm:pdfjs-dist@3.11.174');
+
+    const loadingTask = pdfjsLib.getDocument({ data: buffer });
+    const pdf = await loadingTask.promise;
+
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+
+      fullText += `\n--- Página ${i} ---\n${pageText}\n`;
+    }
+
+    return fullText.trim();
+  } catch (error) {
+    console.error('Error parsing PDF:', error);
+    return '[Error al extraer texto del PDF - el archivo puede estar protegido o corrupto]';
+  }
+}
+
+async function extractFileContent(fileBuffer: Uint8Array, fileName: string): Promise<string> {
+  const extension = fileName.split('.').pop()?.toLowerCase();
+
+  if (!extension) {
+    return 'Archivo sin extensión válida';
+  }
+
+  try {
+    if (extension === 'txt' || extension === 'csv') {
+      const decoder = new TextDecoder('utf-8');
+      return decoder.decode(fileBuffer);
+    }
+
+    if (extension === 'pdf') {
+      console.log('Extracting text from PDF:', fileName);
+      const pdfText = await extractTextFromPDF(fileBuffer);
+      return pdfText || '[PDF sin contenido de texto extraíble]';
+    }
+
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
+      return '[Imagen adjunta - nombre: ' + fileName + ']\nNota: No se puede extraer texto de imágenes automáticamente.';
+    }
+
+    if (['doc', 'docx', 'xlsx', 'xls'].includes(extension)) {
+      return '[Documento Office adjunto - nombre: ' + fileName + ']\nNota: El análisis automático de documentos Office no está disponible. Por favor, describe el contenido del documento.';
+    }
+
+    return '[Archivo adjunto - nombre: ' + fileName + ', tipo: .' + extension + ']\nNota: No se puede extraer texto automáticamente de este tipo de archivo.';
+  } catch (error) {
+    console.error('Error extracting file content:', error);
+    return '[Error al procesar archivo: ' + fileName + ']';
+  }
+}
+
 interface RoutingDecision {
   selectedMode: 'chatgpt' | 'movi';
   chatgptScore: number;
@@ -629,7 +689,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { conversacion_id, mensaje, modulo, ruta, parametros } = requestBody;
+    const { conversacion_id, mensaje, modulo, ruta, parametros, file_paths } = requestBody;
 
     if (!conversacion_id || !mensaje) {
       console.error('Missing required fields:', { conversacion_id, mensaje });
@@ -777,6 +837,39 @@ Deno.serve(async (req: Request) => {
       const completeContext = await getCompleteUserContext(supabaseAdmin, userContext.id);
       console.log('Complete context obtained');
 
+      let attachedFilesContent = '';
+      if (file_paths && file_paths.length > 0) {
+        console.log('Processing attached files:', file_paths.length);
+        const fileContents: string[] = [];
+
+        for (const filePath of file_paths) {
+          try {
+            const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+              .from('assistant-files')
+              .download(filePath);
+
+            if (downloadError) {
+              console.error('Error downloading file:', filePath, downloadError);
+              fileContents.push(`[Error al descargar archivo: ${filePath}]`);
+              continue;
+            }
+
+            const arrayBuffer = await fileData.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            const fileName = filePath.split('/').pop() || 'archivo';
+            const content = await extractFileContent(uint8Array, fileName);
+            fileContents.push(`\n--- ARCHIVO: ${fileName} ---\n${content}\n--- FIN DEL ARCHIVO ---\n`);
+          } catch (error) {
+            console.error('Error processing file:', filePath, error);
+            fileContents.push(`[Error al procesar archivo: ${filePath}]`);
+          }
+        }
+
+        if (fileContents.length > 0) {
+          attachedFilesContent = '\n\n📎 DOCUMENTOS ADJUNTOS POR EL USUARIO:\n' + fileContents.join('\n');
+        }
+      }
+
       const modeLabel = routingDecision?.selectedMode === 'chatgpt' ? 'Modo ChatGPT (Conocimiento General)' : 'Modo MOVI (Datos del Sistema)';
 
       const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual inteligente para agentes de seguros.
@@ -821,6 +914,9 @@ REGLAS ESTRICTAS:
     - crm_polizas = pólizas reales registradas en el sistema
 12. Si el usuario pregunta por pólizas, SOLO menciona las que están en crm_polizas.proximas_renovaciones
 13. Si solo hay tareas relacionadas a pólizas pero NO pólizas reales, di: "Tienes tareas pendientes relacionadas con pólizas"
+14. DOCUMENTOS ADJUNTOS: Si el usuario adjunta archivos (PDFs, imágenes, etc.), encontrarás su contenido en la sección DOCUMENTOS ADJUNTOS del prompt
+15. Si el usuario pregunta sobre archivos adjuntos, analiza el contenido proporcionado y responde en base a él
+16. Para PDFs y documentos complejos, analiza la información disponible y proporciona insights útiles
 
 RUTAS DISPONIBLES EN LA PLATAFORMA:
 - /dashboard - Panel principal
@@ -876,7 +972,7 @@ INFORMACIÓN DE NAVEGACIÓN:
 - Módulo actual: ${modulo}
 - Ruta actual: ${ruta}
 
-PREGUNTA DEL USUARIO: ${mensaje}
+PREGUNTA DEL USUARIO: ${mensaje}${attachedFilesContent}
 
 INSTRUCCIONES FINALES:
 1. REVISA cuidadosamente el CONTEXTO COMPLETO arriba - ahí están TODOS los datos reales

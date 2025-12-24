@@ -161,6 +161,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         }
 
         let uploadedFileNames: string[] = [];
+        let uploadedFilePaths: string[] = [];
 
         if (files && files.length > 0) {
           const { supabase } = await import('../lib/supabase');
@@ -180,6 +181,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             }
 
             uploadedFileNames.push(file.name);
+            uploadedFilePaths.push(filePath);
           }
         }
 
@@ -191,6 +193,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             : `📎 Archivos adjuntos:\n${filesList}`;
         }
 
+        const optimisticMessage: AssistantMessage = {
+          id: `temp-${Date.now()}`,
+          conversacion_id: activeConversationId,
+          rol: 'user',
+          contenido: messageText,
+          respuesta_estructurada_json: null,
+          tiene_acciones: false,
+          created_at: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, optimisticMessage]);
+
         const params = extractRouteParams(location.pathname);
 
         const response = await sendMessageService({
@@ -199,6 +213,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           modulo: currentModule,
           ruta: location.pathname,
           parametros: params,
+          file_paths: uploadedFilePaths,
         });
 
         if (response) {
