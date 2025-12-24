@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Migrar Videos a MOVI Digital</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .upload-section {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 6px;
+    }
+    button {
+      padding: 12px 24px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .progress {
+      margin-top: 20px;
+      display: none;
+    }
+    .progress.active {
+      display: block;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #10b981;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+    .log {
+      margin-top: 20px;
+      padding: 15px;
+      background: #1f2937;
+      color: #10b981;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+    .log-line {
+      margin: 2px 0;
+    }
+    .log-error {
+      color: #ef4444;
+    }
+    .log-success {
+      color: #10b981;
+    }
+    .log-info {
+      color: #3b82f6;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      padding: 15px;
+      background: #f3f4f6;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .stat-label {
+      color: #666;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎥 Migrar Videos a MOVI Digital</h1>
+    <p class="subtitle">Herramienta para migrar videos e imágenes desde Google Drive a Supabase Storage</p>
+
+    <div class="upload-section">
+      <h3>📋 Datos CSV (Titulo, URL del Video, URL de la Imagen)</h3>
+      <textarea id="csvInput" placeholder="Pega aquí el contenido CSV..."></textarea>
+      <div style="margin-top: 15px;">
+        <button onclick="startMigration()" id="startBtn">🚀 Iniciar Migración</button>
+        <button onclick="clearLog()">🗑️ Limpiar Log</button>
+        <button onclick="updateDatabase()" id="updateDbBtn" style="display: none; background: #059669;">💾 Actualizar Base de Datos</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="totalCount">0</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="successCount">0</div>
+        <div class="stat-label">Exitosos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="errorCount">0</div>
+        <div class="stat-label">Errores</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="progressPercent">0%</div>
+        <div class="stat-label">Progreso</div>
+      </div>
+    </div>
+
+    <div class="progress" id="progressBar">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
+      </div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let migrationResults = [];
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const line = document.createElement('div');
+      line.className = `log-line log-${type}`;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logDiv.appendChild(line);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+      migrationResults = [];
+      updateStats(0, 0, 0, 0);
+    }
+
+    function updateStats(total, success, errors, progress) {
+      document.getElementById('totalCount').textContent = total;
+      document.getElementById('successCount').textContent = success;
+      document.getElementById('errorCount').textContent = errors;
+      document.getElementById('progressPercent').textContent = `${progress}%`;
+
+      const fill = document.getElementById('progressFill');
+      fill.style.width = `${progress}%`;
+      fill.textContent = `${progress}%`;
+    }
+
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split('\n');
+      const items = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(',');
+        if (parts.length >= 2) {
+          items.push({
+            titulo: parts[0].trim(),
+            videoUrl: parts[1] ? parts[1].trim() : '',
+            imageUrl: parts[2] ? parts[2].trim() : ''
+          });
+        }
+      }
+
+      return items;
+    }
+
+    function extractGoogleDriveId(url) {
+      if (!url || url === 'No se encontró imagen') return null;
+      const match = url.match(/\/d\/([^\/]+)\//);
+      return match ? match[1] : null;
+    }
+
+    function getDirectDownloadUrl(driveUrl) {
+      const fileId = extractGoogleDriveId(driveUrl);
+      if (!fileId) return null;
+      return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
+
+    function sanitizeFilename(titulo) {
+      return titulo
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+
+    async function downloadFile(url) {
+      const downloadUrl = getDirectDownloadUrl(url);
+      if (!downloadUrl) return null;
+
+      try {
+        const response = await fetch(downloadUrl, {
+          mode: 'cors',
+          credentials: 'omit'
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        return await response.blob();
+      } catch (error) {
+        console.error('Download error:', error);
+        return null;
+      }
+    }
+
+    async function uploadToStorage(bucket, path, file) {
+      try {
+        const { data, error } = await supabase.storage
+          .from(bucket)
+          .upload(path, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (error) {
+          console.error('Upload error:', error);
+          return null;
+        }
+
+        const { data: publicUrl } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(path);
+
+        return publicUrl.publicUrl;
+      } catch (error) {
+        console.error('Storage error:', error);
+        return null;
+      }
+    }
+
+    async function migrateItem(item, index, total) {
+      const filename = sanitizeFilename(item.titulo);
+      const result = {
+        titulo: item.titulo,
+        videoUrl: null,
+        imageUrl: null,
+        errors: []
+      };
+
+      log(`[${index + 1}/${total}] Procesando: ${item.titulo}`, 'info');
+
+      if (item.videoUrl && item.videoUrl !== 'No se encontró imagen') {
+        log(`  → Descargando video...`, 'info');
+        const videoBlob = await downloadFile(item.videoUrl);
+
+        if (videoBlob) {
+          log(`  → Subiendo video a MOVI (${(videoBlob.size / 1024 / 1024).toFixed(2)} MB)...`, 'info');
+          const videoPath = `academia-negocios-2025/${filename}.mp4`;
+          const videoUrl = await uploadToStorage('seguros-videos', videoPath, videoBlob);
+
+          if (videoUrl) {
+            result.videoUrl = videoUrl;
+            log(`  ✓ Video subido exitosamente`, 'success');
+          } else {
+            result.errors.push('Error al subir video');
+            log(`  ✗ Error al subir video`, 'error');
+          }
+        } else {
+          result.errors.push('Error al descargar video');
+          log(`  ✗ Error al descargar video de Drive`, 'error');
+        }
+      }
+
+      if (item.imageUrl && item.imageUrl !== 'No se encontró imagen') {
+        log(`  → Descargando imagen...`, 'info');
+        const imageBlob = await downloadFile(item.imageUrl);
+
+        if (imageBlob) {
+          log(`  → Subiendo imagen a MOVI...`, 'info');
+          const imagePath = `academia-negocios-2025/${filename}.jpg`;
+          const imageUrl = await uploadToStorage('seguros-thumbnails', imagePath, imageBlob);
+
+          if (imageUrl) {
+            result.imageUrl = imageUrl;
+            log(`  ✓ Imagen subida exitosamente`, 'success');
+          } else {
+            result.errors.push('Error al subir imagen');
+            log(`  ✗ Error al subir imagen`, 'error');
+          }
+        } else {
+          result.errors.push('Error al descargar imagen');
+          log(`  ✗ Error al descargar imagen de Drive`, 'error');
+        }
+      }
+
+      return result;
+    }
+
+    async function startMigration() {
+      const csvText = document.getElementById('csvInput').value.trim();
+
+      if (!csvText) {
+        alert('Por favor pega el contenido CSV primero');
+        return;
+      }
+
+      const items = parseCSV(csvText);
+
+      if (items.length === 0) {
+        alert('No se encontraron items válidos en el CSV');
+        return;
+      }
+
+      const startBtn = document.getElementById('startBtn');
+      startBtn.disabled = true;
+      startBtn.textContent = '⏳ Migrando...';
+
+      document.getElementById('progressBar').classList.add('active');
+
+      clearLog();
+      log(`🚀 Iniciando migración de ${items.length} items...`, 'info');
+
+      migrationResults = [];
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < items.length; i++) {
+        const result = await migrateItem(items[i], i, items.length);
+        migrationResults.push(result);
+
+        if (result.videoUrl || result.imageUrl) {
+          successCount++;
+        }
+        if (result.errors.length > 0) {
+          errorCount++;
+        }
+
+        const progress = Math.round(((i + 1) / items.length) * 100);
+        updateStats(items.length, successCount, errorCount, progress);
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      log(`\n✅ Migración completada: ${successCount} exitosos, ${errorCount} con errores`, 'success');
+
+      startBtn.disabled = false;
+      startBtn.textContent = '🚀 Iniciar Migración';
+
+      if (successCount > 0) {
+        document.getElementById('updateDbBtn').style.display = 'inline-block';
+      }
+    }
+
+    async function updateDatabase() {
+      log('\n📝 Actualizando base de datos...', 'info');
+
+      for (const result of migrationResults) {
+        if (!result.videoUrl && !result.imageUrl) continue;
+
+        try {
+          const { error } = await supabase
+            .from('seguros_lessons')
+            .update({
+              video_url: result.videoUrl || undefined,
+              miniatura_url: result.imageUrl || undefined
+            })
+            .eq('titulo', result.titulo);
+
+          if (error) {
+            log(`✗ Error al actualizar "${result.titulo}": ${error.message}`, 'error');
+          } else {
+            log(`✓ Actualizado: ${result.titulo}`, 'success');
+          }
+        } catch (error) {
+          log(`✗ Error al actualizar "${result.titulo}": ${error.message}`, 'error');
+        }
+      }
+
+      log('\n✅ Base de datos actualizada', 'success');
+    }
+
+    log('📱 Herramienta lista. Pega el CSV y haz clic en "Iniciar Migración"', 'info');
+    log('⚠️  Asegúrate de estar autenticado en Supabase', 'info');
+  </script>
+</body>
+</html>
