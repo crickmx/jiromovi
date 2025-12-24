@@ -314,6 +314,12 @@
       progressDiv.innerHTML = '<div class="info">⏳ Iniciando migración...</div>';
 
       try {
+        // 0. Obtener usuario autenticado
+        const { data: { user: currentUser }, error: authError } = await supabaseClient.auth.getUser();
+        if (authError || !currentUser) {
+          throw new Error('No hay usuario autenticado. Por favor inicia sesión primero.');
+        }
+
         // 1. Obtener archivos de Storage
         const { data: videos } = await supabaseClient.storage
           .from('videos-seguros-education')
