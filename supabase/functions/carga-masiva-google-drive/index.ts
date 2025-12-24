@@ -59,7 +59,7 @@ function generarTitulo(nombreArchivo: string): string {
   return titulo.substring(0, 100);
 }
 
-async function listarArchivosGoogleDrive(folderId: string): Promise<GoogleDriveFile[]> {
+async function listarArchivosGoogleDrive(folderId: string, apiKey: string): Promise<GoogleDriveFile[]> {
   const archivos: GoogleDriveFile[] = [];
   let pageToken: string | null = null;
 
@@ -68,6 +68,7 @@ async function listarArchivosGoogleDrive(folderId: string): Promise<GoogleDriveF
     url.searchParams.set('q', `'${folderId}' in parents and trashed=false`);
     url.searchParams.set('fields', 'nextPageToken, files(id, name, mimeType, size, modifiedTime, webContentLink)');
     url.searchParams.set('pageSize', '100');
+    url.searchParams.set('key', apiKey);
     if (pageToken) {
       url.searchParams.set('pageToken', pageToken);
     }
@@ -137,8 +138,8 @@ function emparejarArchivos(archivos: GoogleDriveFile[]): { pares: FileMatch[]; s
   return { pares, sinPareja };
 }
 
-async function descargarArchivo(fileId: string, nombreArchivo: string): Promise<string> {
-  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+async function descargarArchivo(fileId: string, nombreArchivo: string, apiKey: string): Promise<string> {
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
@@ -198,7 +199,8 @@ async function procesarArchivos(
   adminUserId: string,
   categoriaId: string,
   pares: FileMatch[],
-  sinPareja: GoogleDriveFile[]
+  sinPareja: GoogleDriveFile[],
+  apiKey: string
 ) {
   const state: ProcessState = {
     total_videos_drive: pares.length + sinPareja.length,
@@ -227,12 +229,12 @@ async function procesarArchivos(
     let imagenUrl: string | null = null;
 
     try {
-      videoPath = await descargarArchivo(par.videoFile.id, par.videoFile.name);
+      videoPath = await descargarArchivo(par.videoFile.id, par.videoFile.name, apiKey);
       state.archivos_descargados_exitosos++;
 
       if (par.imageFile) {
         try {
-          imagenPath = await descargarArchivo(par.imageFile.id, par.imageFile.name);
+          imagenPath = await descargarArchivo(par.imageFile.id, par.imageFile.name, apiKey);
           state.archivos_descargados_exitosos++;
         } catch (error) {
           console.error(`Error descargando miniatura ${par.imageFile.name}:`, error);
@@ -344,7 +346,7 @@ async function procesarArchivos(
     let videoUrl: string | null = null;
 
     try {
-      videoPath = await descargarArchivo(video.id, video.name);
+      videoPath = await descargarArchivo(video.id, video.name, apiKey);
       state.archivos_descargados_exitosos++;
 
       const timestamp = Date.now();
@@ -459,12 +461,23 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
+    if (!googleApiKey) {
+      return new Response(
+        JSON.stringify({
+          error: 'Google API Key no configurada',
+          mensaje: 'Por favor configura la variable de entorno GOOGLE_API_KEY en el proyecto de Supabase'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const folderId = '1D064yj7jbC__ZWV5hb1xzvcpFB6mrLXV';
     const timestampInicio = new Date().toISOString();
 
     console.log(`[${timestampInicio}] [INICIO] Iniciando carga masiva desde Google Drive`);
 
-    const archivos = await listarArchivosGoogleDrive(folderId);
+    const archivos = await listarArchivosGoogleDrive(folderId, googleApiKey);
     console.log(`[${new Date().toISOString()}] [INFO] Archivos encontrados: ${archivos.length}`);
 
     const { pares, sinPareja } = emparejarArchivos(archivos);
@@ -512,7 +525,8 @@ Deno.serve(async (req: Request) => {
           usuario.id,
           categoria.id,
           pares,
-          sinPareja
+          sinPareja,
+          googleApiKey
         );
 
         const timestampFin = new Date().toISOString();
