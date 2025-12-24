@@ -86,15 +86,15 @@ async function buildComisionesSnapshot(usuarioId: string, parametros: Record<str
   const { data: comisiones } = await supabase
     .from('commission_details')
     .select('*')
-    .eq('agent_id', usuarioId)
+    .eq('movi_user_id', usuarioId)
     .order('created_at', { ascending: false })
     .limit(10);
 
   const mesActual = new Date().toISOString().substring(0, 7);
   const { data: resumenMes } = await supabase
     .from('commission_details')
-    .select('monto_comision_neta, comision_sin_iva')
-    .eq('agent_id', usuarioId)
+    .select('commission_neta, commission_bruta')
+    .eq('movi_user_id', usuarioId)
     .gte('created_at', `${mesActual}-01`);
 
   let comisionSeleccionada = null;
@@ -107,7 +107,7 @@ async function buildComisionesSnapshot(usuarioId: string, parametros: Record<str
     comisionSeleccionada = data;
   }
 
-  const totalMes = resumenMes?.reduce((sum, c) => sum + (c.monto_comision_neta || 0), 0) || 0;
+  const totalMes = resumenMes?.reduce((sum, c) => sum + (c.commission_neta || 0), 0) || 0;
 
   return {
     ultimas_comisiones: comisiones || [],
@@ -125,11 +125,11 @@ async function buildProduccionSnapshot(usuarioId: string) {
 
   const { data: produccionMes } = await supabase
     .from('production_records')
-    .select('prima_neta')
-    .eq('agent_id', usuarioId)
-    .gte('fecha_emision', `${mesActual}-01`);
+    .select('importe_pesos')
+    .eq('user_id', usuarioId)
+    .gte('fecha', `${mesActual}-01`);
 
-  const totalMes = produccionMes?.reduce((sum, p) => sum + (p.prima_neta || 0), 0) || 0;
+  const totalMes = produccionMes?.reduce((sum, p) => sum + (p.importe_pesos || 0), 0) || 0;
 
   const ultimos3Meses = [];
   for (let i = 0; i < 3; i++) {
@@ -139,25 +139,25 @@ async function buildProduccionSnapshot(usuarioId: string) {
 
     const { data } = await supabase
       .from('production_records')
-      .select('prima_neta')
-      .eq('agent_id', usuarioId)
-      .gte('fecha_emision', `${mes}-01`)
-      .lt('fecha_emision', `${mes}-32`);
+      .select('importe_pesos')
+      .eq('user_id', usuarioId)
+      .gte('fecha', `${mes}-01`)
+      .lt('fecha', `${mes}-32`);
 
-    const total = data?.reduce((sum, p) => sum + (p.prima_neta || 0), 0) || 0;
+    const total = data?.reduce((sum, p) => sum + (p.importe_pesos || 0), 0) || 0;
     ultimos3Meses.push({ mes, total });
   }
 
   const { data: porRamo } = await supabase
     .from('production_records')
-    .select('ramo, prima_neta')
-    .eq('agent_id', usuarioId)
-    .gte('fecha_emision', `${mesActual}-01`);
+    .select('ramo_nombre, importe_pesos')
+    .eq('user_id', usuarioId)
+    .gte('fecha', `${mesActual}-01`);
 
   const ramoTotales: Record<string, number> = {};
   porRamo?.forEach((p) => {
-    const ramo = p.ramo || 'Sin ramo';
-    ramoTotales[ramo] = (ramoTotales[ramo] || 0) + (p.prima_neta || 0);
+    const ramo = p.ramo_nombre || 'Sin ramo';
+    ramoTotales[ramo] = (ramoTotales[ramo] || 0) + (p.importe_pesos || 0);
   });
 
   const top5Ramos = Object.entries(ramoTotales)
@@ -176,8 +176,8 @@ async function buildCRMSnapshot(usuarioId: string, parametros: Record<string, st
   const { data: tareas } = await supabase
     .from('crm_tareas')
     .select('*')
-    .eq('usuario_id', usuarioId)
-    .neq('estado', 'completada')
+    .eq('creado_por', usuarioId)
+    .eq('completada', false)
     .order('fecha_vencimiento', { ascending: true })
     .limit(10);
 
@@ -187,7 +187,7 @@ async function buildCRMSnapshot(usuarioId: string, parametros: Record<string, st
   const { data: renovaciones } = await supabase
     .from('crm_polizas')
     .select('*, crm_contactos(*)')
-    .eq('usuario_id', usuarioId)
+    .eq('creado_por', usuarioId)
     .lte('fecha_vencimiento', en30Dias.toISOString().split('T')[0])
     .order('fecha_vencimiento', { ascending: true })
     .limit(10);
@@ -213,8 +213,8 @@ async function buildTramitesSnapshot(usuarioId: string, parametros: Record<strin
   const { data: tramites } = await supabase
     .from('tickets')
     .select('*')
-    .eq('usuario_id', usuarioId)
-    .neq('estado', 'completado')
+    .eq('creado_por', usuarioId)
+    .neq('estado', 'cerrado')
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -246,27 +246,27 @@ async function buildDashboardSnapshot(usuarioId: string) {
 
   const { data: comisiones } = await supabase
     .from('commission_details')
-    .select('monto_comision_neta')
-    .eq('agent_id', usuarioId)
+    .select('commission_neta')
+    .eq('movi_user_id', usuarioId)
     .gte('created_at', `${mesActual}-01`);
 
-  const totalComisiones = comisiones?.reduce((sum, c) => sum + (c.monto_comision_neta || 0), 0) || 0;
+  const totalComisiones = comisiones?.reduce((sum, c) => sum + (c.commission_neta || 0), 0) || 0;
 
   const { data: produccion } = await supabase
     .from('production_records')
-    .select('prima_neta')
-    .eq('agent_id', usuarioId)
-    .gte('fecha_emision', `${mesActual}-01`);
+    .select('importe_pesos')
+    .eq('user_id', usuarioId)
+    .gte('fecha', `${mesActual}-01`);
 
-  const totalProduccion = produccion?.reduce((sum, p) => sum + (p.prima_neta || 0), 0) || 0;
+  const totalProduccion = produccion?.reduce((sum, p) => sum + (p.importe_pesos || 0), 0) || 0;
 
   const hoy = new Date().toISOString().split('T')[0];
   const { data: tareasHoy } = await supabase
     .from('crm_tareas')
     .select('*')
-    .eq('usuario_id', usuarioId)
+    .eq('creado_por', usuarioId)
     .lte('fecha_vencimiento', hoy)
-    .neq('estado', 'completada');
+    .eq('completada', false);
 
   const en30Dias = new Date();
   en30Dias.setDate(en30Dias.getDate() + 30);
@@ -274,7 +274,7 @@ async function buildDashboardSnapshot(usuarioId: string) {
   const { data: renovaciones } = await supabase
     .from('crm_polizas')
     .select('*')
-    .eq('usuario_id', usuarioId)
+    .eq('creado_por', usuarioId)
     .lte('fecha_vencimiento', en30Dias.toISOString().split('T')[0]);
 
   return {
