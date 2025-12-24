@@ -53,7 +53,6 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
   const mensajeNorm = mensaje.toLowerCase();
   const context: any = {};
 
-  // Detectar preguntas sobre comisiones
   if (mensajeNorm.includes('comision') || mensajeNorm.includes('pago') || mensajeNorm.includes('ultimas comisiones') || mensajeNorm.includes('resumen') || mensajeNorm.includes('cuanto') && modulo === 'comisiones') {
     const { data: comisiones } = await supabase
       .from('commission_details')
@@ -78,7 +77,6 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
     }
   }
 
-  // Detectar preguntas sobre producción
   if (mensajeNorm.includes('produccion') || mensajeNorm.includes('ventas') || mensajeNorm.includes('poliza')) {
     const { data: produccion } = await supabase
       .from('production_records')
@@ -102,7 +100,6 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
     }
   }
 
-  // Detectar preguntas sobre productos/tienda
   if (mensajeNorm.includes('cafe') || mensajeNorm.includes('tienda') || mensajeNorm.includes('producto') || mensajeNorm.includes('cuanto cuesta') || mensajeNorm.includes('precio') || mensajeNorm.includes('bolsa')) {
     const { data: productos } = await supabase
       .from('store_productos')
@@ -121,7 +118,6 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
     }
   }
 
-  // Detectar preguntas sobre contactos/clientes
   if (mensajeNorm.includes('cliente') || mensajeNorm.includes('contacto') || modulo === 'crm') {
     const { data: contactos } = await supabase
       .from('crm_contactos')
@@ -142,7 +138,6 @@ async function getRelevantData(supabase: any, userId: string, mensaje: string, m
     }
   }
 
-  // Detectar preguntas sobre tareas
   if (mensajeNorm.includes('tarea') || mensajeNorm.includes('pendiente') || mensajeNorm.includes('hacer')) {
     const { data: tareas } = await supabase
       .from('crm_tareas')
@@ -185,10 +180,7 @@ Deno.serve(async (req: Request) => {
     let respuestaEstructurada = null;
 
     if (openaiApiKey) {
-      // Obtener contexto del usuario
       const userContext = await getUserContext(supabase, conversacion_id);
-
-      // Obtener datos relevantes según la pregunta
       const relevantData = userContext ? await getRelevantData(supabase, userContext.id, mensaje, modulo) : {};
 
       const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual para agentes de seguros.
