@@ -8,27 +8,18 @@ const corsHeaders = {
 
 async function extractTextFromPDF(buffer: Uint8Array): Promise<string> {
   try {
-    const pdfjsLib = await import('npm:pdfjs-dist@3.11.174');
+    const pdfParse = await import('npm:pdf-parse@1.1.1');
 
-    const loadingTask = pdfjsLib.getDocument({ data: buffer });
-    const pdf = await loadingTask.promise;
+    const data = await pdfParse.default(buffer);
 
-    let fullText = '';
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-
-      fullText += `\n--- Página ${i} ---\n${pageText}\n`;
+    if (data.text && data.text.trim().length > 0) {
+      return `📄 Contenido del PDF (${data.numpages} página${data.numpages !== 1 ? 's' : ''}):\n\n${data.text.trim()}`;
+    } else {
+      return '[PDF sin contenido de texto extraíble - puede ser un PDF de imagen o protegido]';
     }
-
-    return fullText.trim();
   } catch (error) {
     console.error('Error parsing PDF:', error);
-    return '[Error al extraer texto del PDF - el archivo puede estar protegido o corrupto]';
+    return '[Error al extraer texto del PDF - el archivo puede estar protegido, corrupto, o ser un PDF de imágenes]';
   }
 }
 
