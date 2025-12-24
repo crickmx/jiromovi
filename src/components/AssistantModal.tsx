@@ -92,9 +92,9 @@ export function AssistantModal() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter(file => {
-      const maxSize = 10 * 1024 * 1024;
+      const maxSize = 500 * 1024 * 1024;
       if (file.size > maxSize) {
-        alert(`El archivo ${file.name} excede el tamaño máximo de 10MB`);
+        alert(`El archivo ${file.name} excede el tamaño máximo de 500MB`);
         return false;
       }
       return true;
@@ -243,25 +243,6 @@ export function AssistantModal() {
                             : 'bg-gray-100 text-gray-900'
                         }`}
                       >
-                        {!isUser && message.modo_usado && (
-                          <div className="mb-2 flex items-center gap-2">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                                message.modo_usado === 'chatgpt'
-                                  ? 'bg-purple-100 text-purple-700 border border-purple-200'
-                                  : 'bg-blue-100 text-blue-700 border border-blue-200'
-                              }`}
-                            >
-                              {message.modo_usado === 'chatgpt' ? '🤖 Conocimiento General' : '📊 Datos del Sistema'}
-                            </span>
-                            {message.router_confidence !== undefined && (
-                              <span className="text-xs text-gray-500">
-                                {message.router_confidence}% confianza
-                              </span>
-                            )}
-                          </div>
-                        )}
-
                         {isUser ? (
                           <p className="text-sm whitespace-pre-wrap text-white">{message.contenido}</p>
                         ) : structuredResponse ? (
@@ -371,7 +352,7 @@ export function AssistantModal() {
                 </Button>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Presiona Enter para enviar, Shift+Enter para nueva línea. Máx 10MB por archivo.
+                Presiona Enter para enviar, Shift+Enter para nueva línea. Máx 500MB por archivo.
               </p>
             </div>
           </div>
