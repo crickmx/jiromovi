@@ -50,8 +50,9 @@ Deno.serve(async (req: Request) => {
     const { data: { user: currentUser }, error: authError } = await supabaseUser.auth.getUser();
 
     if (authError || !currentUser) {
+      console.error('Auth error:', authError);
       return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
+        JSON.stringify({ error: 'Invalid token', details: authError?.message }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
