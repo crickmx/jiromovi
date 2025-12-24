@@ -77,31 +77,21 @@ export function Directorio() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Usar supabase.functions.invoke() que maneja automáticamente la autenticación
+      const { data: result, error: invokeError } = await supabase.functions.invoke('delete-user', {
+        body: {
+          userId: userToDelete.id,
+          reason: 'Eliminado desde el directorio por administrador'
+        }
+      });
 
-      if (!session) {
-        alert('No hay sesión activa');
+      if (invokeError) {
+        console.error('Delete user error:', invokeError);
+        alert('Error al eliminar usuario: ' + invokeError.message);
         return;
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            userId: userToDelete.id,
-            reason: 'Eliminado desde el directorio por administrador'
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
+      if (!result?.success) {
         console.error('Delete user error response:', result);
 
         let errorMsg = 'Error al eliminar usuario';
