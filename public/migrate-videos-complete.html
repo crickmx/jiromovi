@@ -220,14 +220,14 @@
 
         // 2. Verificar categorías
         const { data: categories, error: catError } = await supabaseClient
-          .from('seguros_education_categories')
+          .from('seguros_categories')
           .select('*')
-          .order('orden');
+          .order('nombre');
 
         // 3. Verificar lecciones
         const { data: lessons, error: lessonsError } = await supabaseClient
-          .from('seguros_education_lessons')
-          .select('*, seguros_education_categories(nombre)');
+          .from('seguros_lessons')
+          .select('*, seguros_categories(nombre)');
 
         const validVideos = videos.filter(v => v.name.endsWith('.mp4'));
         const validThumbs = thumbnails.filter(t => /\.(png|jpg|jpeg)$/i.test(t.name));
@@ -328,21 +328,20 @@
 
         // 2. Verificar/Crear categoría
         let { data: categories } = await supabaseClient
-          .from('seguros_education_categories')
+          .from('seguros_categories')
           .select('*')
           .eq('nombre', 'Academia de Negocios 2025')
-          .single();
+          .maybeSingle();
 
         if (!categories) {
           progressDiv.innerHTML += '<div class="info">📁 Creando categoría "Academia de Negocios 2025"...</div>';
 
           const { data: newCat, error: catError } = await supabaseClient
-            .from('seguros_education_categories')
+            .from('seguros_categories')
             .insert({
               nombre: 'Academia de Negocios 2025',
               descripcion: 'Capacitaciones y formación para agentes de seguros 2025',
-              orden: 1,
-              visible: true
+              creado_por: currentUser.id
             })
             .select()
             .single();
@@ -375,10 +374,10 @@
           try {
             // Verificar si ya existe
             const { data: existing } = await supabaseClient
-              .from('seguros_education_lessons')
+              .from('seguros_lessons')
               .select('id')
               .eq('titulo', video.name.replace('.mp4', ''))
-              .single();
+              .maybeSingle();
 
             if (existing) {
               skippedCount++;
@@ -404,17 +403,17 @@
 
             // Insertar lección
             const { error: insertError } = await supabaseClient
-              .from('seguros_education_lessons')
+              .from('seguros_lessons')
               .insert({
                 categoria_id: categories.id,
                 titulo: video.name.replace('.mp4', ''),
                 descripcion: `Lección migrada automáticamente desde Storage`,
                 video_url: videoUrl.publicUrl,
                 miniatura_url: thumbnailUrl,
-                duracion_minutos: 0,
-                orden: i + 1,
-                publicado: true,
-                es_destacado: false
+                duracion: 0,
+                oficinas_asignadas: [],
+                es_grabacion: false,
+                creado_por: currentUser.id
               });
 
             if (insertError) {
@@ -479,9 +478,9 @@
 
       try {
         const { data: lessons, error } = await supabaseClient
-          .from('seguros_education_lessons')
-          .select('*, seguros_education_categories(nombre)')
-          .order('orden');
+          .from('seguros_lessons')
+          .select('*, seguros_categories(nombre)')
+          .order('fecha_creacion', { ascending: false });
 
         if (error) throw error;
 
@@ -499,23 +498,23 @@
               <th>Categoría</th>
               <th>Video</th>
               <th>Thumbnail</th>
-              <th>Estado</th>
+              <th>Creado</th>
             </tr>
         `;
 
         lessons.forEach((lesson, index) => {
           const hasVideo = lesson.video_url ? '✓' : '✗';
           const hasThumb = lesson.miniatura_url ? '✓' : '✗';
-          const status = lesson.publicado ? 'Publicado' : 'Borrador';
+          const createdDate = new Date(lesson.fecha_creacion).toLocaleDateString();
 
           html += `
             <tr>
               <td>${index + 1}</td>
               <td>${lesson.titulo}</td>
-              <td>${lesson.seguros_education_categories?.nombre || 'Sin categoría'}</td>
+              <td>${lesson.seguros_categories?.nombre || 'Sin categoría'}</td>
               <td>${hasVideo}</td>
               <td>${hasThumb}</td>
-              <td><span class="badge ${lesson.publicado ? 'badge-success' : 'badge-warning'}">${status}</span></td>
+              <td>${createdDate}</td>
             </tr>
           `;
         });
