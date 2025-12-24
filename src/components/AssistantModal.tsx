@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, MessageSquare, Trash2, Plus, Send } from 'lucide-react';
+import { X, Sparkles, Trash2, Plus, Send } from 'lucide-react';
 import { useAssistant } from '../contexts/AssistantContext';
 import { useLocation } from 'react-router-dom';
 import { getSuggestionsForRoute } from '../lib/suggestionsService';
@@ -93,12 +93,9 @@ export function AssistantModal() {
         <div className="p-4 border-b flex items-center justify-between">
           <div className="flex-1">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-blue-600" />
+              <Sparkles className="h-5 w-5 text-blue-600" />
               Mi Asistente
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Contexto: {moduleName}
-            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -180,7 +177,7 @@ export function AssistantModal() {
             <ScrollArea className="flex-1 p-4">
               {isEmpty && !isLoadingMessages && (
                 <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                  <MessageSquare className="h-16 w-16 text-gray-300 mb-4" />
+                  <Sparkles className="h-16 w-16 text-gray-300 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     Te puedo ayudar con...
                   </h3>

@@ -1,4 +1,4 @@
-import { Bot } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useAssistant } from '../contexts/AssistantContext';
 import { Button } from './ui/button';
 import {
@@ -26,7 +26,7 @@ export function FloatingAssistantButton() {
               className="relative h-14 w-14 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:scale-110 transition-all duration-200"
               aria-label="Abrir Mi Asistente"
             >
-              <Bot className="h-6 w-6" />
+              <Sparkles className="h-6 w-6" />
 
               {unreadEventsCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs font-bold text-white flex items-center justify-center animate-pulse">
