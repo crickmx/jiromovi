@@ -23,12 +23,13 @@ type Tab = 'configuracion' | 'whatsapp' | 'notificaciones' | 'plantillas' | 'his
 
 interface Config {
   id: string;
-  tipo_integracion: 'smtp' | 'sendgrid';
+  tipo_integracion: 'smtp' | 'sendgrid' | 'resend';
   remitente_nombre: string;
   remitente_email: string;
   activo: boolean;
   estado_ultima_prueba: string | null;
   ultima_prueba: string | null;
+  resend_api_key?: string;
 }
 
 interface Stats {
