@@ -14,7 +14,7 @@ interface MigrationItem {
 
 function extractGoogleDriveId(url: string): string | null {
   if (!url || url === "No se encontró imagen") return null;
-  const match = url.match(/\/d\/([^\/]+)\//);
+  const match = url.match(/\/d\/([^\/]+)\//); 
   return match ? match[1] : null;
 }
 
@@ -24,28 +24,64 @@ function getDirectDownloadUrl(driveUrl: string): string | null {
   return `https://drive.google.com/uc?export=download&id=${fileId}`;
 }
 
-async function downloadFromDrive(driveUrl: string): Promise<Blob | null> {
-  const downloadUrl = getDirectDownloadUrl(driveUrl);
-  if (!downloadUrl) return null;
-
-  try {
-    const response = await fetch(downloadUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-      redirect: "follow",
-    });
-
-    if (!response.ok) {
-      console.error(`Failed to download from ${driveUrl}: ${response.status}`);
-      return null;
-    }
-
-    return await response.blob();
-  } catch (error) {
-    console.error(`Error downloading from ${driveUrl}:`, error);
-    return null;
+async function downloadFromDrive(driveUrl: string): Promise<{ blob: Blob | null; error: string | null }> {
+  const fileId = extractGoogleDriveId(driveUrl);
+  if (!fileId) {
+    return { blob: null, error: "No se pudo extraer el ID del archivo de Drive" };
   }
+
+  const downloadMethods = [
+    `https://drive.google.com/uc?export=download&id=${fileId}`,
+    `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`,
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=AIzaSyAcJm9bu_OBmPU6BcdEw8W9QAOYHpnk5Vo`,
+  ];
+
+  for (let i = 0; i < downloadMethods.length; i++) {
+    const downloadUrl = downloadMethods[i];
+    console.log(`Intento ${i + 1}: ${downloadUrl.substring(0, 80)}...`);
+
+    try {
+      const response = await fetch(downloadUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+        redirect: "follow",
+      });
+
+      console.log(`Response status: ${response.status}, Content-Type: ${response.headers.get("content-type")}`);
+
+      if (!response.ok) {
+        console.error(`Método ${i + 1} falló: ${response.status} ${response.statusText}`);
+        continue;
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (contentType.includes("text/html")) {
+        console.error(`Método ${i + 1} retornó HTML - probablemente bloqueado por Google`);
+        continue;
+      }
+
+      const blob = await response.blob();
+
+      if (blob.size < 1024) {
+        console.error(`Método ${i + 1} retornó archivo muy pequeño: ${blob.size} bytes`);
+        continue;
+      }
+
+      console.log(`✓ Descarga exitosa con método ${i + 1}: ${blob.size} bytes`);
+      return { blob, error: null };
+
+    } catch (error) {
+      console.error(`Método ${i + 1} error:`, error);
+      continue;
+    }
+  }
+
+  return {
+    blob: null,
+    error: "Todos los métodos de descarga fallaron. Google Drive puede estar bloqueando el acceso automático a este archivo."
+  };
 }
 
 async function uploadToSupabase(
@@ -115,7 +151,7 @@ Deno.serve(async (req: Request) => {
 
       if (item.videoUrl && item.videoUrl !== "No se encontró imagen") {
         console.log(`Downloading video: ${item.titulo}`);
-        const videoBlob = await downloadFromDrive(item.videoUrl);
+        const { blob: videoBlob, error: downloadError } = await downloadFromDrive(item.videoUrl);
 
         if (videoBlob) {
           const videoPath = `academia-negocios-2025/${filename}.mp4`;
@@ -134,13 +170,13 @@ Deno.serve(async (req: Request) => {
             result.errors.push("Failed to upload video to Supabase");
           }
         } else {
-          result.errors.push("Failed to download video from Drive");
+          result.errors.push(downloadError || "Failed to download video from Drive");
         }
       }
 
       if (item.imageUrl && item.imageUrl !== "No se encontró imagen") {
         console.log(`Downloading image: ${item.titulo}`);
-        const imageBlob = await downloadFromDrive(item.imageUrl);
+        const { blob: imageBlob, error: downloadError } = await downloadFromDrive(item.imageUrl);
 
         if (imageBlob) {
           const imagePath = `academia-negocios-2025/${filename}.jpg`;
@@ -159,7 +195,7 @@ Deno.serve(async (req: Request) => {
             result.errors.push("Failed to upload image to Supabase");
           }
         } else {
-          result.errors.push("Failed to download image from Drive");
+          result.errors.push(downloadError || "Failed to download image from Drive");
         }
       }
 
