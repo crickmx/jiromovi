@@ -45,7 +45,7 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
 
   const { data: user, error: userError } = await supabase
     .from('usuarios')
-    .select('id, nombre, apellidos, nombre_completo, email, rol, oficina_id')
+    .select('id, nombre, apellidos, nombre_completo, email_laboral, email_personal, rol, oficina_id')
     .eq('id', conv.usuario_id)
     .maybeSingle();
 
@@ -61,7 +61,8 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
     return null;
   }
 
-  console.log('✅ User found:', user.email);
+  const userEmail = user.email_laboral || user.email_personal || 'Sin email';
+  console.log('✅ User found:', userEmail);
 
   // Get oficina name separately if needed
   let oficinaNombre = null;
@@ -86,7 +87,7 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
     id: user.id,
     nombre: user.nombre,
     apellidos: user.apellidos,
-    email: user.email,
+    email: userEmail,
     rol: user.rol,
     oficina_nombre: oficinaNombre
   };
@@ -664,7 +665,7 @@ Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar,
 - Email: ${userContext.email}
 - Rol: ${userContext.rol}
 - Oficina: ${userContext.oficina_nombre || 'No asignada'}
-- Teléfono: ${fullUserProfile?.celular || 'No registrado'}
+- Teléfono: ${fullUserProfile?.celular_personal || fullUserProfile?.celular_laboral || 'No registrado'}
 - Puesto: ${fullUserProfile?.puesto || 'No especificado'}
 - Régimen Fiscal: ${fullUserProfile?.regimen_fiscal || 'No especificado'}
 - Banco: ${fullUserProfile?.banco || 'No registrado'}
