@@ -483,9 +483,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
       console.error('Missing Supabase environment variables');
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
@@ -493,11 +494,39 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('Connecting to Supabase...');
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create client with user JWT to respect RLS
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No Authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'No autenticado. Inicia sesión nuevamente.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Creating user client with JWT...');
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    if (authError || !user) {
+      console.error('Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'No autenticado. Tu sesión ha expirado.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('User authenticated:', user.email);
+
+    // Create admin client for internal operations (saving messages, etc.)
+    console.log('Creating admin client...');
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log('Saving user message...');
-    const { error: userMessageError } = await supabase
+    const { error: userMessageError } = await supabaseAdmin
       .from('mensajes_chatgpt')
       .insert({
         conversacion_id,
@@ -507,7 +536,10 @@ Deno.serve(async (req: Request) => {
 
     if (userMessageError) {
       console.error('Error saving user message:', userMessageError);
-      throw new Error(`Error al guardar mensaje de usuario: ${userMessageError.message}`);
+      return new Response(
+        JSON.stringify({ error: 'Error al guardar mensaje', details: userMessageError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('User message saved successfully');
@@ -520,16 +552,19 @@ Deno.serve(async (req: Request) => {
 
     if (openaiApiKey) {
       console.log('Getting user context...');
-      const userContext = await getUserContext(supabase, conversacion_id);
+      const userContext = await getUserContext(supabaseUser, conversacion_id);
 
       if (!userContext) {
         console.error('Failed to get user context');
-        throw new Error('No se pudo obtener el contexto del usuario. Verifica que la conversación existe.');
+        return new Response(
+          JSON.stringify({ error: 'No se pudo obtener el contexto del usuario. Tu perfil no está accesible.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       console.log('User context obtained:', userContext.email);
       console.log('Getting complete user context...');
-      const completeContext = await getCompleteUserContext(supabase, userContext.id);
+      const completeContext = await getCompleteUserContext(supabaseUser, userContext.id);
       console.log('Complete context obtained');
 
       const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual inteligente para agentes de seguros.
@@ -711,7 +746,7 @@ EJEMPLO DE RESPUESTA ESPERADA:
     }
 
     console.log('Saving assistant message...');
-    const { data: mensajeData, error: mensajeError } = await supabase
+    const { data: mensajeData, error: mensajeError } = await supabaseAdmin
       .from('mensajes_chatgpt')
       .insert({
         conversacion_id,
@@ -723,11 +758,14 @@ EJEMPLO DE RESPUESTA ESPERADA:
 
     if (mensajeError) {
       console.error('Error saving assistant message:', mensajeError);
-      throw mensajeError;
+      return new Response(
+        JSON.stringify({ error: 'Error al guardar respuesta', details: mensajeError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('Assistant message saved, updating conversation...');
-    await supabase
+    await supabaseAdmin
       .from('conversaciones_chatgpt')
       .update({
         updated_at: new Date().toISOString(),
