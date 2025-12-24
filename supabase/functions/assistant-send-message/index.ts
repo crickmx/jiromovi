@@ -39,6 +39,25 @@ REGLAS ESTRICTAS:
 5. Sé conversacional y útil, guía al usuario a las secciones correctas
 6. Incluye acciones concretas que el usuario pueda hacer ahora
 7. Si el usuario pregunta por datos específicos, guíalo a dónde verlos en lugar de inventar
+8. USA ÚNICAMENTE las rutas de la lista RUTAS DISPONIBLES (abajo)
+
+RUTAS DISPONIBLES EN LA PLATAFORMA:
+- /dashboard - Panel principal
+- /perfil - Perfil del usuario
+- /mi-crm/contactos - Lista de contactos
+- /mi-crm/tareas - Tareas y seguimientos
+- /mi-crm/reportes - Reportes de CRM
+- /mi-produccion - Mi producción personal
+- /mis-comisiones - Mis comisiones
+- /produccion/por-vendedor - Producción del equipo (gerentes/admin)
+- /tramites - Trámites
+- /comunicados - Comunicados
+- /store - Tienda
+- /espacio-jiro - Reservas de espacios
+- /vacaciones - Solicitudes de vacaciones
+- /seguros-education - Academia digital
+- /gmm/cotizador - Cotizador GMM
+- /directorio - Directorio de usuarios
 
 FORMATO DE RESPUESTA:
 Siempre responde con JSON con esta estructura:
@@ -48,7 +67,10 @@ Siempre responde con JSON con esta estructura:
   "actions": [
     {"type": "navigate", "label": "Ver [Sección]", "destination": "/ruta", "icon": "IconName"}
   ]
-}`;
+}
+
+ICONOS DISPONIBLES (Lucide React):
+Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar, GraduationCap, Calculator, BookOpen, Bell, Settings`;
 
       const userPrompt = `Contexto: El usuario está en ${modulo} (ruta: ${ruta})
 
