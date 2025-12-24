@@ -653,7 +653,7 @@ Siempre responde con JSON con esta estructura:
 ICONOS DISPONIBLES (Lucide React):
 Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar, GraduationCap, Calculator, BookOpen, Bell, Settings`;
 
-      const { data: fullUserProfile } = await supabase
+      const { data: fullUserProfile } = await supabaseAdmin
         .from('usuarios')
         .select('*')
         .eq('id', userContext.id)
