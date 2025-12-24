@@ -452,20 +452,45 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  let requestBody: any;
+
   try {
-    const { conversacion_id, mensaje, modulo, ruta, parametros } = await req.json();
+    requestBody = await req.json();
+    console.log('Request received:', JSON.stringify(requestBody, null, 2));
+  } catch (parseError) {
+    console.error('Error parsing request body:', parseError);
+    return new Response(
+      JSON.stringify({ error: 'Invalid JSON in request body' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  try {
+    const { conversacion_id, mensaje, modulo, ruta, parametros } = requestBody;
 
     if (!conversacion_id || !mensaje) {
+      console.error('Missing required fields:', { conversacion_id, mensaje });
       return new Response(
         JSON.stringify({ error: 'conversacion_id y mensaje son requeridos' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase environment variables');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Connecting to Supabase...');
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    console.log('Saving user message...');
     const { error: userMessageError } = await supabase
       .from('mensajes_chatgpt')
       .insert({
@@ -479,19 +504,27 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Error al guardar mensaje de usuario: ${userMessageError.message}`);
     }
 
+    console.log('User message saved successfully');
+
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    console.log('OpenAI API Key present:', !!openaiApiKey);
 
     let respuestaTexto = '';
     let respuestaEstructurada = null;
 
     if (openaiApiKey) {
+      console.log('Getting user context...');
       const userContext = await getUserContext(supabase, conversacion_id);
 
       if (!userContext) {
+        console.error('Failed to get user context');
         throw new Error('No se pudo obtener el contexto del usuario. Verifica que la conversación existe.');
       }
 
+      console.log('User context obtained:', userContext.email);
+      console.log('Getting complete user context...');
       const completeContext = await getCompleteUserContext(supabase, userContext.id);
+      console.log('Complete context obtained');
 
       const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual inteligente para agentes de seguros.
 
@@ -598,6 +631,7 @@ EJEMPLO DE RESPUESTA ESPERADA:
   ]
 }`;
 
+      console.log('Calling OpenAI API...');
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -615,14 +649,18 @@ EJEMPLO DE RESPUESTA ESPERADA:
         }),
       });
 
+      console.log('OpenAI response status:', openaiResponse.status);
+
       if (openaiResponse.ok) {
         const data = await openaiResponse.json();
         const rawContent = data.choices?.[0]?.message?.content;
 
         if (!rawContent) {
+          console.error('OpenAI returned no content');
           throw new Error('OpenAI no devolvió contenido en la respuesta');
         }
 
+        console.log('OpenAI response received');
         respuestaTexto = rawContent;
 
         try {
@@ -666,6 +704,7 @@ EJEMPLO DE RESPUESTA ESPERADA:
       };
     }
 
+    console.log('Saving assistant message...');
     const { data: mensajeData, error: mensajeError } = await supabase
       .from('mensajes_chatgpt')
       .insert({
@@ -676,8 +715,12 @@ EJEMPLO DE RESPUESTA ESPERADA:
       .select()
       .single();
 
-    if (mensajeError) throw mensajeError;
+    if (mensajeError) {
+      console.error('Error saving assistant message:', mensajeError);
+      throw mensajeError;
+    }
 
+    console.log('Assistant message saved, updating conversation...');
     await supabase
       .from('conversaciones_chatgpt')
       .update({
@@ -685,6 +728,7 @@ EJEMPLO DE RESPUESTA ESPERADA:
       })
       .eq('id', conversacion_id);
 
+    console.log('Sending successful response');
     return new Response(
       JSON.stringify({
         conversacion_id,
@@ -695,9 +739,13 @@ EJEMPLO DE RESPUESTA ESPERADA:
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in assistant-send-message:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: error.message || 'Unknown error',
+        details: error.stack || 'No stack trace available'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
