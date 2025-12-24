@@ -316,7 +316,8 @@
     const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
     const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTcyMDk5MCwiZXhwIjoyMDc3Mjk2OTkwfQ.lmkRTcDPdTCpw4EAaljO-BFwfOA2_CO1ztFG_RWV0NE';
 
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     const videos = [
       "Gestión de Siniestros: Protocolo de Respuesta Inmediata",
@@ -434,7 +435,7 @@
 
         log(`Subiendo a: ${bucket}/${path}`, 'info');
 
-        const { data, error } = await supabase.storage
+        const { data, error } = await supabaseClient.storage
           .from(bucket)
           .upload(path, file, {
             cacheControl: '3600',
@@ -445,7 +446,7 @@
           throw error;
         }
 
-        const { data: publicUrl } = supabase.storage
+        const { data: publicUrl } = supabaseClient.storage
           .from(bucket)
           .getPublicUrl(path);
 
@@ -461,7 +462,7 @@
 
         log(`Actualizando base de datos...`, 'info');
 
-        const { error: dbError } = await supabase
+        const { error: dbError } = await supabaseClient
           .from('seguros_lessons')
           .update(updateData)
           .eq('titulo', titulo);
