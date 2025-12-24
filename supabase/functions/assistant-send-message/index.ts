@@ -43,22 +43,7 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
 
   const { data: user, error: userError } = await supabase
     .from('usuarios')
-    .select(`
-      id,
-      nombre,
-      apellidos,
-      nombre_completo,
-      email,
-      rol,
-      celular,
-      celular_laboral,
-      puesto,
-      fecha_ingreso,
-      regimen_fiscal,
-      banco,
-      clabe,
-      oficinas:oficina_id(nombre)
-    `)
+    .select('id, nombre, apellidos, nombre_completo, email, rol, oficina_id')
     .eq('id', conv.usuario_id)
     .maybeSingle();
 
@@ -72,13 +57,34 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
     return null;
   }
 
+  console.log('User found:', user.email);
+
+  // Get oficina name separately if needed
+  let oficinaNombre = null;
+  if (user.oficina_id) {
+    try {
+      const { data: oficina } = await supabase
+        .from('oficinas')
+        .select('nombre')
+        .eq('id', user.oficina_id)
+        .maybeSingle();
+
+      if (oficina) {
+        oficinaNombre = oficina.nombre;
+      }
+    } catch (e) {
+      console.error('Error fetching oficina:', e);
+      // Continue without oficina name
+    }
+  }
+
   return {
     id: user.id,
     nombre: user.nombre,
     apellidos: user.apellidos,
     email: user.email,
     rol: user.rol,
-    oficina_nombre: user.oficinas?.nombre
+    oficina_nombre: oficinaNombre
   };
 }
 
