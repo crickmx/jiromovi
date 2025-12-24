@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, Edit2, Download } from 'lucide-react';
+import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, Edit2 } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 
 interface Category {
@@ -48,7 +48,6 @@ export function SegurosEducationOnDemand() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
-  const [loadingMassive, setLoadingMassive] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -489,70 +488,6 @@ export function SegurosEducationOnDemand() {
     }
   };
 
-  const handleCargaMasiva = async () => {
-    try {
-      setLoadingMassive(true);
-
-      const { data: fileExists } = await supabase.storage
-        .from('seguros-videos')
-        .list('', {
-          search: 'lista-archivos-drive.csv',
-        });
-
-      if (!fileExists || fileExists.length === 0) {
-        setLoadingMassive(false);
-        const openHelper = window.confirm(
-          '⚠️ No se encontró el archivo lista-archivos-drive.csv en Storage.\n\n' +
-          '¿Quieres abrir la guía para crear el archivo CSV?\n\n' +
-          'Necesitas:\n' +
-          '1. Crear un CSV con tus archivos de Google Drive\n' +
-          '2. Subirlo al bucket seguros-videos con el nombre lista-archivos-drive.csv'
-        );
-
-        if (openHelper) {
-          window.open('/generar-lista-drive.html', '_blank');
-        }
-        return;
-      }
-
-      const confirmCarga = window.confirm(
-        'Esto procesará todos los archivos listados en el CSV y puede tomar varios minutos. ¿Continuar?'
-      );
-
-      if (!confirmCarga) {
-        setLoadingMassive(false);
-        return;
-      }
-
-      showToast('Iniciando carga masiva desde Google Drive...', 'warning');
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        throw new Error('No hay sesión activa');
-      }
-
-      const { data, error } = await supabase.functions.invoke('carga-masiva-google-drive', {
-        headers: {
-          Authorization: `Bearer ${sessionData.session.access_token}`,
-        },
-      });
-
-      if (error) throw error;
-
-      showToast(
-        `${data.mensaje}. Recibirás una notificación cuando complete.`,
-        'success'
-      );
-
-      console.log('Respuesta de carga masiva:', data);
-    } catch (error: any) {
-      console.error('Error en carga masiva:', error);
-      showToast('Error al iniciar carga masiva: ' + error.message, 'error');
-    } finally {
-      setLoadingMassive(false);
-    }
-  };
-
   const getVideoDuration = (file: File): Promise<number> => {
     return new Promise((resolve) => {
       const video = document.createElement('video');
@@ -682,19 +617,7 @@ export function SegurosEducationOnDemand() {
             </div>
           </div>
           {isAdmin && (
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={handleCargaMasiva}
-                disabled={loadingMassive}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-ios-lg transition-colors text-[15px] font-medium active:scale-95 ${
-                  loadingMassive
-                    ? 'bg-ios-gray-300 text-ios-gray-500 cursor-not-allowed'
-                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                }`}
-              >
-                <Download className="w-4 h-4 stroke-[2]" />
-                {loadingMassive ? 'Iniciando...' : 'Carga Masiva Google Drive'}
-              </button>
+            <div className="flex gap-2">
               <button
                 onClick={() => setShowCategoryModal(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-ios-gray-100 text-ios-gray-900 rounded-ios-lg hover:bg-ios-gray-200 transition-colors text-[15px] font-medium active:scale-95"
