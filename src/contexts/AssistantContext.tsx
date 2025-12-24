@@ -176,8 +176,28 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         } else {
           throw new Error('No se recibió respuesta del asistente');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error sending message:', error);
+
+        // Extract meaningful error message
+        let errorMessage = 'Lo siento, ocurrió un error al procesar tu mensaje.';
+
+        if (error.message) {
+          // Use the actual error message from the backend
+          if (error.message.includes('sesión ha expirado')) {
+            errorMessage = 'Tu sesión ha expirado. Por favor cierra sesión y vuelve a iniciar sesión.';
+          } else if (error.message.includes('No autenticado')) {
+            errorMessage = 'No estás autenticado. Por favor inicia sesión nuevamente.';
+          } else if (error.message.includes('contexto del usuario')) {
+            errorMessage = 'No se pudo acceder a tu perfil. Por favor contacta al administrador.';
+          } else if (error.message.includes('permiso')) {
+            errorMessage = 'No tienes permisos para realizar esta acción.';
+          } else {
+            errorMessage = `Error: ${error.message}`;
+          }
+        }
+
+        console.error('Showing error to user:', errorMessage);
 
         if (activeConversationId) {
           setMessages((prev) => [
@@ -186,7 +206,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
               id: `temp-error-${Date.now()}`,
               conversacion_id: activeConversationId,
               rol: 'assistant',
-              contenido: 'Lo siento, ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.',
+              contenido: errorMessage,
               respuesta_estructurada_json: null,
               tiene_acciones: false,
               created_at: new Date().toISOString(),

@@ -138,17 +138,28 @@ export async function sendMessage(
 
     if (response.error) {
       console.error('Edge function error:', response.error);
-      throw response.error;
+      const errorMsg = response.error.message || 'Error desconocido';
+      const errorDetails = response.error.details || '';
+      console.error('Error details:', errorDetails);
+      throw new Error(errorMsg);
     }
 
     const { data } = response;
+
+    // Check if data contains an error field (backend returned error)
+    if (data && data.error) {
+      console.error('Backend returned error:', data.error);
+      console.error('Error details:', data.details);
+      const errorMsg = data.error || 'Error del servidor';
+      throw new Error(errorMsg);
+    }
 
     if (!data) {
       console.error('No data received from edge function');
       throw new Error('No se recibió respuesta del asistente');
     }
 
-    console.log('Assistant response:', data);
+    console.log('Assistant response received successfully');
 
     if (data.respuesta_estructurada) {
       const parsed = parseStructuredResponse(data.respuesta_estructurada);
@@ -159,9 +170,14 @@ export async function sendMessage(
     }
 
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error sending message:', error);
-    return null;
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    throw error;
   }
 }
 

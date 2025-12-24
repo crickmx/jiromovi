@@ -551,8 +551,10 @@ Deno.serve(async (req: Request) => {
     let respuestaEstructurada = null;
 
     if (openaiApiKey) {
-      console.log('Getting user context...');
-      const userContext = await getUserContext(supabaseUser, conversacion_id);
+      console.log('Getting user context with admin client...');
+      // Use admin client to read context (after validating user with JWT)
+      // This avoids RLS issues while still being secure (user was validated above)
+      const userContext = await getUserContext(supabaseAdmin, conversacion_id);
 
       if (!userContext) {
         console.error('Failed to get user context');
@@ -562,9 +564,18 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // Verify that the conversation belongs to the authenticated user
+      if (userContext.id !== user.id) {
+        console.error('User trying to access conversation of another user');
+        return new Response(
+          JSON.stringify({ error: 'No tienes permiso para acceder a esta conversación.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       console.log('User context obtained:', userContext.email);
       console.log('Getting complete user context...');
-      const completeContext = await getCompleteUserContext(supabaseUser, userContext.id);
+      const completeContext = await getCompleteUserContext(supabaseAdmin, userContext.id);
       console.log('Complete context obtained');
 
       const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual inteligente para agentes de seguros.
