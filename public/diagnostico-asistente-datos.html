@@ -132,7 +132,7 @@
       document.getElementById('usuario-info').innerHTML = `
         <strong>${usuario.nombre} ${usuario.apellidos}</strong><br>
         ID: ${usuario.id}<br>
-        Email: ${usuario.email}<br>
+        Email: ${usuario.email_laboral || usuario.email_personal || 'N/A'}<br>
         Rol: ${usuario.rol}
       `;
     } else {
