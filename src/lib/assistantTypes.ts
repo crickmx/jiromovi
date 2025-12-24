@@ -133,6 +133,12 @@ export interface AssistantConversation {
   updated_at: string;
 }
 
+export interface WebSource {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
 export interface AssistantMessage {
   id: string;
   conversacion_id: string;
@@ -140,6 +146,9 @@ export interface AssistantMessage {
   contenido: string;
   respuesta_estructurada_json: StructuredResponse | null;
   tiene_acciones: boolean;
+  modo_usado?: 'chatgpt' | 'movi';
+  router_confidence?: number;
+  web_sources?: WebSource[];
   created_at: string;
 }
 
@@ -335,6 +344,9 @@ export interface SendMessageResponse {
   respuesta: string;
   respuesta_estructurada: StructuredResponse | null;
   intent_detectado: IntentCode | null;
+  modo_usado?: 'chatgpt' | 'movi';
+  router_confidence?: number;
+  web_sources?: WebSource[];
 }
 
 export interface GetSuggestionsRequest {

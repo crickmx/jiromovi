@@ -212,12 +212,53 @@ export function AssistantModal() {
                             : 'bg-gray-100 text-gray-900'
                         }`}
                       >
+                        {!isUser && message.modo_usado && (
+                          <div className="mb-2 flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                                message.modo_usado === 'chatgpt'
+                                  ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                                  : 'bg-blue-100 text-blue-700 border border-blue-200'
+                              }`}
+                            >
+                              {message.modo_usado === 'chatgpt' ? '🤖 Conocimiento General' : '📊 Datos del Sistema'}
+                            </span>
+                            {message.router_confidence !== undefined && (
+                              <span className="text-xs text-gray-500">
+                                {message.router_confidence}% confianza
+                              </span>
+                            )}
+                          </div>
+                        )}
+
                         {isUser ? (
                           <p className="text-sm whitespace-pre-wrap text-white">{message.contenido}</p>
                         ) : structuredResponse ? (
                           <ResponseMessage response={structuredResponse} />
                         ) : (
                           <p className="text-sm whitespace-pre-wrap">{message.contenido}</p>
+                        )}
+
+                        {!isUser && message.web_sources && message.web_sources.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-xs font-medium text-gray-600 mb-2">🌐 Fuentes consultadas:</p>
+                            <div className="space-y-2">
+                              {message.web_sources.map((source, idx) => (
+                                <a
+                                  key={idx}
+                                  href={source.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block text-xs p-2 bg-white rounded border border-gray-200 hover:border-blue-300 transition-colors"
+                                >
+                                  <div className="font-medium text-blue-600 hover:text-blue-800 mb-1">
+                                    {source.title}
+                                  </div>
+                                  <div className="text-gray-500 line-clamp-2">{source.snippet}</div>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>

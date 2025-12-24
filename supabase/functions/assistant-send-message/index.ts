@@ -6,6 +6,237 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+interface RoutingDecision {
+  selectedMode: 'chatgpt' | 'movi';
+  chatgptScore: number;
+  moviScore: number;
+  confidence: number;
+  reasoning: {
+    layer1_keywords: string[];
+    layer2_intent: string;
+    layer3_factors: string[];
+  };
+  requiresWebSearch: boolean;
+}
+
+class IntelligentRouter {
+  private static readonly KEYWORD_RULES = [
+    { keywords: ['comisiones', 'comisión', 'pago', 'pagos', 'cuenta', 'saldo'], mode: 'movi', weight: 40, category: 'comisiones' },
+    { keywords: ['producción', 'primas', 'póliza', 'pólizas', 'vendedor', 'vendedores'], mode: 'movi', weight: 40, category: 'produccion' },
+    { keywords: ['crm', 'contacto', 'contactos', 'cliente', 'clientes', 'tarea', 'tareas'], mode: 'movi', weight: 40, category: 'crm' },
+    { keywords: ['cotización', 'cotizaciones', 'gmm', 'seguro', 'prima'], mode: 'movi', weight: 35, category: 'cotizaciones' },
+    { keywords: ['perfil', 'información', 'datos personales', 'configuración'], mode: 'movi', weight: 35, category: 'perfil' },
+    { keywords: ['comunicado', 'comunicados', 'notificación', 'notificaciones'], mode: 'movi', weight: 35, category: 'comunicados' },
+    { keywords: ['directorio', 'oficina', 'oficinas', 'equipo', 'compañeros'], mode: 'movi', weight: 30, category: 'directorio' },
+    { keywords: ['trámite', 'trámites', 'ticket', 'tickets', 'solicitud'], mode: 'movi', weight: 35, category: 'tramites' },
+    { keywords: ['reunión', 'reuniones', 'calendario', 'eventos', 'agenda'], mode: 'movi', weight: 30, category: 'calendario' },
+    { keywords: ['qué es', 'cómo funciona', 'explica', 'explicar', 'definición'], mode: 'chatgpt', weight: 30, category: 'explicaciones' },
+    { keywords: ['consejo', 'consejos', 'recomendación', 'sugerencia', 'estrategia'], mode: 'chatgpt', weight: 35, category: 'consejos' },
+    { keywords: ['comparar', 'diferencia', 'versus', 'vs', 'mejor opción'], mode: 'chatgpt', weight: 30, category: 'comparaciones' },
+    { keywords: ['tendencia', 'tendencias', 'mercado', 'industria', 'actualidad'], mode: 'chatgpt', weight: 35, category: 'tendencias' },
+  ];
+
+  private static readonly INTENT_PATTERNS = {
+    DATA_QUERY: /^(cuánto|cuánta|cuántos|cuántas|mostrar|ver|consultar|listar|dame|obtener)/i,
+    ACTION_REQUEST: /^(crear|agregar|añadir|eliminar|borrar|actualizar|modificar|cambiar)/i,
+    NAVIGATION: /^(ir a|navegar a|abrir|mostrar página|llevar a|cómo llego)/i,
+    EXPLANATION: /^(qué|cómo|por qué|para qué|cuál|explica|define)/i,
+    COMPARISON: /^(comparar|diferencia|mejor|versus|vs|cuál es mejor)/i,
+    RECOMMENDATION: /^(recomienda|sugiere|aconseja|qué debería)/i,
+  };
+
+  static route(userMessage: string, conversationHistory?: any[]): RoutingDecision {
+    const normalizedMessage = userMessage.toLowerCase().trim();
+    const keywordResults = this.analyzeKeywords(normalizedMessage);
+    const intentAnalysis = this.classifyIntent(normalizedMessage, conversationHistory);
+    return this.calculateFinalScores(keywordResults, intentAnalysis, normalizedMessage);
+  }
+
+  private static analyzeKeywords(message: string) {
+    let chatgptScore = 0;
+    let moviScore = 0;
+    const matchedKeywords: string[] = [];
+
+    for (const rule of this.KEYWORD_RULES) {
+      for (const keyword of rule.keywords) {
+        if (message.includes(keyword)) {
+          if (rule.mode === 'chatgpt') {
+            chatgptScore += rule.weight;
+          } else {
+            moviScore += rule.weight;
+          }
+          matchedKeywords.push(`${keyword} (${rule.category})`);
+        }
+      }
+    }
+
+    return { chatgptScore, moviScore, matchedKeywords };
+  }
+
+  private static classifyIntent(message: string, conversationHistory?: any[]) {
+    let intent = 'GENERAL';
+    let moviBoost = 0;
+    let chatgptBoost = 0;
+
+    if (this.INTENT_PATTERNS.DATA_QUERY.test(message)) {
+      intent = 'DATA_QUERY';
+      moviBoost = 25;
+    } else if (this.INTENT_PATTERNS.ACTION_REQUEST.test(message)) {
+      intent = 'ACTION_REQUEST';
+      moviBoost = 30;
+    } else if (this.INTENT_PATTERNS.NAVIGATION.test(message)) {
+      intent = 'NAVIGATION';
+      moviBoost = 35;
+    } else if (this.INTENT_PATTERNS.EXPLANATION.test(message)) {
+      intent = 'EXPLANATION';
+      chatgptBoost = 30;
+    } else if (this.INTENT_PATTERNS.COMPARISON.test(message)) {
+      intent = 'COMPARISON';
+      chatgptBoost = 25;
+    } else if (this.INTENT_PATTERNS.RECOMMENDATION.test(message)) {
+      intent = 'RECOMMENDATION';
+      chatgptBoost = 25;
+    }
+
+    if (conversationHistory && conversationHistory.length > 0) {
+      const recentMoviUsage = conversationHistory
+        .slice(-3)
+        .filter((msg: any) => msg.modo_usado === 'movi').length;
+
+      if (recentMoviUsage >= 2) {
+        moviBoost += 15;
+      }
+    }
+
+    return { intent, moviBoost, chatgptBoost };
+  }
+
+  private static calculateFinalScores(keywordResults: any, intentAnalysis: any, message: string): RoutingDecision {
+    let chatgptScore = keywordResults.chatgptScore + intentAnalysis.chatgptBoost;
+    let moviScore = keywordResults.moviScore + intentAnalysis.moviBoost;
+
+    const requiresWebSearch = this.requiresWebSearch(message);
+    if (requiresWebSearch) {
+      chatgptScore += 20;
+    }
+
+    if (message.includes('cómo') && (message.includes('usar') || message.includes('funciona'))) {
+      if (keywordResults.matchedKeywords.length > 0) {
+        moviScore += 20;
+      } else {
+        chatgptScore += 15;
+      }
+    }
+
+    const total = chatgptScore + moviScore;
+    if (total > 0) {
+      chatgptScore = (chatgptScore / total) * 100;
+      moviScore = (moviScore / total) * 100;
+    } else {
+      chatgptScore = 60;
+      moviScore = 40;
+    }
+
+    const confidence = Math.abs(chatgptScore - moviScore);
+    const selectedMode = chatgptScore > moviScore ? 'chatgpt' : 'movi';
+
+    const factors: string[] = [];
+    if (keywordResults.matchedKeywords.length > 0) {
+      factors.push(`Matched ${keywordResults.matchedKeywords.length} keywords`);
+    }
+    factors.push(`Intent: ${intentAnalysis.intent}`);
+    if (requiresWebSearch) {
+      factors.push('Requires web search');
+    }
+    if (confidence < 20) {
+      factors.push('Low confidence - close scores');
+    }
+
+    return {
+      selectedMode,
+      chatgptScore: Math.round(chatgptScore),
+      moviScore: Math.round(moviScore),
+      confidence: Math.round(confidence),
+      reasoning: {
+        layer1_keywords: keywordResults.matchedKeywords,
+        layer2_intent: intentAnalysis.intent,
+        layer3_factors: factors
+      },
+      requiresWebSearch
+    };
+  }
+
+  private static requiresWebSearch(message: string): boolean {
+    const webSearchIndicators = [
+      'último', 'última', 'reciente', 'actual', 'hoy',
+      'noticia', 'noticias', 'nuevo', 'nueva',
+      '2024', '2025', 'actualizado', 'tendencia'
+    ];
+
+    return webSearchIndicators.some(indicator => message.includes(indicator));
+  }
+}
+
+async function performWebSearch(query: string): Promise<{ results: any[], answer?: string }> {
+  try {
+    const tavilyApiKey = Deno.env.get('TAVILY_API_KEY');
+    if (!tavilyApiKey) {
+      console.log('Tavily API key not configured, skipping web search');
+      return { results: [] };
+    }
+
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: tavilyApiKey,
+        query,
+        max_results: 3,
+        include_answer: true,
+        include_raw_content: false
+      }),
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!response.ok) {
+      console.error('Web search failed:', response.statusText);
+      return { results: [] };
+    }
+
+    const data = await response.json();
+    return {
+      results: data.results || [],
+      answer: data.answer
+    };
+  } catch (error) {
+    console.error('Web search error:', error);
+    return { results: [] };
+  }
+}
+
+function formatWebSearchContext(searchResults: any[], answer?: string): string {
+  if (!searchResults || searchResults.length === 0) {
+    return '';
+  }
+
+  let context = '\n\n--- Información actualizada de la web ---\n\n';
+
+  if (answer) {
+    context += `Resumen: ${answer}\n\n`;
+  }
+
+  context += 'Fuentes:\n';
+  searchResults.slice(0, 3).forEach((result: any, index: number) => {
+    context += `${index + 1}. ${result.title}\n`;
+    context += `   ${result.content?.substring(0, 200)}...\n`;
+    context += `   Fuente: ${result.url}\n\n`;
+  });
+
+  return context;
+}
+
 interface UserContext {
   id: string;
   nombre: string;
@@ -559,11 +790,11 @@ Deno.serve(async (req: Request) => {
 
     let respuestaTexto = '';
     let respuestaEstructurada = null;
+    let routingDecision: RoutingDecision | null = null;
+    let webSearchResults: any[] = [];
 
     if (openaiApiKey) {
       console.log('Getting user context with admin client...');
-      // Use admin client to read context (after validating user with JWT)
-      // This avoids RLS issues while still being secure (user was validated above)
       const userContext = await getUserContext(supabaseAdmin, conversacion_id);
 
       if (!userContext) {
@@ -588,11 +819,61 @@ Deno.serve(async (req: Request) => {
       }
 
       console.log('User context obtained:', userContext.email);
+
+      console.log('Getting conversation history for routing...');
+      const { data: conversationHistory } = await supabaseAdmin
+        .from('mensajes_chatgpt')
+        .select('rol, contenido, modo_usado, created_at')
+        .eq('conversacion_id', conversacion_id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      console.log('Executing intelligent router...');
+      routingDecision = IntelligentRouter.route(mensaje, conversationHistory || []);
+      console.log('Routing decision:', {
+        mode: routingDecision.selectedMode,
+        chatgptScore: routingDecision.chatgptScore,
+        moviScore: routingDecision.moviScore,
+        confidence: routingDecision.confidence,
+        intent: routingDecision.reasoning.layer2_intent
+      });
+
+      console.log('Saving routing log...');
+      await supabaseAdmin
+        .from('assistant_routing_logs')
+        .insert({
+          conversation_id: conversacion_id,
+          user_id: userContext.id,
+          user_message: mensaje,
+          selected_mode: routingDecision.selectedMode,
+          chatgpt_score: routingDecision.chatgptScore,
+          movi_score: routingDecision.moviScore,
+          confidence_score: routingDecision.confidence,
+          router_reasoning: routingDecision.reasoning,
+          matched_keywords: routingDecision.reasoning.layer1_keywords
+        });
+
+      if (routingDecision.requiresWebSearch && routingDecision.selectedMode === 'chatgpt') {
+        console.log('Performing web search...');
+        const searchResult = await performWebSearch(mensaje);
+        webSearchResults = searchResult.results || [];
+        console.log(`Web search completed: ${webSearchResults.length} results`);
+      }
+
       console.log('Getting complete user context...');
       const completeContext = await getCompleteUserContext(supabaseAdmin, userContext.id);
       console.log('Complete context obtained');
 
+      const modeLabel = routingDecision?.selectedMode === 'chatgpt' ? 'Modo ChatGPT (Conocimiento General)' : 'Modo MOVI (Datos del Sistema)';
+      const webContext = webSearchResults.length > 0 ? formatWebSearchContext(webSearchResults) : '';
+
       const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual inteligente para agentes de seguros.
+
+MODO ACTIVO: ${modeLabel}
+${routingDecision?.selectedMode === 'chatgpt' ?
+  '- Estás en modo ChatGPT: proporciona conocimiento general, explicaciones, consejos y recomendaciones sobre seguros.' :
+  '- Estás en modo MOVI: enfócate en los datos específicos del usuario en el sistema (comisiones, producción, CRM, etc.).'
+}
 
 PERSONALIDAD:
 - Profesional pero cercano y amigable
@@ -684,6 +965,7 @@ INFORMACIÓN DE NAVEGACIÓN:
 - Ruta actual: ${ruta}
 
 PREGUNTA DEL USUARIO: ${mensaje}
+${webContext}
 
 INSTRUCCIONES FINALES:
 1. REVISA cuidadosamente el CONTEXTO COMPLETO arriba - ahí están TODOS los datos reales
@@ -783,6 +1065,13 @@ EJEMPLO DE RESPUESTA ESPERADA:
         conversacion_id,
         rol: 'assistant',
         contenido: respuestaTexto,
+        modo_usado: routingDecision?.selectedMode || 'chatgpt',
+        router_confidence: routingDecision?.confidence || 0,
+        web_sources: webSearchResults.length > 0 ? JSON.stringify(webSearchResults.map(r => ({
+          title: r.title,
+          url: r.url,
+          snippet: r.content?.substring(0, 150)
+        }))) : '[]'
       })
       .select()
       .single();
@@ -815,6 +1104,13 @@ EJEMPLO DE RESPUESTA ESPERADA:
         mensaje_id: mensajeData.id,
         respuesta: respuestaTexto,
         respuesta_estructurada: respuestaEstructurada,
+        modo_usado: routingDecision?.selectedMode || 'chatgpt',
+        router_confidence: routingDecision?.confidence || 0,
+        web_sources: webSearchResults.length > 0 ? webSearchResults.map(r => ({
+          title: r.title,
+          url: r.url,
+          snippet: r.content?.substring(0, 150)
+        })) : []
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
