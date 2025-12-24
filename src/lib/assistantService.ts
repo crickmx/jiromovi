@@ -113,13 +113,6 @@ export async function sendMessage(
   try {
     const { conversacion_id, mensaje, modulo, ruta, parametros } = request;
 
-    const userMessage = await createUserMessage(conversacion_id, mensaje);
-    if (!userMessage) {
-      throw new Error('Failed to create user message');
-    }
-
-    await updateConversationTimestamp(conversacion_id);
-
     const response = await supabase.functions.invoke('assistant-send-message', {
       body: {
         conversacion_id,
@@ -157,35 +150,6 @@ export async function sendMessage(
     console.error('Error sending message:', error);
     return null;
   }
-}
-
-async function createUserMessage(
-  conversacionId: string,
-  contenido: string
-): Promise<AssistantMessage | null> {
-  const { data, error } = await supabase
-    .from('mensajes_chatgpt')
-    .insert({
-      conversacion_id: conversacionId,
-      rol: 'user',
-      contenido,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating user message:', error);
-    return null;
-  }
-
-  return data;
-}
-
-async function updateConversationTimestamp(conversacionId: string): Promise<void> {
-  await supabase
-    .from('conversaciones_chatgpt')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', conversacionId);
 }
 
 export async function deleteConversation(conversacionId: string): Promise<boolean> {

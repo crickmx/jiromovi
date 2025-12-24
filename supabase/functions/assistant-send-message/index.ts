@@ -16,15 +16,28 @@ interface UserContext {
 }
 
 async function getUserContext(supabase: any, conversacionId: string): Promise<UserContext | null> {
-  const { data: conv } = await supabase
+  const { data: conv, error: convError } = await supabase
     .from('conversaciones_chatgpt')
     .select('usuario_id')
     .eq('id', conversacionId)
     .single();
 
-  if (!conv) return null;
+  if (convError) {
+    console.error('Error fetching conversation:', convError);
+    return null;
+  }
 
-  const { data: user } = await supabase
+  if (!conv) {
+    console.error('Conversation not found:', conversacionId);
+    return null;
+  }
+
+  if (!conv.usuario_id) {
+    console.error('Conversation has no usuario_id:', conversacionId);
+    return null;
+  }
+
+  const { data: user, error: userError } = await supabase
     .from('usuarios')
     .select(`
       id,
@@ -45,7 +58,15 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
     .eq('id', conv.usuario_id)
     .single();
 
-  if (!user) return null;
+  if (userError) {
+    console.error('Error fetching user:', userError);
+    return null;
+  }
+
+  if (!user) {
+    console.error('User not found:', conv.usuario_id);
+    return null;
+  }
 
   return {
     id: user.id,
@@ -463,7 +484,12 @@ Deno.serve(async (req: Request) => {
 
     if (openaiApiKey) {
       const userContext = await getUserContext(supabase, conversacion_id);
-      const completeContext = userContext ? await getCompleteUserContext(supabase, userContext.id) : {};
+
+      if (!userContext) {
+        throw new Error('No se pudo obtener el contexto del usuario. Verifica que la conversación existe.');
+      }
+
+      const completeContext = await getCompleteUserContext(supabase, userContext.id);
 
       const systemPrompt = `Eres Mi Asistente de MOVI Digital, un asistente virtual inteligente para agentes de seguros.
 
@@ -534,10 +560,10 @@ Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar,
         .single();
 
       let userPrompt = `INFORMACIÓN PERSONAL DEL USUARIO:
-- Nombre completo: ${userContext?.nombre} ${userContext?.apellidos}
-- Email: ${userContext?.email}
-- Rol: ${userContext?.rol}
-- Oficina: ${userContext?.oficina_nombre || 'No asignada'}
+- Nombre completo: ${userContext.nombre} ${userContext.apellidos}
+- Email: ${userContext.email}
+- Rol: ${userContext.rol}
+- Oficina: ${userContext.oficina_nombre || 'No asignada'}
 - Teléfono: ${fullUserProfile?.celular || 'No registrado'}
 - Puesto: ${fullUserProfile?.puesto || 'No especificado'}
 - Régimen Fiscal: ${fullUserProfile?.regimen_fiscal || 'No especificado'}
