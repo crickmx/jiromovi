@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico Asistente - Datos del Usuario</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .section h2 {
+      color: #2196F3;
+      margin-top: 0;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button.secondary {
+      background: #2196F3;
+    }
+    button.secondary:hover {
+      background: #0b7dda;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+      border-left: 4px solid #4CAF50;
+    }
+    .success {
+      color: #4CAF50;
+      font-weight: bold;
+    }
+    .error {
+      color: #f44336;
+      font-weight: bold;
+    }
+    .warning {
+      color: #ff9800;
+      font-weight: bold;
+    }
+    .info {
+      background: #e3f2fd;
+      padding: 10px;
+      border-left: 4px solid #2196F3;
+      margin: 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background: #4CAF50;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Diagnóstico del Asistente - Datos del Usuario</h1>
+
+  <div class="info">
+    <strong>Usuario actual:</strong> <span id="usuario-info">Cargando...</span>
+  </div>
+
+  <div class="section">
+    <h2>Acciones</h2>
+    <button onclick="verificarDatos()">🔍 Verificar Todos los Datos</button>
+    <button class="secondary" onclick="verificarConversacion()">💬 Verificar Conversación</button>
+    <button class="secondary" onclick="testearAsistente()">🤖 Testear Asistente</button>
+  </div>
+
+  <div class="section">
+    <h2>Resultados</h2>
+    <div id="resultados"></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const supabaseUrl = 'https://pxrkvtaixkaglnkrhbkg.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4cmt2dGFpeGthZ2xua3JoYmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk2MzA4OTksImV4cCI6MjA0NTIwNjg5OX0.xVtchxstuYe18vJDcNvVS5Q-eKOg8CqK6pzPqDYOiWA';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    let currentUser = null;
+
+    // Obtener sesión actual
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data: usuario } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      currentUser = usuario;
+      document.getElementById('usuario-info').innerHTML = `
+        <strong>${usuario.nombre} ${usuario.apellidos}</strong><br>
+        ID: ${usuario.id}<br>
+        Email: ${usuario.email}<br>
+        Rol: ${usuario.rol}
+      `;
+    } else {
+      document.getElementById('usuario-info').innerHTML = '<span class="error">No hay sesión activa</span>';
+    }
+
+    window.verificarDatos = async function() {
+      if (!currentUser) {
+        alert('No hay usuario autenticado');
+        return;
+      }
+
+      const resultados = document.getElementById('resultados');
+      resultados.innerHTML = '<p>⏳ Verificando datos...</p>';
+
+      let html = '';
+
+      // 1. Verificar comisiones
+      html += '<h3>1. Comisiones (commission_details)</h3>';
+      const { data: comisiones, error: errorComisiones } = await supabase
+        .from('commission_details')
+        .select('*')
+        .eq('movi_user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (errorComisiones) {
+        html += `<p class="error">Error: ${errorComisiones.message}</p>`;
+      } else if (comisiones && comisiones.length > 0) {
+        html += `<p class="success">✅ Se encontraron ${comisiones.length} comisiones</p>`;
+        html += '<table><tr><th>Cliente</th><th>Aseguradora</th><th>Ramo</th><th>Comisión Neta</th><th>Fecha</th></tr>';
+        comisiones.forEach(c => {
+          html += `<tr>
+            <td>${c.nombre_asegurado || 'N/A'}</td>
+            <td>${c.aseguradora || 'N/A'}</td>
+            <td>${c.ramo || 'N/A'}</td>
+            <td>$${(c.commission_neta || 0).toFixed(2)}</td>
+            <td>${new Date(c.created_at).toLocaleDateString()}</td>
+          </tr>`;
+        });
+        html += '</table>';
+      } else {
+        html += '<p class="warning">⚠️ No se encontraron comisiones para este usuario</p>';
+      }
+
+      // 2. Verificar producción
+      html += '<h3>2. Producción (production_records)</h3>';
+      const { data: produccion, error: errorProduccion } = await supabase
+        .from('production_records')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('fecha', { ascending: false })
+        .limit(5);
+
+      if (errorProduccion) {
+        html += `<p class="error">Error: ${errorProduccion.message}</p>`;
+      } else if (produccion && produccion.length > 0) {
+        html += `<p class="success">✅ Se encontraron ${produccion.length} registros de producción</p>`;
+        html += '<table><tr><th>Agente</th><th>Aseguradora</th><th>Ramo</th><th>Importe</th><th>Fecha</th></tr>';
+        produccion.forEach(p => {
+          html += `<tr>
+            <td>${p.agente_nombre || 'N/A'}</td>
+            <td>${p.aseguradora_nombre || 'N/A'}</td>
+            <td>${p.ramo_nombre || 'N/A'}</td>
+            <td>$${(p.importe_pesos || 0).toFixed(2)}</td>
+            <td>${new Date(p.fecha).toLocaleDateString()}</td>
+          </tr>`;
+        });
+        html += '</table>';
+      } else {
+        html += '<p class="warning">⚠️ No se encontraron registros de producción para este usuario</p>';
+      }
+
+      // 3. Verificar tareas
+      html += '<h3>3. Tareas Pendientes (crm_tareas)</h3>';
+      const { data: tareas, error: errorTareas } = await supabase
+        .from('crm_tareas')
+        .select('*')
+        .eq('creado_por', currentUser.id)
+        .eq('completada', false)
+        .order('fecha_vencimiento', { ascending: true })
+        .limit(5);
+
+      if (errorTareas) {
+        html += `<p class="error">Error: ${errorTareas.message}</p>`;
+      } else if (tareas && tareas.length > 0) {
+        html += `<p class="success">✅ Se encontraron ${tareas.length} tareas pendientes</p>`;
+        html += '<table><tr><th>Descripción</th><th>Tipo</th><th>Prioridad</th><th>Vencimiento</th></tr>';
+        tareas.forEach(t => {
+          html += `<tr>
+            <td>${t.descripcion || 'N/A'}</td>
+            <td>${t.tipo_actividad || 'N/A'}</td>
+            <td>${t.prioridad || 'N/A'}</td>
+            <td>${t.fecha_vencimiento ? new Date(t.fecha_vencimiento).toLocaleDateString() : 'N/A'}</td>
+          </tr>`;
+        });
+        html += '</table>';
+      } else {
+        html += '<p class="warning">⚠️ No se encontraron tareas pendientes para este usuario</p>';
+      }
+
+      // 4. Verificar contactos
+      html += '<h3>4. Contactos CRM (crm_contactos)</h3>';
+      const { data: contactos, error: errorContactos } = await supabase
+        .from('crm_contactos')
+        .select('*')
+        .eq('creado_por', currentUser.id)
+        .order('fecha_creacion', { ascending: false })
+        .limit(5);
+
+      if (errorContactos) {
+        html += `<p class="error">Error: ${errorContactos.message}</p>`;
+      } else if (contactos && contactos.length > 0) {
+        html += `<p class="success">✅ Se encontraron ${contactos.length} contactos</p>`;
+        html += '<table><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Estatus</th></tr>';
+        contactos.forEach(c => {
+          html += `<tr>
+            <td>${c.nombre_completo || 'N/A'}</td>
+            <td>${c.email || 'N/A'}</td>
+            <td>${c.celular || 'N/A'}</td>
+            <td>${c.estatus || 'N/A'}</td>
+          </tr>`;
+        });
+        html += '</table>';
+      } else {
+        html += '<p class="warning">⚠️ No se encontraron contactos para este usuario</p>';
+      }
+
+      resultados.innerHTML = html;
+    };
+
+    window.verificarConversacion = async function() {
+      if (!currentUser) {
+        alert('No hay usuario autenticado');
+        return;
+      }
+
+      const resultados = document.getElementById('resultados');
+      resultados.innerHTML = '<p>⏳ Verificando conversación...</p>';
+
+      // Verificar si hay una conversación activa
+      const { data: conversacion, error } = await supabase
+        .from('conversaciones_chatgpt')
+        .select('*')
+        .eq('usuario_id', currentUser.id)
+        .eq('es_asistente', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let html = '<h3>Conversación Actual</h3>';
+
+      if (error) {
+        html += `<p class="error">Error: ${error.message}</p>`;
+      } else if (conversacion) {
+        html += `<p class="success">✅ Conversación encontrada</p>`;
+        html += `<pre>${JSON.stringify(conversacion, null, 2)}</pre>`;
+
+        // Obtener mensajes
+        const { data: mensajes } = await supabase
+          .from('mensajes_chatgpt')
+          .select('*')
+          .eq('conversacion_id', conversacion.id)
+          .order('created_at', { ascending: true })
+          .limit(10);
+
+        if (mensajes && mensajes.length > 0) {
+          html += `<h4>Últimos ${mensajes.length} mensajes:</h4>`;
+          html += '<table><tr><th>Rol</th><th>Contenido</th><th>Fecha</th></tr>';
+          mensajes.forEach(m => {
+            html += `<tr>
+              <td>${m.rol}</td>
+              <td>${m.contenido.substring(0, 100)}${m.contenido.length > 100 ? '...' : ''}</td>
+              <td>${new Date(m.created_at).toLocaleString()}</td>
+            </tr>`;
+          });
+          html += '</table>';
+        }
+      } else {
+        html += '<p class="warning">⚠️ No hay conversación activa</p>';
+      }
+
+      resultados.innerHTML = html;
+    };
+
+    window.testearAsistente = async function() {
+      if (!currentUser) {
+        alert('No hay usuario autenticado');
+        return;
+      }
+
+      const resultados = document.getElementById('resultados');
+      resultados.innerHTML = '<p>⏳ Testeando asistente...</p>';
+
+      try {
+        // Obtener o crear conversación
+        let conversacion = await supabase
+          .from('conversaciones_chatgpt')
+          .select('*')
+          .eq('usuario_id', currentUser.id)
+          .eq('es_asistente', true)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!conversacion.data) {
+          // Crear nueva conversación
+          const { data: nueva } = await supabase
+            .from('conversaciones_chatgpt')
+            .insert({
+              usuario_id: currentUser.id,
+              titulo: 'Test del asistente',
+              es_asistente: true,
+              modulo_origen: 'dashboard'
+            })
+            .select()
+            .single();
+          conversacion = { data: nueva };
+        }
+
+        // Enviar mensaje de prueba
+        const { data, error } = await supabase.functions.invoke('assistant-send-message', {
+          body: {
+            conversacion_id: conversacion.data.id,
+            mensaje: 'Dame un resumen de mis comisiones, producción y tareas pendientes',
+            modulo: 'dashboard',
+            ruta: '/dashboard',
+            parametros: {}
+          }
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        let html = '<h3>Respuesta del Asistente</h3>';
+        html += `<p class="success">✅ Asistente respondió correctamente</p>`;
+        html += '<h4>Respuesta:</h4>';
+        html += `<pre>${data.respuesta}</pre>`;
+
+        if (data.respuesta_estructurada) {
+          html += '<h4>Respuesta Estructurada:</h4>';
+          html += `<pre>${JSON.stringify(data.respuesta_estructurada, null, 2)}</pre>`;
+        }
+
+        resultados.innerHTML = html;
+      } catch (error) {
+        resultados.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    };
+  </script>
+</body>
+</html>
