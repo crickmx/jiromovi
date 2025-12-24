@@ -111,7 +111,7 @@ export async function sendMessage(
   request: SendMessageRequest
 ): Promise<SendMessageResponse | null> {
   try {
-    const { conversacion_id, mensaje, modulo, ruta, parametros } = request;
+    const { conversacion_id, mensaje, modulo, ruta, parametros, file_paths } = request;
 
     // Verify session before calling function
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -122,6 +122,9 @@ export async function sendMessage(
     }
 
     console.log('Session active, calling edge function...');
+    if (file_paths && file_paths.length > 0) {
+      console.log('Sending with attached files:', file_paths.length);
+    }
 
     // Use fetch directly to capture full error response body
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -139,6 +142,7 @@ export async function sendMessage(
         modulo,
         ruta,
         parametros: parametros || {},
+        file_paths: file_paths || [],
       }),
     });
 
