@@ -145,15 +145,26 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
   const sendMessage = useCallback(
     async (text: string, explicitIntent?: IntentCode) => {
-      if (!user?.id || !conversationId) return;
+      if (!user?.id) return;
 
       setIsSendingMessage(true);
 
       try {
+        let activeConversationId = conversationId;
+
+        if (!activeConversationId) {
+          const conversation = await getOrCreateConversation(user.id, currentModule);
+          if (!conversation) {
+            throw new Error('No se pudo crear la conversación');
+          }
+          activeConversationId = conversation.id;
+          setConversationId(activeConversationId);
+        }
+
         const params = extractRouteParams(location.pathname);
 
         const response = await sendMessageService({
-          conversacion_id: conversationId,
+          conversacion_id: activeConversationId,
           mensaje: text,
           modulo: currentModule,
           ruta: location.pathname,
@@ -161,11 +172,12 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (response) {
-          await loadMessages(conversationId);
+          await loadMessages(activeConversationId);
           await loadConversationsList();
         }
       } catch (error) {
         console.error('Error sending message:', error);
+        alert('Error al enviar el mensaje. Por favor intenta de nuevo.');
       } finally {
         setIsSendingMessage(false);
       }
