@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Storage Simple</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px 5px;
+      cursor: pointer;
+    }
+    .output {
+      background: #f0f0f0;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+    }
+    .error { color: red; }
+    .success { color: green; }
+  </style>
+</head>
+<body>
+  <h1>Test Storage - Diagnóstico Simple</h1>
+
+  <button onclick="testConnection()">1. Test Conexión Supabase</button>
+  <button onclick="testBuckets()">2. Test Buckets Existen</button>
+  <button onclick="listVideos()">3. Listar Videos</button>
+  <button onclick="listThumbnails()">4. Listar Thumbnails</button>
+
+  <div class="output" id="output">Haz clic en los botones para probar...</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const { createClient } = supabase;
+    const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjA5OTAsImV4cCI6MjA3NzI5Njk5MH0.bIlGsgeAC6oxGUalODg0C5-l6KaJip0wWa9IbQ7MjTQ';
+
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function log(msg, type = 'info') {
+      const output = document.getElementById('output');
+      const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+      output.innerHTML += `<div class="${className}">${msg}</div>`;
+    }
+
+    function clear() {
+      document.getElementById('output').innerHTML = '';
+    }
+
+    async function testConnection() {
+      clear();
+      log('=== TEST CONEXIÓN ===');
+
+      try {
+        log('URL: ' + SUPABASE_URL);
+        log('Cliente inicializado: ' + (supabaseClient ? 'SÍ' : 'NO'));
+
+        // Test simple de conexión
+        const { data, error } = await supabaseClient
+          .from('usuarios')
+          .select('count')
+          .limit(1);
+
+        if (error) {
+          log('ERROR en query test: ' + error.message, 'error');
+        } else {
+          log('✓ Conexión exitosa a Supabase', 'success');
+        }
+      } catch (err) {
+        log('ERROR: ' + err.message, 'error');
+        console.error(err);
+      }
+    }
+
+    async function testBuckets() {
+      clear();
+      log('=== TEST BUCKETS ===');
+
+      try {
+        const { data, error } = await supabaseClient
+          .storage
+          .listBuckets();
+
+        if (error) {
+          log('ERROR: ' + error.message, 'error');
+          console.error('Full error:', error);
+        } else {
+          log('✓ Buckets encontrados: ' + data.length, 'success');
+          data.forEach(bucket => {
+            log(`  - ${bucket.id} (public: ${bucket.public})`);
+          });
+
+          const hasVideos = data.find(b => b.id === 'videos-seguros-education');
+          const hasThumbs = data.find(b => b.id === 'thumbnails-seguros-education');
+
+          if (hasVideos) log('✓ videos-seguros-education existe', 'success');
+          else log('✗ videos-seguros-education NO existe', 'error');
+
+          if (hasThumbs) log('✓ thumbnails-seguros-education existe', 'success');
+          else log('✗ thumbnails-seguros-education NO existe', 'error');
+        }
+      } catch (err) {
+        log('ERROR: ' + err.message, 'error');
+        console.error('Full error:', err);
+      }
+    }
+
+    async function listVideos() {
+      clear();
+      log('=== LISTAR VIDEOS ===');
+
+      try {
+        log('Consultando bucket: videos-seguros-education');
+
+        const { data, error } = await supabaseClient
+          .storage
+          .from('videos-seguros-education')
+          .list('', {
+            limit: 100,
+            sortBy: { column: 'name', order: 'asc' }
+          });
+
+        if (error) {
+          log('ERROR: ' + error.message, 'error');
+          log('Error details: ' + JSON.stringify(error, null, 2));
+          console.error('Full error:', error);
+        } else {
+          log('✓ Archivos encontrados: ' + data.length, 'success');
+
+          const videos = data.filter(f => f.name && !f.name.startsWith('.'));
+          log('✓ Videos válidos: ' + videos.length, 'success');
+
+          videos.slice(0, 10).forEach(v => {
+            log(`  - ${v.name} (${Math.round(v.metadata?.size / 1024 / 1024)} MB)`);
+          });
+
+          if (videos.length > 10) {
+            log(`  ... y ${videos.length - 10} más`);
+          }
+        }
+      } catch (err) {
+        log('ERROR: ' + err.message, 'error');
+        log('Stack: ' + err.stack);
+        console.error('Full error:', err);
+      }
+    }
+
+    async function listThumbnails() {
+      clear();
+      log('=== LISTAR THUMBNAILS ===');
+
+      try {
+        log('Consultando bucket: thumbnails-seguros-education');
+
+        const { data, error } = await supabaseClient
+          .storage
+          .from('thumbnails-seguros-education')
+          .list('', {
+            limit: 100,
+            sortBy: { column: 'name', order: 'asc' }
+          });
+
+        if (error) {
+          log('ERROR: ' + error.message, 'error');
+          log('Error details: ' + JSON.stringify(error, null, 2));
+          console.error('Full error:', error);
+        } else {
+          log('✓ Archivos encontrados: ' + data.length, 'success');
+
+          const thumbs = data.filter(f => f.name && !f.name.startsWith('.'));
+          log('✓ Thumbnails válidos: ' + thumbs.length, 'success');
+
+          thumbs.slice(0, 10).forEach(t => {
+            log(`  - ${t.name}`);
+          });
+
+          if (thumbs.length > 10) {
+            log(`  ... y ${thumbs.length - 10} más`);
+          }
+        }
+      } catch (err) {
+        log('ERROR: ' + err.message, 'error');
+        log('Stack: ' + err.stack);
+        console.error('Full error:', err);
+      }
+    }
+
+    // Auto-test al cargar
+    window.addEventListener('load', () => {
+      log('Página cargada. Supabase library: ' + (typeof supabase !== 'undefined' ? 'OK' : 'ERROR'));
+    });
+  </script>
+</body>
+</html>
