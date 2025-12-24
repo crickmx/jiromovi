@@ -34,29 +34,6 @@ Deno.serve(async (req: Request) => {
 
     const token = authHeader.replace('Bearer ', '');
 
-    // Create client with user token to verify authentication
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader
-        }
-      },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    const { data: { user: currentUser }, error: authError } = await supabaseUser.auth.getUser();
-
-    if (authError || !currentUser) {
-      console.error('Auth error:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Invalid token', details: authError?.message }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Create admin client for privileged operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -64,6 +41,17 @@ Deno.serve(async (req: Request) => {
         persistSession: false,
       },
     });
+
+    // Verify the JWT token and get the user
+    const { data: { user: currentUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !currentUser) {
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid token', details: 'Auth session missing!' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { data: currentUserData } = await supabaseAdmin
       .from('usuarios')
