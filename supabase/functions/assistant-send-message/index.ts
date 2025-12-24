@@ -263,7 +263,7 @@ async function getCompleteUserContext(supabase: any, userId: string) {
           tipo: t.tipo_actividad,
           vencimiento: t.fecha_vencimiento,
           prioridad: t.prioridad,
-          contacto_nombre: t.contacto_nombre
+          estatus: t.estatus
         }))
       };
     }
@@ -290,10 +290,10 @@ async function getCompleteUserContext(supabase: any, userId: string) {
         proximas_renovaciones: renovacionesProximas.slice(0, 5).map((p: any) => ({
           numero: p.numero_poliza,
           cliente: p.crm_contactos?.nombre_completo,
-          aseguradora: p.aseguradora,
-          ramo: p.ramo,
+          aseguradora: p.compania_aseguradora,
+          ramo: p.tipo_ramo,
           vencimiento: p.fecha_vencimiento,
-          suma_asegurada: p.suma_asegurada
+          prima_total: p.prima_total
         }))
       };
     }
@@ -622,6 +622,12 @@ REGLAS ESTRICTAS:
 7. NO uses \`\`\`json, responde únicamente el JSON puro
 8. Incluye acciones concretas y relevantes
 9. USA ÚNICAMENTE las rutas de la lista RUTAS DISPONIBLES (abajo)
+10. NUNCA INVENTES INFORMACIÓN - Solo usa los datos del contexto proporcionado
+11. NO CONFUNDAS tareas del CRM con pólizas reales:
+    - crm_tareas = tareas/pendientes del usuario (NO son pólizas)
+    - crm_polizas = pólizas reales registradas en el sistema
+12. Si el usuario pregunta por pólizas, SOLO menciona las que están en crm_polizas.proximas_renovaciones
+13. Si solo hay tareas relacionadas a pólizas pero NO pólizas reales, di: "Tienes tareas pendientes relacionadas con pólizas"
 
 RUTAS DISPONIBLES EN LA PLATAFORMA:
 - /dashboard - Panel principal
