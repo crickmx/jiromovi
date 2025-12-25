@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell, Save, X } from 'lucide-react';
+import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell, Save, X, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
 import type { TransactionalNotificationTemplate } from '../../lib/transactionalNotificationTypes';
 import { AVAILABLE_PLACEHOLDERS } from '../../lib/transactionalNotificationTypes';
@@ -29,6 +29,8 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [editingTipo, setEditingTipo] = useState<{ id: string, nombre: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     fetchTipos();
@@ -180,6 +182,37 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
     }
   };
 
+  const insertHtmlTag = (tag: string, closeTag?: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea || !editingTransactional) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = editingTransactional.email_body_template || '';
+    const selectedText = text.substring(start, end);
+
+    let newText = '';
+    let newCursorPos = start;
+
+    if (closeTag) {
+      newText = text.substring(0, start) + tag + selectedText + closeTag + text.substring(end);
+      newCursorPos = start + tag.length + selectedText.length + closeTag.length;
+    } else {
+      newText = text.substring(0, start) + tag + text.substring(end);
+      newCursorPos = start + tag.length;
+    }
+
+    setEditingTransactional({
+      ...editingTransactional,
+      email_body_template: newText
+    });
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
   if (loading) {
     return <div className="text-center py-8 text-neutral-600">Cargando...</div>;
   }
@@ -266,15 +299,97 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                         <Mail className="w-4 h-4 text-primary-600" />
                         <span>Cuerpo del Correo (HTML)</span>
                       </label>
-                      <textarea
-                        value={editingTransactional.email_body_template || ''}
-                        onChange={(e) => setEditingTransactional({
-                          ...editingTransactional,
-                          email_body_template: e.target.value
-                        })}
-                        rows={8}
-                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
-                      />
+
+                      {/* Barra de herramientas HTML */}
+                      <div className="flex items-center justify-between gap-3 p-2 bg-neutral-50 border border-neutral-200 rounded-lg mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1 border-r border-neutral-300 pr-2">
+                            <button
+                              onClick={() => insertHtmlTag('<strong>', '</strong>')}
+                              className="p-1.5 hover:bg-neutral-200 rounded transition-colors"
+                              title="Negrita"
+                            >
+                              <Bold className="w-3.5 h-3.5 text-neutral-700" />
+                            </button>
+                            <button
+                              onClick={() => insertHtmlTag('<em>', '</em>')}
+                              className="p-1.5 hover:bg-neutral-200 rounded transition-colors"
+                              title="Cursiva"
+                            >
+                              <Italic className="w-3.5 h-3.5 text-neutral-700" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1 border-r border-neutral-300 pr-2">
+                            <button
+                              onClick={() => insertHtmlTag('<h2>', '</h2>')}
+                              className="px-1.5 py-1 text-xs font-semibold hover:bg-neutral-200 rounded transition-colors"
+                            >
+                              H2
+                            </button>
+                            <button
+                              onClick={() => insertHtmlTag('<p>', '</p>')}
+                              className="px-1.5 py-1 text-xs font-semibold hover:bg-neutral-200 rounded transition-colors"
+                            >
+                              P
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1 border-r border-neutral-300 pr-2">
+                            <button
+                              onClick={() => insertHtmlTag('<ul>\n  <li></li>\n</ul>')}
+                              className="p-1.5 hover:bg-neutral-200 rounded transition-colors"
+                              title="Lista"
+                            >
+                              <List className="w-3.5 h-3.5 text-neutral-700" />
+                            </button>
+                            <button
+                              onClick={() => insertHtmlTag('<a href="">', '</a>')}
+                              className="p-1.5 hover:bg-neutral-200 rounded transition-colors"
+                              title="Enlace"
+                            >
+                              <LinkIcon className="w-3.5 h-3.5 text-neutral-700" />
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => insertHtmlTag('<br>')}
+                            className="px-1.5 py-1 text-xs font-semibold hover:bg-neutral-200 rounded transition-colors"
+                          >
+                            BR
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => setShowPreview(!showPreview)}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                            showPreview
+                              ? 'bg-primary-100 text-primary-700'
+                              : 'bg-neutral-200 text-neutral-700'
+                          }`}
+                        >
+                          {showPreview ? <Eye className="w-3.5 h-3.5" /> : <Code className="w-3.5 h-3.5" />}
+                          {showPreview ? 'Preview' : 'Código'}
+                        </button>
+                      </div>
+
+                      {/* Editor y Vista Previa */}
+                      <div className={`grid ${showPreview ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+                        <textarea
+                          ref={textareaRef}
+                          value={editingTransactional.email_body_template || ''}
+                          onChange={(e) => setEditingTransactional({
+                            ...editingTransactional,
+                            email_body_template: e.target.value
+                          })}
+                          rows={12}
+                          className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm resize-none"
+                        />
+                        {showPreview && (
+                          <div className="border border-neutral-300 rounded-lg p-3 bg-white overflow-auto h-[300px]">
+                            <div
+                              className="prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{ __html: editingTransactional.email_body_template || '' }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div>

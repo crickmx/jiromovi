@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { X, Mail, MessageCircle, AlertCircle, Save, Bell } from 'lucide-react';
+import { X, Mail, MessageCircle, AlertCircle, Save, Bell, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image } from 'lucide-react';
 
 interface Plantilla {
   id: string;
@@ -33,6 +33,8 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
   const [cuerpoNotificacion, setCuerpoNotificacion] = useState('');
   const [previewTab, setPreviewTab] = useState<'email' | 'whatsapp' | 'notificacion'>('email');
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [showPreview, setShowPreview] = useState(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     fetchPlantilla();
@@ -139,6 +141,37 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
     } else {
       setCuerpoNotificacion(prev => prev + variable);
     }
+  };
+
+  const insertHtmlTag = (tag: string, closeTag?: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = cuerpoEmail;
+    const selectedText = text.substring(start, end);
+
+    let newText = '';
+    let newCursorPos = start;
+
+    if (closeTag) {
+      // Tag de apertura y cierre (ej: <strong></strong>)
+      newText = text.substring(0, start) + tag + selectedText + closeTag + text.substring(end);
+      newCursorPos = start + tag.length + selectedText.length + closeTag.length;
+    } else {
+      // Tag simple (ej: <br>)
+      newText = text.substring(0, start) + tag + text.substring(end);
+      newCursorPos = start + tag.length;
+    }
+
+    setCuerpoEmail(newText);
+
+    // Restaurar posición del cursor
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   if (loading) {
@@ -252,17 +285,126 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
             {/* Email Tab */}
             {previewTab === 'email' && (
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                    Cuerpo del Email (HTML) <span className="text-accent-600">*</span>
-                  </label>
-                  <textarea
-                    value={cuerpoEmail}
-                    onChange={(e) => setCuerpoEmail(e.target.value)}
-                    rows={12}
-                    placeholder="<h2>Hola {{nombre}}</h2><p>Tu mensaje aquí...</p>"
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
-                  />
+                {/* Barra de herramientas HTML */}
+                <div className="flex items-center justify-between gap-3 p-3 bg-neutral-50 border border-neutral-200 rounded-lg">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1 border-r border-neutral-300 pr-2">
+                      <button
+                        onClick={() => insertHtmlTag('<strong>', '</strong>')}
+                        className="p-2 hover:bg-neutral-200 rounded transition-colors"
+                        title="Negrita"
+                      >
+                        <Bold className="w-4 h-4 text-neutral-700" />
+                      </button>
+                      <button
+                        onClick={() => insertHtmlTag('<em>', '</em>')}
+                        className="p-2 hover:bg-neutral-200 rounded transition-colors"
+                        title="Cursiva"
+                      >
+                        <Italic className="w-4 h-4 text-neutral-700" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1 border-r border-neutral-300 pr-2">
+                      <button
+                        onClick={() => insertHtmlTag('<h2>', '</h2>')}
+                        className="px-2 py-1 text-xs font-semibold hover:bg-neutral-200 rounded transition-colors"
+                        title="Título H2"
+                      >
+                        H2
+                      </button>
+                      <button
+                        onClick={() => insertHtmlTag('<h3>', '</h3>')}
+                        className="px-2 py-1 text-xs font-semibold hover:bg-neutral-200 rounded transition-colors"
+                        title="Título H3"
+                      >
+                        H3
+                      </button>
+                      <button
+                        onClick={() => insertHtmlTag('<p>', '</p>')}
+                        className="px-2 py-1 text-xs font-semibold hover:bg-neutral-200 rounded transition-colors"
+                        title="Párrafo"
+                      >
+                        P
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1 border-r border-neutral-300 pr-2">
+                      <button
+                        onClick={() => insertHtmlTag('<ul>\n  <li></li>\n</ul>')}
+                        className="p-2 hover:bg-neutral-200 rounded transition-colors"
+                        title="Lista"
+                      >
+                        <List className="w-4 h-4 text-neutral-700" />
+                      </button>
+                      <button
+                        onClick={() => insertHtmlTag('<a href="">', '</a>')}
+                        className="p-2 hover:bg-neutral-200 rounded transition-colors"
+                        title="Enlace"
+                      >
+                        <LinkIcon className="w-4 h-4 text-neutral-700" />
+                      </button>
+                      <button
+                        onClick={() => insertHtmlTag('<img src="" alt="">')}
+                        className="p-2 hover:bg-neutral-200 rounded transition-colors"
+                        title="Imagen"
+                      >
+                        <Image className="w-4 h-4 text-neutral-700" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => insertHtmlTag('<br>')}
+                      className="px-2 py-1 text-xs font-semibold hover:bg-neutral-200 rounded transition-colors"
+                      title="Salto de línea"
+                    >
+                      BR
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setShowPreview(!showPreview)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                      showPreview
+                        ? 'bg-primary-100 text-primary-700'
+                        : 'bg-neutral-200 text-neutral-700'
+                    }`}
+                  >
+                    {showPreview ? <Eye className="w-4 h-4" /> : <Code className="w-4 h-4" />}
+                    {showPreview ? 'Vista Previa' : 'Solo Código'}
+                  </button>
+                </div>
+
+                {/* Editor y Vista Previa */}
+                <div className={`grid ${showPreview ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                  {/* Editor */}
+                  <div>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                      Código HTML <span className="text-accent-600">*</span>
+                    </label>
+                    <textarea
+                      ref={textareaRef}
+                      value={cuerpoEmail}
+                      onChange={(e) => setCuerpoEmail(e.target.value)}
+                      rows={18}
+                      placeholder="<h2>Hola {{nombre}}</h2><p>Tu mensaje aquí...</p>"
+                      className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm resize-none"
+                    />
+                  </div>
+
+                  {/* Vista Previa */}
+                  {showPreview && (
+                    <div>
+                      <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                        Vista Previa
+                      </label>
+                      <div className="w-full h-[450px] border border-neutral-300 rounded-lg p-4 bg-white overflow-auto">
+                        <div
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: cuerpoEmail }}
+                        />
+                      </div>
+                      <p className="text-xs text-neutral-500 mt-2">
+                        Las variables como {'{{'} nombre {'}'} no se reemplazan en la vista previa
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Variables Email */}

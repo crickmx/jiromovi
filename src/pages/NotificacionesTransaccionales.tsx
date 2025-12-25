@@ -136,10 +136,10 @@ export function NotificacionesTransaccionales() {
       {/* Header */}
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl shadow-lg p-8 text-white">
         <div className="flex items-center gap-3 mb-2">
-          <Mail className="w-8 h-8" />
-          <h1 className="text-3xl font-bold">Notificaciones Transaccionales</h1>
+          <Mail className="w-8 h-8 text-white" />
+          <h1 className="text-3xl font-bold text-white">Notificaciones Transaccionales</h1>
         </div>
-        <p className="text-primary-100">
+        <p className="text-white opacity-90">
           Administra correos automáticos, plantillas y configuración SMTP
         </p>
       </div>
