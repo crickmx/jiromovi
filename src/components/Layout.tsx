@@ -154,7 +154,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             aria-label="Ir al Dashboard"
           >
             <img
-              src={isCollapsed ? "/movirecurso_7.png" : "/movirecurso_2.png"}
+              src="/movirecurso_7.png"
               alt="MOVI Digital Logo"
               className={cn(
                 "object-contain transition-all duration-250 ease-ios-smooth",
@@ -327,7 +327,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                   <Menu className="w-6 h-6" />
                 </button>
                 <img
-                  src="/movirecurso_2.png"
+                  src="/movirecurso_7.png"
                   alt="MOVI Digital Logo"
                   className="h-9 object-contain"
                 />
