@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Filter, UserPlus, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
@@ -12,7 +11,6 @@ type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 
 export function Directorio() {
-  const navigate = useNavigate();
   const { usuario: currentUser } = useAuth();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
@@ -351,7 +349,10 @@ export function Directorio() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
                       <button
-                        onClick={() => navigate(`/usuario/${usuario.id}`)}
+                        onClick={() => {
+                          setSelectedUser(usuario);
+                          setModalOpen(true);
+                        }}
                         className="flex items-center space-x-1 text-blue-600 hover:text-blue-900 px-2 lg:px-3 py-2 hover:bg-blue-50 rounded-lg transition"
                         title={isReadOnly ? "Ver Usuario" : "Ver / Editar Usuario"}
                       >
