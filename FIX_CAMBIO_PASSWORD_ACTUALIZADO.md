@@ -3,6 +3,13 @@
 ## Problema Reportado
 El cambio de contraseña del usuario `ccjimenez@me.com` a `123456` desde el modal "Editar Usuario" no se guardaba correctamente.
 
+## ⚠️ Problema Detectado - URL Incorrecta
+El diagnóstico inicial falló con "Failed to fetch" porque tenía una **URL de Supabase incorrecta**:
+- ❌ URL antigua: `jqcstvcvvrdbchplfdva.supabase.co`
+- ✅ URL correcta: `qhwvuuyjhcennqccgvse.supabase.co`
+
+Ya fue corregida en todos los archivos.
+
 ## Solución Implementada
 
 ### 1. Edge Function Mejorada
@@ -11,7 +18,15 @@ Se actualizó `/supabase/functions/update-user-password/index.ts` con:
 - **Mejor manejo de errores** con stack trace
 - **Respuestas más informativas** incluyendo userId y email confirmado
 
-### 2. Cambios Realizados
+### 2. Herramienta de Diagnóstico Mejorada
+El archivo `public/diagnostico-cambio-password.html` ahora:
+- ✅ Usa la URL correcta de Supabase
+- ✅ Muestra logs detallados en consola del navegador
+- ✅ Manejo de errores mejorado con causas posibles
+- ✅ Validación de campos vacíos
+- ✅ Mensajes de progreso en cada paso
+
+### 3. Cambios Realizados
 ```typescript
 // Ahora retorna más información:
 {
