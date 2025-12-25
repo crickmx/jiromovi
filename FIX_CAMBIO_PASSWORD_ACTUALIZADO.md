@@ -3,12 +3,35 @@
 ## Problema Reportado
 El cambio de contraseña del usuario `ccjimenez@me.com` a `123456` desde el modal "Editar Usuario" no se guardaba correctamente.
 
-## ⚠️ Problema Detectado - URL Incorrecta
+## ⚠️ Problemas Detectados
+
+### Issue 1: URL Incorrecta (Resuelto)
 El diagnóstico inicial falló con "Failed to fetch" porque tenía una **URL de Supabase incorrecta**:
 - ❌ URL antigua: `jqcstvcvvrdbchplfdva.supabase.co`
 - ✅ URL correcta: `qhwvuuyjhcennqccgvse.supabase.co`
 
-Ya fue corregida en todos los archivos.
+### Issue 2: Discrepancia de Emails (CAUSA RAÍZ)
+El usuario tiene **dos emails diferentes**:
+- 📋 Email en tabla `usuarios`: `ccjimenez@me.com`
+- 🔐 Email en `auth.users`: `cdcjimenez@gmail.com`
+
+**✅ Contraseña actualizada correctamente a `123456`**
+**⚠️ Para login debe usar:** `cdcjimenez@gmail.com` (el de auth.users)
+
+#### Validación en BD:
+```sql
+SELECT u.email_laboral, au.email as auth_email
+FROM usuarios u
+LEFT JOIN auth.users au ON u.id = au.id
+WHERE u.id = 'e721d4ed-4ba4-499a-a08c-3b881ff380ea';
+```
+
+**Resultado:**
+| email_laboral | auth_email |
+|--------------|------------|
+| ccjimenez@me.com | cdcjimenez@gmail.com |
+
+**Conclusión:** La contraseña funciona correctamente, solo hay que usar el email correcto.
 
 ## Solución Implementada
 
@@ -168,13 +191,48 @@ Buscar:
 4. Si funciona → ✅ Fix correcto
 5. Si no funciona → Usar `diagnostico-cambio-password.html` para debug
 
+## Nueva Herramienta: Test Login Directo
+
+### 📋 Archivo: `public/test-login-ccjimenez.html`
+Herramienta específica para probar el login de este usuario:
+
+**Características:**
+- ✅ Muestra claramente la discrepancia de emails
+- ✅ Botón para login con email correcto (cdcjimenez@gmail.com)
+- ✅ Botón para login con email incorrecto (para demostrar el problema)
+- ✅ Información sobre sincronización de emails
+
+**Cómo usar:**
+1. Abre `public/test-login-ccjimenez.html`
+2. Click en "Probar Login con cdcjimenez@gmail.com"
+3. Verás login exitoso con toda la información del usuario
+
 ## Estado Actual
 
 ✅ Edge function desplegada con logging mejorado
 ✅ Herramienta de diagnóstico creada
+✅ Nueva herramienta de test login directo
 ✅ Build completado sin errores
-✅ Listo para probar
+✅ **Contraseña actualizada correctamente a `123456`**
+✅ **Login funciona con email `cdcjimenez@gmail.com`**
 
-## Siguiente Paso
+## Solución Final
 
-**Prueba el cambio de contraseña** en la aplicación principal o usa el diagnóstico para identificar dónde falla exactamente.
+**Para hacer login como AGENTE DEMO:**
+```
+Email: cdcjimenez@gmail.com
+Password: 123456
+```
+
+**NO usar:** `ccjimenez@me.com` (ese email no existe en auth.users)
+
+## Opciones de Corrección
+
+### Opción A: Cambiar comportamiento del login
+Modificar el login para buscar el usuario por `email_laboral` en la tabla `usuarios` y luego usar el `auth.email` correspondiente.
+
+### Opción B: Sincronizar emails
+Actualizar el email en `auth.users` para que coincida con `usuarios.email_laboral`.
+
+### Opción C: Dejar como está
+Documentar que el email de login es `cdcjimenez@gmail.com`.
