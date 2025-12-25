@@ -462,130 +462,7 @@ export default function MisComisiones() {
 
                 {selectedBatch === batch.id && summary && (
                   <div className="border-t border-neutral-200 p-4 sm:p-6 bg-neutral-50">
-                    {/* Desglose Fiscal para todos los regímenes */}
-                    {desgloseFiscal.has(batch.id) && (() => {
-                      const fiscal = desgloseFiscal.get(batch.id);
-                      const regimen = fiscal.regimen || 'HONORARIOS';
-                      const isAsimilados = regimen.toUpperCase().includes('ASIMILAD');
-                      const isResico = regimen.toUpperCase().includes('RESICO');
-                      const isHonorarios = !isAsimilados && !isResico;
-
-                      return (
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 mb-6 border-2 border-blue-200">
-                          <h4 className="text-base sm:text-lg font-bold text-blue-900 mb-3 flex items-center gap-2">
-                            <DollarSign className="w-5 h-5" />
-                            Desglose Fiscal ({regimen.toUpperCase()})
-                          </h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {/* Comisión Base Total */}
-                            {(isHonorarios || isResico) && (
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-neutral-600 mb-1">Comisión Base Total</div>
-                                <div className="text-base font-bold text-green-700">
-                                  {formatCurrency(parseFloat(fiscal.total_comision))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Vida */}
-                            {(isHonorarios || isResico) && parseFloat(fiscal.vida) > 0 && (
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-neutral-600 mb-1">Vida</div>
-                                <div className="text-base font-semibold text-neutral-700">
-                                  {formatCurrency(parseFloat(fiscal.vida))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Comisión Sin Vida */}
-                            {(isHonorarios || isResico) && (
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-neutral-600 mb-1">Comisión Sin Vida</div>
-                                <div className="text-base font-semibold text-neutral-700">
-                                  {formatCurrency(parseFloat(fiscal.sin_vida))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Ret. Contable (solo ASIMILADOS) */}
-                            {isAsimilados && parseFloat(fiscal.ret_contable) > 0 && (
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-neutral-600 mb-1">Ret. Contable</div>
-                                <div className="text-base font-semibold text-red-600">
-                                  - {formatCurrency(parseFloat(fiscal.ret_contable))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Costo Dispersión (solo ASIMILADOS) */}
-                            {isAsimilados && parseFloat(fiscal.dispersion) > 0 && (
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-neutral-600 mb-1">Costo Dispersión</div>
-                                <div className="text-base font-semibold text-red-600">
-                                  - {formatCurrency(parseFloat(fiscal.dispersion))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* IVA */}
-                            <div className="bg-white rounded-lg p-3 shadow-sm">
-                              <div className="text-xs text-neutral-600 mb-1">
-                                {(isHonorarios || isResico) ? 'IVA (16% Sin Vida)' : 'IVA'}
-                              </div>
-                              <div className="text-base font-semibold text-green-600">
-                                {parseFloat(fiscal.iva) > 0
-                                  ? `+ ${formatCurrency(parseFloat(fiscal.iva))}`
-                                  : formatCurrency(0)}
-                              </div>
-                            </div>
-
-                            {/* Ret. ISR (HONORARIOS y RESICO) */}
-                            {(isHonorarios || isResico) && parseFloat(fiscal.ret_isr) > 0 && (
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-neutral-600 mb-1">
-                                  {isResico ? 'Ret. ISR (1.25% Total)' : 'Ret. ISR (10% Total)'}
-                                </div>
-                                <div className="text-base font-semibold text-red-600">
-                                  - {formatCurrency(parseFloat(fiscal.ret_isr))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Ret. IVA (HONORARIOS y RESICO) */}
-                            {(isHonorarios || isResico) && parseFloat(fiscal.ret_iva) > 0 && (
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-neutral-600 mb-1">Ret. IVA (10.667% Sin Vida)</div>
-                                <div className="text-base font-semibold text-red-600">
-                                  - {formatCurrency(parseFloat(fiscal.ret_iva))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* ISR Total (solo ASIMILADOS) */}
-                            {isAsimilados && parseFloat(fiscal.isr_total) > 0 && (
-                              <div className="bg-white rounded-lg p-3 shadow-sm">
-                                <div className="text-xs text-neutral-600 mb-1">ISR Total</div>
-                                <div className="text-base font-semibold text-red-600">
-                                  - {formatCurrency(parseFloat(fiscal.isr_total))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Total a Pagar */}
-                            <div className="bg-gradient-to-br from-green-100 to-green-200 rounded-lg p-3 shadow-sm border-2 border-green-300">
-                              <div className="text-xs text-green-800 font-semibold mb-1">Total a Pagar</div>
-                              <div className="text-lg font-bold text-green-900">
-                                {formatCurrency(parseFloat(fiscal.total_pagar))}
-                              </div>
-                            </div>
-                          </div>
-                          <p className="text-xs text-blue-700 mt-3 italic">
-                            * Cálculo fiscal automático según régimen {regimen.toUpperCase()}. Valores calculados en tiempo real según tu régimen fiscal actual.
-                          </p>
-                        </div>
-                      );
-                    })()}
-
+                    {/* 1. GRÁFICAS */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                       <GraficaColumnas
                         title="Comisiones por Ramo"
@@ -608,6 +485,7 @@ export default function MisComisiones() {
                       />
                     </div>
 
+                    {/* 2. DESGLOSE POR RAMO */}
                     <div className="flex items-center gap-2 mb-3 sm:mb-4">
                       <TrendingUp className="w-5 h-5 text-primary-600" />
                       <h4 className="text-base sm:text-lg font-bold text-neutral-900">
@@ -678,6 +556,7 @@ export default function MisComisiones() {
                       })}
                     </div>
 
+                    {/* 3. DETALLE DE PÓLIZAS */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
                       <h4 className="text-base sm:text-lg font-bold text-neutral-900">
                         Detalle de Pólizas ({details.length})
@@ -778,6 +657,114 @@ export default function MisComisiones() {
                         );
                       })}
                     </div>
+
+                    {/* 4. DESGLOSE FISCAL (COMPACTO) */}
+                    {desgloseFiscal.has(batch.id) && (() => {
+                      const fiscal = desgloseFiscal.get(batch.id);
+                      const regimen = fiscal.regimen || 'HONORARIOS';
+                      const isAsimilados = regimen.toUpperCase().includes('ASIMILAD');
+                      const isResico = regimen.toUpperCase().includes('RESICO');
+                      const isHonorarios = !isAsimilados && !isResico;
+
+                      return (
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 sm:p-4 mt-6 border border-blue-200">
+                          <h4 className="text-sm sm:text-base font-bold text-blue-900 mb-2 flex items-center gap-2">
+                            <DollarSign className="w-4 h-4" />
+                            Desglose Fiscal ({regimen.toUpperCase()})
+                          </h4>
+
+                          <div className="bg-white rounded-lg p-2 sm:p-3 space-y-1.5">
+                            {/* Comisión Base Total */}
+                            {(isHonorarios || isResico) && (
+                              <div className="flex items-center justify-between text-xs sm:text-sm border-b border-neutral-100 pb-1.5">
+                                <span className="text-neutral-600">Comisión Base Total</span>
+                                <span className="font-bold text-green-700">{formatCurrency(parseFloat(fiscal.total_comision))}</span>
+                              </div>
+                            )}
+
+                            {/* Vida */}
+                            {(isHonorarios || isResico) && parseFloat(fiscal.vida) > 0 && (
+                              <div className="flex items-center justify-between text-xs sm:text-sm">
+                                <span className="text-neutral-600">Vida</span>
+                                <span className="font-semibold text-neutral-700">{formatCurrency(parseFloat(fiscal.vida))}</span>
+                              </div>
+                            )}
+
+                            {/* Sin Vida */}
+                            {(isHonorarios || isResico) && (
+                              <div className="flex items-center justify-between text-xs sm:text-sm">
+                                <span className="text-neutral-600">Sin Vida</span>
+                                <span className="font-semibold text-neutral-700">{formatCurrency(parseFloat(fiscal.sin_vida))}</span>
+                              </div>
+                            )}
+
+                            {/* Ret. Contable (ASIMILADOS) */}
+                            {isAsimilados && parseFloat(fiscal.ret_contable) > 0 && (
+                              <div className="flex items-center justify-between text-xs sm:text-sm">
+                                <span className="text-neutral-600">Ret. Contable</span>
+                                <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.ret_contable))}</span>
+                              </div>
+                            )}
+
+                            {/* Costo Dispersión (ASIMILADOS) */}
+                            {isAsimilados && parseFloat(fiscal.dispersion) > 0 && (
+                              <div className="flex items-center justify-between text-xs sm:text-sm">
+                                <span className="text-neutral-600">Costo Dispersión</span>
+                                <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.dispersion))}</span>
+                              </div>
+                            )}
+
+                            {/* IVA */}
+                            <div className="flex items-center justify-between text-xs sm:text-sm">
+                              <span className="text-neutral-600">
+                                {(isHonorarios || isResico) ? 'IVA (16% Sin Vida)' : 'IVA'}
+                              </span>
+                              <span className="font-semibold text-green-600">
+                                {parseFloat(fiscal.iva) > 0 ? `+ ${formatCurrency(parseFloat(fiscal.iva))}` : formatCurrency(0)}
+                              </span>
+                            </div>
+
+                            {/* Ret. ISR */}
+                            {(isHonorarios || isResico) && parseFloat(fiscal.ret_isr) > 0 && (
+                              <div className="flex items-center justify-between text-xs sm:text-sm">
+                                <span className="text-neutral-600">
+                                  {isResico ? 'Ret. ISR (1.25%)' : 'Ret. ISR (10%)'}
+                                </span>
+                                <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.ret_isr))}</span>
+                              </div>
+                            )}
+
+                            {/* Ret. IVA */}
+                            {(isHonorarios || isResico) && parseFloat(fiscal.ret_iva) > 0 && (
+                              <div className="flex items-center justify-between text-xs sm:text-sm">
+                                <span className="text-neutral-600">Ret. IVA (10.667%)</span>
+                                <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.ret_iva))}</span>
+                              </div>
+                            )}
+
+                            {/* ISR Total (ASIMILADOS) */}
+                            {isAsimilados && parseFloat(fiscal.isr_total) > 0 && (
+                              <div className="flex items-center justify-between text-xs sm:text-sm">
+                                <span className="text-neutral-600">ISR Total</span>
+                                <span className="font-semibold text-red-600">- {formatCurrency(parseFloat(fiscal.isr_total))}</span>
+                              </div>
+                            )}
+
+                            {/* Total a Pagar */}
+                            <div className="flex items-center justify-between text-xs sm:text-sm bg-gradient-to-r from-green-100 to-green-200 -mx-2 sm:-mx-3 px-2 sm:px-3 py-2 mt-2 rounded-lg border border-green-300">
+                              <span className="text-green-800 font-bold">Total a Pagar</span>
+                              <span className="text-base sm:text-lg font-bold text-green-900">
+                                {formatCurrency(parseFloat(fiscal.total_pagar))}
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="text-[10px] sm:text-xs text-blue-700 mt-2 italic">
+                            * Cálculo según régimen {regimen.toUpperCase()}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
