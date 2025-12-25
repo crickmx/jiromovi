@@ -78,7 +78,7 @@ export default function VendedoresReconocidosTable({
                 <tr key={group.movi_user_id} className="hover:bg-gray-50 transition">
                   <td className="px-3 sm:px-6 py-4">
                     <div className="flex items-center gap-2 min-w-0">
-                      <User className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                      <User className="h-5 w-5 text-primary-600 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {group.user_name}
@@ -101,7 +101,7 @@ export default function VendedoresReconocidosTable({
                         {group.vendor_names_detected.slice(0, 2).map((name, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center px-2 py-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700"
+                            className="inline-flex items-center px-2 py-1 bg-primary-50 border border-primary-200 rounded text-xs text-primary-700"
                           >
                             {name}
                           </span>

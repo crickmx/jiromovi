@@ -150,13 +150,13 @@ export function GestionPlantillas() {
               </h3>
 
               {/* Variables Disponibles */}
-              <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm font-medium text-blue-900 mb-2">Variables Disponibles:</p>
+              <div className="mb-4 p-4 bg-primary-50 rounded-lg border border-primary-200">
+                <p className="text-sm font-medium text-primary-900 mb-2">Variables Disponibles:</p>
                 <div className="flex flex-wrap gap-2">
                   {selectedPlantilla.variables_disponibles.map((variable) => (
                     <code
                       key={variable}
-                      className="px-2 py-1 bg-white rounded text-xs text-blue-700 border border-blue-300"
+                      className="px-2 py-1 bg-white rounded text-xs text-primary-700 border border-primary-300"
                     >
                       {variable}
                     </code>

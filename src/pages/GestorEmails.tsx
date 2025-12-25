@@ -39,7 +39,7 @@ interface EmailMessage {
 type Carpeta = 'INBOX' | 'SENT' | 'DRAFTS' | 'TRASH' | 'SPAM' | 'QUEUE';
 
 const CARPETAS_INFO = {
-  INBOX: { nombre: 'Bandeja de entrada', icon: Inbox, color: 'text-blue-600' },
+  INBOX: { nombre: 'Bandeja de entrada', icon: Inbox, color: 'text-primary-600' },
   SENT: { nombre: 'Enviados', icon: Send, color: 'text-green-600' },
   DRAFTS: { nombre: 'Borradores', icon: FileText, color: 'text-yellow-600' },
   QUEUE: { nombre: 'En cola', icon: Calendar, color: 'text-purple-600' },
@@ -306,7 +306,7 @@ export function GestorEmails() {
                     )}
                   </p>
                   {!configuracion.ultima_sincronizacion && mensajes.length === 0 && (
-                    <p className="text-xs text-blue-600 font-semibold mt-1">
+                    <p className="text-xs text-primary-600 font-semibold mt-1">
                       Haz clic en "Actualizar" para sincronizar tus correos
                     </p>
                   )}
@@ -389,14 +389,14 @@ export function GestorEmails() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Banner informativo */}
           {configuracion && !configuracion.ultima_sincronizacion && mensajes.length === 0 && (
-            <div className="bg-blue-50 border-b border-blue-200 px-6 py-4">
+            <div className="bg-primary-50 border-b border-primary-200 px-6 py-4">
               <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 text-primary-600 flex-shrink-0" />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-blue-900">
+                  <p className="text-sm font-semibold text-primary-900">
                     Cuenta configurada exitosamente
                   </p>
-                  <p className="text-xs text-blue-700 mt-1">
+                  <p className="text-xs text-primary-700 mt-1">
                     Tu correo <strong>{configuracion.email}</strong> está conectado.
                     Haz clic en el botón "Actualizar" arriba para sincronizar tus correos del servidor IONOS.
                   </p>
@@ -461,7 +461,7 @@ export function GestorEmails() {
                 <button
                   onClick={handleSincronizar}
                   disabled={sincronizando}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 text-sm"
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 text-sm"
                 >
                   {sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}
                 </button>
@@ -476,7 +476,7 @@ export function GestorEmails() {
                       if (!mensaje.leido) handleMarcarLeido(mensaje);
                     }}
                     className={`p-4 border-b border-neutral-200 cursor-pointer transition-all ${
-                      !mensaje.leido ? 'bg-blue-50' : 'hover:bg-neutral-50'
+                      !mensaje.leido ? 'bg-primary-50' : 'hover:bg-neutral-50'
                     } ${
                       mensajeSeleccionado?.id === mensaje.id
                         ? 'bg-primary-50 border-l-4 border-l-primary-600'

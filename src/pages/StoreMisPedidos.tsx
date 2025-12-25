@@ -39,7 +39,7 @@ export default function StoreMisPedidos() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       </Layout>
     );
@@ -57,7 +57,7 @@ export default function StoreMisPedidos() {
         </button>
 
         <div className="flex items-center gap-3 mb-8">
-          <Package className="w-8 h-8 text-blue-600" />
+          <Package className="w-8 h-8 text-primary-600" />
           <h1 className="text-3xl font-bold text-primary-600">Mis Pedidos</h1>
         </div>
 
@@ -70,7 +70,7 @@ export default function StoreMisPedidos() {
             <p className="text-gray-500 mb-6">Realiza tu primer pedido en el Store</p>
             <button
               onClick={() => navigate('/store')}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium"
             >
               Explorar productos
             </button>
@@ -109,14 +109,14 @@ export default function StoreMisPedidos() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-800">
                           {pedido.estatus?.nombre || 'Pendiente'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
                           onClick={() => navigate(`/store/pedido/${pedido.id}`)}
-                          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
+                          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-800 font-medium"
                         >
                           <Eye className="w-4 h-4" />
                           Ver Detalle

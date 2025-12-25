@@ -152,13 +152,13 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     if (!tipo) return <FileText className="w-8 h-8 text-neutral-400" />;
 
     if (tipo.startsWith('image/')) {
-      return <FileText className="w-8 h-8 text-blue-500" />;
+      return <FileText className="w-8 h-8 text-primary-500" />;
     }
     if (tipo.includes('pdf')) {
       return <FileText className="w-8 h-8 text-red-500" />;
     }
     if (tipo.includes('word') || tipo.includes('document')) {
-      return <FileText className="w-8 h-8 text-blue-600" />;
+      return <FileText className="w-8 h-8 text-primary-600" />;
     }
     if (tipo.includes('excel') || tipo.includes('spreadsheet')) {
       return <FileText className="w-8 h-8 text-green-600" />;

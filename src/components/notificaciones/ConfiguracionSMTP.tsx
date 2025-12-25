@@ -325,8 +325,8 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
         {/* Configuración Resend */}
         {formData.tipo_integracion === 'resend' && (
           <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
+            <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+              <p className="text-sm text-primary-800">
                 <strong>Resend</strong> es un servicio de email moderno y confiable. Obtén tu API key en{' '}
                 <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">
                   resend.com/api-keys

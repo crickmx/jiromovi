@@ -160,9 +160,9 @@ export default function TareaModal({ contactoId, tarea, onClose, onSave }: Props
               Contacto Relacionado
             </label>
             {contactoSeleccionado ? (
-              <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-primary-50 border border-primary-200 rounded-lg">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
+                  <div className="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center font-semibold">
                     {contactoSeleccionado.nombre_completo.charAt(0).toUpperCase()}
                   </div>
                   <div>

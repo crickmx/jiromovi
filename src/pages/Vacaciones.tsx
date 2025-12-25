@@ -254,7 +254,7 @@ export function Vacaciones() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -271,7 +271,7 @@ export function Vacaciones() {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-8 text-white">
         <h1 className="text-3xl font-bold mb-2">Gestión de Vacaciones</h1>
-        <p className="text-blue-100">
+        <p className="text-primary-100">
           {isEmpleado && 'Solicita y gestiona tus días de vacaciones'}
           {isGerente && 'Solicita tus vacaciones y gestiona las solicitudes de tu oficina'}
           {isAdmin && 'Autoriza solicitudes de vacaciones preaprobadas'}
@@ -285,14 +285,14 @@ export function Vacaciones() {
               <h2 className="text-xl font-bold text-slate-800">Mis Días Disponibles</h2>
               <p className="text-sm text-slate-600">Días de vacaciones que puedes solicitar</p>
             </div>
-            <div className="bg-blue-100 text-blue-800 px-6 py-4 rounded-xl">
+            <div className="bg-primary-100 text-primary-800 px-6 py-4 rounded-xl">
               <div className="text-4xl font-bold">{diasDisponibles}</div>
               <div className="text-sm">días</div>
             </div>
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition"
           >
             Solicitar Vacaciones
           </button>
@@ -600,16 +600,16 @@ export function Vacaciones() {
                 />
               </div>
               {diasSolicitados > 0 && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mb-4 p-4 bg-primary-50 border border-primary-200 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-blue-900">
+                    <span className="text-sm font-medium text-primary-900">
                       Días laborables solicitados:
                     </span>
-                    <span className="text-2xl font-bold text-blue-700">
+                    <span className="text-2xl font-bold text-primary-700">
                       {diasSolicitados}
                     </span>
                   </div>
-                  <div className="mt-2 text-xs text-blue-700">
+                  <div className="mt-2 text-xs text-primary-700">
                     Días disponibles: {diasDisponibles}
                   </div>
                   {diasSolicitados > diasDisponibles && (
@@ -637,7 +637,7 @@ export function Vacaciones() {
                   type="submit"
                   form="vacaciones-form"
                   disabled={diasSolicitados > diasDisponibles || diasSolicitados <= 0}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Solicitar
                 </button>

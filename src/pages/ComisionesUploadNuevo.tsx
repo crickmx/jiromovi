@@ -195,14 +195,14 @@ export default function ComisionesUploadNuevo() {
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <h3 className="font-semibold text-blue-900 mb-2">
+        <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
+          <h3 className="font-semibold text-primary-900 mb-2">
             Formato del archivo
           </h3>
-          <p className="text-sm text-blue-800 mb-2">
+          <p className="text-sm text-primary-800 mb-2">
             El archivo debe contener las siguientes columnas obligatorias:
           </p>
-          <ul className="text-sm text-blue-800 space-y-1 ml-4">
+          <ul className="text-sm text-primary-800 space-y-1 ml-4">
             <li><strong>VendNombre</strong> - Nombre del vendedor (obligatorio)</li>
             <li><strong>FPago</strong> - Fecha de pago</li>
             <li><strong>Poliza</strong> o <strong>Documento</strong> - Número de póliza</li>
@@ -211,7 +211,7 @@ export default function ComisionesUploadNuevo() {
             <li><strong>PrimaNeta</strong> o <strong>Importe</strong> - Monto base</li>
             <li><strong>PorPart</strong> - Porcentaje de comisión</li>
           </ul>
-          <p className="text-sm font-semibold text-blue-900 mt-4">
+          <p className="text-sm font-semibold text-primary-900 mt-4">
             Nota: Los vendedores se identifican solo por nombre, no por email.
           </p>
         </div>
@@ -315,12 +315,12 @@ export default function ComisionesUploadNuevo() {
 
                     <div className="bg-white rounded-lg p-4 border border-green-200">
                       <div className="flex items-center space-x-2 mb-1">
-                        <Users className="w-5 h-5 text-blue-600" />
-                        <div className="text-3xl font-bold text-blue-700">
+                        <Users className="w-5 h-5 text-primary-600" />
+                        <div className="text-3xl font-bold text-primary-700">
                           {session.recognized_count}
                         </div>
                       </div>
-                      <div className="text-sm text-blue-800">
+                      <div className="text-sm text-primary-800">
                         Vendedores reconocidos
                       </div>
                     </div>

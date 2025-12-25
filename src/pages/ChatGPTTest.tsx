@@ -60,7 +60,7 @@ export default function ChatGPTTest() {
         </CardHeader>
         <CardContent className="space-y-4">
           {conversacionId && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+            <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm">
               <strong>Conversación ID:</strong> {conversacionId}
             </div>
           )}

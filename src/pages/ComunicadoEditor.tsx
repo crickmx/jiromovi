@@ -621,7 +621,7 @@ export default function ComunicadoEditor() {
                     type="radio"
                     checked={publicarAhora}
                     onChange={() => setPublicarAhora(true)}
-                    className="w-4 h-4 text-blue-600"
+                    className="w-4 h-4 text-primary-600"
                   />
                   <span className="text-gray-700">Publicar ahora</span>
                 </label>
@@ -631,7 +631,7 @@ export default function ComunicadoEditor() {
                     type="radio"
                     checked={!publicarAhora}
                     onChange={() => setPublicarAhora(false)}
-                    className="w-4 h-4 text-blue-600"
+                    className="w-4 h-4 text-primary-600"
                   />
                   <span className="text-gray-700">Programar publicación</span>
                 </label>
@@ -682,7 +682,7 @@ export default function ComunicadoEditor() {
             {/* UI especial para Gerentes */}
             {esGerente && (
               <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     ¿A quién deseas mostrar este comunicado?
                   </label>
@@ -703,7 +703,7 @@ export default function ComunicadoEditor() {
                               setRolesSeleccionados(rolesSeleccionados.filter(r => r !== rol));
                             }
                           }}
-                          className="w-4 h-4 text-blue-600 rounded"
+                          className="w-4 h-4 text-primary-600 rounded"
                         />
                         <span className="text-gray-700">{rol}s de mi oficina</span>
                       </label>
@@ -732,7 +732,7 @@ export default function ComunicadoEditor() {
                         type="radio"
                         checked={tipoVisibilidad === 'todos'}
                         onChange={() => setTipoVisibilidad('todos')}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 text-primary-600"
                       />
                       <Users className="w-5 h-5 text-gray-600" />
                       <div>
@@ -746,7 +746,7 @@ export default function ComunicadoEditor() {
                         type="radio"
                         checked={tipoVisibilidad === 'rol'}
                         onChange={() => setTipoVisibilidad('rol')}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 text-primary-600"
                       />
                       <User className="w-5 h-5 text-gray-600" />
                       <div>
@@ -760,7 +760,7 @@ export default function ComunicadoEditor() {
                         type="radio"
                         checked={tipoVisibilidad === 'oficina'}
                         onChange={() => setTipoVisibilidad('oficina')}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 text-primary-600"
                       />
                       <Building2 className="w-5 h-5 text-gray-600" />
                       <div>
@@ -773,7 +773,7 @@ export default function ComunicadoEditor() {
 
                 {/* Selector de roles */}
                 {tipoVisibilidad === 'rol' && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Selecciona los roles que pueden ver este comunicado:
                     </label>
@@ -790,7 +790,7 @@ export default function ComunicadoEditor() {
                                 setRolesSeleccionados(rolesSeleccionados.filter(r => r !== rol));
                               }
                             }}
-                            className="w-4 h-4 text-blue-600 rounded"
+                            className="w-4 h-4 text-primary-600 rounded"
                           />
                           <span className="text-gray-700">{rol}</span>
                         </label>
@@ -806,7 +806,7 @@ export default function ComunicadoEditor() {
 
                 {/* Selector de oficinas */}
                 {tipoVisibilidad === 'oficina' && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Selecciona las oficinas que pueden ver este comunicado:
                     </label>
@@ -823,7 +823,7 @@ export default function ComunicadoEditor() {
                                 setOficinasSeleccionadas(oficinasSeleccionadas.filter(o => o !== oficina.id));
                               }
                             }}
-                            className="w-4 h-4 text-blue-600 rounded"
+                            className="w-4 h-4 text-primary-600 rounded"
                           />
                           <span className="text-gray-700">{oficina.nombre}</span>
                         </label>

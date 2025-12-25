@@ -483,7 +483,7 @@ export default function ProduccionTotal() {
               {isAdmin && (
                 <button
                   onClick={() => navigate('/produccion/configuracion')}
-                  className="flex items-center space-x-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base"
+                  className="flex items-center space-x-2 bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm sm:text-base"
                 >
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">Configuración</span>
@@ -506,9 +506,9 @@ export default function ProduccionTotal() {
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-blue-200">
-            <p className="text-xs sm:text-sm text-blue-700 mb-1 font-medium">Registros</p>
-            <p className="text-lg sm:text-2xl font-bold text-blue-900">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-primary-200">
+            <p className="text-xs sm:text-sm text-primary-700 mb-1 font-medium">Registros</p>
+            <p className="text-lg sm:text-2xl font-bold text-primary-900">
               {kpis.recordsCount.toLocaleString()}
             </p>
           </div>
@@ -869,7 +869,7 @@ export default function ProduccionTotal() {
                     </td>
                     <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
                       {record.convenio_flag ? (
-                        <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold">
+                        <span className="inline-flex items-center px-2 py-1 bg-primary-100 text-primary-700 rounded-lg text-xs font-semibold">
                           Sí
                         </span>
                       ) : (

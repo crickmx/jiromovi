@@ -271,7 +271,7 @@ export default function ConvertirLoteModal({
                         </div>
                         <button
                           onClick={() => handleNavigateToBatch(batch.id)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium min-h-[44px]"
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center gap-2 text-sm font-medium min-h-[44px]"
                         >
                           Abrir lote
                           <ArrowRight className="h-4 w-4" />
@@ -325,7 +325,7 @@ export default function ConvertirLoteModal({
         <div className="p-4 sm:p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             </div>
           ) : error ? (
             <>
@@ -453,9 +453,9 @@ export default function ConvertirLoteModal({
                             <p className="text-xs text-green-600">Válidas</p>
                             <p className="text-2xl font-bold text-green-700">{errorDetails.diagnostic.counts_by_status.valid || 0}</p>
                           </div>
-                          <div className="bg-white p-3 rounded border border-blue-200">
-                            <p className="text-xs text-blue-600">Advertencias</p>
-                            <p className="text-2xl font-bold text-blue-700">{errorDetails.diagnostic.counts_by_status.warning || 0}</p>
+                          <div className="bg-white p-3 rounded border border-primary-200">
+                            <p className="text-xs text-primary-600">Advertencias</p>
+                            <p className="text-2xl font-bold text-primary-700">{errorDetails.diagnostic.counts_by_status.warning || 0}</p>
                           </div>
                           <div className="bg-white p-3 rounded border border-red-200">
                             <p className="text-xs text-red-600">Descartadas</p>
@@ -523,7 +523,7 @@ export default function ConvertirLoteModal({
                                     <p className="text-gray-600 col-span-2"><span className="font-semibold">FPago:</span> {sample.fpago_raw}</p>
                                   )}
                                   {sample.warnings && (
-                                    <p className="text-blue-600 col-span-2 text-xs mt-1">
+                                    <p className="text-primary-600 col-span-2 text-xs mt-1">
                                       Advertencias: {sample.warnings}
                                     </p>
                                   )}
@@ -534,9 +534,9 @@ export default function ConvertirLoteModal({
                         </div>
                       )}
 
-                      <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm font-semibold text-blue-900 mb-2">Posibles Soluciones:</p>
-                        <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                      <div className="mt-4 bg-primary-50 border border-primary-200 rounded-lg p-3">
+                        <p className="text-sm font-semibold text-primary-900 mb-2">Posibles Soluciones:</p>
+                        <ul className="text-xs text-primary-800 space-y-1 list-disc list-inside">
                           <li>Verifica que las columnas <strong>Documento</strong>, <strong>Ramo</strong>, <strong>Importe</strong> y <strong>PorPart</strong> tengan valores válidos</li>
                           <li>Asegúrate de que Importe y PorPart sean valores numéricos (sin letras ni caracteres especiales)</li>
                           <li>La hoja seleccionada automáticamente fue: <strong>{errorDetails.diagnostic.batch_info?.sheet_name_used || 'desconocida'}</strong></li>
@@ -565,7 +565,7 @@ export default function ConvertirLoteModal({
                         </div>
                         <div className="bg-white p-2 rounded border border-gray-200">
                           <p className="text-xs text-gray-600">Con Advertencias</p>
-                          <p className="text-lg font-bold text-blue-700">{errorDetails.details.warningRows || 0}</p>
+                          <p className="text-lg font-bold text-primary-700">{errorDetails.details.warningRows || 0}</p>
                         </div>
                         <div className="bg-white p-2 rounded border border-gray-200">
                           <p className="text-xs text-gray-600">Descartadas</p>
@@ -611,19 +611,19 @@ export default function ConvertirLoteModal({
 
                       {/* Advertencias (no bloqueantes) */}
                       {(errorDetails.details.discarded.missing_email_warnings > 0 || errorDetails.details.discarded.missing_aseguradora_warnings > 0) && (
-                        <div className="mb-4 bg-blue-50 p-3 rounded">
-                          <p className="text-sm font-semibold text-blue-900 mb-2">Advertencias (NO bloquean conversión):</p>
+                        <div className="mb-4 bg-primary-50 p-3 rounded">
+                          <p className="text-sm font-semibold text-primary-900 mb-2">Advertencias (NO bloquean conversión):</p>
                           <div className="space-y-1">
                             {errorDetails.details.discarded.missing_email_warnings > 0 && (
                               <div className="flex items-center justify-between bg-white p-2 rounded">
                                 <span className="text-xs text-gray-600">Filas sin email (se marcarán como pendientes)</span>
-                                <span className="text-xs font-semibold text-blue-700">{errorDetails.details.discarded.missing_email_warnings} filas</span>
+                                <span className="text-xs font-semibold text-primary-700">{errorDetails.details.discarded.missing_email_warnings} filas</span>
                               </div>
                             )}
                             {errorDetails.details.discarded.missing_aseguradora_warnings > 0 && (
                               <div className="flex items-center justify-between bg-white p-2 rounded">
                                 <span className="text-xs text-gray-600">Filas sin aseguradora (se usará "NO_ESPECIFICADA")</span>
-                                <span className="text-xs font-semibold text-blue-700">{errorDetails.details.discarded.missing_aseguradora_warnings} filas</span>
+                                <span className="text-xs font-semibold text-primary-700">{errorDetails.details.discarded.missing_aseguradora_warnings} filas</span>
                               </div>
                             )}
                           </div>
@@ -748,12 +748,12 @@ export default function ConvertirLoteModal({
                 </div>
               )}
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-6">
                 <div className="flex items-start gap-3">
-                  <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <Info className="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-semibold text-blue-900">Posibles soluciones:</p>
-                    <ul className="text-sm text-blue-800 mt-2 space-y-1 list-disc list-inside">
+                    <p className="font-semibold text-primary-900">Posibles soluciones:</p>
+                    <ul className="text-sm text-primary-800 mt-2 space-y-1 list-disc list-inside">
                       <li>Verifica que todos los datos requeridos estén presentes</li>
                       <li>Revisa que no haya duplicados en el archivo</li>
                       <li>Confirma que los campos numéricos tengan formato válido</li>
@@ -772,7 +772,7 @@ export default function ConvertirLoteModal({
                 </button>
                 <button
                   onClick={loadValidation}
-                  className="w-full sm:w-auto px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-semibold min-h-[44px]"
+                  className="w-full sm:w-auto px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-semibold min-h-[44px]"
                 >
                   Reintentar
                 </button>
@@ -829,7 +829,7 @@ export default function ConvertirLoteModal({
                               </span>
                               <button
                                 onClick={() => downloadErrorsCSV(err)}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition"
                               >
                                 <Download className="h-4 w-4" />
                                 Descargar CSV
@@ -891,35 +891,35 @@ export default function ConvertirLoteModal({
               {warnings.length > 0 && (
                 <div className="space-y-3 mb-6">
                   <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                    <Info className="h-5 w-5 text-blue-600" />
+                    <Info className="h-5 w-5 text-primary-600" />
                     Advertencias ({warnings.length})
                   </h3>
                   {warnings.map((warn, idx) => (
-                    <div key={idx + blockingErrors.length} className="border border-blue-300 rounded-lg overflow-hidden">
+                    <div key={idx + blockingErrors.length} className="border border-primary-300 rounded-lg overflow-hidden">
                       <div
-                        className="bg-blue-50 p-4 cursor-pointer hover:bg-blue-100 transition"
+                        className="bg-primary-50 p-4 cursor-pointer hover:bg-primary-100 transition"
                         onClick={() => toggleErrorExpand(idx + blockingErrors.length)}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="px-2 py-0.5 bg-blue-200 text-blue-900 text-xs font-semibold rounded">
+                              <span className="px-2 py-0.5 bg-primary-200 text-primary-900 text-xs font-semibold rounded">
                                 {warn.code}
                               </span>
-                              <span className="text-blue-900 font-medium text-sm">{warn.count} filas</span>
+                              <span className="text-primary-900 font-medium text-sm">{warn.count} filas</span>
                             </div>
-                            <p className="text-sm text-blue-800">{warn.message}</p>
+                            <p className="text-sm text-primary-800">{warn.message}</p>
                           </div>
                           {expandedErrors.has(idx + blockingErrors.length) ? (
-                            <ChevronUp className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                            <ChevronUp className="h-5 w-5 text-primary-600 flex-shrink-0" />
                           ) : (
-                            <ChevronDown className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                            <ChevronDown className="h-5 w-5 text-primary-600 flex-shrink-0" />
                           )}
                         </div>
                       </div>
 
                       {expandedErrors.has(idx + blockingErrors.length) && warn.examples && warn.examples.length > 0 && (
-                        <div className="border-t border-blue-300">
+                        <div className="border-t border-primary-300">
                           <div className="p-4 bg-white">
                             <div className="flex items-center justify-between mb-3">
                               <span className="text-sm font-medium text-gray-700">
@@ -927,7 +927,7 @@ export default function ConvertirLoteModal({
                               </span>
                               <button
                                 onClick={() => downloadErrorsCSV(warn)}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition"
                               >
                                 <Download className="h-4 w-4" />
                                 Descargar CSV

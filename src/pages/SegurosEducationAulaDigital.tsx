@@ -155,7 +155,7 @@ export function SegurosEducationAulaDigital() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -274,7 +274,7 @@ export function SegurosEducationAulaDigital() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold mb-2">Aula Digital - Eventos</h1>
-              <p className="text-blue-100">
+              <p className="text-primary-100">
                 Capacitaciones y eventos en vivo
               </p>
             </div>
@@ -285,7 +285,7 @@ export function SegurosEducationAulaDigital() {
                   setPermisosSeleccionados(undefined);
                   setShowEventoModal(true);
                 }}
-                className="flex items-center space-x-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition"
+                className="flex items-center space-x-2 bg-white text-primary-700 px-6 py-3 rounded-xl font-semibold hover:bg-primary-50 transition"
               >
                 <Video className="w-5 h-5" />
                 <span>Nuevo Evento</span>

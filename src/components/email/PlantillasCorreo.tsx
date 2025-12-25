@@ -163,7 +163,7 @@ export function PlantillasCorreo() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -194,7 +194,7 @@ export function PlantillasCorreo() {
         </div>
         <button
           onClick={handleCreate}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+          className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
         >
           <Plus className="w-5 h-5" />
           <span>Nueva Plantilla</span>
@@ -213,7 +213,7 @@ export function PlantillasCorreo() {
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
                   <h3 className="text-lg font-semibold text-slate-900">{plantilla.nombre}</h3>
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                  <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
                     {tipoLabels[plantilla.tipo]}
                   </span>
                   {plantilla.activo && (
@@ -247,7 +247,7 @@ export function PlantillasCorreo() {
                 </button>
                 <button
                   onClick={() => handleEdit(plantilla)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                  className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
                   title="Editar"
                 >
                   <Edit2 className="w-5 h-5" />
@@ -331,7 +331,7 @@ export function PlantillasCorreo() {
                     type="checkbox"
                     checked={formData.activo}
                     onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded"
+                    className="w-4 h-4 text-primary-600 rounded"
                   />
                   <span className="text-sm text-slate-700">Plantilla activa</span>
                 </label>
@@ -340,7 +340,7 @@ export function PlantillasCorreo() {
                     type="checkbox"
                     checked={formData.envio_automatico}
                     onChange={(e) => setFormData({ ...formData, envio_automatico: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded"
+                    className="w-4 h-4 text-primary-600 rounded"
                   />
                   <span className="text-sm text-slate-700">Envío automático</span>
                 </label>
@@ -368,7 +368,7 @@ export function PlantillasCorreo() {
               </button>
               <button
                 onClick={handleSave}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
               >
                 <Save className="w-5 h-5" />
                 <span>Guardar</span>
@@ -400,8 +400,8 @@ export function PlantillasCorreo() {
                 dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
               />
 
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="mt-4 p-4 bg-primary-50 border border-primary-200 rounded-lg">
+                <p className="text-sm text-primary-800">
                   <strong>Nota:</strong> Esta es una vista previa con datos de ejemplo. Los valores reales se
                   reemplazarán al enviar el correo.
                 </p>

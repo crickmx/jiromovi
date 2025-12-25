@@ -389,7 +389,7 @@ export function SegurosEducation() {
           <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-neutral-600 text-sm font-medium">En Proceso</span>
-              <TrendingUp className="w-5 h-5 text-blue-600" />
+              <TrendingUp className="w-5 h-5 text-primary-600" />
             </div>
             <p className="text-3xl font-bold text-neutral-800">{stats.en_proceso}</p>
           </div>

@@ -65,7 +65,7 @@ export default function StorePedidos() {
   const getEstatusColor = (estatusNombre: string) => {
     const colors: Record<string, string> = {
       'Pendiente': 'bg-yellow-100 text-yellow-800',
-      'Procesando': 'bg-blue-100 text-blue-800',
+      'Procesando': 'bg-primary-100 text-primary-800',
       'Enviado': 'bg-purple-100 text-purple-800',
       'Entregado': 'bg-green-100 text-green-800',
       'Cancelado': 'bg-red-100 text-red-800'
@@ -90,7 +90,7 @@ export default function StorePedidos() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       </Layout>
     );
@@ -113,7 +113,7 @@ export default function StorePedidos() {
             <p className="text-gray-600 mt-1">
               Administra todos los pedidos del Store
               {pedidos.length > 0 && (
-                <span className="ml-2 text-sm font-semibold text-blue-600">
+                <span className="ml-2 text-sm font-semibold text-primary-600">
                   • {pedidos.length} pedidos de {new Set(pedidos.map(p => p.usuario_id)).size} usuarios
                 </span>
               )}
@@ -128,7 +128,7 @@ export default function StorePedidos() {
                 <p className="text-sm font-medium text-gray-600">Total Pedidos</p>
                 <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
               </div>
-              <Package className="w-8 h-8 text-blue-600" />
+              <Package className="w-8 h-8 text-primary-600" />
             </div>
           </div>
 
@@ -146,9 +146,9 @@ export default function StorePedidos() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Procesando</p>
-                <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">{stats.procesando}</p>
+                <p className="text-xl sm:text-2xl font-bold text-primary-600 mt-1">{stats.procesando}</p>
               </div>
-              <Package className="w-8 h-8 text-blue-600" />
+              <Package className="w-8 h-8 text-primary-600" />
             </div>
           </div>
 
@@ -269,7 +269,7 @@ export default function StorePedidos() {
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
                           onClick={() => navigate(`/store/pedido/${pedido.id}`)}
-                          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
+                          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-800 font-medium"
                         >
                           <Eye className="w-4 h-4" />
                           Ver Detalle

@@ -110,7 +110,7 @@ export function TarjetaEvento({
               {onEditar && (
                 <button
                   onClick={() => onEditar(evento)}
-                  className="px-4 py-2.5 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition flex items-center gap-2"
+                  className="px-4 py-2.5 bg-primary-50 text-primary-700 rounded-lg font-semibold hover:bg-primary-100 transition flex items-center gap-2"
                 >
                   <Edit className="w-4 h-4" />
                   <span>Editar</span>

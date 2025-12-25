@@ -24,7 +24,7 @@ export function CentroCorreos() {
             <Mail className="w-8 h-8 text-white" />
             <div>
               <h1 className="text-2xl font-bold text-white">Centro de Correos</h1>
-              <p className="text-blue-100 mt-1">Gestiona plantillas y envíos de correo electrónico</p>
+              <p className="text-primary-100 mt-1">Gestiona plantillas y envíos de correo electrónico</p>
             </div>
           </div>
         </div>
@@ -36,7 +36,7 @@ export function CentroCorreos() {
                 onClick={() => setActiveTab('plantillas')}
                 className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                   activeTab === 'plantillas'
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-primary-600 text-primary-600'
                     : 'border-transparent text-slate-600 hover:text-slate-800'
                 }`}
               >
@@ -47,7 +47,7 @@ export function CentroCorreos() {
               onClick={() => setActiveTab('envio')}
               className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                 activeTab === 'envio'
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-primary-600 text-primary-600'
                   : 'border-transparent text-slate-600 hover:text-slate-800'
               }`}
             >
@@ -59,7 +59,7 @@ export function CentroCorreos() {
                   onClick={() => setActiveTab('programacion')}
                   className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                     activeTab === 'programacion'
-                      ? 'border-blue-600 text-blue-600'
+                      ? 'border-primary-600 text-primary-600'
                       : 'border-transparent text-slate-600 hover:text-slate-800'
                   }`}
                 >
@@ -69,7 +69,7 @@ export function CentroCorreos() {
                   onClick={() => setActiveTab('historial')}
                   className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                     activeTab === 'historial'
-                      ? 'border-blue-600 text-blue-600'
+                      ? 'border-primary-600 text-primary-600'
                       : 'border-transparent text-slate-600 hover:text-slate-800'
                   }`}
                 >
@@ -79,7 +79,7 @@ export function CentroCorreos() {
                   onClick={() => setActiveTab('servidor')}
                   className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                     activeTab === 'servidor'
-                      ? 'border-blue-600 text-blue-600'
+                      ? 'border-primary-600 text-primary-600'
                       : 'border-transparent text-slate-600 hover:text-slate-800'
                   }`}
                 >

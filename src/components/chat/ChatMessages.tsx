@@ -444,7 +444,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                   <div
                     className={`rounded-2xl px-4 py-2 ${
                       isMine
-                        ? 'bg-blue-600 text-white [&_*]:text-white'
+                        ? 'bg-primary-600 text-white [&_*]:text-white'
                         : 'bg-white text-neutral-900 border border-neutral-200'
                     }`}
                   >
@@ -461,7 +461,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                         {/* Archivo adjunto */}
                         {message.archivo_url && (
                           <div className={`mt-2 ${message.mensaje ? 'pt-2 border-t' : ''} ${
-                            isMine ? 'border-blue-400' : 'border-neutral-200'
+                            isMine ? 'border-primary-400' : 'border-neutral-200'
                           }`}>
                             {message.tipo === 'imagen' && message.archivo_tipo?.startsWith('image/') ? (
                               <div className="space-y-2">
@@ -474,7 +474,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                                 <button
                                   onClick={() => handleDownloadFile(message.archivo_url, message.archivo_nombre)}
                                   className={`flex items-center space-x-2 text-sm ${
-                                    isMine ? 'text-white hover:text-blue-100' : 'text-neutral-600 hover:text-neutral-900'
+                                    isMine ? 'text-white hover:text-primary-100' : 'text-neutral-600 hover:text-neutral-900'
                                   }`}
                                 >
                                   <Download className="w-4 h-4" />
@@ -491,7 +491,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
                                 onClick={() => handleDownloadFile(message.archivo_url, message.archivo_nombre)}
                                 className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${
                                   isMine
-                                    ? 'bg-blue-500 hover:bg-blue-400 text-white'
+                                    ? 'bg-primary-500 hover:bg-primary-400 text-white'
                                     : 'bg-neutral-100 hover:bg-neutral-200'
                                 }`}
                               >
@@ -537,9 +537,9 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
       <div className="bg-white border-t border-neutral-200 p-4">
         {/* Archivo seleccionado */}
         {selectedFile && (
-          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+          <div className="mb-3 p-3 bg-primary-50 border border-primary-200 rounded-lg flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="text-blue-600">
+              <div className="text-primary-600">
                 {getFileIcon(selectedFile.type)}
               </div>
               <div>
@@ -549,10 +549,10 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
             </div>
             <button
               onClick={handleRemoveFile}
-              className="p-1 hover:bg-blue-100 rounded transition-colors"
+              className="p-1 hover:bg-primary-100 rounded transition-colors"
               title="Remover archivo"
             >
-              <span className="text-blue-600 text-xl leading-none">&times;</span>
+              <span className="text-primary-600 text-xl leading-none">&times;</span>
             </button>
           </div>
         )}
@@ -585,7 +585,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo }: ChatMessagesProp
           <button
             onClick={selectedFile ? handleSendWithFile : handleSend}
             disabled={(!newMessage.trim() && !selectedFile) || uploading}
-            className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {uploading ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

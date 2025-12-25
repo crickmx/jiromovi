@@ -34,7 +34,7 @@ export default function GraficaColumnas({
   }, [maxValue, valueFormatter]);
 
   const colors = [
-    'bg-blue-500',
+    'bg-primary-500',
     'bg-green-500',
     'bg-yellow-500',
     'bg-red-500',

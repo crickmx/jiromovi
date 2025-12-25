@@ -27,7 +27,7 @@ export function FirmasEmail() {
               <h1 className="text-3xl font-display font-bold text-white">
                 Gestor de Firmas de E-Mail
               </h1>
-              <p className="text-blue-100 mt-1">
+              <p className="text-primary-100 mt-1">
                 Crea, asigna y gestiona firmas HTML profesionales para correos electrónicos
               </p>
             </div>
@@ -46,8 +46,8 @@ export function FirmasEmail() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 px-6 py-4 font-semibold transition-all border-b-2 ${
                     isActive
-                      ? 'border-blue-600 text-blue-600 bg-white'
-                      : 'border-transparent text-neutral-600 hover:text-blue-600 hover:bg-white/50'
+                      ? 'border-primary-600 text-primary-600 bg-white'
+                      : 'border-transparent text-neutral-600 hover:text-primary-600 hover:bg-white/50'
                   }`}
                 >
                   <Icon className="w-5 h-5" />

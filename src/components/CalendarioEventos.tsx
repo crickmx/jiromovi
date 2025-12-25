@@ -40,8 +40,8 @@ function DetalleEvento({ evento, onClose, onNavigate }: DetalleEventoProps) {
           <div>
             <div className="flex items-center space-x-2 mb-2">
               {evento.tipo === 'evento' ? (
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <CalendarIcon className="h-5 w-5 text-blue-600" />
+                <div className="bg-primary-100 p-2 rounded-lg">
+                  <CalendarIcon className="h-5 w-5 text-primary-600" />
                 </div>
               ) : evento.tipo === 'cumpleanos' ? (
                 <div className="bg-pink-100 p-2 rounded-lg">
@@ -335,7 +335,7 @@ export default function CalendarioEventos() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
         ) : (
           <>
@@ -362,7 +362,7 @@ export default function CalendarioEventos() {
                     className={`min-h-[60px] p-1.5 border rounded-lg transition ${
                       dia.esDelMes
                         ? esHoy(dia.fecha)
-                          ? 'bg-blue-50 border-blue-300'
+                          ? 'bg-primary-50 border-primary-300'
                           : 'bg-white border-gray-200 hover:bg-gray-50'
                         : 'bg-gray-50 border-gray-100'
                     } ${tieneEventos && dia.esDelMes ? 'cursor-pointer' : ''}`}
@@ -370,7 +370,7 @@ export default function CalendarioEventos() {
                     <div className={`text-xs font-medium mb-1 ${
                       dia.esDelMes
                         ? esHoy(dia.fecha)
-                          ? 'text-blue-600'
+                          ? 'text-primary-600'
                           : 'text-gray-900'
                         : 'text-gray-400'
                     }`}>
@@ -399,7 +399,7 @@ export default function CalendarioEventos() {
                             onClick={() => setEventoSeleccionado(eventosEducation[0])}
                             className="w-full text-left"
                           >
-                            <div className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded truncate hover:bg-blue-200 transition">
+                            <div className="bg-primary-100 text-primary-700 text-[10px] px-1.5 py-0.5 rounded truncate hover:bg-primary-200 transition">
                               {eventosEducation.length === 1 ? (
                                 eventosEducation[0].titulo.substring(0, 15) + (eventosEducation[0].titulo.length > 15 ? '...' : '')
                               ) : (
@@ -436,7 +436,7 @@ export default function CalendarioEventos() {
                 <span className="text-gray-600">Cumpleaños / Aniversario</span>
               </div>
               <div className="flex items-center space-x-1.5">
-                <div className="w-2.5 h-2.5 bg-blue-500 rounded"></div>
+                <div className="w-2.5 h-2.5 bg-primary-500 rounded"></div>
                 <span className="text-gray-600">Seguros Education</span>
               </div>
               <div className="flex items-center space-x-1.5">

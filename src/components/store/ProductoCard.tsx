@@ -24,14 +24,14 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
       <div className="p-3 sm:p-4">
         <div className="mb-2">
           {producto.categoria && (
-            <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+            <span className="inline-block px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
               {producto.categoria.nombre}
             </span>
           )}
         </div>
 
         <h3
-          className="text-base sm:text-lg font-semibold text-gray-900 mb-2 cursor-pointer hover:text-blue-600 transition-colors line-clamp-2"
+          className="text-base sm:text-lg font-semibold text-gray-900 mb-2 cursor-pointer hover:text-primary-600 transition-colors line-clamp-2"
           onClick={() => onVerDetalle(producto)}
         >
           {producto.titulo}
@@ -48,7 +48,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
 
           <button
             onClick={() => onAgregar(producto)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm sm:text-base"
           >
             <ShoppingCart className="w-4 h-4" />
             <span>Agregar</span>

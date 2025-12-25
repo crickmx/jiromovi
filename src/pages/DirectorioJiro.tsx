@@ -166,7 +166,7 @@ export function DirectorioJiro() {
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-8 shadow-lg">
           <h1 className="text-3xl font-bold text-white">Directorio JIRO</h1>
-          <p className="text-blue-100 mt-2">
+          <p className="text-primary-100 mt-2">
             {isAgente
               ? 'Encuentra y contacta a los empleados de tu oficina'
               : 'Encuentra y contacta a los empleados de la organización'
@@ -182,7 +182,7 @@ export function DirectorioJiro() {
               placeholder="Buscar por nombre, puesto u oficina..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              className="w-full pl-12 pr-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500 transition-all"
             />
           </div>
         </div>
@@ -218,10 +218,10 @@ export function DirectorioJiro() {
                         <img
                           src={empleado.foto_url}
                           alt={empleado.nombre_completo}
-                          className="w-24 h-24 rounded-full object-cover border-4 border-blue-100 group-hover:border-blue-200 transition-colors"
+                          className="w-24 h-24 rounded-full object-cover border-4 border-primary-100 group-hover:border-primary-200 transition-colors"
                         />
                       ) : (
-                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-bold border-4 border-blue-100 group-hover:border-blue-200 transition-colors">
+                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-bold border-4 border-primary-100 group-hover:border-primary-200 transition-colors">
                           {empleado.nombre.charAt(0)}{empleado.apellidos.charAt(0)}
                         </div>
                       )}
@@ -233,14 +233,14 @@ export function DirectorioJiro() {
 
                     {empleado.rol === 'Gerente' && (
                       <div className="mb-2">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold border border-blue-300">
-                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-primary-100 text-primary-800 rounded-full text-xs font-semibold border border-primary-300">
+                          <div className="w-1.5 h-1.5 bg-primary-600 rounded-full"></div>
                           Gerente
                         </span>
                       </div>
                     )}
 
-                    <div className="flex items-center gap-1 text-blue-600 text-sm font-medium mb-2">
+                    <div className="flex items-center gap-1 text-primary-600 text-sm font-medium mb-2">
                       <Briefcase className="w-4 h-4" />
                       <span>{empleado.puesto}</span>
                     </div>
@@ -293,7 +293,7 @@ export function DirectorioJiro() {
                       className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
                     />
                   ) : (
-                    <div className="w-32 h-32 rounded-full bg-white flex items-center justify-center text-blue-600 text-4xl font-bold shadow-lg">
+                    <div className="w-32 h-32 rounded-full bg-white flex items-center justify-center text-primary-600 text-4xl font-bold shadow-lg">
                       {selectedEmpleado.nombre.charAt(0)}{selectedEmpleado.apellidos.charAt(0)}
                     </div>
                   )}
@@ -305,19 +305,19 @@ export function DirectorioJiro() {
 
                 {selectedEmpleado.rol === 'Gerente' && (
                   <div className="mb-2">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-white text-blue-800 rounded-full text-sm font-semibold border border-blue-200">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-white text-primary-800 rounded-full text-sm font-semibold border border-primary-200">
+                      <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
                       Gerente
                     </span>
                   </div>
                 )}
 
-                <p className="text-blue-100 text-lg">{selectedEmpleado.puesto}</p>
+                <p className="text-primary-100 text-lg">{selectedEmpleado.puesto}</p>
               </div>
 
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg">
-                  <MapPin className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  <MapPin className="w-5 h-5 text-primary-600 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-xs text-neutral-500 font-medium">Oficina</p>
                     <p className="text-neutral-900">{selectedEmpleado.oficina}</p>
@@ -327,7 +327,7 @@ export function DirectorioJiro() {
                 {selectedEmpleado.email_laboral && (
                   <div className="bg-neutral-50 rounded-lg p-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <Mail className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                      <Mail className="w-5 h-5 text-primary-600 flex-shrink-0" />
                       <div className="flex-1">
                         <p className="text-xs text-neutral-500 font-medium">Email Laboral</p>
                         <p className="text-neutral-900 break-all">{selectedEmpleado.email_laboral}</p>
@@ -336,7 +336,7 @@ export function DirectorioJiro() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => copiarAlPortapapeles(selectedEmpleado.email_laboral, 'email')}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
                       >
                         {copiedEmail ? (
                           <>
@@ -364,7 +364,7 @@ export function DirectorioJiro() {
                 {selectedEmpleado.celular_laboral && (
                   <div className="bg-neutral-50 rounded-lg p-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <Phone className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                      <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
                       <div className="flex-1">
                         <p className="text-xs text-neutral-500 font-medium">Celular Laboral</p>
                         <p className="text-neutral-900">{selectedEmpleado.celular_laboral}</p>
@@ -373,7 +373,7 @@ export function DirectorioJiro() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => copiarAlPortapapeles(selectedEmpleado.celular_laboral, 'phone')}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
                       >
                         {copiedPhone ? (
                           <>

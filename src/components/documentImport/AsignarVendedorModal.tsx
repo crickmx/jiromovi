@@ -128,8 +128,8 @@ export default function AsignarVendedorModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="mb-6 p-5 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg">
-            <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
+          <div className="mb-6 p-5 bg-gradient-to-br from-blue-50 to-blue-100 border border-primary-200 rounded-lg">
+            <h3 className="font-bold text-primary-900 mb-4 flex items-center gap-2">
               {group.type === 'name' ? (
                 <User className="h-5 w-5" />
               ) : group.type === 'email' ? (
@@ -144,7 +144,7 @@ export default function AsignarVendedorModal({
               <div className="bg-white p-3 rounded-lg shadow-sm">
                 <p className="text-xs text-gray-600 mb-1">Documentos en este grupo</p>
                 <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />
+                  <FileText className="h-5 w-5 text-primary-600" />
                   <span className="text-2xl font-bold text-gray-900">{group.document_count}</span>
                 </div>
               </div>
@@ -153,7 +153,7 @@ export default function AsignarVendedorModal({
                 <div className="bg-white p-3 rounded-lg shadow-sm">
                   <p className="text-xs text-gray-600 mb-1">Emails detectados</p>
                   <div className="flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-blue-600" />
+                    <Mail className="h-5 w-5 text-primary-600" />
                     <span className="text-2xl font-bold text-gray-900">{group.emails_detected.length}</span>
                   </div>
                 </div>
@@ -167,7 +167,7 @@ export default function AsignarVendedorModal({
                   {group.emails_detected.map((email, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 border border-blue-300 rounded text-xs text-blue-800"
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 border border-primary-300 rounded text-xs text-primary-800"
                     >
                       <Mail className="h-3 w-3" />
                       {email}
@@ -233,7 +233,7 @@ export default function AsignarVendedorModal({
 
             {initialLoading && (
               <div className="mt-2 text-center text-gray-500 text-sm p-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto mb-2"></div>
                 Cargando usuarios...
               </div>
             )}
@@ -255,7 +255,7 @@ export default function AsignarVendedorModal({
                       key={user.id}
                       onClick={() => setSelectedUser(user)}
                       className={`w-full p-3 text-left hover:bg-gray-50 transition border-b border-gray-100 last:border-b-0 ${
-                        selectedUser?.id === user.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                        selectedUser?.id === user.id ? 'bg-primary-50 border-l-4 border-l-blue-500' : ''
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -266,7 +266,7 @@ export default function AsignarVendedorModal({
                             <p className="text-sm text-gray-600">{user.email}</p>
                             {user.rol && (
                               <p className="text-xs text-gray-500 mt-0.5">
-                                <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                                <span className="inline-block px-2 py-0.5 bg-primary-100 text-primary-800 rounded">
                                   {user.rol}
                                 </span>
                               </p>
@@ -274,7 +274,7 @@ export default function AsignarVendedorModal({
                           </div>
                         </div>
                         {selectedUser?.id === user.id && (
-                          <CheckCircle className="h-5 w-5 text-blue-600" />
+                          <CheckCircle className="h-5 w-5 text-primary-600" />
                         )}
                       </div>
                     </button>
@@ -323,7 +323,7 @@ export default function AsignarVendedorModal({
                 id="saveMapping"
                 checked={saveMapping}
                 onChange={(e) => setSaveMapping(e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+                className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
               />
               <div className="flex-1">
                 <label htmlFor="saveMapping" className="text-sm font-medium text-gray-900 cursor-pointer block mb-1">
@@ -355,7 +355,7 @@ export default function AsignarVendedorModal({
           <button
             onClick={handleAssign}
             disabled={!selectedUser || loading}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loading ? (
               <>

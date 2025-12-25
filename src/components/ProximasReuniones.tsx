@@ -128,7 +128,7 @@ export function ProximasReuniones() {
                   className={`px-2 py-1 rounded-full text-xs font-semibold ${
                     meeting.status === 'active'
                       ? 'bg-green-100 text-green-800'
-                      : 'bg-blue-100 text-blue-800'
+                      : 'bg-primary-100 text-primary-800'
                   }`}
                 >
                   {meeting.status === 'active' ? 'Activa' : 'Programada'}

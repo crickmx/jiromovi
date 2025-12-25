@@ -426,25 +426,25 @@ export default function ProduccionConvenio() {
               {isAdmin && (
                 <button
                   onClick={() => navigate('/produccion/configuracion')}
-                  className="flex items-center space-x-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base"
+                  className="flex items-center space-x-2 bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm sm:text-base"
                 >
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">Configuración</span>
                   <span className="sm:hidden">Config</span>
                 </button>
               )}
-              <Award className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600 flex-shrink-0" />
+              <Award className="w-10 h-10 sm:w-12 sm:h-12 text-primary-600 flex-shrink-0" />
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-blue-200">
-            <p className="text-xs sm:text-sm text-blue-700 mb-1 font-medium">Prima Convenio</p>
-            <p className="text-lg sm:text-2xl font-bold text-blue-900 truncate">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-primary-200">
+            <p className="text-xs sm:text-sm text-primary-700 mb-1 font-medium">Prima Convenio</p>
+            <p className="text-lg sm:text-2xl font-bold text-primary-900 truncate">
               ${(kpis.totalConvenio / 1000000).toFixed(1)}M
             </p>
-            <p className="text-xs text-blue-600 mt-0.5 hidden sm:block">
+            <p className="text-xs text-primary-600 mt-0.5 hidden sm:block">
               ${kpis.totalConvenio.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
@@ -736,7 +736,7 @@ export default function ProduccionConvenio() {
                         {record.ramo_nombre}
                       </span>
                     </td>
-                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-semibold text-blue-700 whitespace-nowrap">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-semibold text-primary-700 whitespace-nowrap">
                       ${record.prima_convenio.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>
                     <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-right font-semibold text-teal-700 whitespace-nowrap">

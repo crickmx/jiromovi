@@ -266,11 +266,11 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-sm font-semibold text-blue-900 mb-2">Variables disponibles:</p>
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-primary-900 mb-2">Variables disponibles:</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       {AVAILABLE_PLACEHOLDERS[template.event_key as keyof typeof AVAILABLE_PLACEHOLDERS]?.map(ph => (
-                        <code key={ph.key} className="bg-white px-2 py-1 rounded text-blue-700">
+                        <code key={ph.key} className="bg-white px-2 py-1 rounded text-primary-700">
                           {`{{${ph.key}}}`}
                         </code>
                       ))}
@@ -453,7 +453,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                         <p className="text-sm text-neutral-600 mt-1">Event: {template.event_key}</p>
                         <div className="flex items-center gap-2 mt-2">
                           {template.email_subject_template && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-full">
                               <Mail className="w-3 h-3" />
                               Email
                             </span>
@@ -505,9 +505,9 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       {/* Tipos de Notificaciones Regulares */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
+          <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
           <h3 className="text-lg font-bold text-neutral-900">Notificaciones Programadas</h3>
-          <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full">
+          <span className="px-3 py-1 bg-primary-50 text-primary-700 text-xs font-semibold rounded-full">
             Editar plantillas de Email, WhatsApp y Campanita en un solo lugar
           </span>
         </div>
@@ -567,7 +567,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                   }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
                     tipo.enviar_notificacion
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-primary-500 bg-primary-50'
                       : 'border-neutral-300 bg-white hover:border-neutral-400'
                   }`}
                 >
@@ -577,10 +577,10 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                     onChange={(e) => {
                       e.stopPropagation();
                     }}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 pointer-events-none"
+                    className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-blue-500 pointer-events-none"
                   />
-                  <Bell className={`w-4 h-4 ${tipo.enviar_notificacion ? 'text-blue-600' : 'text-neutral-500'}`} />
-                  <span className={`text-sm font-medium ${tipo.enviar_notificacion ? 'text-blue-700' : 'text-neutral-600'}`}>
+                  <Bell className={`w-4 h-4 ${tipo.enviar_notificacion ? 'text-primary-600' : 'text-neutral-500'}`} />
+                  <span className={`text-sm font-medium ${tipo.enviar_notificacion ? 'text-primary-700' : 'text-neutral-600'}`}>
                     Notificación Interna
                   </span>
                 </div>
@@ -661,7 +661,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                   </span>
                 )}
                 {tipo.enviar_notificacion && !tipo.enviar_whatsapp && !tipo.enviar_correo && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200">
                     Solo notificaciones internas
                   </span>
                 )}

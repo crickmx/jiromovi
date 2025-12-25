@@ -114,7 +114,7 @@ export function HistorialCorreos() {
 
   const getTipoBadge = (tipo: string) => {
     return tipo === 'manual' ? (
-      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">Manual</span>
+      <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">Manual</span>
     ) : (
       <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">Automático</span>
     );
@@ -133,7 +133,7 @@ export function HistorialCorreos() {
   if (loading && page === 0) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -251,7 +251,7 @@ export function HistorialCorreos() {
 
                 <button
                   onClick={() => handleViewEmail(email)}
-                  className="ml-4 p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                  className="ml-4 p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
                   title="Ver contenido"
                 >
                   <Eye className="w-5 h-5" />

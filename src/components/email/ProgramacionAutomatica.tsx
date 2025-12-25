@@ -133,7 +133,7 @@ export function ProgramacionAutomatica() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -152,16 +152,16 @@ export function ProgramacionAutomatica() {
         </div>
       )}
 
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
         <div className="flex items-start space-x-3">
-          <Calendar className="w-5 h-5 text-blue-600 mt-0.5" />
+          <Calendar className="w-5 h-5 text-primary-600 mt-0.5" />
           <div className="flex-1">
-            <h3 className="font-semibold text-blue-900 mb-2">Funcionamiento automático</h3>
-            <p className="text-sm text-blue-800 mb-2">
+            <h3 className="font-semibold text-primary-900 mb-2">Funcionamiento automático</h3>
+            <p className="text-sm text-primary-800 mb-2">
               El sistema verifica diariamente si hay usuarios con cumpleaños o aniversarios laborales y envía
               automáticamente los correos configurados.
             </p>
-            <p className="text-sm text-blue-800">
+            <p className="text-sm text-primary-800">
               <strong>Importante:</strong> Los correos solo se envían una vez por año a cada usuario. Si deseas
               probar la funcionalidad sin esperar a las fechas reales, usa el botón de prueba manual.
             </p>
@@ -194,7 +194,7 @@ export function ProgramacionAutomatica() {
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
                   <h3 className="text-lg font-semibold text-slate-900">{plantilla.nombre}</h3>
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                  <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
                     {tipoLabels[plantilla.tipo]}
                   </span>
                   {plantilla.envio_automatico && (
@@ -261,7 +261,7 @@ export function ProgramacionAutomatica() {
         </p>
         <div className="bg-slate-800 text-slate-100 p-4 rounded-lg font-mono text-sm">
           <p>URL de la función:</p>
-          <p className="text-blue-300 break-all">
+          <p className="text-primary-300 break-all">
             {import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-scheduled-emails
           </p>
           <p className="mt-3">Ejemplo de cron (ejecutar diariamente a las 8:00 AM):</p>

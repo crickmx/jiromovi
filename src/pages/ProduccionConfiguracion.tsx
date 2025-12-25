@@ -518,7 +518,7 @@ export default function ProduccionConfiguracion() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando configuración...</p>
         </div>
       </div>
@@ -535,7 +535,7 @@ export default function ProduccionConfiguracion() {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-white">Configuración de Producción</h1>
-              <p className="text-xs sm:text-sm text-blue-100">Gestiona la conexión y mapeo de datos de producción</p>
+              <p className="text-xs sm:text-sm text-primary-100">Gestiona la conexión y mapeo de datos de producción</p>
             </div>
           </div>
         </div>
@@ -593,9 +593,9 @@ export default function ProduccionConfiguracion() {
                 La hoja debe estar configurada con permisos de "Cualquier persona con el link puede ver".
               </p>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-                <h3 className="font-semibold text-blue-900 mb-2 text-xs sm:text-sm">Instrucciones:</h3>
-                <ol className="text-xs sm:text-sm text-blue-800 space-y-1 list-decimal list-inside">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                <h3 className="font-semibold text-primary-900 mb-2 text-xs sm:text-sm">Instrucciones:</h3>
+                <ol className="text-xs sm:text-sm text-primary-800 space-y-1 list-decimal list-inside">
                   <li>Abre tu hoja de Google Sheets</li>
                   <li>Haz clic en "Compartir" en la esquina superior derecha</li>
                   <li>Selecciona "Cualquier persona con el link puede ver"</li>
@@ -631,7 +631,7 @@ export default function ProduccionConfiguracion() {
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
+                    className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
                   >
                     {saving ? (
                       <>
@@ -676,8 +676,8 @@ export default function ProduccionConfiguracion() {
                 {config && (
                   <div className="border-t border-neutral-200 pt-4 sm:pt-6">
                     <h3 className="font-semibold text-neutral-900 mb-3 text-sm sm:text-base">Actualizar Nombres de Clientes</h3>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-3">
-                      <p className="text-xs sm:text-sm text-blue-800">
+                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 sm:p-4 mb-3">
+                      <p className="text-xs sm:text-sm text-primary-800">
                         Si agregaste la columna "NombreCompleto" al Excel, usa este botón para actualizar los registros existentes.
                         Los datos se actualizarán desde Google Sheets usando la nueva columna.
                       </p>
@@ -714,8 +714,8 @@ export default function ProduccionConfiguracion() {
                 {config && (
                   <div className="border-t border-neutral-200 pt-4 sm:pt-6">
                     <h3 className="font-semibold text-neutral-900 mb-3 text-sm sm:text-base">Sincronizar Aseguradoras</h3>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-3">
-                      <p className="text-xs sm:text-sm text-blue-800">
+                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 sm:p-4 mb-3">
+                      <p className="text-xs sm:text-sm text-primary-800">
                         Extrae las aseguradoras únicas del Google Sheets y actualiza el catálogo.
                         Este catálogo se usa en el registro de pólizas en Trámites.
                       </p>
@@ -753,8 +753,8 @@ export default function ProduccionConfiguracion() {
 
             <TabsContent value="offices" className="mt-0">
               <div className="space-y-4 sm:space-y-6">
-                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-                  <p className="text-xs sm:text-sm text-blue-800">
+                <div className="mb-4 bg-primary-50 border border-primary-200 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-primary-800">
                     Los nombres de las oficinas en el Excel pueden no coincidir exactamente con los nombres en la plataforma.
                     Aquí puedes indicar manualmente qué oficina del sistema corresponde a cada oficina del Excel.
                   </p>
@@ -844,7 +844,7 @@ export default function ProduccionConfiguracion() {
                     <button
                       onClick={loadVendors}
                       disabled={loadingVendors || syncingVendors}
-                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      className="px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                       title="Recargar desde cache"
                     >
                       {loadingVendors ? 'Cargando...' : 'Recargar'}
@@ -852,13 +852,13 @@ export default function ProduccionConfiguracion() {
                   </div>
                 </div>
 
-                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-                  <p className="text-xs sm:text-sm text-blue-800 mb-2">
+                <div className="mb-4 bg-primary-50 border border-primary-200 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-primary-800 mb-2">
                     Cada VendNombre del Google Sheets puede ser asociado a un usuario de la plataforma MOVI.
                     El sistema intenta hacer la asociación automáticamente por coincidencia de nombre, pero puedes ajustar manualmente.
                     Este mismo mapeo se usa también en el módulo de <strong>Comisiones</strong> para relacionar vendedores del Excel con usuarios.
                   </p>
-                  <p className="text-xs sm:text-sm text-blue-800 mt-2 pt-2 border-t border-blue-200">
+                  <p className="text-xs sm:text-sm text-primary-800 mt-2 pt-2 border-t border-primary-200">
                     <strong>Sincronizar:</strong> Obtiene la lista actualizada de vendedores desde Google Sheets.
                     <strong className="ml-2">Recargar:</strong> Actualiza la vista desde el cache local (más rápido).
                   </p>
@@ -902,14 +902,14 @@ export default function ProduccionConfiguracion() {
                     <p className="text-sm mb-3">No hay vendedores cargados</p>
                     <button
                       onClick={loadVendors}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
                     >
                       Cargar Vendedores
                     </button>
                   </div>
                 ) : loadingVendors ? (
                   <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-3"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-600 border-t-transparent mx-auto mb-3"></div>
                     <p className="text-sm text-neutral-600">Cargando vendedores desde Google Sheets...</p>
                   </div>
                 ) : (
@@ -933,12 +933,12 @@ export default function ProduccionConfiguracion() {
                           {vendors.filter(v => v.movi_user_id === null).length}
                         </p>
                       </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
                         <div className="flex items-center gap-2 mb-1">
-                          <Users className="w-4 h-4 text-blue-600" />
-                          <span className="text-xs font-medium text-blue-700">Total</span>
+                          <Users className="w-4 h-4 text-primary-600" />
+                          <span className="text-xs font-medium text-primary-700">Total</span>
                         </div>
-                        <p className="text-2xl font-bold text-blue-900">
+                        <p className="text-2xl font-bold text-primary-900">
                           {vendors.length}
                         </p>
                       </div>
@@ -985,7 +985,7 @@ export default function ProduccionConfiguracion() {
                                 </span>
                               )}
                               {vendor.mapping_source === 'manual' && (
-                                <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                                <span className="inline-flex items-center px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded">
                                   Manual
                                 </span>
                               )}
@@ -1006,7 +1006,7 @@ export default function ProduccionConfiguracion() {
                           </div>
                           {savingVendor === vendor.vendor_nombre && (
                             <div className="flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent"></div>
                             </div>
                           )}
                         </div>

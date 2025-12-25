@@ -286,7 +286,7 @@ export function MisCorreos() {
   if (loading && carpetas.length === 0) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -300,21 +300,21 @@ export function MisCorreos() {
               <Mail className="w-8 h-8 text-white" />
               <div>
                 <h1 className="text-2xl font-bold text-white">Mi Email</h1>
-                <p className="text-blue-100 mt-1">Sistema de correo completo</p>
+                <p className="text-primary-100 mt-1">Sistema de correo completo</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleSync}
                 disabled={syncing}
-                className="flex items-center space-x-2 px-4 py-2 bg-white hover:bg-blue-50 text-blue-600 rounded-lg font-medium transition disabled:opacity-50"
+                className="flex items-center space-x-2 px-4 py-2 bg-white hover:bg-primary-50 text-primary-600 rounded-lg font-medium transition disabled:opacity-50"
               >
                 <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
                 <span>{syncing ? 'Sincronizando...' : 'Sincronizar'}</span>
               </button>
               <button
                 onClick={() => setShowCompose(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-white hover:bg-blue-50 text-blue-600 rounded-lg font-medium transition"
+                className="flex items-center space-x-2 px-4 py-2 bg-white hover:bg-primary-50 text-primary-600 rounded-lg font-medium transition"
               >
                 <Send className="w-5 h-5" />
                 <span>Nuevo Correo</span>
@@ -352,7 +352,7 @@ export function MisCorreos() {
                     onClick={() => setCarpetaActiva(carpeta.tipo_carpeta)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition ${
                       carpetaActiva === carpeta.tipo_carpeta
-                        ? 'bg-blue-50 text-blue-700 font-medium'
+                        ? 'bg-primary-50 text-primary-700 font-medium'
                         : 'text-slate-700 hover:bg-slate-50'
                     }`}
                   >
@@ -361,7 +361,7 @@ export function MisCorreos() {
                       <span>{carpeta.nombre}</span>
                     </div>
                     {carpeta.no_leidos > 0 && (
-                      <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                      <span className="px-2 py-0.5 bg-primary-600 text-white text-xs rounded-full">
                         {carpeta.no_leidos}
                       </span>
                     )}
@@ -374,7 +374,7 @@ export function MisCorreos() {
           <div className="flex-1 p-8">
             {loading ? (
               <div className="flex justify-center py-12">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : emails.length === 0 ? (
               <div className="text-center py-12">
@@ -385,7 +385,7 @@ export function MisCorreos() {
                 {carpetaActiva === 'inbox' && (
                   <button
                     onClick={handleSync}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+                    className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition"
                   >
                     Sincronizar ahora
                   </button>
@@ -398,13 +398,13 @@ export function MisCorreos() {
                     key={email.id}
                     onClick={() => { setSelectedEmail(email); markAsRead(email.id); }}
                     className={`p-4 hover:bg-slate-50 border border-slate-200 rounded-lg cursor-pointer transition ${
-                      !email.leido ? 'bg-blue-50 border-blue-200' : ''
+                      !email.leido ? 'bg-primary-50 border-primary-200' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center space-x-2 flex-1">
                         {!email.leido && (
-                          <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+                          <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
                         )}
                         <h3 className={`${!email.leido ? 'font-bold' : 'font-semibold'} text-slate-900 flex-1`}>
                           {email.asunto || '(Sin asunto)'}
@@ -535,14 +535,14 @@ export function MisCorreos() {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setShowCC(!showCC)}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   {showCC ? 'Ocultar CC' : 'Agregar CC'}
                 </button>
                 <span className="text-slate-300">|</span>
                 <button
                   onClick={() => setShowBCC(!showBCC)}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   {showBCC ? 'Ocultar CCO' : 'Agregar CCO'}
                 </button>
@@ -655,7 +655,7 @@ export function MisCorreos() {
                 <button
                   onClick={handleSendEmail}
                   disabled={sending}
-                  className="flex items-center space-x-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50"
+                  className="flex items-center space-x-2 px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition disabled:opacity-50"
                 >
                   <Send className="w-5 h-5" />
                   <span>{sending ? 'Enviando...' : 'Enviar Correo'}</span>

@@ -146,7 +146,7 @@ export default function CRMTareas() {
       case 'Completada':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'En Proceso':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-primary-100 text-primary-800 border-primary-200';
       case 'Pendiente':
         return 'bg-orange-100 text-orange-800 border-orange-200';
       default:
@@ -215,13 +215,13 @@ export default function CRMTareas() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-primary-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-blue-700 font-medium">En Proceso</p>
-                <p className="text-2xl font-bold text-blue-900 mt-1">{contadores.enProceso}</p>
+                <p className="text-xs text-primary-700 font-medium">En Proceso</p>
+                <p className="text-2xl font-bold text-primary-900 mt-1">{contadores.enProceso}</p>
               </div>
-              <Clock className="h-8 w-8 text-blue-400" />
+              <Clock className="h-8 w-8 text-primary-400" />
             </div>
           </div>
 

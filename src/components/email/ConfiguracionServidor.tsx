@@ -221,7 +221,7 @@ export function ConfiguracionServidor() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -281,12 +281,12 @@ export function ConfiguracionServidor() {
         </div>
       </div>
 
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
         <div className="flex items-start space-x-3">
-          <Send className="w-5 h-5 text-blue-600 mt-0.5" />
+          <Send className="w-5 h-5 text-primary-600 mt-0.5" />
           <div className="flex-1">
-            <h3 className="font-semibold text-blue-900 mb-2">Configuración de SendGrid</h3>
-            <p className="text-sm text-blue-800">
+            <h3 className="font-semibold text-primary-900 mb-2">Configuración de SendGrid</h3>
+            <p className="text-sm text-primary-800">
               Configura SendGrid para enviar correos electrónicos. Solo puede haber una configuración activa a la vez.
             </p>
           </div>
@@ -296,7 +296,7 @@ export function ConfiguracionServidor() {
       <div className="mb-6 flex justify-end">
         <button
           onClick={handleCreate}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+          className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
         >
           <Plus className="w-5 h-5" />
           <span>Nueva Configuración</span>
@@ -356,7 +356,7 @@ export function ConfiguracionServidor() {
                   </button>
                   <button
                     onClick={() => handleEdit(config)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                    className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
                     title="Editar"
                   >
                     <Edit2 className="w-5 h-5" />
@@ -388,7 +388,7 @@ export function ConfiguracionServidor() {
             </div>
 
             <div className="p-6 space-y-4">
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+              <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-800">
                 <strong>Nota:</strong> Necesitas una cuenta de SendGrid para obtener tu API key. Visita{' '}
                 <a href="https://sendgrid.com" target="_blank" rel="noopener noreferrer" className="underline">
                   sendgrid.com
@@ -447,7 +447,7 @@ export function ConfiguracionServidor() {
                   type="checkbox"
                   checked={formData.activo}
                   onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 rounded"
+                  className="w-4 h-4 text-primary-600 rounded"
                 />
                 <span className="text-sm text-slate-700">Activar esta configuración</span>
               </label>
@@ -462,7 +462,7 @@ export function ConfiguracionServidor() {
               </button>
               <button
                 onClick={handleSave}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
               >
                 <Save className="w-5 h-5" />
                 <span>Guardar</span>

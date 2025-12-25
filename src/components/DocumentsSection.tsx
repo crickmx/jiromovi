@@ -187,7 +187,7 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -200,7 +200,7 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
           <h3 className="text-lg font-semibold text-slate-900">Documentos</h3>
         </div>
         {canEdit && (
-          <label className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition">
+          <label className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-primary-700 transition">
             <Upload className="w-4 h-4" />
             <span>{uploading ? 'Subiendo...' : 'Subir Documento'}</span>
             <input
@@ -245,8 +245,8 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
                 </div>
               ) : (
                 <div className="flex items-center space-x-3 flex-1">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <File className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                    <File className="w-5 h-5 text-primary-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-slate-900 truncate">{doc.nombre_archivo}</p>
@@ -283,7 +283,7 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
                   <>
                     <button
                       onClick={() => handleDownload(doc.url_archivo, doc.nombre_archivo)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                      className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
                       title="Descargar"
                     >
                       <Download className="w-4 h-4" />

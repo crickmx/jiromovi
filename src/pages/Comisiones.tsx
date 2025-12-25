@@ -52,7 +52,7 @@ export default function Comisiones() {
         );
       case 'confirmed':
         return (
-          <span className="flex items-center space-x-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+          <span className="flex items-center space-x-1 px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-semibold">
             <AlertCircle className="w-4 h-4" />
             <span>Confirmado</span>
           </span>

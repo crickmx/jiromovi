@@ -24,7 +24,7 @@ export default function MulticotizadorDigital() {
       {isLoading && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-slate-600">Cargando Multicotizador Digital...</p>
           </div>
         </div>
@@ -45,7 +45,7 @@ export default function MulticotizadorDigital() {
             </p>
             <button
               onClick={openInNewTab}
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
             >
               <ExternalLink className="w-5 h-5 mr-2" />
               Abrir en Nueva Pestaña

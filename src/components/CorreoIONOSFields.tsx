@@ -96,9 +96,9 @@ export function CorreoIONOSFields({
   };
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-neutral-50 rounded-xl border-2 border-blue-200 p-6">
+    <div className="bg-gradient-to-br from-blue-50 to-neutral-50 rounded-xl border-2 border-primary-200 p-6">
       <div className="flex items-center space-x-3 mb-4">
-        <div className="p-2 bg-blue-600 rounded-lg">
+        <div className="p-2 bg-primary-600 rounded-lg">
           <Mail className="w-6 h-6 text-white" />
         </div>
         <div>
@@ -178,7 +178,7 @@ export function CorreoIONOSFields({
           <button
             onClick={handleVerificarConexion}
             disabled={verificando}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Shield className="w-5 h-5" />
             <span>{verificando ? 'Verificando conexión...' : 'Verificar conexión'}</span>
@@ -208,7 +208,7 @@ export function CorreoIONOSFields({
         </div>
       )}
 
-      <div className="mt-4 pt-4 border-t border-blue-200">
+      <div className="mt-4 pt-4 border-t border-primary-200">
         <p className="text-xs text-neutral-600 flex items-start space-x-2">
           <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>

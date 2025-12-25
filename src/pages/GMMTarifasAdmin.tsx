@@ -98,7 +98,7 @@ export default function GMMTarifasAdmin() {
   function getStatusBadge(status: string) {
     const styles = {
       active: 'bg-green-100 text-green-800',
-      draft: 'bg-blue-100 text-blue-800',
+      draft: 'bg-primary-100 text-primary-800',
       archived: 'bg-gray-100 text-gray-800',
       failed: 'bg-red-100 text-red-800',
     };
@@ -206,7 +206,7 @@ export default function GMMTarifasAdmin() {
               {packages.map((pkg) => (
                 <div
                   key={pkg.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                  className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

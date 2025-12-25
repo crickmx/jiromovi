@@ -21,7 +21,7 @@ export function ChatSidebar({ chats, selectedChat, onSelectChat, getChatName }: 
             key={chat.id}
             onClick={() => onSelectChat(chat)}
             className={`w-full px-4 py-3 text-left hover:bg-neutral-50 transition-colors ${
-              isSelected ? 'bg-blue-50 border-l-4 border-blue-600' : ''
+              isSelected ? 'bg-primary-50 border-l-4 border-primary-600' : ''
             }`}
           >
             <div className="flex items-center justify-between mb-1">

@@ -148,7 +148,7 @@ export function VistaPreviaFirma() {
         <button
           onClick={loadPreview}
           disabled={!selectedUsuario || loading}
-          className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <RefreshCw className="w-5 h-5 animate-spin" />
@@ -192,7 +192,7 @@ export function VistaPreviaFirma() {
                 <div>
                   <strong>Tipo de asignación:</strong>{' '}
                   <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                    firmaInfo.tipo_asignacion === 'usuario' ? 'bg-blue-200 text-blue-800' :
+                    firmaInfo.tipo_asignacion === 'usuario' ? 'bg-primary-200 text-primary-800' :
                     firmaInfo.tipo_asignacion === 'rol' ? 'bg-green-200 text-green-800' :
                     firmaInfo.tipo_asignacion === 'oficina' ? 'bg-purple-200 text-purple-800' :
                     'bg-neutral-200 text-neutral-800'
@@ -210,13 +210,13 @@ export function VistaPreviaFirma() {
       )}
 
       {debugInfo && (
-        <details className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <summary className="cursor-pointer font-semibold text-blue-900 flex items-center space-x-2">
+        <details className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <summary className="cursor-pointer font-semibold text-primary-900 flex items-center space-x-2">
             <Info className="w-5 h-5" />
             <span>Ver datos del usuario (para debugging)</span>
           </summary>
-          <div className="mt-3 text-sm text-blue-800 font-mono">
-            <pre className="whitespace-pre-wrap bg-white p-3 rounded border border-blue-200 overflow-x-auto">
+          <div className="mt-3 text-sm text-primary-800 font-mono">
+            <pre className="whitespace-pre-wrap bg-white p-3 rounded border border-primary-200 overflow-x-auto">
               {JSON.stringify(debugInfo, null, 2)}
             </pre>
           </div>

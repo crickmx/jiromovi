@@ -142,8 +142,8 @@ export default function SelfCheckConsistencia({ batchId, batchName }: SelfCheckP
     <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <FileSearch className="h-5 w-5 text-blue-600" />
+          <div className="p-2 bg-primary-100 rounded-lg">
+            <FileSearch className="h-5 w-5 text-primary-600" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">Verificación de Consistencia</h3>
@@ -153,7 +153,7 @@ export default function SelfCheckConsistencia({ batchId, batchName }: SelfCheckP
         <button
           onClick={runSelfCheck}
           disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2 min-h-[44px]"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center gap-2 min-h-[44px]"
         >
           {loading ? (
             <>
@@ -265,30 +265,30 @@ export default function SelfCheckConsistencia({ batchId, batchName }: SelfCheckP
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="font-semibold text-blue-900 mb-3">Debug Info:</p>
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+            <p className="font-semibold text-primary-900 mb-3">Debug Info:</p>
             <div className="space-y-2 text-sm">
               <div>
-                <span className="text-blue-700 font-medium">Hojas detectadas:</span>
-                <p className="text-blue-800 mt-1">{result.debug_info.sheet_names.join(', ')}</p>
+                <span className="text-primary-700 font-medium">Hojas detectadas:</span>
+                <p className="text-primary-800 mt-1">{result.debug_info.sheet_names.join(', ')}</p>
               </div>
               <div>
-                <span className="text-blue-700 font-medium">Columna VendNombre:</span>
-                <p className="text-blue-800 mt-1">{result.debug_info.vendor_column}</p>
+                <span className="text-primary-700 font-medium">Columna VendNombre:</span>
+                <p className="text-primary-800 mt-1">{result.debug_info.vendor_column}</p>
               </div>
               <div>
-                <span className="text-blue-700 font-medium">Columna EmailAgente:</span>
-                <p className="text-blue-800 mt-1">{result.debug_info.email_column}</p>
+                <span className="text-primary-700 font-medium">Columna EmailAgente:</span>
+                <p className="text-primary-800 mt-1">{result.debug_info.email_column}</p>
               </div>
               <div>
-                <span className="text-blue-700 font-medium">Filas sin vendedor:</span>
-                <p className="text-blue-800 mt-1">
+                <span className="text-primary-700 font-medium">Filas sin vendedor:</span>
+                <p className="text-primary-800 mt-1">
                   {result.debug_info.empty_vendor_count} ({((result.debug_info.empty_vendor_count / result.import_stats.total_rows) * 100).toFixed(1)}%)
                 </p>
               </div>
               <div>
-                <span className="text-blue-700 font-medium">Headers detectados:</span>
-                <p className="text-blue-800 mt-1 text-xs">
+                <span className="text-primary-700 font-medium">Headers detectados:</span>
+                <p className="text-primary-800 mt-1 text-xs">
                   {result.debug_info.headers_detected.slice(0, 10).join(', ')}
                   {result.debug_info.headers_detected.length > 10 && '...'}
                 </p>

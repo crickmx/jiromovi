@@ -89,8 +89,8 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
         </div>
 
         <div className="p-6 space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-semibold text-blue-900 mb-3 flex items-center space-x-2">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+            <h3 className="font-semibold text-primary-900 mb-3 flex items-center space-x-2">
               {vendor.vendor_type === 'email' ? (
                 <Mail className="h-5 w-5" />
               ) : (
@@ -101,30 +101,30 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
             <div className="grid grid-cols-2 gap-4">
               {vendor.vendor_email && (
                 <div>
-                  <p className="text-xs text-blue-700 font-medium mb-1">Email</p>
-                  <p className="text-sm text-blue-900 font-mono bg-white px-3 py-2 rounded">
+                  <p className="text-xs text-primary-700 font-medium mb-1">Email</p>
+                  <p className="text-sm text-primary-900 font-mono bg-white px-3 py-2 rounded">
                     {vendor.vendor_email}
                   </p>
                 </div>
               )}
               {vendor.vendor_name && (
                 <div>
-                  <p className="text-xs text-blue-700 font-medium mb-1">Nombre</p>
-                  <p className="text-sm text-blue-900 bg-white px-3 py-2 rounded">
+                  <p className="text-xs text-primary-700 font-medium mb-1">Nombre</p>
+                  <p className="text-sm text-primary-900 bg-white px-3 py-2 rounded">
                     {vendor.vendor_name}
                   </p>
                 </div>
               )}
               <div>
-                <p className="text-xs text-blue-700 font-medium mb-1">Pólizas Incluidas</p>
-                <p className="text-sm text-blue-900 font-semibold bg-white px-3 py-2 rounded flex items-center space-x-2">
+                <p className="text-xs text-primary-700 font-medium mb-1">Pólizas Incluidas</p>
+                <p className="text-sm text-primary-900 font-semibold bg-white px-3 py-2 rounded flex items-center space-x-2">
                   <FileText className="h-4 w-4" />
                   <span>{vendor.polizas_count}</span>
                 </p>
               </div>
               <div>
-                <p className="text-xs text-blue-700 font-medium mb-1">Comisión Total</p>
-                <p className="text-sm text-blue-900 font-semibold bg-white px-3 py-2 rounded flex items-center space-x-2">
+                <p className="text-xs text-primary-700 font-medium mb-1">Comisión Total</p>
+                <p className="text-sm text-primary-900 font-semibold bg-white px-3 py-2 rounded flex items-center space-x-2">
                   <TrendingUp className="h-4 w-4" />
                   <span>
                     ${Number(vendor.total_commission).toLocaleString('es-MX', {
@@ -136,7 +136,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
             </div>
 
             <details className="mt-4 group">
-              <summary className="cursor-pointer text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center space-x-1">
+              <summary className="cursor-pointer text-sm text-primary-700 hover:text-primary-800 font-medium flex items-center space-x-1">
                 <span>Ver ejemplos de pólizas</span>
                 <svg
                   className="h-4 w-4 transition-transform group-open:rotate-180"
@@ -224,7 +224,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
                     }}
                     onFocus={() => setMostrarLista(true)}
                     placeholder="Buscar por nombre o email..."
-                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
                   />
                 </div>
 
@@ -244,9 +244,9 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
                             setMostrarLista(false);
                             setBusqueda('');
                           }}
-                          className="w-full flex items-center space-x-3 p-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 text-left transition-colors"
+                          className="w-full flex items-center space-x-3 p-3 hover:bg-primary-50 border-b border-gray-100 last:border-b-0 text-left transition-colors"
                         >
-                          <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
+                          <div className="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center font-semibold">
                             {u.nombre_completo.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1">
@@ -268,7 +268,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
                 type="checkbox"
                 checked={guardarMapeo}
                 onChange={(e) => setGuardarMapeo(e.target.checked)}
-                className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <div>
                 <p className="font-medium text-gray-900 flex items-center space-x-2">
@@ -296,7 +296,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
           <button
             onClick={handleAsignar}
             disabled={!usuarioSeleccionado || loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
             {loading ? (
               <>

@@ -788,7 +788,7 @@ export default function GMMCotizador() {
                                   setInput({ ...input, formas_pago: input.formas_pago.filter(fp => fp !== row.col_0) });
                                 }
                               }}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="rounded border-gray-300 text-primary-600 focus:ring-blue-500"
                             />
                             <span>{row.col_0}</span>
                           </label>
@@ -897,7 +897,7 @@ export default function GMMCotizador() {
                               coberturas: { ...input.coberturas, [key]: e.target.checked },
                             })
                           }
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                          className="rounded border-gray-300 text-primary-600 focus:ring-blue-500 flex-shrink-0"
                         />
                         <span className="flex-1">{COVERAGE_LABELS[key] || key}</span>
                         <InfoTooltip content={getCoverageHelpText(key)} />
@@ -939,7 +939,7 @@ export default function GMMCotizador() {
 
                     {result.payment_plans.map((plan, idx) => (
                       <Card key={idx} className="p-6">
-                        <h3 className="text-lg font-semibold mb-4 text-blue-600">{plan.forma_pago}</h3>
+                        <h3 className="text-lg font-semibold mb-4 text-primary-600">{plan.forma_pago}</h3>
                         <div className="space-y-3">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Prima Neta</span>
@@ -963,7 +963,7 @@ export default function GMMCotizador() {
                           </div>
                           <div className="border-t pt-3 flex justify-between">
                             <span className="font-semibold">TOTAL</span>
-                            <span className="font-bold text-lg text-blue-600">${plan.total.toFixed(2)}</span>
+                            <span className="font-bold text-lg text-primary-600">${plan.total.toFixed(2)}</span>
                           </div>
 
                           <div className="border-t pt-3 space-y-2">
@@ -1052,7 +1052,7 @@ export default function GMMCotizador() {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {quotations.map((q) => (
                           <tr key={q.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary-600">
                               {q.folio}
                               {q.editada_desde_cotizacion_id && (
                                 <span className="ml-2 text-xs text-gray-400">(Editada)</span>
@@ -1111,7 +1111,7 @@ export default function GMMCotizador() {
                     <Card key={q.id} className="p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <div className="font-semibold text-blue-600">{q.folio}</div>
+                          <div className="font-semibold text-primary-600">{q.folio}</div>
                           <div className="text-sm text-gray-500">{formatDate(q.created_at)}</div>
                         </div>
                       </div>

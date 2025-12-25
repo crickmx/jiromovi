@@ -234,7 +234,7 @@ export function Perfil() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -272,7 +272,7 @@ export function Perfil() {
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
           <h1 className="text-2xl font-bold text-white">Mi Perfil</h1>
-          <p className="text-blue-100 mt-1">Administra tu información personal</p>
+          <p className="text-primary-100 mt-1">Administra tu información personal</p>
         </div>
 
         <div className="p-8">
@@ -297,7 +297,7 @@ export function Perfil() {
                   className="w-32 h-32 rounded-full object-cover border-4 border-slate-200"
                 />
               ) : (
-                <div className="w-32 h-32 rounded-full bg-blue-600 flex items-center justify-center border-4 border-slate-200">
+                <div className="w-32 h-32 rounded-full bg-primary-600 flex items-center justify-center border-4 border-slate-200">
                   <UserIcon className="w-16 h-16 text-white" />
                 </div>
               )}
@@ -374,7 +374,7 @@ export function Perfil() {
                   <button
                     type="button"
                     onClick={handleCopyUrl}
-                    className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                    className="px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center gap-2"
                   >
                     {copiedUrl ? (
                       <>
@@ -442,7 +442,7 @@ export function Perfil() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50"
+              className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50"
             >
               <Save className="w-5 h-5" />
               <span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>

@@ -100,7 +100,7 @@ export default function VendedoresNoReconocidosTable({
                     <div className="flex items-center gap-2">
                       {group.type === 'name' ? (
                         <>
-                          <User className="h-5 w-5 text-blue-600" />
+                          <User className="h-5 w-5 text-primary-600" />
                           <span className="text-sm font-medium text-gray-900">Nombre</span>
                         </>
                       ) : group.type === 'email' ? (
@@ -143,7 +143,7 @@ export default function VendedoresNoReconocidosTable({
                         {group.emails_detected.slice(0, 2).map((email, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700"
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-primary-50 border border-primary-200 rounded text-xs text-primary-700"
                           >
                             <Mail className="h-3 w-3" />
                             {email}
@@ -184,7 +184,7 @@ export default function VendedoresNoReconocidosTable({
                   <td className="px-6 py-4">
                     <button
                       onClick={() => handleOpenModal(group)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition"
                     >
                       <UserPlus className="h-4 w-4" />
                       Asignar

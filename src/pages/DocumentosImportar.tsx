@@ -275,7 +275,7 @@ export default function DocumentosImportar() {
         );
       case 'processing':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary-100 text-primary-800 text-xs font-medium rounded-full">
             <Clock className="h-3 w-3" />
             Procesando
           </span>
@@ -381,9 +381,9 @@ export default function DocumentosImportar() {
                 <p className="text-xs text-green-700 mb-1">Válidas</p>
                 <p className="text-2xl font-bold text-green-700">{diagnostics.counts.valid || 0}</p>
               </div>
-              <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-center">
-                <p className="text-xs text-blue-700 mb-1">Advertencias</p>
-                <p className="text-2xl font-bold text-blue-700">{diagnostics.counts.warning || 0}</p>
+              <div className="p-4 bg-primary-50 rounded-xl border border-primary-200 text-center">
+                <p className="text-xs text-primary-700 mb-1">Advertencias</p>
+                <p className="text-2xl font-bold text-primary-700">{diagnostics.counts.warning || 0}</p>
               </div>
               <div className="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
                 <p className="text-xs text-red-700 mb-1">Descartadas</p>
@@ -424,14 +424,14 @@ export default function DocumentosImportar() {
         )}
 
         {diagnostics && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-            <h3 className="text-lg font-semibold text-blue-900 mb-4">Diagnóstico de importación</h3>
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-6">
+            <h3 className="text-lg font-semibold text-primary-900 mb-4">Diagnóstico de importación</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <p className="text-sm font-medium text-blue-900 mb-2">Columnas detectadas:</p>
+                <p className="text-sm font-medium text-primary-900 mb-2">Columnas detectadas:</p>
                 <div className="space-y-1">
-                  <p className="text-sm text-blue-800">
+                  <p className="text-sm text-primary-800">
                     <span className="font-medium">Vendedor:</span>{' '}
                     {diagnostics.vendor_column_detected ? (
                       <span className="text-green-700 font-semibold">{diagnostics.vendor_column_detected}</span>
@@ -439,7 +439,7 @@ export default function DocumentosImportar() {
                       <span className="text-red-700 font-semibold">No detectada</span>
                     )}
                   </p>
-                  <p className="text-sm text-blue-800">
+                  <p className="text-sm text-primary-800">
                     <span className="font-medium">Email:</span>{' '}
                     {diagnostics.email_column_detected ? (
                       <span className="text-green-700 font-semibold">{diagnostics.email_column_detected}</span>
@@ -451,9 +451,9 @@ export default function DocumentosImportar() {
               </div>
 
               <div>
-                <p className="text-sm font-medium text-blue-900 mb-2">Calidad de datos:</p>
+                <p className="text-sm font-medium text-primary-900 mb-2">Calidad de datos:</p>
                 <div className="space-y-1">
-                  <p className="text-sm text-blue-800">
+                  <p className="text-sm text-primary-800">
                     <span className="font-medium">Registros sin vendedor:</span>{' '}
                     {diagnostics.empty_vendor_count > 0 ? (
                       <span className={diagnostics.empty_vendor_count > selectedBatch.records_total * 0.5 ? 'text-red-700 font-semibold' : 'text-orange-700'}>
@@ -474,14 +474,14 @@ export default function DocumentosImportar() {
 
             {diagnostics.sample_vendor_names && diagnostics.sample_vendor_names.length > 0 && (
               <div className="mb-3">
-                <p className="text-sm font-medium text-blue-900 mb-2">
+                <p className="text-sm font-medium text-primary-900 mb-2">
                   Muestra de vendedores detectados (top 5):
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {diagnostics.sample_vendor_names.map((name: string, idx: number) => (
                     <span
                       key={idx}
-                      className="px-3 py-1 bg-white border border-blue-300 rounded-lg text-sm text-blue-900"
+                      className="px-3 py-1 bg-white border border-primary-300 rounded-lg text-sm text-primary-900"
                     >
                       {name}
                     </span>
@@ -492,14 +492,14 @@ export default function DocumentosImportar() {
 
             {diagnostics.sample_emails && diagnostics.sample_emails.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-blue-900 mb-2">
+                <p className="text-sm font-medium text-primary-900 mb-2">
                   Muestra de emails detectados (top 5):
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {diagnostics.sample_emails.map((email: string, idx: number) => (
                     <span
                       key={idx}
-                      className="px-3 py-1 bg-white border border-blue-300 rounded-lg text-sm text-blue-900"
+                      className="px-3 py-1 bg-white border border-primary-300 rounded-lg text-sm text-primary-900"
                     >
                       {email}
                     </span>
@@ -558,7 +558,7 @@ export default function DocumentosImportar() {
                           <td className="px-4 py-3">
                             <button
                               onClick={() => navigate(`/comisiones/lote/${batch.id}`)}
-                              className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                              className="text-sm text-primary-600 hover:text-primary-800 font-medium flex items-center gap-1"
                             >
                               Abrir lote
                               <ArrowRight className="h-4 w-4" />
@@ -684,8 +684,8 @@ export default function DocumentosImportar() {
 
       <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
-            <Upload className="h-5 h-5 sm:h-6 sm:w-6 text-blue-600" />
+          <div className="p-2 bg-primary-100 rounded-lg flex-shrink-0">
+            <Upload className="h-5 h-5 sm:h-6 sm:w-6 text-primary-600" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-base sm:text-lg font-semibold text-gray-900">Cargar archivo</h3>
@@ -702,7 +702,7 @@ export default function DocumentosImportar() {
             <div>
               <label
                 htmlFor="file-upload"
-                className="cursor-pointer inline-block text-sm sm:text-base text-blue-600 hover:text-blue-700 font-medium"
+                className="cursor-pointer inline-block text-sm sm:text-base text-primary-600 hover:text-primary-700 font-medium"
                 onClick={(e) => e.stopPropagation()}
               >
                 Selecciona un archivo
@@ -721,10 +721,10 @@ export default function DocumentosImportar() {
           </div>
 
           {selectedFile && (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div className="mt-4 p-4 bg-primary-50 border border-primary-200 rounded-xl">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <FileSpreadsheet className="h-6 h-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+                  <FileSpreadsheet className="h-6 h-6 sm:h-8 sm:w-8 text-primary-600 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm sm:text-base font-medium text-gray-900 truncate">{selectedFile.name}</p>
                     <p className="text-xs sm:text-sm text-gray-600">
@@ -735,7 +735,7 @@ export default function DocumentosImportar() {
                 <button
                   onClick={handleUpload}
                   disabled={loading}
-                  className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px] font-semibold"
+                  className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px] font-semibold"
                 >
                   {loading ? (
                     <>
@@ -768,7 +768,7 @@ export default function DocumentosImportar() {
 
         {loadingBatches ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
         ) : batches.length === 0 ? (
           <div className="text-center py-12">
@@ -848,7 +848,7 @@ export default function DocumentosImportar() {
                       <div className="flex items-center gap-2 sm:gap-3">
                         <button
                           onClick={() => handleViewBatch(batch)}
-                          className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-700 transition whitespace-nowrap"
+                          className="text-xs sm:text-sm font-medium text-primary-600 hover:text-primary-700 transition whitespace-nowrap"
                         >
                           Ver
                         </button>

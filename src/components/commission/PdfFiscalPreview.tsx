@@ -139,7 +139,7 @@ export default function PdfFiscalPreview({ regimen, desgloseFiscal }: PdfFiscalP
           <h3 className="font-semibold">Vista Previa: Cálculo Fiscal (PDF)</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-blue-100 bg-blue-800 px-2 py-1 rounded">
+          <span className="text-xs text-primary-100 bg-primary-800 px-2 py-1 rounded">
             {regimen}
           </span>
           <button
@@ -204,7 +204,7 @@ export default function PdfFiscalPreview({ regimen, desgloseFiscal }: PdfFiscalP
           {/* PDF Table */}
           <div className="divide-y divide-gray-200">
             {/* Table Header */}
-            <div className="grid grid-cols-2 bg-blue-900 text-white text-xs font-semibold">
+            <div className="grid grid-cols-2 bg-primary-900 text-white text-xs font-semibold">
               <div className="px-4 py-2">Concepto</div>
               <div className="px-4 py-2 text-right">Importe</div>
             </div>
@@ -242,14 +242,14 @@ export default function PdfFiscalPreview({ regimen, desgloseFiscal }: PdfFiscalP
       </div>
 
       {/* Info Panel */}
-      <div className="bg-blue-50 border-t border-blue-200 px-4 py-3">
+      <div className="bg-primary-50 border-t border-primary-200 px-4 py-3">
         <div className="flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+          <AlertCircle className="h-4 w-4 text-primary-600 mt-0.5" />
           <div className="flex-1">
-            <p className="text-xs text-blue-900 font-medium">
+            <p className="text-xs text-primary-900 font-medium">
               Campos permitidos en PDF
             </p>
-            <p className="text-xs text-blue-700 mt-1">
+            <p className="text-xs text-primary-700 mt-1">
               Solo se muestran: Ret. Contable, Costo Dispersión, IVA, ISR Total, Ret. ISR, Ret. IVA, y Total.
               Los cálculos intermedios (Vida, Sin Vida, ISR Vida, ISR Daños, etc.) nunca aparecen en el PDF.
             </p>

@@ -128,12 +128,12 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
             </div>
           </div>
 
-          <div className="bg-blue-50 rounded-xl p-4 space-y-3">
-            <h3 className="font-semibold text-blue-900 mb-3">
+          <div className="bg-primary-50 rounded-xl p-4 space-y-3">
+            <h3 className="font-semibold text-primary-900 mb-3">
               Comisión Actual
             </h3>
             <div className="flex justify-between items-center">
-              <div className="text-blue-700">Comisión:</div>
+              <div className="text-primary-700">Comisión:</div>
               <div className="font-bold text-green-700 text-2xl">
                 {formatCurrency(currentNeta)}
               </div>

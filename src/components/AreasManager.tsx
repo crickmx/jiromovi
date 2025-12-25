@@ -160,7 +160,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
           <div className="mb-6">
             <button
               onClick={() => openModal(null)}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
             >
               <Plus className="w-5 h-5" />
               <span>Nueva Área</span>
@@ -169,7 +169,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : areas.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
@@ -190,7 +190,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                     <div className="flex space-x-2">
                       <button
                         onClick={() => openModal(area)}
-                        className="text-blue-600 hover:bg-blue-50 p-2 rounded transition"
+                        className="text-primary-600 hover:bg-primary-50 p-2 rounded transition"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
@@ -282,7 +282,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                         <button
                           type="button"
                           onClick={() => agregarFranja(dia)}
-                          className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700"
+                          className="flex items-center space-x-1 text-xs text-primary-600 hover:text-primary-700"
                         >
                           <Plus className="w-4 h-4" />
                           <span>Agregar horario</span>
@@ -337,7 +337,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                   type="submit"
                   form="area-form"
                   disabled={saving}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
                 >
                   {saving ? 'Guardando...' : selectedArea ? 'Actualizar' : 'Crear'}
                 </button>

@@ -126,7 +126,7 @@ Prima Total,$${reporteData.primaTotal.toLocaleString('es-MX')}`;
         <button
           onClick={generarReporte}
           disabled={loading}
-          className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="mt-4 bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
         >
           {loading ? 'Generando...' : 'Generar Reporte'}
         </button>
@@ -141,7 +141,7 @@ Prima Total,$${reporteData.primaTotal.toLocaleString('es-MX')}`;
                   <p className="text-sm text-gray-600">Total Contactos</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">{reporteData.totalContactos}</p>
                 </div>
-                <Users className="h-8 w-8 text-blue-600" />
+                <Users className="h-8 w-8 text-primary-600" />
               </div>
             </div>
 

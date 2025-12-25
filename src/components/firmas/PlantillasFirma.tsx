@@ -159,7 +159,7 @@ export function PlantillasFirma() {
         <h2 className="text-xl font-bold text-neutral-900">Plantillas de Firma</h2>
         <button
           onClick={handleNew}
-          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all"
+          className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-all"
         >
           <Plus className="w-5 h-5" />
           <span>Nueva Plantilla</span>
@@ -262,18 +262,18 @@ export function PlantillasFirma() {
                 />
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-900 mb-2">Variables disponibles:</h4>
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                <h4 className="font-semibold text-primary-900 mb-2">Variables disponibles:</h4>
                 <div className="grid grid-cols-2 gap-4">
                   {variables.map((group) => (
                     <div key={group.group}>
-                      <p className="font-semibold text-sm text-blue-800 mb-2">{group.group}:</p>
+                      <p className="font-semibold text-sm text-primary-800 mb-2">{group.group}:</p>
                       <div className="flex flex-wrap gap-2">
                         {group.items.map((item) => (
                           <button
                             key={item}
                             onClick={() => insertVariable(item)}
-                            className="px-2 py-1 bg-white border border-blue-300 text-blue-700 text-xs rounded hover:bg-blue-100 transition-all"
+                            className="px-2 py-1 bg-white border border-primary-300 text-primary-700 text-xs rounded hover:bg-primary-100 transition-all"
                           >
                             {`{{${item}}}`}
                           </button>
@@ -292,14 +292,14 @@ export function PlantillasFirma() {
                   <div className="flex space-x-2">
                     <button
                       onClick={() => setViewMode('code')}
-                      className={`px-3 py-1 text-sm rounded ${viewMode === 'code' ? 'bg-blue-600 text-white' : 'bg-neutral-200 text-neutral-700'}`}
+                      className={`px-3 py-1 text-sm rounded ${viewMode === 'code' ? 'bg-primary-600 text-white' : 'bg-neutral-200 text-neutral-700'}`}
                     >
                       <Code className="w-4 h-4 inline mr-1" />
                       Código
                     </button>
                     <button
                       onClick={() => setViewMode('preview')}
-                      className={`px-3 py-1 text-sm rounded ${viewMode === 'preview' ? 'bg-blue-600 text-white' : 'bg-neutral-200 text-neutral-700'}`}
+                      className={`px-3 py-1 text-sm rounded ${viewMode === 'preview' ? 'bg-primary-600 text-white' : 'bg-neutral-200 text-neutral-700'}`}
                     >
                       <Eye className="w-4 h-4 inline mr-1" />
                       Vista Previa
@@ -334,7 +334,7 @@ export function PlantillasFirma() {
               <button
                 onClick={handleSave}
                 disabled={!formData.nombre || !formData.html}
-                className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50"
+                className="flex items-center space-x-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50"
               >
                 <Save className="w-5 h-5" />
                 <span>Guardar</span>

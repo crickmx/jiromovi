@@ -312,9 +312,9 @@ export default function CommissionBugTest() {
             </div>
           )}
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="font-semibold text-blue-900 mb-2">Recomendación:</p>
-            <p className="text-sm text-blue-800">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+            <p className="font-semibold text-primary-900 mb-2">Recomendación:</p>
+            <p className="text-sm text-primary-800">
               {result.passed
                 ? 'El sistema está funcionando correctamente. No se detectaron bugs de comisión base.'
                 : 'Se detectaron problemas. Ejecuta la función de recálculo de lotes para corregir los registros afectados.'}

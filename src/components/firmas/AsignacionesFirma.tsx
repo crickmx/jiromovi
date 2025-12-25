@@ -112,9 +112,9 @@ export function AsignacionesFirma() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-neutral-900 mb-4">Asignaciones de Firma</h2>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h4 className="font-semibold text-blue-900 mb-2">Orden de prioridad:</h4>
-          <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-6">
+          <h4 className="font-semibold text-primary-900 mb-2">Orden de prioridad:</h4>
+          <ol className="list-decimal list-inside text-sm text-primary-800 space-y-1">
             <li>Usuario específico (prioridad más alta)</li>
             <li>Rol del usuario</li>
             <li>Oficina del usuario</li>
@@ -206,7 +206,7 @@ export function AsignacionesFirma() {
             <button
               onClick={handleAdd}
               disabled={!newAsignacion.template_id}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50"
             >
               <Plus className="w-5 h-5" />
               <span>Agregar</span>
@@ -222,7 +222,7 @@ export function AsignacionesFirma() {
               <div className="flex items-center space-x-3">
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                   asignacion.tipo === 'global' ? 'bg-neutral-100 text-neutral-700' :
-                  asignacion.tipo === 'usuario' ? 'bg-blue-100 text-blue-700' :
+                  asignacion.tipo === 'usuario' ? 'bg-primary-100 text-primary-700' :
                   asignacion.tipo === 'rol' ? 'bg-green-100 text-green-700' :
                   'bg-purple-100 text-purple-700'
                 }`}>
@@ -230,7 +230,7 @@ export function AsignacionesFirma() {
                 </span>
                 <span className="font-semibold text-neutral-900">{getAsignacionLabel(asignacion)}</span>
                 <span className="text-neutral-600">→</span>
-                <span className="text-blue-600">{asignacion.firma_templates.nombre}</span>
+                <span className="text-primary-600">{asignacion.firma_templates.nombre}</span>
               </div>
             </div>
             <button

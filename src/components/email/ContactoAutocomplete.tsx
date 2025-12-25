@@ -165,12 +165,12 @@ export function ContactoAutocomplete({
               onClick={() => handleSelectContacto(contacto)}
               className={`px-4 py-3 cursor-pointer flex items-center space-x-3 ${
                 index === highlightedIndex
-                  ? 'bg-blue-50 border-l-4 border-l-blue-600'
+                  ? 'bg-primary-50 border-l-4 border-l-blue-600'
                   : 'hover:bg-slate-50'
               }`}
             >
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4 text-blue-600" />
+              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-primary-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-slate-900 truncate">

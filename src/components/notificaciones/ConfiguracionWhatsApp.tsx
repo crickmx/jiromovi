@@ -116,11 +116,11 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <MessageCircle className="w-6 h-6 text-blue-600" />
+      <div className="flex items-center gap-3 p-4 bg-primary-50 rounded-lg border border-primary-200">
+        <MessageCircle className="w-6 h-6 text-primary-600" />
         <div>
-          <h3 className="font-semibold text-blue-900">API de WhatsApp - Wazzup24</h3>
-          <p className="text-sm text-blue-700">
+          <h3 className="font-semibold text-primary-900">API de WhatsApp - Wazzup24</h3>
+          <p className="text-sm text-primary-700">
             Configura la integración con Wazzup24 para enviar notificaciones por WhatsApp
           </p>
         </div>

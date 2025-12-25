@@ -275,7 +275,7 @@ export function Oficinas() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -289,20 +289,20 @@ export function Oficinas() {
               <Building2 className="w-8 h-8 text-white" />
               <div>
                 <h1 className="text-2xl font-bold text-white">Gestión de Oficinas</h1>
-                <p className="text-blue-100 mt-1">Administra las oficinas de la empresa</p>
+                <p className="text-primary-100 mt-1">Administra las oficinas de la empresa</p>
               </div>
             </div>
             <div className="flex space-x-3">
               <button
                 onClick={() => setCustomFieldsModalOpen(true)}
-                className="flex items-center space-x-2 bg-white/90 backdrop-blur text-blue-900 px-4 py-2 rounded-lg font-semibold hover:bg-white border-2 border-white/50 transition shadow-sm"
+                className="flex items-center space-x-2 bg-white/90 backdrop-blur text-primary-900 px-4 py-2 rounded-lg font-semibold hover:bg-white border-2 border-white/50 transition shadow-sm"
               >
                 <Settings className="w-5 h-5" />
                 <span>Campos Personalizados</span>
               </button>
               <button
                 onClick={() => openModal()}
-                className="flex items-center space-x-2 bg-white text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition"
+                className="flex items-center space-x-2 bg-white text-primary-700 px-4 py-2 rounded-lg font-medium hover:bg-primary-50 transition"
               >
                 <Plus className="w-5 h-5" />
                 <span>Nueva Oficina</span>
@@ -361,7 +361,7 @@ export function Oficinas() {
                               href={oficina.facebook}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-700"
+                              className="text-primary-600 hover:text-primary-700"
                             >
                               <Facebook className="w-5 h-5" />
                             </a>
@@ -423,7 +423,7 @@ export function Oficinas() {
                       )}
                       <button
                         onClick={() => openModal(oficina)}
-                        className="flex items-center space-x-2 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg transition"
+                        className="flex items-center space-x-2 text-primary-600 hover:bg-primary-50 px-3 py-2 rounded-lg transition"
                       >
                         <Edit className="w-4 h-4" />
                         <span className="text-sm font-medium">Editar</span>
@@ -455,7 +455,7 @@ export function Oficinas() {
                                   className="w-10 h-10 rounded-full object-cover"
                                 />
                               ) : (
-                                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center">
                                   <span className="text-white font-medium text-xs">
                                     {usuario.nombre[0]}{usuario.apellidos[0]}
                                   </span>
@@ -484,7 +484,7 @@ export function Oficinas() {
               <p className="text-slate-500">No hay oficinas registradas</p>
               <button
                 onClick={() => openModal()}
-                className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                className="mt-4 text-primary-600 hover:text-primary-700 font-medium"
               >
                 Crear primera oficina
               </button>
@@ -652,7 +652,7 @@ export function Oficinas() {
                     id="activa"
                     checked={formData.activa}
                     onChange={(e) => setFormData({ ...formData, activa: e.target.checked })}
-                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-5 h-5 text-primary-600 rounded focus:ring-2 focus:ring-blue-500"
                   />
                   <label htmlFor="activa" className="text-sm font-medium text-slate-700">
                     Oficina activa
@@ -665,7 +665,7 @@ export function Oficinas() {
                     id="es_espacio_jiro"
                     checked={formData.es_espacio_jiro}
                     onChange={(e) => setFormData({ ...formData, es_espacio_jiro: e.target.checked })}
-                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-5 h-5 text-primary-600 rounded focus:ring-2 focus:ring-blue-500"
                   />
                   <label htmlFor="es_espacio_jiro" className="text-sm font-medium text-slate-700">
                     Marcar como Espacio JIRO (oficina con áreas reservables)
@@ -687,7 +687,7 @@ export function Oficinas() {
                   type="submit"
                   form="oficina-form"
                   disabled={saving}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+                  className="px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition disabled:opacity-50"
                 >
                   {saving ? 'Guardando...' : selectedOficina ? 'Actualizar' : 'Crear'}
                 </button>
@@ -735,7 +735,7 @@ export function Oficinas() {
                   </select>
                   <button
                     onClick={handleAddCustomField}
-                    className="px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+                    className="px-4 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition"
                   >
                     <Plus className="w-5 h-5" />
                   </button>

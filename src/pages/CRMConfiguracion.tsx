@@ -160,7 +160,7 @@ export default function CRMConfiguracion() {
                 onClick={() => setTab(t.key as any)}
                 className={`px-6 py-3 font-medium text-sm ${
                   tab === t.key
-                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    ? 'text-primary-600 border-b-2 border-primary-600'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -178,7 +178,7 @@ export default function CRMConfiguracion() {
                 <button
                   onClick={agregarCampo}
                   disabled={loading}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Agregar Campo
@@ -212,7 +212,7 @@ export default function CRMConfiguracion() {
                 <button
                   onClick={agregarEtiqueta}
                   disabled={loading}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Agregar Etiqueta
@@ -222,7 +222,7 @@ export default function CRMConfiguracion() {
                 {etiquetas.map((etiqueta) => (
                   <div
                     key={etiqueta.id}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-full"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-100 text-primary-800 rounded-full"
                   >
                     <span>{etiqueta.nombre}</span>
                     <button
@@ -244,7 +244,7 @@ export default function CRMConfiguracion() {
                 <button
                   onClick={agregarFuente}
                   disabled={loading}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Agregar Fuente

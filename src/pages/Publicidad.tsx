@@ -327,7 +327,7 @@ export function Publicidad() {
                     <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 flex items-center justify-between">
                       <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
                         plantilla.tipo === 'imagen'
-                          ? 'bg-blue-100 text-blue-700'
+                          ? 'bg-primary-100 text-primary-700'
                           : 'bg-purple-100 text-purple-700'
                       }`}>
                         {plantilla.tipo === 'imagen' ? 'Imagen' : 'Video'}

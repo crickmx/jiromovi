@@ -471,7 +471,7 @@ export default function MiProduccion() {
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                   syncing
                     ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-primary-600 text-white hover:bg-primary-700'
                 }`}
               >
                 <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
@@ -482,10 +482,10 @@ export default function MiProduccion() {
         </div>
 
         {message && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="mb-6 bg-primary-50 border border-primary-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-800">{message}</p>
+              <AlertCircle className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-primary-800">{message}</p>
             </div>
           </div>
         )}
@@ -501,12 +501,12 @@ export default function MiProduccion() {
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-primary-200">
             <div className="flex items-center gap-2 mb-2">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <p className="text-sm text-blue-700 font-medium">Documentos</p>
+              <FileText className="w-5 h-5 text-primary-600" />
+              <p className="text-sm text-primary-700 font-medium">Documentos</p>
             </div>
-            <p className="text-2xl font-bold text-blue-900">
+            <p className="text-2xl font-bold text-primary-900">
               {kpis.total_documentos}
             </p>
           </div>

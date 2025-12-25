@@ -272,7 +272,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                   onClick={() => setPreviewTab('notificacion')}
                   className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium transition-colors ${
                     previewTab === 'notificacion'
-                      ? 'border-blue-600 text-blue-600'
+                      ? 'border-primary-600 text-primary-600'
                       : 'border-transparent text-neutral-600 hover:text-neutral-800'
                   }`}
                 >
@@ -480,7 +480,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                     value={tituloNotificacion}
                     onChange={(e) => setTituloNotificacion(e.target.value)}
                     placeholder="Ej: Nueva notificación para {{nombre}}"
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
                   />
                 </div>
 
@@ -493,7 +493,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                     onChange={(e) => setCuerpoNotificacion(e.target.value)}
                     rows={8}
                     placeholder="Hola {{nombre}}, tu mensaje aquí..."
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
                   />
                   <p className="text-xs text-neutral-500 mt-1">
                     Este mensaje aparecerá en el centro de notificaciones (campanita)
@@ -508,7 +508,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                       <button
                         key={variable}
                         onClick={() => insertVariable(variable, 'notificacion')}
-                        className="px-3 py-1 text-xs font-mono bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                        className="px-3 py-1 text-xs font-mono bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200 transition-colors"
                       >
                         {variable}
                       </button>

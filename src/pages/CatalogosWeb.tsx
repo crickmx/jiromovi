@@ -387,7 +387,7 @@ export default function CatalogosWeb() {
 
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
                       {IconComponent ? (
-                        <IconComponent className="w-6 h-6 text-blue-600" />
+                        <IconComponent className="w-6 h-6 text-primary-600" />
                       ) : (
                         <ImageIcon className="w-6 h-6 text-gray-400" />
                       )}
@@ -473,7 +473,7 @@ export default function CatalogosWeb() {
                 id="insurer-logo"
                 type="file"
                 accept="image/*"
-                className="w-full px-3 py-2 border rounded-md text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="w-full px-3 py-2 border rounded-md text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
@@ -582,7 +582,7 @@ export default function CatalogosWeb() {
                 const IconPreview = (LucideIcons as any)[categoryForm.lucide_icon];
                 return IconPreview ? (
                   <div className="mt-2 p-3 border rounded bg-gradient-to-br from-blue-50 to-blue-100 flex items-center gap-2">
-                    <IconPreview className="w-6 h-6 text-blue-600" />
+                    <IconPreview className="w-6 h-6 text-primary-600" />
                     <span className="text-sm text-gray-700">Vista previa del icono</span>
                   </div>
                 ) : (

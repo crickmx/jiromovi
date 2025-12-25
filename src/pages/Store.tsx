@@ -65,7 +65,7 @@ export default function Store() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       </Layout>
     );
@@ -123,7 +123,7 @@ export default function Store() {
 
             <button
               onClick={() => navigate('/store/carrito')}
-              className="relative flex items-center gap-2 bg-blue-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
+              className="relative flex items-center gap-2 bg-primary-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
             >
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Carrito</span>
@@ -147,7 +147,7 @@ export default function Store() {
               onClick={() => setCategoriaSeleccionada('')}
               className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                 !categoriaSeleccionada
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -160,7 +160,7 @@ export default function Store() {
                 onClick={() => setCategoriaSeleccionada(categoria.id)}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                   categoriaSeleccionada === categoria.id
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >

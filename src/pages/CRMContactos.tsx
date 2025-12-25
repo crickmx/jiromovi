@@ -87,7 +87,7 @@ export default function CRMContactos() {
   const getEstatusColor = (estatus: string) => {
     switch (estatus) {
       case 'Prospecto':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary-100 text-primary-800';
       case 'Cotización Presentada':
         return 'bg-yellow-100 text-yellow-800';
       case 'Negociación':
@@ -104,7 +104,7 @@ export default function CRMContactos() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -127,7 +127,7 @@ export default function CRMContactos() {
         </div>
         <button
           onClick={handleAgregarContacto}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center justify-center gap-2"
         >
           <Plus className="h-5 w-5" />
           Agregar Contacto
@@ -227,7 +227,7 @@ export default function CRMContactos() {
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           to={`/mi-crm/contactos/${contacto.id}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-primary-600 hover:text-primary-900"
                         >
                           <Eye className="h-5 w-5" />
                         </Link>

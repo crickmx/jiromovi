@@ -47,7 +47,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       </div>
     );
@@ -117,14 +117,14 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center ${
                         vendor.vendor_type === 'email'
-                          ? 'bg-blue-100'
+                          ? 'bg-primary-100'
                           : vendor.vendor_type === 'name'
                           ? 'bg-purple-100'
                           : 'bg-gray-100'
                       }`}
                     >
                       {vendor.vendor_type === 'email' ? (
-                        <Mail className="h-5 w-5 text-blue-600" />
+                        <Mail className="h-5 w-5 text-primary-600" />
                       ) : vendor.vendor_type === 'name' ? (
                         <User className="h-5 w-5 text-purple-600" />
                       ) : (
@@ -139,7 +139,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                         <span
                           className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                             vendor.vendor_type === 'email'
-                              ? 'bg-blue-100 text-blue-800'
+                              ? 'bg-primary-100 text-primary-800'
                               : vendor.vendor_type === 'name'
                               ? 'bg-purple-100 text-purple-800'
                               : 'bg-gray-100 text-gray-800'
@@ -195,7 +195,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                   </div>
 
                   <details className="group">
-                    <summary className="cursor-pointer text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center space-x-1">
+                    <summary className="cursor-pointer text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center space-x-1">
                       <span>Ver ejemplos de pólizas ({vendor.polizas_count})</span>
                       <svg
                         className="h-4 w-4 transition-transform group-open:rotate-180"
@@ -260,7 +260,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
 
                 <button
                   onClick={() => handleAsignar(vendor)}
-                  className="ml-6 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="ml-6 flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   <UserPlus className="h-4 w-4" />
                   <span>Asignar Usuario MOVI</span>

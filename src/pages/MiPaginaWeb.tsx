@@ -278,7 +278,7 @@ export default function MiPaginaWeb() {
               <textarea
                 value={config.custom_text}
                 onChange={(e) => setConfig(prev => ({ ...prev, custom_text: e.target.value }))}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl min-h-[240px] text-sm focus:border-blue-500 focus:outline-none transition-colors resize-none shadow-sm"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl min-h-[240px] text-sm focus:border-primary-500 focus:outline-none transition-colors resize-none shadow-sm"
                 placeholder="Como tu asesor personal de seguros, mi compromiso es brindarte atención especializada...&#10;&#10;Trabajo con las mejores aseguradoras del mercado...&#10;&#10;Mi objetivo es que tomes decisiones informadas..."
               />
               <div className="absolute bottom-3 right-3 text-xs text-gray-400">

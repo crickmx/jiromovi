@@ -37,8 +37,8 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
       id: 'En Proceso',
       titulo: 'En Proceso',
       icon: Loader,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
+      color: 'text-primary-600',
+      bgColor: 'bg-primary-50'
     },
     {
       id: 'Completada',
@@ -134,7 +134,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -168,7 +168,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
 
             <div
               className={`min-h-[400px] p-3 space-y-3 bg-gray-50 rounded-b-lg transition-colors ${
-                draggingOverColumn === columna.id ? 'bg-blue-100 border-2 border-blue-400 border-dashed' : ''
+                draggingOverColumn === columna.id ? 'bg-primary-100 border-2 border-primary-400 border-dashed' : ''
               }`}
             >
               {tareasColumna.length === 0 ? (
@@ -190,7 +190,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
                       onClick={() => onVerDetalle(tarea)}
                       className={`bg-white rounded-lg p-4 shadow-sm border-2 cursor-move hover:shadow-md transition-all ${
                         draggedTask === tarea.id ? 'opacity-50 rotate-2 scale-95' : ''
-                      } ${vencida ? 'border-red-300' : 'border-gray-200 hover:border-blue-300'}`}
+                      } ${vencida ? 'border-red-300' : 'border-gray-200 hover:border-primary-300'}`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center space-x-2 flex-1 min-w-0">

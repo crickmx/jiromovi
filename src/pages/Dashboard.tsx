@@ -180,7 +180,7 @@ export function Dashboard() {
                 Resumen de tus actividades
               </p>
             </div>
-            <Sparkles className="w-8 h-8 text-blue-500" />
+            <Sparkles className="w-8 h-8 text-primary-500" />
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -189,7 +189,7 @@ export function Dashboard() {
                 href={getMiPaginaWebFull(currentUser.web_slug)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-primary-700 transition-colors"
               >
                 Mi Página Web
                 <ExternalLink className="w-4 h-4" />
@@ -220,7 +220,7 @@ export function Dashboard() {
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between mb-2">
-              <ClipboardList className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
+              <ClipboardList className="w-8 h-8 text-primary-500 group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-sm font-semibold text-gray-900">Trámites</p>
             <p className="text-xs text-gray-600 mt-1">Ver todos</p>
@@ -277,7 +277,7 @@ export function Dashboard() {
               Panel de {isGerente ? 'gerencia' : 'administración'}
             </p>
           </div>
-          <Settings className="w-8 h-8 text-blue-500" />
+          <Settings className="w-8 h-8 text-primary-500" />
         </div>
 
         <div className="flex flex-wrap gap-2 mt-4">
@@ -286,7 +286,7 @@ export function Dashboard() {
               href={getMiPaginaWebFull(currentUser.web_slug)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-primary-700 transition-colors"
             >
               Mi Página Web
               <ExternalLink className="w-4 h-4" />
@@ -306,7 +306,7 @@ export function Dashboard() {
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
-            <Users className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
+            <Users className="w-8 h-8 text-primary-500 group-hover:scale-110 transition-transform" />
           </div>
           <p className="text-2xl font-bold text-gray-900">{totalUsuarios}</p>
           <p className="text-xs text-gray-600 mt-1">
@@ -361,7 +361,7 @@ export function Dashboard() {
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
+            <TrendingUp className="w-8 h-8 text-primary-500 group-hover:scale-110 transition-transform" />
           </div>
           <p className="text-sm font-semibold text-gray-900">Producción</p>
           <p className="text-xs text-gray-600 mt-1">Ver reportes</p>
@@ -397,7 +397,7 @@ export function Dashboard() {
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between mb-2">
-              <Settings className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
+              <Settings className="w-8 h-8 text-primary-500 group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-sm font-semibold text-gray-900">Config Producción</p>
             <p className="text-xs text-gray-600 mt-1">Google Sheets</p>

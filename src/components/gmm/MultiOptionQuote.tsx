@@ -226,11 +226,11 @@ export function MultiOptionQuote({
 
   return (
     <div className="space-y-6">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-blue-900 mb-2">
+      <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-primary-900 mb-2">
           Cotización Comparativa
         </h3>
-        <p className="text-sm text-blue-700">
+        <p className="text-sm text-primary-700">
           Configure múltiples opciones con diferentes parámetros para comparar resultados lado a lado.
         </p>
       </div>
@@ -474,7 +474,7 @@ export function MultiOptionQuote({
                 <div className="pt-4 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
                   <div className="text-center">
                     <div className="text-xs text-gray-500 mb-1">Total a Pagar</div>
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-2xl font-bold text-primary-600">
                       {formatCurrency(result.options[idx].totales.total_pagar)}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
@@ -582,7 +582,7 @@ export function MultiOptionQuote({
                     </td>
                   ))}
                 </tr>
-                <tr className="bg-blue-50">
+                <tr className="bg-primary-50">
                   <td className="p-3 font-bold">Prima Neta Total</td>
                   {result.options.map((opt, idx) => (
                     <td key={idx} className="text-center p-3 font-semibold">
@@ -618,7 +618,7 @@ export function MultiOptionQuote({
             </table>
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <div className="mt-6 p-4 bg-primary-50 rounded-lg">
             <h4 className="font-semibold mb-2 text-sm">Mejor Opción (Precio más bajo)</h4>
             <p className="text-sm text-gray-700">
               {(() => {

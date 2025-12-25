@@ -375,14 +375,14 @@ export default function ComisionesUpload() {
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <h3 className="font-semibold text-blue-900 mb-2">
+        <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
+          <h3 className="font-semibold text-primary-900 mb-2">
             Formato del archivo Excel
           </h3>
-          <p className="text-sm text-blue-800 mb-2">
+          <p className="text-sm text-primary-800 mb-2">
             El archivo debe contener las siguientes columnas obligatorias:
           </p>
-          <ul className="text-sm text-blue-800 space-y-1 ml-4">
+          <ul className="text-sm text-primary-800 space-y-1 ml-4">
             <li><strong>FPago</strong> - Fecha de pago (formato fecha)</li>
             <li><strong>Email</strong> o <strong>EmailAgente</strong> - Email del agente</li>
             <li><strong>Ramo</strong> - Ramo de seguro</li>
@@ -391,18 +391,18 @@ export default function ComisionesUpload() {
             <li><strong>PorPart</strong> - Porcentaje de comisión (número, ej: 25 para 25%)</li>
             <li><strong>Documento</strong> o <strong>Poliza</strong> - Número de póliza/documento</li>
           </ul>
-          <p className="text-sm font-semibold text-blue-900 mt-4 mb-2">
+          <p className="text-sm font-semibold text-primary-900 mt-4 mb-2">
             Columnas opcionales:
           </p>
-          <ul className="text-sm text-blue-800 space-y-1 ml-4">
+          <ul className="text-sm text-primary-800 space-y-1 ml-4">
             <li><strong>PrimaNeta</strong> - Prima neta (solo informativo, no afecta el cálculo)</li>
             <li><strong>NombreCompleto</strong>, <strong>NombreAsegurado</strong> o <strong>Asegurado</strong> - Nombre del asegurado</li>
             <li><strong>Concepto</strong> - Concepto o descripción adicional</li>
           </ul>
-          <p className="text-sm font-semibold text-blue-900 mt-4 mb-2">
+          <p className="text-sm font-semibold text-primary-900 mt-4 mb-2">
             Nota importante:
           </p>
-          <p className="text-sm text-blue-800">
+          <p className="text-sm text-primary-800">
             La comisión se calcula como: <strong>Comisión = Importe × (PorPart / 100)</strong>.
             El campo PrimaNeta es solo informativo y no se usa en el cálculo.
           </p>

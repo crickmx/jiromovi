@@ -41,7 +41,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
             <div>
               {producto.categoria && (
-                <span className="inline-block px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full mb-3">
+                <span className="inline-block px-3 py-1 text-sm font-medium bg-primary-100 text-primary-800 rounded-full mb-3">
                   {producto.categoria.nombre}
                 </span>
               )}
@@ -50,7 +50,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 {producto.titulo}
               </h1>
 
-              <p className="text-4xl font-bold text-blue-600 mb-6">
+              <p className="text-4xl font-bold text-primary-600 mb-6">
                 ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
               </p>
 
@@ -92,7 +92,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleAgregar}
-                  className="flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
+                  className="flex items-center justify-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-semibold text-lg"
                 >
                   <ShoppingCart className="w-5 h-5" />
                   Agregar al Carrito
@@ -106,8 +106,8 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 </button>
               </div>
 
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="mt-6 p-4 bg-primary-50 rounded-lg">
+                <p className="text-sm text-primary-800">
                   <strong>Subtotal:</strong> ${(producto.precio * cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                 </p>
               </div>

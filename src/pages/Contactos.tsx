@@ -230,7 +230,7 @@ export function Contactos() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="mt-4 text-slate-600">Cargando contactos...</p>
         </div>
       </div>
@@ -246,14 +246,14 @@ export function Contactos() {
               <Users className="w-10 h-10 text-white" />
               <div>
                 <h1 className="text-2xl font-bold text-white">Contactos</h1>
-                <p className="text-blue-100 mt-1">
+                <p className="text-primary-100 mt-1">
                   Gestiona tus contactos de email
                 </p>
               </div>
             </div>
             <button
               onClick={handleNuevoContacto}
-              className="flex items-center space-x-2 bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-all shadow-md"
+              className="flex items-center space-x-2 bg-white text-primary-600 px-6 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-all shadow-md"
             >
               <Plus className="w-5 h-5" />
               <span>Nuevo Contacto</span>
@@ -351,8 +351,8 @@ export function Contactos() {
                   <tr key={contacto.id} className="hover:bg-slate-50 transition">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-blue-600 font-semibold text-sm">
+                        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                          <span className="text-primary-600 font-semibold text-sm">
                             {(contacto.nombre?.[0] || contacto.email[0]).toUpperCase()}
                           </span>
                         </div>
@@ -406,7 +406,7 @@ export function Contactos() {
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           contacto.origen === 'automatico'
-                            ? 'bg-blue-100 text-blue-700'
+                            ? 'bg-primary-100 text-primary-700'
                             : 'bg-green-100 text-green-700'
                         }`}
                       >
@@ -417,7 +417,7 @@ export function Contactos() {
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={() => handleEditContacto(contacto)}
-                          className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-lg transition"
+                          className="text-primary-600 hover:text-primary-800 p-2 hover:bg-primary-50 rounded-lg transition"
                           title="Editar"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -554,7 +554,7 @@ export function Contactos() {
               <button
                 onClick={handleSaveContacto}
                 disabled={saving}
-                className="flex items-center space-x-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+                className="flex items-center space-x-2 px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 <span>{saving ? 'Guardando...' : 'Guardar Contacto'}</span>

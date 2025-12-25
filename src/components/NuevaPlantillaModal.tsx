@@ -331,7 +331,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
 
   const renderResizeHandles = (zone: 'logo' | 'texto') => {
     const handleClass = zone === 'logo'
-      ? 'bg-blue-500 border-2 border-white'
+      ? 'bg-primary-500 border-2 border-white'
       : 'bg-green-500 border-2 border-white';
 
     return (
@@ -552,7 +552,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                 </p>
                 <div className="flex items-center space-x-4 mb-4">
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-blue-500/30 border-2 border-blue-500 rounded"></div>
+                    <div className="w-4 h-4 bg-primary-500/30 border-2 border-primary-500 rounded"></div>
                     <span className="text-sm text-neutral-700">Zona Logo</span>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -574,7 +574,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
 
                 {/* Zona Logo */}
                 <div
-                  className={`absolute border-2 ${editingZone === 'logo' ? 'border-blue-500 shadow-lg' : 'border-blue-400'} bg-blue-500/20 cursor-move transition-all`}
+                  className={`absolute border-2 ${editingZone === 'logo' ? 'border-primary-500 shadow-lg' : 'border-primary-400'} bg-primary-500/20 cursor-move transition-all`}
                   style={{
                     left: `${zonaLogo.x * 100}%`,
                     top: `${zonaLogo.y * 100}%`,
@@ -583,7 +583,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                   }}
                   onMouseDown={(e) => handleZoneMouseDown('logo', e)}
                 >
-                  <div className="absolute -top-7 left-0 bg-blue-500 text-white px-2 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1 pointer-events-none">
+                  <div className="absolute -top-7 left-0 bg-primary-500 text-white px-2 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1 pointer-events-none">
                     <ImageIcon className="w-3 h-3" />
                     <span>Logo</span>
                   </div>

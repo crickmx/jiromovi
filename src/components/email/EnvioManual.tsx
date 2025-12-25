@@ -267,7 +267,7 @@ export function EnvioManual() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -287,7 +287,7 @@ export function EnvioManual() {
       )}
 
       {isGerente && (
-        <div className="mb-6 px-4 py-3 rounded-lg bg-blue-50 text-blue-800 border border-blue-200">
+        <div className="mb-6 px-4 py-3 rounded-lg bg-primary-50 text-primary-800 border border-primary-200">
           <p className="text-sm">
             <strong>Permisos de Gerente:</strong> Solo puedes redactar y enviar correos personalizados a usuarios con rol Empleado o Agente de tu oficina asignada.
           </p>
@@ -300,7 +300,7 @@ export function EnvioManual() {
             onClick={() => setModoRedaccion(false)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition ${
               !modoRedaccion
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
@@ -311,7 +311,7 @@ export function EnvioManual() {
             onClick={() => setModoRedaccion(true)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition ${
               modoRedaccion
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
@@ -359,7 +359,7 @@ export function EnvioManual() {
 
                   <button
                     onClick={() => setShowPreview(true)}
-                    className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+                    className="flex items-center space-x-2 text-primary-600 hover:text-primary-700 font-medium"
                   >
                     <Eye className="w-5 h-5" />
                     <span>Vista previa de la plantilla</span>
@@ -394,7 +394,7 @@ export function EnvioManual() {
               {cuerpoPersonalizado && (
                 <button
                   onClick={() => setShowPreview(true)}
-                  className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+                  className="flex items-center space-x-2 text-primary-600 hover:text-primary-700 font-medium"
                 >
                   <Eye className="w-5 h-5" />
                   <span>Vista previa del correo</span>
@@ -411,7 +411,7 @@ export function EnvioManual() {
             </h3>
             <button
               onClick={handleSelectAll}
-              className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="flex items-center space-x-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
             >
               <UserCheck className="w-4 h-4" />
               <span>{selectedUsuarios.length === filteredUsuarios.length ? 'Deseleccionar' : 'Seleccionar'} todos</span>
@@ -443,7 +443,7 @@ export function EnvioManual() {
                       onClick={() => toggleOficina(oficina.id)}
                       className={`px-3 py-1 text-sm rounded-full transition ${
                         filtroOficinas.includes(oficina.id)
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-primary-600 text-white'
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                       }`}
                     >
@@ -463,7 +463,7 @@ export function EnvioManual() {
                     onClick={() => toggleRol(rol)}
                     className={`px-3 py-1 text-sm rounded-full transition ${
                       filtroRoles.includes(rol)
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-primary-600 text-white'
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                     }`}
                   >
@@ -491,7 +491,7 @@ export function EnvioManual() {
                       type="checkbox"
                       checked={selectedUsuarios.includes(usuario.id)}
                       onChange={() => toggleUsuario(usuario.id)}
-                      className="w-4 h-4 text-blue-600 rounded"
+                      className="w-4 h-4 text-primary-600 rounded"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-900 truncate">
@@ -533,7 +533,7 @@ export function EnvioManual() {
             (modoRedaccion && (!asuntoPersonalizado || !cuerpoPersonalizado)) ||
             sending
           }
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Send className="w-5 h-5" />
           <span>{sending ? 'Enviando...' : 'Enviar Correos'}</span>

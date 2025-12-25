@@ -103,8 +103,8 @@ export function AssistantAnalytics() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Brain className="h-5 w-5 text-blue-600" />
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <Brain className="h-5 w-5 text-primary-600" />
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Consultas</p>
@@ -127,8 +127,8 @@ export function AssistantAnalytics() {
 
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <CheckCircle2 className="h-5 w-5 text-blue-600" />
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <CheckCircle2 className="h-5 w-5 text-primary-600" />
             </div>
             <div>
               <p className="text-sm text-gray-600">MOVI</p>
@@ -163,7 +163,7 @@ export function AssistantAnalytics() {
                   className={`px-2 py-1 rounded text-xs font-medium ${
                     decision.selected_mode === 'chatgpt'
                       ? 'bg-purple-100 text-purple-700'
-                      : 'bg-blue-100 text-blue-700'
+                      : 'bg-primary-100 text-primary-700'
                   }`}
                 >
                   {decision.selected_mode === 'chatgpt' ? '🤖 ChatGPT' : '📊 MOVI'}
@@ -188,9 +188,9 @@ export function AssistantAnalytics() {
         </div>
       </Card>
 
-      <Card className="p-6 bg-blue-50 border-blue-200">
-        <h4 className="font-semibold mb-2 text-blue-900">Cómo funciona el sistema</h4>
-        <div className="space-y-2 text-sm text-blue-800">
+      <Card className="p-6 bg-primary-50 border-primary-200">
+        <h4 className="font-semibold mb-2 text-primary-900">Cómo funciona el sistema</h4>
+        <div className="space-y-2 text-sm text-primary-800">
           <p>
             <strong>1 Chat, 2 Cerebros:</strong> El asistente analiza cada pregunta y decide
             automáticamente cuál es el mejor modo para responder.

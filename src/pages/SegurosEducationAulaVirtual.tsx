@@ -233,14 +233,14 @@ export function SegurosEducationAulaVirtual() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/seguros-education')}
-              className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 text-slate-600 hover:text-primary-600 hover:bg-slate-100 rounded-lg transition-colors"
               title="Volver a Seguros Education"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Video className="w-6 h-6 text-blue-600" />
+                <Video className="w-6 h-6 text-primary-600" />
                 Aula Virtual
               </h1>
               <p className="text-slate-600 mt-1">Capacitaciones en vivo con WebRTC</p>
@@ -257,7 +257,7 @@ export function SegurosEducationAulaVirtual() {
             {isAdmin && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
                 Nueva Sesión
@@ -355,7 +355,7 @@ export function SegurosEducationAulaVirtual() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200">
           <div className="p-4 border-b border-slate-200">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
+              <Calendar className="w-5 h-5 text-primary-600" />
               Próximas Sesiones
             </h2>
           </div>
@@ -372,11 +372,11 @@ export function SegurosEducationAulaVirtual() {
                     key={session.id}
                     className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all"
                   >
-                    <div className="w-16 h-16 bg-blue-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-medium text-blue-600">
+                    <div className="w-16 h-16 bg-primary-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-medium text-primary-600">
                         {format(new Date(session.fecha_inicio), 'MMM', { locale: es }).toUpperCase()}
                       </span>
-                      <span className="text-2xl font-bold text-blue-700">
+                      <span className="text-2xl font-bold text-primary-700">
                         {format(new Date(session.fecha_inicio), 'd')}
                       </span>
                     </div>
@@ -538,7 +538,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
         type="submit"
         form="crear-sesion-form"
         disabled={loading}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all disabled:opacity-50"
+        className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-all disabled:opacity-50"
       >
         {loading ? 'Creando...' : 'Crear Sesión'}
       </button>
@@ -632,7 +632,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             id="grabar"
             checked={formData.grabar_sesion}
             onChange={(e) => setFormData({ ...formData, grabar_sesion: e.target.checked })}
-            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-blue-500"
           />
           <label htmlFor="grabar" className="text-sm text-slate-700">
             Grabar sesión automáticamente
@@ -681,7 +681,7 @@ function GrabacionesModal({
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       grabacion.estado_procesamiento === 'completado' ? 'bg-green-100 text-green-700' :
-                      grabacion.estado_procesamiento === 'procesando' ? 'bg-blue-100 text-blue-700' :
+                      grabacion.estado_procesamiento === 'procesando' ? 'bg-primary-100 text-primary-700' :
                       grabacion.estado_procesamiento === 'error' ? 'bg-red-100 text-red-700' :
                       'bg-amber-100 text-amber-700'
                     }`}>
@@ -702,7 +702,7 @@ function GrabacionesModal({
                     <a
                       href={grabacion.archivo_procesado_url}
                       download
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-medium transition-all"
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-sm font-medium transition-all"
                       title="Descargar grabación"
                     >
                       <Download className="w-4 h-4" />

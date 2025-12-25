@@ -105,7 +105,7 @@ export default function CumpleanosContactos() {
     } else if (dias <= 7) {
       return { text: `${dias} días`, color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
     } else if (dias <= 30) {
-      return { text: `${dias} días`, color: 'bg-blue-100 text-blue-800 border-blue-200' };
+      return { text: `${dias} días`, color: 'bg-primary-100 text-primary-800 border-primary-200' };
     } else {
       return { text: `${dias} días`, color: 'bg-gray-100 text-gray-800 border-gray-200' };
     }
@@ -115,7 +115,7 @@ export default function CumpleanosContactos() {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       </div>
     );
@@ -136,7 +136,7 @@ export default function CumpleanosContactos() {
           </div>
           <button
             onClick={() => navigate('/mi-crm/contactos')}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
+            className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
           >
             Ver todos
             <ChevronRight className="h-4 w-4" />

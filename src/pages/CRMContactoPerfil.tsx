@@ -129,7 +129,7 @@ export default function CRMContactoPerfil() {
 
   const getEstatusColor = (estatus: string) => {
     const colors: Record<string, string> = {
-      Prospecto: 'bg-blue-100 text-blue-800',
+      Prospecto: 'bg-primary-100 text-primary-800',
       'Cotización Presentada': 'bg-yellow-100 text-yellow-800',
       Negociación: 'bg-orange-100 text-orange-800',
       Cliente: 'bg-green-100 text-green-800',
@@ -141,7 +141,7 @@ export default function CRMContactoPerfil() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -152,7 +152,7 @@ export default function CRMContactoPerfil() {
         <p>Contacto no encontrado</p>
         <button
           onClick={() => navigate('/mi-crm/contactos')}
-          className="text-blue-600 hover:underline mt-4"
+          className="text-primary-600 hover:underline mt-4"
         >
           Volver a contactos
         </button>
@@ -230,7 +230,7 @@ export default function CRMContactoPerfil() {
                   {contacto.etiquetas_segmentacion.map((tag) => (
                     <span
                       key={tag}
-                      className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
+                      className="px-2 py-1 bg-primary-100 text-primary-800 rounded-full text-xs"
                     >
                       {tag}
                     </span>
@@ -241,7 +241,7 @@ export default function CRMContactoPerfil() {
           </div>
           <button
             onClick={() => setShowEditModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
           >
             <Edit className="h-4 w-4" />
             Editar
@@ -258,7 +258,7 @@ export default function CRMContactoPerfil() {
                 onClick={() => setTab(t as any)}
                 className={`px-6 py-3 font-medium text-sm whitespace-nowrap ${
                   tab === t
-                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    ? 'text-primary-600 border-b-2 border-primary-600'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -276,7 +276,7 @@ export default function CRMContactoPerfil() {
               ) : (
                 timeline.map((item) => (
                   <div key={item.id} className="flex gap-4 pb-4 border-b last:border-0">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-lg">{item.icono === 'FileText' ? '📄' : item.icono === 'Shield' ? '🛡️' : item.icono === 'CheckCircle' ? '✅' : '📝'}</span>
                     </div>
                     <div className="flex-1">
@@ -298,7 +298,7 @@ export default function CRMContactoPerfil() {
                 <h3 className="text-lg font-semibold text-gray-900">Cotizaciones</h3>
                 <button
                   onClick={handleAgregarCotizacion}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Nueva Cotización
@@ -326,7 +326,7 @@ export default function CRMContactoPerfil() {
                             <div className="flex items-center gap-3 mt-3">
                               <button
                                 onClick={() => abrirArchivoCRM(cot.archivo_url!)}
-                                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium hover:bg-blue-50 px-3 py-1.5 rounded transition"
+                                className="flex items-center gap-2 text-primary-600 hover:text-primary-800 text-sm font-medium hover:bg-primary-50 px-3 py-1.5 rounded transition"
                               >
                                 <ExternalLink className="h-4 w-4" />
                                 Abrir PDF
@@ -397,7 +397,7 @@ export default function CRMContactoPerfil() {
                             <div className="flex items-center gap-3 mt-3">
                               <button
                                 onClick={() => abrirArchivoCRM(pol.archivo_url!)}
-                                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium hover:bg-blue-50 px-3 py-1.5 rounded transition"
+                                className="flex items-center gap-2 text-primary-600 hover:text-primary-800 text-sm font-medium hover:bg-primary-50 px-3 py-1.5 rounded transition"
                               >
                                 <ExternalLink className="h-4 w-4" />
                                 Abrir PDF

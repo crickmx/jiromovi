@@ -358,7 +358,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         type="submit"
         form="user-form"
         disabled={loading}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+        className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition disabled:opacity-50"
       >
         {loading ? 'Guardando...' : user ? 'Actualizar Usuario' : 'Crear Usuario'}
       </button>
@@ -371,8 +371,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
       onClose={onClose}
       title={
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-            <User className="w-5 h-5 text-blue-600" />
+          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+            <User className="w-5 h-5 text-primary-600" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
@@ -408,7 +408,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap
                   ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
+                      ? 'border-primary-500 text-primary-600'
                       : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
                   }
                 `}
@@ -427,8 +427,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           <div className="space-y-6">
             {/* Contraseña */}
             {(!user || (user && isAdmin)) && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-primary-900 mb-3 flex items-center gap-2">
                   <span>🔐</span>
                   Contraseña de Acceso
                 </h3>
@@ -577,7 +577,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     />
                     <p className="text-xs text-slate-500 mt-1">
                       {formData.web_slug ? (
-                        <>URL: <span className="font-mono text-blue-600">agentedeseguros.online/{formData.web_slug}</span></>
+                        <>URL: <span className="font-mono text-primary-600">agentedeseguros.online/{formData.web_slug}</span></>
                       ) : (
                         'Solo letras minúsculas, números y guiones'
                       )}
@@ -693,9 +693,9 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               />
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-blue-900 mb-2">💡 Recomendaciones</h4>
-              <ul className="text-xs text-blue-800 space-y-1">
+            <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-primary-900 mb-2">💡 Recomendaciones</h4>
+              <ul className="text-xs text-primary-800 space-y-1">
                 <li>• Foto de perfil: formato cuadrado (1:1), mínimo 400x400px</li>
                 <li>• Logotipo: formato horizontal (16:9), fondo transparente preferible</li>
                 <li>• Formatos: PNG, JPG o GIF. Tamaño máximo: 2MB</li>
@@ -804,8 +804,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             )}
 
             {!user && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-700">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                <p className="text-sm text-primary-700">
                   💡 El expediente de documentos estará disponible después de crear el usuario
                 </p>
               </div>

@@ -407,8 +407,8 @@ export default function MisComisiones() {
                       {summary && (
                         <div className="grid grid-cols-3 gap-2 sm:gap-3">
                           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2.5">
-                            <div className="text-[10px] sm:text-xs text-blue-700 font-medium mb-0.5">Pólizas</div>
-                            <div className="text-sm sm:text-base font-bold text-blue-900">{details.length}</div>
+                            <div className="text-[10px] sm:text-xs text-primary-700 font-medium mb-0.5">Pólizas</div>
+                            <div className="text-sm sm:text-base font-bold text-primary-900">{details.length}</div>
                           </div>
                           <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-lg p-2.5">
                             <div className="text-[10px] sm:text-xs text-neutral-600 font-medium mb-0.5">Prima Neta</div>
@@ -503,7 +503,7 @@ export default function MisComisiones() {
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex-1 min-w-0">
                                 <h5 className="text-sm font-bold text-neutral-900 truncate">{ramo}</h5>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 mt-1">
                                   {data.count} {data.count === 1 ? 'póliza' : 'pólizas'}
                                 </span>
                               </div>
@@ -667,8 +667,8 @@ export default function MisComisiones() {
                       const isHonorarios = !isAsimilados && !isResico;
 
                       return (
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 sm:p-4 mt-6 border border-blue-200">
-                          <h4 className="text-sm sm:text-base font-bold text-blue-900 mb-2 flex items-center gap-2">
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 sm:p-4 mt-6 border border-primary-200">
+                          <h4 className="text-sm sm:text-base font-bold text-primary-900 mb-2 flex items-center gap-2">
                             <DollarSign className="w-4 h-4" />
                             Desglose Fiscal ({regimen.toUpperCase()})
                           </h4>
@@ -759,7 +759,7 @@ export default function MisComisiones() {
                             </div>
                           </div>
 
-                          <p className="text-[10px] sm:text-xs text-blue-700 mt-2 italic">
+                          <p className="text-[10px] sm:text-xs text-primary-700 mt-2 italic">
                             * Cálculo según régimen {regimen.toUpperCase()}
                           </p>
                         </div>

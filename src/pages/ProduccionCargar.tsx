@@ -242,14 +242,14 @@ export default function ProduccionCargar() {
         </div>
 
         <div className="space-y-3 mb-4 sm:mb-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
             <div className="flex items-start gap-2 sm:gap-3">
-              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-blue-900 mb-1 text-sm sm:text-base">
+                <h3 className="font-semibold text-primary-900 mb-1 text-sm sm:text-base">
                   Sincronización Incremental
                 </h3>
-                <p className="text-xs sm:text-sm text-blue-800">
+                <p className="text-xs sm:text-sm text-primary-800">
                   El sistema detecta automáticamente registros duplicados y solo agrega información nueva.
                   Los datos existentes se mantienen intactos y no se eliminan.
                 </p>
@@ -257,14 +257,14 @@ export default function ProduccionCargar() {
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
             <div className="flex items-start gap-2 sm:gap-3">
-              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-blue-900 mb-1 text-sm sm:text-base">
+                <h3 className="font-semibold text-primary-900 mb-1 text-sm sm:text-base">
                   Límites del sistema
                 </h3>
-                <ul className="text-xs sm:text-sm text-blue-800 space-y-1">
+                <ul className="text-xs sm:text-sm text-primary-800 space-y-1">
                   <li>• Tamaño máximo de archivo Excel: 1000 MB</li>
                   <li>• Sin límite de registros para Google Sheets</li>
                   <li>• El procesamiento de grandes volúmenes puede tomar varios minutos</li>
@@ -320,8 +320,8 @@ export default function ProduccionCargar() {
                   />
                 </label>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
+                <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
+                  <p className="text-sm text-primary-800">
                     <strong>Importante:</strong> Asegúrate de que el Google Sheet esté compartido como "Cualquier persona con el enlace puede ver"
                   </p>
                 </div>
@@ -349,11 +349,11 @@ export default function ProduccionCargar() {
             />
 
             {file && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <p className="text-sm font-medium text-blue-900">
+              <div className="mt-4 p-4 bg-primary-50 border border-primary-200 rounded-xl">
+                <p className="text-sm font-medium text-primary-900">
                   Archivo seleccionado: {file.name}
                 </p>
-                <p className="text-xs text-blue-700 mt-1">
+                <p className="text-xs text-primary-700 mt-1">
                   Tamaño: {(file.size / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
@@ -387,8 +387,8 @@ export default function ProduccionCargar() {
             </div>
 
             {stats.duplicateCount > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                <p className="text-sm text-blue-800">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-primary-800">
                   <strong>Sincronización incremental:</strong> Se encontraron {stats.duplicateCount} registros que ya existían en la base de datos (no se duplicaron).
                 </p>
               </div>
@@ -419,7 +419,7 @@ export default function ProduccionCargar() {
 
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm text-neutral-600 mb-1">Prima Convenio</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-2xl font-bold text-primary-600">
                   ${(stats.stats?.totalConvenio || 0).toLocaleString()}
                 </p>
               </div>
@@ -492,12 +492,12 @@ export default function ProduccionCargar() {
               </ol>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
-              <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">Paso 2: Estructura de datos</h3>
-              <p className="text-xs sm:text-sm text-blue-800 mb-2">
+            <div className="bg-primary-50 border border-primary-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+              <h3 className="font-semibold text-primary-900 mb-2 text-sm sm:text-base">Paso 2: Estructura de datos</h3>
+              <p className="text-xs sm:text-sm text-primary-800 mb-2">
                 Tu Google Sheet debe tener las mismas columnas que se requieren para un archivo Excel (ver abajo).
               </p>
-              <p className="text-xs sm:text-sm text-blue-800">
+              <p className="text-xs sm:text-sm text-primary-800">
                 La primera fila debe contener los encabezados de las columnas y los datos deben empezar en la segunda fila.
               </p>
             </div>
@@ -510,14 +510,14 @@ export default function ProduccionCargar() {
           Estructura de Datos Requerida
         </h2>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
           <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">
+              <p className="text-xs sm:text-sm font-semibold text-primary-900 mb-1">
                 Nombres de columnas exactos
               </p>
-              <p className="text-[10px] sm:text-xs text-blue-800">
+              <p className="text-[10px] sm:text-xs text-primary-800">
                 El sistema busca las columnas sin importar mayúsculas/minúsculas, pero los nombres deben coincidir exactamente.
                 Aplica tanto para Excel como para Google Sheets.
               </p>

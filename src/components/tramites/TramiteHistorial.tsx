@@ -66,7 +66,7 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
   const getAccionColor = (accion: string) => {
     if (accion.includes('creado')) return 'bg-green-100 text-green-700 border-green-300';
     if (accion.includes('cerrado')) return 'bg-red-100 text-red-700 border-red-300';
-    if (accion.includes('reabierto')) return 'bg-blue-100 text-blue-700 border-blue-300';
+    if (accion.includes('reabierto')) return 'bg-primary-100 text-primary-700 border-primary-300';
     if (accion.includes('actualizado')) return 'bg-yellow-100 text-yellow-700 border-yellow-300';
     return 'bg-neutral-100 text-neutral-700 border-neutral-300';
   };

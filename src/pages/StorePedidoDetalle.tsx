@@ -90,7 +90,7 @@ export default function StorePedidoDetalle() {
   const getEstatusColor = (estatusNombre: string) => {
     const colors: Record<string, string> = {
       'Pendiente': 'bg-yellow-100 text-yellow-800',
-      'Procesando': 'bg-blue-100 text-blue-800',
+      'Procesando': 'bg-primary-100 text-primary-800',
       'Enviado': 'bg-purple-100 text-purple-800',
       'Entregado': 'bg-green-100 text-green-800',
       'Cancelado': 'bg-red-100 text-red-800'
@@ -102,7 +102,7 @@ export default function StorePedidoDetalle() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       </Layout>
     );
@@ -170,7 +170,7 @@ export default function StorePedidoDetalle() {
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-gray-900">Total</span>
-                  <span className="text-2xl font-bold text-blue-600">
+                  <span className="text-2xl font-bold text-primary-600">
                     ${calcularTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -313,7 +313,7 @@ export default function StorePedidoDetalle() {
                 <button
                   onClick={handleAgregarNota}
                   disabled={agregandoNota || !nuevaNota.trim()}
-                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+                  className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50"
                 >
                   {agregandoNota ? 'Agregando...' : 'Agregar Nota'}
                 </button>

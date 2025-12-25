@@ -140,7 +140,7 @@ export function AssistantModal() {
         <div className="p-4 border-b flex items-center justify-between">
           <div className="flex-1">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-blue-600" />
+              <Sparkles className="h-5 w-5 text-primary-600" />
               Mi Asistente
             </h2>
           </div>
@@ -171,7 +171,7 @@ export function AssistantModal() {
                     <div
                       key={conv.id}
                       className={`p-2 rounded cursor-pointer hover:bg-gray-100 ${
-                        conv.id === conversationId ? 'bg-blue-50' : ''
+                        conv.id === conversationId ? 'bg-primary-50' : ''
                       }`}
                       onClick={() => {
                         loadConversation(conv.id);
@@ -228,7 +228,7 @@ export function AssistantModal() {
 
               {isLoadingMessages && (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                 </div>
               )}
 
@@ -247,7 +247,7 @@ export function AssistantModal() {
                       <div
                         className={`max-w-[80%] rounded-lg p-3 ${
                           isUser
-                            ? 'bg-blue-600 text-white [&_*]:text-white'
+                            ? 'bg-primary-600 text-white [&_*]:text-white'
                             : 'bg-gray-100 text-gray-900'
                         }`}
                       >

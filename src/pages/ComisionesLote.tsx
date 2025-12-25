@@ -449,7 +449,7 @@ export default function ComisionesLote() {
             <button
               onClick={handleRecalculateBatch}
               disabled={recalculating}
-              className="flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {recalculating ? (
                 <>
@@ -555,7 +555,7 @@ export default function ComisionesLote() {
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm sm:text-base text-neutral-600 font-medium">Total Pólizas</span>
-                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
               </div>
               <div className="text-2xl sm:text-3xl font-bold text-neutral-900">
                 {summary.total_polizas}
@@ -740,7 +740,7 @@ export default function ComisionesLote() {
                       <td className="py-3 px-3 text-center">
                         <button
                           onClick={() => setAdjustingDetail(detail)}
-                          className="inline-flex items-center justify-center p-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                          className="inline-flex items-center justify-center p-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors"
                           title="Ajustar comisión"
                         >
                           <Wrench className="w-4 h-4" />
@@ -776,7 +776,7 @@ export default function ComisionesLote() {
                     </div>
                     <button
                       onClick={() => setAdjustingDetail(detail)}
-                      className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium ml-2 flex-shrink-0"
+                      className="flex items-center space-x-1 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm font-medium ml-2 flex-shrink-0"
                     >
                       <Wrench className="w-4 h-4" />
                       <span>Ajustar</span>

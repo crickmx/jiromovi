@@ -332,14 +332,14 @@ export function CentroNotificaciones() {
 
               <div className="space-y-3">
                 {/* Notificación Push (siempre activa) */}
-                <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <Bell className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div className="flex items-start gap-3 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                  <Bell className="w-5 h-5 text-primary-600 mt-0.5" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-blue-900">Notificación Push (Campanita)</span>
-                      <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">Siempre</span>
+                      <span className="font-medium text-primary-900">Notificación Push (Campanita)</span>
+                      <span className="px-2 py-0.5 bg-primary-600 text-white text-xs rounded-full">Siempre</span>
                     </div>
-                    <p className="text-xs text-blue-700 mt-1">
+                    <p className="text-xs text-primary-700 mt-1">
                       Se enviará una notificación en el sistema a todos los destinatarios seleccionados
                     </p>
                   </div>

@@ -14,7 +14,7 @@ export function FloatingAssistantButton() {
       <Button
         onClick={handleClick}
         size="lg"
-        className="relative h-14 px-6 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:scale-105 transition-all duration-200 flex items-center gap-2"
+        className="relative h-14 px-6 rounded-full bg-primary-600 text-white shadow-lg hover:bg-primary-700 hover:scale-105 transition-all duration-200 flex items-center gap-2"
         aria-label="Abrir Mi Asistente"
       >
         <Sparkles className="h-5 w-5" />

@@ -222,7 +222,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
             <button
               onClick={handleVerificarConexion}
               disabled={verificando || !email || !password}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-50 text-blue-700 border-2 border-blue-200 rounded-xl hover:bg-blue-100 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-primary-50 text-primary-700 border-2 border-primary-200 rounded-xl hover:bg-primary-100 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Shield className="w-5 h-5" />
               <span>{verificando ? 'Verificando conexión...' : 'Verificar conexión'}</span>
@@ -243,7 +243,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
 
           <div className="space-y-4 bg-neutral-50 rounded-xl p-4 border border-neutral-200">
             <h3 className="font-semibold text-neutral-900 flex items-center space-x-2">
-              <Server className="w-5 h-5 text-blue-600" />
+              <Server className="w-5 h-5 text-primary-600" />
               <span>Servidores (preconfigurados)</span>
             </h3>
 
@@ -279,12 +279,12 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
             )}
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <h4 className="font-semibold text-blue-900 mb-2 flex items-center space-x-2">
+          <div className="bg-primary-50 border border-primary-200 rounded-xl p-4">
+            <h4 className="font-semibold text-primary-900 mb-2 flex items-center space-x-2">
               <AlertCircle className="w-5 h-5" />
               <span>Información importante</span>
             </h4>
-            <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+            <ul className="text-sm text-primary-800 space-y-1 list-disc list-inside">
               <li>Tu nombre de remitente será: <strong>{usuario?.nombre}</strong></li>
               <li>Los correos se enviarán desde tu cuenta IONOS personal</li>
               <li>La sincronización es automática y en tiempo real</li>

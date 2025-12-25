@@ -293,11 +293,11 @@ export default function ComisionesPrepararLote() {
         )}
 
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-            <div className="text-3xl font-bold text-blue-700 mb-1">
+          <div className="bg-primary-50 rounded-lg p-4 border border-primary-200">
+            <div className="text-3xl font-bold text-primary-700 mb-1">
               {session.total_items}
             </div>
-            <div className="text-sm text-blue-800">
+            <div className="text-sm text-primary-800">
               Total de documentos
             </div>
           </div>

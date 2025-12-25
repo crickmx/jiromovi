@@ -9,14 +9,14 @@ interface ResponseMessageGeneratorProps {
 export function ResponseMessageGenerator({ response }: ResponseMessageGeneratorProps) {
   return (
     <div className="space-y-3">
-      <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+      <div className="p-3 bg-primary-50 border border-primary-200 rounded">
         <div className="flex items-start gap-2 mb-2">
-          <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5" />
-          <h4 className="font-medium text-sm text-blue-900">Mensaje generado</h4>
+          <MessageSquare className="h-4 w-4 text-primary-600 mt-0.5" />
+          <h4 className="font-medium text-sm text-primary-900">Mensaje generado</h4>
         </div>
         <p className="text-sm text-gray-800 whitespace-pre-wrap">{response.message}</p>
         {Object.keys(response.variables).length > 0 && (
-          <div className="mt-2 pt-2 border-t border-blue-200">
+          <div className="mt-2 pt-2 border-t border-primary-200">
             <p className="text-xs text-gray-600 mb-1">Variables:</p>
             <div className="flex flex-wrap gap-2">
               {Object.entries(response.variables).map(([key, value]) => (
