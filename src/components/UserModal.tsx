@@ -3,7 +3,8 @@ import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
-import { MiLogotipoEditor } from './MiLogotipoEditor';
+import { ImageUploader } from './ImageUploader';
+import { User, Mail, Phone, Building2, Image, FileText, Calendar } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -15,10 +16,16 @@ interface UserModalProps {
   onSave: () => void;
 }
 
+type TabType = 'general' | 'contact' | 'images' | 'payment' | 'other';
+
 export function UserModal({ user, onClose, onSave }: UserModalProps) {
   const { usuario: currentUser } = useAuth();
   const isGerente = currentUser?.rol === 'Gerente';
   const isAdmin = currentUser?.rol === 'Administrador';
+
+  const [activeTab, setActiveTab] = useState<TabType>('general');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     password: '',
@@ -91,6 +98,29 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     return slugRegex.test(slug);
   };
 
+  const uploadImage = async (file: File, bucket: string, userId: string): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (err) {
+      console.error(`Error uploading to ${bucket}:`, err);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -118,6 +148,22 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
       }
 
       if (user) {
+        // Editar usuario existente
+        let avatarUrl = user.imagen_perfil_url;
+        let logoUrl = user.mi_logotipo_url;
+
+        // Subir avatar si hay uno nuevo
+        if (avatarFile) {
+          const url = await uploadImage(avatarFile, 'avatars', user.id);
+          if (url) avatarUrl = url;
+        }
+
+        // Subir logo si hay uno nuevo
+        if (logoFile) {
+          const url = await uploadImage(logoFile, 'usuarios-logos', user.id);
+          if (url) logoUrl = url;
+        }
+
         const updateData: Partial<Usuario> = {
           nombre: formData.nombre,
           apellidos: formData.apellidos,
@@ -136,6 +182,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           banco: formData.banco,
           clabe: formData.clabe,
           dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
+          imagen_perfil_url: avatarUrl,
+          mi_logotipo_url: logoUrl,
           updated_at: new Date().toISOString(),
         };
 
@@ -171,6 +219,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           }
         }
       } else {
+        // Crear usuario nuevo
         if (!formData.email_laboral || !formData.password) {
           setError('E-mail laboral y contraseña son requeridos para crear un usuario');
           setLoading(false);
@@ -207,8 +256,6 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           },
         };
 
-        console.log('[UserModal] Creating user with:', requestBody);
-
         const response = await fetch(
           `${supabaseUrl}/functions/v1/create-user`,
           {
@@ -224,13 +271,35 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         const result = await response.json();
 
         if (!response.ok) {
-          console.error('[UserModal] Error creating user:', result);
           const errorMessage = result.error || 'Error al crear el usuario';
           const detailsMessage = result.details ? ` (${result.details})` : '';
           throw new Error(errorMessage + detailsMessage);
         }
 
-        console.log('[UserModal] User created successfully:', result);
+        // Si se creó el usuario y hay imágenes, subirlas ahora
+        if (result.userId && (avatarFile || logoFile)) {
+          const userId = result.userId;
+
+          if (avatarFile) {
+            const avatarUrl = await uploadImage(avatarFile, 'avatars', userId);
+            if (avatarUrl) {
+              await supabase
+                .from('usuarios')
+                .update({ imagen_perfil_url: avatarUrl })
+                .eq('id', userId);
+            }
+          }
+
+          if (logoFile) {
+            const logoUrl = await uploadImage(logoFile, 'usuarios-logos', userId);
+            if (logoUrl) {
+              await supabase
+                .from('usuarios')
+                .update({ mi_logotipo_url: logoUrl })
+                .eq('id', userId);
+            }
+          }
+        }
       }
 
       onSave();
@@ -239,6 +308,14 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
       setLoading(false);
     }
   };
+
+  const tabs = [
+    { id: 'general' as TabType, label: 'General', icon: User },
+    { id: 'contact' as TabType, label: 'Contacto', icon: Phone },
+    { id: 'images' as TabType, label: 'Imágenes', icon: Image },
+    { id: 'payment' as TabType, label: 'Pago', icon: FileText },
+    ...(isAdmin ? [{ id: 'other' as TabType, label: 'Otros', icon: Calendar }] : []),
+  ];
 
   const footer = (
     <>
@@ -255,7 +332,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         disabled={loading}
         className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
       >
-        {loading ? 'Guardando...' : user ? 'Actualizar' : 'Crear'}
+        {loading ? 'Guardando...' : user ? 'Actualizar Usuario' : 'Crear Usuario'}
       </button>
     </>
   );
@@ -264,309 +341,342 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     <BaseModal
       isOpen={true}
       onClose={onClose}
-      title={user ? 'Editar Usuario' : 'Nuevo Usuario'}
-      maxWidth="3xl"
+      title={
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <User className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {user ? 'Editar Usuario' : 'Nuevo Usuario'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {user ? 'Actualiza la información del usuario' : 'Completa los datos del nuevo usuario'}
+            </p>
+          </div>
+        </div>
+      }
+      maxWidth="4xl"
       footer={footer}
     >
-      <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+          <span className="text-red-500 text-lg">⚠</span>
+          <span>{error}</span>
+        </div>
+      )}
 
-          <div>
-            <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Información de Acceso</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Tabs Navigation */}
+      <div className="border-b border-slate-200 mb-6">
+        <nav className="-mb-px flex gap-2 overflow-x-auto">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap
+                  ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
+                  }
+                `}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-            {!user && (
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Contraseña *
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+      <form id="user-form" onSubmit={handleSubmit}>
+        {/* Tab: General */}
+        {activeTab === 'general' && (
+          <div className="space-y-6">
+            {/* Contraseña */}
+            {(!user || (user && isAdmin)) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <span>🔐</span>
+                  Contraseña de Acceso
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      {user ? 'Nueva Contraseña (opcional)' : 'Contraseña *'}
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required={!user}
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder={user ? 'Dejar en blanco para mantener actual' : 'Mínimo 6 caracteres'}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
-            {user && isAdmin && (
+            {/* Información Básica */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <User className="w-4 h-4 text-slate-600" />
+                Información Básica
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Nombre *</label>
+                  <input
+                    type="text"
+                    value={formData.nombre}
+                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ej: Juan"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Apellidos *</label>
+                  <input
+                    type="text"
+                    value={formData.apellidos}
+                    onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ej: Pérez García"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Rol *</label>
+                  <select
+                    value={formData.rol}
+                    onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
+                    required
+                    disabled={!isAdmin && !isGerente}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="Empleado">Empleado</option>
+                    <option value="Agente">Agente</option>
+                    {isAdmin && <option value="Gerente">Gerente</option>}
+                    {isAdmin && <option value="Administrador">Administrador</option>}
+                  </select>
+                  {isGerente && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Puedes asignar roles: Empleado o Agente
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Puesto</label>
+                  <input
+                    type="text"
+                    value={formData.puesto}
+                    onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ej: Gerente de Ventas"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
+                    <Building2 className="w-3 h-3" />
+                    Oficina
+                  </label>
+                  <select
+                    value={formData.oficina_id}
+                    onChange={(e) => setFormData({ ...formData, oficina_id: e.target.value })}
+                    disabled={isGerente}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Sin oficina asignada</option>
+                    {oficinas.map((oficina) => (
+                      <option key={oficina.id} value={oficina.id}>
+                        {oficina.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  {isGerente && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Solo puedes asignar usuarios a tu oficina
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Fecha de Nacimiento
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.fecha_nacimiento}
+                    onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Fecha de Ingreso
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.fecha_ingreso}
+                    onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {isAdmin && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Slug para Página Web
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.web_slug}
+                      onChange={(e) => setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                      placeholder="ejemplo: juanperez"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      {formData.web_slug ? (
+                        <>URL: <span className="font-mono text-blue-600">agentedeseguros.online/{formData.web_slug}</span></>
+                      ) : (
+                        'Solo letras minúsculas, números y guiones'
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Contacto */}
+        {activeTab === 'contact' && (
+          <div className="space-y-6">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-slate-600" />
+              Información de Contacto
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Nueva Contraseña (opcional)
+                  Email Laboral {!user && '*'}
                 </label>
                 <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  type="email"
+                  value={formData.email_laboral}
+                  onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
+                  required={!user}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="usuario@empresa.com"
                 />
-                <p className="text-xs text-slate-500 mt-1">
-                  Dejar en blanco para mantener la contraseña actual
-                </p>
+                {!user && (
+                  <p className="text-xs text-slate-500 mt-1">Se usará como usuario de acceso</p>
+                )}
               </div>
-            )}
 
-          </div>
-
-          <div>
-            <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Información Personal</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Nombre *</label>
-              <input
-                type="text"
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                required
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Apellidos *</label>
-              <input
-                type="text"
-                value={formData.apellidos}
-                onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
-                required
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Rol *</label>
-              <select
-                value={formData.rol}
-                onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
-                required
-                disabled={!isAdmin && !isGerente}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
-              >
-                <option value="Empleado">Empleado</option>
-                <option value="Agente">Agente</option>
-                {isAdmin && <option value="Gerente">Gerente</option>}
-                {isAdmin && <option value="Administrador">Administrador</option>}
-              </select>
-              {isGerente && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Puedes asignar roles: Empleado o Agente
-                </p>
-              )}
-              {!isAdmin && !isGerente && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Solo Administradores y Gerentes pueden cambiar roles
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Puesto</label>
-              <input
-                type="text"
-                value={formData.puesto}
-                onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Oficina</label>
-              <select
-                value={formData.oficina_id}
-                onChange={(e) => setFormData({ ...formData, oficina_id: e.target.value })}
-                disabled={isGerente}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
-              >
-                <option value="">Seleccionar oficina</option>
-                {oficinas.map((oficina) => (
-                  <option key={oficina.id} value={oficina.id}>
-                    {oficina.nombre}
-                  </option>
-                ))}
-              </select>
-              {isGerente && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Solo puedes crear usuarios en tu oficina asignada
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Fecha de Nacimiento
-              </label>
-              <input
-                type="date"
-                value={formData.fecha_nacimiento}
-                onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Fecha de Ingreso
-              </label>
-              <input
-                type="date"
-                value={formData.fecha_ingreso}
-                onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-          </div>
-
-          <div>
-            <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Información de Contacto</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Celular Personal
-              </label>
-              <input
-                type="tel"
-                value={formData.celular_personal}
-                onChange={(e) => setFormData({ ...formData, celular_personal: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Email Personal
-              </label>
-              <input
-                type="email"
-                value={formData.email_personal}
-                onChange={(e) => setFormData({ ...formData, email_personal: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Celular Laboral
-              </label>
-              <input
-                type="tel"
-                value={formData.celular_laboral}
-                onChange={(e) => setFormData({ ...formData, celular_laboral: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Email Laboral
-              </label>
-              <input
-                type="email"
-                value={formData.email_laboral}
-                onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Extensión Telefónica
-              </label>
-              <input
-                type="text"
-                value={formData.extension_telefonica}
-                onChange={(e) =>
-                  setFormData({ ...formData, extension_telefonica: e.target.value })
-                }
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {isAdmin && (
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Slug (Opcional)
+                  Email Personal
+                </label>
+                <input
+                  type="email"
+                  value={formData.email_personal}
+                  onChange={(e) => setFormData({ ...formData, email_personal: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="usuario@gmail.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Celular Laboral
+                </label>
+                <input
+                  type="tel"
+                  value={formData.celular_laboral}
+                  onChange={(e) => setFormData({ ...formData, celular_laboral: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="+52 55 1234 5678"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Celular Personal
+                </label>
+                <input
+                  type="tel"
+                  value={formData.celular_personal}
+                  onChange={(e) => setFormData({ ...formData, celular_personal: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="+52 55 8765 4321"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Extensión Telefónica
                 </label>
                 <input
                   type="text"
-                  value={formData.web_slug}
-                  onChange={(e) => setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                  placeholder="ejemplo: juanperez"
+                  value={formData.extension_telefonica}
+                  onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ej: 1234"
                 />
-                <p className="text-xs text-slate-500 mt-1">
-                  {formData.web_slug ? (
-                    <>Mi Página Web: <span className="font-mono text-blue-600">agentedeseguros.online/{formData.web_slug}</span></>
-                  ) : (
-                    <>Solo letras minúsculas, números y guiones. Debe ser único.</>
-                  )}
-                </p>
               </div>
-            )}
+            </div>
           </div>
+        )}
 
-          <div>
-            <h3 className="text-base font-semibold text-slate-800 mb-3 pb-2 border-b border-slate-200 flex items-center gap-2">
-              <span className="text-blue-600">📸</span>
-              Mi Logotipo Personal
-            </h3>
-            {user ? (
-              <>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-blue-800 mb-2">
-                    <strong>Importante:</strong> Tu logotipo personal aparecerá en tus PDFs de comisiones y materiales oficiales.
-                  </p>
-                  <p className="text-xs text-blue-700">
-                    Si no subes un logo personal, se usará el logo de tu oficina o el logo JIRO por defecto.
-                  </p>
-                </div>
-                <MiLogotipoEditor
-                  userId={user.id}
-                  currentLogoUrl={user.mi_logotipo_url}
-                  onLogoChange={async () => {
-                    // Recargar los datos después de cambiar el logo
-                    const { data } = await supabase
-                      .from('usuarios')
-                      .select('mi_logotipo_url')
-                      .eq('id', user.id)
-                      .single();
-                    if (data) {
-                      user.mi_logotipo_url = data.mi_logotipo_url;
-                    }
-                  }}
-                />
-              </>
-            ) : (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-700 font-medium mb-1">
-                      Subir Logotipo Personal
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Primero crea el usuario. Luego podrás editarlo para subir su logotipo personal.
-                      El logotipo se usará en PDFs de comisiones y materiales oficiales.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+        {/* Tab: Imágenes */}
+        {activeTab === 'images' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ImageUploader
+                currentImageUrl={user?.imagen_perfil_url}
+                onImageChange={setAvatarFile}
+                label="Foto de Perfil"
+                description="Esta imagen aparecerá en tu perfil y tarjeta de contacto"
+                aspectRatio="aspect-square"
+                maxSizeMB={2}
+              />
+
+              <ImageUploader
+                currentImageUrl={user?.mi_logotipo_url}
+                onImageChange={setLogoFile}
+                label="Logotipo Personal"
+                description="Aparecerá en tus PDFs de comisiones y materiales oficiales"
+                aspectRatio="aspect-video"
+                maxSizeMB={2}
+              />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">💡 Recomendaciones</h4>
+              <ul className="text-xs text-blue-800 space-y-1">
+                <li>• Foto de perfil: formato cuadrado (1:1), mínimo 400x400px</li>
+                <li>• Logotipo: formato horizontal (16:9), fondo transparente preferible</li>
+                <li>• Formatos: PNG, JPG o GIF. Tamaño máximo: 2MB</li>
+                <li>• Si no subes un logotipo, se usará el de tu oficina o el logo JIRO</li>
+              </ul>
+            </div>
           </div>
+        )}
 
+        {/* Tab: Pago */}
+        {activeTab === 'payment' && (
           <div>
             <PaymentFields
               regimenFiscalId={formData.regimen_fiscal_id}
@@ -576,11 +686,17 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
               editable={true}
             />
           </div>
+        )}
 
-          {currentUser?.rol === 'Administrador' && (
+        {/* Tab: Otros (solo admins) */}
+        {activeTab === 'other' && isAdmin && (
+          <div className="space-y-6">
             <div>
-              <h3 className="text-base font-semibold text-slate-800 mb-2 pb-2 border-b border-slate-200">Gestión de Vacaciones</h3>
-              <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-slate-600" />
+                Gestión de Vacaciones
+              </h3>
+              <div className="max-w-md">
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   Días de Vacaciones Disponibles
                 </label>
@@ -597,13 +713,13 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-slate-500 mt-1">
-                  Días disponibles: 0 - 50
+                  Rango permitido: 0 - 50 días
                 </p>
               </div>
             </div>
-          )}
-
-        </form>
+          </div>
+        )}
+      </form>
     </BaseModal>
   );
 }
