@@ -51,6 +51,9 @@ export async function buildSnapshot(
       case 'dashboard':
         datosEspecificos = await buildDashboardSnapshot(usuarioId);
         break;
+      case 'chat':
+        datosEspecificos = await buildChatSnapshot(usuarioId, parametros);
+        break;
       default:
         datosEspecificos = {};
     }
@@ -282,6 +285,81 @@ async function buildDashboardSnapshot(usuarioId: string) {
     produccion_mes: totalProduccion,
     tareas_hoy: tareasHoy?.length || 0,
     renovaciones_proximas: renovaciones?.length || 0,
+  };
+}
+
+async function buildChatSnapshot(usuarioId: string, parametros: Record<string, string>) {
+  // Get recent conversations from chat interno
+  const { data: chats } = await supabase
+    .from('chats')
+    .select(`
+      id,
+      tipo,
+      nombre,
+      ultimo_mensaje_at,
+      chat_miembros!inner(usuario_id)
+    `)
+    .eq('chat_miembros.usuario_id', usuarioId)
+    .order('ultimo_mensaje_at', { ascending: false })
+    .limit(10);
+
+  const conversacionesRecientes = [];
+
+  if (chats) {
+    for (const chat of chats) {
+      // Get last 5 messages from each chat
+      const { data: mensajes } = await supabase
+        .from('chat_mensajes')
+        .select(`
+          id,
+          mensaje,
+          created_at,
+          remitente_id,
+          usuarios!chat_mensajes_remitente_id_fkey(nombre_completo)
+        `)
+        .eq('chat_id', chat.id)
+        .eq('eliminado', false)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      conversacionesRecientes.push({
+        chat_id: chat.id,
+        tipo: chat.tipo,
+        nombre: chat.nombre,
+        ultimo_mensaje_at: chat.ultimo_mensaje_at,
+        mensajes_recientes: mensajes?.map(m => ({
+          remitente: m.usuarios?.nombre_completo || 'Usuario desconocido',
+          mensaje: m.mensaje,
+          fecha: m.created_at
+        })) || []
+      });
+    }
+  }
+
+  let chatActual = null;
+  if (parametros.id) {
+    const { data } = await supabase
+      .from('chats')
+      .select(`
+        *,
+        chat_mensajes(
+          id,
+          mensaje,
+          created_at,
+          remitente_id,
+          usuarios!chat_mensajes_remitente_id_fkey(nombre_completo)
+        )
+      `)
+      .eq('id', parametros.id)
+      .maybeSingle();
+
+    chatActual = data;
+  }
+
+  return {
+    conversaciones_recientes: conversacionesRecientes,
+    chat_actual: chatActual,
+    total_conversaciones: chats?.length || 0,
   };
 }
 

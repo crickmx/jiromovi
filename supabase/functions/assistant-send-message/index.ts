@@ -106,6 +106,7 @@ class IntelligentRouter {
     { keywords: ['mis contactos', 'mis clientes', 'mis tareas'], mode: 'movi', weight: 45, category: 'crm' },
     { keywords: ['mis cotizaciones', 'mi cotización'], mode: 'movi', weight: 40, category: 'cotizaciones' },
     { keywords: ['mi perfil', 'mis datos', 'mi información personal'], mode: 'movi', weight: 40, category: 'perfil' },
+    { keywords: ['mis mensajes', 'mis conversaciones', 'mi chat', 'mis chats', 'conversaciones del chat'], mode: 'movi', weight: 45, category: 'chat' },
     { keywords: ['comunicado', 'comunicados', 'notificación interna'], mode: 'movi', weight: 35, category: 'comunicados' },
     { keywords: ['directorio', 'compañeros', 'mi oficina', 'mi equipo'], mode: 'movi', weight: 35, category: 'directorio' },
     { keywords: ['mi trámite', 'mis trámites', 'mi ticket', 'mis tickets'], mode: 'movi', weight: 35, category: 'tramites' },
@@ -354,6 +355,37 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
 }
 
 async function getCompleteUserContext(supabase: any, userId: string) {
+  console.log('📊 Fetching complete user context for:', userId);
+
+  try {
+    // Use the new RPC function that includes ALL user data including chat conversations
+    const { data: fullContext, error } = await supabase.rpc('get_user_full_context', {
+      p_usuario_id: userId
+    });
+
+    if (error) {
+      console.error('❌ Error fetching full context via RPC:', error);
+      // Fallback to manual fetch if RPC fails
+      return await getCompleteUserContextFallback(supabase, userId);
+    }
+
+    if (!fullContext) {
+      console.warn('⚠️ No context returned from RPC');
+      return {};
+    }
+
+    console.log('✅ Full context fetched successfully');
+    console.log('📊 Context includes:', Object.keys(fullContext));
+
+    return fullContext;
+  } catch (e) {
+    console.error('❌ Exception fetching full context:', e);
+    return await getCompleteUserContextFallback(supabase, userId);
+  }
+}
+
+async function getCompleteUserContextFallback(supabase: any, userId: string) {
+  console.log('🔄 Using fallback context fetch...');
   const context: any = {};
 
   const mesActual = new Date().toISOString().substring(0, 7);

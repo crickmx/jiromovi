@@ -13,6 +13,9 @@ export function detectModuleFromRoute(pathname: string): ModuleName {
   if (pathname.startsWith('/tramites')) {
     return 'tramites';
   }
+  if (pathname.startsWith('/chat')) {
+    return 'chat';
+  }
   if (pathname.startsWith('/centro-notificaciones') || pathname.startsWith('/notificaciones')) {
     return 'notificaciones';
   }
@@ -54,6 +57,7 @@ export function getModuleDisplayName(modulo: ModuleName): string {
     produccion: 'Producción',
     crm: 'CRM',
     tramites: 'Trámites',
+    chat: 'Chat',
     notificaciones: 'Notificaciones',
     education: 'Academia',
     general: 'General',

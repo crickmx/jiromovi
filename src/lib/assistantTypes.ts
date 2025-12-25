@@ -18,6 +18,7 @@ export type ModuleName =
   | 'produccion'
   | 'crm'
   | 'tramites'
+  | 'chat'
   | 'notificaciones'
   | 'education'
   | 'general';
