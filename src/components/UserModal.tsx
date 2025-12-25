@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
 import { ImageUploader } from './ImageUploader';
-import { User, Mail, Phone, Building2, Image, FileText, Calendar } from 'lucide-react';
+import { ExpedienteSection } from './ExpedienteSection';
+import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -46,6 +47,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     banco: '',
     clabe: '',
     dias_vacaciones_disponibles: 0,
+    equipo_computo: '',
+    equipo_celular: '',
   });
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,6 +82,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         banco: user.banco || '',
         clabe: user.clabe || '',
         dias_vacaciones_disponibles: user.dias_vacaciones_disponibles || 0,
+        equipo_computo: user.equipo_computo || '',
+        equipo_celular: user.equipo_celular || '',
       });
     }
   }, [user]);
@@ -182,6 +187,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           banco: formData.banco,
           clabe: formData.clabe,
           dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
+          equipo_computo: formData.equipo_computo || null,
+          equipo_celular: formData.equipo_celular || null,
           imagen_perfil_url: avatarUrl,
           mi_logotipo_url: logoUrl,
           updated_at: new Date().toISOString(),
@@ -253,6 +260,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             banco: formData.banco,
             clabe: formData.clabe,
             dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
+            equipo_computo: formData.equipo_computo || null,
+            equipo_celular: formData.equipo_celular || null,
           },
         };
 
@@ -691,6 +700,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         {/* Tab: Otros (solo admins) */}
         {activeTab === 'other' && isAdmin && (
           <div className="space-y-6">
+            {/* Vacaciones */}
             <div>
               <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-slate-600" />
@@ -717,6 +727,68 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 </p>
               </div>
             </div>
+
+            {/* Equipos */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <Laptop className="w-4 h-4 text-slate-600" />
+                Equipos Asignados
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
+                    <Laptop className="w-3 h-3" />
+                    Equipo de Cómputo
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.equipo_computo}
+                    onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
+                    placeholder="Ej: Dell Latitude 5420"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Modelo y detalles del equipo de cómputo asignado
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
+                    <Smartphone className="w-3 h-3" />
+                    Equipo Celular
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.equipo_celular}
+                    onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
+                    placeholder="Ej: iPhone 13 Pro"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Modelo y detalles del equipo celular asignado
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Expediente - Solo si el usuario ya existe */}
+            {user && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-slate-600" />
+                  Expediente de Documentos
+                </h3>
+                <ExpedienteSection usuarioId={user.id} canEdit={true} />
+              </div>
+            )}
+
+            {!user && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-700">
+                  💡 El expediente de documentos estará disponible después de crear el usuario
+                </p>
+              </div>
+            )}
           </div>
         )}
       </form>
