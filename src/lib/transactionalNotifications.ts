@@ -158,24 +158,10 @@ export async function enviarNotificacionTransaccional(
 
 // Funciones específicas para cada tipo de notificación
 
-export async function enviarBienvenida(usuario: {
-  nombre: string;
-  apellidos: string;
-  email: string;
-  telefono?: string;
-  rol?: string;
-  puesto?: string;
-}) {
-  return enviarNotificacionTransaccional('bienvenida', {
-    nombre: usuario.nombre,
-    apellidos: usuario.apellidos,
-    email: usuario.email,
-    telefono: usuario.telefono,
-  }, {
-    rol: usuario.rol || '',
-    puesto: usuario.puesto || '',
-  });
-}
+/**
+ * ❌ OBSOLETO: No usar enviarBienvenida
+ * Se debe usar enviarCuentaActivada cuando se aprueba un usuario
+ */
 
 export async function enviarCuentaActivada(usuario: {
   nombre: string;

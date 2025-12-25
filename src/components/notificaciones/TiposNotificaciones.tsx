@@ -41,11 +41,16 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       const { data, error } = await supabase
         .from('correo_tipos_notificacion')
         .select('*')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true});
 
       if (error) throw error;
 
-      setTipos(data || []);
+      // Filtrar notificaciones obsoletas (marcadas con ❌ en descripción)
+      const tiposValidos = (data || []).filter(tipo =>
+        !tipo.descripcion?.includes('❌ NO USAR')
+      );
+
+      setTipos(tiposValidos);
     } catch (error) {
       console.error('Error al cargar tipos:', error);
     } finally {
