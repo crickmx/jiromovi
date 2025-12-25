@@ -121,7 +121,7 @@ export function Login() {
           <CardHeader className="text-center pb-6">
             <div className="flex justify-center mb-6">
               <img
-                src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
+                src="/movirecurso_1.png"
                 alt="MOVI Digital Logo"
                 className="h-16 object-contain"
               />

@@ -168,7 +168,7 @@ export function SegurosEducationAulaDigital() {
           <div className="flex items-center justify-between px-6 py-6 border-b border-ios-gray-200/50">
             <a href="/dashboard" className="flex items-center transition-transform hover:scale-105">
               <img
-                src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
+                src="/movirecurso_2.png"
                 alt="MOVI Digital Logo"
                 className="h-12 object-contain"
               />
@@ -252,7 +252,7 @@ export function SegurosEducationAulaDigital() {
             <Menu className="w-5 h-5" />
           </button>
           <img
-            src="https://movi.digital/wp-content/uploads/2023/06/cropped-logonew.png"
+            src="/movirecurso_2.png"
             alt="MOVI Digital Logo"
             className="h-10 object-contain"
           />
