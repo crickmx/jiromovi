@@ -204,10 +204,9 @@ export async function enviarNuevoEvento(usuario: {
   fecha: string;
   hora: string;
   instructor?: string;
-  obligatorio?: boolean;
 }) {
   return enviarNotificacionTransaccional(
-    evento.obligatorio ? 'capacitacion_obligatoria' : 'nuevo_evento',
+    'nuevo_evento',
     {
       nombre: usuario.nombre,
       apellidos: usuario.apellidos,
