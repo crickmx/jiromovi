@@ -41,7 +41,9 @@ async function extractTextFromPDF(buffer: Uint8Array): Promise<string> {
 
     if (fullText.trim().length > 0) {
       console.log('✅ PDF text extracted successfully');
-      return `📄 Contenido del PDF (${pdf.numPages} página${pdf.numPages !== 1 ? 's' : ''}):\n${fullText.trim()}`;
+      return `📄 Contenido del PDF (${pdf.numPages} página${pdf.numPages !== 1 ? 's' : ''}
+
+):\n${fullText.trim()}`;
     } else {
       console.log('⚠️ PDF has no extractable text');
       return '[PDF sin contenido de texto extraíble - puede ser un PDF de imagen o protegido]';
@@ -204,15 +206,12 @@ class IntelligentRouter {
     let chatgptScore = keywordResults.chatgptScore + intentAnalysis.chatgptBoost;
     let moviScore = keywordResults.moviScore + intentAnalysis.moviBoost;
 
-    // Si no hay palabras clave de MOVI, dar ventaja a ChatGPT
     if (moviScore === 0 && chatgptScore === 0) {
-      chatgptScore = 50; // Base score for general questions
+      chatgptScore = 50;
     }
 
-    // Detectar preguntas que claramente son de conocimiento general
     if (message.includes('cómo') && (message.includes('usar') || message.includes('funciona'))) {
       if (keywordResults.matchedKeywords.length > 0) {
-        // Si hay keywords, depende del contexto
         if (message.includes('movi') || message.includes('plataforma')) {
           moviScore += 20;
         } else {
@@ -223,7 +222,6 @@ class IntelligentRouter {
       }
     }
 
-    // Preguntas con "qué es" o "cuál es" sin contexto de MOVI van a ChatGPT
     if ((message.includes('qué es') || message.includes('cuál es') || message.includes('qué significa')) && moviScore < 20) {
       chatgptScore += 25;
     }
@@ -233,7 +231,6 @@ class IntelligentRouter {
       chatgptScore = (chatgptScore / total) * 100;
       moviScore = (moviScore / total) * 100;
     } else {
-      // Si no hay puntaje, default a ChatGPT
       chatgptScore = 70;
       moviScore = 30;
     }
@@ -325,7 +322,6 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
   const userEmail = user.email_laboral || user.email_personal || 'Sin email';
   console.log('✅ User found:', userEmail);
 
-  // Get oficina name separately if needed
   let oficinaNombre = null;
   if (user.oficina_id) {
     try {
@@ -340,7 +336,6 @@ async function getUserContext(supabase: any, conversacionId: string): Promise<Us
       }
     } catch (e) {
       console.error('Error fetching oficina:', e);
-      // Continue without oficina name
     }
   }
 
@@ -358,14 +353,12 @@ async function getCompleteUserContext(supabase: any, userId: string) {
   console.log('📊 Fetching complete user context for:', userId);
 
   try {
-    // Use the new RPC function that includes ALL user data including chat conversations
     const { data: fullContext, error } = await supabase.rpc('get_user_full_context', {
       p_usuario_id: userId
     });
 
     if (error) {
       console.error('❌ Error fetching full context via RPC:', error);
-      // Fallback to manual fetch if RPC fails
       return await getCompleteUserContextFallback(supabase, userId);
     }
 
@@ -467,286 +460,6 @@ async function getCompleteUserContextFallback(supabase: any, userId: string) {
     console.error('Error fetching produccion:', e);
   }
 
-  try {
-    const { data: contactos } = await supabase
-      .from('crm_contactos')
-      .select('*')
-      .eq('creado_por', userId)
-      .order('fecha_creacion', { ascending: false })
-      .limit(15);
-
-    if (contactos && contactos.length > 0) {
-      const porEstatus: Record<string, number> = {};
-      contactos.forEach((c: any) => {
-        porEstatus[c.estatus || 'sin_estatus'] = (porEstatus[c.estatus || 'sin_estatus'] || 0) + 1;
-      });
-
-      context.crm_contactos = {
-        total: contactos.length,
-        por_estatus: porEstatus,
-        ultimos_5: contactos.slice(0, 5).map((c: any) => ({
-          id: c.id,
-          nombre: c.nombre_completo,
-          telefono: c.celular,
-          email: c.email,
-          estatus: c.estatus,
-          fecha_creacion: c.fecha_creacion
-        }))
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching contactos:', e);
-  }
-
-  try {
-    const { data: cotizacionesCrm } = await supabase
-      .from('crm_cotizaciones')
-      .select('*, crm_contactos(nombre_completo)')
-      .eq('creado_por', userId)
-      .order('fecha_cotizacion', { ascending: false })
-      .limit(10);
-
-    if (cotizacionesCrm && cotizacionesCrm.length > 0) {
-      const totalMonto = cotizacionesCrm.reduce((sum: number, c: any) => sum + (c.monto || 0), 0);
-
-      context.crm_cotizaciones = {
-        total: cotizacionesCrm.length,
-        monto_total: totalMonto,
-        ultimas_5: cotizacionesCrm.slice(0, 5).map((c: any) => ({
-          cliente: c.crm_contactos?.nombre_completo,
-          aseguradora: c.aseguradora,
-          ramo: c.ramo,
-          monto: c.monto,
-          estatus: c.estatus,
-          fecha: c.fecha_cotizacion
-        }))
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching cotizaciones CRM:', e);
-  }
-
-  try {
-    const { data: tareas } = await supabase
-      .from('crm_tareas')
-      .select('*')
-      .eq('creado_por', userId)
-      .eq('completada', false)
-      .order('fecha_vencimiento', { ascending: true })
-      .limit(10);
-
-    if (tareas && tareas.length > 0) {
-      const tareasHoy = tareas.filter((t: any) => t.fecha_vencimiento === hoy);
-      const tareasVencidas = tareas.filter((t: any) => t.fecha_vencimiento < hoy);
-      const tareasPorPrioridad: Record<string, number> = {};
-
-      tareas.forEach((t: any) => {
-        tareasPorPrioridad[t.prioridad || 'media'] = (tareasPorPrioridad[t.prioridad || 'media'] || 0) + 1;
-      });
-
-      context.crm_tareas = {
-        total_pendientes: tareas.length,
-        hoy: tareasHoy.length,
-        vencidas: tareasVencidas.length,
-        por_prioridad: tareasPorPrioridad,
-        proximas_5: tareas.slice(0, 5).map((t: any) => ({
-          id: t.id,
-          descripcion: t.descripcion,
-          tipo: t.tipo_actividad,
-          vencimiento: t.fecha_vencimiento,
-          prioridad: t.prioridad,
-          estatus: t.estatus
-        }))
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching tareas:', e);
-  }
-
-  try {
-    const { data: polizas } = await supabase
-      .from('crm_polizas')
-      .select('*, crm_contactos(nombre_completo)')
-      .eq('creado_por', userId)
-      .order('fecha_vencimiento', { ascending: true })
-      .limit(15);
-
-    if (polizas && polizas.length > 0) {
-      const renovacionesProximas = polizas.filter((p: any) =>
-        p.fecha_vencimiento && p.fecha_vencimiento <= en30Dias && p.fecha_vencimiento >= hoy
-      );
-
-      context.crm_polizas = {
-        total: polizas.length,
-        renovaciones_proximas_30_dias: renovacionesProximas.length,
-        proximas_renovaciones: renovacionesProximas.slice(0, 5).map((p: any) => ({
-          numero: p.numero_poliza,
-          cliente: p.crm_contactos?.nombre_completo,
-          aseguradora: p.compania_aseguradora,
-          ramo: p.tipo_ramo,
-          vencimiento: p.fecha_vencimiento,
-          prima_total: p.prima_total
-        }))
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching polizas:', e);
-  }
-
-  try {
-    const { data: tickets } = await supabase
-      .from('tickets')
-      .select('*')
-      .eq('creado_por', userId)
-      .neq('estado', 'cerrado')
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (tickets && tickets.length > 0) {
-      const porTipo: Record<string, number> = {};
-      const porEstado: Record<string, number> = {};
-
-      tickets.forEach((t: any) => {
-        porTipo[t.tipo || 'general'] = (porTipo[t.tipo || 'general'] || 0) + 1;
-        porEstado[t.estado || 'nuevo'] = (porEstado[t.estado || 'nuevo'] || 0) + 1;
-      });
-
-      context.tickets_tramites = {
-        total_abiertos: tickets.length,
-        por_tipo: porTipo,
-        por_estado: porEstado,
-        ultimos_5: tickets.slice(0, 5).map((t: any) => ({
-          id: t.id,
-          titulo: t.titulo,
-          tipo: t.tipo,
-          estado: t.estado,
-          prioridad: t.prioridad,
-          fecha_creacion: t.created_at
-        }))
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching tickets:', e);
-  }
-
-  try {
-    const { data: pedidos } = await supabase
-      .from('store_pedidos')
-      .select('*')
-      .eq('usuario_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (pedidos && pedidos.length > 0) {
-      const totalGastado = pedidos.reduce((sum: number, p: any) => sum + (p.total || 0), 0);
-
-      context.store_pedidos = {
-        total_pedidos: pedidos.length,
-        total_gastado: totalGastado,
-        ultimo_pedido: pedidos[0] ? {
-          id: pedidos[0].id,
-          total: pedidos[0].total,
-          estado: pedidos[0].estado,
-          fecha: pedidos[0].created_at
-        } : null
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching pedidos:', e);
-  }
-
-  try {
-    const { data: cotizaciones } = await supabase
-      .from('gmm_quotations')
-      .select('*')
-      .eq('usuario_id', userId)
-      .eq('activa', true)
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (cotizaciones && cotizaciones.length > 0) {
-      context.cotizaciones_gmm = {
-        total: cotizaciones.length,
-        ultimas_3: cotizaciones.slice(0, 3).map((c: any) => ({
-          folio: c.folio,
-          aseguradora: c.aseguradora,
-          plan: c.plan,
-          suma_asegurada: c.suma_asegurada,
-          prima_anual: c.prima_anual,
-          fecha: c.created_at
-        }))
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching cotizaciones GMM:', e);
-  }
-
-  try {
-    const { data: reservas } = await supabase
-      .from('reservas_espacio')
-      .select('*, espacios_jiro(nombre)')
-      .eq('creado_por', userId)
-      .gte('fecha_inicio', hoy)
-      .order('fecha_inicio', { ascending: true })
-      .limit(5);
-
-    if (reservas && reservas.length > 0) {
-      context.reservas_espacios = {
-        total: reservas.length,
-        proximas: reservas.map((r: any) => ({
-          espacio: r.espacios_jiro?.nombre,
-          fecha: r.fecha_inicio,
-          hora_inicio: r.hora_inicio,
-          hora_fin: r.hora_fin,
-          estado: r.estado
-        }))
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching reservas:', e);
-  }
-
-  try {
-    const { data: notificaciones } = await supabase
-      .from('notificaciones_internas')
-      .select('*')
-      .eq('usuario_id', userId)
-      .eq('leida', false)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (notificaciones && notificaciones.length > 0) {
-      context.notificaciones_pendientes = {
-        total: notificaciones.length,
-        ultimas: notificaciones.map((n: any) => ({
-          titulo: n.titulo,
-          mensaje: n.mensaje,
-          tipo: n.tipo,
-          fecha: n.created_at
-        }))
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching notificaciones:', e);
-  }
-
-  try {
-    const { data: productos } = await supabase
-      .from('store_productos')
-      .select('nombre, precio, categoria, descripcion')
-      .eq('disponible', true)
-      .order('nombre', { ascending: true });
-
-    if (productos && productos.length > 0) {
-      context.productos_tienda = {
-        total: productos.length,
-        productos: productos
-      };
-    }
-  } catch (e) {
-    console.error('Error fetching productos:', e);
-  }
-
   return context;
 }
 
@@ -791,7 +504,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create client with user JWT to respect RLS
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('No Authorization header provided');
@@ -806,7 +518,6 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } }
     });
 
-    // Verify user is authenticated
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) {
       console.error('Authentication failed:', authError);
@@ -818,7 +529,6 @@ Deno.serve(async (req: Request) => {
 
     console.log('User authenticated:', user.email);
 
-    // Create admin client for internal operations (saving messages, etc.)
     console.log('Creating admin client...');
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -869,7 +579,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Verify that the conversation belongs to the authenticated user
       if (userContext.id !== user.id) {
         console.error('User trying to access conversation of another user');
         return new Response(
@@ -971,6 +680,7 @@ PERSONALIDAD:
 
 CAPACIDADES:
 Tienes acceso COMPLETO a todos los datos del usuario incluyendo:
+- Chat interno (conversaciones activas y últimos mensajes de cada chat)
 - Comisiones (últimas 20, totales, por mes)
 - Producción (últimas 20, totales por mes, desglose por ramo)
 - CRM (contactos, tareas, pólizas, cotizaciones)
@@ -997,13 +707,18 @@ REGLAS ESTRICTAS:
     - crm_polizas = pólizas reales registradas en el sistema
 12. Si el usuario pregunta por pólizas, SOLO menciona las que están en crm_polizas.proximas_renovaciones
 13. Si solo hay tareas relacionadas a pólizas pero NO pólizas reales, di: "Tienes tareas pendientes relacionadas con pólizas"
-14. DOCUMENTOS ADJUNTOS: Si el usuario adjunta archivos (PDFs, imágenes, etc.), encontrarás su contenido en la sección DOCUMENTOS ADJUNTOS del prompt
-15. Si el usuario pregunta sobre archivos adjuntos, analiza el contenido proporcionado y responde en base a él
-16. Para PDFs y documentos complejos, analiza la información disponible y proporciona insights útiles
+14. CHAT INTERNO: En chat_conversaciones encontrarás las conversaciones activas del usuario con sus últimos 5 mensajes de cada chat
+    - Puedes decirle cuándo fue el último mensaje con alguien
+    - Puedes mostrarle el contenido de los últimos mensajes
+    - Si el usuario pregunta por mensajes con alguien específico, busca en los chats por el nombre de la persona
+15. DOCUMENTOS ADJUNTOS: Si el usuario adjunta archivos (PDFs, imágenes, etc.), encontrarás su contenido en la sección DOCUMENTOS ADJUNTOS del prompt
+16. Si el usuario pregunta sobre archivos adjuntos, analiza el contenido proporcionado y responde en base a él
+17. Para PDFs y documentos complejos, analiza la información disponible y proporciona insights útiles
 
 RUTAS DISPONIBLES EN LA PLATAFORMA:
 - /dashboard - Panel principal
 - /perfil - Perfil del usuario
+- /chat - Chat interno con compañeros
 - /mi-crm/contactos - Lista de contactos
 - /mi-crm/tareas - Tareas y seguimientos
 - /mi-crm/reportes - Reportes de CRM
@@ -1034,7 +749,7 @@ NOTA SOBRE ACTIONS:
 - En modo ChatGPT: incluye acciones SOLO si son relevantes (puede ser un array vacío [])
 
 ICONOS DISPONIBLES (Lucide React):
-Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar, GraduationCap, Calculator, BookOpen, Bell, Settings`;
+Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar, GraduationCap, Calculator, BookOpen, Bell, Settings, MessageSquare, Send`;
 
       const { data: fullUserProfile } = await supabaseAdmin
         .from('usuarios')
@@ -1045,7 +760,6 @@ Home, Users, DollarSign, TrendingUp, CheckSquare, FileText, Briefcase, Calendar,
       let userPrompt = '';
 
       if (routingDecision?.selectedMode === 'chatgpt') {
-        // Modo ChatGPT - Preguntas generales
         userPrompt = `INFORMACIÓN DEL USUARIO:
 - Nombre: ${userContext.nombre} ${userContext.apellidos}
 - Rol: ${userContext.rol}
@@ -1066,7 +780,6 @@ EJEMPLO:
   "actions": []
 }`;
       } else {
-        // Modo MOVI - Datos del sistema
         userPrompt = `INFORMACIÓN PERSONAL DEL USUARIO:
 - Nombre completo: ${userContext.nombre} ${userContext.apellidos}
 - Email: ${userContext.email}
@@ -1094,13 +807,24 @@ INSTRUCCIONES FINALES:
 5. Formato de respuesta: JSON puro sin markdown
 6. SIEMPRE incluye acciones útiles para que el usuario navegue
 
-EJEMPLO DE RESPUESTA ESPERADA:
+EJEMPLOS DE RESPUESTA ESPERADA:
+
+Para comisiones:
 {
   "type": "text",
   "text": "Este mes has generado $45,230 en comisiones netas, con 12 registros. Tu última comisión fue de GNP por $3,450 del cliente Juan Pérez. También tienes 3 tareas vencidas que requieren atención.",
   "actions": [
     {"type": "navigate", "label": "Ver mis comisiones", "destination": "/mis-comisiones", "icon": "DollarSign"},
     {"type": "navigate", "label": "Ver tareas pendientes", "destination": "/mi-crm/tareas", "icon": "CheckSquare"}
+  ]
+}
+
+Para chat:
+{
+  "type": "text",
+  "text": "Lo último que hablaste con Pablo fue el 5 de noviembre a las 22:47 hrs. Enviaste el archivo 'Logo-City-Suites2.png'. Pablo aún no ha respondido a ese mensaje.",
+  "actions": [
+    {"type": "navigate", "label": "Ir al chat", "destination": "/chat", "icon": "MessageSquare"}
   ]
 }`;
       }
