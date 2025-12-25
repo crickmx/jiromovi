@@ -40,6 +40,12 @@ export function AssistantModal() {
   useEffect(() => {
     if (isOpen) {
       loadSuggestions();
+      // Scroll al final cuando se abre el modal
+      if (messages.length > 0) {
+        setTimeout(() => {
+          scrollToBottom('auto');
+        }, 100);
+      }
     }
   }, [isOpen, location.pathname]);
 
@@ -47,13 +53,23 @@ export function AssistantModal() {
     scrollToBottom();
   }, [messages]);
 
+  // Scroll al final cuando cambia la conversación
+  useEffect(() => {
+    if (conversationId) {
+      // Esperar a que los mensajes se rendericen
+      setTimeout(() => {
+        scrollToBottom('auto');
+      }, 100);
+    }
+  }, [conversationId]);
+
   const loadSuggestions = async () => {
     const suggs = await getSuggestionsForRoute(location.pathname);
     setSuggestions(suggs);
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
   };
 
   const handleSend = async () => {
