@@ -226,13 +226,30 @@ Password: 123456
 
 **NO usar:** `ccjimenez@me.com` (ese email no existe en auth.users)
 
-## Opciones de Corrección
+## Solución Definitiva Implementada ✅
 
-### Opción A: Cambiar comportamiento del login
-Modificar el login para buscar el usuario por `email_laboral` en la tabla `usuarios` y luego usar el `auth.email` correspondiente.
+### Opción A Implementada: Login Inteligente con Fallback
 
-### Opción B: Sincronizar emails
-Actualizar el email en `auth.users` para que coincida con `usuarios.email_laboral`.
+El sistema ahora acepta **ambos emails** automáticamente:
 
-### Opción C: Dejar como está
-Documentar que el email de login es `cdcjimenez@gmail.com`.
+**Flujo de Login Mejorado:**
+1. Intenta login con el email proporcionado
+2. Si falla con "Invalid credentials":
+   - Busca el email en `usuarios.email_laboral`
+   - Si existe, obtiene el `auth.email` correspondiente
+   - Reintenta login con el `auth.email`
+3. Si funciona, login exitoso
+
+**Beneficios:**
+- ✅ Usuario puede usar `ccjimenez@me.com` (email_laboral)
+- ✅ Usuario puede usar `cdcjimenez@gmail.com` (auth.email)
+- ✅ Experiencia transparente, sin errores
+- ✅ No requiere sincronización manual
+- ✅ Funciona para todos los usuarios con discrepancia
+
+**Cambios Realizados:**
+- `src/contexts/AuthContext.tsx` - Lógica de fallback agregada
+- Nueva función RPC: `get_auth_email_for_user(user_id)`
+- Logging completo para debugging
+
+**Documentación Completa:** Ver `FIX_LOGIN_EMAIL_ALTERNATIVO.md`

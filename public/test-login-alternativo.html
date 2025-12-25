@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Login con Email Alternativo</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    h1 { color: #1e293b; margin-top: 0; font-size: 24px; }
+    h2 { font-size: 18px; color: #475569; margin-top: 0; }
+    button {
+      background: #3b82f6;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-top: 8px;
+      width: 100%;
+      font-size: 16px;
+    }
+    button:hover { background: #2563eb; }
+    button.success { background: #10b981; }
+    button.success:hover { background: #059669; }
+    .result {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .error { background: #fee; color: #991b1b; border: 1px solid #fca5a5; }
+    .info { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+    .warning { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+      margin-top: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .info-box {
+      background: #f1f5f9;
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid #3b82f6;
+      margin-bottom: 16px;
+    }
+    .info-box strong {
+      color: #1e293b;
+      display: block;
+      margin-bottom: 8px;
+    }
+    code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      color: #1e293b;
+      font-weight: 600;
+    }
+    .log-entry {
+      padding: 4px 8px;
+      margin: 2px 0;
+      border-left: 3px solid #3b82f6;
+      background: #f1f5f9;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔐 Test: Login con Email Alternativo</h1>
+    <div class="info-box">
+      <strong>Prueba el nuevo sistema de login inteligente</strong>
+      Este test verifica que el usuario pueda hacer login con cualquiera de sus emails:
+      <ul style="margin: 8px 0;">
+        <li><code>email_laboral</code> (tabla usuarios)</li>
+        <li><code>auth.email</code> (auth.users)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Test 1: Login con email_laboral</h2>
+    <div class="info-box">
+      <strong>Credenciales:</strong>
+      Email: <code>ccjimenez@me.com</code> (email_laboral)<br>
+      Password: <code>123456</code>
+    </div>
+    <p style="color: #64748b; font-size: 14px;">
+      Este email está en la tabla <code>usuarios</code> pero NO en <code>auth.users</code>.
+      El sistema debe detectarlo y usar el auth.email correcto automáticamente.
+    </p>
+    <button onclick="testLoginEmailLaboral()" class="success">✅ Probar Login con email_laboral</button>
+    <div id="result1"></div>
+    <div id="logs1"></div>
+  </div>
+
+  <div class="card">
+    <h2>Test 2: Login con auth.email</h2>
+    <div class="info-box">
+      <strong>Credenciales:</strong>
+      Email: <code>cdcjimenez@gmail.com</code> (auth.email)<br>
+      Password: <code>123456</code>
+    </div>
+    <p style="color: #64748b; font-size: 14px;">
+      Este email está en <code>auth.users</code>. El login debe funcionar directamente.
+    </p>
+    <button onclick="testLoginAuthEmail()">🔐 Probar Login con auth.email</button>
+    <div id="result2"></div>
+    <div id="logs2"></div>
+  </div>
+
+  <div class="card">
+    <h2>Test 3: Verificar Función RPC</h2>
+    <p style="color: #64748b; font-size: 14px;">
+      Verifica que la función <code>get_auth_email_for_user</code> esté disponible y funcione correctamente.
+    </p>
+    <button onclick="testRpcFunction()">🔧 Probar Función RPC</button>
+    <div id="result3"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjA5OTAsImV4cCI6MjA3NzI5Njk5MH0.bIlGsgeAC6oxGUalODg0C5-l6KaJip0wWa9IbQ7MjTQ';
+
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const originalLog = console.log;
+    let currentLogsDiv = null;
+
+    function captureLog(logsDiv) {
+      currentLogsDiv = logsDiv;
+      console.log = function(...args) {
+        originalLog.apply(console, args);
+        if (currentLogsDiv && args[0].includes('[AuthContext]')) {
+          const logEntry = document.createElement('div');
+          logEntry.className = 'log-entry';
+          logEntry.textContent = args.join(' ');
+          currentLogsDiv.appendChild(logEntry);
+        }
+      };
+    }
+
+    function stopCaptureLog() {
+      console.log = originalLog;
+      currentLogsDiv = null;
+    }
+
+    async function testLoginEmailLaboral() {
+      const resultDiv = document.getElementById('result1');
+      const logsDiv = document.getElementById('logs1');
+      logsDiv.innerHTML = '<h3 style="font-size: 14px; margin-top: 16px;">Console Logs:</h3>';
+
+      try {
+        resultDiv.innerHTML = '<div class="result info">🔄 Intentando login con email_laboral...</div>';
+        captureLog(logsDiv);
+
+        // Simular el flujo de AuthContext
+        console.log('[AuthContext] Attempting sign in for:', 'ccjimenez@me.com');
+
+        // Intento 1: Login directo
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email: 'ccjimenez@me.com',
+          password: '123456'
+        });
+
+        if (error && error.message.includes('Invalid login credentials')) {
+          console.log('[AuthContext] Sign in failed:', error.message);
+          console.log('[AuthContext] Checking if email exists in usuarios.email_laboral...');
+
+          // Buscar en usuarios
+          const { data: usuarioData, error: queryError } = await supabaseClient
+            .from('usuarios')
+            .select('id')
+            .eq('email_laboral', 'ccjimenez@me.com')
+            .eq('activo', true)
+            .eq('is_deleted', false)
+            .maybeSingle();
+
+          if (usuarioData) {
+            console.log('[AuthContext] Found user in usuarios table, getting auth email...');
+
+            // Obtener auth email
+            const { data: authEmailData, error: rpcError } = await supabaseClient
+              .rpc('get_auth_email_for_user', { user_id: usuarioData.id })
+              .maybeSingle();
+
+            if (rpcError) {
+              throw new Error(`RPC Error: ${rpcError.message}`);
+            }
+
+            if (authEmailData?.email) {
+              console.log('[AuthContext] Found different auth email, retrying login with:', authEmailData.email);
+
+              // Intento 2: Login con auth.email
+              const { data: retryData, error: retryError } = await supabaseClient.auth.signInWithPassword({
+                email: authEmailData.email,
+                password: '123456'
+              });
+
+              if (retryError) throw retryError;
+
+              console.log('[AuthContext] Retry login successful!');
+
+              resultDiv.innerHTML = `
+                <div class="result success">
+                  ✅ <strong>LOGIN EXITOSO CON EMAIL ALTERNATIVO</strong><br><br>
+                  <strong>Email original ingresado:</strong> ccjimenez@me.com<br>
+                  <strong>Auth email encontrado:</strong> ${authEmailData.email}<br>
+                  <strong>Usuario ID:</strong> ${retryData.user.id}<br><br>
+                  <strong>🎉 El sistema detectó automáticamente el email correcto!</strong>
+                </div>
+              `;
+
+              // Logout
+              await supabaseClient.auth.signOut();
+              stopCaptureLog();
+              return;
+            }
+          }
+        }
+
+        throw error || new Error('Flujo inesperado');
+
+      } catch (error) {
+        console.error('[AuthContext] Error:', error);
+        resultDiv.innerHTML = `
+          <div class="result error">
+            ❌ <strong>ERROR:</strong> ${error.message}<br><br>
+            <strong>Posible causa:</strong> La función RPC no está disponible o falló el flujo.
+          </div>
+        `;
+      } finally {
+        stopCaptureLog();
+      }
+    }
+
+    async function testLoginAuthEmail() {
+      const resultDiv = document.getElementById('result2');
+      const logsDiv = document.getElementById('logs2');
+      logsDiv.innerHTML = '<h3 style="font-size: 14px; margin-top: 16px;">Console Logs:</h3>';
+
+      try {
+        resultDiv.innerHTML = '<div class="result info">🔄 Intentando login directo...</div>';
+        captureLog(logsDiv);
+
+        console.log('[AuthContext] Attempting sign in for:', 'cdcjimenez@gmail.com');
+
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email: 'cdcjimenez@gmail.com',
+          password: '123456'
+        });
+
+        if (error) throw error;
+
+        console.log('[AuthContext] Sign in successful!');
+
+        resultDiv.innerHTML = `
+          <div class="result success">
+            ✅ <strong>LOGIN EXITOSO DIRECTO</strong><br><br>
+            <strong>Email:</strong> ${data.user.email}<br>
+            <strong>Usuario ID:</strong> ${data.user.id}<br><br>
+            <strong>Este email funciona directamente sin fallback.</strong>
+          </div>
+        `;
+
+        // Logout
+        await supabaseClient.auth.signOut();
+
+      } catch (error) {
+        console.error('[AuthContext] Error:', error);
+        resultDiv.innerHTML = `
+          <div class="result error">
+            ❌ <strong>ERROR:</strong> ${error.message}
+          </div>
+        `;
+      } finally {
+        stopCaptureLog();
+      }
+    }
+
+    async function testRpcFunction() {
+      const resultDiv = document.getElementById('result3');
+
+      try {
+        resultDiv.innerHTML = '<div class="result info">🔄 Probando función RPC...</div>';
+
+        const userId = 'e721d4ed-4ba4-499a-a08c-3b881ff380ea';
+
+        const { data, error } = await supabaseClient
+          .rpc('get_auth_email_for_user', { user_id: userId })
+          .maybeSingle();
+
+        if (error) throw error;
+
+        resultDiv.innerHTML = `
+          <div class="result success">
+            ✅ <strong>Función RPC Disponible y Funcional</strong><br><br>
+            <strong>User ID consultado:</strong> ${userId}<br>
+            <strong>Auth email retornado:</strong> ${data?.email || 'NULL'}<br><br>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          </div>
+        `;
+
+      } catch (error) {
+        console.error('Error RPC:', error);
+        resultDiv.innerHTML = `
+          <div class="result error">
+            ❌ <strong>ERROR:</strong> ${error.message}<br><br>
+            <strong>Posible causa:</strong> La función RPC no existe o no tiene permisos correctos.
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

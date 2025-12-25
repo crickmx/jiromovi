@@ -119,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('[AuthContext] Has Anon Key:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
 
     try {
+      // Intento 1: Login directo con el email proporcionado
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -132,6 +133,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: error.name,
           code: error.code
         });
+
+        // Si falla por credenciales inválidas, intentar con email alternativo
+        if (error.message.includes('Invalid login credentials')) {
+          console.log('[AuthContext] Checking if email exists in usuarios.email_laboral...');
+
+          try {
+            // Buscar usuario por email_laboral
+            const { data: usuarioData, error: queryError } = await supabase
+              .from('usuarios')
+              .select('id')
+              .eq('email_laboral', email)
+              .eq('activo', true)
+              .eq('is_deleted', false)
+              .maybeSingle();
+
+            if (queryError) {
+              console.error('[AuthContext] Error querying usuarios:', queryError);
+              return { error };
+            }
+
+            if (usuarioData) {
+              console.log('[AuthContext] Found user in usuarios table, getting auth email...');
+
+              // Obtener el email de auth.users
+              const { data: authUserData } = await supabase
+                .rpc('get_auth_email_for_user', { user_id: usuarioData.id })
+                .maybeSingle();
+
+              if (authUserData?.email && authUserData.email !== email) {
+                console.log('[AuthContext] Found different auth email, retrying login with:', authUserData.email);
+
+                // Intento 2: Login con el email de auth.users
+                const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+                  email: authUserData.email,
+                  password,
+                });
+
+                if (retryError) {
+                  console.error('[AuthContext] Retry login also failed:', retryError);
+                  return { error: retryError };
+                }
+
+                // Si el retry funciona, continuar con el flujo normal
+                console.log('[AuthContext] Retry login successful:', {
+                  userId: retryData.user?.id,
+                  email: retryData.user?.email,
+                  originalEmail: email
+                });
+
+                if (retryData.user) {
+                  console.log('[AuthContext] Waiting for usuario to load...');
+                  setUser(retryData.user);
+                  try {
+                    await fetchUsuario(retryData.user.id);
+                    console.log('[AuthContext] Usuario loaded, ready to navigate');
+                  } catch (fetchError) {
+                    console.error('[AuthContext] Error loading usuario profile:', fetchError);
+                    await supabase.auth.signOut();
+                    return {
+                      error: {
+                        name: 'ProfileError',
+                        message: 'No se pudo cargar tu perfil. Verifica que tu usuario esté activo.',
+                        status: 403
+                      } as AuthError
+                    };
+                  }
+                }
+
+                return { error: null };
+              }
+            }
+          } catch (lookupError) {
+            console.error('[AuthContext] Error during email lookup:', lookupError);
+          }
+        }
+
         return { error };
       }
 
