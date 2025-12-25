@@ -132,6 +132,25 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     setError('');
 
     try {
+      // Validar campos obligatorios
+      if (!formData.email_laboral) {
+        setError('El email laboral es obligatorio');
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.celular_laboral) {
+        setError('El celular laboral es obligatorio');
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.oficina_id) {
+        setError('La oficina es obligatoria');
+        setLoading(false);
+        return;
+      }
+
       if (formData.web_slug && !validateSlug(formData.web_slug)) {
         setError('El slug solo puede contener letras minúsculas, números y guiones');
         setLoading(false);
@@ -497,15 +516,16 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
                     <Building2 className="w-3 h-3" />
-                    Oficina
+                    Oficina *
                   </label>
                   <select
                     value={formData.oficina_id}
                     onChange={(e) => setFormData({ ...formData, oficina_id: e.target.value })}
                     disabled={isGerente}
+                    required
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
-                    <option value="">Sin oficina asignada</option>
+                    <option value="">Seleccionar oficina</option>
                     {oficinas.map((oficina) => (
                       <option key={oficina.id} value={oficina.id}>
                         {oficina.nombre}
@@ -579,13 +599,13 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Email Laboral {!user && '*'}
+                  Email Laboral *
                 </label>
                 <input
                   type="email"
                   value={formData.email_laboral}
                   onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
-                  required={!user}
+                  required
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="usuario@empresa.com"
                 />
@@ -609,12 +629,13 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
 
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Celular Laboral
+                  Celular Laboral *
                 </label>
                 <input
                   type="tel"
                   value={formData.celular_laboral}
                   onChange={(e) => setFormData({ ...formData, celular_laboral: e.target.value })}
+                  required
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="+52 55 1234 5678"
                 />
