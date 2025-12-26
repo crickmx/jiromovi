@@ -333,14 +333,14 @@ export function parseSoapResponse(soapXml: string): any {
         throw new Error(`SICAS Error: ${errorMessage}`);
       }
 
-      // Buscar si hay un mensaje de error en la respuesta
+      // Buscar si hay un error tag
       const errorMatch = soapXml.match(/<ERROR>(.*?)<\/ERROR>/is);
       if (errorMatch) {
         console.error('[SICAS Parser] ERROR tag encontrado:', errorMatch[1]);
         throw new Error(`SICAS Error: ${errorMatch[1]}`);
       }
 
-      // Buscar faultstring
+      // Buscar SOAP fault
       const faultMatch = soapXml.match(/<faultstring>(.*?)<\/faultstring>/is);
       if (faultMatch) {
         console.error('[SICAS Parser] SOAP Fault:', faultMatch[1]);
@@ -349,7 +349,7 @@ export function parseSoapResponse(soapXml: string): any {
 
       // Log del XML recibido para debug
       console.error('[SICAS Parser] XML recibido (primeros 1000 chars):', soapXml.substring(0, 1000));
-      throw new Error('No se encontró ReadInfoDataResult en la respuesta SOAP. Verificar credenciales y permisos en SICAS.');
+      throw new Error('No se encontró ReadInfoDataResult en la respuesta SOAP. Verificar credenciales y permisos.');
     }
 
     let dataResult = resultMatch[1];
@@ -368,27 +368,32 @@ export function parseSoapResponse(soapXml: string): any {
     // Verificar si el contenido decodificado tiene un mensaje de error
     const decodedMessageMatch = dataResult.match(/<MESSAGE>(.*?)<\/MESSAGE>/is);
     const decodedResponseTxtMatch = dataResult.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
+    const decodedResponseNbrMatch = dataResult.match(/<RESPONSENBR>(.*?)<\/RESPONSENBR>/is);
 
     if (decodedMessageMatch) {
       const message = decodedMessageMatch[1].trim();
       console.log('[SICAS Parser] MESSAGE encontrado:', message);
 
-      // Extraer RESPONSETXT para verificar si es SUCCESS
+      // Extraer RESPONSETXT y RESPONSENBR
       const responseTxt = decodedResponseTxtMatch ? decodedResponseTxtMatch[1].trim().toUpperCase() : '';
-      console.log('[SICAS Parser] RESPONSETXT:', responseTxt);
+      const responseNbr = decodedResponseNbrMatch ? decodedResponseNbrMatch[1].trim() : '';
 
-      // Si el mensaje contiene "Error" PERO RESPONSETXT es SUCCESS/SUCESS,
-      // significa que el catálogo no está disponible (no es un error fatal)
+      console.log('[SICAS Parser] RESPONSETXT:', responseTxt);
+      console.log('[SICAS Parser] RESPONSENBR:', responseNbr);
+
+      // Regla precisa: SUCESS + RESPONSENBR=0 + Error en MESSAGE = catálogo no disponible
       if (message.toLowerCase().includes('error')) {
-        if (responseTxt === 'SUCESS' || responseTxt === 'SUCCESS') {
-          console.warn('[SICAS Parser] ⚠️ Catálogo no disponible o vacío:', message);
-          // Retornar estructura vacía indicando que no hay datos
+        if ((responseTxt === 'SUCESS' || responseTxt === 'SUCCESS') && responseNbr === '0') {
+          console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (RESPONSENBR=0):', message);
+          // Retornar estructura indicando catálogo no disponible
           return {
             __empty_catalog: true,
             message: message,
+            responseNbr: '0',
+            status: 'not_available',
           };
         } else {
-          // Si RESPONSETXT no es SUCCESS, entonces SÍ es un error real
+          // Si RESPONSETXT=DENIED o RESPONSENBR!=0, es un error real
           console.error('[SICAS Parser] ❌ Error detectado en MESSAGE:', message);
           throw new Error(`SICAS: ${message}`);
         }

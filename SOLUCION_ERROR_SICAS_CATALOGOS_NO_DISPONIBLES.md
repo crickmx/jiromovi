@@ -2,7 +2,7 @@
 
 ## Problema Identificado
 
-SICAS está devolviendo respuestas **inconsistentes** para algunos catálogos:
+SICAS devuelve respuestas **contradictorias** cuando un catálogo no está disponible:
 
 ```xml
 <RESPONSETXT>SUCESS</RESPONSETXT>
@@ -10,71 +10,104 @@ SICAS está devolviendo respuestas **inconsistentes** para algunos catálogos:
 <MESSAGE>Error en Ejecución de WS o Proceso Interno de SICASOnline --</MESSAGE>
 ```
 
-- ✅ `RESPONSETXT` = "SUCESS" (indica éxito)
-- ❌ `MESSAGE` = "Error en Ejecución..." (indica error)
+### Regla de Detección (según documentación SICAS)
 
-### Catálogo Afectado Identificado
-- **ID 11: Despachos (eDespachos)** - No disponible o sin permisos
+Un catálogo está **no disponible** cuando:
+- ✅ `RESPONSETXT` = "SUCESS" (proceso ejecutado)
+- ✅ `RESPONSENBR` = "0" (sin registros/proceso interno falló)
+- ❌ `MESSAGE` contiene "Error" (mensaje de error interno)
+
+**Nota**: Cuando hay éxito real, `RESPONSENBR` trae un número > 0.
+
+### Catálogos Probados
+- **ID 11: eDespachos** - ❌ No disponible (RESPONSENBR=0)
 
 ## Solución Implementada
 
 ### 1. Parser Mejorado (`sicasParser.ts`)
-- **Detección inteligente**: Si `RESPONSETXT = SUCESS` pero `MESSAGE` contiene "Error", lo tratamos como catálogo vacío/no disponible (no como error fatal)
-- **Retorno especial**: `{ __empty_catalog: true, message: "..." }`
-- **Logs informativos**: Distingue entre errores reales y catálogos no disponibles
+- **Regla precisa**: Solo marca como "no disponible" cuando `RESPONSETXT=SUCESS + RESPONSENBR=0 + Error en MESSAGE`
+- **Detección de DENIED**: Si `RESPONSETXT=DENIED`, es error fatal de autenticación
+- **Retorno con estado**: `{ __empty_catalog: true, status: 'not_available', responseNbr: '0' }`
+- **Logs detallados**: Incluye RESPONSETXT, RESPONSENBR y MESSAGE
 
 ### 2. Edge Function Actualizada (`sicas-sync`)
-- **Manejo de catálogos vacíos**: Retorna HTTP 200 con `warning` en lugar de error 500
-- **Historial de sincronización**: Registra el warning en lugar de marcarlo como fallo
-- **Respuesta estructurada**:
-  ```json
-  {
-    "success": true,
-    "warning": "Error en Ejecución de WS o Proceso Interno de SICASOnline --",
-    "stats": { "totalRows": 0, "inserted": 0, "updated": 0, "failed": 0 }
-  }
-  ```
+- **Sistema de estados**: Guarda `catalog_status` en historial:
+  - `available`: Catálogo sincronizado OK
+  - `not_available`: Sin permisos o no habilitado (RESPONSENBR=0)
+  - `denied`: Autenticación denegada
+  - `error`: Timeout, conexión, o parse error
+- **Auditoría completa**: Guarda `response_nbr` y `xml_snippet` para debugging
+- **HTTP 200 con warning**: No falla la request, solo advierte
 
-### 3. Frontend Actualizado (`SicasAdmin.tsx`)
-- **Mensaje diferenciado**: Muestra "⚠️ Catálogo no disponible" en lugar de error fatal
-- **UX mejorada**: El usuario sabe que el catálogo no está disponible sin pensar que hay un problema de configuración
+### 3. Nueva Edge Function de Prueba (`sicas-test-catalog`)
+- **Prueba rápida**: Testea cualquier catálogo por ID sin registrarlo
+- **Sin efectos secundarios**: No guarda datos, solo reporta disponibilidad
+- **Respuesta con samples**: Incluye primeros 5 registros si está disponible
 
-## Catálogos Disponibles en SICAS
+### 4. Página de Diagnóstico (`test-sicas-catalogs-availability.html`)
+- **Prueba automática**: Testea 12 catálogos sugeridos en secuencia
+- **UI visual**: Color-coded por estado (verde=disponible, naranja=no disponible, rojo=denied)
+- **Resumen agregado**: Muestra cuántos catálogos están disponibles vs. no disponibles
 
-Según la migración `20251226164526_create_sicas_module.sql`, estos son los catálogos más comunes:
+## Catálogos según Documentación SICAS
 
-### ✅ Catálogos Probablemente Disponibles
+Según el enum `eDatatoRead` de la documentación oficial:
+
+### 🎯 Catálogos Prioritarios (para tu sistema)
+| ID | Nombre | Uso en Sistema |
+|----|--------|----------------|
+| 10 | eOficias | **Plan B** para mapeo oficinas (si eDespachos no funciona) |
+| 11 | eDespachos | Mapeo despachos ↔ oficinas (actualmente no disponible) |
+| 18 | ePromotorias | **Plan B alternativo** para mapeo operativo |
+| 32 | eVendedores | **CRÍTICO** - Mapeo vendedores ↔ usuarios |
+| 33 | eEjecutivos | Estructura organizacional |
+
+### 📋 Catálogos Generales
 | ID | Nombre | Descripción |
 |----|--------|-------------|
-| 1  | Agentes | Lista de agentes registrados |
-| 2  | Usuarios | Usuarios del sistema |
-| 5  | Pólizas | Pólizas activas |
-| 10 | Aseguradoras | Compañías aseguradoras |
-| 15 | Clientes | Base de clientes |
-| 20 | Productos | Tipos de seguros |
+| 1  | eUsuarios | Usuarios del sistema |
+| 2  | eProductos | Productos de seguro |
+| 3  | eClientes | Base de clientes |
+| 4  | ePolizas | Pólizas |
+| 5  | eAseguradoras | Aseguradoras |
+| 12 | eCompanias | Compañías |
+| 13 | eAgentes | Agentes |
 
-### ⚠️ Catálogos Posiblemente No Disponibles
-| ID | Nombre | Observación |
-|----|--------|-------------|
-| 11 | Despachos | Error interno de SICAS |
-| 32 | Vendedores | Pendiente de probar |
-| 40-61 | Varios | Catálogos especializados |
+**⚠️ Importante**: Que un catálogo esté en el enum NO garantiza que tu usuario tenga permiso ni que esté habilitado en tu instancia.
 
-## Cómo Probar Otros Catálogos
+## Cómo Probar Catálogos
 
-1. **En la UI de SICAS Admin**:
-   - Ve a la pestaña "Conexión"
-   - Haz clic en "Probar Conexión" para verificar credenciales
-   - Intenta sincronizar diferentes catálogos
+### Opción 1: Herramienta de Diagnóstico (Recomendado)
 
-2. **Catálogos recomendados para probar** (en orden):
-   ```
-   1. Agentes (ID: 1)
-   2. Usuarios (ID: 2)
-   3. Aseguradoras (ID: 10)
-   4. Clientes (ID: 15)
-   5. Vendedores (ID: 32)
-   ```
+Abre en tu navegador:
+```
+http://localhost:5173/test-sicas-catalogs-availability.html
+```
+
+Esta herramienta:
+- ✅ Prueba 12 catálogos automáticamente
+- ✅ Muestra estado visual (disponible/no disponible/denied)
+- ✅ Reporta cuántos registros encontró en cada uno
+- ✅ Incluye resumen agregado
+
+### Opción 2: Prueba Individual (vía API)
+
+```bash
+curl -X POST https://tu-proyecto.supabase.co/functions/v1/sicas-test-catalog \
+  -H "Content-Type: application/json" \
+  -d '{"catalog_id": 32}'
+```
+
+Respuesta esperada:
+```json
+{
+  "success": true,
+  "catalog_id": 32,
+  "catalog_status": "available",
+  "stats": { "totalRows": 150, "records": 150 },
+  "sample_records": [...]
+}
+```
 
 ## Logs de Diagnóstico
 
@@ -87,11 +120,39 @@ El sistema ahora genera logs claros:
 [SICAS Sync] ⚠️ Catálogo vacío o no disponible: Error en Ejecución...
 ```
 
-## Próximos Pasos
+## Plan de Acción
 
-1. **Probar catálogo de Vendedores (ID: 32)** - Es el otro catálogo crítico
-2. **Verificar permisos en SICAS** - Algunos catálogos requieren permisos especiales
-3. **Contactar soporte de SICAS** si los catálogos críticos no están disponibles
+### Paso 1: Ejecutar Diagnóstico Completo
+```
+http://localhost:5173/test-sicas-catalogs-availability.html
+```
+Esto te dirá **exactamente** qué catálogos tienes disponibles.
+
+### Paso 2: Estrategia según Resultados
+
+**Si eVendedores (ID: 32) está disponible**:
+✅ Usarlo directamente para mapeo vendedores ↔ usuarios
+
+**Si eDespachos (ID: 11) NO está disponible** (como ahora):
+- 🔄 Plan B: Usar **eOficias (ID: 10)** para mapeo oficinas
+- 🔄 Plan C: Usar **ePromotorias (ID: 18)** si representa tu estructura operativa
+
+**Si eVendedores (ID: 32) NO está disponible**:
+- 🔄 Probar **eEjecutivos (ID: 33)** como alternativa
+- 🔄 Probar **eAgentes (ID: 13)** si tus vendedores son "agentes"
+
+### Paso 3: Contactar Soporte SICAS
+
+Si los catálogos críticos (32, 10, 18) no están disponibles:
+- Solicitar habilitación de **eVendedores (ID: 32)** - CRÍTICO
+- Solicitar habilitación de **eDespachos (ID: 11)** o **eOficias (ID: 10)**
+- Preguntar qué permisos adicionales necesitas
+
+### Paso 4: Implementar Plan B
+
+Si algunos catálogos nunca estarán disponibles, considerar:
+- **Mapeo manual**: UI para que usuarios mapeen vendedores manualmente
+- **Cache local**: Guardar mapeos manuales en tu BD
 
 ## Impacto
 

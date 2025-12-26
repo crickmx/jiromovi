@@ -138,7 +138,12 @@ Deno.serve(async (req: Request) => {
     // Si el catálogo está vacío o no disponible (pero no es un error)
     if (parseResult.records.length === 0) {
       const warning = (parseResult as any).warning;
+      const catalogStatus = (parseResult as any).status || 'not_available';
+      const responseNbr = (parseResult as any).responseNbr || '0';
+
       console.log('[SICAS Sync] ⚠️ Catálogo vacío o no disponible:', warning);
+      console.log('[SICAS Sync] Catalog Status:', catalogStatus);
+      console.log('[SICAS Sync] Response NBR:', responseNbr);
 
       if (syncHistoryId) {
         await supabase
@@ -146,11 +151,14 @@ Deno.serve(async (req: Request) => {
           .update({
             sync_completed_at: new Date().toISOString(),
             status: 'completed',
+            catalog_status: catalogStatus,
+            response_nbr: responseNbr,
             records_found: 0,
             records_inserted: 0,
             records_updated: 0,
             records_failed: 0,
             response_preview: responseText.substring(0, 1000),
+            xml_snippet: responseText.substring(0, 1000),
             error_message: warning,
           })
           .eq('id', syncHistoryId);
@@ -161,6 +169,7 @@ Deno.serve(async (req: Request) => {
           success: true,
           catalog_type_id,
           catalog_name: catalogType.name,
+          catalog_status: catalogStatus,
           warning: warning || 'Catálogo no disponible o vacío en SICAS',
           stats: {
             totalRows: 0,
@@ -246,11 +255,13 @@ Deno.serve(async (req: Request) => {
         .update({
           sync_completed_at: new Date().toISOString(),
           status: 'completed',
+          catalog_status: 'available',
           records_found: parseResult.stats.totalRows,
           records_inserted: recordsInserted,
           records_updated: recordsUpdated,
           records_failed: recordsFailed,
           response_preview: responseText.substring(0, 1000),
+          xml_snippet: responseText.substring(0, 1000),
         })
         .eq('id', syncHistoryId);
     }
@@ -260,6 +271,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         catalog_type_id,
         catalog_name: catalogType.name,
+        catalog_status: 'available',
         stats: {
           totalRows: parseResult.stats.totalRows,
           inserted: recordsInserted,
@@ -276,6 +288,12 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('[SICAS Sync] ❌ Error fatal:', error);
 
+    // Detectar el tipo de error
+    let catalogStatus = 'error';
+    if (error.message.includes('DENIED') || error.message.includes('denegada')) {
+      catalogStatus = 'denied';
+    }
+
     if (syncHistoryId) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -286,6 +304,7 @@ Deno.serve(async (req: Request) => {
         .update({
           sync_completed_at: new Date().toISOString(),
           status: 'failed',
+          catalog_status: catalogStatus,
           error_message: error.message,
         })
         .eq('id', syncHistoryId);
