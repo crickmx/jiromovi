@@ -95,8 +95,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const parsedSoapData = parseSoapResponse(responseText);
-    console.log('[SICAS Test] ✅ Datos extraídos de SOAP exitosamente');
+    // ✅ Try/catch a prueba de todo: convierte errores de "catálogo no disponible" en HTTP 200
+    let parsedSoapData: any;
+    try {
+      parsedSoapData = parseSoapResponse(responseText);
+      console.log('[SICAS Test] ✅ Datos extraídos de SOAP exitosamente');
+    } catch (e: any) {
+      const errorMsg = String(e?.message ?? e ?? '');
+      console.error('[SICAS Test] ❌ Error en parseSoapResponse:', errorMsg);
+
+      // ✅ Caso especial: SUCESS + RESPONSENBR=0 con "Error en Ejecución..."
+      if (/Error en Ejecución|Proceso Interno|SICASOnline/i.test(errorMsg)) {
+        console.warn('[SICAS Test] ⚠️ Catálogo no disponible (capturado desde error)');
+
+        const cleanMessage = errorMsg.replace(/^(Error parseando respuesta SOAP:\s*)?SICAS:\s*/i, '');
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            catalog_id,
+            catalog_status: 'not_available',
+            response_nbr: '0',
+            available: false,
+            warning: cleanMessage,
+            xml_snippet: responseText.substring(0, 1000),
+            stats: {
+              totalRows: 0,
+              records: 0,
+            },
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // ❌ Cualquier otro error: sí es fatal
+      throw e;
+    }
 
     // Verificar si parseSoapResponse ya detectó catálogo no disponible
     if (parsedSoapData?.__empty_catalog) {
