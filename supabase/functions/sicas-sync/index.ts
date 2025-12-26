@@ -71,6 +71,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Construir request SOAP usando ReadInfoData
+    // IMPORTANTE: Las credenciales deben ir en wsReadData también
     // PropertyData_TypeDataReturn = 2 (JSON preferido)
     // PropertyTypeReadData = catalog_type_id
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
@@ -78,6 +79,8 @@ Deno.serve(async (req: Request) => {
   <soap:Body>
     <ReadInfoData xmlns="http://tempuri.org/">
       <wsReadData>
+        <PropertyUserName>${sicasUsername}</PropertyUserName>
+        <PropertyPassword>${sicasPassword}</PropertyPassword>
         <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
         <PropertyTypeReadData>${catalog_type_id}</PropertyTypeReadData>
       </wsReadData>
