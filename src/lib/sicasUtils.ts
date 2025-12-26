@@ -52,6 +52,7 @@ export async function syncSicasCatalog(catalogType: 'despachos' | 'vendedores'):
   success: boolean;
   itemsProcessed?: number;
   error?: string;
+  warning?: string;
 }> {
   const catalog_type_id = catalogType === 'despachos' ? 11 : 32;
   const result = await syncCatalogById(catalog_type_id);
@@ -60,6 +61,7 @@ export async function syncSicasCatalog(catalogType: 'despachos' | 'vendedores'):
     return {
       success: true,
       itemsProcessed: (result.stats.inserted || 0) + (result.stats.updated || 0),
+      warning: (result as any).warning,
     };
   }
 

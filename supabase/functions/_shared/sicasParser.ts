@@ -40,6 +40,18 @@ export function parseSicasResponse(data: any, catalogName: string): ParseResult 
       console.log('[SICAS Parser] Preview del string (primeros 500 chars):', data.substring(0, 500));
     }
 
+    // Verificar si es un catálogo vacío (no disponible)
+    if (typeof data === 'object' && data !== null && '__empty_catalog' in data) {
+      console.log('[SICAS Parser] ⚠️ Catálogo vacío o no disponible');
+      return {
+        success: true,
+        records: [],
+        stats: { totalRows: 0, successfullyParsed: 0, failed: 0 },
+        errors: [],
+        warning: data.message || 'Catálogo no disponible en SICAS',
+      };
+    }
+
     // Estrategia 1: Es un array JSON
     if (Array.isArray(data)) {
       console.log('[SICAS Parser] ✅ Detectado: Array JSON');
@@ -361,10 +373,25 @@ export function parseSoapResponse(soapXml: string): any {
       const message = decodedMessageMatch[1].trim();
       console.log('[SICAS Parser] MESSAGE encontrado:', message);
 
-      // Si el mensaje contiene "Error" y RESPONSETXT no es SUCCESS (SICAS escribe "SUCESS" a veces)
+      // Extraer RESPONSETXT para verificar si es SUCCESS
+      const responseTxt = decodedResponseTxtMatch ? decodedResponseTxtMatch[1].trim().toUpperCase() : '';
+      console.log('[SICAS Parser] RESPONSETXT:', responseTxt);
+
+      // Si el mensaje contiene "Error" PERO RESPONSETXT es SUCCESS/SUCESS,
+      // significa que el catálogo no está disponible (no es un error fatal)
       if (message.toLowerCase().includes('error')) {
-        console.error('[SICAS Parser] ❌ Error detectado en MESSAGE:', message);
-        throw new Error(`SICAS: ${message}`);
+        if (responseTxt === 'SUCESS' || responseTxt === 'SUCCESS') {
+          console.warn('[SICAS Parser] ⚠️ Catálogo no disponible o vacío:', message);
+          // Retornar estructura vacía indicando que no hay datos
+          return {
+            __empty_catalog: true,
+            message: message,
+          };
+        } else {
+          // Si RESPONSETXT no es SUCCESS, entonces SÍ es un error real
+          console.error('[SICAS Parser] ❌ Error detectado en MESSAGE:', message);
+          throw new Error(`SICAS: ${message}`);
+        }
       }
     }
 

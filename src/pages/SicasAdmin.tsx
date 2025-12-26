@@ -129,10 +129,17 @@ export default function SicasAdmin() {
       const result = await syncSicasCatalog(catalogType);
 
       if (result.success) {
-        setMessage({
-          type: 'success',
-          text: `${catalogType} sincronizados: ${result.itemsProcessed} registros`
-        });
+        if (result.warning) {
+          setMessage({
+            type: 'error',
+            text: `⚠️ Catálogo no disponible: ${result.warning}`
+          });
+        } else {
+          setMessage({
+            type: 'success',
+            text: `${catalogType} sincronizados: ${result.itemsProcessed} registros`
+          });
+        }
         await loadData();
         if (catalogType === 'despachos') {
           await loadDespachos();
