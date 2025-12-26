@@ -24,7 +24,14 @@ export function parseStructuredResponse(data: any): StructuredResponse | null {
   const type = data.type as ResponseType;
 
   if (!type) {
-    return null;
+    // If no type specified, try to display as text
+    console.warn('Response missing type, attempting to extract text');
+    const text = data.text || data.message || data.contenido || JSON.stringify(data, null, 2);
+    return {
+      type: 'text',
+      text,
+      actions: parseActions(data.actions),
+    };
   }
 
   switch (type) {
@@ -55,8 +62,13 @@ export function parseStructuredResponse(data: any): StructuredResponse | null {
     case 'text':
       return parseTextResponse(data);
     default:
-      console.warn('Unknown response type:', type);
-      return null;
+      console.warn('Unknown response type, falling back to text:', type);
+      // Fall back to text response for unknown types
+      return {
+        type: 'text',
+        text: data.text || data.message || data.contenido || JSON.stringify(data, null, 2),
+        actions: parseActions(data.actions),
+      };
   }
 }
 
