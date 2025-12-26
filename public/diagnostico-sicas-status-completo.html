@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico SICAS - Estado de Catálogos</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1400px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #64748b;
+      margin-bottom: 24px;
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+    .btn-secondary {
+      background: #64748b;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background: #475569;
+    }
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+    .btn-success:hover {
+      background: #059669;
+    }
+    #status {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .status-info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .status-success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      padding: 16px;
+      border-radius: 6px;
+      background: #f8fafc;
+      border-left: 4px solid #cbd5e1;
+    }
+    .stat-card.available {
+      border-left-color: #10b981;
+      background: #f0fdf4;
+    }
+    .stat-card.not-available {
+      border-left-color: #f59e0b;
+      background: #fffbeb;
+    }
+    .stat-card.error {
+      border-left-color: #ef4444;
+      background: #fef2f2;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #475569;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    tr:hover {
+      background: #f8fafc;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-available {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .badge-not-available {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .badge-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .badge-pending {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #3b82f6;
+      transition: width 0.3s;
+    }
+    .filters {
+      margin-bottom: 16px;
+    }
+    .filter-btn {
+      padding: 6px 12px;
+      border: 2px solid #e2e8f0;
+      background: white;
+      border-radius: 6px;
+      margin-right: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .filter-btn.active {
+      border-color: #3b82f6;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .catalog-name {
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .catalog-id {
+      color: #64748b;
+      font-size: 14px;
+    }
+    .last-sync {
+      color: #64748b;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Diagnóstico SICAS</h1>
+    <p class="subtitle">Estado y disponibilidad de catálogos</p>
+
+    <div class="controls">
+      <button class="btn-primary" onclick="loadCatalogStatus()">🔄 Verificar Estado</button>
+      <button class="btn-success" onclick="syncAllAvailable()">✅ Sincronizar Disponibles</button>
+      <button class="btn-secondary" onclick="viewSyncHistory()">📋 Ver Historial</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div class="stats" id="stats" style="display: none;">
+      <div class="stat-card available">
+        <div class="stat-label">Disponibles</div>
+        <div class="stat-value" id="stat-available">0</div>
+      </div>
+      <div class="stat-card not-available">
+        <div class="stat-label">No Disponibles</div>
+        <div class="stat-value" id="stat-not-available">0</div>
+      </div>
+      <div class="stat-card error">
+        <div class="stat-label">Con Errores</div>
+        <div class="stat-value" id="stat-error">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Nunca Sincronizados</div>
+        <div class="stat-value" id="stat-never">0</div>
+      </div>
+    </div>
+
+    <div id="progress" style="display: none;">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <p style="text-align: center; color: #64748b;" id="progress-text">Sincronizando...</p>
+    </div>
+
+    <div class="filters" id="filters" style="display: none;">
+      <button class="filter-btn active" data-filter="all">Todos</button>
+      <button class="filter-btn" data-filter="available">Disponibles</button>
+      <button class="filter-btn" data-filter="not_available">No Disponibles</button>
+      <button class="filter-btn" data-filter="error">Con Errores</button>
+      <button class="filter-btn" data-filter="never">Nunca Sincronizados</button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
+    const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    window.supabase = supabase;
+
+    let catalogsData = [];
+    let currentFilter = 'all';
+
+    window.loadCatalogStatus = async function() {
+      const statusEl = document.getElementById('status');
+      const resultsEl = document.getElementById('results');
+      const statsEl = document.getElementById('stats');
+      const filtersEl = document.getElementById('filters');
+
+      statusEl.className = 'status-info';
+      statusEl.style.display = 'block';
+      statusEl.textContent = '⏳ Cargando catálogos...';
+      resultsEl.innerHTML = '';
+      statsEl.style.display = 'none';
+      filtersEl.style.display = 'none';
+
+      try {
+        // Cargar todos los tipos de catálogo
+        const { data: catalogTypes, error: typesError } = await supabase
+          .from('sicas_catalog_types')
+          .select('*')
+          .order('id');
+
+        if (typesError) throw typesError;
+
+        // Cargar el último estado de sincronización de cada catálogo
+        const { data: syncHistory, error: historyError } = await supabase
+          .from('sicas_sync_history')
+          .select('*')
+          .order('sync_started_at', { ascending: false });
+
+        if (historyError) throw historyError;
+
+        // Combinar datos
+        catalogsData = catalogTypes.map(catalog => {
+          const lastSync = syncHistory.find(h => h.catalog_type_id === catalog.id);
+          return {
+            ...catalog,
+            last_sync: lastSync,
+            status: lastSync?.catalog_status || 'never_synced'
+          };
+        });
+
+        // Calcular estadísticas
+        const stats = {
+          available: catalogsData.filter(c => c.status === 'available').length,
+          not_available: catalogsData.filter(c => c.status === 'not_available').length,
+          error: catalogsData.filter(c => c.status === 'error' || c.status === 'denied' || c.last_sync?.status === 'failed').length,
+          never: catalogsData.filter(c => c.status === 'never_synced').length,
+        };
+
+        document.getElementById('stat-available').textContent = stats.available;
+        document.getElementById('stat-not-available').textContent = stats.not_available;
+        document.getElementById('stat-error').textContent = stats.error;
+        document.getElementById('stat-never').textContent = stats.never;
+
+        statsEl.style.display = 'grid';
+        filtersEl.style.display = 'block';
+
+        statusEl.className = 'status-success';
+        statusEl.textContent = `✅ Cargados ${catalogsData.length} catálogos`;
+
+        renderCatalogs();
+
+      } catch (error) {
+        statusEl.className = 'status-error';
+        statusEl.textContent = `❌ Error: ${error.message}`;
+        console.error(error);
+      }
+    };
+
+    function renderCatalogs() {
+      const resultsEl = document.getElementById('results');
+
+      let filtered = catalogsData;
+      if (currentFilter === 'available') {
+        filtered = catalogsData.filter(c => c.status === 'available');
+      } else if (currentFilter === 'not_available') {
+        filtered = catalogsData.filter(c => c.status === 'not_available');
+      } else if (currentFilter === 'error') {
+        filtered = catalogsData.filter(c => c.status === 'error' || c.status === 'denied' || c.last_sync?.status === 'failed');
+      } else if (currentFilter === 'never') {
+        filtered = catalogsData.filter(c => c.status === 'never_synced');
+      }
+
+      const html = `
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Catálogo</th>
+              <th>Estado</th>
+              <th>Última Sincronización</th>
+              <th>Registros</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map(catalog => {
+              const statusBadge = getStatusBadge(catalog);
+              const lastSyncText = catalog.last_sync
+                ? new Date(catalog.last_sync.sync_started_at).toLocaleString('es-MX')
+                : 'Nunca';
+              const recordsCount = catalog.last_sync?.records_inserted || 0;
+
+              return `
+                <tr>
+                  <td><span class="catalog-id">${catalog.id}</span></td>
+                  <td>
+                    <div class="catalog-name">${catalog.name}</div>
+                    <div style="font-size: 12px; color: #64748b;">${catalog.description || ''}</div>
+                  </td>
+                  <td>${statusBadge}</td>
+                  <td><span class="last-sync">${lastSyncText}</span></td>
+                  <td>${recordsCount}</td>
+                  <td>
+                    <button class="filter-btn" onclick="syncCatalog(${catalog.id})"
+                      ${catalog.status === 'available' || catalog.status === 'never_synced' ? '' : 'disabled'}>
+                      🔄 Sync
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+
+      resultsEl.innerHTML = html;
+    }
+
+    function getStatusBadge(catalog) {
+      if (catalog.status === 'available') {
+        return '<span class="badge badge-available">✅ Disponible</span>';
+      } else if (catalog.status === 'not_available') {
+        return '<span class="badge badge-not-available">⚠️ No Disponible</span>';
+      } else if (catalog.status === 'error' || catalog.status === 'denied') {
+        return '<span class="badge badge-error">❌ Error</span>';
+      } else {
+        return '<span class="badge badge-pending">⏸️ Nunca Sincronizado</span>';
+      }
+    }
+
+    window.syncCatalog = async function(catalogId) {
+      const statusEl = document.getElementById('status');
+      statusEl.className = 'status-info';
+      statusEl.style.display = 'block';
+      statusEl.textContent = `⏳ Sincronizando catálogo ${catalogId}...`;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/sicas-sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ catalog_type_id: catalogId }),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          statusEl.className = 'status-success';
+          statusEl.textContent = result.warning
+            ? `⚠️ ${result.warning}`
+            : `✅ Sincronizado: ${result.stats?.inserted || 0} registros insertados`;
+        } else {
+          statusEl.className = 'status-error';
+          statusEl.textContent = `❌ Error: ${result.error}`;
+        }
+
+        // Recargar estado
+        setTimeout(() => loadCatalogStatus(), 2000);
+
+      } catch (error) {
+        statusEl.className = 'status-error';
+        statusEl.textContent = `❌ Error: ${error.message}`;
+      }
+    };
+
+    window.syncAllAvailable = async function() {
+      const availableCatalogs = catalogsData.filter(c =>
+        c.status === 'available' || c.status === 'never_synced'
+      );
+
+      if (availableCatalogs.length === 0) {
+        alert('No hay catálogos disponibles para sincronizar');
+        return;
+      }
+
+      const progressEl = document.getElementById('progress');
+      const progressFillEl = document.getElementById('progress-fill');
+      const progressTextEl = document.getElementById('progress-text');
+
+      progressEl.style.display = 'block';
+
+      let completed = 0;
+      for (const catalog of availableCatalogs) {
+        progressTextEl.textContent = `Sincronizando ${catalog.name} (${completed + 1}/${availableCatalogs.length})`;
+        progressFillEl.style.width = `${(completed / availableCatalogs.length) * 100}%`;
+
+        await syncCatalog(catalog.id);
+        completed++;
+
+        // Esperar 2 segundos entre sincronizaciones
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      progressFillEl.style.width = '100%';
+      progressTextEl.textContent = `✅ Completado: ${completed} catálogos sincronizados`;
+
+      setTimeout(() => {
+        progressEl.style.display = 'none';
+        loadCatalogStatus();
+      }, 3000);
+    };
+
+    window.viewSyncHistory = async function() {
+      window.location.href = '/diagnostico-sicas-sync.html';
+    };
+
+    // Filtros
+    document.getElementById('filters').addEventListener('click', (e) => {
+      if (e.target.classList.contains('filter-btn')) {
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        e.target.classList.add('active');
+        currentFilter = e.target.dataset.filter;
+        renderCatalogs();
+      }
+    });
+
+    // Cargar automáticamente al abrir la página
+    loadCatalogStatus();
+  </script>
+</body>
+</html>
