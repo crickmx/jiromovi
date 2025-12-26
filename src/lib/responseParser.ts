@@ -34,33 +34,48 @@ export function parseStructuredResponse(data: any): StructuredResponse | null {
     };
   }
 
+  let parsedResponse: StructuredResponse | null = null;
+
   switch (type) {
     case 'dashboard_summary':
-      return parseDashboardSummary(data);
+      parsedResponse = parseDashboardSummary(data);
+      break;
     case 'performance_summary':
-      return parsePerformanceSummary(data);
+      parsedResponse = parsePerformanceSummary(data);
+      break;
     case 'commission_explain':
-      return parseCommissionExplain(data);
+      parsedResponse = parseCommissionExplain(data);
+      break;
     case 'commission_anomaly':
-      return parseCommissionAnomaly(data);
+      parsedResponse = parseCommissionAnomaly(data);
+      break;
     case 'priority_list':
-      return parsePriorityList(data);
+      parsedResponse = parsePriorityList(data);
+      break;
     case 'outreach_plan':
-      return parseOutreachPlan(data);
+      parsedResponse = parseOutreachPlan(data);
+      break;
     case 'cross_sell':
-      return parseCrossSell(data);
+      parsedResponse = parseCrossSell(data);
+      break;
     case 'renewals_forecast':
-      return parseRenewalsForecast(data);
+      parsedResponse = parseRenewalsForecast(data);
+      break;
     case 'message_generator':
-      return parseMessageGenerator(data);
+      parsedResponse = parseMessageGenerator(data);
+      break;
     case 'tramite_status':
-      return parseTramiteStatus(data);
+      parsedResponse = parseTramiteStatus(data);
+      break;
     case 'team_insights':
-      return parseTeamInsights(data);
+      parsedResponse = parseTeamInsights(data);
+      break;
     case 'navigation_help':
-      return parseNavigationHelp(data);
+      parsedResponse = parseNavigationHelp(data);
+      break;
     case 'text':
-      return parseTextResponse(data);
+      parsedResponse = parseTextResponse(data);
+      break;
     default:
       console.warn('Unknown response type, falling back to text:', type);
       // Fall back to text response for unknown types
@@ -70,6 +85,18 @@ export function parseStructuredResponse(data: any): StructuredResponse | null {
         actions: parseActions(data.actions),
       };
   }
+
+  // If parsing failed, fall back to text
+  if (!parsedResponse) {
+    console.warn(`Failed to parse ${type} response, falling back to text`);
+    return {
+      type: 'text',
+      text: data.text || data.message || data.contenido || `Error al procesar respuesta de tipo ${type}`,
+      actions: parseActions(data.actions),
+    };
+  }
+
+  return parsedResponse;
 }
 
 function parseDashboardSummary(data: any): DashboardSummaryResponse | null {
