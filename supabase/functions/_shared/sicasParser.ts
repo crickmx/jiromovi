@@ -418,7 +418,11 @@ export function parseSoapResponse(soapXml: string): any {
 
         // ✅ CASO ESPECIAL: SUCESS + RESPONSENBR=0 + mensaje de error interno
         // Este es el caso de "catálogo no disponible" y NO debe lanzar error
-        if (isSicasNotAvailable(processData)) {
+        console.log('[SICAS Parser] 🔍 Verificando isSicasNotAvailable con:', { message, responseTxt, responseNbr });
+        const isNotAvailable = isSicasNotAvailable(processData);
+        console.log('[SICAS Parser] 🔍 isSicasNotAvailable retornó:', isNotAvailable);
+
+        if (isNotAvailable) {
           console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (capturado desde SOAP sin ReadInfoDataResult)');
           return {
             __empty_catalog: true,
@@ -430,7 +434,8 @@ export function parseSoapResponse(soapXml: string): any {
         }
 
         // Si hay un error real que no es not_available, lanzar
-        console.error('[SICAS Parser] ❌ Error SOAP real:', message);
+        console.error('[SICAS Parser] ❌ Error SOAP real (isSicasNotAvailable retornó false)');
+        console.error('[SICAS Parser] ❌ Error detectado en MESSAGE:', message);
         throw new Error(`SICAS: ${message || responseTxt}`);
       }
 
@@ -496,7 +501,11 @@ export function parseSoapResponse(soapXml: string): any {
 
       // ✅ CASO ESPECIAL: SUCESS + RESPONSENBR=0 + mensaje de error interno
       // Este es el caso de "catálogo no disponible" y NO debe lanzar error
-      if (isSicasNotAvailable(processData)) {
+      console.log('[SICAS Parser] 🔍 Verificando isSicasNotAvailable (PROCESSDATA) con:', { message, responseTxt, responseNbr });
+      const isNotAvailable2 = isSicasNotAvailable(processData);
+      console.log('[SICAS Parser] 🔍 isSicasNotAvailable retornó:', isNotAvailable2);
+
+      if (isNotAvailable2) {
         console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (capturado desde PROCESSDATA)');
         console.warn('[SICAS Parser] MESSAGE:', message);
         console.warn('[SICAS Parser] RESPONSENBR:', responseNbr);
