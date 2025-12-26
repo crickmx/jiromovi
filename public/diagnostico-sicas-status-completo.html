@@ -278,25 +278,8 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    // Obtener credenciales de Supabase desde localStorage o pedirlas
-    let supabaseUrl = localStorage.getItem('SUPABASE_URL');
-    let supabaseKey = localStorage.getItem('SUPABASE_ANON_KEY');
-
-    if (!supabaseUrl || !supabaseKey) {
-      const configUrl = prompt('Por favor ingresa tu SUPABASE_URL (se guardará en localStorage):');
-      const configKey = prompt('Por favor ingresa tu SUPABASE_ANON_KEY (se guardará en localStorage):');
-
-      if (configUrl && configKey) {
-        localStorage.setItem('SUPABASE_URL', configUrl);
-        localStorage.setItem('SUPABASE_ANON_KEY', configKey);
-        supabaseUrl = configUrl;
-        supabaseKey = configKey;
-      } else {
-        alert('❌ Error: Se requieren las credenciales de Supabase');
-        throw new Error('Credenciales no configuradas');
-      }
-    }
-
+    const supabaseUrl = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjA5OTAsImV4cCI6MjA3NzI5Njk5MH0.bIlGsgeAC6oxGUalODg0C5-l6KaJip0wWa9IbQ7MjTQ';
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     let catalogsData = [];
@@ -464,7 +447,7 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${token || supabaseKey}`,
           },
           body: JSON.stringify({ catalog_type_id: catalogId }),
         });
@@ -496,7 +479,10 @@
       );
 
       if (availableCatalogs.length === 0) {
-        alert('No hay catálogos disponibles para sincronizar');
+        const statusEl = document.getElementById('status');
+        statusEl.className = 'status-error';
+        statusEl.style.display = 'block';
+        statusEl.textContent = '⚠️ No hay catálogos disponibles para sincronizar';
         return;
       }
 
