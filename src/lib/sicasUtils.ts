@@ -53,19 +53,20 @@ export async function syncSicasCatalog(catalogType: 'despachos' | 'vendedores'):
   itemsProcessed?: number;
   error?: string;
 }> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const token = (await supabase.auth.getSession()).data.session?.access_token;
+  const catalog_type_id = catalogType === 'despachos' ? 11 : 32;
+  const result = await syncCatalogById(catalog_type_id);
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/sicas-sync`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ catalogType }),
-  });
+  if (result.success && result.stats) {
+    return {
+      success: true,
+      itemsProcessed: (result.stats.inserted || 0) + (result.stats.updated || 0),
+    };
+  }
 
-  return await response.json();
+  return {
+    success: false,
+    error: result.error || 'Unknown error',
+  };
 }
 
 export async function getSicasDespachos(onlyUnmapped = false): Promise<SicasDespachoWithMapping[]> {
@@ -125,31 +126,42 @@ export async function getAllSicasDespachos(): Promise<SicasDespachoWithMapping[]
 export async function getSicasVendedores(onlyUnmapped = false): Promise<SicasVendedorWithMapping[]> {
   let query = supabase
     .from('sicas_vendedores')
-    .select(`
-      *,
-      sicas_mapeo_vendedor_usuario (
-        *,
-        usuarios (id, nombre, apellidos, email)
-      )
-    `)
+    .select('*')
     .order('nombre');
 
   if (onlyUnmapped) {
     query = query.eq('is_mapped', false);
   }
 
-  const { data, error } = await query;
+  const { data: vendedores, error } = await query;
 
   if (error) {
     console.error('Error fetching vendedores:', error);
     return [];
   }
 
-  return data.map((item: any) => ({
-    ...item,
-    mapping: item.sicas_mapeo_vendedor_usuario?.[0] || null,
-    usuario: item.sicas_mapeo_vendedor_usuario?.[0]?.usuarios || null,
-  }));
+  if (!vendedores || vendedores.length === 0) {
+    return [];
+  }
+
+  const vendedoresIds = vendedores.map(v => v.id_sicas);
+
+  const { data: mapeos } = await supabase
+    .from('sicas_mapeo_vendedor_usuario')
+    .select(`
+      *,
+      usuarios!sicas_mapeo_vendedor_usuario_movi_user_id_fkey (id, nombre, apellidos, email_personal)
+    `)
+    .in('id_sicas_vendedor', vendedoresIds);
+
+  return vendedores.map((vendedor: any) => {
+    const mapeo = mapeos?.find(m => m.id_sicas_vendedor === vendedor.id_sicas);
+    return {
+      ...vendedor,
+      mapping: mapeo || null,
+      usuario: mapeo?.usuarios || null,
+    };
+  });
 }
 
 export async function mapDespacho(id_sicas_despacho: string, movi_oficina_id: string): Promise<{

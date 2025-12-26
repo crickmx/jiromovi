@@ -127,8 +127,12 @@ export default function SicasAdmin() {
 
     try {
       const result = await syncSicasCatalog(catalogType);
+
       if (result.success) {
-        setMessage({ type: 'success', text: `${catalogType} sincronizados: ${result.itemsProcessed} registros` });
+        setMessage({
+          type: 'success',
+          text: `${catalogType} sincronizados: ${result.itemsProcessed} registros`
+        });
         await loadData();
         if (catalogType === 'despachos') {
           await loadDespachos();
