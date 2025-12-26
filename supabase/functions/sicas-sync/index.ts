@@ -26,8 +26,6 @@ Deno.serve(async (req: Request) => {
       throw new Error('Invalid catalog_type_id. Must be between 1 and 61');
     }
 
-    console.log(`[SICAS Sync] Iniciando sincronización del catálogo tipo ${catalog_type_id}...`);
-
     const { data: catalogType, error: catalogError } = await supabase
       .from('sicas_catalog_types')
       .select('*')
@@ -38,7 +36,7 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Catálogo tipo ${catalog_type_id} no encontrado en base de datos`);
     }
 
-    console.log(`[SICAS Sync] Catálogo: ${catalogType.name} (${catalogType.enum_name})`);
+    console.log(`[SICAS Sync] Sincronizando: ${catalogType.name} (ID ${catalog_type_id})`);
 
     const sicasUsername = Deno.env.get('SICAS_USERNAME');
     const sicasPassword = Deno.env.get('SICAS_PASSWORD');
@@ -84,8 +82,6 @@ Deno.serve(async (req: Request) => {
   </soap:Body>
 </soap:Envelope>`;
 
-    console.log('[SICAS Sync] Enviando request SOAP...');
-
     const response = await fetch(sicasEndpoint, {
       method: 'POST',
       headers: {
@@ -96,25 +92,6 @@ Deno.serve(async (req: Request) => {
     });
 
     const responseText = await response.text();
-    console.log('[SICAS Sync] HTTP Status:', response.status);
-    console.log('[SICAS Sync] Response Headers:', Object.fromEntries(response.headers));
-    console.log('[SICAS Sync] Response Length:', responseText.length);
-
-    const hasReadInfoDataResult = responseText.includes('ReadInfoDataResult');
-    const hasResponseTxt = responseText.includes('RESPONSETXT');
-    const hasFault = responseText.includes('faultstring');
-
-    console.log('[SICAS Sync] Análisis de respuesta:');
-    console.log('  - Contiene ReadInfoDataResult:', hasReadInfoDataResult);
-    console.log('  - Contiene RESPONSETXT:', hasResponseTxt);
-    console.log('  - Contiene faultstring:', hasFault);
-
-    if (!hasReadInfoDataResult || hasFault) {
-      console.log('[SICAS Sync] ⚠️ Respuesta completa (primeros 2000 chars):');
-      console.log(responseText.substring(0, 2000));
-    } else {
-      console.log('[SICAS Sync] Response Preview:', responseText.substring(0, 500));
-    }
 
     const errorCheck = checkSoapError(responseText);
     if (errorCheck.hasError) {
@@ -125,15 +102,12 @@ Deno.serve(async (req: Request) => {
     let parsedSoapData: any;
     try {
       parsedSoapData = parseSoapResponse(responseText);
-      console.log('[SICAS Sync] ✅ Datos extraídos de SOAP exitosamente');
     } catch (e: any) {
       const errorMsg = String(e?.message ?? e ?? '');
-      console.error('[SICAS Sync] ❌ Error en parseSoapResponse:', errorMsg);
 
-      // ✅ Caso especial: SUCESS + RESPONSENBR=0 con "Error en Ejecución..."
-      // Este NO es un error fatal, es SICAS diciendo "no tenés permisos para este catálogo"
+      // Caso especial: SUCESS + RESPONSENBR=0 con "Error en Ejecución..."
       if (/Error en Ejecución|Proceso Interno|SICASOnline/i.test(errorMsg)) {
-        console.warn('[SICAS Sync] ⚠️ Catálogo no disponible (capturado desde error)');
+        console.log('[SICAS Sync] Catálogo no disponible');
 
         const cleanMessage = errorMsg.replace(/^(Error parseando respuesta SOAP:\s*)?SICAS:\s*/i, '');
 
@@ -183,9 +157,7 @@ Deno.serve(async (req: Request) => {
 
     // Verificar si parseSoapResponse ya detectó catálogo no disponible
     if (parsedSoapData?.__empty_catalog) {
-      console.warn('[SICAS Sync] ⚠️ Catálogo no disponible detectado en SOAP parser');
-      console.log('[SICAS Sync] Status:', parsedSoapData.status);
-      console.log('[SICAS Sync] Message:', parsedSoapData.message);
+      console.log('[SICAS Sync] Catálogo no disponible:', parsedSoapData.message);
 
       if (syncHistoryId) {
         await supabase
@@ -231,10 +203,7 @@ Deno.serve(async (req: Request) => {
 
     // Manejar catálogo no disponible
     if (parseResult.kind === 'not_available') {
-      console.log('[SICAS Sync] ⚠️ Catálogo no disponible (RESPONSENBR=0)');
-      console.log('[SICAS Sync] MESSAGE:', parseResult.message);
-      console.log('[SICAS Sync] RESPONSETXT:', parseResult.responseTxt);
-      console.log('[SICAS Sync] RESPONSENBR:', parseResult.responseNbr);
+      console.log('[SICAS Sync] Catálogo no disponible:', parseResult.message);
 
       if (syncHistoryId) {
         await supabase
@@ -277,14 +246,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // A partir de aquí, parseResult.kind === 'success'
-    console.log('[SICAS Sync] Parser universal completado:');
-    console.log(`  - Total filas: ${parseResult.stats.totalRows}`);
-    console.log(`  - Parseadas exitosamente: ${parseResult.stats.successfullyParsed}`);
-    console.log(`  - Fallidas: ${parseResult.stats.failed}`);
-
-    if (parseResult.errors.length > 0) {
-      console.log('[SICAS Sync] Errores de parseo:', parseResult.errors.slice(0, 5));
-    }
+    console.log(`[SICAS Sync] Parseados: ${parseResult.stats.successfullyParsed} registros`);
 
     if (!parseResult.success || parseResult.records.length === 0) {
       throw new Error(`No se pudieron parsear registros del catálogo ${catalogType.name}`);
@@ -345,10 +307,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    console.log(`[SICAS Sync] ✅ Sincronización completada:`);
-    console.log(`  - Insertados: ${recordsInserted}`);
-    console.log(`  - Actualizados: ${recordsUpdated}`);
-    console.log(`  - Fallidos: ${recordsFailed}`);
+    console.log(`[SICAS Sync] Completado: ${recordsInserted} nuevos, ${recordsUpdated} actualizados`);
 
     if (syncHistoryId) {
       await supabase
@@ -387,7 +346,7 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('[SICAS Sync] ❌ Error fatal:', error);
+    console.error('[SICAS Sync] Error:', error.message);
 
     // Detectar el tipo de error
     let catalogStatus = 'error';

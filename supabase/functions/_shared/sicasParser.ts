@@ -53,17 +53,9 @@ function isNotAvailableProcessData(data: any): boolean {
  */
 export function parseSicasResponse(data: any, catalogName: string): ParseResult {
   try {
-    console.log('[SICAS Parser] Tipo de data recibida:', typeof data);
-    console.log('[SICAS Parser] Es array:', Array.isArray(data));
-
-    if (typeof data === 'string') {
-      console.log('[SICAS Parser] Preview del string (primeros 500 chars):', data.substring(0, 500));
-    }
-
     // Verificar si viene PROCESSDATA (mensaje de proceso, no catálogo)
     if (isNotAvailableProcessData(data)) {
       const processData = data?.NewDataSet?.PROCESSDATA || data?.PROCESSDATA;
-      console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (RESPONSENBR=0)');
       return {
         kind: 'not_available',
         success: false,
@@ -76,7 +68,6 @@ export function parseSicasResponse(data: any, catalogName: string): ParseResult 
 
     // Verificar si es un catálogo vacío (formato legacy)
     if (typeof data === 'object' && data !== null && '__empty_catalog' in data) {
-      console.log('[SICAS Parser] ⚠️ Catálogo vacío o no disponible (formato legacy)');
       return {
         kind: 'not_available',
         success: false,
@@ -89,43 +80,35 @@ export function parseSicasResponse(data: any, catalogName: string): ParseResult 
 
     // Estrategia 1: Es un array JSON
     if (Array.isArray(data)) {
-      console.log('[SICAS Parser] ✅ Detectado: Array JSON');
       return parseJsonArray(data, catalogName);
     }
 
     // Estrategia 2: Es un objeto JSON con una propiedad que contiene el array
     if (typeof data === 'object' && data !== null) {
-      console.log('[SICAS Parser] ✅ Detectado: Objeto JSON');
-      console.log('[SICAS Parser] Keys del objeto:', Object.keys(data));
-
       // Buscar la primera key que sea un array
       for (const key of Object.keys(data)) {
         if (Array.isArray(data[key])) {
-          console.log(`[SICAS Parser] Encontrado array en key: ${key}`);
           return parseJsonArray(data[key], catalogName);
         }
       }
 
       // Si no hay arrays, intentar parsear el objeto como un solo registro
-      console.log('[SICAS Parser] Objeto no contiene arrays, parseando como registro único');
       return parseSingleObject(data, catalogName);
     }
 
     // Estrategia 3: Es un string XML
     if (typeof data === 'string' && data.trim().startsWith('<')) {
-      console.log('[SICAS Parser] ✅ Detectado: XML string');
       return parseXmlString(data, catalogName);
     }
 
     // Estrategia 4: Es un string tipo CSV o texto delimitado
     if (typeof data === 'string') {
-      console.log('[SICAS Parser] ✅ Detectado: String de texto');
       return parseTextLines(data, catalogName);
     }
 
     throw new Error(`Formato de datos no soportado: ${typeof data}`);
   } catch (error) {
-    console.error('[SICAS Parser] ❌ Error general:', error.message);
+    console.error('[SICAS Parser] Error:', error.message);
     return {
       kind: 'success',
       success: false,
@@ -148,16 +131,10 @@ function parseJsonArray(arr: any[], catalogName: string): ParseResult {
     errors: [] as string[],
   };
 
-  console.log(`[SICAS Parser] Parseando ${arr.length} registros de array JSON...`);
-
   for (let i = 0; i < arr.length; i++) {
     try {
       const item = arr[i];
-
-      // Buscar un campo ID (pueden ser: ID, Id, id, CVECAMPO, etc.)
       const id = item.ID || item.Id || item.id || item.CVECAMPO || item.CVE || item.CLAVE || `${i + 1}`;
-
-      // Buscar un campo nombre (pueden ser: NOMBRE, Nombre, nombre, DESCRIPCION, etc.)
       const nombre =
         item.NOMBRE ||
         item.Nombre ||
@@ -181,13 +158,11 @@ function parseJsonArray(arr: any[], catalogName: string): ParseResult {
 
       result.stats.successfullyParsed++;
     } catch (error) {
-      console.error(`[SICAS Parser] Error parseando registro ${i}:`, error.message);
       result.errors.push(`Registro ${i}: ${error.message}`);
       result.stats.failed++;
     }
   }
 
-  console.log(`[SICAS Parser] ✅ Array JSON parseado: ${result.stats.successfullyParsed}/${result.stats.totalRows}`);
   return result;
 }
 
@@ -239,18 +214,12 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
   };
 
   try {
-    console.log('[SICAS Parser] Parseando XML...');
-
-    // Buscar todos los tags que se repiten (posibles registros)
-    // Ejemplo: <AGENTE>, <USUARIO>, <PRODUCTO>, etc.
     const tagMatch = xml.match(/<([A-Z_]+)>/i);
     if (!tagMatch) {
       throw new Error('No se encontraron tags XML en el string');
     }
 
     const recordTag = tagMatch[1];
-    console.log(`[SICAS Parser] Tag detectado para registros: ${recordTag}`);
-
     const recordRegex = new RegExp(`<${recordTag}>(.*?)</${recordTag}>`, 'gis');
     const matches = Array.from(xml.matchAll(recordRegex));
 
@@ -259,8 +228,6 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
     for (let i = 0; i < matches.length; i++) {
       try {
         const recordXml = matches[i][1];
-
-        // Extraer todos los campos del registro
         const fields: any = {};
         const fieldRegex = /<([A-Z_]+)>(.*?)<\/([A-Z_]+)>/gi;
         let fieldMatch;
@@ -290,8 +257,6 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
         result.stats.failed++;
       }
     }
-
-    console.log(`[SICAS Parser] ✅ XML parseado: ${result.stats.successfullyParsed}/${result.stats.totalRows}`);
   } catch (error) {
     result.errors.push(`Error parseando XML: ${error.message}`);
   }
@@ -318,10 +283,7 @@ function parseTextLines(text: string, catalogName: string): ParseResult {
     for (let i = 0; i < lines.length; i++) {
       try {
         const line = lines[i].trim();
-
-        // Intentar separar por | o ;
         const parts = line.includes('|') ? line.split('|') : line.split(';');
-
         const id = parts[0]?.trim() || `${i + 1}`;
         const nombre = parts[1]?.trim() || line;
 
@@ -341,8 +303,6 @@ function parseTextLines(text: string, catalogName: string): ParseResult {
         result.stats.failed++;
       }
     }
-
-    console.log(`[SICAS Parser] ✅ Texto parseado: ${result.stats.successfullyParsed}/${result.stats.totalRows} líneas`);
   } catch (error) {
     result.errors.push(`Error general de parseo: ${error.message}`);
   }
@@ -354,37 +314,16 @@ function parseTextLines(text: string, catalogName: string): ParseResult {
  * Helper para detectar si SICAS indica catálogo no disponible
  */
 function isSicasNotAvailable(processData: any): boolean {
-  console.log('[isSicasNotAvailable] 🎯 INICIO - Función llamada con:', processData);
-
   const txt = String(processData?.RESPONSETXT ?? '').toUpperCase().trim();
   const nbr = String(processData?.RESPONSENBR ?? '').trim();
   const msg = String(processData?.MESSAGE ?? '').trim();
 
-  console.log('[isSicasNotAvailable] 🎯 Valores extraídos:', { txt, nbr, msgLength: msg.length });
-
-  // Detectar mensaje de error interno de SICAS
-  // Estos mensajes indican que el servicio no está disponible temporalmente
   const hasErrorEjecucion = /Error en Ejecuci[oó]n/i.test(msg);
   const hasProcesoInterno = /Proceso Interno/i.test(msg);
   const hasSicasOnline = /SICASOnline/i.test(msg);
   const hasWS = /\bWS\b/i.test(msg);
 
-  const internalError = hasErrorEjecucion && (hasProcesoInterno || hasSicasOnline || hasWS);
-
-  console.log('[isSicasNotAvailable] 🎯 Tests de regex:', {
-    txt,
-    nbr,
-    msgPreview: msg.substring(0, 100),
-    hasErrorEjecucion,
-    hasProcesoInterno,
-    hasSicasOnline,
-    hasWS,
-    internalError,
-  });
-
-  console.log('[isSicasNotAvailable] 🎯 RESULTADO FINAL:', internalError);
-
-  return internalError;
+  return hasErrorEjecucion && (hasProcesoInterno || hasSicasOnline || hasWS);
 }
 
 /**
@@ -393,11 +332,9 @@ function isSicasNotAvailable(processData: any): boolean {
  */
 export function parseSoapResponse(soapXml: string): any {
   try {
-    // Intentar extraer ReadInfoDataResult (con o sin atributos)
     const resultMatch = soapXml.match(/<ReadInfoDataResult[^>]*>(.*?)<\/ReadInfoDataResult>/is);
 
     if (!resultMatch) {
-      // Si no encontramos ReadInfoDataResult, decodificar HTML entities primero
       const decodedSoapXml = soapXml
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
@@ -405,7 +342,6 @@ export function parseSoapResponse(soapXml: string): any {
         .replace(/&apos;/g, "'")
         .replace(/&amp;/g, '&');
 
-      // Buscar si hay un error en RESPONSETXT
       const responseTxtMatch = decodedSoapXml.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
       if (responseTxtMatch) {
         const responseTxt = responseTxtMatch[1].trim();
@@ -415,29 +351,14 @@ export function parseSoapResponse(soapXml: string): any {
         const message = messageMatch ? messageMatch[1].trim() : '';
         const responseNbr = responseNbrMatch ? responseNbrMatch[1].trim() : '';
 
-        console.log('[SICAS Parser] MESSAGE encontrado:', message);
-        console.log('[SICAS Parser] RESPONSETXT:', responseTxt);
-        console.log('[SICAS Parser] RESPONSENBR:', responseNbr);
-
-        // Verificar si es caso de catálogo no disponible
         const processData = { MESSAGE: message, RESPONSETXT: responseTxt, RESPONSENBR: responseNbr };
 
-        // ❌ CASO FATAL: DENIED (autenticación denegada)
         if (responseTxt.toUpperCase() === 'DENIED') {
-          console.error('[SICAS Parser] ❌ Autenticación denegada');
           throw new Error(`SICAS DENIED: ${message || 'Acceso denegado'}`);
         }
 
-        // ✅ CASO ESPECIAL: SUCESS + RESPONSENBR=0 + mensaje de error interno
-        // Este es el caso de "catálogo no disponible" y NO debe lanzar error
-        console.log('[SICAS Parser] 🔍 Verificando isSicasNotAvailable con:', { message, responseTxt, responseNbr });
-        console.log('[SICAS Parser] 🔍 Datos completos del processData:', JSON.stringify(processData, null, 2));
-        const isNotAvailable = isSicasNotAvailable(processData);
-        console.log('[SICAS Parser] 🔍 isSicasNotAvailable retornó:', isNotAvailable);
-        console.log('[SICAS Parser] 🔍 Tipo de isNotAvailable:', typeof isNotAvailable);
-
-        if (isNotAvailable) {
-          console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (capturado desde SOAP sin ReadInfoDataResult)');
+        if (isSicasNotAvailable(processData)) {
+          console.log('[SICAS Parser] Catálogo no disponible');
           return {
             __empty_catalog: true,
             message: message || 'Catálogo no disponible',
@@ -446,34 +367,22 @@ export function parseSoapResponse(soapXml: string): any {
             status: 'not_available',
           };
         }
-
-        // Si hay un error real que no es not_available, lanzar
-        console.error('[SICAS Parser] ❌ Error SOAP real (isSicasNotAvailable retornó false)');
-        console.error('[SICAS Parser] ❌ Error detectado en MESSAGE:', message);
-        throw new Error(`SICAS: ${message || responseTxt}`);
       }
 
-      // Buscar si hay un error tag
       const errorMatch = soapXml.match(/<ERROR>(.*?)<\/ERROR>/is);
       if (errorMatch) {
-        console.error('[SICAS Parser] ERROR tag encontrado:', errorMatch[1]);
         throw new Error(`SICAS Error: ${errorMatch[1]}`);
       }
 
-      // Buscar SOAP fault
       const faultMatch = soapXml.match(/<faultstring>(.*?)<\/faultstring>/is);
       if (faultMatch) {
-        console.error('[SICAS Parser] SOAP Fault:', faultMatch[1]);
         throw new Error(`SOAP Fault: ${faultMatch[1]}`);
       }
 
-      // Log del XML recibido para debug
-      console.error('[SICAS Parser] XML recibido (primeros 1000 chars):', soapXml.substring(0, 1000));
-      throw new Error('No se encontró ReadInfoDataResult en la respuesta SOAP. Verificar credenciales y permisos.');
+      throw new Error('No se encontró ReadInfoDataResult en la respuesta SOAP');
     }
 
     let dataResult = resultMatch[1];
-    console.log('[SICAS Parser] ReadInfoDataResult extraído (primeros 500 chars):', dataResult.substring(0, 500));
 
     // Decode HTML entities
     dataResult = dataResult
@@ -483,57 +392,27 @@ export function parseSoapResponse(soapXml: string): any {
       .replace(/&apos;/g, "'")
       .replace(/&amp;/g, '&');
 
-    console.log('[SICAS Parser] Después de decode - contenido completo:', dataResult);
-
-    // Verificar si el contenido decodificado tiene PROCESSDATA
     const decodedMessageMatch = dataResult.match(/<MESSAGE>(.*?)<\/MESSAGE>/is);
     const decodedResponseTxtMatch = dataResult.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
     const decodedResponseNbrMatch = dataResult.match(/<RESPONSENBR>(.*?)<\/RESPONSENBR>/is);
-
-    console.log('[SICAS Parser] 🔍 Regex results:', {
-      hasMessage: !!decodedMessageMatch,
-      hasResponseTxt: !!decodedResponseTxtMatch,
-      hasResponseNbr: !!decodedResponseNbrMatch,
-      messageValue: decodedMessageMatch ? decodedMessageMatch[1] : null,
-      responseTxtValue: decodedResponseTxtMatch ? decodedResponseTxtMatch[1] : null,
-      responseNbrValue: decodedResponseNbrMatch ? decodedResponseNbrMatch[1] : null,
-    });
 
     if (decodedMessageMatch || decodedResponseTxtMatch) {
       const message = decodedMessageMatch ? decodedMessageMatch[1].trim() : '';
       const responseTxt = decodedResponseTxtMatch ? decodedResponseTxtMatch[1].trim() : '';
       const responseNbr = decodedResponseNbrMatch ? decodedResponseNbrMatch[1].trim() : '';
 
-      console.log('[SICAS Parser] PROCESSDATA detectado:');
-      console.log('  - MESSAGE:', message);
-      console.log('  - RESPONSETXT:', responseTxt);
-      console.log('  - RESPONSENBR:', responseNbr);
-
-      // Simular objeto PROCESSDATA para el helper
       const processData = {
         MESSAGE: message,
         RESPONSETXT: responseTxt,
         RESPONSENBR: responseNbr,
       };
 
-      // ❌ CASO FATAL: DENIED (autenticación denegada)
       if (responseTxt.toUpperCase() === 'DENIED') {
-        console.error('[SICAS Parser] ❌ Autenticación denegada');
         throw new Error(`SICAS DENIED: ${message || 'Acceso denegado'}`);
       }
 
-      // ✅ CASO ESPECIAL: SUCESS + RESPONSENBR=0 + mensaje de error interno
-      // Este es el caso de "catálogo no disponible" y NO debe lanzar error
-      console.log('[SICAS Parser] 🔍 Verificando isSicasNotAvailable (PROCESSDATA) con:', { message, responseTxt, responseNbr });
-      console.log('[SICAS Parser] 🔍 Datos completos del processData (PROCESSDATA):', JSON.stringify(processData, null, 2));
-      const isNotAvailable2 = isSicasNotAvailable(processData);
-      console.log('[SICAS Parser] 🔍 isSicasNotAvailable retornó:', isNotAvailable2);
-      console.log('[SICAS Parser] 🔍 Tipo de isNotAvailable2:', typeof isNotAvailable2);
-
-      if (isNotAvailable2) {
-        console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (capturado desde PROCESSDATA)');
-        console.warn('[SICAS Parser] MESSAGE:', message);
-        console.warn('[SICAS Parser] RESPONSENBR:', responseNbr);
+      if (isSicasNotAvailable(processData)) {
+        console.log('[SICAS Parser] Catálogo no disponible');
         return {
           __empty_catalog: true,
           message: message || 'Catálogo no disponible',
@@ -543,27 +422,18 @@ export function parseSoapResponse(soapXml: string): any {
         };
       }
 
-      // ⚠️ Si llegamos aquí y hay un MESSAGE con "error", solo loguear como advertencia
-      // NO lanzar error porque podría ser solo información del proceso
       if (message) {
-        console.warn('[SICAS Parser] ℹ️ PROCESSDATA MESSAGE:', message);
+        console.warn('[SICAS Parser] PROCESSDATA MESSAGE:', message);
       }
     }
 
-    // Intentar parsear como JSON
     try {
-      const parsed = JSON.parse(dataResult);
-      console.log('[SICAS Parser] ✅ JSON parseado exitosamente');
-      return parsed;
+      return JSON.parse(dataResult);
     } catch (jsonError) {
-      console.warn('[SICAS Parser] ⚠️ No es JSON válido, parseando como XML');
-      console.warn('[SICAS Parser] Error JSON:', jsonError.message);
-
-      // Si no es JSON, es XML - retornar el string decodificado para que el caller lo procese
       return dataResult;
     }
   } catch (error) {
-    console.error('[SICAS Parser] ❌ Error fatal:', error.message);
+    console.error('[SICAS Parser] Error:', error.message);
     throw new Error(`Error parseando respuesta SOAP: ${error.message}`);
   }
 }
@@ -572,7 +442,6 @@ export function parseSoapResponse(soapXml: string): any {
  * Valida si la respuesta SOAP contiene un error
  */
 export function checkSoapError(soapXml: string): { hasError: boolean; errorMessage?: string } {
-  // Buscar SOAP Fault
   const faultMatch = soapXml.match(/<faultstring>(.*?)<\/faultstring>/i);
   if (faultMatch) {
     return {
@@ -581,7 +450,6 @@ export function checkSoapError(soapXml: string): { hasError: boolean; errorMessa
     };
   }
 
-  // Buscar RESPONSETXT = DENIED
   const responseTxtMatch = soapXml.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i);
   if (responseTxtMatch && responseTxtMatch[1].toUpperCase() === 'DENIED') {
     return {
