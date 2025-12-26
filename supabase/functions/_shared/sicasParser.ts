@@ -356,17 +356,31 @@ function parseTextLines(text: string, catalogName: string): ParseResult {
 function isSicasNotAvailable(processData: any): boolean {
   const txt = String(processData?.RESPONSETXT ?? '').toUpperCase().trim();
   const nbr = String(processData?.RESPONSENBR ?? '').trim();
-  const msg = String(processData?.MESSAGE ?? '');
+  const msg = String(processData?.MESSAGE ?? '').trim();
 
-  const internalError = /Error en Ejecución|Proceso Interno|SICASOnline/i.test(msg);
+  // Detectar mensaje de error interno de SICAS
+  // Estos mensajes indican que el servicio no está disponible temporalmente
+  const hasErrorEjecucion = /Error en Ejecuci[oó]n/i.test(msg);
+  const hasProcesoInterno = /Proceso Interno/i.test(msg);
+  const hasSicasOnline = /SICASOnline/i.test(msg);
+  const hasWS = /\bWS\b/i.test(msg);
 
-  // Caso 1: SUCESS + RESPONSENBR=0 + mensaje de error interno
-  const case1 = (txt === 'SUCESS' || txt === 'SUCCESS') && nbr === '0' && internalError;
+  const internalError = hasErrorEjecucion && (hasProcesoInterno || hasSicasOnline || hasWS);
 
-  // Caso 2: Solo mensaje de error interno (SICAS no retorna RESPONSETXT en algunos casos)
-  const case2 = internalError && msg.includes('Error en Ejecución');
+  console.log('[isSicasNotAvailable] Verificando:', {
+    txt,
+    nbr,
+    msgPreview: msg.substring(0, 80),
+    hasErrorEjecucion,
+    hasProcesoInterno,
+    hasSicasOnline,
+    hasWS,
+    internalError,
+  });
 
-  return case1 || case2;
+  console.log('[isSicasNotAvailable] Resultado:', internalError);
+
+  return internalError;
 }
 
 /**
