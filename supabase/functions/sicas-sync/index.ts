@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { parseSicasResponse, parseSoapResponse, checkSoapError } from './_shared/sicasParser.ts';
+import { parseSicasResponse, parseSoapResponse, checkSoapError } from '../_shared/sicasParser.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
