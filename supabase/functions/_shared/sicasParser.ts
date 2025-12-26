@@ -393,12 +393,20 @@ export function parseSoapResponse(soapXml: string): any {
     const resultMatch = soapXml.match(/<ReadInfoDataResult[^>]*>(.*?)<\/ReadInfoDataResult>/is);
 
     if (!resultMatch) {
-      // Si no encontramos ReadInfoDataResult, buscar si hay un error en RESPONSETXT
-      const responseTxtMatch = soapXml.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
+      // Si no encontramos ReadInfoDataResult, decodificar HTML entities primero
+      const decodedSoapXml = soapXml
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&amp;/g, '&');
+
+      // Buscar si hay un error en RESPONSETXT
+      const responseTxtMatch = decodedSoapXml.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
       if (responseTxtMatch) {
         const responseTxt = responseTxtMatch[1].trim();
-        const messageMatch = soapXml.match(/<MESSAGE>(.*?)<\/MESSAGE>/is);
-        const responseNbrMatch = soapXml.match(/<RESPONSENBR>(.*?)<\/RESPONSENBR>/is);
+        const messageMatch = decodedSoapXml.match(/<MESSAGE>(.*?)<\/MESSAGE>/is);
+        const responseNbrMatch = decodedSoapXml.match(/<RESPONSENBR>(.*?)<\/RESPONSENBR>/is);
 
         const message = messageMatch ? messageMatch[1].trim() : '';
         const responseNbr = responseNbrMatch ? responseNbrMatch[1].trim() : '';
