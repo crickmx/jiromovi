@@ -279,8 +279,8 @@ export function parseSicasResponse(
  */
 export function parseSoapResponse(soapXml: string): any {
   try {
-    // Intentar extraer ReadInfoDataResult
-    const resultMatch = soapXml.match(/<ReadInfoDataResult>(.*?)<\/ReadInfoDataResult>/is);
+    // Intentar extraer ReadInfoDataResult (con o sin atributos)
+    const resultMatch = soapXml.match(/<ReadInfoDataResult[^>]*>(.*?)<\/ReadInfoDataResult>/is);
 
     if (!resultMatch) {
       // Si no encontramos ReadInfoDataResult, buscar si hay un error en RESPONSETXT
@@ -294,7 +294,7 @@ export function parseSoapResponse(soapXml: string): any {
         const errorMessage = messageMatch ? messageMatch[1] : responseTxt;
 
         // Log de más contexto
-        console.error('[SICAS Parser] XML completo (primeros 1000 chars):', soapXml.substring(0, 1000));
+        console.error('[SICAS Parser] XML completo:', soapXml);
 
         throw new Error(`SICAS Error: ${errorMessage}`);
       }
@@ -319,7 +319,7 @@ export function parseSoapResponse(soapXml: string): any {
     }
 
     let dataResult = resultMatch[1];
-    console.log('[SICAS Parser] ReadInfoDataResult extraído (primeros 200 chars):', dataResult.substring(0, 200));
+    console.log('[SICAS Parser] ReadInfoDataResult extraído (primeros 500 chars):', dataResult.substring(0, 500));
 
     // Decode HTML entities
     dataResult = dataResult
@@ -329,7 +329,22 @@ export function parseSoapResponse(soapXml: string): any {
       .replace(/&apos;/g, "'")
       .replace(/&amp;/g, '&');
 
-    console.log('[SICAS Parser] Después de decode (primeros 200 chars):', dataResult.substring(0, 200));
+    console.log('[SICAS Parser] Después de decode - contenido completo:', dataResult);
+
+    // Verificar si el contenido decodificado tiene un mensaje de error
+    const decodedMessageMatch = dataResult.match(/<MESSAGE>(.*?)<\/MESSAGE>/is);
+    const decodedResponseTxtMatch = dataResult.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
+
+    if (decodedMessageMatch) {
+      const message = decodedMessageMatch[1].trim();
+      console.log('[SICAS Parser] MESSAGE encontrado:', message);
+
+      // Si el mensaje contiene "Error" y RESPONSETXT no es SUCCESS (SICAS escribe "SUCESS" a veces)
+      if (message.toLowerCase().includes('error')) {
+        console.error('[SICAS Parser] ❌ Error detectado en MESSAGE:', message);
+        throw new Error(`SICAS: ${message}`);
+      }
+    }
 
     // Intentar parsear como JSON
     try {
@@ -337,9 +352,10 @@ export function parseSoapResponse(soapXml: string): any {
       console.log('[SICAS Parser] ✅ JSON parseado exitosamente');
       return parsed;
     } catch (jsonError) {
-      console.warn('[SICAS Parser] ⚠️ No es JSON válido, intentando como XML/texto');
+      console.warn('[SICAS Parser] ⚠️ No es JSON válido, parseando como XML');
       console.warn('[SICAS Parser] Error JSON:', jsonError.message);
-      // Si falla, retornar el string decodificado
+
+      // Si no es JSON, es XML - retornar el string decodificado para que el caller lo procese
       return dataResult;
     }
   } catch (error) {
