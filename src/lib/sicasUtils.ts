@@ -7,6 +7,10 @@ import type {
   SicasVendedorWithMapping,
   SicasMapeoDespacho,
   SicasMapeoVendedor,
+  SicasCatalogType,
+  SicasCatalogo,
+  SicasSyncHistory,
+  SicasCatalogStats,
 } from './sicasTypes';
 
 export async function getSicasConfig(): Promise<SicasConfig | null> {
@@ -222,4 +226,119 @@ export async function unmapVendedor(id_sicas_vendedor: string): Promise<{
   });
 
   return await response.json();
+}
+
+// ========================================
+// FUNCIONES GENÉRICAS PARA 61 CATÁLOGOS
+// ========================================
+
+export async function getAllCatalogTypes(): Promise<SicasCatalogType[]> {
+  const { data, error } = await supabase
+    .from('sicas_catalog_types')
+    .select('*')
+    .order('id');
+
+  if (error) {
+    console.error('Error fetching catalog types:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function syncCatalogById(catalog_type_id: number): Promise<{
+  success: boolean;
+  catalog_name?: string;
+  stats?: any;
+  error?: string;
+}> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/sicas-sync`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ catalog_type_id }),
+  });
+
+  return await response.json();
+}
+
+export async function getCatalogRecords(
+  catalog_type_id: number,
+  options?: {
+    onlyUnmapped?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<SicasCatalogo[]> {
+  let query = supabase
+    .from('sicas_catalogos')
+    .select('*')
+    .eq('catalog_type_id', catalog_type_id)
+    .order('nombre');
+
+  if (options?.onlyUnmapped) {
+    query = query.eq('is_mapped', false);
+  }
+
+  if (options?.search) {
+    query = query.ilike('nombre', `%${options.search}%`);
+  }
+
+  if (options?.limit) {
+    query = query.limit(options.limit);
+  }
+
+  if (options?.offset) {
+    query = query.range(options.offset, options.offset + (options.limit || 50) - 1);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching catalog records:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getCatalogStats(): Promise<SicasCatalogStats[]> {
+  const { data, error } = await supabase.rpc('get_sicas_catalog_stats');
+
+  if (error) {
+    console.error('Error fetching catalog stats:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getSyncHistory(catalog_type_id?: number): Promise<SicasSyncHistory[]> {
+  let query = supabase
+    .from('sicas_sync_history')
+    .select(`
+      *,
+      catalog_type:sicas_catalog_types(*)
+    `)
+    .order('sync_started_at', { ascending: false })
+    .limit(50);
+
+  if (catalog_type_id) {
+    query = query.eq('catalog_type_id', catalog_type_id);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching sync history:', error);
+    return [];
+  }
+
+  return data || [];
 }

@@ -1,0 +1,345 @@
+/**
+ * SICAS Universal Parser
+ *
+ * Parser 100% dinámico para cualquier catálogo SICAS
+ * NUNCA asume estructuras fijas
+ */
+
+export interface ParsedSicasRecord {
+  id_sicas: string;
+  nombre: string;
+  raw: Record<string, any>;
+  metadata?: Record<string, any>;
+}
+
+export interface SicasParseResult {
+  success: boolean;
+  records: ParsedSicasRecord[];
+  errors: string[];
+  stats: {
+    totalRows: number;
+    successfullyParsed: number;
+    failed: number;
+  };
+}
+
+/**
+ * Detecta automáticamente el campo ID en un registro
+ *
+ * Prioridad:
+ * 1. ID<Entidad> (ej: IDDespacho, IDVendedor)
+ * 2. Id<Entidad> (ej: IdDespacho, IdVendedor)
+ * 3. Cualquier campo que contenga 'id' o 'ID'
+ * 4. Primer campo numérico o string numérico
+ */
+function detectIdField(record: Record<string, any>): string | null {
+  const keys = Object.keys(record);
+
+  // Paso 1: Buscar ID<Entidad> o Id<Entidad>
+  for (const key of keys) {
+    if (key.match(/^ID[A-Z]/)) {
+      return String(record[key]);
+    }
+  }
+
+  for (const key of keys) {
+    if (key.match(/^Id[A-Z]/)) {
+      return String(record[key]);
+    }
+  }
+
+  // Paso 2: Buscar cualquier campo con 'id' (case insensitive)
+  for (const key of keys) {
+    if (key.toLowerCase().includes('id')) {
+      return String(record[key]);
+    }
+  }
+
+  // Paso 3: Buscar primer campo numérico
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'number' || (typeof value === 'string' && !isNaN(Number(value)) && value.trim() !== '')) {
+      return String(value);
+    }
+  }
+
+  // Paso 4: Usar primer campo como fallback
+  if (keys.length > 0) {
+    return String(record[keys[0]]);
+  }
+
+  return null;
+}
+
+/**
+ * Detecta automáticamente el campo Nombre en un registro
+ *
+ * Prioridad:
+ * 1. Campo 'Nombre' exacto
+ * 2. Campo que contenga 'Nombre'
+ * 3. Campo 'Descripcion' o que contenga 'Desc'
+ * 4. Campo que contenga el nombre de la entidad (Despacho, Vendedor, etc)
+ * 5. Primer campo string no vacío que no sea ID
+ */
+function detectNameField(record: Record<string, any>, entityHint?: string): string | null {
+  const keys = Object.keys(record);
+
+  // Paso 1: Buscar 'Nombre' exacto
+  for (const key of keys) {
+    if (key === 'Nombre' || key === 'nombre' || key === 'NOMBRE') {
+      return String(record[key]);
+    }
+  }
+
+  // Paso 2: Buscar campo que contenga 'Nombre'
+  for (const key of keys) {
+    if (key.toLowerCase().includes('nombre')) {
+      return String(record[key]);
+    }
+  }
+
+  // Paso 3: Buscar 'Descripcion'
+  for (const key of keys) {
+    if (key.toLowerCase().includes('descrip')) {
+      return String(record[key]);
+    }
+  }
+
+  // Paso 4: Buscar campo que contenga el nombre de la entidad
+  if (entityHint) {
+    for (const key of keys) {
+      if (key.toLowerCase().includes(entityHint.toLowerCase())) {
+        return String(record[key]);
+      }
+    }
+  }
+
+  // Paso 5: Buscar primer string no vacío que no sea ID
+  for (const key of keys) {
+    if (!key.toLowerCase().includes('id')) {
+      const value = record[key];
+      if (typeof value === 'string' && value.trim() !== '') {
+        return value;
+      }
+    }
+  }
+
+  // Fallback: usar segundo campo si existe
+  if (keys.length > 1) {
+    return String(record[keys[1]]);
+  }
+
+  return 'Sin nombre';
+}
+
+/**
+ * Extrae metadata adicional del registro (excluyendo id y nombre)
+ */
+function extractMetadata(record: Record<string, any>, idKey: string, nameKey: string): Record<string, any> {
+  const metadata: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(record)) {
+    if (key !== idKey && key !== nameKey) {
+      metadata[key] = value;
+    }
+  }
+
+  return metadata;
+}
+
+/**
+ * Detecta el formato de respuesta y extrae el array de datos
+ * Soporta:
+ * - JSON directo: [...]
+ * - JSON wrapped: { data: [...], items: [...], etc }
+ * - XML en string (lo convierte a JSON si es posible)
+ */
+function extractDataArray(responseData: any): any[] | null {
+  // Si ya es un array, retornarlo
+  if (Array.isArray(responseData)) {
+    return responseData;
+  }
+
+  // Si es objeto, buscar el array dentro
+  if (typeof responseData === 'object' && responseData !== null) {
+    // Intentar claves comunes
+    const commonKeys = ['data', 'items', 'records', 'rows', 'results', 'content', 'values'];
+    for (const key of commonKeys) {
+      if (Array.isArray(responseData[key])) {
+        return responseData[key];
+      }
+    }
+
+    // Buscar el primer array encontrado
+    for (const value of Object.values(responseData)) {
+      if (Array.isArray(value) && value.length > 0) {
+        return value;
+      }
+    }
+  }
+
+  // Si es string, intentar parsear como JSON
+  if (typeof responseData === 'string') {
+    try {
+      const parsed = JSON.parse(responseData);
+      return extractDataArray(parsed);
+    } catch {
+      // No es JSON válido, retornar null
+      return null;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parser universal para cualquier respuesta de SICAS
+ *
+ * @param rawResponse - Respuesta cruda de SICAS (puede ser JSON, XML en string, etc)
+ * @param catalogName - Nombre del catálogo (opcional, ayuda a detectar el campo nombre)
+ * @returns Resultado del parseo con registros normalizados
+ */
+export function parseSicasResponse(
+  rawResponse: any,
+  catalogName?: string
+): SicasParseResult {
+  const result: SicasParseResult = {
+    success: false,
+    records: [],
+    errors: [],
+    stats: {
+      totalRows: 0,
+      successfullyParsed: 0,
+      failed: 0,
+    },
+  };
+
+  try {
+    // Extraer el array de datos
+    const dataArray = extractDataArray(rawResponse);
+
+    if (!dataArray || dataArray.length === 0) {
+      result.errors.push('No se encontró un array de datos en la respuesta');
+      return result;
+    }
+
+    result.stats.totalRows = dataArray.length;
+
+    // Procesar cada registro
+    for (let i = 0; i < dataArray.length; i++) {
+      const record = dataArray[i];
+
+      try {
+        // Detectar ID
+        const idSicas = detectIdField(record);
+        if (!idSicas) {
+          result.errors.push(`Fila ${i + 1}: No se pudo detectar el campo ID`);
+          result.stats.failed++;
+          continue;
+        }
+
+        // Detectar Nombre
+        const nombre = detectNameField(record, catalogName);
+        if (!nombre) {
+          result.errors.push(`Fila ${i + 1}: No se pudo detectar el campo Nombre`);
+          result.stats.failed++;
+          continue;
+        }
+
+        // Extraer metadata
+        const metadata = extractMetadata(record, idSicas, nombre);
+
+        // Crear registro parseado
+        result.records.push({
+          id_sicas: idSicas,
+          nombre: nombre,
+          raw: record,
+          metadata,
+        });
+
+        result.stats.successfullyParsed++;
+      } catch (error) {
+        result.errors.push(`Fila ${i + 1}: ${error.message}`);
+        result.stats.failed++;
+      }
+    }
+
+    result.success = result.stats.successfullyParsed > 0;
+
+  } catch (error) {
+    result.errors.push(`Error general de parseo: ${error.message}`);
+  }
+
+  return result;
+}
+
+/**
+ * Parsea respuesta SOAP de SICAS
+ * Extrae ReadInfoDataResult y lo decodifica
+ */
+export function parseSoapResponse(soapXml: string): any {
+  try {
+    // Extraer ReadInfoDataResult
+    const resultMatch = soapXml.match(/<ReadInfoDataResult>(.*?)<\/ReadInfoDataResult>/is);
+    if (!resultMatch) {
+      throw new Error('No se encontró ReadInfoDataResult en la respuesta SOAP');
+    }
+
+    let dataResult = resultMatch[1];
+
+    // Decode HTML entities
+    dataResult = dataResult
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&amp;/g, '&');
+
+    // Intentar parsear como JSON
+    try {
+      return JSON.parse(dataResult);
+    } catch {
+      // Si falla, retornar el string decodificado
+      return dataResult;
+    }
+  } catch (error) {
+    throw new Error(`Error parseando respuesta SOAP: ${error.message}`);
+  }
+}
+
+/**
+ * Valida si la respuesta SOAP contiene un error
+ */
+export function checkSoapError(soapXml: string): { hasError: boolean; errorMessage?: string } {
+  // Buscar SOAP Fault
+  const faultMatch = soapXml.match(/<faultstring>(.*?)<\/faultstring>/i);
+  if (faultMatch) {
+    return {
+      hasError: true,
+      errorMessage: `SOAP Fault: ${faultMatch[1]}`,
+    };
+  }
+
+  // Buscar RESPONSETXT = DENIED
+  const responseTxtMatch = soapXml.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i);
+  if (responseTxtMatch && responseTxtMatch[1].toUpperCase() === 'DENIED') {
+    return {
+      hasError: true,
+      errorMessage: 'Autenticación denegada por SICAS',
+    };
+  }
+
+  // Buscar mensajes de error
+  if (soapXml.toLowerCase().includes('error') ||
+      soapXml.toLowerCase().includes('invalid')) {
+    const errorMatch = soapXml.match(/<MESSAGE>(.*?)<\/MESSAGE>/i);
+    if (errorMatch) {
+      return {
+        hasError: true,
+        errorMessage: errorMatch[1],
+      };
+    }
+  }
+
+  return { hasError: false };
+}

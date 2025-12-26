@@ -34,88 +34,114 @@ Deno.serve(async (req: Request) => {
       Password: sicasPassword,
     };
 
-    // SICAS Online no requiere AutentificarWS explícito
-    // La autenticación se valida en cada llamada a ReadInfoData
-    // Probamos la conexión intentando leer el catálogo de despachos (PropertyTypeReadData = 11)
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
-    <ReadInfoData xmlns="http://tempuri.org/">
-      <wsReadData>
-        <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
-        <PropertyTypeReadData>11</PropertyTypeReadData>
-      </wsReadData>
+    <AutentificarWS xmlns="http://tempuri.org/">
       <wsAuthConfig>
         <UserName>${authConfig.UserName}</UserName>
         <Password>${authConfig.Password}</Password>
       </wsAuthConfig>
-    </ReadInfoData>
+    </AutentificarWS>
   </soap:Body>
 </soap:Envelope>`;
 
-    console.log('SICAS Request SOAP Envelope:', soapEnvelope);
+    console.log('[SICAS Auth] Probando autenticación...');
+    console.log('[SICAS Auth] Endpoint:', sicasEndpoint);
+    console.log('[SICAS Auth] Username:', authConfig.UserName);
 
     const response = await fetch(sicasEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': 'http://tempuri.org/ReadInfoData',
+        'SOAPAction': 'http://tempuri.org/AutentificarWS',
       },
       body: soapEnvelope,
     });
 
     const responseText = await response.text();
-    console.log('SICAS HTTP Status:', response.status);
-    console.log('SICAS Response:', responseText.substring(0, 1000));
+    console.log('[SICAS Auth] HTTP Status:', response.status);
+    console.log('[SICAS Auth] Response Preview:', responseText.substring(0, 500));
 
     let success = false;
     let message = 'Unknown response';
     let parsedResponse = null;
+    let responseTxt = '';
 
-    // Check for SOAP fault first
     const faultMatch = responseText.match(/<faultstring>(.*?)<\/faultstring>/i);
     if (faultMatch) {
       message = `SOAP Error: ${faultMatch[1]}`;
       success = false;
+      console.log('[SICAS Auth] ❌ SOAP Fault:', faultMatch[1]);
     } else if (responseText.includes('<!DOCTYPE html>') || responseText.includes('<html')) {
       message = 'Received HTML response instead of SOAP XML (possible endpoint error)';
       success = false;
+      console.log('[SICAS Auth] ❌ HTML Response (not SOAP)');
     } else if (responseText.trim() === '') {
       message = 'Empty response from SICAS server';
       success = false;
+      console.log('[SICAS Auth] ❌ Empty Response');
     } else {
-      // Try to parse ReadInfoDataResult
-      const resultMatch = responseText.match(/<ReadInfoDataResult>(.*?)<\/ReadInfoDataResult>/is);
-      if (resultMatch) {
-        let dataResult = resultMatch[1];
+      const authResultMatch = responseText.match(/<AutentificarWSResult>(.*?)<\/AutentificarWSResult>/is);
+      if (authResultMatch) {
+        let authResult = authResultMatch[1];
 
-        // Decode HTML entities
-        dataResult = dataResult.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+        authResult = authResult
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'")
+          .replace(/&amp;/g, '&');
 
-        parsedResponse = dataResult.substring(0, 200);
+        parsedResponse = authResult;
 
-        // Si contiene datos (JSON o XML), la conexión es exitosa
-        if (dataResult.trim().length > 0 &&
-            (dataResult.trim().startsWith('{') ||
-             dataResult.trim().startsWith('[') ||
-             dataResult.trim().startsWith('<'))) {
-          success = true;
-          message = 'Conexión exitosa - Credenciales válidas';
-        } else if (dataResult.toLowerCase().includes('error') ||
-                   dataResult.toLowerCase().includes('invalid') ||
-                   dataResult.toLowerCase().includes('denied')) {
-          success = false;
-          message = `Error de autenticación: ${dataResult.substring(0, 100)}`;
+        const responseMatch = authResult.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i);
+        const messageMatch = authResult.match(/<MESSAGE>(.*?)<\/MESSAGE>/i);
+
+        if (responseMatch) {
+          responseTxt = responseMatch[1].toUpperCase();
+          console.log('[SICAS Auth] RESPONSETXT:', responseTxt);
+
+          if (responseTxt === 'SUCESS' || responseTxt === 'SUCCESS' || responseTxt === 'OK') {
+            success = true;
+            message = messageMatch ? messageMatch[1] : 'Autenticación exitosa';
+            console.log('[SICAS Auth] ✅ Autenticación EXITOSA');
+          } else if (responseTxt === 'DENIED' || responseTxt.includes('DENIED')) {
+            success = false;
+            message = messageMatch ? messageMatch[1] : 'Acceso denegado - Credenciales inválidas';
+            console.log('[SICAS Auth] ❌ Acceso DENEGADO');
+          } else {
+            success = false;
+            message = `RESPONSETXT inesperado: ${responseTxt}`;
+            console.log('[SICAS Auth] ⚠️ RESPONSETXT no reconocido:', responseTxt);
+          }
         } else {
-          success = false;
-          message = `Respuesta inesperada: ${dataResult.substring(0, 100)}`;
+          if (authResult.toLowerCase().includes('sucess') ||
+              authResult.toLowerCase().includes('success') ||
+              authResult.toLowerCase().includes('autenticado')) {
+            success = true;
+            message = 'Autenticación exitosa (sin RESPONSETXT)';
+            console.log('[SICAS Auth] ✅ Autenticación detectada como exitosa (fallback)');
+          } else if (authResult.toLowerCase().includes('denied') ||
+                     authResult.toLowerCase().includes('invalid') ||
+                     authResult.toLowerCase().includes('error')) {
+            success = false;
+            message = 'Autenticación fallida (sin RESPONSETXT)';
+            console.log('[SICAS Auth] ❌ Autenticación fallida (fallback)');
+          } else {
+            success = false;
+            message = `No se encontró RESPONSETXT. Response: ${authResult.substring(0, 100)}`;
+            console.log('[SICAS Auth] ⚠️ Sin RESPONSETXT en respuesta');
+          }
         }
       } else {
-        message = `Unable to find ReadInfoDataResult in response. HTTP Status: ${response.status}`;
+        message = `Unable to find AutentificarWSResult in response. HTTP Status: ${response.status}`;
+        success = false;
+        console.log('[SICAS Auth] ❌ No se encontró AutentificarWSResult');
       }
     }
 
-    await supabase
+    const { error: updateError } = await supabase
       .from('sicas_config')
       .update({
         last_test_at: new Date().toISOString(),
@@ -124,15 +150,19 @@ Deno.serve(async (req: Request) => {
       })
       .eq('endpoint', sicasEndpoint);
 
+    if (updateError) {
+      console.error('[SICAS Auth] Error actualizando config:', updateError);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         connectionSuccess: success,
         message,
+        responseTxt,
         httpStatus: response.status,
-        parsedResponse,
+        parsedResponse: parsedResponse?.substring(0, 300),
         responsePreview: responseText.substring(0, 500),
-        requestSent: soapEnvelope,
       }),
       {
         status: 200,
@@ -140,11 +170,12 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('Error testing SICAS connection:', error);
+    console.error('[SICAS Auth] Exception:', error);
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message,
+        stack: error.stack,
       }),
       {
         status: 500,
