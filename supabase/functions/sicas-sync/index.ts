@@ -124,6 +124,52 @@ Deno.serve(async (req: Request) => {
     const parsedSoapData = parseSoapResponse(responseText);
     console.log('[SICAS Sync] ✅ Datos extraídos de SOAP exitosamente');
 
+    // Verificar si parseSoapResponse ya detectó catálogo no disponible
+    if (parsedSoapData?.__empty_catalog) {
+      console.warn('[SICAS Sync] ⚠️ Catálogo no disponible detectado en SOAP parser');
+      console.log('[SICAS Sync] Status:', parsedSoapData.status);
+      console.log('[SICAS Sync] Message:', parsedSoapData.message);
+
+      if (syncHistoryId) {
+        await supabase
+          .from('sicas_sync_history')
+          .update({
+            sync_completed_at: new Date().toISOString(),
+            status: 'completed',
+            catalog_status: parsedSoapData.status ?? 'not_available',
+            response_nbr: parsedSoapData.responseNbr ?? '0',
+            records_found: 0,
+            records_inserted: 0,
+            records_updated: 0,
+            records_failed: 0,
+            response_preview: responseText.substring(0, 1000),
+            xml_snippet: responseText.substring(0, 1000),
+            error_message: parsedSoapData.message,
+          })
+          .eq('id', syncHistoryId);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          catalog_type_id,
+          catalog_name: catalogType.name,
+          catalog_status: parsedSoapData.status ?? 'not_available',
+          warning: parsedSoapData.message ?? 'Catálogo no disponible',
+          stats: {
+            totalRows: 0,
+            inserted: 0,
+            updated: 0,
+            failed: 0,
+          },
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const parseResult = parseSicasResponse(parsedSoapData, catalogType.name);
 
     // Manejar catálogo no disponible

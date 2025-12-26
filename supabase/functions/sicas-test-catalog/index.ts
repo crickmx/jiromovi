@@ -98,6 +98,30 @@ Deno.serve(async (req: Request) => {
     const parsedSoapData = parseSoapResponse(responseText);
     console.log('[SICAS Test] ✅ Datos extraídos de SOAP exitosamente');
 
+    // Verificar si parseSoapResponse ya detectó catálogo no disponible
+    if (parsedSoapData?.__empty_catalog) {
+      console.warn('[SICAS Test] ⚠️ Catálogo no disponible detectado en SOAP parser');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          catalog_id,
+          catalog_status: parsedSoapData.status ?? 'not_available',
+          response_nbr: parsedSoapData.responseNbr ?? '0',
+          available: false,
+          warning: parsedSoapData.message ?? 'Catálogo no disponible',
+          xml_snippet: responseText.substring(0, 1000),
+          stats: {
+            totalRows: 0,
+            records: 0,
+          },
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const parseResult = parseSicasResponse(parsedSoapData, `Catalog_${catalog_id}`);
 
     // Manejar catálogo no disponible

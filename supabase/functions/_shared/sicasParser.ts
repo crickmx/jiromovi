@@ -351,6 +351,20 @@ function parseTextLines(text: string, catalogName: string): ParseResult {
 }
 
 /**
+ * Helper para detectar si SICAS indica catálogo no disponible
+ */
+function isSicasNotAvailable(processData: any): boolean {
+  const txt = String(processData?.RESPONSETXT ?? '').toUpperCase().trim();
+  const nbr = String(processData?.RESPONSENBR ?? '').trim();
+  const msg = String(processData?.MESSAGE ?? '');
+
+  const internalError = /Error en Ejecución|Proceso Interno|SICASOnline/i.test(msg);
+
+  // SUCESS + RESPONSENBR=0 + mensaje de error interno = catálogo no disponible
+  return (txt === 'SUCESS' || txt === 'SUCCESS') && nbr === '0' && internalError;
+}
+
+/**
  * Parsea respuesta SOAP de SICAS
  * Extrae ReadInfoDataResult y lo decodifica
  */
@@ -408,38 +422,50 @@ export function parseSoapResponse(soapXml: string): any {
 
     console.log('[SICAS Parser] Después de decode - contenido completo:', dataResult);
 
-    // Verificar si el contenido decodificado tiene un mensaje de error
+    // Verificar si el contenido decodificado tiene PROCESSDATA
     const decodedMessageMatch = dataResult.match(/<MESSAGE>(.*?)<\/MESSAGE>/is);
     const decodedResponseTxtMatch = dataResult.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
     const decodedResponseNbrMatch = dataResult.match(/<RESPONSENBR>(.*?)<\/RESPONSENBR>/is);
 
-    if (decodedMessageMatch) {
-      const message = decodedMessageMatch[1].trim();
-      console.log('[SICAS Parser] MESSAGE encontrado:', message);
-
-      // Extraer RESPONSETXT y RESPONSENBR
-      const responseTxt = decodedResponseTxtMatch ? decodedResponseTxtMatch[1].trim().toUpperCase() : '';
+    if (decodedMessageMatch || decodedResponseTxtMatch) {
+      const message = decodedMessageMatch ? decodedMessageMatch[1].trim() : '';
+      const responseTxt = decodedResponseTxtMatch ? decodedResponseTxtMatch[1].trim() : '';
       const responseNbr = decodedResponseNbrMatch ? decodedResponseNbrMatch[1].trim() : '';
 
-      console.log('[SICAS Parser] RESPONSETXT:', responseTxt);
-      console.log('[SICAS Parser] RESPONSENBR:', responseNbr);
+      console.log('[SICAS Parser] PROCESSDATA detectado:');
+      console.log('  - MESSAGE:', message);
+      console.log('  - RESPONSETXT:', responseTxt);
+      console.log('  - RESPONSENBR:', responseNbr);
 
-      // Regla precisa: SUCESS + RESPONSENBR=0 + Error en MESSAGE = catálogo no disponible
-      if (message.toLowerCase().includes('error')) {
-        if ((responseTxt === 'SUCESS' || responseTxt === 'SUCCESS') && responseNbr === '0') {
-          console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (RESPONSENBR=0):', message);
-          // Retornar estructura indicando catálogo no disponible
-          return {
-            __empty_catalog: true,
-            message: message,
-            responseNbr: '0',
-            status: 'not_available',
-          };
-        } else {
-          // Si RESPONSETXT=DENIED o RESPONSENBR!=0, es un error real
-          console.error('[SICAS Parser] ❌ Error detectado en MESSAGE:', message);
-          throw new Error(`SICAS: ${message}`);
-        }
+      // Simular objeto PROCESSDATA para el helper
+      const processData = {
+        MESSAGE: message,
+        RESPONSETXT: responseTxt,
+        RESPONSENBR: responseNbr,
+      };
+
+      // ✅ CASO ESPECIAL: SUCESS + RESPONSENBR=0 + mensaje de error interno
+      if (isSicasNotAvailable(processData)) {
+        console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (RESPONSENBR=0):', message);
+        return {
+          __empty_catalog: true,
+          message: message || 'Catálogo no disponible',
+          responseTxt,
+          responseNbr,
+          status: 'not_available',
+        };
+      }
+
+      // ❌ CASO FATAL: DENIED o cualquier otro error real
+      if (responseTxt.toUpperCase() === 'DENIED') {
+        console.error('[SICAS Parser] ❌ Autenticación denegada');
+        throw new Error(`SICAS DENIED: ${message || 'Acceso denegado'}`);
+      }
+
+      // Si hay MESSAGE pero no es el caso not_available, es un error real
+      if (message && message.toLowerCase().includes('error')) {
+        console.error('[SICAS Parser] ❌ Error real detectado:', message);
+        throw new Error(`SICAS: ${message}`);
       }
     }
 
