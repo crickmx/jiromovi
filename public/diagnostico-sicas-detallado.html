@@ -115,6 +115,8 @@
       margin: 10px 0;
     }
   </style>
+  <!-- Cargar Supabase PRIMERO -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <h1>🔍 Diagnóstico SICAS Detallado</h1>
@@ -154,7 +156,10 @@
     const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NzMzOTMsImV4cCI6MjA0NTE0OTM5M30.yF8UcfCL0DPH3eoUUlKTYdhGqJPb_1k9YMoHGhXGiKc';
 
     async function getAuthToken() {
-      const { data: { session } } = await window.supabase.auth.getSession();
+      if (!window.supabaseClient) {
+        throw new Error('Supabase client no está inicializado. Por favor recarga la página.');
+      }
+      const { data: { session } } = await window.supabaseClient.auth.getSession();
       return session?.access_token;
     }
 
@@ -287,11 +292,11 @@
       }
     }
 
-    // Inicializar Supabase client
-    const { createClient: createSupabaseClient } = window.supabase;
-    window.supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+    // Inicializar Supabase client (después de que la biblioteca se haya cargado)
+    document.addEventListener('DOMContentLoaded', function() {
+      const { createClient } = window.supabase;
+      window.supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    });
   </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </body>
 </html>
