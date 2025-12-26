@@ -40,25 +40,29 @@
       cursor: pointer;
       transition: all 0.2s;
     }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
     .btn-primary {
       background: #3b82f6;
       color: white;
     }
-    .btn-primary:hover {
+    .btn-primary:hover:not(:disabled) {
       background: #2563eb;
     }
     .btn-secondary {
       background: #64748b;
       color: white;
     }
-    .btn-secondary:hover {
+    .btn-secondary:hover:not(:disabled) {
       background: #475569;
     }
     .btn-success {
       background: #10b981;
       color: white;
     }
-    .btn-success:hover {
+    .btn-success:hover:not(:disabled) {
       background: #059669;
     }
     #status {
@@ -227,9 +231,9 @@
     <p class="subtitle">Estado y disponibilidad de catálogos</p>
 
     <div class="controls">
-      <button class="btn-primary" onclick="loadCatalogStatus()">🔄 Verificar Estado</button>
-      <button class="btn-success" onclick="syncAllAvailable()">✅ Sincronizar Disponibles</button>
-      <button class="btn-secondary" onclick="viewSyncHistory()">📋 Ver Historial</button>
+      <button class="btn-primary" id="btnLoad">🔄 Verificar Estado</button>
+      <button class="btn-success" id="btnSyncAll">✅ Sincronizar Disponibles</button>
+      <button class="btn-secondary" id="btnHistory">📋 Ver Historial</button>
     </div>
 
     <div id="status"></div>
@@ -274,16 +278,31 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
-    const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Obtener credenciales de Supabase desde localStorage o pedirlas
+    let supabaseUrl = localStorage.getItem('SUPABASE_URL');
+    let supabaseKey = localStorage.getItem('SUPABASE_ANON_KEY');
 
-    window.supabase = supabase;
+    if (!supabaseUrl || !supabaseKey) {
+      const configUrl = prompt('Por favor ingresa tu SUPABASE_URL (se guardará en localStorage):');
+      const configKey = prompt('Por favor ingresa tu SUPABASE_ANON_KEY (se guardará en localStorage):');
+
+      if (configUrl && configKey) {
+        localStorage.setItem('SUPABASE_URL', configUrl);
+        localStorage.setItem('SUPABASE_ANON_KEY', configKey);
+        supabaseUrl = configUrl;
+        supabaseKey = configKey;
+      } else {
+        alert('❌ Error: Se requieren las credenciales de Supabase');
+        throw new Error('Credenciales no configuradas');
+      }
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     let catalogsData = [];
     let currentFilter = 'all';
 
-    window.loadCatalogStatus = async function() {
+    async function loadCatalogStatus() {
       const statusEl = document.getElementById('status');
       const resultsEl = document.getElementById('results');
       const statsEl = document.getElementById('stats');
@@ -349,7 +368,7 @@
         statusEl.textContent = `❌ Error: ${error.message}`;
         console.error(error);
       }
-    };
+    }
 
     function renderCatalogs() {
       const resultsEl = document.getElementById('results');
@@ -384,6 +403,7 @@
                 ? new Date(catalog.last_sync.sync_started_at).toLocaleString('es-MX')
                 : 'Nunca';
               const recordsCount = catalog.last_sync?.records_inserted || 0;
+              const canSync = catalog.status === 'available' || catalog.status === 'never_synced';
 
               return `
                 <tr>
@@ -396,8 +416,7 @@
                   <td><span class="last-sync">${lastSyncText}</span></td>
                   <td>${recordsCount}</td>
                   <td>
-                    <button class="filter-btn" onclick="syncCatalog(${catalog.id})"
-                      ${catalog.status === 'available' || catalog.status === 'never_synced' ? '' : 'disabled'}>
+                    <button class="filter-btn" data-catalog-id="${catalog.id}" ${canSync ? '' : 'disabled'}>
                       🔄 Sync
                     </button>
                   </td>
@@ -409,6 +428,14 @@
       `;
 
       resultsEl.innerHTML = html;
+
+      // Agregar event listeners a los botones de sincronización
+      resultsEl.querySelectorAll('button[data-catalog-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const catalogId = parseInt(btn.dataset.catalogId);
+          syncCatalog(catalogId);
+        });
+      });
     }
 
     function getStatusBadge(catalog) {
@@ -423,7 +450,7 @@
       }
     }
 
-    window.syncCatalog = async function(catalogId) {
+    async function syncCatalog(catalogId) {
       const statusEl = document.getElementById('status');
       statusEl.className = 'status-info';
       statusEl.style.display = 'block';
@@ -461,9 +488,9 @@
         statusEl.className = 'status-error';
         statusEl.textContent = `❌ Error: ${error.message}`;
       }
-    };
+    }
 
-    window.syncAllAvailable = async function() {
+    async function syncAllAvailable() {
       const availableCatalogs = catalogsData.filter(c =>
         c.status === 'available' || c.status === 'never_synced'
       );
@@ -498,11 +525,16 @@
         progressEl.style.display = 'none';
         loadCatalogStatus();
       }, 3000);
-    };
+    }
 
-    window.viewSyncHistory = async function() {
+    function viewSyncHistory() {
       window.location.href = '/diagnostico-sicas-sync.html';
-    };
+    }
+
+    // Event listeners
+    document.getElementById('btnLoad').addEventListener('click', loadCatalogStatus);
+    document.getElementById('btnSyncAll').addEventListener('click', syncAllAvailable);
+    document.getElementById('btnHistory').addEventListener('click', viewSyncHistory);
 
     // Filtros
     document.getElementById('filters').addEventListener('click', (e) => {
