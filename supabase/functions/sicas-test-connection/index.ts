@@ -69,20 +69,35 @@ Deno.serve(async (req: Request) => {
     });
 
     const responseText = await response.text();
+    console.log('SICAS Response:', responseText.substring(0, 1000));
 
     let success = false;
     let message = 'Unknown response';
+    let parsedResponse = null;
 
     const responseMatch = responseText.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i);
     const messageMatch = responseText.match(/<MESSAGE>(.*?)<\/MESSAGE>/i);
 
     if (responseMatch) {
       const responseTxt = responseMatch[1];
+      parsedResponse = responseTxt;
       success = responseTxt === 'OK' || responseTxt.toLowerCase().includes('éxito') || responseTxt.toLowerCase().includes('exitoso');
     }
 
     if (messageMatch) {
       message = messageMatch[1];
+    } else if (!responseMatch) {
+      // If no structured response found, check for common SOAP error patterns
+      const faultMatch = responseText.match(/<faultstring>(.*?)<\/faultstring>/i);
+      if (faultMatch) {
+        message = `SOAP Error: ${faultMatch[1]}`;
+      } else if (responseText.includes('<!DOCTYPE html>') || responseText.includes('<html')) {
+        message = 'Received HTML response instead of SOAP XML (possible endpoint error)';
+      } else if (responseText.trim() === '') {
+        message = 'Empty response from SICAS server';
+      } else {
+        message = `Unable to parse SICAS response. HTTP Status: ${response.status}`;
+      }
     }
 
     await supabase
@@ -99,7 +114,9 @@ Deno.serve(async (req: Request) => {
         success: true,
         connectionSuccess: success,
         message,
-        responseText: responseText.substring(0, 500),
+        httpStatus: response.status,
+        parsedResponse,
+        responsePreview: responseText.substring(0, 500),
       }),
       {
         status: 200,
