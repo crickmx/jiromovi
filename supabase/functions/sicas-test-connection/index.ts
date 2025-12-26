@@ -34,15 +34,22 @@ Deno.serve(async (req: Request) => {
       Password: sicasPassword,
     };
 
+    // SICAS Online no requiere AutentificarWS explícito
+    // La autenticación se valida en cada llamada a ReadInfoData
+    // Probamos la conexión intentando leer el catálogo de despachos (PropertyTypeReadData = 11)
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
-    <AutentificarWS xmlns="http://tempuri.org/">
+    <ReadInfoData xmlns="http://tempuri.org/">
+      <wsReadData>
+        <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
+        <PropertyTypeReadData>11</PropertyTypeReadData>
+      </wsReadData>
       <wsAuthConfig>
         <UserName>${authConfig.UserName}</UserName>
         <Password>${authConfig.Password}</Password>
       </wsAuthConfig>
-    </AutentificarWS>
+    </ReadInfoData>
   </soap:Body>
 </soap:Envelope>`;
 
@@ -52,7 +59,7 @@ Deno.serve(async (req: Request) => {
       method: 'POST',
       headers: {
         'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': 'http://tempuri.org/AutentificarWS',
+        'SOAPAction': 'http://tempuri.org/ReadInfoData',
       },
       body: soapEnvelope,
     });
@@ -77,40 +84,34 @@ Deno.serve(async (req: Request) => {
       message = 'Empty response from SICAS server';
       success = false;
     } else {
-      // Try to parse AutentificarWSResult
-      const authResultMatch = responseText.match(/<AutentificarWSResult>(.*?)<\/AutentificarWSResult>/is);
-      if (authResultMatch) {
-        let authResult = authResultMatch[1];
+      // Try to parse ReadInfoDataResult
+      const resultMatch = responseText.match(/<ReadInfoDataResult>(.*?)<\/ReadInfoDataResult>/is);
+      if (resultMatch) {
+        let dataResult = resultMatch[1];
 
         // Decode HTML entities
-        authResult = authResult.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+        dataResult = dataResult.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
 
-        parsedResponse = authResult;
+        parsedResponse = dataResult.substring(0, 200);
 
-        // Try to parse as XML or JSON
-        const responseMatch = authResult.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i);
-        const messageMatch = authResult.match(/<MESSAGE>(.*?)<\/MESSAGE>/i);
-
-        if (responseMatch) {
-          const responseTxt = responseMatch[1];
-          success = responseTxt === 'OK' || responseTxt.toLowerCase().includes('éxito') || responseTxt.toLowerCase().includes('exitoso');
-        }
-
-        if (messageMatch) {
-          message = messageMatch[1];
-        } else if (authResult.includes('OK') || authResult.toLowerCase().includes('éxito')) {
-          // Fallback: check if the response contains success indicators
-          message = 'Autenticación exitosa';
+        // Si contiene datos (JSON o XML), la conexión es exitosa
+        if (dataResult.trim().length > 0 &&
+            (dataResult.trim().startsWith('{') ||
+             dataResult.trim().startsWith('[') ||
+             dataResult.trim().startsWith('<'))) {
           success = true;
-        } else if (authResult.toLowerCase().includes('error') || authResult.toLowerCase().includes('invalid')) {
-          message = authResult.substring(0, 200);
+          message = 'Conexión exitosa - Credenciales válidas';
+        } else if (dataResult.toLowerCase().includes('error') ||
+                   dataResult.toLowerCase().includes('invalid') ||
+                   dataResult.toLowerCase().includes('denied')) {
           success = false;
+          message = `Error de autenticación: ${dataResult.substring(0, 100)}`;
         } else {
-          message = `Response received: ${authResult.substring(0, 100)}...`;
-          success = authResult.length > 0;
+          success = false;
+          message = `Respuesta inesperada: ${dataResult.substring(0, 100)}`;
         }
       } else {
-        message = `Unable to find AutentificarWSResult in response. HTTP Status: ${response.status}`;
+        message = `Unable to find ReadInfoDataResult in response. HTTP Status: ${response.status}`;
       }
     }
 
