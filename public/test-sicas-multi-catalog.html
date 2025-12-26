@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test SICAS Multi-Catálogo</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #1a202c;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+    .subtitle {
+      color: #718096;
+      margin-bottom: 2rem;
+      font-size: 1rem;
+    }
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+    }
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    .btn-primary:hover { background: #5568d3; transform: translateY(-2px); }
+    .btn-secondary {
+      background: #48bb78;
+      color: white;
+    }
+    .btn-secondary:hover { background: #38a169; transform: translateY(-2px); }
+    .btn-danger {
+      background: #f56565;
+      color: white;
+    }
+    .btn-danger:hover { background: #e53e3e; transform: translateY(-2px); }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .catalog-card {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem;
+      background: #f7fafc;
+      transition: all 0.3s;
+    }
+    .catalog-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+    .catalog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 0.75rem;
+    }
+    .catalog-id {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #667eea;
+      background: #edf2f7;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+    }
+    .catalog-name {
+      font-weight: 600;
+      color: #2d3748;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+    .catalog-status {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .status-idle { background: #e2e8f0; color: #4a5568; }
+    .status-syncing { background: #fef3c7; color: #92400e; }
+    .status-available { background: #d1fae5; color: #065f46; }
+    .status-not_available { background: #fed7d7; color: #9b2c2c; }
+    .status-error { background: #fee; color: #c53030; }
+    .catalog-message {
+      font-size: 0.75rem;
+      color: #718096;
+      margin-top: 0.5rem;
+      line-height: 1.4;
+      max-height: 60px;
+      overflow: auto;
+    }
+    .catalog-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+    }
+    .stat-item {
+      background: white;
+      padding: 0.5rem;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .stat-label {
+      color: #718096;
+      font-size: 0.7rem;
+    }
+    .stat-value {
+      font-weight: 700;
+      color: #2d3748;
+      font-size: 1rem;
+    }
+    .btn-sync {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: #f7fafc;
+      border-radius: 12px;
+    }
+    .summary-item {
+      text-align: center;
+    }
+    .summary-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+    .summary-label {
+      font-size: 0.85rem;
+      color: #718096;
+      margin-top: 0.25rem;
+    }
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: #718096;
+    }
+    .spinner {
+      border: 3px solid #e2e8f0;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Test SICAS - Sincronización Multi-Catálogo</h1>
+    <p class="subtitle">Prueba de sincronización de los 61 catálogos SICAS</p>
+
+    <div class="controls">
+      <button class="btn-primary" onclick="loadAllCatalogs()">Cargar Catálogos</button>
+      <button class="btn-secondary" onclick="syncAll()" id="btnSyncAll" disabled>Sincronizar Todos</button>
+      <button class="btn-danger" onclick="clearResults()">Limpiar Resultados</button>
+    </div>
+
+    <div class="summary" id="summary" style="display: none;">
+      <div class="summary-item">
+        <div class="summary-value" id="totalCatalogs">0</div>
+        <div class="summary-label">Total Catálogos</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="availableCatalogs">0</div>
+        <div class="summary-label">Disponibles</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="notAvailableCatalogs">0</div>
+        <div class="summary-label">No Disponibles</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="errorCatalogs">0</div>
+        <div class="summary-label">Errores</div>
+      </div>
+    </div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Cargando configuración...</p>
+    </div>
+
+    <div id="catalogs" class="grid"></div>
+  </div>
+
+  <script>
+    const supabaseUrl = 'https://syvgxggtykedeqlhjpwf.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dmd4Z2d0eWtlZGVxbGhqcHdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NjQ0NzAsImV4cCI6MjA0NTE0MDQ3MH0.a8w15OiMtw__6GQZJBfhY3ysZZ_KcFBMcR77b-jmqQI';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    let catalogTypes = [];
+    let catalogStates = {};
+
+    async function loadAllCatalogs() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('catalogs').innerHTML = '';
+
+      try {
+        const { data, error } = await supabase
+          .from('sicas_catalog_types')
+          .select('*')
+          .order('id');
+
+        if (error) throw error;
+
+        catalogTypes = data;
+        catalogStates = {};
+
+        data.forEach(cat => {
+          catalogStates[cat.id] = {
+            status: 'idle',
+            message: '',
+            stats: { totalRows: 0, inserted: 0 }
+          };
+        });
+
+        renderCatalogs();
+        document.getElementById('btnSyncAll').disabled = false;
+        document.getElementById('summary').style.display = 'grid';
+        updateSummary();
+      } catch (error) {
+        document.getElementById('loading').innerHTML = `<p style="color: #e53e3e;">Error: ${error.message}</p>`;
+      }
+    }
+
+    function renderCatalogs() {
+      const container = document.getElementById('catalogs');
+      document.getElementById('loading').style.display = 'none';
+
+      container.innerHTML = catalogTypes.map(cat => {
+        const state = catalogStates[cat.id];
+        return `
+          <div class="catalog-card">
+            <div class="catalog-header">
+              <div class="catalog-id">ID ${cat.id}</div>
+              <span class="catalog-status status-${state.status}" id="status-${cat.id}">
+                ${getStatusLabel(state.status)}
+              </span>
+            </div>
+            <div class="catalog-name">${cat.name}</div>
+            <div class="catalog-message" id="message-${cat.id}">
+              ${state.message || 'Listo para sincronizar'}
+            </div>
+            <div class="catalog-stats" id="stats-${cat.id}" style="display: ${state.status === 'available' ? 'grid' : 'none'}">
+              <div class="stat-item">
+                <div class="stat-label">Total</div>
+                <div class="stat-value">${state.stats.totalRows}</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">Insertados</div>
+                <div class="stat-value">${state.stats.inserted}</div>
+              </div>
+            </div>
+            <button class="btn-primary btn-sync" onclick="syncCatalog(${cat.id})" id="btn-${cat.id}">
+              Sincronizar
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getStatusLabel(status) {
+      const labels = {
+        idle: 'Pendiente',
+        syncing: 'Sincronizando...',
+        available: 'Disponible',
+        not_available: 'No Disponible',
+        error: 'Error'
+      };
+      return labels[status] || status;
+    }
+
+    async function syncCatalog(catalogId) {
+      const state = catalogStates[catalogId];
+      state.status = 'syncing';
+      state.message = 'Sincronizando con SICAS...';
+      updateCatalogUI(catalogId);
+
+      try {
+        const response = await supabase.functions.invoke('sicas-sync', {
+          body: { catalog_type_id: catalogId }
+        });
+
+        if (response.error) throw response.error;
+        const result = response.data;
+
+        if (result.catalog_status === 'not_available') {
+          state.status = 'not_available';
+          state.message = result.warning || 'Catálogo temporalmente no disponible';
+          state.stats = { totalRows: 0, inserted: 0 };
+        } else if (result.catalog_status === 'available') {
+          state.status = 'available';
+          state.message = `Sincronización exitosa: ${result.stats.inserted + result.stats.updated} registros`;
+          state.stats = result.stats;
+        } else {
+          state.status = 'error';
+          state.message = result.error || 'Error desconocido';
+        }
+      } catch (error) {
+        state.status = 'error';
+        state.message = `Error: ${error.message}`;
+      }
+
+      updateCatalogUI(catalogId);
+      updateSummary();
+    }
+
+    function updateCatalogUI(catalogId) {
+      const state = catalogStates[catalogId];
+
+      document.getElementById(`status-${catalogId}`).className = `catalog-status status-${state.status}`;
+      document.getElementById(`status-${catalogId}`).textContent = getStatusLabel(state.status);
+      document.getElementById(`message-${catalogId}`).textContent = state.message;
+      document.getElementById(`btn-${catalogId}`).disabled = state.status === 'syncing';
+
+      const statsEl = document.getElementById(`stats-${catalogId}`);
+      if (state.status === 'available') {
+        statsEl.style.display = 'grid';
+        statsEl.innerHTML = `
+          <div class="stat-item">
+            <div class="stat-label">Total</div>
+            <div class="stat-value">${state.stats.totalRows}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Insertados</div>
+            <div class="stat-value">${state.stats.inserted}</div>
+          </div>
+        `;
+      } else {
+        statsEl.style.display = 'none';
+      }
+    }
+
+    function updateSummary() {
+      const total = Object.keys(catalogStates).length;
+      const available = Object.values(catalogStates).filter(s => s.status === 'available').length;
+      const notAvailable = Object.values(catalogStates).filter(s => s.status === 'not_available').length;
+      const errors = Object.values(catalogStates).filter(s => s.status === 'error').length;
+
+      document.getElementById('totalCatalogs').textContent = total;
+      document.getElementById('availableCatalogs').textContent = available;
+      document.getElementById('notAvailableCatalogs').textContent = notAvailable;
+      document.getElementById('errorCatalogs').textContent = errors;
+    }
+
+    async function syncAll() {
+      const btn = document.getElementById('btnSyncAll');
+      btn.disabled = true;
+      btn.textContent = 'Sincronizando todos...';
+
+      for (const cat of catalogTypes) {
+        await syncCatalog(cat.id);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Sincronizar Todos';
+    }
+
+    function clearResults() {
+      Object.keys(catalogStates).forEach(id => {
+        catalogStates[id] = {
+          status: 'idle',
+          message: '',
+          stats: { totalRows: 0, inserted: 0 }
+        };
+      });
+      renderCatalogs();
+      updateSummary();
+    }
+
+    window.onload = () => {
+      loadAllCatalogs();
+    };
+  </script>
+</body>
+</html>

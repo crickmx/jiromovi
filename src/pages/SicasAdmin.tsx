@@ -132,7 +132,7 @@ export default function SicasAdmin() {
         if (result.warning) {
           setMessage({
             type: 'error',
-            text: `⚠️ Catálogo no disponible: ${result.warning}`
+            text: `Catálogo temporalmente no disponible en SICAS. Este catálogo podría estar restringido o en mantenimiento. Mensaje: ${result.warning}`
           });
         } else {
           setMessage({
