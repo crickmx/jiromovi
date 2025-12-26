@@ -9,10 +9,6 @@ const corsHeaders = {
 interface SicasAuthConfig {
   UserName: string;
   Password: string;
-  ServerMgr?: string;
-  TipoBD?: string;
-  Version?: string;
-  CodeAuth?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -36,18 +32,7 @@ Deno.serve(async (req: Request) => {
     const authConfig: SicasAuthConfig = {
       UserName: sicasUsername,
       Password: sicasPassword,
-      ServerMgr: Deno.env.get('SICAS_SERVERMGR') || '',
-      TipoBD: Deno.env.get('SICAS_TIPOBD') || '',
-      Version: Deno.env.get('SICAS_VERSION') || '',
-      CodeAuth: Deno.env.get('SICAS_CODEAUTH') || '',
     };
-
-    // Build optional fields only if they have values
-    let optionalFields = '';
-    if (authConfig.ServerMgr) optionalFields += `        <ServerMgr>${authConfig.ServerMgr}</ServerMgr>\n`;
-    if (authConfig.TipoBD) optionalFields += `        <TipoBD>${authConfig.TipoBD}</TipoBD>\n`;
-    if (authConfig.Version) optionalFields += `        <Version>${authConfig.Version}</Version>\n`;
-    if (authConfig.CodeAuth) optionalFields += `        <CodeAuth>${authConfig.CodeAuth}</CodeAuth>\n`;
 
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
@@ -56,7 +41,7 @@ Deno.serve(async (req: Request) => {
       <wsAuthConfig>
         <UserName>${authConfig.UserName}</UserName>
         <Password>${authConfig.Password}</Password>
-${optionalFields}      </wsAuthConfig>
+      </wsAuthConfig>
     </AutentificarWS>
   </soap:Body>
 </soap:Envelope>`;
