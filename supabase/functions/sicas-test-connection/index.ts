@@ -75,28 +75,52 @@ Deno.serve(async (req: Request) => {
     let message = 'Unknown response';
     let parsedResponse = null;
 
-    const responseMatch = responseText.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i);
-    const messageMatch = responseText.match(/<MESSAGE>(.*?)<\/MESSAGE>/i);
+    // Check for SOAP fault first
+    const faultMatch = responseText.match(/<faultstring>(.*?)<\/faultstring>/i);
+    if (faultMatch) {
+      message = `SOAP Error: ${faultMatch[1]}`;
+      success = false;
+    } else if (responseText.includes('<!DOCTYPE html>') || responseText.includes('<html')) {
+      message = 'Received HTML response instead of SOAP XML (possible endpoint error)';
+      success = false;
+    } else if (responseText.trim() === '') {
+      message = 'Empty response from SICAS server';
+      success = false;
+    } else {
+      // Try to parse AutentificarWSResult
+      const authResultMatch = responseText.match(/<AutentificarWSResult>(.*?)<\/AutentificarWSResult>/is);
+      if (authResultMatch) {
+        let authResult = authResultMatch[1];
 
-    if (responseMatch) {
-      const responseTxt = responseMatch[1];
-      parsedResponse = responseTxt;
-      success = responseTxt === 'OK' || responseTxt.toLowerCase().includes('éxito') || responseTxt.toLowerCase().includes('exitoso');
-    }
+        // Decode HTML entities
+        authResult = authResult.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
 
-    if (messageMatch) {
-      message = messageMatch[1];
-    } else if (!responseMatch) {
-      // If no structured response found, check for common SOAP error patterns
-      const faultMatch = responseText.match(/<faultstring>(.*?)<\/faultstring>/i);
-      if (faultMatch) {
-        message = `SOAP Error: ${faultMatch[1]}`;
-      } else if (responseText.includes('<!DOCTYPE html>') || responseText.includes('<html')) {
-        message = 'Received HTML response instead of SOAP XML (possible endpoint error)';
-      } else if (responseText.trim() === '') {
-        message = 'Empty response from SICAS server';
+        parsedResponse = authResult;
+
+        // Try to parse as XML or JSON
+        const responseMatch = authResult.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i);
+        const messageMatch = authResult.match(/<MESSAGE>(.*?)<\/MESSAGE>/i);
+
+        if (responseMatch) {
+          const responseTxt = responseMatch[1];
+          success = responseTxt === 'OK' || responseTxt.toLowerCase().includes('éxito') || responseTxt.toLowerCase().includes('exitoso');
+        }
+
+        if (messageMatch) {
+          message = messageMatch[1];
+        } else if (authResult.includes('OK') || authResult.toLowerCase().includes('éxito')) {
+          // Fallback: check if the response contains success indicators
+          message = 'Autenticación exitosa';
+          success = true;
+        } else if (authResult.toLowerCase().includes('error') || authResult.toLowerCase().includes('invalid')) {
+          message = authResult.substring(0, 200);
+          success = false;
+        } else {
+          message = `Response received: ${authResult.substring(0, 100)}...`;
+          success = authResult.length > 0;
+        }
       } else {
-        message = `Unable to parse SICAS response. HTTP Status: ${response.status}`;
+        message = `Unable to find AutentificarWSResult in response. HTTP Status: ${response.status}`;
       }
     }
 
