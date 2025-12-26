@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, RefreshCw, CheckCircle, XCircle, Building, Users, Trash2, Link as LinkIcon } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle, XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -42,6 +42,12 @@ export default function SicasAdmin() {
   const [filterUnmappedVendedores, setFilterUnmappedVendedores] = useState(false);
   const [searchDespacho, setSearchDespacho] = useState('');
   const [searchVendedor, setSearchVendedor] = useState('');
+
+  const [diagnosticCatalogId, setDiagnosticCatalogId] = useState('12');
+  const [diagnosticTypeReturn, setDiagnosticTypeReturn] = useState('1');
+  const [diagnosticDryRun, setDiagnosticDryRun] = useState(true);
+  const [diagnosticRunning, setDiagnosticRunning] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -216,6 +222,41 @@ export default function SicasAdmin() {
     }
   }
 
+  async function handleDiagnosticTest() {
+    setDiagnosticRunning(true);
+    setDiagnosticResult(null);
+    setMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sicas-sync', {
+        body: {
+          catalog_type_id: Number(diagnosticCatalogId),
+          typeReturn: Number(diagnosticTypeReturn),
+          dryRun: diagnosticDryRun,
+          debug: true,
+        },
+      });
+
+      if (error) throw error;
+
+      setDiagnosticResult(data);
+
+      if (data.success) {
+        setMessage({
+          type: 'success',
+          text: `Prueba completada: ${data.catalog_status} - ${data.stats?.totalRows || 0} registros`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setDiagnosticResult({ success: false, error: error.message });
+    } finally {
+      setDiagnosticRunning(false);
+    }
+  }
+
   const filteredDespachos = despachos
     .filter(d => !filterUnmappedDespachos || !d.is_mapped)
     .filter(d => d.nombre.toLowerCase().includes(searchDespacho.toLowerCase()) || d.id_sicas.includes(searchDespacho));
@@ -262,10 +303,11 @@ export default function SicasAdmin() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="conexion">Conexión</TabsTrigger>
           <TabsTrigger value="despachos">Mapeo Despachos</TabsTrigger>
           <TabsTrigger value="vendedores">Mapeo Vendedores</TabsTrigger>
+          <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
         </TabsList>
 
         <TabsContent value="conexion">
@@ -576,6 +618,193 @@ export default function SicasAdmin() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </Section>
+        </TabsContent>
+
+        <TabsContent value="diagnostico">
+          <Section>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FlaskConical className="w-5 h-5" />
+                  Modo Diagnóstico
+                </CardTitle>
+                <CardDescription>
+                  Prueba diferentes catálogos y modos de retorno (TypeDataReturn) para diagnosticar problemas de SICAS
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="catalogId">ID Catálogo</Label>
+                    <Input
+                      id="catalogId"
+                      type="number"
+                      min="1"
+                      max="61"
+                      value={diagnosticCatalogId}
+                      onChange={(e) => setDiagnosticCatalogId(e.target.value)}
+                      placeholder="12"
+                    />
+                    <p className="text-xs text-neutral-500">
+                      Catálogos comunes: 10=Oficinas, 11=Despachos, 12=Compañías, 13=Agentes, 32=Vendedores
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="typeReturn">TypeDataReturn</Label>
+                    <Select value={diagnosticTypeReturn} onValueChange={setDiagnosticTypeReturn}>
+                      <SelectTrigger id="typeReturn">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">0 - DataSet</SelectItem>
+                        <SelectItem value="1">1 - XML (recomendado)</SelectItem>
+                        <SelectItem value="2">2 - JSON</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-neutral-500">
+                      Modo de retorno del WS. Default productivo: XML (1)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="dryRun">Modo</Label>
+                    <Select
+                      value={diagnosticDryRun ? 'dry' : 'save'}
+                      onValueChange={(v) => setDiagnosticDryRun(v === 'dry')}
+                    >
+                      <SelectTrigger id="dryRun">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dry">Dry Run (no guardar)</SelectItem>
+                        <SelectItem value="save">Guardar en BD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-neutral-500">
+                      Dry run solo prueba sin modificar la base de datos
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <Button
+                    onClick={handleDiagnosticTest}
+                    disabled={diagnosticRunning || !diagnosticCatalogId}
+                    className="w-full"
+                  >
+                    {diagnosticRunning ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Probando catálogo...
+                      </>
+                    ) : (
+                      <>
+                        <FlaskConical className="w-4 h-4 mr-2" />
+                        Probar Catálogo {diagnosticCatalogId}
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {diagnosticResult && (
+                  <div className="space-y-4 pt-6 border-t">
+                    <h3 className="font-semibold">Resultado de la Prueba</h3>
+
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="p-3 bg-neutral-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Estado</div>
+                        <Badge
+                          variant={
+                            diagnosticResult.catalog_status === 'available' ? 'default' :
+                            diagnosticResult.catalog_status === 'not_available' ? 'secondary' :
+                            'destructive'
+                          }
+                          className={
+                            diagnosticResult.catalog_status === 'available' ? 'bg-green-500' : ''
+                          }
+                        >
+                          {diagnosticResult.catalog_status || 'error'}
+                        </Badge>
+                      </div>
+
+                      <div className="p-3 bg-neutral-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">TypeDataReturn</div>
+                        <div className="font-mono font-semibold">
+                          {diagnosticResult.typeReturn} (
+                          {diagnosticResult.typeReturn === 0 ? 'DataSet' :
+                           diagnosticResult.typeReturn === 1 ? 'XML' : 'JSON'})
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-neutral-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Registros</div>
+                        <div className="text-lg font-bold text-blue-600">
+                          {diagnosticResult.stats?.totalRows || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-neutral-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Modo</div>
+                        <div className="font-semibold">
+                          {diagnosticResult.dryRun ? 'Dry Run' : 'Guardado'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {diagnosticResult.warning && (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="font-medium text-yellow-900 mb-1">Advertencia</div>
+                        <div className="text-sm text-yellow-800">{diagnosticResult.warning}</div>
+                      </div>
+                    )}
+
+                    {diagnosticResult.debug && (
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-sm">Debug Info</h4>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-neutral-50 rounded-lg">
+                            <div className="text-xs text-neutral-500 mb-1">HTTP Status</div>
+                            <div className="font-mono">{diagnosticResult.debug.soapHttpStatus}</div>
+                          </div>
+                          <div className="p-3 bg-neutral-50 rounded-lg">
+                            <div className="text-xs text-neutral-500 mb-1">Response Length</div>
+                            <div className="font-mono">{diagnosticResult.debug.responseBodyLength?.toLocaleString()} bytes</div>
+                          </div>
+                        </div>
+
+                        {diagnosticResult.debug.preview && (
+                          <div>
+                            <div className="text-xs text-neutral-500 mb-2">Response Preview (primeros 500 chars)</div>
+                            <pre className="p-3 bg-neutral-900 text-neutral-100 rounded-lg text-xs overflow-x-auto">
+                              {diagnosticResult.debug.preview}
+                            </pre>
+                          </div>
+                        )}
+
+                        {diagnosticResult.debug.parsedRecordsPreview && diagnosticResult.debug.parsedRecordsPreview.length > 0 && (
+                          <div>
+                            <div className="text-xs text-neutral-500 mb-2">Registros Parseados (primeros 3)</div>
+                            <pre className="p-3 bg-neutral-900 text-neutral-100 rounded-lg text-xs overflow-x-auto">
+                              {JSON.stringify(diagnosticResult.debug.parsedRecordsPreview, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!diagnosticResult.success && diagnosticResult.error && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="font-medium text-red-900 mb-1">Error</div>
+                        <div className="text-sm text-red-800">{diagnosticResult.error}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </Section>

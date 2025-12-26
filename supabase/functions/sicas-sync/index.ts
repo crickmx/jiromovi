@@ -20,11 +20,16 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { catalog_type_id } = await req.json();
+    const body = await req.json();
+    const { catalog_type_id } = body;
 
     if (!catalog_type_id || catalog_type_id < 1 || catalog_type_id > 61) {
       throw new Error('Invalid catalog_type_id. Must be between 1 and 61');
     }
+
+    const typeReturn = Number(body?.typeReturn ?? 1);
+    const dryRun = body?.dryRun === true;
+    const debug = body?.debug === true;
 
     const { data: catalogType, error: catalogError } = await supabase
       .from('sicas_catalog_types')
@@ -69,9 +74,7 @@ Deno.serve(async (req: Request) => {
   <soap:Body>
     <ReadInfoData xmlns="http://tempuri.org/">
       <wsReadData>
-        <PropertyUserName>${sicasUsername}</PropertyUserName>
-        <PropertyPassword>${sicasPassword}</PropertyPassword>
-        <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
+        <PropertyData_TypeDataReturn>${typeReturn}</PropertyData_TypeDataReturn>
         <PropertyTypeReadData>${catalog_type_id}</PropertyTypeReadData>
       </wsReadData>
       <wsAuthConfig>
@@ -130,20 +133,32 @@ Deno.serve(async (req: Request) => {
             .eq('id', syncHistoryId);
         }
 
+        const notAvailableResponse: any = {
+          success: true,
+          catalog_type_id,
+          catalog_name: catalogType.name,
+          catalog_status: 'not_available',
+          typeReturn,
+          dryRun,
+          warning: cleanMessage,
+          stats: {
+            totalRows: 0,
+            inserted: 0,
+            updated: 0,
+            failed: 0,
+          },
+        };
+
+        if (debug) {
+          notAvailableResponse.debug = {
+            soapHttpStatus: response.status,
+            responseBodyLength: responseText.length,
+            preview: responseText.substring(0, 500),
+          };
+        }
+
         return new Response(
-          JSON.stringify({
-            success: true,
-            catalog_type_id,
-            catalog_name: catalogType.name,
-            catalog_status: 'not_available',
-            warning: cleanMessage,
-            stats: {
-              totalRows: 0,
-              inserted: 0,
-              updated: 0,
-              failed: 0,
-            },
-          }),
+          JSON.stringify(notAvailableResponse),
           {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -178,20 +193,32 @@ Deno.serve(async (req: Request) => {
           .eq('id', syncHistoryId);
       }
 
+      const notAvailableResponse2: any = {
+        success: true,
+        catalog_type_id,
+        catalog_name: catalogType.name,
+        catalog_status: parsedSoapData.status ?? 'not_available',
+        typeReturn,
+        dryRun,
+        warning: parsedSoapData.message ?? 'Catálogo no disponible',
+        stats: {
+          totalRows: 0,
+          inserted: 0,
+          updated: 0,
+          failed: 0,
+        },
+      };
+
+      if (debug) {
+        notAvailableResponse2.debug = {
+          soapHttpStatus: response.status,
+          responseBodyLength: responseText.length,
+          preview: responseText.substring(0, 500),
+        };
+      }
+
       return new Response(
-        JSON.stringify({
-          success: true,
-          catalog_type_id,
-          catalog_name: catalogType.name,
-          catalog_status: parsedSoapData.status ?? 'not_available',
-          warning: parsedSoapData.message ?? 'Catálogo no disponible',
-          stats: {
-            totalRows: 0,
-            inserted: 0,
-            updated: 0,
-            failed: 0,
-          },
-        }),
+        JSON.stringify(notAvailableResponse2),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -224,20 +251,32 @@ Deno.serve(async (req: Request) => {
           .eq('id', syncHistoryId);
       }
 
+      const notAvailableResponse3: any = {
+        success: true,
+        catalog_type_id,
+        catalog_name: catalogType.name,
+        catalog_status: 'not_available',
+        typeReturn,
+        dryRun,
+        warning: parseResult.message,
+        stats: {
+          totalRows: 0,
+          inserted: 0,
+          updated: 0,
+          failed: 0,
+        },
+      };
+
+      if (debug) {
+        notAvailableResponse3.debug = {
+          soapHttpStatus: response.status,
+          responseBodyLength: responseText.length,
+          preview: responseText.substring(0, 500),
+        };
+      }
+
       return new Response(
-        JSON.stringify({
-          success: true,
-          catalog_type_id,
-          catalog_name: catalogType.name,
-          catalog_status: 'not_available',
-          warning: parseResult.message,
-          stats: {
-            totalRows: 0,
-            inserted: 0,
-            updated: 0,
-            failed: 0,
-          },
-        }),
+        JSON.stringify(notAvailableResponse3),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -256,7 +295,10 @@ Deno.serve(async (req: Request) => {
     let recordsUpdated = 0;
     let recordsFailed = 0;
 
-    for (const record of parseResult.records) {
+    if (dryRun) {
+      console.log('[SICAS Sync] DRY RUN: omitiendo upsert');
+    } else {
+      for (const record of parseResult.records) {
       try {
         const { data: existingRecord } = await supabase
           .from('sicas_catalogos')
@@ -306,8 +348,9 @@ Deno.serve(async (req: Request) => {
         recordsFailed++;
       }
     }
+    }
 
-    console.log(`[SICAS Sync] Completado: ${recordsInserted} nuevos, ${recordsUpdated} actualizados`);
+    console.log(`[SICAS Sync] ${dryRun ? 'DRY RUN - ' : ''}Completado: ${recordsInserted} nuevos, ${recordsUpdated} actualizados`);
 
     if (syncHistoryId) {
       await supabase
@@ -326,20 +369,33 @@ Deno.serve(async (req: Request) => {
         .eq('id', syncHistoryId);
     }
 
+    const responseData: any = {
+      success: true,
+      catalog_type_id,
+      catalog_name: catalogType.name,
+      catalog_status: 'available',
+      typeReturn,
+      dryRun,
+      stats: {
+        totalRows: parseResult.stats.totalRows,
+        inserted: recordsInserted,
+        updated: recordsUpdated,
+        failed: recordsFailed,
+      },
+      errors: parseResult.errors.slice(0, 10),
+    };
+
+    if (debug) {
+      responseData.debug = {
+        soapHttpStatus: response.status,
+        responseBodyLength: responseText.length,
+        preview: responseText.substring(0, 500),
+        parsedRecordsPreview: parseResult.records.slice(0, 3),
+      };
+    }
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        catalog_type_id,
-        catalog_name: catalogType.name,
-        catalog_status: 'available',
-        stats: {
-          totalRows: parseResult.stats.totalRows,
-          inserted: recordsInserted,
-          updated: recordsUpdated,
-          failed: recordsFailed,
-        },
-        errors: parseResult.errors.slice(0, 10),
-      }),
+      JSON.stringify(responseData),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
