@@ -67,6 +67,7 @@ import CatalogosWeb from './pages/CatalogosWeb';
 import MiPaginaWeb from './pages/MiPaginaWeb';
 import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 import ChatGPTTest from './pages/ChatGPTTest';
+import SicasAdmin from './pages/SicasAdmin';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -777,6 +778,7 @@ function App() {
               <Route path="/gmm/tarifas" element={<ProtectedRoute requireAdmin><GMMTarifasAdmin /></ProtectedRoute>} />
               <Route path="/gmm/cotizador" element={<ProtectedRoute><GMMCotizador /></ProtectedRoute>} />
               <Route path="/catalogos-web" element={<ProtectedRoute requireRole="admin"><Layout><CatalogosWeb /></Layout></ProtectedRoute>} />
+              <Route path="/sicas" element={<ProtectedRoute requireRole="admin"><Layout><SicasAdmin /></Layout></ProtectedRoute>} />
               <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
 

@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Globe2, Database } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Globe2, Database, Link as LinkIcon } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
 import { AssistantModal } from './AssistantModal';
@@ -114,7 +114,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/notificaciones-transaccionales', label: 'Notificaciones Transaccionales', icon: Mail, show: isAdmin },
     { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
     { path: '/catalogos-web', label: 'Catálogos Web', icon: Database, show: isAdmin },
-    // { path: '/configuracion/mapeo-vendedores', label: 'Mapeo de Agentes', icon: Users, show: isAdmin },
+    { path: '/sicas', label: 'SICAS', icon: LinkIcon, show: isAdmin },
     { path: '/configuracion', label: 'Configuración', icon: Settings, show: isAdmin },
   ];
 
