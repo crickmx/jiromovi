@@ -184,3 +184,42 @@ Si las credenciales están correctas pero sigue fallando:
 ---
 
 **Nota:** El error "Variable de objeto o de bloque With no establecida" es un error interno de SICAS que usualmente indica que las credenciales no están llegando correctamente al servidor.
+
+---
+
+## ACTUALIZACIÓN: Parser Mejorado y Herramientas de Debug
+
+### ✅ Correcciones Aplicadas
+
+El parser y edge functions han sido mejorados con:
+
+1. **Parser SOAP más robusto** - Detecta múltiples tipos de errores
+2. **Logs detallados** - Muestra el XML completo cuando hay error
+3. **Análisis automático** - Detecta qué tags están presentes/ausentes
+4. **Herramienta de diagnóstico web** - UI amigable para debug
+
+### 🔧 Herramienta de Diagnóstico
+
+Abrir en navegador: `http://localhost:5173/diagnostico-sicas-detallado.html`
+
+**Características:**
+- Test de autenticación standalone
+- Test de sincronización Despachos
+- Test de sincronización Vendedores
+- Análisis automático de errores
+- Recomendaciones según el tipo de error
+
+### 📋 Próximos Pasos
+
+1. **Deploy de Edge Functions** (Ver: `FIX_SICAS_PARSER_MEJORADO.md`)
+2. **Usar herramienta de diagnóstico** para probar conexión
+3. **Ver logs en Supabase Dashboard** para ver XML real
+4. **Analizar error exacto** que retorna SICAS
+
+### 📖 Documentación Completa
+
+Ver archivo: **FIX_SICAS_PARSER_MEJORADO.md** para:
+- Guía de deploy paso a paso
+- Cómo interpretar logs
+- Soluciones comunes
+- Análisis de errores XML

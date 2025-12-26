@@ -279,10 +279,31 @@ export function parseSicasResponse(
  */
 export function parseSoapResponse(soapXml: string): any {
   try {
-    // Extraer ReadInfoDataResult
+    // Intentar extraer ReadInfoDataResult
     const resultMatch = soapXml.match(/<ReadInfoDataResult>(.*?)<\/ReadInfoDataResult>/is);
+
     if (!resultMatch) {
-      throw new Error('No se encontró ReadInfoDataResult en la respuesta SOAP');
+      // Si no encontramos ReadInfoDataResult, buscar si hay un error en RESPONSETXT
+      const responseTxtMatch = soapXml.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
+      if (responseTxtMatch) {
+        throw new Error(`SICAS Error: ${responseTxtMatch[1]}`);
+      }
+
+      // Buscar si hay un mensaje de error en la respuesta
+      const errorMatch = soapXml.match(/<ERROR>(.*?)<\/ERROR>/is);
+      if (errorMatch) {
+        throw new Error(`SICAS Error: ${errorMatch[1]}`);
+      }
+
+      // Buscar faultstring
+      const faultMatch = soapXml.match(/<faultstring>(.*?)<\/faultstring>/is);
+      if (faultMatch) {
+        throw new Error(`SOAP Fault: ${faultMatch[1]}`);
+      }
+
+      // Log del XML recibido para debug (primeros 500 chars)
+      console.error('[SICAS Parser] XML recibido (preview):', soapXml.substring(0, 500));
+      throw new Error('No se encontró ReadInfoDataResult en la respuesta SOAP. Verificar credenciales y permisos en SICAS.');
     }
 
     let dataResult = resultMatch[1];

@@ -103,7 +103,26 @@ Deno.serve(async (req: Request) => {
 
     const responseText = await response.text();
     console.log('[SICAS Sync] HTTP Status:', response.status);
-    console.log('[SICAS Sync] Response Preview:', responseText.substring(0, 500));
+    console.log('[SICAS Sync] Response Headers:', Object.fromEntries(response.headers));
+    console.log('[SICAS Sync] Response Length:', responseText.length);
+
+    // Buscar tags importantes para debug
+    const hasReadInfoDataResult = responseText.includes('ReadInfoDataResult');
+    const hasResponseTxt = responseText.includes('RESPONSETXT');
+    const hasFault = responseText.includes('faultstring');
+
+    console.log('[SICAS Sync] Análisis de respuesta:');
+    console.log('  - Contiene ReadInfoDataResult:', hasReadInfoDataResult);
+    console.log('  - Contiene RESPONSETXT:', hasResponseTxt);
+    console.log('  - Contiene faultstring:', hasFault);
+
+    // Mostrar preview completo si hay error
+    if (!hasReadInfoDataResult || hasFault) {
+      console.log('[SICAS Sync] ⚠️ Respuesta completa (primeros 2000 chars):');
+      console.log(responseText.substring(0, 2000));
+    } else {
+      console.log('[SICAS Sync] Response Preview:', responseText.substring(0, 500));
+    }
 
     // Verificar errores SOAP
     const errorCheck = checkSoapError(responseText);
@@ -113,7 +132,7 @@ Deno.serve(async (req: Request) => {
 
     // Parsear respuesta SOAP
     const parsedSoapData = parseSoapResponse(responseText);
-    console.log('[SICAS Sync] Datos extraídos de SOAP');
+    console.log('[SICAS Sync] ✅ Datos extraídos de SOAP exitosamente');
 
     // Parsear catálogo usando parser universal
     const parseResult = parseSicasResponse(parsedSoapData, catalogType.name);

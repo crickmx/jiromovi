@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico SICAS Detallado</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .section h3 {
+      margin-top: 0;
+      color: #555;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+      border: 1px solid #ddd;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .tag-check {
+      display: inline-block;
+      padding: 5px 10px;
+      margin: 5px;
+      border-radius: 3px;
+      font-size: 14px;
+    }
+    .tag-check.found {
+      background: #d4edda;
+      color: #155724;
+    }
+    .tag-check.missing {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #4CAF50;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .credential-info {
+      background: #fff3cd;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Diagnóstico SICAS Detallado</h1>
+
+  <div class="container">
+    <h2>1. Test de Autenticación</h2>
+    <button onclick="testAuth()">Probar Autenticación</button>
+    <div id="authResult"></div>
+  </div>
+
+  <div class="container">
+    <h2>2. Test de Sincronización Despachos (ID 11)</h2>
+    <button onclick="testSync(11, 'Despachos')">Sincronizar Despachos</button>
+    <div id="despachoResult"></div>
+  </div>
+
+  <div class="container">
+    <h2>3. Test de Sincronización Vendedores (ID 32)</h2>
+    <button onclick="testSync(32, 'Vendedores')">Sincronizar Vendedores</button>
+    <div id="vendedorResult"></div>
+  </div>
+
+  <div class="container">
+    <h2>4. Análisis de Credenciales</h2>
+    <div class="credential-info">
+      <strong>⚠️ Verificar en Supabase Dashboard:</strong><br>
+      Settings → Edge Functions → Environment Variables<br><br>
+      Debe haber:<br>
+      - SICAS_USERNAME<br>
+      - SICAS_PASSWORD<br>
+      - SICAS_ENDPOINT
+    </div>
+  </div>
+
+  <script>
+    const supabaseUrl = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NzMzOTMsImV4cCI6MjA0NTE0OTM5M30.yF8UcfCL0DPH3eoUUlKTYdhGqJPb_1k9YMoHGhXGiKc';
+
+    async function getAuthToken() {
+      const { data: { session } } = await window.supabase.auth.getSession();
+      return session?.access_token;
+    }
+
+    async function testAuth() {
+      const resultDiv = document.getElementById('authResult');
+      resultDiv.innerHTML = '<div class="spinner"></div><p>Probando autenticación...</p>';
+
+      try {
+        const token = await getAuthToken();
+        if (!token) {
+          resultDiv.innerHTML = '<div class="status error">❌ No hay sesión activa. Por favor inicia sesión primero.</div>';
+          return;
+        }
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/sicas-test-connection`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const result = await response.json();
+
+        let html = '<div class="section">';
+        html += '<h3>Resultado de Autenticación</h3>';
+        html += '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+
+        if (result.success && result.connectionSuccess) {
+          html += '<div class="status success">✅ Autenticación EXITOSA</div>';
+        } else if (result.success && !result.connectionSuccess) {
+          html += '<div class="status error">❌ Credenciales incorrectas</div>';
+          html += '<p><strong>Acción requerida:</strong> Verificar SICAS_USERNAME y SICAS_PASSWORD en Supabase Dashboard</p>';
+        } else {
+          html += '<div class="status error">❌ Error de conexión</div>';
+        }
+        html += '</div>';
+
+        resultDiv.innerHTML = html;
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="status error">
+            ❌ Error: ${error.message}<br><br>
+            <strong>Stack:</strong><br>
+            <pre>${error.stack}</pre>
+          </div>
+        `;
+      }
+    }
+
+    async function testSync(catalog_type_id, catalogName) {
+      const resultDivId = catalog_type_id === 11 ? 'despachoResult' : 'vendedorResult';
+      const resultDiv = document.getElementById(resultDivId);
+      resultDiv.innerHTML = '<div class="spinner"></div><p>Sincronizando ' + catalogName + '...</p>';
+
+      try {
+        const token = await getAuthToken();
+        if (!token) {
+          resultDiv.innerHTML = '<div class="status error">❌ No hay sesión activa. Por favor inicia sesión primero.</div>';
+          return;
+        }
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/sicas-sync`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ catalog_type_id }),
+        });
+
+        const result = await response.json();
+
+        let html = '<div class="section">';
+        html += `<h3>Resultado de Sincronización - ${catalogName}</h3>`;
+
+        if (result.success) {
+          html += '<div class="status success">✅ Sincronización EXITOSA</div>';
+          html += '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+        } else {
+          html += '<div class="status error">❌ Sincronización FALLIDA</div>';
+          html += '<h4>Error:</h4>';
+          html += '<pre>' + (result.error || 'Error desconocido') + '</pre>';
+
+          if (result.stack) {
+            html += '<h4>Stack Trace:</h4>';
+            html += '<pre>' + result.stack + '</pre>';
+          }
+
+          // Análisis del error
+          html += '<div class="section">';
+          html += '<h4>📋 Análisis del Error</h4>';
+
+          if (result.error && result.error.includes('No se encontró ReadInfoDataResult')) {
+            html += '<div class="status error">';
+            html += '<strong>Problema:</strong> SICAS no está devolviendo datos en el formato esperado<br><br>';
+            html += '<strong>Posibles causas:</strong><br>';
+            html += '1. Las credenciales son incorrectas<br>';
+            html += '2. La cuenta no tiene permisos para este catálogo<br>';
+            html += '3. El catalog_type_id no existe en SICAS<br>';
+            html += '4. SICAS está retornando un error interno<br><br>';
+            html += '<strong>Acción requerida:</strong><br>';
+            html += '1. Verificar credenciales en Supabase Dashboard<br>';
+            html += '2. Probar primero con "Test de Autenticación"<br>';
+            html += '3. Contactar a soporte de SICAS para verificar permisos<br>';
+            html += '</div>';
+          }
+
+          html += '</div>';
+
+          // Información adicional
+          html += '<div class="section">';
+          html += '<h4>ℹ️ Información de Debug</h4>';
+          html += `<p><strong>Catalog Type ID:</strong> ${catalog_type_id}</p>`;
+          html += `<p><strong>Catalog Name:</strong> ${catalogName}</p>`;
+          html += `<p><strong>HTTP Status:</strong> ${response.status}</p>`;
+          html += '</div>';
+        }
+
+        html += '</div>';
+        resultDiv.innerHTML = html;
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="status error">
+            ❌ Error de red o parsing: ${error.message}<br><br>
+            <strong>Stack:</strong><br>
+            <pre>${error.stack}</pre>
+          </div>
+        `;
+      }
+    }
+
+    // Inicializar Supabase client
+    const { createClient: createSupabaseClient } = window.supabase;
+    window.supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</body>
+</html>
