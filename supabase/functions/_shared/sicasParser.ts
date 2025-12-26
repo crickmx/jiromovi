@@ -360,8 +360,13 @@ function isSicasNotAvailable(processData: any): boolean {
 
   const internalError = /Error en Ejecución|Proceso Interno|SICASOnline/i.test(msg);
 
-  // SUCESS + RESPONSENBR=0 + mensaje de error interno = catálogo no disponible
-  return (txt === 'SUCESS' || txt === 'SUCCESS') && nbr === '0' && internalError;
+  // Caso 1: SUCESS + RESPONSENBR=0 + mensaje de error interno
+  const case1 = (txt === 'SUCESS' || txt === 'SUCCESS') && nbr === '0' && internalError;
+
+  // Caso 2: Solo mensaje de error interno (SICAS no retorna RESPONSETXT en algunos casos)
+  const case2 = internalError && msg.includes('Error en Ejecución');
+
+  return case1 || case2;
 }
 
 /**
@@ -377,17 +382,42 @@ export function parseSoapResponse(soapXml: string): any {
       // Si no encontramos ReadInfoDataResult, buscar si hay un error en RESPONSETXT
       const responseTxtMatch = soapXml.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
       if (responseTxtMatch) {
-        const responseTxt = responseTxtMatch[1];
-        console.error('[SICAS Parser] RESPONSETXT encontrado:', responseTxt);
-
-        // Buscar el mensaje completo
+        const responseTxt = responseTxtMatch[1].trim();
         const messageMatch = soapXml.match(/<MESSAGE>(.*?)<\/MESSAGE>/is);
-        const errorMessage = messageMatch ? messageMatch[1] : responseTxt;
+        const responseNbrMatch = soapXml.match(/<RESPONSENBR>(.*?)<\/RESPONSENBR>/is);
 
-        // Log de más contexto
-        console.error('[SICAS Parser] XML completo:', soapXml);
+        const message = messageMatch ? messageMatch[1].trim() : '';
+        const responseNbr = responseNbrMatch ? responseNbrMatch[1].trim() : '';
 
-        throw new Error(`SICAS Error: ${errorMessage}`);
+        console.log('[SICAS Parser] MESSAGE encontrado:', message);
+        console.log('[SICAS Parser] RESPONSETXT:', responseTxt);
+        console.log('[SICAS Parser] RESPONSENBR:', responseNbr);
+
+        // Verificar si es caso de catálogo no disponible
+        const processData = { MESSAGE: message, RESPONSETXT: responseTxt, RESPONSENBR: responseNbr };
+
+        // ❌ CASO FATAL: DENIED (autenticación denegada)
+        if (responseTxt.toUpperCase() === 'DENIED') {
+          console.error('[SICAS Parser] ❌ Autenticación denegada');
+          throw new Error(`SICAS DENIED: ${message || 'Acceso denegado'}`);
+        }
+
+        // ✅ CASO ESPECIAL: SUCESS + RESPONSENBR=0 + mensaje de error interno
+        // Este es el caso de "catálogo no disponible" y NO debe lanzar error
+        if (isSicasNotAvailable(processData)) {
+          console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (capturado desde SOAP sin ReadInfoDataResult)');
+          return {
+            __empty_catalog: true,
+            message: message || 'Catálogo no disponible',
+            responseTxt,
+            responseNbr,
+            status: 'not_available',
+          };
+        }
+
+        // Si hay un error real que no es not_available, lanzar
+        console.error('[SICAS Parser] ❌ Error SOAP real:', message);
+        throw new Error(`SICAS: ${message || responseTxt}`);
       }
 
       // Buscar si hay un error tag
