@@ -31,6 +31,11 @@ Deno.serve(async (req: Request) => {
     const dryRun = body?.dryRun === true;
     const debug = body?.debug === true;
 
+    // ✅ Validar typeReturn: 0=DataSet, 1=XML, 2=JSON
+    if (![0, 1, 2].includes(typeReturn)) {
+      throw new Error('Invalid typeReturn. Must be 0 (DataSet), 1 (XML), or 2 (JSON)');
+    }
+
     const { data: catalogType, error: catalogError } = await supabase
       .from('sicas_catalog_types')
       .select('*')
@@ -69,12 +74,14 @@ Deno.serve(async (req: Request) => {
       syncHistoryId = historyRecord.id;
     }
 
+    // ✅ SOAP correcto: autenticación solo en wsAuthConfig, typeReturn configurable
+    // PropertyData_TypeDataReturn: 0=DataSet, 1=XML, 2=JSON
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
     <ReadInfoData xmlns="http://tempuri.org/">
       <wsReadData>
-        <PropertyData_TypeDataReturn>${typeReturn}</PropertyData_TypeDataReturn>
+        <PropertyData_TypeDataReturn>${Number(typeReturn)}</PropertyData_TypeDataReturn>
         <PropertyTypeReadData>${catalog_type_id}</PropertyTypeReadData>
       </wsReadData>
       <wsAuthConfig>
@@ -99,6 +106,66 @@ Deno.serve(async (req: Request) => {
     const errorCheck = checkSoapError(responseText);
     if (errorCheck.hasError) {
       throw new Error(errorCheck.errorMessage);
+    }
+
+    // ✅ PATCH 1: Detectar PROCESSDATA antes de parsear (100% confiable, no depende del parser)
+    const decoded = responseText
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&");
+
+    const isProcessDataNotAvailable =
+      /<PROCESSDATA>/i.test(decoded) &&
+      /<RESPONSETXT>\s*SUCESS\s*<\/RESPONSETXT>/i.test(decoded) &&
+      /<RESPONSENBR>\s*0\s*<\/RESPONSENBR>/i.test(decoded);
+
+    if (isProcessDataNotAvailable) {
+      const msg = (decoded.match(/<MESSAGE>\s*([\s\S]*?)\s*<\/MESSAGE>/i)?.[1] ?? "").trim();
+
+      console.log('[SICAS Sync] Catálogo no disponible (PROCESSDATA detectado)');
+
+      if (syncHistoryId) {
+        await supabase
+          .from('sicas_sync_history')
+          .update({
+            sync_completed_at: new Date().toISOString(),
+            status: 'completed',
+            catalog_status: 'not_available',
+            response_nbr: '0',
+            records_found: 0,
+            records_inserted: 0,
+            records_updated: 0,
+            records_failed: 0,
+            response_preview: responseText.substring(0, 1000),
+            xml_snippet: responseText.substring(0, 1000),
+            error_message: msg || 'Catálogo no disponible',
+          })
+          .eq('id', syncHistoryId);
+      }
+
+      const resp: any = {
+        success: true,
+        catalog_type_id,
+        catalog_name: catalogType.name,
+        catalog_status: 'not_available',
+        typeReturn,
+        dryRun,
+        warning: msg || 'Catálogo no disponible',
+        stats: { totalRows: 0, inserted: 0, updated: 0, failed: 0 },
+      };
+
+      if (debug) {
+        resp.debug = {
+          soapHttpStatus: response.status,
+          responseBodyLength: responseText.length,
+          preview: responseText.substring(0, 500),
+        };
+      }
+
+      return new Response(JSON.stringify(resp), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // ✅ Try/catch a prueba de todo: convierte errores de "catálogo no disponible" en HTTP 200
@@ -401,12 +468,16 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-  } catch (error) {
-    console.error('[SICAS Sync] Error:', error.message);
+  } catch (error: any) {
+    // ✅ PATCH 3: Manejo seguro de error.message (puede ser undefined o no existir)
+    const errMsg = String(error?.message ?? error ?? 'Unknown error');
+    const errStack = error?.stack;
+
+    console.error('[SICAS Sync] Error:', errMsg);
 
     // Detectar el tipo de error
     let catalogStatus = 'error';
-    if (error.message.includes('DENIED') || error.message.includes('denegada')) {
+    if (errMsg.includes('DENIED') || errMsg.toLowerCase().includes('denegad')) {
       catalogStatus = 'denied';
     }
 
@@ -421,7 +492,7 @@ Deno.serve(async (req: Request) => {
           sync_completed_at: new Date().toISOString(),
           status: 'failed',
           catalog_status: catalogStatus,
-          error_message: error.message,
+          error_message: errMsg,
         })
         .eq('id', syncHistoryId);
     }
@@ -429,8 +500,8 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
-        stack: error.stack,
+        error: errMsg,
+        stack: errStack,
       }),
       {
         status: 500,
