@@ -36,12 +36,11 @@ Deno.serve(async (req: Request) => {
     const authConfig: SicasAuthConfig = {
       UserName: sicasUsername,
       Password: sicasPassword,
+      ServerMgr: Deno.env.get('SICAS_SERVERMGR') || '',
+      TipoBD: Deno.env.get('SICAS_TIPOBD') || '',
+      Version: Deno.env.get('SICAS_VERSION') || '',
+      CodeAuth: Deno.env.get('SICAS_CODEAUTH') || '',
     };
-
-    if (Deno.env.get('SICAS_SERVERMGR')) authConfig.ServerMgr = Deno.env.get('SICAS_SERVERMGR');
-    if (Deno.env.get('SICAS_TIPOBD')) authConfig.TipoBD = Deno.env.get('SICAS_TIPOBD');
-    if (Deno.env.get('SICAS_VERSION')) authConfig.Version = Deno.env.get('SICAS_VERSION');
-    if (Deno.env.get('SICAS_CODEAUTH')) authConfig.CodeAuth = Deno.env.get('SICAS_CODEAUTH');
 
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
@@ -50,10 +49,10 @@ Deno.serve(async (req: Request) => {
       <wsAuthConfig>
         <UserName>${authConfig.UserName}</UserName>
         <Password>${authConfig.Password}</Password>
-        ${authConfig.ServerMgr ? `<ServerMgr>${authConfig.ServerMgr}</ServerMgr>` : ''}
-        ${authConfig.TipoBD ? `<TipoBD>${authConfig.TipoBD}</TipoBD>` : ''}
-        ${authConfig.Version ? `<Version>${authConfig.Version}</Version>` : ''}
-        ${authConfig.CodeAuth ? `<CodeAuth>${authConfig.CodeAuth}</CodeAuth>` : ''}
+        <ServerMgr>${authConfig.ServerMgr}</ServerMgr>
+        <TipoBD>${authConfig.TipoBD}</TipoBD>
+        <Version>${authConfig.Version}</Version>
+        <CodeAuth>${authConfig.CodeAuth}</CodeAuth>
       </wsAuthConfig>
     </AutentificarWS>
   </soap:Body>
