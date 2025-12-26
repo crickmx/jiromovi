@@ -323,6 +323,12 @@ function isSicasNotAvailable(processData: any): boolean {
   const hasSicasOnline = /SICASOnline/i.test(msg);
   const hasWS = /\bWS\b/i.test(msg);
 
+  // Caso especial SICAS: RESPONSETXT=SUCESS + RESPONSENBR=0 + mensaje de error = catálogo no disponible
+  if (txt === 'SUCESS' && nbr === '0' && (hasErrorEjecucion || hasProcesoInterno || hasSicasOnline)) {
+    return true;
+  }
+
+  // Caso clásico: mensaje de error con palabras clave
   return hasErrorEjecucion && (hasProcesoInterno || hasSicasOnline || hasWS);
 }
 
