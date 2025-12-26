@@ -42,6 +42,13 @@ Deno.serve(async (req: Request) => {
       CodeAuth: Deno.env.get('SICAS_CODEAUTH') || '',
     };
 
+    // Build optional fields only if they have values
+    let optionalFields = '';
+    if (authConfig.ServerMgr) optionalFields += `        <ServerMgr>${authConfig.ServerMgr}</ServerMgr>\n`;
+    if (authConfig.TipoBD) optionalFields += `        <TipoBD>${authConfig.TipoBD}</TipoBD>\n`;
+    if (authConfig.Version) optionalFields += `        <Version>${authConfig.Version}</Version>\n`;
+    if (authConfig.CodeAuth) optionalFields += `        <CodeAuth>${authConfig.CodeAuth}</CodeAuth>\n`;
+
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
@@ -49,14 +56,12 @@ Deno.serve(async (req: Request) => {
       <wsAuthConfig>
         <UserName>${authConfig.UserName}</UserName>
         <Password>${authConfig.Password}</Password>
-        <ServerMgr>${authConfig.ServerMgr}</ServerMgr>
-        <TipoBD>${authConfig.TipoBD}</TipoBD>
-        <Version>${authConfig.Version}</Version>
-        <CodeAuth>${authConfig.CodeAuth}</CodeAuth>
-      </wsAuthConfig>
+${optionalFields}      </wsAuthConfig>
     </AutentificarWS>
   </soap:Body>
 </soap:Envelope>`;
+
+    console.log('SICAS Request SOAP Envelope:', soapEnvelope);
 
     const response = await fetch(sicasEndpoint, {
       method: 'POST',
@@ -68,6 +73,7 @@ Deno.serve(async (req: Request) => {
     });
 
     const responseText = await response.text();
+    console.log('SICAS HTTP Status:', response.status);
     console.log('SICAS Response:', responseText.substring(0, 1000));
 
     let success = false;
@@ -140,6 +146,7 @@ Deno.serve(async (req: Request) => {
         httpStatus: response.status,
         parsedResponse,
         responsePreview: responseText.substring(0, 500),
+        requestSent: soapEnvelope,
       }),
       {
         status: 200,
