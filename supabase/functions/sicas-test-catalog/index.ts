@@ -100,25 +100,17 @@ Deno.serve(async (req: Request) => {
 
     const parseResult = parseSicasResponse(parsedSoapData, `Catalog_${catalog_id}`);
 
-    console.log('[SICAS Test] Parser universal completado:');
-    console.log(`  - Total filas: ${parseResult.stats.totalRows}`);
-    console.log(`  - Parseadas exitosamente: ${parseResult.stats.successfullyParsed}`);
-    console.log(`  - Fallidas: ${parseResult.stats.failed}`);
-
-    // Si el catálogo está vacío o no disponible
-    if (parseResult.records.length === 0) {
-      const warning = (parseResult as any).warning;
-      const catalogStatus = (parseResult as any).status || 'not_available';
-      const responseNbr = (parseResult as any).responseNbr || '0';
-
+    // Manejar catálogo no disponible
+    if (parseResult.kind === 'not_available') {
+      console.log('[SICAS Test] ⚠️ Catálogo no disponible (RESPONSENBR=0)');
       return new Response(
         JSON.stringify({
           success: true,
           catalog_id,
-          catalog_status: catalogStatus,
-          response_nbr: responseNbr,
+          catalog_status: 'not_available',
+          response_nbr: parseResult.responseNbr,
           available: false,
-          warning: warning || 'Catálogo no disponible o vacío',
+          warning: parseResult.message,
           xml_snippet: responseText.substring(0, 1000),
           stats: {
             totalRows: 0,
@@ -131,6 +123,12 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    // A partir de aquí, parseResult.kind === 'success'
+    console.log('[SICAS Test] Parser universal completado:');
+    console.log(`  - Total filas: ${parseResult.stats.totalRows}`);
+    console.log(`  - Parseadas exitosamente: ${parseResult.stats.successfullyParsed}`);
+    console.log(`  - Fallidas: ${parseResult.stats.failed}`);
 
     // Catálogo disponible
     return new Response(

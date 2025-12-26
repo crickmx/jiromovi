@@ -126,24 +126,12 @@ Deno.serve(async (req: Request) => {
 
     const parseResult = parseSicasResponse(parsedSoapData, catalogType.name);
 
-    console.log('[SICAS Sync] Parser universal completado:');
-    console.log(`  - Total filas: ${parseResult.stats.totalRows}`);
-    console.log(`  - Parseadas exitosamente: ${parseResult.stats.successfullyParsed}`);
-    console.log(`  - Fallidas: ${parseResult.stats.failed}`);
-
-    if (parseResult.errors.length > 0) {
-      console.log('[SICAS Sync] Errores de parseo:', parseResult.errors.slice(0, 5));
-    }
-
-    // Si el catálogo está vacío o no disponible (pero no es un error)
-    if (parseResult.records.length === 0) {
-      const warning = (parseResult as any).warning;
-      const catalogStatus = (parseResult as any).status || 'not_available';
-      const responseNbr = (parseResult as any).responseNbr || '0';
-
-      console.log('[SICAS Sync] ⚠️ Catálogo vacío o no disponible:', warning);
-      console.log('[SICAS Sync] Catalog Status:', catalogStatus);
-      console.log('[SICAS Sync] Response NBR:', responseNbr);
+    // Manejar catálogo no disponible
+    if (parseResult.kind === 'not_available') {
+      console.log('[SICAS Sync] ⚠️ Catálogo no disponible (RESPONSENBR=0)');
+      console.log('[SICAS Sync] MESSAGE:', parseResult.message);
+      console.log('[SICAS Sync] RESPONSETXT:', parseResult.responseTxt);
+      console.log('[SICAS Sync] RESPONSENBR:', parseResult.responseNbr);
 
       if (syncHistoryId) {
         await supabase
@@ -151,15 +139,15 @@ Deno.serve(async (req: Request) => {
           .update({
             sync_completed_at: new Date().toISOString(),
             status: 'completed',
-            catalog_status: catalogStatus,
-            response_nbr: responseNbr,
+            catalog_status: 'not_available',
+            response_nbr: parseResult.responseNbr,
             records_found: 0,
             records_inserted: 0,
             records_updated: 0,
             records_failed: 0,
             response_preview: responseText.substring(0, 1000),
             xml_snippet: responseText.substring(0, 1000),
-            error_message: warning,
+            error_message: parseResult.message,
           })
           .eq('id', syncHistoryId);
       }
@@ -169,8 +157,8 @@ Deno.serve(async (req: Request) => {
           success: true,
           catalog_type_id,
           catalog_name: catalogType.name,
-          catalog_status: catalogStatus,
-          warning: warning || 'Catálogo no disponible o vacío en SICAS',
+          catalog_status: 'not_available',
+          warning: parseResult.message,
           stats: {
             totalRows: 0,
             inserted: 0,
@@ -185,7 +173,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!parseResult.success) {
+    // A partir de aquí, parseResult.kind === 'success'
+    console.log('[SICAS Sync] Parser universal completado:');
+    console.log(`  - Total filas: ${parseResult.stats.totalRows}`);
+    console.log(`  - Parseadas exitosamente: ${parseResult.stats.successfullyParsed}`);
+    console.log(`  - Fallidas: ${parseResult.stats.failed}`);
+
+    if (parseResult.errors.length > 0) {
+      console.log('[SICAS Sync] Errores de parseo:', parseResult.errors.slice(0, 5));
+    }
+
+    if (!parseResult.success || parseResult.records.length === 0) {
       throw new Error(`No se pudieron parsear registros del catálogo ${catalogType.name}`);
     }
 

@@ -10,28 +10,48 @@ interface ParsedRecord {
   metadata?: any;
 }
 
-interface ParseResult {
-  success: boolean;
-  records: ParsedRecord[];
-  stats: {
-    totalRows: number;
-    successfullyParsed: number;
-    failed: number;
-  };
-  errors: string[];
+type ParseResult =
+  | {
+      kind: 'success';
+      success: boolean;
+      records: ParsedRecord[];
+      stats: {
+        totalRows: number;
+        successfullyParsed: number;
+        failed: number;
+      };
+      errors: string[];
+      warning?: string;
+    }
+  | {
+      kind: 'not_available';
+      success: false;
+      message: string;
+      responseTxt: string;
+      responseNbr: string;
+      status: 'not_available';
+    };
+
+/**
+ * Detecta si viene PROCESSDATA indicando catálogo no disponible
+ */
+function isNotAvailableProcessData(data: any): boolean {
+  const processData = data?.NewDataSet?.PROCESSDATA || data?.PROCESSDATA;
+  if (!processData) return false;
+
+  const responseTxt = String(processData?.RESPONSETXT ?? '').toUpperCase();
+  const responseNbr = String(processData?.RESPONSENBR ?? '').trim();
+  const message = String(processData?.MESSAGE ?? '');
+
+  const hasInternalError = /Error en Ejecución|Proceso Interno|SICASOnline/i.test(message);
+
+  return responseTxt === 'SUCESS' && responseNbr === '0' && hasInternalError;
 }
 
 /**
  * Parser universal que intenta múltiples estrategias
  */
 export function parseSicasResponse(data: any, catalogName: string): ParseResult {
-  const result: ParseResult = {
-    success: false,
-    records: [],
-    stats: { totalRows: 0, successfullyParsed: 0, failed: 0 },
-    errors: [],
-  };
-
   try {
     console.log('[SICAS Parser] Tipo de data recibida:', typeof data);
     console.log('[SICAS Parser] Es array:', Array.isArray(data));
@@ -40,15 +60,30 @@ export function parseSicasResponse(data: any, catalogName: string): ParseResult 
       console.log('[SICAS Parser] Preview del string (primeros 500 chars):', data.substring(0, 500));
     }
 
-    // Verificar si es un catálogo vacío (no disponible)
-    if (typeof data === 'object' && data !== null && '__empty_catalog' in data) {
-      console.log('[SICAS Parser] ⚠️ Catálogo vacío o no disponible');
+    // Verificar si viene PROCESSDATA (mensaje de proceso, no catálogo)
+    if (isNotAvailableProcessData(data)) {
+      const processData = data?.NewDataSet?.PROCESSDATA || data?.PROCESSDATA;
+      console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (RESPONSENBR=0)');
       return {
-        success: true,
-        records: [],
-        stats: { totalRows: 0, successfullyParsed: 0, failed: 0 },
-        errors: [],
-        warning: data.message || 'Catálogo no disponible en SICAS',
+        kind: 'not_available',
+        success: false,
+        message: String(processData.MESSAGE ?? 'Catálogo no disponible'),
+        responseTxt: String(processData.RESPONSETXT ?? ''),
+        responseNbr: String(processData.RESPONSENBR ?? '0'),
+        status: 'not_available',
+      };
+    }
+
+    // Verificar si es un catálogo vacío (formato legacy)
+    if (typeof data === 'object' && data !== null && '__empty_catalog' in data) {
+      console.log('[SICAS Parser] ⚠️ Catálogo vacío o no disponible (formato legacy)');
+      return {
+        kind: 'not_available',
+        success: false,
+        message: data.message || 'Catálogo no disponible en SICAS',
+        responseTxt: data.responseTxt || 'SUCESS',
+        responseNbr: data.responseNbr || '0',
+        status: 'not_available',
       };
     }
 
@@ -91,21 +126,26 @@ export function parseSicasResponse(data: any, catalogName: string): ParseResult 
     throw new Error(`Formato de datos no soportado: ${typeof data}`);
   } catch (error) {
     console.error('[SICAS Parser] ❌ Error general:', error.message);
-    result.errors.push(`Error general de parseo: ${error.message}`);
+    return {
+      kind: 'success',
+      success: false,
+      records: [],
+      stats: { totalRows: 0, successfullyParsed: 0, failed: 0 },
+      errors: [`Error general de parseo: ${error.message}`],
+    };
   }
-
-  return result;
 }
 
 /**
  * Parse array JSON
  */
 function parseJsonArray(arr: any[], catalogName: string): ParseResult {
-  const result: ParseResult = {
+  const result = {
+    kind: 'success' as const,
     success: true,
-    records: [],
+    records: [] as ParsedRecord[],
     stats: { totalRows: arr.length, successfullyParsed: 0, failed: 0 },
-    errors: [],
+    errors: [] as string[],
   };
 
   console.log(`[SICAS Parser] Parseando ${arr.length} registros de array JSON...`);
@@ -155,11 +195,12 @@ function parseJsonArray(arr: any[], catalogName: string): ParseResult {
  * Parse objeto JSON único
  */
 function parseSingleObject(obj: any, catalogName: string): ParseResult {
-  const result: ParseResult = {
+  const result = {
+    kind: 'success' as const,
     success: true,
-    records: [],
+    records: [] as ParsedRecord[],
     stats: { totalRows: 1, successfullyParsed: 0, failed: 0 },
-    errors: [],
+    errors: [] as string[],
   };
 
   try {
@@ -189,11 +230,12 @@ function parseSingleObject(obj: any, catalogName: string): ParseResult {
  * Parse XML string
  */
 function parseXmlString(xml: string, catalogName: string): ParseResult {
-  const result: ParseResult = {
+  const result = {
+    kind: 'success' as const,
     success: true,
-    records: [],
+    records: [] as ParsedRecord[],
     stats: { totalRows: 0, successfullyParsed: 0, failed: 0 },
-    errors: [],
+    errors: [] as string[],
   };
 
   try {
@@ -261,11 +303,12 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
  * Parse texto línea por línea
  */
 function parseTextLines(text: string, catalogName: string): ParseResult {
-  const result: ParseResult = {
+  const result = {
+    kind: 'success' as const,
     success: true,
-    records: [],
+    records: [] as ParsedRecord[],
     stats: { totalRows: 0, successfullyParsed: 0, failed: 0 },
-    errors: [],
+    errors: [] as string[],
   };
 
   try {
