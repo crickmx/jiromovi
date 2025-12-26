@@ -36,7 +36,7 @@ export default function SicasAdmin() {
   const [despachos, setDespachos] = useState<SicasDespachoWithMapping[]>([]);
   const [vendedores, setVendedores] = useState<SicasVendedorWithMapping[]>([]);
   const [oficinas, setOficinas] = useState<{ id: string; nombre: string }[]>([]);
-  const [usuarios, setUsuarios] = useState<{ id: string; nombre: string; apellidos: string; email: string }[]>([]);
+  const [usuarios, setUsuarios] = useState<{ id: string; nombre: string; apellidos: string; email_personal: string }[]>([]);
 
   const [filterUnmappedDespachos, setFilterUnmappedDespachos] = useState(false);
   const [filterUnmappedVendedores, setFilterUnmappedVendedores] = useState(false);
@@ -69,7 +69,7 @@ export default function SicasAdmin() {
 
       const { data: usuariosData } = await supabase
         .from('usuarios')
-        .select('id, nombre, apellidos, email')
+        .select('id, nombre, apellidos, email_personal')
         .eq('estado', 'activo')
         .order('nombre');
       setUsuarios(usuariosData || []);
@@ -531,7 +531,8 @@ export default function SicasAdmin() {
                           <SelectContent>
                             {usuarios.map((usuario) => (
                               <SelectItem key={usuario.id} value={usuario.id}>
-                                {usuario.nombre} {usuario.apellidos} ({usuario.email})
+                                {usuario.nombre} {usuario.apellidos}
+                                {usuario.email_personal && ` (${usuario.email_personal})`}
                               </SelectItem>
                             ))}
                           </SelectContent>
