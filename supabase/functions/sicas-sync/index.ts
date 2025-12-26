@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { parseSicasResponse, parseSoapResponse, checkSoapError } from '../_shared/sicasParser.ts';
+import { parseSicasResponse, parseSoapResponse, checkSoapError } from './_shared/sicasParser.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,7 +20,6 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Leer body con catalog_type_id (1-61)
     const { catalog_type_id } = await req.json();
 
     if (!catalog_type_id || catalog_type_id < 1 || catalog_type_id > 61) {
@@ -29,7 +28,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[SICAS Sync] Iniciando sincronización del catálogo tipo ${catalog_type_id}...`);
 
-    // Obtener información del catálogo
     const { data: catalogType, error: catalogError } = await supabase
       .from('sicas_catalog_types')
       .select('*')
@@ -42,7 +40,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[SICAS Sync] Catálogo: ${catalogType.name} (${catalogType.enum_name})`);
 
-    // Obtener credenciales
     const sicasUsername = Deno.env.get('SICAS_USERNAME');
     const sicasPassword = Deno.env.get('SICAS_PASSWORD');
     const sicasEndpoint = Deno.env.get('SICAS_ENDPOINT') || 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
@@ -51,7 +48,6 @@ Deno.serve(async (req: Request) => {
       throw new Error('SICAS credentials not configured');
     }
 
-    // Crear registro de historial
     const { data: historyRecord, error: historyError } = await supabase
       .from('sicas_sync_history')
       .insert({
@@ -70,10 +66,6 @@ Deno.serve(async (req: Request) => {
       syncHistoryId = historyRecord.id;
     }
 
-    // Construir request SOAP usando ReadInfoData
-    // IMPORTANTE: Las credenciales deben ir en wsReadData también
-    // PropertyData_TypeDataReturn = 2 (JSON preferido)
-    // PropertyTypeReadData = catalog_type_id
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
@@ -94,7 +86,6 @@ Deno.serve(async (req: Request) => {
 
     console.log('[SICAS Sync] Enviando request SOAP...');
 
-    // Llamar a SICAS
     const response = await fetch(sicasEndpoint, {
       method: 'POST',
       headers: {
@@ -109,7 +100,6 @@ Deno.serve(async (req: Request) => {
     console.log('[SICAS Sync] Response Headers:', Object.fromEntries(response.headers));
     console.log('[SICAS Sync] Response Length:', responseText.length);
 
-    // Buscar tags importantes para debug
     const hasReadInfoDataResult = responseText.includes('ReadInfoDataResult');
     const hasResponseTxt = responseText.includes('RESPONSETXT');
     const hasFault = responseText.includes('faultstring');
@@ -119,7 +109,6 @@ Deno.serve(async (req: Request) => {
     console.log('  - Contiene RESPONSETXT:', hasResponseTxt);
     console.log('  - Contiene faultstring:', hasFault);
 
-    // Mostrar preview completo si hay error
     if (!hasReadInfoDataResult || hasFault) {
       console.log('[SICAS Sync] ⚠️ Respuesta completa (primeros 2000 chars):');
       console.log(responseText.substring(0, 2000));
@@ -127,17 +116,14 @@ Deno.serve(async (req: Request) => {
       console.log('[SICAS Sync] Response Preview:', responseText.substring(0, 500));
     }
 
-    // Verificar errores SOAP
     const errorCheck = checkSoapError(responseText);
     if (errorCheck.hasError) {
       throw new Error(errorCheck.errorMessage);
     }
 
-    // Parsear respuesta SOAP
     const parsedSoapData = parseSoapResponse(responseText);
     console.log('[SICAS Sync] ✅ Datos extraídos de SOAP exitosamente');
 
-    // Parsear catálogo usando parser universal
     const parseResult = parseSicasResponse(parsedSoapData, catalogType.name);
 
     console.log('[SICAS Sync] Parser universal completado:');
@@ -153,7 +139,6 @@ Deno.serve(async (req: Request) => {
       throw new Error(`No se pudieron parsear registros del catálogo ${catalogType.name}`);
     }
 
-    // Insertar/actualizar registros en sicas_catalogos
     let recordsInserted = 0;
     let recordsUpdated = 0;
     let recordsFailed = 0;
@@ -168,7 +153,6 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (existingRecord) {
-          // Update
           const { error: updateError } = await supabase
             .from('sicas_catalogos')
             .update({
@@ -186,7 +170,6 @@ Deno.serve(async (req: Request) => {
             recordsUpdated++;
           }
         } else {
-          // Insert
           const { error: insertError } = await supabase
             .from('sicas_catalogos')
             .insert({
@@ -216,7 +199,6 @@ Deno.serve(async (req: Request) => {
     console.log(`  - Actualizados: ${recordsUpdated}`);
     console.log(`  - Fallidos: ${recordsFailed}`);
 
-    // Actualizar historial
     if (syncHistoryId) {
       await supabase
         .from('sicas_sync_history')
@@ -253,7 +235,6 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('[SICAS Sync] ❌ Error fatal:', error);
 
-    // Actualizar historial con error
     if (syncHistoryId) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

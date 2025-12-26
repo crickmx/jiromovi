@@ -1,8 +1,3 @@
-/**
- * Parser universal para respuestas SOAP de SICAS
- * Maneja múltiples formatos: JSON array, JSON object, XML, CSV-like text
- */
-
 interface ParsedRecord {
   id_sicas: string;
   nombre: string;
@@ -21,9 +16,6 @@ interface ParseResult {
   errors: string[];
 }
 
-/**
- * Parser universal que intenta múltiples estrategias
- */
 export function parseSicasResponse(data: any, catalogName: string): ParseResult {
   const result: ParseResult = {
     success: false,
@@ -40,18 +32,15 @@ export function parseSicasResponse(data: any, catalogName: string): ParseResult 
       console.log('[SICAS Parser] Preview del string (primeros 500 chars):', data.substring(0, 500));
     }
 
-    // Estrategia 1: Es un array JSON
     if (Array.isArray(data)) {
       console.log('[SICAS Parser] ✅ Detectado: Array JSON');
       return parseJsonArray(data, catalogName);
     }
 
-    // Estrategia 2: Es un objeto JSON con una propiedad que contiene el array
     if (typeof data === 'object' && data !== null) {
       console.log('[SICAS Parser] ✅ Detectado: Objeto JSON');
       console.log('[SICAS Parser] Keys del objeto:', Object.keys(data));
 
-      // Buscar la primera key que sea un array
       for (const key of Object.keys(data)) {
         if (Array.isArray(data[key])) {
           console.log(`[SICAS Parser] Encontrado array en key: ${key}`);
@@ -59,18 +48,15 @@ export function parseSicasResponse(data: any, catalogName: string): ParseResult 
         }
       }
 
-      // Si no hay arrays, intentar parsear el objeto como un solo registro
       console.log('[SICAS Parser] Objeto no contiene arrays, parseando como registro único');
       return parseSingleObject(data, catalogName);
     }
 
-    // Estrategia 3: Es un string XML
     if (typeof data === 'string' && data.trim().startsWith('<')) {
       console.log('[SICAS Parser] ✅ Detectado: XML string');
       return parseXmlString(data, catalogName);
     }
 
-    // Estrategia 4: Es un string tipo CSV o texto delimitado
     if (typeof data === 'string') {
       console.log('[SICAS Parser] ✅ Detectado: String de texto');
       return parseTextLines(data, catalogName);
@@ -85,9 +71,6 @@ export function parseSicasResponse(data: any, catalogName: string): ParseResult 
   return result;
 }
 
-/**
- * Parse array JSON
- */
 function parseJsonArray(arr: any[], catalogName: string): ParseResult {
   const result: ParseResult = {
     success: true,
@@ -101,11 +84,7 @@ function parseJsonArray(arr: any[], catalogName: string): ParseResult {
   for (let i = 0; i < arr.length; i++) {
     try {
       const item = arr[i];
-
-      // Buscar un campo ID (pueden ser: ID, Id, id, CVECAMPO, etc.)
       const id = item.ID || item.Id || item.id || item.CVECAMPO || item.CVE || item.CLAVE || `${i + 1}`;
-
-      // Buscar un campo nombre (pueden ser: NOMBRE, Nombre, nombre, DESCRIPCION, etc.)
       const nombre =
         item.NOMBRE ||
         item.Nombre ||
@@ -139,9 +118,6 @@ function parseJsonArray(arr: any[], catalogName: string): ParseResult {
   return result;
 }
 
-/**
- * Parse objeto JSON único
- */
 function parseSingleObject(obj: any, catalogName: string): ParseResult {
   const result: ParseResult = {
     success: true,
@@ -173,9 +149,6 @@ function parseSingleObject(obj: any, catalogName: string): ParseResult {
   return result;
 }
 
-/**
- * Parse XML string
- */
 function parseXmlString(xml: string, catalogName: string): ParseResult {
   const result: ParseResult = {
     success: true,
@@ -187,8 +160,6 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
   try {
     console.log('[SICAS Parser] Parseando XML...');
 
-    // Buscar todos los tags que se repiten (posibles registros)
-    // Ejemplo: <AGENTE>, <USUARIO>, <PRODUCTO>, etc.
     const tagMatch = xml.match(/<([A-Z_]+)>/i);
     if (!tagMatch) {
       throw new Error('No se encontraron tags XML en el string');
@@ -205,8 +176,6 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
     for (let i = 0; i < matches.length; i++) {
       try {
         const recordXml = matches[i][1];
-
-        // Extraer todos los campos del registro
         const fields: any = {};
         const fieldRegex = /<([A-Z_]+)>(.*?)<\/([A-Z_]+)>/gi;
         let fieldMatch;
@@ -245,9 +214,6 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
   return result;
 }
 
-/**
- * Parse texto línea por línea
- */
 function parseTextLines(text: string, catalogName: string): ParseResult {
   const result: ParseResult = {
     success: true,
@@ -263,10 +229,7 @@ function parseTextLines(text: string, catalogName: string): ParseResult {
     for (let i = 0; i < lines.length; i++) {
       try {
         const line = lines[i].trim();
-
-        // Intentar separar por | o ;
         const parts = line.includes('|') ? line.split('|') : line.split(';');
-
         const id = parts[0]?.trim() || `${i + 1}`;
         const nombre = parts[1]?.trim() || line;
 
@@ -295,47 +258,36 @@ function parseTextLines(text: string, catalogName: string): ParseResult {
   return result;
 }
 
-/**
- * Parsea respuesta SOAP de SICAS
- * Extrae ReadInfoDataResult y lo decodifica
- */
 export function parseSoapResponse(soapXml: string): any {
   try {
-    // Intentar extraer ReadInfoDataResult (con o sin atributos)
     const resultMatch = soapXml.match(/<ReadInfoDataResult[^>]*>(.*?)<\/ReadInfoDataResult>/is);
 
     if (!resultMatch) {
-      // Si no encontramos ReadInfoDataResult, buscar si hay un error en RESPONSETXT
       const responseTxtMatch = soapXml.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
       if (responseTxtMatch) {
         const responseTxt = responseTxtMatch[1];
         console.error('[SICAS Parser] RESPONSETXT encontrado:', responseTxt);
 
-        // Buscar el mensaje completo
         const messageMatch = soapXml.match(/<MESSAGE>(.*?)<\/MESSAGE>/is);
         const errorMessage = messageMatch ? messageMatch[1] : responseTxt;
 
-        // Log de más contexto
         console.error('[SICAS Parser] XML completo:', soapXml);
 
         throw new Error(`SICAS Error: ${errorMessage}`);
       }
 
-      // Buscar si hay un mensaje de error en la respuesta
       const errorMatch = soapXml.match(/<ERROR>(.*?)<\/ERROR>/is);
       if (errorMatch) {
         console.error('[SICAS Parser] ERROR tag encontrado:', errorMatch[1]);
         throw new Error(`SICAS Error: ${errorMatch[1]}`);
       }
 
-      // Buscar faultstring
       const faultMatch = soapXml.match(/<faultstring>(.*?)<\/faultstring>/is);
       if (faultMatch) {
         console.error('[SICAS Parser] SOAP Fault:', faultMatch[1]);
         throw new Error(`SOAP Fault: ${faultMatch[1]}`);
       }
 
-      // Log del XML recibido para debug
       console.error('[SICAS Parser] XML recibido (primeros 1000 chars):', soapXml.substring(0, 1000));
       throw new Error('No se encontró ReadInfoDataResult en la respuesta SOAP. Verificar credenciales y permisos en SICAS.');
     }
@@ -343,7 +295,6 @@ export function parseSoapResponse(soapXml: string): any {
     let dataResult = resultMatch[1];
     console.log('[SICAS Parser] ReadInfoDataResult extraído (primeros 500 chars):', dataResult.substring(0, 500));
 
-    // Decode HTML entities
     dataResult = dataResult
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
@@ -353,22 +304,18 @@ export function parseSoapResponse(soapXml: string): any {
 
     console.log('[SICAS Parser] Después de decode - contenido completo:', dataResult);
 
-    // Verificar si el contenido decodificado tiene un mensaje de error
     const decodedMessageMatch = dataResult.match(/<MESSAGE>(.*?)<\/MESSAGE>/is);
-    const decodedResponseTxtMatch = dataResult.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
 
     if (decodedMessageMatch) {
       const message = decodedMessageMatch[1].trim();
       console.log('[SICAS Parser] MESSAGE encontrado:', message);
 
-      // Si el mensaje contiene "Error" y RESPONSETXT no es SUCCESS (SICAS escribe "SUCESS" a veces)
       if (message.toLowerCase().includes('error')) {
         console.error('[SICAS Parser] ❌ Error detectado en MESSAGE:', message);
         throw new Error(`SICAS: ${message}`);
       }
     }
 
-    // Intentar parsear como JSON
     try {
       const parsed = JSON.parse(dataResult);
       console.log('[SICAS Parser] ✅ JSON parseado exitosamente');
@@ -376,8 +323,6 @@ export function parseSoapResponse(soapXml: string): any {
     } catch (jsonError) {
       console.warn('[SICAS Parser] ⚠️ No es JSON válido, parseando como XML');
       console.warn('[SICAS Parser] Error JSON:', jsonError.message);
-
-      // Si no es JSON, es XML - retornar el string decodificado para que el caller lo procese
       return dataResult;
     }
   } catch (error) {
@@ -386,11 +331,7 @@ export function parseSoapResponse(soapXml: string): any {
   }
 }
 
-/**
- * Valida si la respuesta SOAP contiene un error
- */
 export function checkSoapError(soapXml: string): { hasError: boolean; errorMessage?: string } {
-  // Buscar SOAP Fault
   const faultMatch = soapXml.match(/<faultstring>(.*?)<\/faultstring>/i);
   if (faultMatch) {
     return {
@@ -399,7 +340,6 @@ export function checkSoapError(soapXml: string): { hasError: boolean; errorMessa
     };
   }
 
-  // Buscar RESPONSETXT = DENIED
   const responseTxtMatch = soapXml.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i);
   if (responseTxtMatch && responseTxtMatch[1].toUpperCase() === 'DENIED') {
     return {
