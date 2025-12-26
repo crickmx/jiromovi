@@ -444,9 +444,18 @@ export function parseSoapResponse(soapXml: string): any {
         RESPONSENBR: responseNbr,
       };
 
+      // ❌ CASO FATAL: DENIED (autenticación denegada)
+      if (responseTxt.toUpperCase() === 'DENIED') {
+        console.error('[SICAS Parser] ❌ Autenticación denegada');
+        throw new Error(`SICAS DENIED: ${message || 'Acceso denegado'}`);
+      }
+
       // ✅ CASO ESPECIAL: SUCESS + RESPONSENBR=0 + mensaje de error interno
+      // Este es el caso de "catálogo no disponible" y NO debe lanzar error
       if (isSicasNotAvailable(processData)) {
-        console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (RESPONSENBR=0):', message);
+        console.warn('[SICAS Parser] ⚠️ Catálogo no disponible (capturado desde PROCESSDATA)');
+        console.warn('[SICAS Parser] MESSAGE:', message);
+        console.warn('[SICAS Parser] RESPONSENBR:', responseNbr);
         return {
           __empty_catalog: true,
           message: message || 'Catálogo no disponible',
@@ -456,16 +465,10 @@ export function parseSoapResponse(soapXml: string): any {
         };
       }
 
-      // ❌ CASO FATAL: DENIED o cualquier otro error real
-      if (responseTxt.toUpperCase() === 'DENIED') {
-        console.error('[SICAS Parser] ❌ Autenticación denegada');
-        throw new Error(`SICAS DENIED: ${message || 'Acceso denegado'}`);
-      }
-
-      // Si hay MESSAGE pero no es el caso not_available, es un error real
-      if (message && message.toLowerCase().includes('error')) {
-        console.error('[SICAS Parser] ❌ Error real detectado:', message);
-        throw new Error(`SICAS: ${message}`);
+      // ⚠️ Si llegamos aquí y hay un MESSAGE con "error", solo loguear como advertencia
+      // NO lanzar error porque podría ser solo información del proceso
+      if (message) {
+        console.warn('[SICAS Parser] ℹ️ PROCESSDATA MESSAGE:', message);
       }
     }
 
