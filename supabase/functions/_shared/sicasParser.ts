@@ -476,6 +476,15 @@ export function parseSoapResponse(soapXml: string): any {
     const decodedResponseTxtMatch = dataResult.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/is);
     const decodedResponseNbrMatch = dataResult.match(/<RESPONSENBR>(.*?)<\/RESPONSENBR>/is);
 
+    console.log('[SICAS Parser] 🔍 Regex results:', {
+      hasMessage: !!decodedMessageMatch,
+      hasResponseTxt: !!decodedResponseTxtMatch,
+      hasResponseNbr: !!decodedResponseNbrMatch,
+      messageValue: decodedMessageMatch ? decodedMessageMatch[1] : null,
+      responseTxtValue: decodedResponseTxtMatch ? decodedResponseTxtMatch[1] : null,
+      responseNbrValue: decodedResponseNbrMatch ? decodedResponseNbrMatch[1] : null,
+    });
+
     if (decodedMessageMatch || decodedResponseTxtMatch) {
       const message = decodedMessageMatch ? decodedMessageMatch[1].trim() : '';
       const responseTxt = decodedResponseTxtMatch ? decodedResponseTxtMatch[1].trim() : '';
