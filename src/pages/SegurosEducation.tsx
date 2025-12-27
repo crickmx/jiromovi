@@ -193,7 +193,7 @@ export function SegurosEducation() {
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white">
           <div className="flex items-center justify-center mb-4">
             <img
-              src="/movirecurso_10.png"
+              src="/movirecurso_10.svg"
               alt="Seguros Education"
               className="h-16 sm:h-20 object-contain"
             />
