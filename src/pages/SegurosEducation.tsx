@@ -193,7 +193,7 @@ export function SegurosEducation() {
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white">
           <div className="flex items-center justify-center mb-4">
             <img
-              src="https://movi.digital/wp-content/uploads/elementor/thumbs/SE_logo-qi2h8gdjgh6jj941hy1ii3ma59is7tbjiuao4t0a2o.png"
+              src="/movirecurso_10.png"
               alt="Seguros Education"
               className="h-16 sm:h-20 object-contain"
             />
