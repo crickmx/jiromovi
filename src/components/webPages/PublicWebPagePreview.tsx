@@ -553,15 +553,29 @@ export default function PublicWebPagePreview({
 
       <footer className="bg-gray-900 py-8 px-4 text-white">
         <div className="max-w-6xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <a
+              href="https://grupojiro.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-transform duration-300 hover:scale-105"
+            >
+              <img
+                src="https://jiro.mx/wp-content/uploads/2021/10/Grupo-Jiro-Logo-Blanco-01.png"
+                alt="Grupo JIRO"
+                className="h-8 w-auto object-contain"
+              />
+            </a>
+          </div>
           <p className="text-sm text-gray-400 mb-2">
-            © {new Date().getFullYear()} {userData.name}. Todos los derechos reservados.
+            © {new Date().getFullYear()} Grupo JIRO. Todos los derechos reservados.
           </p>
-          <div className="flex items-center justify-center gap-3 mb-2">
+          <div className="flex items-center justify-center gap-4 mb-2">
             <a
               href="https://jiro.mx/privacidad"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-gray-400 hover:text-white transition-colors"
+              className="text-xs text-gray-500 hover:text-white transition-colors underline"
             >
               Aviso de privacidad
             </a>
