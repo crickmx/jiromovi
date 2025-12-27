@@ -270,11 +270,11 @@ export function SegurosEducationAulaDigital() {
           <span className="font-medium">Volver a Seguros Education</span>
         </button>
 
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-8 text-white">
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl shadow-lg p-8 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Aula Digital - Eventos</h1>
-              <p className="text-primary-100">
+              <h1 className="text-3xl font-bold mb-2 text-white">Aula Digital - Eventos</h1>
+              <p className="text-white/90">
                 Capacitaciones y eventos en vivo
               </p>
             </div>

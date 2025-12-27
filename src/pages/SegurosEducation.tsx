@@ -192,11 +192,13 @@ export function SegurosEducation() {
         {/* Header */}
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white">
           <div className="flex items-center justify-center mb-4">
-            <img
-              src="/movirecurso_10.png"
-              alt="Seguros Education"
-              className="h-16 sm:h-20 object-contain"
-            />
+            <div className="flex items-center space-x-3">
+              <GraduationCap className="w-16 h-16" />
+              <div className="text-left">
+                <h1 className="text-4xl font-bold">seguros</h1>
+                <h2 className="text-3xl font-bold text-primary-200">.education</h2>
+              </div>
+            </div>
           </div>
           <p className="text-primary-100 text-center">Sistema de capacitación y formación continua</p>
         </div>
