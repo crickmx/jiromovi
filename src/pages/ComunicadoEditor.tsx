@@ -5,6 +5,7 @@ import { Container } from '../components/ui/container';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
+import { RichTextEditor } from '../components/RichTextEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Save, Upload, X, Calendar, Pin, Image, Paperclip, Eye, Users, Building2, User, FileText, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -549,22 +550,17 @@ export default function ComunicadoEditor() {
             )}
           </div>
 
-          {/* Contenido HTML */}
+          {/* Contenido */}
           <div className="space-y-2">
             <Label htmlFor="contenido" className="text-sm sm:text-base">
               Contenido *
             </Label>
-            <textarea
-              id="contenido"
+            <RichTextEditor
               value={contenidoHtml}
-              onChange={(e) => setContenidoHtml(e.target.value)}
-              placeholder="Escribe el contenido del comunicado (puedes usar HTML básico)..."
-              rows={10}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-base font-mono text-xs sm:text-sm resize-y"
+              onChange={setContenidoHtml}
+              placeholder="Escribe el contenido del comunicado..."
+              minHeight="300px"
             />
-            <p className="text-xs text-neutral-500">
-              Puedes usar HTML: &lt;p&gt;, &lt;h1&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, etc.
-            </p>
           </div>
 
           {/* Adjuntos */}
