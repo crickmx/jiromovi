@@ -710,8 +710,22 @@ export default function PaginaPublicaAsesor() {
 
         <footer className="bg-gray-900 py-8 px-4 text-white">
           <div className="max-w-6xl mx-auto text-center">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <a
+                href="https://grupojiro.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-transform duration-300 hover:scale-105"
+              >
+                <img
+                  src="https://jiro.mx/wp-content/uploads/2021/10/Grupo-Jiro-Logo-Blanco-01.png"
+                  alt="Grupo JIRO"
+                  className="h-8 w-auto object-contain"
+                />
+              </a>
+            </div>
             <p className="text-sm text-gray-400 mb-2">
-              © {new Date().getFullYear()} {user.name}. Todos los derechos reservados.
+              © {new Date().getFullYear()} Grupo JIRO. Todos los derechos reservados.
             </p>
             <div className="flex items-center justify-center gap-4 mb-2">
               <a
