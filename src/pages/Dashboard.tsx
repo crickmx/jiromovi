@@ -16,6 +16,7 @@ import { ProximasCapacitaciones } from '../components/ProximasCapacitaciones';
 import CalendarioEventos from '../components/CalendarioEventos';
 import { UltimoComunicado } from '../components/UltimoComunicado';
 import { getMiPaginaWebFull } from '../lib/webUrlUtils';
+import { getOfficeLogo } from '../lib/logoUtils';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -34,6 +35,7 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [birthdayFilter, setBirthdayFilter] = useState<'next_month' | 'custom'>('next_month');
   const [customBirthdayDate, setCustomBirthdayDate] = useState('');
+  const [officeLogo, setOfficeLogo] = useState<string>('/logojiro.png');
 
   useEffect(() => {
     if (isAdminOrGerente) {
@@ -42,6 +44,18 @@ export function Dashboard() {
       setLoading(false);
     }
   }, [birthdayFilter, customBirthdayDate, isAdminOrGerente]);
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      loadOfficeLogo();
+    }
+  }, [currentUser?.id]);
+
+  const loadOfficeLogo = async () => {
+    if (!currentUser?.id) return;
+    const logo = await getOfficeLogo(currentUser.id);
+    setOfficeLogo(logo);
+  };
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -172,15 +186,21 @@ export function Dashboard() {
       <div className="space-y-3">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-primary-600">
-                Hola, {currentUser?.nombre}
-              </h1>
-              <p className="text-sm text-gray-600 mt-0.5">
-                Resumen de tus actividades
-              </p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-primary-600">
+                  Hola, {currentUser?.nombre}
+                </h1>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  Resumen de tus actividades
+                </p>
+              </div>
             </div>
-            <Sparkles className="w-8 h-8 text-primary-500" />
+            <img
+              src={officeLogo}
+              alt="Logo oficina"
+              className="h-12 w-auto object-contain"
+            />
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -277,7 +297,11 @@ export function Dashboard() {
               Panel de {isGerente ? 'gerencia' : 'administración'}
             </p>
           </div>
-          <Settings className="w-8 h-8 text-primary-500" />
+          <img
+            src={officeLogo}
+            alt="Logo oficina"
+            className="h-12 w-auto object-contain"
+          />
         </div>
 
         <div className="flex flex-wrap gap-2 mt-4">
