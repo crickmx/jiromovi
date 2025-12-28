@@ -36,6 +36,7 @@ export function Dashboard() {
   const [birthdayFilter, setBirthdayFilter] = useState<'next_month' | 'custom'>('next_month');
   const [customBirthdayDate, setCustomBirthdayDate] = useState('');
   const [officeLogo, setOfficeLogo] = useState<string>('/logojiro.png');
+  const [officeName, setOfficeName] = useState<string>('JIRO');
 
   useEffect(() => {
     if (isAdminOrGerente) {
@@ -53,8 +54,21 @@ export function Dashboard() {
 
   const loadOfficeLogo = async () => {
     if (!currentUser?.id) return;
+
+    // Cargar logo y nombre de oficina
     const logo = await getOfficeLogo(currentUser.id);
     setOfficeLogo(logo);
+
+    // Obtener nombre de oficina
+    const { data: userData } = await supabase
+      .from('usuarios')
+      .select('oficina_id, oficinas(nombre)')
+      .eq('id', currentUser.id)
+      .maybeSingle();
+
+    if (userData?.oficinas?.nombre) {
+      setOfficeName(userData.oficinas.nombre.toUpperCase());
+    }
   };
 
   const loadDashboardData = async () => {
@@ -191,8 +205,8 @@ export function Dashboard() {
                 <h1 className="text-2xl font-bold text-primary-600">
                   Hola, {currentUser?.nombre}
                 </h1>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  Resumen de tus actividades
+                <p className="text-sm text-gray-600 mt-0.5 font-semibold">
+                  {officeName}
                 </p>
               </div>
             </div>
@@ -293,8 +307,8 @@ export function Dashboard() {
             <h1 className="text-2xl font-bold text-primary-600">
               Hola, {currentUser?.nombre}
             </h1>
-            <p className="text-sm text-gray-600 mt-0.5">
-              Panel de {isGerente ? 'gerencia' : 'administración'}
+            <p className="text-sm text-gray-600 mt-0.5 font-semibold">
+              {officeName}
             </p>
           </div>
           <img
