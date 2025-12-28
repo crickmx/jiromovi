@@ -444,7 +444,7 @@ export default function PublicWebPagePreview({
                   className="mb-6 block transition-transform duration-300 hover:scale-105"
                 >
                   <img
-                    src="https://movi.digital/wp-content/uploads/2025/12/Recurso-1.png"
+                    src="/movirecurso_5.png"
                     alt="Seguwallet"
                     className="h-12 sm:h-14 w-auto object-contain"
                   />
