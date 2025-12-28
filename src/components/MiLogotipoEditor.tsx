@@ -110,6 +110,7 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
 
             <div className="flex gap-2">
               <Button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 variant="outline"
@@ -120,6 +121,7 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
 
               {logoUrl && (
                 <Button
+                  type="button"
                   onClick={handleDelete}
                   disabled={uploading}
                   variant="outline"
