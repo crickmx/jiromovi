@@ -24,6 +24,10 @@ export function OficinaLogoEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setLogoUrl(currentLogoUrl || null);
+  }, [currentLogoUrl]);
+
+  useEffect(() => {
     loadAffectedUsersCount();
   }, [officeId]);
 

@@ -18,6 +18,10 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setLogoUrl(currentLogoUrl || null);
+  }, [currentLogoUrl]);
+
+  useEffect(() => {
     loadEffectiveLogo();
   }, [userId, logoUrl]);
 
