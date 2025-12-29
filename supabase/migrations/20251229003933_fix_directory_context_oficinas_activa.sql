@@ -1,14 +1,12 @@
 /*
-  # Añadir directorio al contexto del asistente
+  # Corrección función get_user_full_context - columna activa
 
-  1. Cambios
-    - Agregar información completa del directorio a get_user_full_context
-    - Incluir todos los empleados/gerentes/agentes activos
-    - Incluir oficinas con sus datos de contacto
+  1. Corrección
+    - Cambiar o.activo por o.activa en la tabla oficinas
+    - La columna correcta es activa (femenino)
 
   2. Seguridad
     - Mantiene SECURITY DEFINER
-    - Solo usuarios activos
 */
 
 CREATE OR REPLACE FUNCTION get_user_full_context(p_usuario_id uuid)
