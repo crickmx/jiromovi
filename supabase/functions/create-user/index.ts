@@ -225,7 +225,7 @@ Deno.serve(async (req: Request) => {
 
     // Si el usuario se creó como activo, enviar notificaciones de bienvenida inmediatamente
     if (insertData.estado === 'activo') {
-      console.log('[create-user] Usuario creado como activo, enviando notificaciones de bienvenida...');
+      console.log('[create-user] Usuario creado como activo, enviando notificaciones...');
 
       try {
         // Construir URL de página web pública
@@ -244,80 +244,28 @@ Deno.serve(async (req: Request) => {
           if (oficina) nombreOficina = oficina.nombre;
         }
 
-        // Insertar notificación interna (campanita)
-        await supabaseAdmin
-          .from('notificaciones_internas')
-          .insert({
-            usuario_id: authData.user.id,
-            tipo: 'bienvenida',
-            titulo: '¡Bienvenido a MOVI Digital!',
-            mensaje: 'Tu cuenta ha sido activada exitosamente. Explora todas las funcionalidades de la plataforma.',
-            url: '/dashboard',
-            leida: false,
-          });
-
-        console.log('[create-user] Notificación interna creada');
-
-        // Enviar correo de bienvenida con contraseña
-        const correoPayload = {
-          tipo: 'cuenta_activada',
-          destinatario: userData.email_laboral,
-          datos: {
-            nombre: userData.nombre,
-            apellidos: userData.apellidos,
+        // Usar función enviar_notificacion_completa que respeta los canales configurados
+        const { error: notifError } = await supabaseAdmin.rpc('enviar_notificacion_completa', {
+          p_tipo_codigo: 'cuenta_activada',
+          p_user_id: authData.user.id,
+          p_titulo: '¡Bienvenido a MOVI Digital!',
+          p_mensaje: 'Tu cuenta ha sido activada exitosamente. Explora todas las funcionalidades de la plataforma.',
+          p_modulo: 'usuarios',
+          p_datos_adicionales: {
             email_laboral: userData.email_laboral,
-            password: password,
+            password: password, // Solo se incluye cuando el usuario es creado directamente
             rol: userData.rol,
             oficina: nombreOficina,
             pagina_web: paginaWeb,
-            nombre_plataforma: 'MOVI Digital',
+            puesto: userData.puesto || ''
           },
-        };
+          p_accion_url: '/dashboard'
+        });
 
-        const correoResponse = await fetch(
-          `${supabaseUrl}/functions/v1/enviar-correo-transaccional`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-            },
-            body: JSON.stringify(correoPayload),
-          }
-        );
-
-        if (!correoResponse.ok) {
-          console.error('[create-user] Error al enviar correo:', await correoResponse.text());
+        if (notifError) {
+          console.error('[create-user] Error al enviar notificaciones:', notifError);
         } else {
-          console.log('[create-user] Correo de bienvenida enviado');
-        }
-
-        // Enviar WhatsApp si tiene número
-        if (userData.celular_personal || userData.celular_laboral) {
-          const whatsappMessage = `¡Bienvenido ${userData.nombre} ${userData.apellidos} a MOVI Digital! 🎉\n\nTu cuenta ha sido activada exitosamente.\n\n📧 Usuario: ${userData.email_laboral}\n🔑 Contraseña: ${password}\n👤 Rol: ${userData.rol}\n🌐 Tu página web: ${paginaWeb}\n\n⚠️ Por seguridad, cambia tu contraseña después del primer inicio de sesión.\n\nIngresa a la plataforma para comenzar.`;
-
-          const whatsappPayload = {
-            phone: userData.celular_personal || userData.celular_laboral,
-            message: whatsappMessage,
-          };
-
-          const whatsappResponse = await fetch(
-            `${supabaseUrl}/functions/v1/enviar-whatsapp`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseServiceKey}`,
-              },
-              body: JSON.stringify(whatsappPayload),
-            }
-          );
-
-          if (!whatsappResponse.ok) {
-            console.error('[create-user] Error al enviar WhatsApp:', await whatsappResponse.text());
-          } else {
-            console.log('[create-user] WhatsApp de bienvenida enviado');
-          }
+          console.log('[create-user] Notificaciones enviadas correctamente');
         }
       } catch (notifError) {
         console.error('[create-user] Error al enviar notificaciones:', notifError);
