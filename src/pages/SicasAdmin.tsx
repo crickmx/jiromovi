@@ -111,7 +111,10 @@ export default function SicasAdmin() {
     try {
       const result = await testSicasConnection();
       if (result.success && result.connectionSuccess) {
-        setMessage({ type: 'success', text: `Conexión exitosa: ${result.message}` });
+        setMessage({
+          type: 'success',
+          text: result.message || 'Conexión y autenticación exitosas con SICAS'
+        });
       } else {
         setMessage({ type: 'error', text: `Error: ${result.message || result.error}` });
       }
