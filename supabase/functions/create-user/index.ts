@@ -26,6 +26,8 @@ interface CreateUserRequest {
     banco?: string;
     clabe?: string;
     dias_vacaciones_disponibles?: number;
+    equipo_computo?: string | null;
+    equipo_celular?: string | null;
   };
 }
 
@@ -181,6 +183,8 @@ Deno.serve(async (req: Request) => {
       banco: userData.banco || '',
       clabe: userData.clabe || '',
       dias_vacaciones_disponibles: userData.dias_vacaciones_disponibles || 0,
+      equipo_computo: userData.equipo_computo || null,
+      equipo_celular: userData.equipo_celular || null,
       estado: isGerente ? 'pendiente' : 'activo',
     };
 
