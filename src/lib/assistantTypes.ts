@@ -12,7 +12,10 @@ export type IntentCode =
   | 'team_insights_manager'
   | 'navigation_help'
   | 'institutional_info'
-  | 'brand_relationship';
+  | 'brand_relationship'
+  | 'directory_person_lookup'
+  | 'directory_office_lookup'
+  | 'directory_manager_lookup';
 
 export type ModuleName =
   | 'dashboard'

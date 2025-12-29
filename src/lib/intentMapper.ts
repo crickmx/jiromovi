@@ -176,6 +176,35 @@ function classifyByRouteAndKeyword(
     return 'brand_relationship';
   }
 
+  if (
+    (mensajeNorm.includes('gerente de') || mensajeNorm.includes('quien es el gerente')) &&
+    (mensajeNorm.includes('oficina') || mensajeNorm.includes('sucursal'))
+  ) {
+    return 'directory_manager_lookup';
+  }
+
+  if (
+    (mensajeNorm.includes('oficina') || mensajeNorm.includes('sucursal')) &&
+    (mensajeNorm.includes('teléfono') || mensajeNorm.includes('telefono') ||
+     mensajeNorm.includes('domicilio') || mensajeNorm.includes('dirección') ||
+     mensajeNorm.includes('direccion') || mensajeNorm.includes('contacto') ||
+     mensajeNorm.includes('redes') || mensajeNorm.includes('facebook') ||
+     mensajeNorm.includes('instagram'))
+  ) {
+    return 'directory_office_lookup';
+  }
+
+  if (
+    (mensajeNorm.includes('teléfono de') || mensajeNorm.includes('telefono de') ||
+     mensajeNorm.includes('tel de') || mensajeNorm.includes('extensión de') ||
+     mensajeNorm.includes('extension de') || mensajeNorm.includes('correo de') ||
+     mensajeNorm.includes('mail de') || mensajeNorm.includes('email de') ||
+     mensajeNorm.includes('celular de') || mensajeNorm.includes('contacto de')) &&
+    !mensajeNorm.includes('oficina')
+  ) {
+    return 'directory_person_lookup';
+  }
+
   return null;
 }
 
@@ -228,6 +257,12 @@ export function getIntentPromptTemplate(intentCode: IntentCode): string {
       'Proporciona información institucional sobre JIRO y Asociados y Agente Total usando SOLO el conocimiento validado en formato JSON.',
     brand_relationship:
       'Explica la relación entre JIRO y Asociados, Agente Total y MOVI Digital usando SOLO el conocimiento validado en formato JSON.',
+    directory_person_lookup:
+      'Busca empleados o gerentes en el directorio interno y devuelve sus datos de contacto en formato JSON.',
+    directory_office_lookup:
+      'Busca oficinas en el catálogo y devuelve información completa de contacto en formato JSON.',
+    directory_manager_lookup:
+      'Busca el gerente de una oficina específica en formato JSON.',
   };
 
   return templates[intentCode] || 'Responde la pregunta del usuario de manera útil.';
@@ -236,7 +271,10 @@ export function getIntentPromptTemplate(intentCode: IntentCode): string {
 export function requiresSnapshot(intentCode: IntentCode): boolean {
   return intentCode !== 'navigation_help' &&
          intentCode !== 'institutional_info' &&
-         intentCode !== 'brand_relationship';
+         intentCode !== 'brand_relationship' &&
+         intentCode !== 'directory_person_lookup' &&
+         intentCode !== 'directory_office_lookup' &&
+         intentCode !== 'directory_manager_lookup';
 }
 
 export function getIntentCategory(intentCode: IntentCode): string {
@@ -255,6 +293,9 @@ export function getIntentCategory(intentCode: IntentCode): string {
     navigation_help: 'general',
     institutional_info: 'general',
     brand_relationship: 'general',
+    directory_person_lookup: 'directorio',
+    directory_office_lookup: 'directorio',
+    directory_manager_lookup: 'directorio',
   };
 
   return categories[intentCode] || 'general';

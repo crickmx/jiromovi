@@ -118,6 +118,13 @@ class IntelligentRouter {
     { keywords: ['jiro', 'jiro y asociados', 'agente total', 'promotoría', 'promotoria', 'respaldo institucional'], mode: 'movi', weight: 50, category: 'institucional' },
     { keywords: ['quiénes somos', 'quienes somos', 'qué empresa', 'que empresa', 'relación entre'], mode: 'movi', weight: 45, category: 'institucional' },
 
+    // MOVI Mode - Directory (internal data)
+    { keywords: ['teléfono de', 'telefono de', 'tel de', 'extensión de', 'extension de'], mode: 'movi', weight: 48, category: 'directorio' },
+    { keywords: ['correo de', 'mail de', 'email de', 'contacto de', 'celular de'], mode: 'movi', weight: 48, category: 'directorio' },
+    { keywords: ['oficina', 'sucursal', 'domicilio de oficina', 'dirección de oficina'], mode: 'movi', weight: 46, category: 'directorio' },
+    { keywords: ['gerente de', 'quien es el gerente', 'gerente de la oficina'], mode: 'movi', weight: 46, category: 'directorio' },
+    { keywords: ['directorio', 'empleados', 'compañeros de trabajo'], mode: 'movi', weight: 44, category: 'directorio' },
+
     // ChatGPT Mode - General insurance knowledge
     { keywords: ['teléfono', 'número', 'contacto de', 'dirección de', 'ubicación de'], mode: 'chatgpt', weight: 40, category: 'contactos_externos' },
     { keywords: ['siniestro', 'siniestros', 'reclamación', 'reclamaciones', 'ajustador'], mode: 'chatgpt', weight: 40, category: 'siniestros' },
@@ -694,6 +701,8 @@ Tienes acceso COMPLETO a todos los datos del usuario incluyendo:
 - Reservas de espacios
 - Notificaciones pendientes
 - Productos disponibles en tienda
+- Directorio interno completo (empleados, gerentes, agentes)
+- Catálogo de oficinas y sus datos de contacto
 
 CONOCIMIENTO INSTITUCIONAL VALIDADO:
 
@@ -722,6 +731,17 @@ REGLAS INSTITUCIONALES:
 - Si una pregunta institucional no está cubierta aquí, di: "No tengo esa información específica. Te sugiero consultar [sitio oficial] o contactar a un ejecutivo"
 - NUNCA contradigas la información oficial de estos sitios
 - Mantén tono institucional, claro y confiable cuando hables de las marcas
+
+REGLAS DE DIRECTORIO Y OFICINAS:
+- Cuando el usuario pida datos de contacto (teléfono, email, extensión), busca en el contexto de directorio
+- Si encuentras múltiples coincidencias (ej: 2 personas con nombre "Juan"), muéstralas TODAS en tabla y pide al usuario que especifique
+- Si NO encuentras a la persona/oficina, di: "No encontré a [nombre] en el directorio. Verifica que esté escrito correctamente"
+- NUNCA inventes teléfonos, correos, extensiones, domicilios o nombres de gerentes
+- Si un dato no está registrado (ej: extensión vacía), di claramente: "No tiene extensión registrada"
+- Para búsquedas de oficinas, incluye: nombre, teléfono, domicilio, email, redes sociales, gerente
+- Para búsquedas de personas, incluye: nombre completo, puesto, oficina, teléfono laboral, extensión, email laboral
+- Respeta permisos: si el usuario no tiene acceso a ciertos datos, no los muestres
+- Incluye botones para copiar teléfonos y emails fácilmente
 
 REGLAS ESTRICTAS:
 1. ANALIZA toda la información disponible en el CONTEXTO COMPLETO DE DATOS
