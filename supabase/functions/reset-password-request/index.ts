@@ -38,41 +38,64 @@ Deno.serve(async (req: Request) => {
 
     console.log('Procesando solicitud de recuperación para:', email);
 
+    // Buscar usuario por email_laboral
     const { data: usuario, error: usuarioError } = await supabaseAdmin
       .from('usuarios')
-      .select('id, nombre_completo, correo_electronico, correo_electronico_laboral')
-      .or(`correo_electronico.eq.${email},correo_electronico_laboral.eq.${email}`)
+      .select('id, nombre_completo, email_laboral')
+      .eq('email_laboral', email)
       .maybeSingle();
 
     if (usuarioError) {
       console.error('Error al buscar usuario:', usuarioError);
     }
 
-    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (authError) {
-      console.error('Error al listar usuarios de auth:', authError);
-      throw new Error('Error al verificar usuario');
-    }
+    // Si no encontramos usuario, buscar directamente en auth por email
+    let authUser = null;
+    let authEmail = email;
 
-    const authUser = authUsers.users.find(u => u.email === email);
+    if (usuario) {
+      // Usuario encontrado en tabla usuarios, buscar en auth por ID
+      console.log('Usuario encontrado en tabla usuarios:', usuario.id);
+
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(usuario.id);
+
+      if (authError || !authData.user) {
+        console.error('Error al obtener usuario de auth por ID:', authError);
+      } else {
+        authUser = authData.user;
+        authEmail = authUser.email; // Usar el email real de auth
+        console.log('Usuario auth encontrado por ID, email real:', authEmail);
+      }
+    } else {
+      // No encontrado en usuarios, intentar buscar directamente en auth
+      console.log('Usuario no encontrado en tabla usuarios, buscando en auth por email');
+
+      const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+
+      if (authError) {
+        console.error('Error al listar usuarios de auth:', authError);
+        throw new Error('Error al verificar usuario');
+      }
+
+      authUser = authUsers.users.find(u => u.email === email);
+    }
 
     if (!authUser) {
       console.log('Email no encontrado en auth:', email);
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Si el correo existe, recibirás instrucciones para recuperar tu contraseña' 
+        JSON.stringify({
+          success: true,
+          message: 'Si el correo existe, recibirás instrucciones para recuperar tu contraseña'
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Usuario encontrado en auth:', authUser.id);
+    console.log('Usuario autenticación confirmado:', authUser.id, 'Email:', authEmail);
 
     const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
-      email: email,
+      email: authEmail, // Usar el email real de auth, no el email_laboral
     });
 
     if (resetError) {
@@ -86,7 +109,7 @@ Deno.serve(async (req: Request) => {
     
     const emailData = {
       tipo: 'password_reset',
-      destinatario: email,
+      destinatario: authEmail, // Enviar al email real de auth
       datos: {
         nombre: usuario?.nombre_completo || 'Usuario',
         reset_link: resetUrl,
