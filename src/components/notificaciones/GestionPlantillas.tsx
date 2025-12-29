@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FileText, Save, Eye, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { FileText, Save, Eye, AlertCircle, CheckCircle2, Mail, MessageCircle, Bell } from 'lucide-react';
+import { Switch } from '../ui/switch';
+import { Label } from '../ui/label';
 
 interface Plantilla {
   id: string;
   asunto: string;
   html_cuerpo: string;
   variables_disponibles: string[];
+  enviar_correo: boolean;
+  enviar_whatsapp: boolean;
+  enviar_notificacion: boolean;
   tipo_notificacion: {
     id: string;
     nombre: string;
@@ -19,6 +24,9 @@ export function GestionPlantillas() {
   const [selectedPlantilla, setSelectedPlantilla] = useState<Plantilla | null>(null);
   const [asunto, setAsunto] = useState('');
   const [cuerpo, setCuerpo] = useState('');
+  const [enviarCorreo, setEnviarCorreo] = useState(true);
+  const [enviarWhatsapp, setEnviarWhatsapp] = useState(false);
+  const [enviarNotificacion, setEnviarNotificacion] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -56,6 +64,9 @@ export function GestionPlantillas() {
     setSelectedPlantilla(plantilla);
     setAsunto(plantilla.asunto);
     setCuerpo(plantilla.html_cuerpo);
+    setEnviarCorreo(plantilla.enviar_correo ?? true);
+    setEnviarWhatsapp(plantilla.enviar_whatsapp ?? false);
+    setEnviarNotificacion(plantilla.enviar_notificacion ?? true);
     setShowPreview(false);
     setMessage(null);
   };
@@ -72,6 +83,9 @@ export function GestionPlantillas() {
         .update({
           asunto,
           html_cuerpo: cuerpo,
+          enviar_correo: enviarCorreo,
+          enviar_whatsapp: enviarWhatsapp,
+          enviar_notificacion: enviarNotificacion,
           ultima_actualizacion: new Date().toISOString(),
           actualizado_por: (await supabase.auth.getUser()).data.user?.id
         })
@@ -165,6 +179,54 @@ export function GestionPlantillas() {
               </div>
 
               <div className="space-y-4">
+                {/* Canales de Notificación */}
+                <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                  <p className="text-sm font-semibold text-neutral-800 mb-3">Canales de Envío</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-primary-600" />
+                        <Label htmlFor="enviar-correo" className="text-sm font-medium text-neutral-700">
+                          Correo Electrónico
+                        </Label>
+                      </div>
+                      <Switch
+                        id="enviar-correo"
+                        checked={enviarCorreo}
+                        onCheckedChange={setEnviarCorreo}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="w-4 h-4 text-green-600" />
+                        <Label htmlFor="enviar-whatsapp" className="text-sm font-medium text-neutral-700">
+                          WhatsApp
+                        </Label>
+                      </div>
+                      <Switch
+                        id="enviar-whatsapp"
+                        checked={enviarWhatsapp}
+                        onCheckedChange={setEnviarWhatsapp}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-amber-600" />
+                        <Label htmlFor="enviar-notificacion" className="text-sm font-medium text-neutral-700">
+                          Notificación Interna
+                        </Label>
+                      </div>
+                      <Switch
+                        id="enviar-notificacion"
+                        checked={enviarNotificacion}
+                        onCheckedChange={setEnviarNotificacion}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-2">
                     Asunto

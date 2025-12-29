@@ -111,24 +111,42 @@ Deno.serve(async (req) => {
 
     const { data: tipoNotif, error: tipoError } = await supabaseClient
       .from('correo_tipos_notificacion')
-      .select('id, activo, enviar_por_correo')
+      .select('id, activo, enviar_correo')
       .eq('codigo', tipo)
       .single();
 
-    if (tipoError || !tipoNotif || !tipoNotif.activo || !tipoNotif.enviar_por_correo) {
+    if (tipoError || !tipoNotif || !tipoNotif.activo) {
       console.error('Error tipo notificación:', tipoError);
-      throw new Error(`Tipo de notificación '${tipo}' no está configurado para correo`);
+      throw new Error(`Tipo de notificación '${tipo}' no encontrado o inactivo`);
     }
 
     const { data: plantilla, error: plantillaError } = await supabaseClient
       .from('correo_plantillas')
-      .select('asunto, html_cuerpo')
+      .select('asunto, html_cuerpo, enviar_correo, enviar_whatsapp, enviar_notificacion')
       .eq('tipo_notificacion_id', tipoNotif.id)
       .single();
 
     if (plantillaError || !plantilla) {
       console.error('Error plantilla:', plantillaError);
       throw new Error('No se encontró plantilla para este tipo de notificación');
+    }
+
+    // Verificar si la plantilla tiene configurado el envío por correo
+    // Si está definido en la plantilla, usar ese valor; sino, usar el del tipo
+    const enviarCorreo = plantilla.enviar_correo ?? tipoNotif.enviar_correo ?? true;
+
+    if (!enviarCorreo) {
+      console.log(`Envío por correo desactivado para plantilla del tipo '${tipo}'`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Envío por correo desactivado para este tipo de notificación'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     let asunto = plantilla.asunto;
