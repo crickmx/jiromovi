@@ -36,8 +36,6 @@ export function Configuracion() {
     { key: 'celular_laboral', label: 'Celular Laboral' },
     { key: 'email_laboral', label: 'Email Laboral' },
     { key: 'extension_telefonica', label: 'Extensión Telefónica' },
-    { key: 'equipo_computo', label: 'Equipo de Cómputo' },
-    { key: 'equipo_celular', label: 'Equipo Celular' },
     { key: 'url_web_jiro', label: 'URL Web Jiro' },
     { key: 'url_web_multicotizador', label: 'URL Web Multicotizador' },
     { key: 'imagen_perfil_url', label: 'Imagen de Perfil' },
