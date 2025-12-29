@@ -36,9 +36,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('Procesando solicitud de recuperación para:', email);
+    console.log('Procesando solicitud de recuperación para email_laboral:', email);
 
-    // Buscar usuario por email_laboral
+    // ✅ PASO 1: Buscar usuario por email_laboral (fuente de verdad)
     const { data: usuario, error: usuarioError } = await supabaseAdmin
       .from('usuarios')
       .select('id, nombre_completo, email_laboral')
@@ -49,39 +49,9 @@ Deno.serve(async (req: Request) => {
       console.error('Error al buscar usuario:', usuarioError);
     }
 
-    // Si no encontramos usuario, buscar directamente en auth por email
-    let authUser = null;
-    let authEmail = email;
-
-    if (usuario) {
-      // Usuario encontrado en tabla usuarios, buscar en auth por ID
-      console.log('Usuario encontrado en tabla usuarios:', usuario.id);
-
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(usuario.id);
-
-      if (authError || !authData.user) {
-        console.error('Error al obtener usuario de auth por ID:', authError);
-      } else {
-        authUser = authData.user;
-        authEmail = authUser.email; // Usar el email real de auth
-        console.log('Usuario auth encontrado por ID, email real:', authEmail);
-      }
-    } else {
-      // No encontrado en usuarios, intentar buscar directamente en auth
-      console.log('Usuario no encontrado en tabla usuarios, buscando en auth por email');
-
-      const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-
-      if (authError) {
-        console.error('Error al listar usuarios de auth:', authError);
-        throw new Error('Error al verificar usuario');
-      }
-
-      authUser = authUsers.users.find(u => u.email === email);
-    }
-
-    if (!authUser) {
-      console.log('Email no encontrado en auth:', email);
+    if (!usuario) {
+      console.log('Email_laboral no encontrado en usuarios:', email);
+      // Por seguridad, siempre devolver éxito (no revelar si existe o no)
       return new Response(
         JSON.stringify({
           success: true,
@@ -91,11 +61,40 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('Usuario autenticación confirmado:', authUser.id, 'Email:', authEmail);
+    console.log('Usuario encontrado:', usuario.id, 'email_laboral:', usuario.email_laboral);
 
+    // ✅ PASO 2: Obtener usuario de auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(usuario.id);
+
+    if (authError || !authData.user) {
+      console.error('Error al obtener usuario de auth:', authError);
+      throw new Error('Usuario no encontrado en sistema de autenticación');
+    }
+
+    const authUser = authData.user;
+    console.log('Usuario auth encontrado, email actual:', authUser.email);
+
+    // ✅ PASO 3: Sincronizar auth.email con email_laboral si son diferentes
+    if (authUser.email !== usuario.email_laboral) {
+      console.log('🔄 Sincronizando auth.email:', authUser.email, '→', usuario.email_laboral);
+
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        usuario.id,
+        { email: usuario.email_laboral }
+      );
+
+      if (updateError) {
+        console.error('Error al sincronizar email:', updateError);
+        // Continuar de todas formas, usar email actual
+      } else {
+        console.log('✅ Email sincronizado correctamente');
+      }
+    }
+
+    // ✅ PASO 4: Generar link de recuperación con email_laboral (fuente de verdad)
     const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
-      email: authEmail, // Usar el email real de auth, no el email_laboral
+      email: usuario.email_laboral, // ✅ SIEMPRE usar email_laboral
     });
 
     if (resetError) {
@@ -107,11 +106,12 @@ Deno.serve(async (req: Request) => {
 
     const resetUrl = resetData.properties.action_link;
     
+    // ✅ Enviar al email_laboral (fuente de verdad)
     const emailData = {
       tipo: 'password_reset',
-      destinatario: authEmail, // Enviar al email real de auth
+      destinatario: usuario.email_laboral,
       datos: {
-        nombre: usuario?.nombre_completo || 'Usuario',
+        nombre: usuario.nombre_completo || 'Usuario',
         reset_link: resetUrl,
       }
     };
