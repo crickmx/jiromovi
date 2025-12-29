@@ -10,7 +10,7 @@ import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
 
 interface LayoutProps {
   children: ReactNode;
@@ -307,6 +307,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
         <SheetContent side="left" className="w-[280px] p-0">
           <SheetHeader className="sr-only">
             <SheetTitle>Menú de navegación</SheetTitle>
+            <SheetDescription>Acceso a todas las secciones de la plataforma</SheetDescription>
           </SheetHeader>
           <SidebarContent isMobile />
         </SheetContent>
