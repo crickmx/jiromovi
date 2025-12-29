@@ -109,8 +109,8 @@ Deno.serve(async (req: Request) => {
             if (rawMessage.toLowerCase().includes('error') ||
                 rawMessage.toLowerCase().includes('variable de objeto') ||
                 rawMessage.toLowerCase().includes('proceso interno')) {
-              message = 'Conexión establecida correctamente (el servidor reporta un mensaje informativo)';
-              console.log('[SICAS Auth] ✅ Autenticación EXITOSA con mensaje informativo del servidor');
+              message = `Conexión establecida correctamente. Mensaje del servidor: ${rawMessage}`;
+              console.log('[SICAS Auth] ✅ Autenticación EXITOSA con mensaje informativo del servidor:', rawMessage);
             } else {
               message = rawMessage;
               console.log('[SICAS Auth] ✅ Autenticación EXITOSA');
