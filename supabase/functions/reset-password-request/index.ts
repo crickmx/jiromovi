@@ -92,9 +92,16 @@ Deno.serve(async (req: Request) => {
     }
 
     // ✅ PASO 4: Generar link de recuperación con email_laboral (fuente de verdad)
+    // Construir URL completa para la página de reset password
+    const appUrl = Deno.env.get('APP_URL') || 'https://app.movi.digital';
+    const redirectUrl = `${appUrl}/reset-password`;
+
     const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email: usuario.email_laboral, // ✅ SIEMPRE usar email_laboral
+      options: {
+        redirectTo: redirectUrl,
+      },
     });
 
     if (resetError) {
