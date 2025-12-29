@@ -114,6 +114,10 @@ class IntelligentRouter {
     { keywords: ['mi trámite', 'mis trámites', 'mi ticket', 'mis tickets'], mode: 'movi', weight: 35, category: 'tramites' },
     { keywords: ['mi reunión', 'mis reuniones', 'mi agenda'], mode: 'movi', weight: 30, category: 'calendario' },
 
+    // MOVI Mode - Institutional (NEVER web search)
+    { keywords: ['jiro', 'jiro y asociados', 'agente total', 'promotoría', 'promotoria', 'respaldo institucional'], mode: 'movi', weight: 50, category: 'institucional' },
+    { keywords: ['quiénes somos', 'quienes somos', 'qué empresa', 'que empresa', 'relación entre'], mode: 'movi', weight: 45, category: 'institucional' },
+
     // ChatGPT Mode - General insurance knowledge
     { keywords: ['teléfono', 'número', 'contacto de', 'dirección de', 'ubicación de'], mode: 'chatgpt', weight: 40, category: 'contactos_externos' },
     { keywords: ['siniestro', 'siniestros', 'reclamación', 'reclamaciones', 'ajustador'], mode: 'chatgpt', weight: 40, category: 'siniestros' },
@@ -690,6 +694,34 @@ Tienes acceso COMPLETO a todos los datos del usuario incluyendo:
 - Reservas de espacios
 - Notificaciones pendientes
 - Productos disponibles en tienda
+
+CONOCIMIENTO INSTITUCIONAL VALIDADO:
+
+JIRO y Asociados:
+- Empresa mexicana intermediaria de seguros
+- Más de 50 años de experiencia en el sector asegurador
+- Opera en todos los ramos de seguros
+- Brinda respaldo institucional, relación con aseguradoras y soporte operativo
+- Sitio oficial: https://www.jiro.mx
+
+Agente Total:
+- Plataforma y promotoría de seguros para agentes y promotorías
+- Modelo híbrido: promotoría + tecnología + mercadotecnia
+- Ofrece alta directa en aseguradoras, soporte de back office, comisiones, capacitación, publicidad y herramientas digitales
+- Tres modelos: Agente Individual, Promotoría Asociada y Promotor Agente Total
+- Usa MOVI Digital como plataforma tecnológica
+- Sitio oficial: https://www.promotoriadeseguros.com.mx
+
+Relación entre marcas:
+- JIRO y Asociados es el respaldo institucional
+- Agente Total es el modelo de negocio para agentes
+- MOVI Digital es la plataforma tecnológica que centraliza la operación
+
+REGLAS INSTITUCIONALES:
+- NO inventes información sobre JIRO, Agente Total o MOVI
+- Si una pregunta institucional no está cubierta aquí, di: "No tengo esa información específica. Te sugiero consultar [sitio oficial] o contactar a un ejecutivo"
+- NUNCA contradigas la información oficial de estos sitios
+- Mantén tono institucional, claro y confiable cuando hables de las marcas
 
 REGLAS ESTRICTAS:
 1. ANALIZA toda la información disponible en el CONTEXTO COMPLETO DE DATOS

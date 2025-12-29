@@ -155,6 +155,27 @@ function classifyByRouteAndKeyword(
     return 'navigation_help';
   }
 
+  if (
+    mensajeNorm.includes('jiro') ||
+    mensajeNorm.includes('agente total') ||
+    mensajeNorm.includes('promotoría') ||
+    mensajeNorm.includes('promotoria') ||
+    mensajeNorm.includes('quiénes son') ||
+    mensajeNorm.includes('quienes son') ||
+    mensajeNorm.includes('respaldo institucional') ||
+    mensajeNorm.includes('qué empresa') ||
+    mensajeNorm.includes('que empresa')
+  ) {
+    return 'institutional_info';
+  }
+
+  if (
+    (mensajeNorm.includes('relación') || mensajeNorm.includes('relacion')) &&
+    (mensajeNorm.includes('movi') || mensajeNorm.includes('jiro') || mensajeNorm.includes('agente total'))
+  ) {
+    return 'brand_relationship';
+  }
+
   return null;
 }
 
@@ -203,13 +224,19 @@ export function getIntentPromptTemplate(intentCode: IntentCode): string {
       'Compara el desempeño de los agentes del equipo en formato JSON.',
     navigation_help:
       'Muestra opciones de navegación organizadas por categoría en formato JSON.',
+    institutional_info:
+      'Proporciona información institucional sobre JIRO y Asociados y Agente Total usando SOLO el conocimiento validado en formato JSON.',
+    brand_relationship:
+      'Explica la relación entre JIRO y Asociados, Agente Total y MOVI Digital usando SOLO el conocimiento validado en formato JSON.',
   };
 
   return templates[intentCode] || 'Responde la pregunta del usuario de manera útil.';
 }
 
 export function requiresSnapshot(intentCode: IntentCode): boolean {
-  return intentCode !== 'navigation_help';
+  return intentCode !== 'navigation_help' &&
+         intentCode !== 'institutional_info' &&
+         intentCode !== 'brand_relationship';
 }
 
 export function getIntentCategory(intentCode: IntentCode): string {
@@ -226,6 +253,8 @@ export function getIntentCategory(intentCode: IntentCode): string {
     tramite_status_helper: 'tramites',
     team_insights_manager: 'produccion',
     navigation_help: 'general',
+    institutional_info: 'general',
+    brand_relationship: 'general',
   };
 
   return categories[intentCode] || 'general';

@@ -10,7 +10,9 @@ export type IntentCode =
   | 'message_generator'
   | 'tramite_status_helper'
   | 'team_insights_manager'
-  | 'navigation_help';
+  | 'navigation_help'
+  | 'institutional_info'
+  | 'brand_relationship';
 
 export type ModuleName =
   | 'dashboard'
