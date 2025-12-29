@@ -84,24 +84,22 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
-        const { error: notifError } = await supabase
-          .from("notificaciones_globales")
-          .insert({
-            usuario_id: contacto.creado_por,
-            titulo: "🎂 Cumpleaños hoy",
-            contenido: `Hoy es el cumpleaños de ${contacto.nombre_completo}. ¡Escríbele o llámale!`,
-            tipo: "informacion",
-            leida: false,
-            metadata: {
-              event_name: "crm_birthday",
-              entity_type: "crm_contacto",
-              entity_id: contacto.id,
-              deep_link: `/mi-crm/contacto/${contacto.id}`
-            }
-          });
+        // Usar sistema de plantillas para enviar notificación
+        const { error: notifError } = await supabase.rpc('enviar_notificacion_completa', {
+          p_tipo_codigo: 'cumpleanos_contacto',
+          p_user_id: contacto.creado_por,
+          p_titulo: '🎂 Cumpleaños hoy',
+          p_mensaje: `Hoy es el cumpleaños de ${contacto.nombre_completo}. ¡Escríbele o llámale!`,
+          p_modulo: 'crm',
+          p_datos_adicionales: {
+            nombre_contacto: contacto.nombre_completo,
+            contacto_url: `/mi-crm/contacto/${contacto.id}`
+          },
+          p_accion_url: `/mi-crm/contacto/${contacto.id}`
+        });
 
         if (notifError) {
-          console.error(`[Birthday Reminders] Error al crear notificación para ${contacto.nombre_completo}:`, notifError);
+          console.error(`[Birthday Reminders] Error al enviar notificación para ${contacto.nombre_completo}:`, notifError);
         }
 
         const startOfDay = new Date(currentYear, currentMonth - 1, currentDay, 0, 0, 0);
