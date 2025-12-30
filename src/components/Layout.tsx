@@ -5,6 +5,8 @@ import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calend
 import { NotificationBell } from './NotificationBell';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
 import { AssistantModal } from './AssistantModal';
+import InstallAppButton from './InstallAppButton';
+import InstallBanner from './InstallBanner';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -335,13 +337,17 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                   alt="MOVI Digital Logo"
                   className="h-9 object-contain"
                 />
-                <NotificationBell />
+                <div className="flex items-center gap-2">
+                  <InstallAppButton variant="ghost" size="sm" showText={false} />
+                  <NotificationBell />
+                </div>
               </div>
             </header>
 
             {/* Desktop header */}
             <header className="hidden lg:flex bg-white/95 backdrop-blur-sm border-b border-neutral-200 sticky top-0 z-30 shadow-sm">
-              <div className="w-full px-6 lg:px-8 py-4 flex items-center justify-end">
+              <div className="w-full px-6 lg:px-8 py-4 flex items-center justify-end gap-3">
+                <InstallAppButton variant="outline" size="sm" />
                 <NotificationBell />
               </div>
             </header>
@@ -362,6 +368,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
         <FloatingAssistantButton />
         <AssistantModal />
+        <InstallBanner />
       </div>
     </div>
   );
