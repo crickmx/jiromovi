@@ -143,26 +143,34 @@ export default function InstallBanner() {
     <>
       {/* Modal de instrucciones para iOS */}
       {showIOSInstructions && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-in zoom-in-95">
-            <div className="flex items-center justify-between mb-4">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowIOSInstructions(false);
+            }
+          }}
+        >
+          <div className="bg-white rounded-t-2xl sm:rounded-xl shadow-xl max-w-md w-full animate-in slide-in-from-bottom-4 sm:zoom-in-95 my-auto">
+            <div className="sticky top-0 bg-white rounded-t-2xl sm:rounded-t-xl border-b border-gray-100 px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">
                 Instalar en iPhone
               </h3>
               <button
                 onClick={() => setShowIOSInstructions(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-lg"
+                aria-label="Cerrar"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-sm text-gray-600">
+            <div className="px-6 py-5 space-y-4 text-sm text-gray-600 max-h-[70vh] overflow-y-auto">
               <p className="font-medium text-gray-900">
                 Sigue estos pasos para instalar la app:
               </p>
 
-              <ol className="space-y-3">
+              <ol className="space-y-4">
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
                     1
@@ -193,7 +201,7 @@ export default function InstallBanner() {
                 </li>
               </ol>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="flex gap-2">
                   <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-blue-900">
@@ -203,14 +211,14 @@ export default function InstallBanner() {
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="sticky bottom-0 bg-white rounded-b-2xl sm:rounded-b-xl border-t border-gray-100 px-6 py-4">
               <Button
                 onClick={() => {
                   setShowIOSInstructions(false);
                   handleDismiss();
                 }}
                 size="sm"
-                className="flex-1"
+                className="w-full"
               >
                 Entendido
               </Button>
