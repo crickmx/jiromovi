@@ -141,36 +141,37 @@ export default function Comunicados() {
 
   return (
     <Layout hideHeader>
-      <PageHeader
-        title="Comunicados"
-        description="Mantente informado con las últimas noticias y anuncios de la organización"
-        icon={FileText}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {esAdmin && (
-              <Button
-                variant="outline"
-                size="default"
-                onClick={() => navigate('/comunicados/categorias')}
-                className="btn-touch"
-              >
-                <Settings className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Categorías</span>
-              </Button>
-            )}
-            {puedeCrear && (
-              <Button
-                size="default"
-                onClick={() => navigate('/comunicados/nuevo')}
-                className="btn-touch"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Nuevo
-              </Button>
-            )}
-          </div>
-        }
-      />
+      <div className="max-w-7xl mx-auto">
+        <PageHeader
+          title="Comunicados"
+          description="Mantente informado con las últimas noticias y anuncios de la organización"
+          icon={FileText}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {esAdmin && (
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={() => navigate('/comunicados/categorias')}
+                  className="btn-touch"
+                >
+                  <Settings className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Categorías</span>
+                </Button>
+              )}
+              {puedeCrear && (
+                <Button
+                  size="default"
+                  onClick={() => navigate('/comunicados/nuevo')}
+                  className="btn-touch"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nuevo
+                </Button>
+              )}
+            </div>
+          }
+        />
 
         <div className="mt-6 space-y-6">
           {/* Sección de filtros */}
@@ -379,6 +380,7 @@ export default function Comunicados() {
             </>
           )}
         </div>
+      </div>
     </Layout>
   );
 }
