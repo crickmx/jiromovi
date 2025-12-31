@@ -12,6 +12,7 @@ interface WebLeadData {
   celular: string;
   email: string;
   seguro_interes: string;
+  recaptchaToken: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -25,14 +26,40 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const recaptchaSecretKey = Deno.env.get('RECAPTCHA_SECRET_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { slug, nombre, celular, email, seguro_interes }: WebLeadData = await req.json();
+    const { slug, nombre, celular, email, seguro_interes, recaptchaToken }: WebLeadData = await req.json();
 
     // Validar campos obligatorios
-    if (!slug || !nombre || !celular || !email || !seguro_interes) {
+    if (!slug || !nombre || !celular || !email || !seguro_interes || !recaptchaToken) {
       return new Response(
         JSON.stringify({ error: 'Todos los campos son obligatorios' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Validar reCAPTCHA token
+    const recaptchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `secret=${recaptchaSecretKey}&response=${recaptchaToken}`,
+    });
+
+    const recaptchaResult = await recaptchaResponse.json();
+
+    if (!recaptchaResult.success) {
+      console.error('reCAPTCHA verification failed:', recaptchaResult);
+      return new Response(
+        JSON.stringify({
+          error: 'Verificación de reCAPTCHA fallida. Por favor intenta nuevamente.',
+          success: false,
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
