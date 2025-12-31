@@ -69,6 +69,7 @@ import MiPaginaWeb from './pages/MiPaginaWeb';
 import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 import ChatGPTTest from './pages/ChatGPTTest';
 import SicasAdmin from './pages/SicasAdmin';
+import CentroDigital from './pages/CentroDigital';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -242,7 +243,14 @@ function AppRoutes() {
         }
       />
 
-
+      <Route
+        path="/centro-digital"
+        element={
+          <ProtectedRoute>
+            <CentroDigital />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/chat"

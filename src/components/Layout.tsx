@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Globe2, Database, Link as LinkIcon } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Globe2, Database, Link as LinkIcon, FolderOpen } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
 import { AssistantModal } from './AssistantModal';
@@ -98,6 +98,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/produccion/por-vendedor', label: 'Producción por Vendedor', icon: Users, show: isAdminOrGerente },
     { path: '/mi-crm', label: 'Mi CRM', icon: Briefcase, show: true },
     { path: '/comunicados', label: 'Comunicados', icon: FileText, show: true },
+    { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, show: true },
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
     { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Car, show: true },
