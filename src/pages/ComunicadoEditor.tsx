@@ -374,7 +374,7 @@ export default function ComunicadoEditor() {
           destinatarios = [...new Set(destinatarios)];
 
           if (destinatarios.length > 0) {
-            const linkComunicado = `${window.location.origin}/comunicados/${comunicadoId}`;
+            const linkComunicado = `/comunicados/${comunicadoId}`;
 
             // Usar el nuevo motor centralizado de notificaciones
             const { data: result, error: notifyError } = await supabase.rpc('notify', {
