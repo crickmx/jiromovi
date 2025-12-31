@@ -507,16 +507,30 @@ export function SegurosEducationOnDemand() {
       const video = document.createElement('video');
       video.preload = 'metadata';
       video.crossOrigin = 'anonymous';
+      video.muted = true;
+      video.playsInline = true;
+
+      const timeout = setTimeout(() => {
+        video.src = '';
+        reject(new Error('Timeout al cargar el video'));
+      }, 30000);
 
       video.onloadedmetadata = () => {
-        resolve(video.duration);
+        clearTimeout(timeout);
+        const duration = video.duration;
+        video.src = '';
+        resolve(duration);
       };
 
-      video.onerror = () => {
+      video.onerror = (e) => {
+        clearTimeout(timeout);
+        video.src = '';
+        console.error('Error cargando video:', e);
         reject(new Error('Error al cargar el video'));
       };
 
       video.src = url;
+      video.load();
     });
   };
 
@@ -652,8 +666,8 @@ export function SegurosEducationOnDemand() {
     }
   };
 
-  const formatDuration = (seconds: number) => {
-    if (!seconds || seconds <= 0) return '0:00';
+  const formatDuration = (seconds: number | null | undefined) => {
+    if (!seconds || seconds <= 0) return null;
 
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -841,7 +855,7 @@ export function SegurosEducationOnDemand() {
                           {lesson.categoria.nombre}
                         </span>
                       )}
-                      {lesson.duracion && lesson.duracion > 0 ? (
+                      {formatDuration(lesson.duracion) ? (
                         <span className="flex items-center gap-1 text-ios-gray-600">
                           <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
                           {formatDuration(lesson.duracion)}
@@ -916,7 +930,7 @@ export function SegurosEducationOnDemand() {
                       {selectedLesson.categoria.nombre}
                     </span>
                   )}
-                  {selectedLesson.duracion && selectedLesson.duracion > 0 ? (
+                  {formatDuration(selectedLesson.duracion) ? (
                     <span className="flex items-center gap-1 sm:gap-1.5 text-ios-gray-600 text-[11px] sm:text-[13px]">
                       <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 stroke-[1.5]" />
                       {formatDuration(selectedLesson.duracion)}
