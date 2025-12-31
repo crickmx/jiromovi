@@ -849,26 +849,26 @@ export function SegurosEducationOnDemand() {
                 {/* Content */}
                 <div className="p-4">
                   <div className="flex items-center justify-between gap-2 text-[11px] mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {lesson.categoria && (
                         <span className="px-2 py-1 bg-ios-blue/10 text-ios-blue rounded-ios font-semibold">
                           {lesson.categoria.nombre}
                         </span>
                       )}
-                      {formatDuration(lesson.duracion) ? (
-                        <span className="flex items-center gap-1 text-ios-gray-600">
+                      {lesson.duracion && lesson.duracion > 0 ? (
+                        <span className="flex items-center gap-1 text-ios-gray-600 font-medium">
                           <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
                           {formatDuration(lesson.duracion)}
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-ios">
+                        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-ios font-medium">
                           <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
                           Sin duración
                         </span>
                       )}
                     </div>
                     {isAdmin && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           onClick={(e) => handleEditLesson(lesson, e)}
                           className="p-1.5 text-ios-blue hover:bg-ios-blue/10 rounded-ios transition-colors"
@@ -911,34 +911,24 @@ export function SegurosEducationOnDemand() {
 
       {/* Video Player Modal */}
       {showVideoModal && selectedLesson && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-ios flex items-center justify-center z-50 p-4 sm:p-6 animate-fade-in overflow-y-auto">
-          <div className="w-full max-w-4xl my-auto bg-white rounded-ios-xl sm:rounded-ios-2xl shadow-ios-xl overflow-hidden animate-scale-in max-h-[95vh] flex flex-col">
-            {/* Header */}
-            <div className="bg-ios-gray-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-ios-gray-200/50 flex justify-between items-start gap-3 flex-shrink-0">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-ios flex items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
+          <div className="w-full h-full sm:h-auto sm:max-w-6xl sm:my-auto bg-white sm:rounded-ios-2xl shadow-ios-xl overflow-hidden animate-scale-in flex flex-col sm:max-h-[95vh]">
+            {/* Header - colapsable en móvil */}
+            <div className="bg-ios-gray-50 px-4 sm:px-6 py-2 sm:py-4 border-b border-ios-gray-200/50 flex justify-between items-center gap-3 flex-shrink-0">
               <div className="flex-1 min-w-0">
-                <h2 className="text-[17px] sm:text-[20px] font-semibold text-ios-gray-900 mb-1 line-clamp-1">
+                <h2 className="text-[15px] sm:text-[20px] font-semibold text-ios-gray-900 line-clamp-1">
                   {selectedLesson.titulo}
                 </h2>
-                {selectedLesson.descripcion && (
-                  <p className="text-[13px] sm:text-[15px] text-ios-gray-600 line-clamp-1 sm:line-clamp-2">
-                    {selectedLesson.descripcion}
-                  </p>
-                )}
-                <div className="flex items-center gap-2 sm:gap-3 mt-2">
+                <div className="hidden sm:flex items-center gap-2 sm:gap-3 mt-2">
                   {selectedLesson.categoria && (
                     <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 bg-ios-blue/10 text-ios-blue rounded-ios text-[11px] sm:text-[13px] font-medium">
                       {selectedLesson.categoria.nombre}
                     </span>
                   )}
-                  {formatDuration(selectedLesson.duracion) ? (
+                  {formatDuration(selectedLesson.duracion) && (
                     <span className="flex items-center gap-1 sm:gap-1.5 text-ios-gray-600 text-[11px] sm:text-[13px]">
                       <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 stroke-[1.5]" />
                       {formatDuration(selectedLesson.duracion)}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 sm:gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-ios text-[11px] sm:text-[13px]">
-                      <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 stroke-[1.5]" />
-                      Duración no disponible
                     </span>
                   )}
                 </div>
@@ -956,32 +946,32 @@ export function SegurosEducationOnDemand() {
               </button>
             </div>
 
-            {/* Video Container */}
-            <div className="bg-black flex-shrink-0">
-              <VideoPlayer
-                videoUrl={selectedLesson.video_url}
-                initialTime={selectedLesson.tiempo_reproduccion || 0}
-                onProgressUpdate={handleProgressUpdate}
-                onComplete={handleVideoComplete}
-              />
+            {/* Video Container - flexible para ocupar espacio disponible */}
+            <div className="bg-black flex-1 min-h-0 flex items-center justify-center overflow-hidden">
+              <div className="w-full h-full">
+                <VideoPlayer
+                  videoUrl={selectedLesson.video_url}
+                  initialTime={selectedLesson.tiempo_reproduccion || 0}
+                  onProgressUpdate={handleProgressUpdate}
+                  onComplete={handleVideoComplete}
+                />
+              </div>
             </div>
 
-            {/* Footer */}
-            <div className="bg-ios-gray-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-ios-gray-200/50 flex-shrink-0">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            {/* Footer - compacto */}
+            <div className="bg-ios-gray-50 px-4 sm:px-6 py-2 sm:py-3 border-t border-ios-gray-200/50 flex-shrink-0">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   {selectedLesson.completado ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-ios-green/10 text-ios-green rounded-ios-lg text-[11px] sm:text-[13px] font-medium">
-                      <Award className="w-3.5 sm:w-4 h-3.5 sm:h-4 stroke-[1.5]" />
-                      Completado
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-ios-green/10 text-ios-green rounded-ios text-[11px] sm:text-[13px] font-medium">
+                      <Award className="w-3 sm:w-4 h-3 sm:h-4 stroke-[1.5]" />
+                      <span className="hidden sm:inline">Completado</span>
                     </span>
                   ) : selectedLesson.progreso > 0 ? (
                     <span className="text-[11px] sm:text-[13px] text-ios-gray-600">
-                      Progreso: <span className="font-semibold text-ios-blue">{Math.floor(selectedLesson.progreso)}%</span>
+                      <span className="font-semibold text-ios-blue">{Math.floor(selectedLesson.progreso)}%</span>
                     </span>
-                  ) : (
-                    <span className="text-[11px] sm:text-[13px] text-ios-gray-500">Sin progreso</span>
-                  )}
+                  ) : null}
                 </div>
                 <button
                   onClick={() => {
@@ -989,7 +979,7 @@ export function SegurosEducationOnDemand() {
                     setSelectedLesson(null);
                     fetchData();
                   }}
-                  className="w-full sm:w-auto px-4 py-2 bg-ios-blue text-white rounded-ios-lg text-[15px] font-medium hover:bg-ios-blue-dark transition-colors active:scale-95"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-ios-blue text-white rounded-ios-lg text-[13px] sm:text-[15px] font-medium hover:bg-ios-blue-dark transition-colors active:scale-95"
                 >
                   Cerrar
                 </button>

@@ -174,7 +174,7 @@ export function VideoPlayer({
     return (
       <div
         ref={containerRef}
-        className="relative bg-black aspect-video overflow-hidden"
+        className="relative bg-black w-full h-full overflow-hidden"
       >
         <iframe
           src={embedUrl}
@@ -190,7 +190,7 @@ export function VideoPlayer({
   return (
     <div
       ref={containerRef}
-      className="relative bg-black aspect-video overflow-hidden group"
+      className="relative bg-black w-full h-full overflow-hidden group flex items-center justify-center"
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(false)}
     >
