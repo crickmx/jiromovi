@@ -746,6 +746,7 @@ function App() {
               <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
               <Route path="/publicidad" element={<ProtectedRoute><Layout><Publicidad /></Layout></ProtectedRoute>} />
               <Route path="/gestor-emails" element={<ProtectedRoute><Layout><GestorEmails /></Layout></ProtectedRoute>} />
+              <Route path="/centro-digital" element={<ProtectedRoute><CentroDigital /></ProtectedRoute>} />
               <Route path="/chat" element={<ProtectedRoute><Layout><Chat /></Layout></ProtectedRoute>} />
               <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
               <Route path="/seguros-education" element={<ProtectedRoute><SegurosEducation /></ProtectedRoute>} />
