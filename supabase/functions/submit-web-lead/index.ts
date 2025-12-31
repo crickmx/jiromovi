@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validar reCAPTCHA token
+    // Validar reCAPTCHA v3 token
     const recaptchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
       method: 'POST',
       headers: {
@@ -58,6 +58,23 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           error: 'Verificación de reCAPTCHA fallida. Por favor intenta nuevamente.',
+          success: false,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // reCAPTCHA v3 devuelve un score entre 0.0 y 1.0
+    // 1.0 = muy probablemente humano, 0.0 = muy probablemente bot
+    // Rechazar si el score es menor a 0.5 (umbral recomendado por Google)
+    if (recaptchaResult.score < 0.5) {
+      console.warn('reCAPTCHA score too low:', recaptchaResult.score);
+      return new Response(
+        JSON.stringify({
+          error: 'Lo sentimos, no pudimos verificar tu solicitud. Por favor intenta nuevamente más tarde.',
           success: false,
         }),
         {

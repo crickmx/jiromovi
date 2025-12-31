@@ -3,11 +3,19 @@ import { useParams, Navigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Phone, Mail, MessageCircle, Loader2, ChevronLeft, ChevronRight, ArrowUp, Car } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-import ReCAPTCHA from 'react-google-recaptcha';
 import { getPublicWebPageBySlug } from '../lib/webPagesUtils';
 import type { PublicWebPageData } from '../lib/webPagesTypes';
 import { DEFAULT_TEXT } from '../lib/webPagesTypes';
 import { useScrollReveal, useStaggeredReveal, createColorVariant } from '../lib/animationUtils';
+
+declare global {
+  interface Window {
+    grecaptcha: {
+      ready: (callback: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    };
+  }
+}
 
 export default function PaginaPublicaAsesor() {
   const { slug } = useParams<{ slug: string }>();
@@ -18,7 +26,6 @@ export default function PaginaPublicaAsesor() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
   const [formData, setFormData] = useState({
     nombre: '',
     celular: '',
@@ -27,7 +34,6 @@ export default function PaginaPublicaAsesor() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
   // Hooks de animación DEBEN estar aquí, antes de cualquier early return
   const aboutReveal = useScrollReveal();
@@ -88,15 +94,17 @@ export default function PaginaPublicaAsesor() {
       return;
     }
 
-    if (!recaptchaToken) {
-      setSubmitStatus('error');
-      return;
-    }
-
     setIsSubmitting(true);
     setSubmitStatus('idle');
 
     try {
+      const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+      if (!siteKey) {
+        throw new Error('reCAPTCHA no está configurado');
+      }
+
+      const recaptchaToken = await window.grecaptcha.execute(siteKey, { action: 'submit_lead' });
+
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qhwvuuyjhcennqccgvse.supabase.co';
       const response = await fetch(`${supabaseUrl}/functions/v1/submit-web-lead`, {
         method: 'POST',
@@ -127,13 +135,9 @@ export default function PaginaPublicaAsesor() {
         email: '',
         seguro_interes: ''
       });
-      setRecaptchaToken(null);
-      recaptchaRef.current?.reset();
     } catch (error) {
       console.error('Error submitting lead:', error);
       setSubmitStatus('error');
-      setRecaptchaToken(null);
-      recaptchaRef.current?.reset();
     } finally {
       setIsSubmitting(false);
     }
@@ -218,6 +222,7 @@ export default function PaginaPublicaAsesor() {
         {user.photo_url && <meta property="og:image" content={user.photo_url} />}
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href={`https://agentedeseguros.online/${slug}`} />
+        <script src={`https://www.google.com/recaptcha/api.js?render=${import.meta.env.VITE_RECAPTCHA_SITE_KEY}`} async defer />
       </Helmet>
 
       <div className="bg-white min-h-screen overflow-x-hidden">
@@ -391,26 +396,15 @@ export default function PaginaPublicaAsesor() {
                         </select>
                       </div>
 
-                      <div className="flex justify-center">
-                        <ReCAPTCHA
-                          ref={recaptchaRef}
-                          sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                          onChange={(token) => setRecaptchaToken(token)}
-                          onExpired={() => setRecaptchaToken(null)}
-                        />
-                      </div>
-
                       {submitStatus === 'error' && (
                         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-                          {!recaptchaToken
-                            ? 'Por favor verifica que no eres un robot'
-                            : 'Error al enviar la solicitud. Por favor intenta nuevamente.'}
+                          Error al enviar la solicitud. Por favor intenta nuevamente.
                         </div>
                       )}
 
                       <button
                         type="submit"
-                        disabled={isSubmitting || !recaptchaToken}
+                        disabled={isSubmitting}
                         className="w-full py-4 rounded-xl font-bold text-white transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
                           background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
