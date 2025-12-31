@@ -174,12 +174,12 @@ export function VideoPlayer({
     return (
       <div
         ref={containerRef}
-        className="relative bg-black w-full h-full overflow-hidden"
+        className="absolute inset-0 w-full h-full bg-black"
       >
         <iframe
           src={embedUrl}
-          className="w-full h-full"
-          allow="autoplay; encrypted-media"
+          className="w-full h-full border-0"
+          allow="autoplay; encrypted-media; fullscreen"
           allowFullScreen
           title="Video Player"
         />
@@ -190,21 +190,25 @@ export function VideoPlayer({
   return (
     <div
       ref={containerRef}
-      className="relative bg-black w-full h-full overflow-hidden group flex items-center justify-center"
+      className="absolute inset-0 w-full h-full bg-black flex items-center justify-center"
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(false)}
     >
       <video
         ref={videoRef}
         src={videoUrl}
-        className="w-full h-full object-contain"
+        className="max-w-full max-h-full w-full h-full object-contain"
         onClick={togglePlay}
         controls
-        controlsList="nodownload"
+        controlsList="nodownload noremoteplayback"
         preload="metadata"
         playsInline
+        disablePictureInPicture={false}
+        style={{
+          WebkitPlaysinline: true,
+          touchAction: 'manipulation'
+        } as React.CSSProperties}
       />
-
     </div>
   );
 }

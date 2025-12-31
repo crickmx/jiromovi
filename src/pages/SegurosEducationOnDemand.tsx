@@ -911,23 +911,26 @@ export function SegurosEducationOnDemand() {
 
       {/* Video Player Modal */}
       {showVideoModal && selectedLesson && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-ios flex items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
-          <div className="w-full h-full sm:h-auto sm:max-w-6xl sm:my-auto bg-white sm:rounded-ios-2xl shadow-ios-xl overflow-hidden animate-scale-in flex flex-col sm:max-h-[95vh]">
-            {/* Header - colapsable en móvil */}
-            <div className="bg-ios-gray-50 px-4 sm:px-6 py-2 sm:py-4 border-b border-ios-gray-200/50 flex justify-between items-center gap-3 flex-shrink-0">
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-ios flex items-center justify-center z-50 animate-fade-in"
+          style={{ padding: 0 }}
+        >
+          <div className="w-full h-full sm:w-auto sm:h-auto sm:max-w-[90vw] lg:max-w-[1200px] sm:aspect-video bg-white sm:rounded-2xl shadow-ios-xl overflow-hidden animate-scale-in flex flex-col">
+            {/* Header - minimizado en móvil */}
+            <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 sm:py-3 border-b border-ios-gray-200/50 flex justify-between items-center gap-2 flex-shrink-0">
               <div className="flex-1 min-w-0">
-                <h2 className="text-[15px] sm:text-[20px] font-semibold text-ios-gray-900 line-clamp-1">
+                <h2 className="text-[14px] sm:text-[18px] font-semibold text-ios-gray-900 truncate">
                   {selectedLesson.titulo}
                 </h2>
-                <div className="hidden sm:flex items-center gap-2 sm:gap-3 mt-2">
+                <div className="hidden md:flex items-center gap-2 mt-1">
                   {selectedLesson.categoria && (
-                    <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 bg-ios-blue/10 text-ios-blue rounded-ios text-[11px] sm:text-[13px] font-medium">
+                    <span className="inline-flex items-center px-2 py-0.5 bg-ios-blue/10 text-ios-blue rounded-ios text-[11px] font-medium">
                       {selectedLesson.categoria.nombre}
                     </span>
                   )}
                   {formatDuration(selectedLesson.duracion) && (
-                    <span className="flex items-center gap-1 sm:gap-1.5 text-ios-gray-600 text-[11px] sm:text-[13px]">
-                      <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 stroke-[1.5]" />
+                    <span className="flex items-center gap-1 text-ios-gray-600 text-[11px]">
+                      <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
                       {formatDuration(selectedLesson.duracion)}
                     </span>
                   )}
@@ -939,39 +942,39 @@ export function SegurosEducationOnDemand() {
                   setSelectedLesson(null);
                   fetchData();
                 }}
-                className="text-ios-gray-500 hover:text-ios-gray-900 hover:bg-ios-gray-200 p-1.5 sm:p-2 rounded-ios transition-all active:scale-95 flex-shrink-0"
+                className="text-ios-gray-500 hover:text-ios-gray-900 hover:bg-ios-gray-200 p-1.5 rounded-ios transition-all active:scale-95 flex-shrink-0"
                 title="Cerrar"
               >
-                <X className="w-5 h-5 stroke-[1.5]" />
+                <X className="w-5 h-5 stroke-[2]" />
               </button>
             </div>
 
-            {/* Video Container - flexible para ocupar espacio disponible */}
-            <div className="bg-black flex-1 min-h-0 flex items-center justify-center overflow-hidden">
-              <div className="w-full h-full">
-                <VideoPlayer
-                  videoUrl={selectedLesson.video_url}
-                  initialTime={selectedLesson.tiempo_reproduccion || 0}
-                  onProgressUpdate={handleProgressUpdate}
-                  onComplete={handleVideoComplete}
-                />
-              </div>
+            {/* Video Container - ocupa todo el espacio disponible */}
+            <div className="bg-black flex-1 relative overflow-hidden">
+              <VideoPlayer
+                videoUrl={selectedLesson.video_url}
+                initialTime={selectedLesson.tiempo_reproduccion || 0}
+                onProgressUpdate={handleProgressUpdate}
+                onComplete={handleVideoComplete}
+              />
             </div>
 
-            {/* Footer - compacto */}
-            <div className="bg-ios-gray-50 px-4 sm:px-6 py-2 sm:py-3 border-t border-ios-gray-200/50 flex-shrink-0">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
+            {/* Footer - super compacto en móvil */}
+            <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 border-t border-ios-gray-200/50 flex-shrink-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   {selectedLesson.completado ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-ios-green/10 text-ios-green rounded-ios text-[11px] sm:text-[13px] font-medium">
-                      <Award className="w-3 sm:w-4 h-3 sm:h-4 stroke-[1.5]" />
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-green/10 text-ios-green rounded-ios text-[10px] sm:text-[12px] font-medium">
+                      <Award className="w-3 h-3 stroke-[1.5]" />
                       <span className="hidden sm:inline">Completado</span>
                     </span>
                   ) : selectedLesson.progreso > 0 ? (
-                    <span className="text-[11px] sm:text-[13px] text-ios-gray-600">
-                      <span className="font-semibold text-ios-blue">{Math.floor(selectedLesson.progreso)}%</span>
+                    <span className="text-[10px] sm:text-[12px] text-ios-gray-600">
+                      Progreso: <span className="font-semibold text-ios-blue">{Math.floor(selectedLesson.progreso)}%</span>
                     </span>
-                  ) : null}
+                  ) : (
+                    <span className="text-[10px] sm:text-[12px] text-ios-gray-500">Sin progreso</span>
+                  )}
                 </div>
                 <button
                   onClick={() => {
@@ -979,7 +982,7 @@ export function SegurosEducationOnDemand() {
                     setSelectedLesson(null);
                     fetchData();
                   }}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-ios-blue text-white rounded-ios-lg text-[13px] sm:text-[15px] font-medium hover:bg-ios-blue-dark transition-colors active:scale-95"
+                  className="px-3 sm:px-4 py-1 sm:py-1.5 bg-ios-blue text-white rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-ios-blue-dark transition-colors active:scale-95 flex-shrink-0"
                 >
                   Cerrar
                 </button>
