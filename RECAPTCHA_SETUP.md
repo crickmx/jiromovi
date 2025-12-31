@@ -1,29 +1,49 @@
 # Configuración de reCAPTCHA v2
 
-## Variables de Entorno Configuradas
+## ⚠️ ACCIÓN REQUERIDA: Generar Nuevas Claves
 
-Las siguientes variables de entorno ya están configuradas en el proyecto:
+**Las claves actuales en el `.env` NO son válidas.** Debes generar nuevas claves de Google reCAPTCHA.
 
-### Frontend (.env)
+## Pasos para Obtener las Claves
+
+### 1. Crear un sitio en Google reCAPTCHA
+
+1. Ve a: **https://www.google.com/recaptcha/admin/create**
+2. Inicia sesión con tu cuenta de Google
+3. Completa el formulario:
+   - **Etiqueta:** `Agente de Seguros Online` (o el nombre que prefieras)
+   - **Tipo de reCAPTCHA:** Selecciona **"reCAPTCHA v2"** → **"Casilla de verificación 'No soy un robot'"**
+   - **Dominios** (agrega estos uno por uno):
+     - `agentedeseguros.online`
+     - `localhost`
+   - Acepta los términos de servicio
+   - Haz clic en **"Enviar"**
+
+4. Google te mostrará dos claves:
+   - **Site Key** (Clave del sitio) - Úsala en el frontend
+   - **Secret Key** (Clave secreta) - Úsala en el backend
+
+### 2. Configurar las Claves en el Proyecto
+
+#### A. Actualizar `.env` (Frontend)
+```bash
+VITE_RECAPTCHA_SITE_KEY=TU_SITE_KEY_AQUI
 ```
-VITE_RECAPTCHA_SITE_KEY=6Ldf1jssAAAAAAzGfo0IIm8JJxNaIpLVDPSqHuIN
-```
 
-### Backend - Edge Functions (Supabase Dashboard)
-```
-RECAPTCHA_SECRET_KEY=6Ldf1jssAAAAAOcKNjP9PMrW2q33P-bU6ydDTA3z
-```
+#### B. Configurar en Supabase (Backend)
 
-## Configuración en Supabase
-
-**IMPORTANTE:** Debes agregar la variable de entorno `RECAPTCHA_SECRET_KEY` en tu proyecto de Supabase:
-
-1. Ve a tu proyecto en Supabase Dashboard
+1. Ve a tu proyecto en Supabase Dashboard: https://supabase.com/dashboard/project/qhwvuuyjhcennqccgvse
 2. Navega a **Settings** → **Edge Functions**
 3. En la sección **Secrets**, agrega:
    - **Name:** `RECAPTCHA_SECRET_KEY`
-   - **Value:** `6Ldf1jssAAAAAOcKNjP9PMrW2q33P-bU6ydDTA3z`
+   - **Value:** `TU_SECRET_KEY_AQUI`
 4. Guarda los cambios
+
+### 3. Reiniciar la Aplicación
+
+```bash
+npm run dev
+```
 
 ## Implementación
 
@@ -73,14 +93,25 @@ Para probar la implementación:
 
 ## Troubleshooting
 
+### Error: "ERROR del propietario del sitio: El tipo de clave no es válido"
+Este error indica que las claves de reCAPTCHA son inválidas. Soluciones:
+1. **Genera nuevas claves** siguiendo los pasos de arriba
+2. Asegúrate de usar **reCAPTCHA v2 (checkbox)**, NO v3
+3. Verifica que el dominio `localhost` esté en la lista de dominios autorizados
+4. La **Site Key** debe ir en `.env` con el prefijo `VITE_`
+5. La **Secret Key** debe configurarse en Supabase Dashboard
+
 ### Error: "Verificación de reCAPTCHA fallida"
 - Verifica que la variable `RECAPTCHA_SECRET_KEY` esté configurada en Supabase
 - Asegúrate de que el dominio esté autorizado en Google reCAPTCHA Console
+- Revisa que estés usando la **Secret Key** correcta (no la Site Key)
 
 ### reCAPTCHA no aparece
 - Verifica que `VITE_RECAPTCHA_SITE_KEY` esté en el archivo `.env`
 - Reinicia el servidor de desarrollo después de cambiar variables de entorno
+- Limpia el caché del navegador con Ctrl+Shift+R (Cmd+Shift+R en Mac)
 
 ### Formulario no se envía
 - Abre la consola del navegador para ver errores
 - Verifica que el token de reCAPTCHA se esté generando correctamente
+- Confirma que completaste el captcha antes de enviar
