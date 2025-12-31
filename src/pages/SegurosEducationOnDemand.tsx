@@ -48,6 +48,8 @@ export function SegurosEducationOnDemand() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  const [recalculatingDurations, setRecalculatingDurations] = useState(false);
+  const [recalcProgress, setRecalcProgress] = useState({ current: 0, total: 0 });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -500,6 +502,93 @@ export function SegurosEducationOnDemand() {
     });
   };
 
+  const getVideoDurationFromUrl = (url: string): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.crossOrigin = 'anonymous';
+
+      video.onloadedmetadata = () => {
+        resolve(video.duration);
+      };
+
+      video.onerror = () => {
+        reject(new Error('Error al cargar el video'));
+      };
+
+      video.src = url;
+    });
+  };
+
+  const recalculateAllDurations = async () => {
+    const confirmRecalc = window.confirm(
+      '¿Deseas recalcular la duración de todas las lecciones que no tienen duración definida? Esto puede tomar varios minutos.'
+    );
+
+    if (!confirmRecalc) return;
+
+    try {
+      setRecalculatingDurations(true);
+
+      // Obtener todas las lecciones sin duración
+      const lessonsWithoutDuration = lessons.filter(l => !l.duracion || l.duracion === 0);
+      setRecalcProgress({ current: 0, total: lessonsWithoutDuration.length });
+
+      if (lessonsWithoutDuration.length === 0) {
+        showToast('Todas las lecciones ya tienen duración calculada', 'success');
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < lessonsWithoutDuration.length; i++) {
+        const lesson = lessonsWithoutDuration[i];
+        setRecalcProgress({ current: i + 1, total: lessonsWithoutDuration.length });
+
+        try {
+          const duration = await getVideoDurationFromUrl(lesson.video_url);
+
+          if (duration && duration > 0) {
+            const { error } = await supabase
+              .from('seguros_lessons')
+              .update({ duracion: Math.floor(duration) })
+              .eq('id', lesson.id);
+
+            if (error) {
+              console.error(`Error actualizando lección ${lesson.titulo}:`, error);
+              errorCount++;
+            } else {
+              successCount++;
+            }
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          console.error(`Error obteniendo duración de ${lesson.titulo}:`, error);
+          errorCount++;
+        }
+
+        // Pequeña pausa para no saturar el navegador
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      showToast(
+        `Proceso completado: ${successCount} actualizadas, ${errorCount} errores`,
+        errorCount > 0 ? 'warning' : 'success'
+      );
+
+      // Recargar datos
+      await fetchData();
+    } catch (error: any) {
+      console.error('Error recalculando duraciones:', error);
+      showToast('Error al recalcular duraciones', 'error');
+    } finally {
+      setRecalculatingDurations(false);
+      setRecalcProgress({ current: 0, total: 0 });
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       titulo: '',
@@ -564,8 +653,15 @@ export function SegurosEducationOnDemand() {
   };
 
   const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    if (!seconds || seconds <= 0) return '0:00';
+
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -617,13 +713,22 @@ export function SegurosEducationOnDemand() {
             </div>
           </div>
           {isAdmin && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setShowCategoryModal(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-ios-gray-100 text-ios-gray-900 rounded-ios-lg hover:bg-ios-gray-200 transition-colors text-[15px] font-medium active:scale-95"
               >
                 <Settings className="w-4 h-4 stroke-[2]" />
                 Categorías
+              </button>
+              <button
+                onClick={recalculateAllDurations}
+                disabled={recalculatingDurations || lessons.filter(l => !l.duracion || l.duracion === 0).length === 0}
+                className="flex items-center gap-2 px-4 py-2.5 bg-ios-gray-100 text-ios-gray-900 rounded-ios-lg hover:bg-ios-gray-200 transition-colors text-[15px] font-medium active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Recalcular duraciones de videos sin duración"
+              >
+                <Clock className="w-4 h-4 stroke-[2]" />
+                {recalculatingDurations ? `${recalcProgress.current}/${recalcProgress.total}` : 'Recalc. Duraciones'}
               </button>
               <button
                 onClick={() => setShowUploadModal(true)}
@@ -736,10 +841,17 @@ export function SegurosEducationOnDemand() {
                           {lesson.categoria.nombre}
                         </span>
                       )}
-                      <span className="flex items-center gap-1 text-ios-gray-600">
-                        <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
-                        {formatDuration(lesson.duracion)}
-                      </span>
+                      {lesson.duracion && lesson.duracion > 0 ? (
+                        <span className="flex items-center gap-1 text-ios-gray-600">
+                          <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
+                          {formatDuration(lesson.duracion)}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-ios">
+                          <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
+                          Sin duración
+                        </span>
+                      )}
                     </div>
                     {isAdmin && (
                       <div className="flex items-center gap-1">
@@ -804,10 +916,17 @@ export function SegurosEducationOnDemand() {
                       {selectedLesson.categoria.nombre}
                     </span>
                   )}
-                  <span className="flex items-center gap-1 sm:gap-1.5 text-ios-gray-600 text-[11px] sm:text-[13px]">
-                    <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 stroke-[1.5]" />
-                    {formatDuration(selectedLesson.duracion)}
-                  </span>
+                  {selectedLesson.duracion && selectedLesson.duracion > 0 ? (
+                    <span className="flex items-center gap-1 sm:gap-1.5 text-ios-gray-600 text-[11px] sm:text-[13px]">
+                      <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 stroke-[1.5]" />
+                      {formatDuration(selectedLesson.duracion)}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 sm:gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-ios text-[11px] sm:text-[13px]">
+                      <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 stroke-[1.5]" />
+                      Duración no disponible
+                    </span>
+                  )}
                 </div>
               </div>
               <button
