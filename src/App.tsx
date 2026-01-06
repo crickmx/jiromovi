@@ -759,11 +759,11 @@ function App() {
               <Route path="/seguros-education/aula-virtual" element={<ProtectedRoute><SegurosEducationAulaDigital /></ProtectedRoute>} />
               <Route path="/seguros-education/aula-virtual-old" element={<ProtectedRoute><SegurosEducationAulaVirtual /></ProtectedRoute>} />
               <Route path="/aula-virtual/sala/:roomId" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a" element={<ProtectedRoute><CursoCedulaA /></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a/modulo/:moduloId" element={<ProtectedRoute><ModuloViewer /></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a/examenes" element={<ProtectedRoute><CedulaAExamenes /></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><ExamenInterface /></ProtectedRoute>} />
-              <Route path="/seguros-education/cedula-a/certificado/:certificadoId" element={<ProtectedRoute><CertificadoCedulaA /></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a" element={<ProtectedRoute><Layout><CursoCedulaA /></Layout></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a/modulo/:moduloId" element={<ProtectedRoute><Layout><ModuloViewer /></Layout></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a/examenes" element={<ProtectedRoute><Layout><CedulaAExamenes /></Layout></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><Layout><ExamenInterface /></Layout></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a/certificado/:certificadoId" element={<ProtectedRoute><Layout><CertificadoCedulaA /></Layout></ProtectedRoute>} />
               <Route path="/centro-notificaciones" element={<ProtectedRoute><CentroNotificaciones /></ProtectedRoute>} />
               <Route path="/tramites" element={<ProtectedRoute><Layout><Tramites /></Layout></ProtectedRoute>} />
               <Route path="/tramites/:id" element={<ProtectedRoute><Layout><TramiteDetalle /></Layout></ProtectedRoute>} />
