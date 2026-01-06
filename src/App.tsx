@@ -688,7 +688,7 @@ function AppRoutes() {
       <Route
         path="/gmm/cotizador"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requireAdmin>
             <GMMCotizador />
           </ProtectedRoute>
         }
@@ -787,7 +787,7 @@ function App() {
               <Route path="/produccion/por-vendedor" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionPorVendedor /></Layout></ProtectedRoute>} />
               <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
               <Route path="/gmm/tarifas" element={<ProtectedRoute requireAdmin><GMMTarifasAdmin /></ProtectedRoute>} />
-              <Route path="/gmm/cotizador" element={<ProtectedRoute><GMMCotizador /></ProtectedRoute>} />
+              <Route path="/gmm/cotizador" element={<ProtectedRoute requireAdmin><GMMCotizador /></ProtectedRoute>} />
               <Route path="/catalogos-web" element={<ProtectedRoute requireRole="admin"><Layout><CatalogosWeb /></Layout></ProtectedRoute>} />
               <Route path="/sicas" element={<ProtectedRoute requireRole="admin"><Layout><SicasAdmin /></Layout></ProtectedRoute>} />
               <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
