@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Flag,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -29,7 +28,6 @@ export default function ExamenInterface() {
   const [preguntas, setPreguntas] = useState<CedulaAPregunta[]>([]);
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
   const [preguntaActual, setPreguntaActual] = useState(0);
-  const [marcadas, setMarcadas] = useState<Set<number>>(new Set());
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0);
   const [modalConfirmacion, setModalConfirmacion] = useState(false);
   const [resultado, setResultado] = useState<ResultadoEvaluacion | null>(null);
@@ -88,18 +86,6 @@ export default function ExamenInterface() {
     }));
   };
 
-  const marcarParaRevisar = () => {
-    setMarcadas(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(preguntaActual)) {
-        newSet.delete(preguntaActual);
-      } else {
-        newSet.add(preguntaActual);
-      }
-      return newSet;
-    });
-  };
-
   const navegarPregunta = (indice: number) => {
     if (indice >= 0 && indice < preguntas.length) {
       setPreguntaActual(indice);
@@ -139,8 +125,6 @@ export default function ExamenInterface() {
 
     if (preguntaActual === indice) {
       return 'bg-primary-600 text-white ring-2 ring-primary-300';
-    } else if (marcadas.has(indice)) {
-      return 'bg-amber-500 text-white';
     } else if (respondida) {
       return 'bg-emerald-500 text-white';
     } else {
@@ -408,7 +392,7 @@ export default function ExamenInterface() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <button
                   onClick={() => navegarPregunta(preguntaActual - 1)}
                   disabled={preguntaActual === 0}
@@ -416,19 +400,6 @@ export default function ExamenInterface() {
                 >
                   <ChevronLeft className="w-5 h-5" />
                   <span>Anterior</span>
-                </button>
-
-                <button
-                  onClick={marcarParaRevisar}
-                  className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-ios-lg transition-all ${
-                    marcadas.has(preguntaActual)
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                  }`}
-                >
-                  <Flag className="w-5 h-5" />
-                  <span className="hidden sm:inline">Marcar para revisión</span>
-                  <span className="sm:hidden">Marcar</span>
                 </button>
 
                 <button
@@ -467,10 +438,6 @@ export default function ExamenInterface() {
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-emerald-500 rounded"></div>
                     <span className="text-neutral-600">Respondida</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-amber-500 rounded"></div>
-                    <span className="text-neutral-600">Para revisión</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-neutral-200 rounded"></div>
@@ -516,7 +483,6 @@ export default function ExamenInterface() {
             <p className="text-neutral-600 text-center mb-6">
               Has respondido {respondidas} de {preguntas.length} preguntas.
               {respondidas < preguntas.length && ' Las preguntas sin responder se contarán como incorrectas.'}
-              {marcadas.size > 0 && ` Tienes ${marcadas.size} pregunta(s) marcada(s) para revisión.`}
             </p>
             <div className="flex gap-3">
               <button
