@@ -16,17 +16,15 @@ import {
 import {
   obtenerModulosConProgreso,
   obtenerEstadisticasCurso,
-  obtenerCertificados,
   formatearTiempoEstudio
 } from '../lib/cedulaAUtils';
-import type { ModuloConProgreso, EstadisticasCurso, CedulaACertificado } from '../lib/cedulaATypes';
+import type { ModuloConProgreso, EstadisticasCurso } from '../lib/cedulaATypes';
 
 export default function CursoCedulaA() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const [modulos, setModulos] = useState<ModuloConProgreso[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasCurso | null>(null);
-  const [certificados, setCertificados] = useState<CedulaACertificado[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,15 +38,13 @@ export default function CursoCedulaA() {
 
     try {
       setLoading(true);
-      const [modulosData, statsData, certsData] = await Promise.all([
+      const [modulosData, statsData] = await Promise.all([
         obtenerModulosConProgreso(usuario.id),
-        obtenerEstadisticasCurso(usuario.id),
-        obtenerCertificados(usuario.id)
+        obtenerEstadisticasCurso(usuario.id)
       ]);
 
       setModulos(modulosData);
       setEstadisticas(statsData);
-      setCertificados(certsData);
     } catch (error) {
       console.error('Error cargando datos del curso:', error);
     } finally {
@@ -160,7 +156,7 @@ export default function CursoCedulaA() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <button
             onClick={continuarEstudiando}
             disabled={modulos.length === 0}
@@ -180,18 +176,6 @@ export default function CursoCedulaA() {
             <FileText className="w-7 h-7 sm:w-8 sm:h-8 mb-3 text-primary-600" />
             <h3 className="text-base sm:text-lg font-semibold mb-1">Realizar Examen</h3>
             <p className="text-xs sm:text-sm text-neutral-600">Practica o toma el examen final</p>
-          </button>
-
-          <button
-            onClick={() => navigate('/seguros-education/cedula-a/certificados')}
-            disabled={certificados.length === 0}
-            className="bg-white text-neutral-900 rounded-ios-xl p-5 sm:p-6 shadow-ios hover:shadow-ios-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left sm:col-span-2 lg:col-span-1"
-          >
-            <Award className="w-7 h-7 sm:w-8 sm:h-8 mb-3 text-amber-600" />
-            <h3 className="text-base sm:text-lg font-semibold mb-1">Ver Certificados</h3>
-            <p className="text-xs sm:text-sm text-neutral-600">
-              {certificados.length > 0 ? `${certificados.length} certificado${certificados.length !== 1 ? 's' : ''}` : 'Aún no hay certificados'}
-            </p>
           </button>
         </div>
 

@@ -6,12 +6,9 @@ import {
   ChevronRight,
   CheckCircle2,
   Circle,
-  BookOpen,
   Clock,
   Menu,
-  X,
-  BookMarked,
-  MessageSquare
+  X
 } from 'lucide-react';
 import {
   obtenerModuloConProgreso,
@@ -19,12 +16,11 @@ import {
   obtenerProgresoLeccion,
   obtenerLeccion,
   actualizarProgresoLeccion,
-  marcarLeccionCompletada
+  marcarLeccionCompletada,
+  obtenerModulosConProgreso
 } from '../lib/cedulaAUtils';
 import type { ModuloConProgreso, CedulaALeccion, CedulaAProgresoLeccion } from '../lib/cedulaATypes';
 import LeccionContent from '../components/cedulaA/LeccionContent';
-import GlosarioModal from '../components/cedulaA/GlosarioModal';
-import MapaMentalModal from '../components/cedulaA/MapaMentalModal';
 
 export default function ModuloViewer() {
   const { moduloId } = useParams<{ moduloId: string }>();
@@ -36,12 +32,11 @@ export default function ModuloViewer() {
   const [leccionActual, setLeccionActual] = useState<CedulaALeccion | null>(null);
   const [progresoLeccion, setProgresoLeccion] = useState<CedulaAProgresoLeccion | null>(null);
   const [sidebarAbierto, setSidebarAbierto] = useState(true);
-  const [glosarioAbierto, setGlosarioAbierto] = useState(false);
-  const [mapaMentalAbierto, setMapaMentalAbierto] = useState(false);
   const [tiempoEstudio, setTiempoEstudio] = useState(0);
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [guardadoReciente, setGuardadoReciente] = useState(false);
+  const [todosModulos, setTodosModulos] = useState<ModuloConProgreso[]>([]);
 
   useEffect(() => {
     if (usuario && moduloId) {
@@ -72,13 +67,15 @@ export default function ModuloViewer() {
 
     try {
       setLoading(true);
-      const [moduloData, leccionesData] = await Promise.all([
+      const [moduloData, leccionesData, modulosData] = await Promise.all([
         obtenerModuloConProgreso(usuario.id, moduloId),
-        obtenerLeccionesModulo(moduloId)
+        obtenerLeccionesModulo(moduloId),
+        obtenerModulosConProgreso(usuario.id)
       ]);
 
       setModulo(moduloData);
       setLecciones(leccionesData);
+      setTodosModulos(modulosData);
 
       if (leccionesData.length > 0) {
         const leccionPendiente = leccionesData.find(async (l) => {
@@ -156,6 +153,20 @@ export default function ModuloViewer() {
     const indiceActual = lecciones.findIndex(l => l.id === leccionActual.id);
     if (indiceActual < lecciones.length - 1) {
       cargarLeccion(lecciones[indiceActual + 1].id);
+    } else {
+      avanzarSiguienteModulo();
+    }
+  };
+
+  const avanzarSiguienteModulo = () => {
+    if (!modulo || !usuario) return;
+
+    const indiceModuloActual = todosModulos.findIndex(m => m.id === modulo.id);
+    if (indiceModuloActual < todosModulos.length - 1) {
+      const siguienteModulo = todosModulos[indiceModuloActual + 1];
+      navigate(`/seguros-education/cedula-a/modulo/${siguienteModulo.id}`);
+    } else {
+      navigate('/seguros-education/cedula-a');
     }
   };
 
@@ -288,22 +299,6 @@ export default function ModuloViewer() {
             })}
           </div>
 
-          <div className="p-4 border-t border-neutral-200 space-y-2">
-            <button
-              onClick={() => setGlosarioAbierto(true)}
-              className="w-full flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium text-primary-600 bg-primary-50 rounded-ios-lg hover:bg-primary-100 transition-colors"
-            >
-              <BookMarked className="w-4 h-4" />
-              <span>Glosario</span>
-            </button>
-            <button
-              onClick={() => setMapaMentalAbierto(true)}
-              className="w-full flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium text-primary-600 bg-primary-50 rounded-ios-lg hover:bg-primary-100 transition-colors"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Mapas Mentales</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -375,20 +370,6 @@ export default function ModuloViewer() {
           </div>
         </div>
       </div>
-
-      {glosarioAbierto && (
-        <GlosarioModal
-          moduloId={moduloId}
-          onClose={() => setGlosarioAbierto(false)}
-        />
-      )}
-
-      {mapaMentalAbierto && (
-        <MapaMentalModal
-          moduloId={moduloId}
-          onClose={() => setMapaMentalAbierto(false)}
-        />
-      )}
     </div>
   );
 }
