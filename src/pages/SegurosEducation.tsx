@@ -202,14 +202,32 @@ export function SegurosEducation() {
         </div>
 
         {/* Quick Access Buttons - TOP PRIORITY */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <button
+            onClick={() => navigate('/seguros-education/cedula-a')}
+            className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-8 shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+            <div className="relative">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                  <GraduationCap className="w-8 h-8 text-white" />
+                </div>
+                <div className="text-left flex-1">
+                  <h3 className="text-xl font-bold text-white mb-1">Curso Cédula A</h3>
+                  <p className="text-amber-100 text-sm">Preparación completa CNSF</p>
+                </div>
+              </div>
+            </div>
+          </button>
+
           <button
             onClick={() => navigate('/seguros-education/on-demand')}
             className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-primary-500 shadow-sm hover:shadow-md transition-all group"
           >
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl bg-primary-100 flex items-center justify-center group-hover:bg-primary-200 transition-colors">
-                <GraduationCap className="w-8 h-8 text-primary-600" />
+                <Video className="w-8 h-8 text-primary-600" />
               </div>
               <div className="text-left flex-1">
                 <h3 className="text-xl font-bold text-neutral-800 mb-1">On Demand</h3>

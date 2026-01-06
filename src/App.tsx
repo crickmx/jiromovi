@@ -70,6 +70,10 @@ import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 import ChatGPTTest from './pages/ChatGPTTest';
 import SicasAdmin from './pages/SicasAdmin';
 import CentroDigital from './pages/CentroDigital';
+import CursoCedulaA from './pages/CursoCedulaA';
+import ModuloViewer from './pages/ModuloViewer';
+import ExamenInterface from './pages/ExamenInterface';
+import CertificadoCedulaA from './pages/CertificadoCedulaA';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -754,6 +758,10 @@ function App() {
               <Route path="/seguros-education/aula-virtual" element={<ProtectedRoute><SegurosEducationAulaDigital /></ProtectedRoute>} />
               <Route path="/seguros-education/aula-virtual-old" element={<ProtectedRoute><SegurosEducationAulaVirtual /></ProtectedRoute>} />
               <Route path="/aula-virtual/sala/:roomId" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a" element={<ProtectedRoute><CursoCedulaA /></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a/modulo/:moduloId" element={<ProtectedRoute><ModuloViewer /></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><ExamenInterface /></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a/certificado/:certificadoId" element={<ProtectedRoute><CertificadoCedulaA /></ProtectedRoute>} />
               <Route path="/centro-notificaciones" element={<ProtectedRoute><CentroNotificaciones /></ProtectedRoute>} />
               <Route path="/tramites" element={<ProtectedRoute><Layout><Tramites /></Layout></ProtectedRoute>} />
               <Route path="/tramites/:id" element={<ProtectedRoute><Layout><TramiteDetalle /></Layout></ProtectedRoute>} />
