@@ -67,11 +67,18 @@ export default function CursoCedulaA() {
     const moduloEnProgreso = modulos.find(m => m.estado === 'en_progreso');
     if (moduloEnProgreso) {
       navigate(`/seguros-education/cedula-a/modulo/${moduloEnProgreso.id}`);
-    } else {
-      const primerModulo = modulos[0];
-      if (primerModulo) {
-        navigate(`/seguros-education/cedula-a/modulo/${primerModulo.id}`);
-      }
+      return;
+    }
+
+    const primerModuloDisponible = modulos.find(m => m.estado === 'disponible');
+    if (primerModuloDisponible) {
+      navigate(`/seguros-education/cedula-a/modulo/${primerModuloDisponible.id}`);
+      return;
+    }
+
+    const primerModulo = modulos[0];
+    if (primerModulo) {
+      navigate(`/seguros-education/cedula-a/modulo/${primerModulo.id}`);
     }
   };
 
@@ -162,9 +169,9 @@ export default function CursoCedulaA() {
             disabled={modulos.length === 0}
             className="bg-primary-600 text-white rounded-ios-xl p-5 sm:p-6 shadow-ios-lg hover:bg-primary-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
           >
-            <Play className="w-7 h-7 sm:w-8 sm:h-8 mb-3" />
-            <h3 className="text-base sm:text-lg font-semibold mb-1">Continuar Estudiando</h3>
-            <p className="text-xs sm:text-sm text-primary-100">
+            <Play className="w-7 h-7 sm:w-8 sm:h-8 mb-3 text-white" />
+            <h3 className="text-base sm:text-lg font-semibold mb-1 text-white">Continuar Estudiando</h3>
+            <p className="text-xs sm:text-sm text-white opacity-90">
               {modulos.find(m => m.estado === 'en_progreso') ? 'Retoma donde lo dejaste' : 'Comienza el curso'}
             </p>
           </button>

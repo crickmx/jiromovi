@@ -72,6 +72,7 @@ import SicasAdmin from './pages/SicasAdmin';
 import CentroDigital from './pages/CentroDigital';
 import CursoCedulaA from './pages/CursoCedulaA';
 import ModuloViewer from './pages/ModuloViewer';
+import CedulaAExamenes from './pages/CedulaAExamenes';
 import ExamenInterface from './pages/ExamenInterface';
 import CertificadoCedulaA from './pages/CertificadoCedulaA';
 
@@ -760,6 +761,7 @@ function App() {
               <Route path="/aula-virtual/sala/:roomId" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a" element={<ProtectedRoute><CursoCedulaA /></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a/modulo/:moduloId" element={<ProtectedRoute><ModuloViewer /></ProtectedRoute>} />
+              <Route path="/seguros-education/cedula-a/examenes" element={<ProtectedRoute><CedulaAExamenes /></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><ExamenInterface /></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a/certificado/:certificadoId" element={<ProtectedRoute><CertificadoCedulaA /></ProtectedRoute>} />
               <Route path="/centro-notificaciones" element={<ProtectedRoute><CentroNotificaciones /></ProtectedRoute>} />
