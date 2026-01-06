@@ -203,7 +203,7 @@ export default function ModuloViewer() {
   return (
     <div className="min-h-screen bg-neutral-50 flex">
       <div
-        className={`fixed lg:static inset-y-0 left-0 w-80 bg-white border-r border-neutral-200 transition-transform duration-280 z-30 ${
+        className={`fixed lg:static inset-y-0 left-0 w-80 max-w-[85vw] bg-white border-r border-neutral-200 transition-transform duration-280 z-30 ${
           sidebarAbierto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -296,31 +296,31 @@ export default function ModuloViewer() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
-        <div className="bg-white border-b border-neutral-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 onClick={() => setSidebarAbierto(!sidebarAbierto)}
-                className="lg:hidden p-2 hover:bg-neutral-100 rounded-ios transition-colors"
+                className="lg:hidden p-2 hover:bg-neutral-100 rounded-ios transition-colors flex-shrink-0"
               >
                 {sidebarAbierto ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
-              <div>
-                <h1 className="text-xl font-bold text-neutral-900">{leccionActual.titulo}</h1>
-                <p className="text-sm text-neutral-600">
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl font-bold text-neutral-900 truncate">{leccionActual.titulo}</h1>
+                <p className="text-xs sm:text-sm text-neutral-600">
                   Lección {indiceActual + 1} de {lecciones.length}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {guardadoReciente && (
-                <span className="text-sm text-emerald-600 animate-fade-in">
-                  Guardado automáticamente
+                <span className="text-xs sm:text-sm text-emerald-600 animate-fade-in hidden sm:inline">
+                  Guardado
                 </span>
               )}
-              <div className="flex items-center gap-2 text-sm text-neutral-600">
-                <Clock className="w-4 h-4" />
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-neutral-600">
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>{Math.floor(tiempoEstudio / 60)} min</span>
               </div>
             </div>
@@ -328,17 +328,17 @@ export default function ModuloViewer() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-6 py-8">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
             <LeccionContent contenido={leccionActual.contenido} />
           </div>
         </div>
 
-        <div className="bg-white border-t border-neutral-200 px-6 py-4">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <div className="bg-white border-t border-neutral-200 px-4 sm:px-6 py-4">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <button
               onClick={leccionAnterior}
               disabled={esPrimeraLeccion}
-              className="flex items-center gap-2 px-4 py-2 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors order-2 sm:order-1"
             >
               <ChevronLeft className="w-5 h-5" />
               <span>Anterior</span>
@@ -347,7 +347,7 @@ export default function ModuloViewer() {
             {!progresoLeccion?.completado && (
               <button
                 onClick={marcarCompletada}
-                className="px-6 py-2 bg-emerald-600 text-white rounded-ios-lg hover:bg-emerald-700 active:scale-[0.98] transition-all font-medium"
+                className="px-4 sm:px-6 py-3 bg-emerald-600 text-white rounded-ios-lg hover:bg-emerald-700 active:scale-[0.98] transition-all font-medium text-sm sm:text-base order-1 sm:order-2"
               >
                 Marcar como completada
               </button>
@@ -356,7 +356,7 @@ export default function ModuloViewer() {
             <button
               onClick={siguienteLeccion}
               disabled={esUltimaLeccion}
-              className="flex items-center gap-2 px-4 py-2 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors order-3"
             >
               <span>Siguiente</span>
               <ChevronRight className="w-5 h-5" />

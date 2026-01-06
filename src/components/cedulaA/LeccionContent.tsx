@@ -24,14 +24,14 @@ export default function LeccionContent({ contenido }: Props) {
 
       case 'definicion':
         return (
-          <div key={index} className="bg-primary-50 border-l-4 border-primary-600 rounded-ios-lg p-5 mb-6">
+          <div key={index} className="bg-primary-600 border-l-4 border-primary-800 rounded-ios-lg p-5 mb-6">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-primary-600 rounded-ios flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="w-8 h-8 bg-primary-800 rounded-ios flex items-center justify-center flex-shrink-0 mt-0.5">
                 <BookOpen className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1">
-                <h4 className="font-semibold text-primary-900 mb-2">Definición</h4>
-                <p className="text-neutral-700 leading-relaxed">{seccion.content}</p>
+                <h4 className="font-semibold text-white mb-2">Definición</h4>
+                <p className="text-white leading-relaxed">{seccion.content}</p>
               </div>
             </div>
           </div>

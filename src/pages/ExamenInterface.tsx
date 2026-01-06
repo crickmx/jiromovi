@@ -10,7 +10,8 @@ import {
   XCircle,
   AlertCircle,
   Send,
-  Award
+  Award,
+  ArrowLeft
 } from 'lucide-react';
 import {
   obtenerExamen,
@@ -328,37 +329,46 @@ export default function ExamenInterface() {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
-      <div className="bg-white border-b border-neutral-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-neutral-900">{examen.titulo}</h1>
-            <p className="text-sm text-neutral-600">
-              Pregunta {preguntaActual + 1} de {preguntas.length}
-            </p>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="text-center">
-              <div className="flex items-center gap-2 text-lg font-semibold text-neutral-900">
-                <Clock className="w-5 h-5 text-primary-600" />
-                <span>{formatearTiempo(tiempoTranscurrido)}</span>
-              </div>
-              <p className="text-xs text-neutral-500">Tiempo de referencia: {examen.duracion_referencia_minutos} min</p>
+      <div className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-4">
+        <div className="max-w-7xl mx-auto">
+          <button
+            onClick={() => navigate('/seguros-education/cedula-a')}
+            className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-3 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm">Volver al curso</span>
+          </button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-neutral-900">{examen.titulo}</h1>
+              <p className="text-sm text-neutral-600">
+                Pregunta {preguntaActual + 1} de {preguntas.length}
+              </p>
             </div>
-            <div className="text-center">
-              <div className="text-lg font-semibold text-neutral-900">
-                {respondidas}/{preguntas.length}
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="text-center">
+                <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-neutral-900">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
+                  <span>{formatearTiempo(tiempoTranscurrido)}</span>
+                </div>
+                <p className="text-xs text-neutral-500 hidden sm:block">Tiempo de referencia: {examen.duracion_referencia_minutos} min</p>
               </div>
-              <p className="text-xs text-neutral-500">Respondidas</p>
+              <div className="text-center">
+                <div className="text-base sm:text-lg font-semibold text-neutral-900">
+                  {respondidas}/{preguntas.length}
+                </div>
+                <p className="text-xs text-neutral-500">Respondidas</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
             <div className="lg:col-span-3">
-              <div className="bg-white rounded-ios-xl shadow-ios p-8 mb-6">
+              <div className="bg-white rounded-ios-xl shadow-ios p-5 sm:p-8 mb-4 sm:mb-6">
                 <h2 className="text-xl font-semibold text-neutral-900 mb-6">
                   {pregunta.pregunta}
                 </h2>
@@ -398,11 +408,11 @@ export default function ExamenInterface() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <button
                   onClick={() => navegarPregunta(preguntaActual - 1)}
                   disabled={preguntaActual === 0}
-                  className="flex items-center gap-2 px-6 py-3 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center justify-center gap-2 px-4 sm:px-6 py-3 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
                   <span>Anterior</span>
@@ -410,20 +420,21 @@ export default function ExamenInterface() {
 
                 <button
                   onClick={marcarParaRevisar}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-ios-lg transition-all ${
+                  className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-ios-lg transition-all ${
                     marcadas.has(preguntaActual)
                       ? 'bg-amber-500 text-white'
                       : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   }`}
                 >
                   <Flag className="w-5 h-5" />
-                  <span>Marcar para revisión</span>
+                  <span className="hidden sm:inline">Marcar para revisión</span>
+                  <span className="sm:hidden">Marcar</span>
                 </button>
 
                 <button
                   onClick={() => navegarPregunta(preguntaActual + 1)}
                   disabled={preguntaActual === preguntas.length - 1}
-                  className="flex items-center gap-2 px-6 py-3 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center justify-center gap-2 px-4 sm:px-6 py-3 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <span>Siguiente</span>
                   <ChevronRight className="w-5 h-5" />
@@ -431,10 +442,10 @@ export default function ExamenInterface() {
               </div>
             </div>
 
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-ios-xl shadow-ios p-6 sticky top-6">
-                <h3 className="font-semibold text-neutral-900 mb-4">Navegación de Preguntas</h3>
-                <div className="grid grid-cols-5 gap-2 mb-6">
+            <div className="lg:col-span-1 order-first lg:order-last">
+              <div className="bg-white rounded-ios-xl shadow-ios p-4 sm:p-6 lg:sticky lg:top-6">
+                <h3 className="font-semibold text-neutral-900 mb-4 text-sm sm:text-base">Navegación de Preguntas</h3>
+                <div className="grid grid-cols-8 sm:grid-cols-10 lg:grid-cols-5 gap-2 mb-6">
                   {preguntas.map((_, index) => (
                     <button
                       key={index}
