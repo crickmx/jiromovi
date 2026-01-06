@@ -108,6 +108,10 @@ export default function ModuloViewer() {
       setLeccionActual(leccion);
       setProgresoLeccion(progreso);
       setTiempoEstudio(progreso?.tiempo_estudio_segundos || 0);
+
+      if (window.innerWidth < 1024) {
+        setSidebarAbierto(false);
+      }
     } catch (error) {
       console.error('Error cargando lección:', error);
     }
@@ -202,6 +206,13 @@ export default function ModuloViewer() {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex">
+      {sidebarAbierto && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          onClick={() => setSidebarAbierto(false)}
+        />
+      )}
+
       <div
         className={`fixed lg:static inset-y-0 left-0 w-80 max-w-[85vw] bg-white border-r border-neutral-200 transition-transform duration-280 z-30 ${
           sidebarAbierto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
