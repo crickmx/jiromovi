@@ -215,7 +215,19 @@ export async function obtenerPreguntasExamen(examenId: string): Promise<CedulaAP
     .order('orden', { ascending: true });
 
   if (error) throw error;
-  return data || [];
+
+  // Transformar opciones de array simple a array de objetos con letra y texto
+  const preguntasTransformadas = (data || []).map(pregunta => ({
+    ...pregunta,
+    opciones: Array.isArray(pregunta.opciones)
+      ? pregunta.opciones.map((texto: string, index: number) => ({
+          letra: String.fromCharCode(65 + index), // A, B, C, D
+          texto
+        }))
+      : pregunta.opciones
+  }));
+
+  return preguntasTransformadas;
 }
 
 export async function evaluarExamen(
