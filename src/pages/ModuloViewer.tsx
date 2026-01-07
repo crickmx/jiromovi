@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,7 +9,9 @@ import {
   Circle,
   Clock,
   Menu,
-  X
+  X,
+  Award,
+  FileText
 } from 'lucide-react';
 import {
   obtenerModuloConProgreso,
@@ -37,6 +40,8 @@ export default function ModuloViewer() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [guardadoReciente, setGuardadoReciente] = useState(false);
   const [todosModulos, setTodosModulos] = useState<ModuloConProgreso[]>([]);
+  const [modalExamenListo, setModalExamenListo] = useState(false);
+  const [examenModuloId, setExamenModuloId] = useState<string | null>(null);
 
   useEffect(() => {
     if (usuario && moduloId) {
@@ -147,14 +152,53 @@ export default function ModuloViewer() {
     }
   };
 
-  const siguienteLeccion = () => {
+  const siguienteLeccion = async () => {
     if (!leccionActual) return;
 
     const indiceActual = lecciones.findIndex(l => l.id === leccionActual.id);
     if (indiceActual < lecciones.length - 1) {
       cargarLeccion(lecciones[indiceActual + 1].id);
     } else {
+      // Última lección del módulo
+      if (modulo) {
+        const moduloActualizado = await obtenerModuloConProgreso(usuario!.id, modulo.id);
+        if (moduloActualizado?.progreso?.porcentaje_completado === 100) {
+          // Módulo completado, verificar si hay examen
+          verificarExamenModulo();
+        } else {
+          avanzarSiguienteModulo();
+        }
+      }
+    }
+  };
+
+  const verificarExamenModulo = async () => {
+    if (!modulo) return;
+
+    try {
+      // Buscar examen del módulo
+      const { data: examen } = await supabase
+        .from('cedula_a_examenes')
+        .select('id')
+        .eq('modulo_id', modulo.id)
+        .eq('tipo', 'modulo')
+        .maybeSingle();
+
+      if (examen) {
+        setExamenModuloId(examen.id);
+        setModalExamenListo(true);
+      } else {
+        avanzarSiguienteModulo();
+      }
+    } catch (error) {
+      console.error('Error verificando examen:', error);
       avanzarSiguienteModulo();
+    }
+  };
+
+  const irAlExamen = () => {
+    if (examenModuloId) {
+      navigate(`/seguros-education/cedula-a/examen/${examenModuloId}`);
     }
   };
 
@@ -216,7 +260,7 @@ export default function ModuloViewer() {
   const esPrimeraLeccion = indiceActual === 0;
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex">
       {sidebarAbierto && (
         <div
           className="fixed inset-0 bg-black/50 z-20 lg:hidden"
@@ -225,7 +269,7 @@ export default function ModuloViewer() {
       )}
 
       <div
-        className={`fixed lg:static inset-y-0 left-0 w-80 max-w-[85vw] bg-white border-r border-neutral-200 transition-transform duration-280 z-30 ${
+        className={`fixed lg:static inset-y-0 left-0 w-80 max-w-[85vw] bg-white/95 backdrop-blur-sm border-r border-neutral-200/50 transition-transform duration-280 z-30 shadow-xl lg:shadow-none ${
           sidebarAbierto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -303,7 +347,7 @@ export default function ModuloViewer() {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-4">
+        <div className="bg-white/80 backdrop-blur-sm border-b border-neutral-200/50 px-4 sm:px-6 py-4 sticky top-0 z-10">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
@@ -339,37 +383,97 @@ export default function ModuloViewer() {
           </div>
         </div>
 
-        <div className="bg-white border-t border-neutral-200 px-4 sm:px-6 py-4">
-          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="bg-white/80 backdrop-blur-sm border-t border-neutral-200/50 px-4 sm:px-6 py-4 sticky bottom-0">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
             <button
               onClick={leccionAnterior}
               disabled={esPrimeraLeccion}
-              className="flex items-center justify-center gap-2 px-4 py-2 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors order-2 sm:order-1"
+              className="p-2 sm:p-3 rounded-ios-lg text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+              title="Lección anterior"
             >
               <ChevronLeft className="w-5 h-5" />
-              <span>Anterior</span>
             </button>
 
-            {!progresoLeccion?.completado && (
-              <button
-                onClick={marcarCompletada}
-                className="px-4 sm:px-6 py-3 bg-emerald-600 text-white rounded-ios-lg hover:bg-emerald-700 active:scale-[0.98] transition-all font-medium text-sm sm:text-base order-1 sm:order-2"
-              >
-                Marcar como completada
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {!progresoLeccion?.completado && (
+                <button
+                  onClick={marcarCompletada}
+                  className="px-4 sm:px-6 py-2.5 sm:py-3 bg-emerald-600 text-white rounded-ios-lg hover:bg-emerald-700 active:scale-[0.98] transition-all font-medium text-sm sm:text-base shadow-lg shadow-emerald-600/25"
+                >
+                  <span className="hidden sm:inline">Marcar como completada</span>
+                  <span className="sm:hidden">Completar</span>
+                </button>
+              )}
+
+              {progresoLeccion?.completado && (
+                <div className="flex items-center gap-2 text-emerald-600 font-medium text-sm">
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span className="hidden sm:inline">Completada</span>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={siguienteLeccion}
               disabled={esUltimaLeccion}
-              className="flex items-center justify-center gap-2 px-4 py-2 text-neutral-700 hover:text-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors order-3"
+              className="p-2 sm:p-3 rounded-ios-lg text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+              title={esUltimaLeccion ? "Última lección del módulo" : "Siguiente lección"}
             >
-              <span>Siguiente</span>
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
         </div>
       </div>
+
+      {modalExamenListo && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-ios-xl w-full max-w-lg p-6 sm:p-8 shadow-ios-xl animate-scale-in">
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-ios-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Award className="w-8 h-8 text-white" />
+            </div>
+
+            <h2 className="text-2xl font-bold text-neutral-900 text-center mb-2">
+              ¡Módulo Completado!
+            </h2>
+
+            <p className="text-neutral-600 text-center mb-6">
+              Has terminado todas las lecciones de <strong>{modulo?.titulo}</strong>.
+              ¿Te gustaría realizar el examen de este módulo para evaluar tus conocimientos?
+            </p>
+
+            <div className="bg-primary-50 rounded-ios-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <FileText className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-primary-900 mb-1">Examen del Módulo</h4>
+                  <p className="text-sm text-primary-700">
+                    Evalúa tu comprensión de los temas vistos en este módulo.
+                    Puedes realizarlo ahora o más tarde desde la sección de exámenes.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => {
+                  setModalExamenListo(false);
+                  avanzarSiguienteModulo();
+                }}
+                className="flex-1 px-6 py-3 bg-neutral-100 text-neutral-700 rounded-ios-lg hover:bg-neutral-200 active:scale-[0.98] transition-all font-medium"
+              >
+                Más tarde
+              </button>
+              <button
+                onClick={irAlExamen}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-ios-lg hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
+              >
+                Realizar Examen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
