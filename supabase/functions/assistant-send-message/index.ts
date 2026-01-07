@@ -246,8 +246,13 @@ Responde de manera útil y orientada a la acción.`;
       JSON.stringify({
         success: true,
         conversacion_id: conversacionId,
+        mensaje_id: null,
+        respuesta: assistantMessage,
         mensaje: assistantMessage,
         tokens_usados: tokensUsed,
+        respuesta_estructurada: null,
+        modo_usado: 'general',
+        router_confidence: null,
       }),
       {
         status: 200,
