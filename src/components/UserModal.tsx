@@ -5,7 +5,7 @@ import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
 import { ImageUploader } from './ImageUploader';
 import { ExpedienteSection } from './ExpedienteSection';
-import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop } from 'lucide-react';
+import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -49,6 +49,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     dias_vacaciones_disponibles: 0,
     equipo_computo: '',
     equipo_celular: '',
+    plan_mkt_premium: false,
   });
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,6 +85,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         dias_vacaciones_disponibles: user.dias_vacaciones_disponibles || 0,
         equipo_computo: user.equipo_computo || '',
         equipo_celular: user.equipo_celular || '',
+        plan_mkt_premium: user.plan_mkt_premium || false,
       });
     }
   }, [user]);
@@ -208,6 +210,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
           equipo_computo: formData.equipo_computo || null,
           equipo_celular: formData.equipo_celular || null,
+          plan_mkt_premium: formData.plan_mkt_premium,
           imagen_perfil_url: avatarUrl,
           mi_logotipo_url: logoUrl,
           updated_at: new Date().toISOString(),
@@ -281,6 +284,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
             equipo_computo: formData.equipo_computo || null,
             equipo_celular: formData.equipo_celular || null,
+            plan_mkt_premium: formData.plan_mkt_premium,
           },
         };
 
@@ -721,6 +725,33 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         {/* Tab: Otros (solo admins) */}
         {activeTab === 'other' && isAdmin && (
           <div className="space-y-6">
+            {/* Plan MKT Premium - Solo para Agentes */}
+            {formData.rol === 'Agente' && (
+              <div className="bg-gradient-to-br from-purple-50 to-primary-50 border-2 border-purple-200 rounded-xl p-4">
+                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-purple-600" />
+                  Plan MKT Premium
+                </h3>
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="plan_mkt_premium"
+                    checked={formData.plan_mkt_premium}
+                    onChange={(e) => setFormData({ ...formData, plan_mkt_premium: e.target.checked })}
+                    className="mt-1 h-4 w-4 text-primary-600 border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="plan_mkt_premium" className="text-sm font-medium text-slate-900 cursor-pointer">
+                      Habilitar Plan de MKT Premium
+                    </label>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Permite al agente acceder a la funcionalidad completa de Personalizar Publicidad (edición de diseños con logo y texto personalizado)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Vacaciones */}
             <div>
               <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">

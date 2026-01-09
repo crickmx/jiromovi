@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Image, Video, Plus, Search, Filter, CreditCard as Edit, Trash2, Copy, Palette } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
+import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
 
 interface Categoria {
   id: string;
@@ -55,8 +56,11 @@ export function Publicidad() {
   const [showNuevaPlantillaModal, setShowNuevaPlantillaModal] = useState(false);
   const [showPersonalizarModal, setShowPersonalizarModal] = useState(false);
   const [selectedPlantilla, setSelectedPlantilla] = useState<Plantilla | null>(null);
+  const [showPlanBlock, setShowPlanBlock] = useState(false);
 
   const isAdmin = usuario?.rol === 'Administrador';
+  const isAgente = usuario?.rol === 'Agente';
+  const hasPlanPremium = usuario?.plan_mkt_premium || false;
 
   useEffect(() => {
     loadData();
@@ -124,6 +128,11 @@ export function Publicidad() {
   );
 
   const handleUsarPlantilla = (plantilla: Plantilla) => {
+    if (isAgente && !hasPlanPremium) {
+      setShowPlanBlock(true);
+      return;
+    }
+
     setSelectedPlantilla(plantilla);
     setShowPersonalizarModal(true);
   };
@@ -484,6 +493,12 @@ export function Publicidad() {
           loadData();
         }}
       />
+
+      {showPlanBlock && (
+        <PlanMKTPremiumBlock
+          onClose={() => setShowPlanBlock(false)}
+        />
+      )}
     </div>
   );
 }
