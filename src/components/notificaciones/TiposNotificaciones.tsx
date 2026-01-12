@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell, Save, X, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image } from 'lucide-react';
+import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell, Save, X, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image, ChevronDown, ChevronUp, Users, Check } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
 import type { TransactionalNotificationTemplate } from '../../lib/transactionalNotificationTypes';
 import { AVAILABLE_PLACEHOLDERS } from '../../lib/transactionalNotificationTypes';
@@ -15,6 +15,22 @@ interface TipoNotificacion {
   enviar_correo: boolean;
   enviar_whatsapp: boolean;
   enviar_notificacion: boolean;
+  permite_destinatarios_custom: boolean;
+}
+
+interface Usuario {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  email_laboral: string;
+  rol: string;
+}
+
+interface Destinatario {
+  id: string;
+  tipo_notificacion_id: string;
+  usuario_id: string;
+  usuario?: Usuario;
 }
 
 interface TiposNotificacionesProps {
@@ -31,10 +47,16 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [destinatarios, setDestinatarios] = useState<Record<string, Destinatario[]>>({});
+  const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
+  const [managingDestinatarios, setManagingDestinatarios] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTipos();
     fetchTransactionalTemplates();
+    fetchDestinatarios();
+    fetchUsuariosDisponibles();
   }, []);
 
   const fetchTipos = async () => {
@@ -57,6 +79,49 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       console.error('Error al cargar tipos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDestinatarios = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('correo_destinatarios_notificacion')
+        .select(`
+          *,
+          usuario:usuarios(id, nombre, apellidos, email_laboral, rol)
+        `);
+
+      if (error) throw error;
+
+      // Agrupar destinatarios por tipo
+      const destinatariosPorTipo: Record<string, Destinatario[]> = {};
+      (data || []).forEach((dest: any) => {
+        if (!destinatariosPorTipo[dest.tipo_notificacion_id]) {
+          destinatariosPorTipo[dest.tipo_notificacion_id] = [];
+        }
+        destinatariosPorTipo[dest.tipo_notificacion_id].push(dest);
+      });
+
+      setDestinatarios(destinatariosPorTipo);
+    } catch (error) {
+      console.error('Error al cargar destinatarios:', error);
+    }
+  };
+
+  const fetchUsuariosDisponibles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellidos, email_laboral, rol')
+        .in('rol', ['Empleado', 'Gerente', 'Administrador'])
+        .eq('estado', 'activo')
+        .order('nombre');
+
+      if (error) throw error;
+
+      setUsuariosDisponibles(data || []);
+    } catch (error) {
+      console.error('Error al cargar usuarios:', error);
     }
   };
 
@@ -121,6 +186,44 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
     } catch (error: any) {
       console.error('Error al actualizar canal:', error);
       setMessage({ type: 'error', text: 'Error al actualizar el canal: ' + error.message });
+    }
+  };
+
+  const agregarDestinatario = async (tipoId: string, usuarioId: string) => {
+    try {
+      setMessage(null);
+      const { error } = await supabase
+        .from('correo_destinatarios_notificacion')
+        .insert({
+          tipo_notificacion_id: tipoId,
+          usuario_id: usuarioId
+        });
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Destinatario agregado' });
+      await fetchDestinatarios();
+    } catch (error: any) {
+      console.error('Error al agregar destinatario:', error);
+      setMessage({ type: 'error', text: 'Error al agregar destinatario' });
+    }
+  };
+
+  const eliminarDestinatario = async (destinatarioId: string) => {
+    try {
+      setMessage(null);
+      const { error } = await supabase
+        .from('correo_destinatarios_notificacion')
+        .delete()
+        .eq('id', destinatarioId);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Destinatario eliminado' });
+      await fetchDestinatarios();
+    } catch (error: any) {
+      console.error('Error al eliminar destinatario:', error);
+      setMessage({ type: 'error', text: 'Error al eliminar destinatario' });
     }
   };
 
