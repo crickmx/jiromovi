@@ -255,7 +255,7 @@ async function processInAppNotification(
       tipo: 'info',
       modulo: job.payload.modulo || event.module || 'Sistema',
       accion_url: accionUrl,
-      url: accionUrl, // Mantener compatibilidad con campo legacy
+      url: accionUrl,
       leida: false,
       prioridad: 'normal'
     })
@@ -360,7 +360,7 @@ async function processWhatsAppNotification(
 
   const { data: plantilla } = await supabase
     .from('correo_plantillas')
-    .select('whatsapp_cuerpo')
+    .select('whatsapp_plantilla')
     .eq('tipo_notificacion_id', (await supabase
       .from('correo_tipos_notificacion')
       .select('id')
@@ -369,7 +369,7 @@ async function processWhatsAppNotification(
     )?.data?.id)
     .maybeSingle();
 
-  let mensaje = plantilla?.whatsapp_cuerpo || '{{nombre}}, tienes una nueva notificación en MOVI Digital.';
+  let mensaje = plantilla?.whatsapp_plantilla || '{{nombre}}, tienes una nueva notificación en MOVI Digital.';
 
   Object.keys(job.payload).forEach(key => {
     const value = job.payload[key];
