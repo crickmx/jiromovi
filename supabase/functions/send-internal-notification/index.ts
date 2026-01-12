@@ -144,18 +144,22 @@ Deno.serve(async (req: Request) => {
       try {
         console.log(`Sending internal notification to ${email}: ${asunto}`);
 
-        const { error: historialError } = await supabaseAdmin
-          .from('historial_correos')
-          .insert({
-            plantilla_id: plantilla.id,
-            destinatario_id: null,
-            destinatario_email: email,
-            asunto: asunto,
-            cuerpo_html: cuerpo,
-            tipo_envio: 'automatico',
-            estado: 'enviado',
-            fecha_envio: new Date().toISOString(),
-          });
+        // IMPORTANTE: Registrar envío usando función centralizada
+        const { error: historialError } = await supabaseAdmin.rpc('registrar_envio_notificacion', {
+          p_tipo_notificacion_codigo: 'notificacion_interna',
+          p_canal_envio: 'correo',
+          p_usuario_id: usuarioId,
+          p_destinatario_email: email,
+          p_destinatario_nombre: null,
+          p_numero_destino: null,
+          p_asunto: asunto,
+          p_cuerpo_html: cuerpo,
+          p_estado: 'enviado',
+          p_error_mensaje: null,
+          p_enviado_por: null,
+          p_evento_id: null,
+          p_provider_response: null
+        });
 
         if (historialError) {
           throw historialError;
@@ -166,16 +170,21 @@ Deno.serve(async (req: Request) => {
           estado: 'enviado',
         });
       } catch (error) {
-        await supabaseAdmin.from('historial_correos').insert({
-          plantilla_id: plantilla.id,
-          destinatario_id: null,
-          destinatario_email: email,
-          asunto: asunto,
-          cuerpo_html: cuerpo,
-          tipo_envio: 'automatico',
-          estado: 'fallido',
-          error_mensaje: error.message,
-          fecha_envio: new Date().toISOString(),
+        // Registrar error usando función centralizada
+        await supabaseAdmin.rpc('registrar_envio_notificacion', {
+          p_tipo_notificacion_codigo: 'notificacion_interna',
+          p_canal_envio: 'correo',
+          p_usuario_id: usuarioId,
+          p_destinatario_email: email,
+          p_destinatario_nombre: null,
+          p_numero_destino: null,
+          p_asunto: asunto,
+          p_cuerpo_html: cuerpo,
+          p_estado: 'fallido',
+          p_error_mensaje: error.message,
+          p_enviado_por: null,
+          p_evento_id: null,
+          p_provider_response: null
         });
 
         resultados.push({

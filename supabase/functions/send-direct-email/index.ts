@@ -77,6 +77,34 @@ Deno.serve(async (req) => {
 
     console.log('Email sent successfully. ID:', data?.id);
 
+    // IMPORTANTE: Registrar envío en historial
+    console.log('Registering email in history...');
+    try {
+      const { error: logError } = await supabase.rpc('registrar_envio_notificacion', {
+        p_tipo_notificacion_codigo: 'email_directo',
+        p_canal_envio: 'correo',
+        p_usuario_id: null,
+        p_destinatario_email: to,
+        p_destinatario_nombre: null,
+        p_numero_destino: null,
+        p_asunto: subject,
+        p_cuerpo_html: html,
+        p_estado: 'enviado',
+        p_error_mensaje: null,
+        p_enviado_por: null,
+        p_evento_id: null,
+        p_provider_response: { resend_id: data?.id }
+      });
+
+      if (logError) {
+        console.error('Error logging email:', logError);
+      } else {
+        console.log('Email logged successfully');
+      }
+    } catch (logErr) {
+      console.error('Exception logging email:', logErr);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -93,6 +121,32 @@ Deno.serve(async (req) => {
     );
   } catch (error: any) {
     console.error('Error sending email:', error);
+
+    // Registrar el error en historial
+    try {
+      const { to, subject, html } = await req.json() as EmailRequest;
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+      await supabase.rpc('registrar_envio_notificacion', {
+        p_tipo_notificacion_codigo: 'email_directo',
+        p_canal_envio: 'correo',
+        p_usuario_id: null,
+        p_destinatario_email: to || 'unknown@error.com',
+        p_destinatario_nombre: null,
+        p_numero_destino: null,
+        p_asunto: subject || 'Error',
+        p_cuerpo_html: html || '',
+        p_estado: 'fallido',
+        p_error_mensaje: error.message,
+        p_enviado_por: null,
+        p_evento_id: null,
+        p_provider_response: null
+      });
+    } catch (logErr) {
+      console.error('Error logging failed email:', logErr);
+    }
 
     return new Response(
       JSON.stringify({

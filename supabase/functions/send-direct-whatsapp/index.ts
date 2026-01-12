@@ -93,6 +93,29 @@ Deno.serve(async (req) => {
 
     console.log('Success:', success);
 
+    // IMPORTANTE: Registrar envío en historial
+    console.log('Registering WhatsApp in history...');
+    try {
+      await supabaseClient.rpc('registrar_envio_notificacion', {
+        p_tipo_notificacion_codigo: 'whatsapp_directo',
+        p_canal_envio: 'whatsapp',
+        p_usuario_id: null,
+        p_destinatario_email: 'whatsapp@sistema.local',
+        p_destinatario_nombre: null,
+        p_numero_destino: normalizedPhone,
+        p_asunto: 'Mensaje WhatsApp',
+        p_cuerpo_html: message,
+        p_estado: success ? 'enviado' : 'fallido',
+        p_error_mensaje: success ? null : JSON.stringify(wazzupData),
+        p_enviado_por: null,
+        p_evento_id: null,
+        p_provider_response: wazzupData
+      });
+      console.log('WhatsApp logged successfully');
+    } catch (logErr) {
+      console.error('Exception logging WhatsApp:', logErr);
+    }
+
     return new Response(
       JSON.stringify({
         success,
@@ -109,6 +132,35 @@ Deno.serve(async (req) => {
     console.error('=== ERROR ===');
     console.error('Error:', error);
     console.error('Stack:', error.stack);
+
+    // Registrar el error en historial
+    try {
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      const { phone, message } = await req.json();
+
+      await supabaseClient.rpc('registrar_envio_notificacion', {
+        p_tipo_notificacion_codigo: 'whatsapp_directo',
+        p_canal_envio: 'whatsapp',
+        p_usuario_id: null,
+        p_destinatario_email: 'whatsapp@sistema.local',
+        p_destinatario_nombre: null,
+        p_numero_destino: phone || 'unknown',
+        p_asunto: 'Mensaje WhatsApp',
+        p_cuerpo_html: message || '',
+        p_estado: 'fallido',
+        p_error_mensaje: error.message,
+        p_enviado_por: null,
+        p_evento_id: null,
+        p_provider_response: null
+      });
+    } catch (logErr) {
+      console.error('Error logging failed WhatsApp:', logErr);
+    }
 
     return new Response(
       JSON.stringify({

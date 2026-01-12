@@ -89,6 +89,27 @@ Deno.serve(async (req) => {
 
       const success = wazzupResponse.ok;
 
+      // IMPORTANTE: Registrar envío en historial
+      try {
+        await supabaseClient.rpc('registrar_envio_notificacion', {
+          p_tipo_notificacion_codigo: 'whatsapp_transaccional',
+          p_canal_envio: 'whatsapp',
+          p_usuario_id: null,
+          p_destinatario_email: 'whatsapp@sistema.local',
+          p_destinatario_nombre: null,
+          p_numero_destino: numeroNormalizado,
+          p_asunto: 'Mensaje WhatsApp',
+          p_cuerpo_html: requestBody.message,
+          p_estado: success ? 'enviado' : 'fallido',
+          p_error_mensaje: success ? null : JSON.stringify(wazzupData),
+          p_enviado_por: null,
+          p_evento_id: null,
+          p_provider_response: wazzupData
+        });
+      } catch (logErr) {
+        console.error('Error logging WhatsApp:', logErr);
+      }
+
       console.log('=== FIN ENVÍO WHATSAPP TRANSACCIONAL ===');
 
       return new Response(
@@ -218,27 +239,26 @@ Deno.serve(async (req) => {
 
     console.log('=== REGISTRANDO EN HISTORIAL ===');
 
-    const { error: historialError } = await supabaseClient
-      .from('correo_historial_envios')
-      .insert({
-        tipo_notificacion_id: tipoNotif.id,
-        tipo_notificacion_codigo: tipo,
-        destinatario_email: datos.email_laboral || datos.email || '',
-        destinatario_nombre: datos.nombre || null,
-        asunto: `WhatsApp: ${tipo}`,
-        cuerpo_html: texto,
-        estado: success ? 'enviado' : 'fallido',
-        error_mensaje: success ? null : JSON.stringify(wazzupData),
-        canal_envio: 'whatsapp',
-        numero_destino: numeroNormalizado,
-        whatsapp_respuesta: wazzupData,
-        evento_id: evento_id || null
+    // IMPORTANTE: Registrar envío usando función centralizada
+    try {
+      await supabaseClient.rpc('registrar_envio_notificacion', {
+        p_tipo_notificacion_codigo: tipo,
+        p_canal_envio: 'whatsapp',
+        p_usuario_id: null,
+        p_destinatario_email: datos.email_laboral || datos.email || 'whatsapp@sistema.local',
+        p_destinatario_nombre: datos.nombre || null,
+        p_numero_destino: numeroNormalizado,
+        p_asunto: `WhatsApp: ${tipo}`,
+        p_cuerpo_html: texto,
+        p_estado: success ? 'enviado' : 'fallido',
+        p_error_mensaje: success ? null : JSON.stringify(wazzupData),
+        p_enviado_por: null,
+        p_evento_id: evento_id || null,
+        p_provider_response: wazzupData
       });
-
-    if (historialError) {
-      console.error('Error al guardar historial:', historialError);
-    } else {
       console.log('Historial guardado correctamente');
+    } catch (historialError) {
+      console.error('Error al guardar historial:', historialError);
     }
 
     console.log('=== FIN ENVÍO WHATSAPP ===');

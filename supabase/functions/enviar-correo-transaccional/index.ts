@@ -74,6 +74,27 @@ Deno.serve(async (req) => {
 
       console.log('Correo transaccional enviado exitosamente:', data.id);
 
+      // IMPORTANTE: Registrar envío en historial
+      try {
+        await supabaseClient.rpc('registrar_envio_notificacion', {
+          p_tipo_notificacion_codigo: 'correo_transaccional',
+          p_canal_envio: 'correo',
+          p_usuario_id: null,
+          p_destinatario_email: requestBody.to_email,
+          p_destinatario_nombre: requestBody.to_name || null,
+          p_numero_destino: null,
+          p_asunto: requestBody.subject,
+          p_cuerpo_html: requestBody.html_body,
+          p_estado: 'enviado',
+          p_error_mensaje: null,
+          p_enviado_por: null,
+          p_evento_id: null,
+          p_provider_response: { resend_id: data.id }
+        });
+      } catch (logErr) {
+        console.error('Error logging email:', logErr);
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -204,22 +225,24 @@ Deno.serve(async (req) => {
       errorMensaje = emailError.message || 'Error al enviar correo';
     }
 
-    const { error: historialError } = await supabaseClient
-      .from('correo_historial_envios')
-      .insert({
-        tipo_notificacion_id: tipoNotif.id,
-        tipo_notificacion_codigo: tipo,
-        destinatario_email: destinatario,
-        destinatario_nombre: datos.nombre || null,
-        asunto,
-        cuerpo_html: cuerpo,
-        estado: estadoEnvio,
-        error_mensaje: errorMensaje,
-        canal_envio: 'correo',
-        evento_id: evento_id || null
+    // IMPORTANTE: Registrar envío usando función centralizada
+    try {
+      await supabaseClient.rpc('registrar_envio_notificacion', {
+        p_tipo_notificacion_codigo: tipo,
+        p_canal_envio: 'correo',
+        p_usuario_id: null,
+        p_destinatario_email: destinatario,
+        p_destinatario_nombre: datos.nombre || null,
+        p_numero_destino: null,
+        p_asunto: asunto,
+        p_cuerpo_html: cuerpo,
+        p_estado: estadoEnvio,
+        p_error_mensaje: errorMensaje,
+        p_enviado_por: null,
+        p_evento_id: evento_id || null,
+        p_provider_response: resendId ? { resend_id: resendId } : null
       });
-
-    if (historialError) {
+    } catch (historialError) {
       console.error('Error al guardar historial:', historialError);
     }
 
