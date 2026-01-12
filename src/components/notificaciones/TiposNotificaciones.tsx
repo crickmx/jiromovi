@@ -616,176 +616,205 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         </div>
 
         {tipos.map((tipo) => {
+          const isExpanded = expandedId === tipo.id;
+          const destinatariosTipo = destinatarios[tipo.id] || [];
+          const isManagingDest = managingDestinatarios === tipo.id;
+
           return (
           <div
             key={tipo.id}
-            className="bg-white rounded-lg border border-neutral-200 hover:border-neutral-300 transition-colors"
+            className={`bg-white rounded-lg border transition-all ${
+              isExpanded ? 'border-primary-300 shadow-sm' : 'border-neutral-200'
+            }`}
           >
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-4 flex-1">
-                <Mail className={`w-5 h-5 ${tipo.activo ? 'text-primary-600' : 'text-neutral-400'}`} />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-neutral-800">{tipo.nombre}</h3>
-                  {tipo.descripcion && (
-                    <p className="text-sm text-neutral-600 mt-1">{tipo.descripcion}</p>
-                  )}
-                  <span className="inline-block mt-2 px-2 py-1 text-xs rounded bg-neutral-200 text-neutral-700">
-                    {tipo.codigo}
-                  </span>
-                </div>
-              </div>
+            {/* Header Principal */}
+            <div className="p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : tipo.id)}
+                    className="flex-shrink-0 hover:bg-neutral-100 rounded-lg p-1 transition-colors"
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-neutral-600" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-neutral-600" />
+                    )}
+                  </button>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre })}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-primary-100 text-primary-700 hover:bg-primary-200 transition-colors"
-                  title="Editar plantillas de todos los canales"
-                >
-                  <Edit className="w-4 h-4" />
-                  Editar Plantillas
-                </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-semibold text-neutral-800">
+                        {tipo.nombre}
+                      </h4>
+                      {tipo.activo && (
+                        <span className="flex-shrink-0 w-2 h-2 bg-emerald-500 rounded-full"></span>
+                      )}
+                      {tipo.permite_destinatarios_custom && (
+                        <span className="flex-shrink-0 px-2 py-0.5 bg-violet-100 text-violet-700 text-xs font-medium rounded-full flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          Requiere destinatarios
+                        </span>
+                      )}
+                    </div>
+                    {tipo.descripcion && (
+                      <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
+                        {tipo.descripcion.replace(/✅|❌|⚠️/g, '').trim()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Badges de canales activos */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {tipo.enviar_notificacion && (
+                    <Bell className="w-3.5 h-3.5 text-amber-600" />
+                  )}
+                  {tipo.enviar_whatsapp && (
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                  )}
+                  {tipo.enviar_correo && (
+                    <Mail className="w-3.5 h-3.5 text-primary-600" />
+                  )}
+                </div>
+
+                {/* Botón de activar/desactivar */}
                 <button
                   onClick={() => toggleActivo(tipo.id, tipo.activo)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
                     tipo.activo
                       ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                       : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300'
                   }`}
                 >
-                  <Power className="w-4 h-4" />
-                  {tipo.activo ? 'Activo' : 'Inactivo'}
+                  <Power className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* Canales de Envío */}
-            <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-3">
-              <h4 className="text-sm font-semibold text-neutral-700 mb-3">Canales de Envío</h4>
-              <div className="flex flex-wrap gap-3">
-                {/* Notificación (Campanita) */}
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleCanal(tipo.id, 'enviar_notificacion', tipo.enviar_notificacion);
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
-                    tipo.enviar_notificacion
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-neutral-300 bg-white hover:border-neutral-400'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={tipo.enviar_notificacion}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                    }}
-                    className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-blue-500 pointer-events-none"
-                  />
-                  <Bell className={`w-4 h-4 ${tipo.enviar_notificacion ? 'text-primary-600' : 'text-neutral-500'}`} />
-                  <span className={`text-sm font-medium ${tipo.enviar_notificacion ? 'text-primary-700' : 'text-neutral-600'}`}>
-                    Notificación Interna
-                  </span>
+            {/* Contenido Expandido */}
+            {isExpanded && (
+              <div className="border-t border-neutral-200 p-4 space-y-4 bg-neutral-50">
+                {/* Canales */}
+                <div>
+                  <h5 className="text-xs font-semibold text-neutral-700 mb-2">Canales de envío</h5>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => toggleCanal(tipo.id, 'enviar_notificacion', tipo.enviar_notificacion)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        tipo.enviar_notificacion
+                          ? 'bg-amber-100 text-amber-700 border-2 border-amber-300'
+                          : 'bg-white text-neutral-600 border border-neutral-300 hover:border-neutral-400'
+                      }`}
+                    >
+                      <Bell className="w-3.5 h-3.5" />
+                      Notificación
+                    </button>
+                    <button
+                      onClick={() => toggleCanal(tipo.id, 'enviar_whatsapp', tipo.enviar_whatsapp)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        tipo.enviar_whatsapp
+                          ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                          : 'bg-white text-neutral-600 border border-neutral-300 hover:border-neutral-400'
+                      }`}
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      WhatsApp
+                    </button>
+                    <button
+                      onClick={() => toggleCanal(tipo.id, 'enviar_correo', tipo.enviar_correo)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        tipo.enviar_correo
+                          ? 'bg-primary-100 text-primary-700 border-2 border-primary-300'
+                          : 'bg-white text-neutral-600 border border-neutral-300 hover:border-neutral-400'
+                      }`}
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      Correo
+                    </button>
+                  </div>
                 </div>
 
-                {/* WhatsApp */}
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleCanal(tipo.id, 'enviar_whatsapp', tipo.enviar_whatsapp);
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
-                    tipo.enviar_whatsapp
-                      ? 'border-emerald-500 bg-emerald-50'
-                      : 'border-neutral-300 bg-white hover:border-neutral-400'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={tipo.enviar_whatsapp}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                    }}
-                    className="w-4 h-4 text-emerald-600 rounded focus:ring-2 focus:ring-emerald-500 pointer-events-none"
-                  />
-                  <MessageCircle className={`w-4 h-4 ${tipo.enviar_whatsapp ? 'text-emerald-600' : 'text-neutral-500'}`} />
-                  <span className={`text-sm font-medium ${tipo.enviar_whatsapp ? 'text-emerald-700' : 'text-neutral-600'}`}>
-                    WhatsApp
-                  </span>
-                </div>
+                {/* Destinatarios */}
+                {tipo.permite_destinatarios_custom && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="text-xs font-semibold text-neutral-700">Destinatarios</h5>
+                      <button
+                        onClick={() => setManagingDestinatarios(isManagingDest ? null : tipo.id)}
+                        className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        {isManagingDest ? 'Cerrar' : '+ Agregar'}
+                      </button>
+                    </div>
 
-                {/* Correo */}
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleCanal(tipo.id, 'enviar_correo', tipo.enviar_correo);
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
-                    tipo.enviar_correo
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-neutral-300 bg-white hover:border-neutral-400'
-                  }`}
+                    {/* Agregar destinatario */}
+                    {isManagingDest && (
+                      <div className="bg-white rounded-lg border border-primary-200 p-3 mb-2">
+                        <p className="text-xs text-neutral-600 mb-2">Selecciona usuarios:</p>
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {usuariosDisponibles
+                            .filter(u => !destinatariosTipo.find(d => d.usuario_id === u.id))
+                            .map(usuario => (
+                              <button
+                                key={usuario.id}
+                                onClick={() => agregarDestinatario(tipo.id, usuario.id)}
+                                className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-primary-50 rounded text-left transition-colors"
+                              >
+                                <div>
+                                  <p className="text-xs font-medium text-neutral-800">
+                                    {usuario.nombre} {usuario.apellidos}
+                                  </p>
+                                  <p className="text-xs text-neutral-500">{usuario.email_laboral}</p>
+                                </div>
+                                <Check className="w-4 h-4 text-primary-600" />
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Lista de destinatarios */}
+                    {destinatariosTipo.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {destinatariosTipo.map(dest => (
+                          <div
+                            key={dest.id}
+                            className="flex items-center gap-1.5 bg-violet-100 text-violet-700 px-2 py-1 rounded-full text-xs"
+                          >
+                            <span className="font-medium">
+                              {dest.usuario?.nombre} {dest.usuario?.apellidos}
+                            </span>
+                            <button
+                              onClick={() => eliminarDestinatario(dest.id)}
+                              className="hover:bg-violet-200 rounded-full p-0.5 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <p className="text-xs text-amber-700">
+                          No hay destinatarios configurados. Las notificaciones no se enviarán.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Botón editar plantillas */}
+                <button
+                  onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre })}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
                 >
-                  <input
-                    type="checkbox"
-                    checked={tipo.enviar_correo}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                    }}
-                    className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500 pointer-events-none"
-                  />
-                  <Mail className={`w-4 h-4 ${tipo.enviar_correo ? 'text-primary-600' : 'text-neutral-500'}`} />
-                  <span className={`text-sm font-medium ${tipo.enviar_correo ? 'text-primary-700' : 'text-neutral-600'}`}>
-                    Correo Electrónico
-                  </span>
-                </div>
+                  <Edit className="w-4 h-4" />
+                  Editar Plantillas de Todos los Canales
+                </button>
               </div>
-
-              {/* Indicador de estado */}
-              <div className="mt-3 flex items-center gap-2">
-                {tipo.enviar_notificacion && tipo.enviar_whatsapp && tipo.enviar_correo && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 border border-violet-200">
-                    Envío por los 3 canales
-                  </span>
-                )}
-                {tipo.enviar_notificacion && tipo.enviar_whatsapp && !tipo.enviar_correo && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-200">
-                    Notificación y WhatsApp (por defecto)
-                  </span>
-                )}
-                {tipo.enviar_notificacion && !tipo.enviar_whatsapp && tipo.enviar_correo && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
-                    Notificación y Correo
-                  </span>
-                )}
-                {!tipo.enviar_notificacion && tipo.enviar_whatsapp && tipo.enviar_correo && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-700 border border-teal-200">
-                    WhatsApp y Correo
-                  </span>
-                )}
-                {tipo.enviar_notificacion && !tipo.enviar_whatsapp && !tipo.enviar_correo && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200">
-                    Solo notificaciones internas
-                  </span>
-                )}
-                {!tipo.enviar_notificacion && tipo.enviar_whatsapp && !tipo.enviar_correo && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
-                    Solo por WhatsApp
-                  </span>
-                )}
-                {!tipo.enviar_notificacion && !tipo.enviar_whatsapp && tipo.enviar_correo && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200">
-                    Solo por correo
-                  </span>
-                )}
-                {!tipo.enviar_notificacion && !tipo.enviar_whatsapp && !tipo.enviar_correo && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
-                    <AlertCircle className="w-3 h-3" />
-                    Sin canal seleccionado
-                  </span>
-                )}
-              </div>
-            </div>
+            )}
           </div>
           );
         })}
