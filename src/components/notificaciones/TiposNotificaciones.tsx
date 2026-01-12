@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell, Save, X, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image, ChevronDown, ChevronUp, Users, Check } from 'lucide-react';
+import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell, Save, X, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image, ChevronDown, ChevronUp, Users, Check, UserCheck, Building2 } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
 import type { TransactionalNotificationTemplate } from '../../lib/transactionalNotificationTypes';
 import { AVAILABLE_PLACEHOLDERS } from '../../lib/transactionalNotificationTypes';
+
+type NotificationCategory = 'generales' | 'departamentales';
 
 interface TipoNotificacion {
   id: string;
@@ -51,6 +53,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const [destinatarios, setDestinatarios] = useState<Record<string, Destinatario[]>>({});
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
   const [managingDestinatarios, setManagingDestinatarios] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<NotificationCategory>('generales');
 
   useEffect(() => {
     fetchTipos();
@@ -615,7 +618,80 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
           </span>
         </div>
 
-        {tipos.map((tipo) => {
+        {/* Tabs de Categorías */}
+        <div className="flex gap-2 mb-4 border-b border-neutral-200">
+          <button
+            onClick={() => setActiveCategory('generales')}
+            className={`flex items-center gap-2 px-4 py-2 font-medium transition-all border-b-2 ${
+              activeCategory === 'generales'
+                ? 'text-primary-700 border-primary-600'
+                : 'text-neutral-600 border-transparent hover:text-neutral-800'
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            Notificaciones Generales
+            <span className={`px-2 py-0.5 rounded-full text-xs ${
+              activeCategory === 'generales'
+                ? 'bg-primary-100 text-primary-700'
+                : 'bg-neutral-200 text-neutral-600'
+            }`}>
+              {tipos.filter(t => !t.permite_destinatarios_custom).length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveCategory('departamentales')}
+            className={`flex items-center gap-2 px-4 py-2 font-medium transition-all border-b-2 ${
+              activeCategory === 'departamentales'
+                ? 'text-violet-700 border-violet-600'
+                : 'text-neutral-600 border-transparent hover:text-neutral-800'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            Notificaciones Departamentales
+            <span className={`px-2 py-0.5 rounded-full text-xs ${
+              activeCategory === 'departamentales'
+                ? 'bg-violet-100 text-violet-700'
+                : 'bg-neutral-200 text-neutral-600'
+            }`}>
+              {tipos.filter(t => t.permite_destinatarios_custom).length}
+            </span>
+          </button>
+        </div>
+
+        {/* Descripción según categoría */}
+        {activeCategory === 'generales' ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <div className="flex items-start gap-2">
+              <UserCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-blue-900">Notificaciones Automáticas</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Estas notificaciones se envían automáticamente al usuario relacionado con la acción
+                  (ej: el usuario que solicita vacaciones, el que recibe comisiones, etc.). No requieren configurar destinatarios.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 mb-4">
+            <div className="flex items-start gap-2">
+              <Building2 className="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-violet-900">Notificaciones a Departamentos</p>
+                <p className="text-xs text-violet-700 mt-1">
+                  Estas notificaciones se envían a usuarios específicos que debes configurar
+                  (ej: equipo de RRHH, Mercadotecnia, Mesa de Control). Debes asignar destinatarios para que funcionen.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tipos.filter(tipo =>
+          activeCategory === 'generales'
+            ? !tipo.permite_destinatarios_custom
+            : tipo.permite_destinatarios_custom
+        ).map((tipo) => {
           const isExpanded = expandedId === tipo.id;
           const destinatariosTipo = destinatarios[tipo.id] || [];
           const isManagingDest = managingDestinatarios === tipo.id;
@@ -650,10 +726,22 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                       {tipo.activo && (
                         <span className="flex-shrink-0 w-2 h-2 bg-emerald-500 rounded-full"></span>
                       )}
-                      {tipo.permite_destinatarios_custom && (
+                      {activeCategory === 'generales' && (
+                        <span className="flex-shrink-0 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full flex items-center gap-1">
+                          <UserCheck className="w-3 h-3" />
+                          Automática
+                        </span>
+                      )}
+                      {activeCategory === 'departamentales' && destinatariosTipo.length === 0 && (
+                        <span className="flex-shrink-0 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          Sin destinatarios
+                        </span>
+                      )}
+                      {activeCategory === 'departamentales' && destinatariosTipo.length > 0 && (
                         <span className="flex-shrink-0 px-2 py-0.5 bg-violet-100 text-violet-700 text-xs font-medium rounded-full flex items-center gap-1">
                           <Users className="w-3 h-3" />
-                          Requiere destinatarios
+                          {destinatariosTipo.length} destinatario{destinatariosTipo.length !== 1 ? 's' : ''}
                         </span>
                       )}
                     </div>
@@ -735,14 +823,14 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                   </div>
                 </div>
 
-                {/* Destinatarios */}
-                {tipo.permite_destinatarios_custom && (
+                {/* Destinatarios - Solo para notificaciones departamentales */}
+                {activeCategory === 'departamentales' && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h5 className="text-xs font-semibold text-neutral-700">Destinatarios</h5>
+                      <h5 className="text-xs font-semibold text-neutral-700">Destinatarios departamentales</h5>
                       <button
                         onClick={() => setManagingDestinatarios(isManagingDest ? null : tipo.id)}
-                        className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                        className="text-xs text-violet-600 hover:text-violet-700 font-medium"
                       >
                         {isManagingDest ? 'Cerrar' : '+ Agregar'}
                       </button>
@@ -750,8 +838,8 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
 
                     {/* Agregar destinatario */}
                     {isManagingDest && (
-                      <div className="bg-white rounded-lg border border-primary-200 p-3 mb-2">
-                        <p className="text-xs text-neutral-600 mb-2">Selecciona usuarios:</p>
+                      <div className="bg-white rounded-lg border border-violet-200 p-3 mb-2">
+                        <p className="text-xs text-neutral-600 mb-2">Selecciona usuarios que recibirán esta notificación:</p>
                         <div className="space-y-1 max-h-40 overflow-y-auto">
                           {usuariosDisponibles
                             .filter(u => !destinatariosTipo.find(d => d.usuario_id === u.id))
@@ -759,15 +847,15 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                               <button
                                 key={usuario.id}
                                 onClick={() => agregarDestinatario(tipo.id, usuario.id)}
-                                className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-primary-50 rounded text-left transition-colors"
+                                className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-violet-50 rounded text-left transition-colors"
                               >
                                 <div>
                                   <p className="text-xs font-medium text-neutral-800">
                                     {usuario.nombre} {usuario.apellidos}
                                   </p>
-                                  <p className="text-xs text-neutral-500">{usuario.email_laboral}</p>
+                                  <p className="text-xs text-neutral-500">{usuario.email_laboral} • {usuario.rol}</p>
                                 </div>
-                                <Check className="w-4 h-4 text-primary-600" />
+                                <Check className="w-4 h-4 text-violet-600" />
                               </button>
                             ))}
                         </div>
@@ -798,10 +886,21 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                         <p className="text-xs text-amber-700">
-                          No hay destinatarios configurados. Las notificaciones no se enviarán.
+                          ⚠️ <strong>Importante:</strong> Debes agregar al menos un destinatario para que esta notificación funcione.
+                          Sin destinatarios, la notificación no se enviará.
                         </p>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Información para notificaciones generales */}
+                {activeCategory === 'generales' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <p className="text-xs text-blue-700">
+                      Esta notificación se envía automáticamente al usuario relacionado con la acción. No requiere configuración adicional.
+                    </p>
                   </div>
                 )}
 
