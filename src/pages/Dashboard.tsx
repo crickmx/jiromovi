@@ -40,18 +40,32 @@ export function Dashboard() {
   const [officeName, setOfficeName] = useState<string>('JIRO');
 
   useEffect(() => {
-    if (isAdminOrGerente) {
-      loadDashboardData();
-    } else {
-      setLoading(false);
-    }
-  }, [birthdayFilter, customBirthdayDate, isAdminOrGerente]);
+    const initializeDashboard = async () => {
+      setLoading(true);
+      const startTime = Date.now();
 
-  useEffect(() => {
-    if (currentUser?.id) {
-      loadOfficeLogo();
-    }
-  }, [currentUser?.id]);
+      try {
+        if (currentUser?.id) {
+          await loadOfficeLogo();
+        }
+
+        if (isAdminOrGerente) {
+          await loadDashboardData();
+        }
+
+        const elapsedTime = Date.now() - startTime;
+        const minDisplayTime = 800;
+
+        if (elapsedTime < minDisplayTime) {
+          await new Promise(resolve => setTimeout(resolve, minDisplayTime - elapsedTime));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeDashboard();
+  }, [birthdayFilter, customBirthdayDate, isAdminOrGerente, currentUser?.id]);
 
   const loadOfficeLogo = async () => {
     if (!currentUser?.id) return;
@@ -73,7 +87,6 @@ export function Dashboard() {
   };
 
   const loadDashboardData = async () => {
-    setLoading(true);
     try {
       let usuariosQuery = supabase.from('usuarios').select('id', { count: 'exact', head: true });
       if (isGerente && currentUser?.oficina_id) {
@@ -99,8 +112,6 @@ export function Dashboard() {
       }
     } catch (error) {
       console.error('Error cargando datos del dashboard:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -307,7 +318,7 @@ export function Dashboard() {
         userName={currentUser?.nombre || 'Usuario'}
         subtitle="Preparando tu Dashboard…"
         logoIconUrl="/logojiro.png"
-        minDurationMs={600}
+        minDurationMs={800}
       />
       <div className="space-y-3">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
