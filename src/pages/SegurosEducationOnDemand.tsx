@@ -962,10 +962,9 @@ export function SegurosEducationOnDemand() {
       {/* Video Player Modal */}
       {showVideoModal && selectedLesson && (
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-ios flex items-center justify-center z-50 animate-fade-in"
-          style={{ padding: 0 }}
+          className="fixed inset-0 bg-black/90 backdrop-blur-ios flex items-center justify-center z-50 animate-fade-in p-0 sm:p-4"
         >
-          <div className="w-full h-full sm:w-auto sm:h-auto sm:max-w-[90vw] lg:max-w-[1200px] sm:aspect-video bg-white sm:rounded-2xl shadow-ios-xl overflow-hidden animate-scale-in flex flex-col">
+          <div className="w-full h-full sm:w-[95vw] sm:h-[90vh] lg:w-[1200px] lg:h-[720px] bg-white sm:rounded-2xl shadow-ios-xl overflow-hidden animate-scale-in flex flex-col">
             {/* Header - minimizado en móvil */}
             <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 sm:py-3 border-b border-ios-gray-200/50 flex justify-between items-center gap-2 flex-shrink-0">
               <div className="flex-1 min-w-0">
@@ -999,8 +998,8 @@ export function SegurosEducationOnDemand() {
               </button>
             </div>
 
-            {/* Video Container - ocupa todo el espacio disponible */}
-            <div className="bg-black flex-1 relative overflow-hidden">
+            {/* Video Container - con altura fija y minima */}
+            <div className="bg-black w-full flex-1 min-h-0 relative">
               <VideoPlayer
                 videoUrl={selectedLesson.video_url}
                 initialTime={selectedLesson.tiempo_reproduccion || 0}
@@ -1010,7 +1009,7 @@ export function SegurosEducationOnDemand() {
             </div>
 
             {/* Footer - super compacto en móvil */}
-            <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 border-t border-ios-gray-200/50 flex-shrink-0">
+            <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 border-t border-ios-gray-200/50 flex-shrink-0 max-h-[30vh] overflow-y-auto">
               <div className="flex flex-col gap-2">
                 {/* Progress row */}
                 <div className="flex items-center justify-between gap-2">
