@@ -13,7 +13,7 @@ export default function MoviPreloader({
   userName,
   subtitle = "Preparando tu Dashboard…",
   logoIconUrl = "/logojiro.png",
-  minDurationMs = 600,
+  minDurationMs = 3000,
 }: MoviPreloaderProps) {
   const [canClose, setCanClose] = useState(false);
   const [visible, setVisible] = useState(isOpen);
@@ -30,7 +30,7 @@ export default function MoviPreloader({
   useEffect(() => {
     if (isOpen) setVisible(true);
     else {
-      const t = setTimeout(() => setVisible(false), 250);
+      const t = setTimeout(() => setVisible(false), 300);
       return () => clearTimeout(t);
     }
   }, [isOpen]);

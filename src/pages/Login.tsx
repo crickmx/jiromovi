@@ -7,6 +7,8 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import MoviPreloader from '../components/MoviPreloader';
+import { supabase } from '../lib/supabase';
 
 const REMEMBER_KEY = 'movi-remember-email';
 
@@ -19,6 +21,8 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [showPreloader, setShowPreloader] = useState(false);
+  const [userName, setUserName] = useState('Usuario');
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
@@ -61,7 +65,23 @@ export function Login() {
           localStorage.removeItem(REMEMBER_KEY);
         }
 
-        navigate('/');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: userData } = await supabase
+            .from('usuarios')
+            .select('nombre')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (userData?.nombre) {
+            setUserName(userData.nombre);
+          }
+        }
+
+        setShowPreloader(true);
+        setTimeout(() => {
+          navigate('/');
+        }, 3000);
       }
     } catch (err: any) {
       console.error('Error inesperado:', err);
@@ -115,8 +135,16 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-primary-50/30 to-neutral-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <>
+      <MoviPreloader
+        isOpen={showPreloader}
+        userName={userName}
+        subtitle="Bienvenido a MOVI Digital"
+        logoIconUrl="/logojiro.png"
+        minDurationMs={3000}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-primary-50/30 to-neutral-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
         <Card className="shadow-strong">
           <CardHeader className="text-center pb-6">
             <div className="flex justify-center mb-6">
@@ -256,7 +284,8 @@ export function Login() {
         <p className="text-center text-sm text-neutral-500 mt-6">
           MOVI Digital
         </p>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
