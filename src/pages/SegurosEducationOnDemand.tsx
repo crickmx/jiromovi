@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, Edit2 } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
+import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
 
 interface Category {
   id: string;
@@ -961,31 +962,43 @@ export function SegurosEducationOnDemand() {
 
             {/* Footer - super compacto en móvil */}
             <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 border-t border-ios-gray-200/50 flex-shrink-0">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {selectedLesson.completado ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-green/10 text-ios-green rounded-ios text-[10px] sm:text-[12px] font-medium">
-                      <Award className="w-3 h-3 stroke-[1.5]" />
-                      <span className="hidden sm:inline">Completado</span>
-                    </span>
-                  ) : selectedLesson.progreso > 0 ? (
-                    <span className="text-[10px] sm:text-[12px] text-ios-gray-600">
-                      Progreso: <span className="font-semibold text-ios-blue">{Math.floor(selectedLesson.progreso)}%</span>
-                    </span>
-                  ) : (
-                    <span className="text-[10px] sm:text-[12px] text-ios-gray-500">Sin progreso</span>
-                  )}
+              <div className="flex flex-col gap-2">
+                {/* Progress row */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {selectedLesson.completado ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-green/10 text-ios-green rounded-ios text-[10px] sm:text-[12px] font-medium">
+                        <Award className="w-3 h-3 stroke-[1.5]" />
+                        <span className="hidden sm:inline">Completado</span>
+                      </span>
+                    ) : selectedLesson.progreso > 0 ? (
+                      <span className="text-[10px] sm:text-[12px] text-ios-gray-600">
+                        Progreso: <span className="font-semibold text-ios-blue">{Math.floor(selectedLesson.progreso)}%</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] sm:text-[12px] text-ios-gray-500">Sin progreso</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowVideoModal(false);
+                      setSelectedLesson(null);
+                      fetchData();
+                    }}
+                    className="px-3 sm:px-4 py-1 sm:py-1.5 bg-ios-blue text-white rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-ios-blue-dark transition-colors active:scale-95 flex-shrink-0"
+                  >
+                    Cerrar
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowVideoModal(false);
-                    setSelectedLesson(null);
-                    fetchData();
-                  }}
-                  className="px-3 sm:px-4 py-1 sm:py-1.5 bg-ios-blue text-white rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-ios-blue-dark transition-colors active:scale-95 flex-shrink-0"
-                >
-                  Cerrar
-                </button>
+
+                {/* Documents row */}
+                <div className="border-t border-ios-gray-200/50 pt-2">
+                  <LessonDocuments
+                    lessonId={selectedLesson.id}
+                    isAdmin={isAdmin}
+                    isEditMode={false}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1171,6 +1184,17 @@ export function SegurosEducationOnDemand() {
                   </label>
                 </div>
               </div>
+
+              {/* Lesson Documents Section */}
+              {editingLesson && (
+                <div className="border-t border-neutral-200 pt-4">
+                  <LessonDocuments
+                    lessonId={editingLesson.id}
+                    isAdmin={isAdmin}
+                    isEditMode={true}
+                  />
+                </div>
+              )}
 
               {uploading && (
                 <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
