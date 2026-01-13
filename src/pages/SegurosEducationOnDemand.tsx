@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, Edit2 } from 'lucide-react';
+import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, Edit2, FileText } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
 
@@ -62,6 +62,7 @@ export function SegurosEducationOnDemand() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
 
   const isAdmin = usuario?.rol === 'Administrador';
 
@@ -342,7 +343,7 @@ export function SegurosEducationOnDemand() {
       setUploadProgress(90);
 
       // Create lesson record
-      const { error: lessonError } = await supabase
+      const { data: newLesson, error: lessonError } = await supabase
         .from('seguros_lessons')
         .insert({
           titulo: formData.titulo,
@@ -353,9 +354,56 @@ export function SegurosEducationOnDemand() {
           duracion: Math.floor(videoDuration),
           oficinas_asignadas: formData.oficinas_asignadas,
           creado_por: usuario?.id,
-        });
+        })
+        .select()
+        .single();
 
       if (lessonError) throw lessonError;
+      setUploadProgress(95);
+
+      // Upload pending documents if any
+      if (pendingDocuments.length > 0 && newLesson) {
+        console.log(`Uploading ${pendingDocuments.length} pending documents...`);
+        for (let i = 0; i < pendingDocuments.length; i++) {
+          const doc = pendingDocuments[i];
+          try {
+            // Add small delay to ensure unique timestamps
+            await new Promise(resolve => setTimeout(resolve, 10));
+            const docFileName = `${Date.now()}-${doc.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+            const { error: docUploadError } = await supabase.storage
+              .from('seguros-lesson-documents')
+              .upload(docFileName, doc);
+
+            if (docUploadError) {
+              console.error(`Error uploading document ${doc.name}:`, docUploadError);
+              continue;
+            }
+
+            const { data: docPublicUrl } = supabase.storage
+              .from('seguros-lesson-documents')
+              .getPublicUrl(docFileName);
+
+            const { error: docInsertError } = await supabase
+              .from('seguros_lesson_documents')
+              .insert({
+                lesson_id: newLesson.id,
+                nombre_archivo: doc.name,
+                archivo_url: docPublicUrl.publicUrl,
+                tipo_archivo: doc.type,
+                tamano_bytes: doc.size,
+                orden: i,
+              });
+
+            if (docInsertError) {
+              console.error(`Error saving document ${doc.name}:`, docInsertError);
+            }
+          } catch (error) {
+            console.error(`Exception uploading document ${doc.name}:`, error);
+          }
+        }
+      }
+
       setUploadProgress(100);
 
       showToast('Lección subida exitosamente', 'success');
@@ -614,6 +662,7 @@ export function SegurosEducationOnDemand() {
     setVideoFile(null);
     setThumbnailFile(null);
     setEditingLesson(null);
+    setPendingDocuments([]);
   };
 
   const handleLessonClick = (lesson: Lesson) => {
@@ -1186,22 +1235,106 @@ export function SegurosEducationOnDemand() {
               </div>
 
               {/* Lesson Documents Section */}
-              {editingLesson && (
-                <div className="border-t border-neutral-200 pt-4">
+              <div className="border-t border-neutral-200 pt-4">
+                {editingLesson ? (
                   <LessonDocuments
                     lessonId={editingLesson.id}
                     isAdmin={isAdmin}
                     isEditMode={true}
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-neutral-700">
+                          Documentos de Apoyo
+                        </h3>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {pendingDocuments.length}/5 documentos preparados
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Upload section for new lesson */}
+                    {pendingDocuments.length < 5 && (
+                      <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center hover:border-primary-500 transition-colors">
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file && pendingDocuments.length < 5) {
+                              setPendingDocuments([...pendingDocuments, file]);
+                              e.target.value = '';
+                            } else if (pendingDocuments.length >= 5) {
+                              showToast('Solo puedes agregar máximo 5 documentos', 'error');
+                            }
+                          }}
+                          className="hidden"
+                          id="pending-document-upload"
+                        />
+                        <label htmlFor="pending-document-upload" className="cursor-pointer">
+                          <Upload className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+                          <p className="text-sm text-neutral-600">
+                            Click para agregar documento
+                          </p>
+                          <p className="text-xs text-neutral-500 mt-1">
+                            PDF, Word, Excel, PowerPoint, TXT, ZIP, RAR
+                          </p>
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Pending documents list */}
+                    {pendingDocuments.length > 0 && (
+                      <div className="space-y-2">
+                        {pendingDocuments.map((doc, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200 hover:bg-neutral-100 transition-colors"
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="text-primary-600">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-neutral-900 truncate">
+                                  {doc.name}
+                                </p>
+                                <p className="text-xs text-neutral-500">
+                                  {doc.size < 1024 ? doc.size + ' B'
+                                    : doc.size < 1024 * 1024 ? (doc.size / 1024).toFixed(1) + ' KB'
+                                    : (doc.size / (1024 * 1024)).toFixed(1) + ' MB'}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setPendingDocuments(pendingDocuments.filter((_, i) => i !== index));
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Eliminar"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {uploading && (
                 <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-primary-800">
-                        {uploadProgress < 70 ? 'Subiendo video...' : uploadProgress < 80 ? 'Procesando...' : 'Finalizando...'}
+                        {uploadProgress < 70 ? 'Subiendo video...'
+                          : uploadProgress < 80 ? 'Procesando...'
+                          : uploadProgress < 95 ? 'Guardando lección...'
+                          : uploadProgress < 100 ? 'Subiendo documentos...'
+                          : 'Finalizando...'}
                       </span>
                       {videoFile && (
                         <span className="text-xs text-primary-600 mt-1">
@@ -1210,6 +1343,11 @@ export function SegurosEducationOnDemand() {
                             : `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`
                           }
                           {videoFile.size > 500 * 1024 * 1024 && ' - Esto puede tomar varios minutos'}
+                        </span>
+                      )}
+                      {uploadProgress >= 95 && uploadProgress < 100 && pendingDocuments.length > 0 && (
+                        <span className="text-xs text-primary-600 mt-1">
+                          Subiendo {pendingDocuments.length} documento{pendingDocuments.length > 1 ? 's' : ''}...
                         </span>
                       )}
                     </div>
