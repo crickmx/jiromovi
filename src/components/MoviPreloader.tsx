@@ -12,7 +12,7 @@ export default function MoviPreloader({
   isOpen,
   userName,
   subtitle = "Preparando tu Dashboard…",
-  logoIconUrl = "/logojiro.png",
+  logoIconUrl = "/movirecurso_1.png",
   minDurationMs = 3000,
 }: MoviPreloaderProps) {
   const [canClose, setCanClose] = useState(false);
@@ -84,21 +84,21 @@ export default function MoviPreloader({
           />
 
           {/* Logo */}
-          <div className="absolute inset-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_0_40px_rgba(14,35,226,0.25)] flex items-center justify-center">
+          <div className="absolute inset-2 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_0_40px_rgba(14,35,226,0.25)] flex items-center justify-center p-2">
             <img
               src={logoIconUrl}
               alt="MOVI Digital"
-              className="h-10 w-auto opacity-95"
+              className="h-12 w-auto opacity-95 object-contain"
             />
           </div>
         </div>
 
         {/* Saludo */}
-        <div className="font-semibold text-white text-xl tracking-tight">
-          Hola, {userName}
+        <div className="font-semibold text-white text-2xl tracking-tight mb-2">
+          ¡Bienvenido, {userName}!
         </div>
 
-        <div className="mt-1 text-white/70 text-sm">{subtitle}</div>
+        <div className="text-white/80 text-base">{subtitle}</div>
 
         {/* Dots loader */}
         <div className="mt-6 flex items-center justify-center gap-2">

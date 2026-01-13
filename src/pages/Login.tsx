@@ -139,150 +139,174 @@ export function Login() {
       <MoviPreloader
         isOpen={showPreloader}
         userName={userName}
-        subtitle="Bienvenido a MOVI Digital"
-        logoIconUrl="/logojiro.png"
+        subtitle="Preparando tu experiencia digital…"
+        logoIconUrl="/movirecurso_1.png"
         minDurationMs={3000}
       />
-      <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-primary-50/30 to-neutral-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50/30 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-        <Card className="shadow-strong">
-          <CardHeader className="text-center pb-6">
+        <Card className="shadow-xl border-0">
+          <CardHeader className="text-center pb-6 pt-8">
             <div className="flex justify-center mb-6">
               <img
                 src="/movirecurso_1.png"
-                alt="MOVI Digital Logo"
-                className="h-16 object-contain"
+                alt="MOVI Digital"
+                className="h-20 object-contain"
               />
             </div>
-            <CardTitle className="text-3xl mb-2">
-              {showForgotPassword ? 'Recuperar Contraseña' : 'Bienvenido'}
+            <CardTitle className="text-3xl mb-3 font-bold bg-gradient-to-r from-primary-600 to-blue-600 bg-clip-text text-transparent">
+              {showForgotPassword ? 'Recuperar Contraseña' : '¡Bienvenido de nuevo!'}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-base">
               {showForgotPassword
-                ? 'Ingresa tu correo para recibir instrucciones'
-                : 'Ingresa a tu cuenta para continuar'}
+                ? 'Te ayudaremos a recuperar el acceso a tu cuenta'
+                : 'Nos alegra verte de nuevo. Ingresa tus credenciales para continuar'}
             </CardDescription>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="pb-8">
             {!showForgotPassword ? (
               <form onSubmit={handleSubmit} className="space-y-5">
                 {error && (
-                  <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-xl text-sm">
-                    {error}
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                    <span className="text-red-500 mt-0.5">⚠️</span>
+                    <span>{error}</span>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">E-Mail Laboral</Label>
+                  <Label htmlFor="email" className="text-sm font-medium">Correo Electrónico</Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="nombre@jiro.mx"
+                    placeholder="tu@correo.com"
+                    className="h-11"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Contraseña</Label>
+                  <Label htmlFor="password" className="text-sm font-medium">Contraseña</Label>
                   <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    placeholder="••••••••"
+                    placeholder="Ingresa tu contraseña"
+                    className="h-11"
                   />
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="remember"
-                    checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  />
-                  <Label
-                    htmlFor="remember"
-                    className="text-sm font-normal text-neutral-700 cursor-pointer select-none"
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="remember"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                    />
+                    <Label
+                      htmlFor="remember"
+                      className="text-sm font-normal text-neutral-600 cursor-pointer select-none"
+                    >
+                      Recordarme
+                    </Label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                   >
-                    Recordar en este dispositivo
-                  </Label>
+                    ¿Olvidaste tu contraseña?
+                  </button>
                 </div>
 
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full"
+                  className="w-full h-11 text-base font-medium"
                   size="lg"
                 >
-                  {loading ? 'Ingresando...' : 'Iniciar Sesión'}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setShowForgotPassword(true)}
-                  className="w-full"
-                >
-                  ¿Olvidaste tu contraseña?
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Iniciando sesión...
+                    </span>
+                  ) : (
+                    'Iniciar Sesión'
+                  )}
                 </Button>
               </form>
             ) : (
               <form onSubmit={handlePasswordReset} className="space-y-5">
                 {error && (
-                  <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-xl text-sm">
-                    {error}
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                    <span className="text-red-500 mt-0.5">⚠️</span>
+                    <span>{error}</span>
                   </div>
                 )}
 
                 {success && (
-                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">
-                    {success}
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                    <span className="text-green-500 mt-0.5">✓</span>
+                    <span>{success}</span>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="resetEmail">E-Mail Laboral</Label>
+                  <Label htmlFor="resetEmail" className="text-sm font-medium">Correo Electrónico</Label>
                   <Input
                     id="resetEmail"
                     type="email"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     required
-                    placeholder="nombre@empresa.com"
+                    placeholder="tu@correo.com"
+                    className="h-11"
                   />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Te enviaremos un enlace para restablecer tu contraseña
+                  </p>
                 </div>
 
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full"
+                  className="w-full h-11 text-base font-medium"
                   size="lg"
                 >
-                  {loading ? 'Enviando...' : 'Enviar Instrucciones'}
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Enviando...
+                    </span>
+                  ) : (
+                    'Enviar Enlace de Recuperación'
+                  )}
                 </Button>
 
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
                   onClick={() => {
                     setShowForgotPassword(false);
                     setError('');
                     setSuccess('');
                   }}
-                  className="w-full"
+                  className="w-full text-sm text-neutral-600 hover:text-neutral-800 font-medium py-2"
                 >
-                  Volver al inicio de sesión
-                </Button>
+                  ← Volver al inicio de sesión
+                </button>
               </form>
             )}
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-neutral-500 mt-6">
-          MOVI Digital
+        <p className="text-center text-sm text-neutral-400 mt-8">
+          <span className="font-medium text-neutral-600">MOVI Digital</span>
+          <br />
+          <span className="text-xs">Tu plataforma integral de seguros</span>
         </p>
         </div>
       </div>
