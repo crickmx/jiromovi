@@ -17,6 +17,7 @@ import CalendarioEventos from '../components/CalendarioEventos';
 import { UltimoComunicado } from '../components/UltimoComunicado';
 import { getMiPaginaWebFull } from '../lib/webUrlUtils';
 import { getOfficeLogo } from '../lib/logoUtils';
+import MoviPreloader from '../components/MoviPreloader';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -300,23 +301,31 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-primary-600">
-              Hola, {currentUser?.nombre}
-            </h1>
-            <p className="text-sm text-gray-600 mt-0.5 font-semibold">
-              {officeName}
-            </p>
+    <>
+      <MoviPreloader
+        isOpen={loading}
+        userName={currentUser?.nombre || 'Usuario'}
+        subtitle="Preparando tu Dashboard…"
+        logoIconUrl="/logojiro.png"
+        minDurationMs={600}
+      />
+      <div className="space-y-3">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-primary-600">
+                Hola, {currentUser?.nombre}
+              </h1>
+              <p className="text-sm text-gray-600 mt-0.5 font-semibold">
+                {officeName}
+              </p>
+            </div>
+            <img
+              src={officeLogo}
+              alt="Logo oficina"
+              className="h-12 w-auto object-contain"
+            />
           </div>
-          <img
-            src={officeLogo}
-            alt="Logo oficina"
-            className="h-12 w-auto object-contain"
-          />
-        </div>
 
         <div className="flex flex-wrap gap-2 mt-4">
           {currentUser?.web_slug ? (
@@ -591,5 +600,6 @@ export function Dashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }
