@@ -96,6 +96,7 @@ export default {
         'slide-out-left': 'slideOutLeft 0.2s cubic-bezier(0.32, 0.72, 0, 1)',
         'scale-in': 'scaleIn 0.2s cubic-bezier(0.32, 0.72, 0, 1)',
         'bounce-subtle': 'bounceSubtle 0.4s ease-out',
+        'shimmer': 'shimmer 2s infinite',
       },
       transitionTimingFunction: {
         'ios': 'cubic-bezier(0.32, 0.72, 0, 1)',
@@ -137,6 +138,10 @@ export default {
         bounceSubtle: {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.02)' },
+        },
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
         },
       },
     },
