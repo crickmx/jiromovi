@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Globe2, Database, Link as LinkIcon, FolderOpen } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
+import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
 import { AssistantModal } from './AssistantModal';
 import InstallAppButton from './InstallAppButton';
@@ -140,10 +141,10 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     };
 
     return (
-      <div className="flex flex-col h-full bg-white">
+      <div className="flex flex-col h-full bg-white dark:bg-slate-900">
         {/* Header */}
         <div className={cn(
-          "flex items-center border-b border-neutral-200 transition-all duration-250 ease-ios-smooth",
+          "flex items-center border-b border-neutral-200 dark:border-white/10 transition-all duration-250 ease-ios-smooth",
           isCollapsed ? "justify-center px-2 py-4" : "justify-between px-6 py-6"
         )}>
           <button
@@ -189,8 +190,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                     isCollapsed ? "justify-center px-2 py-3" : "justify-start px-4 py-3",
                     "h-auto active:scale-95",
                     isActive
-                      ? "bg-primary-500 text-white hover:bg-primary-600 shadow-ios"
-                      : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+                      ? "bg-primary-500 text-white hover:bg-primary-600 shadow-ios dark:bg-primary-600 dark:hover:bg-primary-700"
+                      : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 dark:text-white/80 dark:hover:bg-white/10 dark:hover:text-white"
                   )}
                   onClick={() => handleNavClick(item.path)}
                   title={isCollapsed ? item.label : undefined}
@@ -212,13 +213,13 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
 
         {/* Footer */}
         <div className={cn(
-          "border-t border-neutral-200 bg-neutral-50/50 transition-all duration-250 ease-ios-smooth",
+          "border-t border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-white/5 transition-all duration-250 ease-ios-smooth",
           isCollapsed ? "p-2" : "p-4"
         )}>
           <Button
             variant="ghost"
             className={cn(
-              "w-full h-auto mb-2 hover:bg-white transition-all duration-250 ease-ios-smooth active:scale-95",
+              "w-full h-auto mb-2 hover:bg-white dark:hover:bg-white/10 transition-all duration-250 ease-ios-smooth active:scale-95",
               isCollapsed ? "justify-center p-2" : "justify-start p-3"
             )}
             onClick={() => {
@@ -239,12 +240,12 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             {!isCollapsed && (
               <>
                 <div className="flex-1 text-left min-w-0 transition-opacity duration-200 ease-ios-smooth">
-                  <p className="text-sm font-semibold text-neutral-900 truncate">
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">
                     {usuario?.nombre} {usuario?.apellidos}
                   </p>
-                  <p className="text-xs text-neutral-500 truncate">{usuario?.rol}</p>
+                  <p className="text-xs text-neutral-500 dark:text-white/60 truncate">{usuario?.rol}</p>
                 </div>
-                <User className="w-4 h-4 text-neutral-400 flex-shrink-0 transition-all duration-250 ease-ios-smooth" />
+                <User className="w-4 h-4 text-neutral-400 dark:text-white/40 flex-shrink-0 transition-all duration-250 ease-ios-smooth" />
               </>
             )}
           </Button>
@@ -276,11 +277,11 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50 dark:bg-slate-950">
       {/* Desktop Sidebar - Always visible, can be collapsed */}
       <aside
         className={cn(
-          "hidden lg:flex fixed inset-y-0 left-0 z-40 border-r border-neutral-200 bg-white shadow-sm transition-all duration-250 ease-ios-smooth",
+          "hidden lg:flex fixed inset-y-0 left-0 z-40 border-r border-neutral-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-sm transition-all duration-250 ease-ios-smooth",
           desktopSidebarCollapsed ? "w-[72px]" : "w-[280px]"
         )}
       >
@@ -291,14 +292,14 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           <button
             onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
             className={cn(
-              "absolute top-[88px] -right-3 z-50 w-6 h-6 rounded-full bg-white border-2 border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition-all duration-250 ease-ios-smooth shadow-sm",
+              "absolute top-[88px] -right-3 z-50 w-6 h-6 rounded-full bg-white dark:bg-slate-800 border-2 border-neutral-200 dark:border-white/10 flex items-center justify-center hover:bg-neutral-50 dark:hover:bg-slate-700 transition-all duration-250 ease-ios-smooth shadow-sm",
               "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2",
               "active:scale-95"
             )}
             aria-label={desktopSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
             <ChevronLeft className={cn(
-              "w-4 h-4 text-neutral-600 transition-transform duration-250 ease-ios-smooth",
+              "w-4 h-4 text-neutral-600 dark:text-white/70 transition-transform duration-250 ease-ios-smooth",
               desktopSidebarCollapsed && "rotate-180"
             )} />
           </button>
@@ -324,11 +325,11 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
         {!hideHeader && (
           <>
             {/* Mobile header */}
-            <header className="lg:hidden bg-white/95 backdrop-blur-sm border-b border-neutral-200 sticky top-0 z-30 shadow-sm">
+            <header className="lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-neutral-200 dark:border-white/10 sticky top-0 z-30 shadow-sm">
               <div className="flex items-center justify-between px-4 py-4">
                 <button
                   onClick={() => setSidebarOpen(true)}
-                  className="mr-2 p-2 text-neutral-700 hover:text-neutral-900 transition-colors active:scale-95"
+                  className="mr-2 p-2 text-neutral-700 dark:text-white/80 hover:text-neutral-900 dark:hover:text-white transition-colors active:scale-95"
                   aria-label="Abrir menú"
                 >
                   <Menu className="w-6 h-6" />
@@ -340,15 +341,17 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                 />
                 <div className="flex items-center gap-2">
                   <InstallAppButton variant="ghost" size="sm" showText={false} />
+                  <ThemeToggle />
                   <NotificationBell />
                 </div>
               </div>
             </header>
 
             {/* Desktop header */}
-            <header className="hidden lg:flex bg-white/95 backdrop-blur-sm border-b border-neutral-200 sticky top-0 z-30 shadow-sm">
+            <header className="hidden lg:flex bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-neutral-200 dark:border-white/10 sticky top-0 z-30 shadow-sm">
               <div className="w-full px-6 lg:px-8 py-4 flex items-center justify-end gap-3">
                 <InstallAppButton variant="outline" size="sm" />
+                <ThemeToggle />
                 <NotificationBell />
               </div>
             </header>
