@@ -26,29 +26,35 @@ export async function getUserWelcomeContext(userId: string): Promise<UserWelcome
     console.log('📊 Recopilando contexto para usuario:', userId);
 
     // Información básica del usuario
-    const { data: usuario } = await supabase
+    const { data: usuario, error: usuarioError } = await supabase
       .from('usuarios')
       .select(`
-        nombre,
+        nombre_completo,
         rol,
-        ultimo_acceso,
+        updated_at,
+        oficina_id,
         oficinas(nombre)
       `)
       .eq('id', userId)
       .maybeSingle();
+
+    if (usuarioError) {
+      console.error('❌ Error consultando usuario:', usuarioError);
+      throw new Error('Error consultando usuario: ' + usuarioError.message);
+    }
 
     if (!usuario) {
       console.error('❌ Usuario no encontrado');
       throw new Error('Usuario no encontrado');
     }
 
-    console.log('👤 Usuario encontrado:', usuario.nombre, '-', usuario.rol);
+    console.log('👤 Usuario encontrado:', usuario.nombre_completo, '-', usuario.rol);
 
     const context: UserWelcomeContext = {
-      nombre: usuario.nombre || 'Usuario',
+      nombre: usuario.nombre_completo || 'Usuario',
       rol: usuario.rol || 'Agente',
       oficina: usuario.oficinas?.nombre,
-      ultimo_acceso: usuario.ultimo_acceso,
+      ultimo_acceso: usuario.updated_at,
     };
 
     // Ejecutar todas las consultas en paralelo para mayor eficiencia
@@ -284,9 +290,13 @@ async function getComisionesData(userId: string) {
 /**
  * Genera un mensaje de bienvenida personalizado usando ChatGPT
  */
-export async function generateWelcomeMessage(context: UserWelcomeContext): Promise<string> {
+export async function generateWelcomeMessage(
+  context: UserWelcomeContext,
+  forceRegenerate: boolean = false
+): Promise<string> {
   try {
     console.log('🎯 Iniciando generación de mensaje de bienvenida...');
+    console.log('🔄 Force regenerate:', forceRegenerate);
 
     const { data: { session } } = await supabase.auth.getSession();
 
@@ -308,11 +318,17 @@ export async function generateWelcomeMessage(context: UserWelcomeContext): Promi
       }
     });
 
+    // Agregar timestamp único para forzar variación en cada llamada
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 15);
+
     console.log('📦 Contexto enviado:', {
       nombre: contextData.nombre,
       rol: contextData.rol,
       keys: Object.keys(contextData),
-      fullContext: contextData,
+      timestamp,
+      randomId,
+      forceRegenerate,
     });
 
     console.log('🔑 Enviando petición a Edge Function...');
@@ -326,6 +342,8 @@ export async function generateWelcomeMessage(context: UserWelcomeContext): Promi
       },
       body: JSON.stringify({
         context: contextData,
+        force_regenerate: forceRegenerate,
+        timestamp,
       }),
     });
 
@@ -341,7 +359,12 @@ export async function generateWelcomeMessage(context: UserWelcomeContext): Promi
     }
 
     const data = await response.json();
-    console.log('📦 Response data:', data);
+    console.log('📦 Response data:', {
+      success: data.success,
+      message_length: data.message?.length,
+      request_id: data.request_id,
+      tokens_used: data.tokens_used,
+    });
 
     if (!data.success) {
       console.error('❌ Edge Function reportó error:', data.error);
@@ -353,7 +376,10 @@ export async function generateWelcomeMessage(context: UserWelcomeContext): Promi
       throw new Error('Mensaje vacío');
     }
 
-    console.log('✅ Mensaje generado exitosamente:', data.message);
+    console.log('✅ Mensaje generado exitosamente');
+    console.log('📝 Mensaje:', data.message);
+    console.log('🆔 Request ID:', data.request_id);
+    console.log('🔢 Tokens usados:', data.tokens_used);
 
     return data.message;
   } catch (error: any) {
