@@ -5,7 +5,6 @@ import { TrendingUp, FileText, Building, Download, AlertCircle, ChevronDown, Che
 import * as XLSX from 'xlsx';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
-import GraficaLinea from '../components/produccion/GraficaLinea';
 import FiltrosProduccionAgente from '../components/produccion/FiltrosProduccionAgente';
 
 interface ProductionFilters {
@@ -549,7 +548,7 @@ export default function MiProduccion() {
             Análisis de Producción
           </h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <GraficaColumnas
               data={charts.produccion_por_ramo.map(d => ({ label: d.ramo, value: d.total }))}
               title="Producción por Ramo"
@@ -563,17 +562,6 @@ export default function MiProduccion() {
               size={220}
             />
           </div>
-
-          {charts.evolucion_temporal.length > 1 && (
-            <div>
-              <GraficaLinea
-                data={charts.evolucion_temporal.map(d => ({ label: d.mes, value: d.total }))}
-                title="Evolución Temporal"
-                valueFormatter={formatCurrency}
-                height={280}
-              />
-            </div>
-          )}
         </div>
       )}
 
