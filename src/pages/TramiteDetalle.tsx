@@ -7,6 +7,7 @@ import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
+import { ComisionesPendientes } from '../components/tramites/ComisionesPendientes';
 
 interface TramiteEstatus {
   id: string;
@@ -22,6 +23,7 @@ interface Usuario {
 interface TramiteData {
   id: string;
   folio: string;
+  tipo_tramite: string;
   prioridad: 'Alta' | 'Media' | 'Baja';
   poliza: string | null;
   instrucciones: string;
@@ -42,7 +44,7 @@ export function TramiteDetalle() {
 
   const [tramite, setTramite] = useState<TramiteData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'detalles' | 'comentarios' | 'archivos' | 'historial'>('detalles');
+  const [activeTab, setActiveTab] = useState<'detalles' | 'comentarios' | 'archivos' | 'historial' | 'comisiones'>('detalles');
 
   const [editing, setEditing] = useState(false);
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
@@ -358,6 +360,18 @@ export function TramiteDetalle() {
               {tab}
             </button>
           ))}
+          {tramite.tipo_tramite === 'solicitud_comisiones_pendientes' && (
+            <button
+              onClick={() => setActiveTab('comisiones')}
+              className={`px-6 py-3 font-semibold transition-all capitalize ${
+                activeTab === 'comisiones'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              comisiones
+            </button>
+          )}
         </div>
       </div>
 
@@ -376,6 +390,7 @@ export function TramiteDetalle() {
         {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} />}
         {activeTab === 'archivos' && <TramiteArchivos tramiteId={tramite.id} />}
         {activeTab === 'historial' && <TramiteHistorial tramiteId={tramite.id} />}
+        {activeTab === 'comisiones' && <ComisionesPendientes tramiteId={tramite.id} />}
       </div>
     </div>
   );

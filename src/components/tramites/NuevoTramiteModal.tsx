@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2 } from 'lucide-react';
+import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
@@ -46,6 +46,14 @@ interface PolizaFile {
   claveAgente: string;
 }
 
+interface ComisionPendiente {
+  id: string;
+  numeroPoliza: string;
+  aseguradora: string;
+  fechaPago: string;
+  archivo: File | null;
+}
+
 interface NuevoTramiteModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -89,6 +97,10 @@ export function NuevoTramiteModal({
     { id: '1', file: null, aseguradora: '', claveAgente: '' }
   ]);
 
+  const [comisionesPendientes, setComisionesPendientes] = useState<ComisionPendiente[]>([
+    { id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }
+  ]);
+
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
 
@@ -124,7 +136,7 @@ export function NuevoTramiteModal({
   }, [loteSeleccionado]);
 
   useEffect(() => {
-    if (tipoTramite === 'registro_poliza') {
+    if (tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes') {
       loadAseguradoras();
     }
   }, [tipoTramite]);
@@ -149,6 +161,7 @@ export function NuevoTramiteModal({
     setLoteSeleccionado('');
     setDocumentoSeleccionado('');
     setPolizaFiles([{ id: '1', file: null, aseguradora: '', claveAgente: '' }]);
+    setComisionesPendientes([{ id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }]);
     setError('');
   };
 
@@ -247,6 +260,33 @@ export function NuevoTramiteModal({
     ));
   };
 
+  const addComisionPendiente = () => {
+    if (comisionesPendientes.length >= 10) {
+      setError('Máximo 10 comisiones pendientes permitidas');
+      return;
+    }
+
+    setComisionesPendientes(prev => [
+      ...prev,
+      { id: Date.now().toString(), numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }
+    ]);
+    setError('');
+  };
+
+  const removeComisionPendiente = (id: string) => {
+    if (comisionesPendientes.length === 1) {
+      setError('Debe haber al menos una comisión pendiente');
+      return;
+    }
+    setComisionesPendientes(prev => prev.filter(c => c.id !== id));
+  };
+
+  const updateComisionPendiente = (id: string, field: keyof ComisionPendiente, value: any) => {
+    setComisionesPendientes(prev => prev.map(c =>
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
   const validateForm = (): boolean => {
     if (!descripcion.trim()) {
       setError('La descripción es obligatoria');
@@ -286,6 +326,13 @@ export function NuevoTramiteModal({
           setError('Todos los archivos deben tener una clave de agente válida (alfanumérica)');
           return false;
         }
+      }
+    }
+
+    if (tipoTramite === 'solicitud_comisiones_pendientes') {
+      if (comisionesPendientes.length === 0) {
+        setError('Debe agregar al menos 1 comisión pendiente');
+        return false;
       }
     }
 
@@ -344,7 +391,80 @@ export function NuevoTramiteModal({
       if (ticketError) throw ticketError;
 
       // Procesar archivos según el tipo de trámite
-      if (tipoTramite === 'registro_poliza') {
+      if (tipoTramite === 'solicitud_comisiones_pendientes') {
+        // Guardar comisiones pendientes
+        for (let i = 0; i < comisionesPendientes.length; i++) {
+          const comision = comisionesPendientes[i];
+
+          // Insertar comisión pendiente
+          const { error: comisionError } = await supabase
+            .from('ticket_comisiones_pendientes')
+            .insert({
+              ticket_id: ticket.id,
+              numero_poliza: comision.numeroPoliza.trim() || null,
+              aseguradora: comision.aseguradora || null,
+              fecha_pago: comision.fechaPago || null,
+              orden: i + 1
+            });
+
+          if (comisionError) throw comisionError;
+
+          // Si hay archivo adjunto, subirlo
+          if (comision.archivo) {
+            const fileExt = comision.archivo.name.split('.').pop();
+            const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('ticket-archivos')
+              .upload(fileName, comision.archivo);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('ticket-archivos')
+              .getPublicUrl(fileName);
+
+            // Guardar registro del archivo
+            const { error: archivoError } = await supabase
+              .from('ticket_archivos')
+              .insert({
+                ticket_id: ticket.id,
+                usuario_id: usuario.id,
+                nombre: comision.archivo.name,
+                url: publicUrl,
+                tipo: comision.archivo.type,
+                tamano: comision.archivo.size
+              });
+
+            if (archivoError) throw archivoError;
+          }
+
+          // Crear comentario con información de la comisión
+          let comentarioTexto = `💰 Comisión pendiente #${i + 1}:`;
+          if (comision.numeroPoliza) {
+            comentarioTexto += `\n• Póliza: ${comision.numeroPoliza}`;
+          }
+          if (comision.aseguradora) {
+            comentarioTexto += `\n• Aseguradora: ${comision.aseguradora}`;
+          }
+          if (comision.fechaPago) {
+            comentarioTexto += `\n• Fecha de pago: ${new Date(comision.fechaPago).toLocaleDateString('es-MX')}`;
+          }
+          if (comision.archivo) {
+            comentarioTexto += `\n• Archivo: ${comision.archivo.name}`;
+          }
+
+          const { error: comentarioError } = await supabase
+            .from('ticket_comentarios')
+            .insert({
+              ticket_id: ticket.id,
+              usuario_id: usuario.id,
+              mensaje: comentarioTexto
+            });
+
+          if (comentarioError) throw comentarioError;
+        }
+      } else if (tipoTramite === 'registro_poliza') {
         const filesWithData = polizaFiles.filter(f => f.file !== null);
 
         for (const pf of filesWithData) {
@@ -442,6 +562,8 @@ export function NuevoTramiteModal({
         return 'Corrección de comisiones';
       case 'registro_poliza':
         return 'Registro de póliza';
+      case 'solicitud_comisiones_pendientes':
+        return 'Solicitud de comisiones pendientes';
       default:
         return tipo;
     }
@@ -475,6 +597,7 @@ export function NuevoTramiteModal({
             <option value="correccion_poliza_registrada">Corrección de póliza registrada</option>
             <option value="correccion_comisiones">Corrección de comisiones</option>
             <option value="registro_poliza">Registro de póliza</option>
+            <option value="solicitud_comisiones_pendientes">Solicitud de comisiones pendientes</option>
           </select>
           <p className="text-xs text-neutral-500 mt-1">
             {getTipoLabel(tipoTramite)}
@@ -683,6 +806,120 @@ export function NuevoTramiteModal({
           </div>
         )}
 
+        {tipoTramite === 'solicitud_comisiones_pendientes' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-semibold text-neutral-900">
+                Comisiones Pendientes
+              </label>
+              <span className="text-xs text-neutral-500">
+                {comisionesPendientes.length} de 10 comisiones
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {comisionesPendientes.map((comision, index) => (
+                <div key={comision.id} className="border border-neutral-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-neutral-700">
+                      Comisión #{index + 1}
+                    </span>
+                    {comisionesPendientes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeComisionPendiente(comision.id)}
+                        className="text-red-600 hover:text-red-700 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        <FileText className="w-4 h-4 inline mr-1" />
+                        Número de Póliza
+                      </label>
+                      <input
+                        type="text"
+                        value={comision.numeroPoliza}
+                        onChange={(e) => updateComisionPendiente(comision.id, 'numeroPoliza', e.target.value)}
+                        placeholder="Ej: 12345678"
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        <Building2 className="w-4 h-4 inline mr-1" />
+                        Aseguradora
+                      </label>
+                      <select
+                        value={comision.aseguradora}
+                        onChange={(e) => updateComisionPendiente(comision.id, 'aseguradora', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value="">Selecciona...</option>
+                        {aseguradoras.map(aseg => (
+                          <option key={aseg.nombre} value={aseg.nombre}>
+                            {aseg.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        <Calendar className="w-4 h-4 inline mr-1" />
+                        Fecha de Pago
+                      </label>
+                      <input
+                        type="date"
+                        value={comision.fechaPago}
+                        onChange={(e) => updateComisionPendiente(comision.id, 'fechaPago', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Archivo Adjunto
+                      </label>
+                      <input
+                        type="file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          updateComisionPendiente(comision.id, 'archivo', file);
+                        }}
+                        className="w-full text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                      />
+                      {comision.archivo && (
+                        <p className="text-xs text-green-600 mt-1">
+                          ✓ {comision.archivo.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {comisionesPendientes.length < 10 && (
+              <button
+                type="button"
+                onClick={addComisionPendiente}
+                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-primary-500 hover:text-primary-600 transition-all flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Añadir otra comisión pendiente
+              </button>
+            )}
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-semibold text-neutral-900 mb-2">
             Descripción / Notas *
@@ -696,7 +933,7 @@ export function NuevoTramiteModal({
           />
         </div>
 
-        {tipoTramite !== 'registro_poliza' && (
+        {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <Upload className="w-4 h-4 inline mr-2" />
