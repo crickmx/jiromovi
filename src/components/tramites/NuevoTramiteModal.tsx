@@ -80,7 +80,7 @@ export function NuevoTramiteModal({
   const [tipoTramite, setTipoTramite] = useState<string>('correccion_poliza_registrada');
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
   const [asignado, setAsignado] = useState<string>('');
-  const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
+  const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Baja');
   const [descripcion, setDescripcion] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
 
@@ -154,7 +154,7 @@ export function NuevoTramiteModal({
       setAsignado('');
     }
 
-    setPrioridad('Media');
+    setPrioridad('Baja');
     setDescripcion('');
     setArchivos([]);
     setPolizaNumero('');
@@ -620,20 +620,22 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-semibold text-neutral-900 mb-2">
-            Prioridad
-          </label>
-          <select
-            value={prioridad}
-            onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="Baja">Baja</option>
-            <option value="Media">Media</option>
-            <option value="Alta">Alta</option>
-          </select>
-        </div>
+        {!isAgent && (
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">
+              Prioridad
+            </label>
+            <select
+              value={prioridad}
+              onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="Baja">Baja</option>
+              <option value="Media">Media</option>
+              <option value="Alta">Alta</option>
+            </select>
+          </div>
+        )}
 
         {tipoTramite === 'correccion_poliza_registrada' && (
           <div>
