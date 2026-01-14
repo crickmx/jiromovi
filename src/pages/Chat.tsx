@@ -77,11 +77,13 @@ export function Chat() {
     console.log('[Chat] Cargando chats del usuario:', usuario.id);
 
     try {
-      // Obtener chats donde el usuario es miembro
+      // Obtener chats donde el usuario es miembro (excluir eliminados y ocultos)
       const { data: miembros, error: miembrosError } = await supabase
         .from('chat_miembros')
         .select('chat_id')
-        .eq('usuario_id', usuario.id);
+        .eq('usuario_id', usuario.id)
+        .eq('eliminado', false)
+        .eq('oculto', false);
 
       if (miembrosError) {
         console.error('[Chat] Error cargando membresías:', miembrosError);
