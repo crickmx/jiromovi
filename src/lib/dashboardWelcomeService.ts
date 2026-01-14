@@ -23,6 +23,8 @@ export interface UserWelcomeContext {
  */
 export async function getUserWelcomeContext(userId: string): Promise<UserWelcomeContext> {
   try {
+    console.log('📊 Recopilando contexto para usuario:', userId);
+
     // Información básica del usuario
     const { data: usuario } = await supabase
       .from('usuarios')
@@ -36,8 +38,11 @@ export async function getUserWelcomeContext(userId: string): Promise<UserWelcome
       .maybeSingle();
 
     if (!usuario) {
+      console.error('❌ Usuario no encontrado');
       throw new Error('Usuario no encontrado');
     }
+
+    console.log('👤 Usuario encontrado:', usuario.nombre, '-', usuario.rol);
 
     const context: UserWelcomeContext = {
       nombre: usuario.nombre || 'Usuario',
@@ -86,9 +91,20 @@ export async function getUserWelcomeContext(userId: string): Promise<UserWelcome
       Object.assign(context, comisionesData.value);
     }
 
+    console.log('✅ Contexto recopilado:', {
+      nombre: context.nombre,
+      rol: context.rol,
+      oficina: context.oficina,
+      tareas_pendientes: context.tareas_pendientes,
+      cotizaciones_activas: context.cotizaciones_activas,
+      produccion_mes_actual: context.produccion_mes_actual,
+      comisiones_mes_actual: context.comisiones_mes_actual,
+      keys: Object.keys(context).length,
+    });
+
     return context;
   } catch (error) {
-    console.error('Error obteniendo contexto del usuario:', error);
+    console.error('❌ Error obteniendo contexto del usuario:', error);
     throw error;
   }
 }
@@ -270,14 +286,19 @@ async function getComisionesData(userId: string) {
  */
 export async function generateWelcomeMessage(context: UserWelcomeContext): Promise<string> {
   try {
+    console.log('🎯 Iniciando generación de mensaje de bienvenida...');
+
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
+      console.error('❌ No hay sesión activa');
       throw new Error('No active session');
     }
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const apiUrl = `${supabaseUrl}/functions/v1/generate-welcome-message`;
+
+    console.log('📍 API URL:', apiUrl);
 
     // Preparar el contexto limpio (solo datos que existen)
     const contextData: Record<string, any> = {};
@@ -285,6 +306,12 @@ export async function generateWelcomeMessage(context: UserWelcomeContext): Promi
       if (value !== undefined && value !== null) {
         contextData[key] = value;
       }
+    });
+
+    console.log('📦 Contexto enviado:', {
+      nombre: contextData.nombre,
+      rol: contextData.rol,
+      keys: Object.keys(contextData),
     });
 
     const response = await fetch(apiUrl, {
@@ -298,14 +325,21 @@ export async function generateWelcomeMessage(context: UserWelcomeContext): Promi
       }),
     });
 
+    console.log('📡 Response status:', response.status);
+
     if (!response.ok) {
-      throw new Error('Error al generar mensaje');
+      const errorText = await response.text();
+      console.error('❌ Error response:', errorText);
+      throw new Error(`Error al generar mensaje: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('✅ Mensaje generado exitosamente:', data.message?.substring(0, 50) + '...');
+
     return data.message || getFallbackMessage(context);
-  } catch (error) {
-    console.error('Error generando mensaje de bienvenida:', error);
+  } catch (error: any) {
+    console.error('❌ Error generando mensaje de bienvenida:', error);
+    console.error('Stack:', error.stack);
     return getFallbackMessage(context);
   }
 }

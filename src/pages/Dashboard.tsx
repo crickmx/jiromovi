@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   Users, Building2, Cake, Award, ExternalLink, Sparkles, TrendingUp,
   Settings, DollarSign, Receipt, ClipboardList, Image, UserPlus,
-  MessageSquare, FileText, Package, Clock
+  MessageSquare, FileText, Package, Clock, RefreshCw
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
@@ -74,16 +74,23 @@ export function Dashboard() {
 
   const loadWelcomeMessage = async (userId: string) => {
     try {
+      console.log('🚀 Iniciando carga de mensaje de bienvenida...');
       setLoadingWelcomeMessage(true);
+
       const context = await getUserWelcomeContext(userId);
+      console.log('📦 Contexto obtenido, generando mensaje...');
+
       const message = await generateWelcomeMessage(context);
+      console.log('✅ Mensaje recibido:', message);
+
       setWelcomeMessage(message);
     } catch (error) {
-      console.error('Error cargando mensaje de bienvenida:', error);
-      // El servicio ya maneja el fallback
+      console.error('❌ Error cargando mensaje de bienvenida:', error);
+      // El servicio ya maneja el fallback, pero agregamos uno adicional por seguridad
       setWelcomeMessage('Bienvenido a tu plataforma digital. Todo lo que necesitas está a un clic de distancia.');
     } finally {
       setLoadingWelcomeMessage(false);
+      console.log('🏁 Carga de mensaje finalizada');
     }
   };
 
@@ -252,14 +259,24 @@ export function Dashboard() {
           {/* Mensaje de bienvenida personalizado */}
           {loadingWelcomeMessage ? (
             <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-              <Sparkles className="w-4 h-4 animate-pulse" />
+              <Sparkles className="w-4 h-4 animate-pulse text-primary-500" />
               <span className="italic">Preparando tu mensaje personalizado...</span>
             </div>
           ) : welcomeMessage && (
-            <div className="mb-4 p-3 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
-              <p className="text-sm text-gray-700 leading-relaxed">
-                {welcomeMessage}
-              </p>
+            <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100 relative group">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                  {welcomeMessage}
+                </p>
+                <button
+                  onClick={() => currentUser?.id && loadWelcomeMessage(currentUser.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white rounded-md"
+                  title="Generar nuevo mensaje"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-gray-400 hover:text-primary-600" />
+                </button>
+              </div>
             </div>
           )}
 
@@ -375,14 +392,24 @@ export function Dashboard() {
           {/* Mensaje de bienvenida personalizado */}
           {loadingWelcomeMessage ? (
             <div className="flex items-center gap-2 text-sm text-gray-500 mt-4">
-              <Sparkles className="w-4 h-4 animate-pulse" />
+              <Sparkles className="w-4 h-4 animate-pulse text-primary-500" />
               <span className="italic">Preparando tu mensaje personalizado...</span>
             </div>
           ) : welcomeMessage && (
-            <div className="mt-4 p-3 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
-              <p className="text-sm text-gray-700 leading-relaxed">
-                {welcomeMessage}
-              </p>
+            <div className="mt-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100 relative group">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                  {welcomeMessage}
+                </p>
+                <button
+                  onClick={() => currentUser?.id && loadWelcomeMessage(currentUser.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white rounded-md"
+                  title="Generar nuevo mensaje"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-gray-400 hover:text-primary-600" />
+                </button>
+              </div>
             </div>
           )}
 

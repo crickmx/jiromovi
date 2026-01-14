@@ -103,7 +103,7 @@ Genera SOLO el mensaje, sin explicaciones adicionales.`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: messages,
-        temperature: 0.8, // Mayor temperatura para más variación
+        temperature: 0.8,
         max_tokens: 150,
       }),
     });
