@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, FileSpreadsheet, DollarSign, Users, AlertCircle, Edit2, XCircle, CheckCircle, Wrench, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, DollarSign, Users, AlertCircle, XCircle, CheckCircle, Wrench, Download, Loader2 } from 'lucide-react';
 import type { CommissionBatch, CommissionDetail, CommissionError } from '../lib/commissionTypes';
 import { calculateBatchSummary, calculateAgentSummaries, formatCurrency, formatDate } from '../lib/commissionUtils';
-import AjustarComisionModal from '../components/comisiones/AjustarComisionModal';
 import { generateOrdenDePagoPDF, downloadPDF } from '../lib/pdfUtils';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
@@ -20,7 +19,6 @@ export default function ComisionesLote() {
   const [errors, setErrors] = useState<CommissionError[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumen' | 'agentes' | 'polizas' | 'errores'>('resumen');
-  const [adjustingDetail, setAdjustingDetail] = useState<CommissionDetail | null>(null);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
   const [recalculating, setRecalculating] = useState(false);
 
@@ -701,7 +699,6 @@ export default function ComisionesLote() {
                   <th className="text-left py-3 px-3 font-semibold text-neutral-700">Ramo / Aseg.</th>
                   <th className="text-right py-3 px-3 font-semibold text-neutral-700">Prima Neta</th>
                   <th className="text-right py-3 px-3 font-semibold text-neutral-700">% / Comisión</th>
-                  <th className="text-center py-3 px-3 font-semibold text-neutral-700">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -737,15 +734,6 @@ export default function ComisionesLote() {
                         <div className="font-bold text-green-700">{formatCurrency(commission || 0)}</div>
                         <div className="text-xs text-neutral-600">{detail.porcentaje_comision.toFixed(2)}%</div>
                       </td>
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          onClick={() => setAdjustingDetail(detail)}
-                          className="inline-flex items-center justify-center p-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors"
-                          title="Ajustar comisión"
-                        >
-                          <Wrench className="w-4 h-4" />
-                        </button>
-                      </td>
                     </tr>
                   );
                 })}
@@ -761,7 +749,7 @@ export default function ComisionesLote() {
 
               return (
                 <div key={detail.id} className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="mb-3">
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-neutral-900 mb-1 break-words">{detail.poliza}</div>
                       {detail.is_manual_adjusted && (
@@ -774,13 +762,6 @@ export default function ComisionesLote() {
                         <div className="text-xs text-neutral-500 mt-1 break-words">{detail.concepto}</div>
                       )}
                     </div>
-                    <button
-                      onClick={() => setAdjustingDetail(detail)}
-                      className="flex items-center space-x-1 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm font-medium ml-2 flex-shrink-0"
-                    >
-                      <Wrench className="w-4 h-4" />
-                      <span>Ajustar</span>
-                    </button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-neutral-200">
@@ -863,17 +844,6 @@ export default function ComisionesLote() {
             ))}
           </div>
         </div>
-      )}
-
-      {adjustingDetail && (
-        <AjustarComisionModal
-          detail={adjustingDetail}
-          onClose={() => setAdjustingDetail(null)}
-          onSuccess={() => {
-            loadBatch();
-            setAdjustingDetail(null);
-          }}
-        />
       )}
     </div>
   );
