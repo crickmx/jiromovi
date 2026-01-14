@@ -18,6 +18,7 @@ import { UltimoComunicado } from '../components/UltimoComunicado';
 import { getMiPaginaWebFull } from '../lib/webUrlUtils';
 import { getOfficeLogo } from '../lib/logoUtils';
 import MoviPreloader from '../components/MoviPreloader';
+import { getUserWelcomeContext, generateWelcomeMessage } from '../lib/dashboardWelcomeService';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -38,6 +39,8 @@ export function Dashboard() {
   const [customBirthdayDate, setCustomBirthdayDate] = useState('');
   const [officeLogo, setOfficeLogo] = useState<string>('/logojiro.png');
   const [officeName, setOfficeName] = useState<string>('JIRO');
+  const [welcomeMessage, setWelcomeMessage] = useState<string>('');
+  const [loadingWelcomeMessage, setLoadingWelcomeMessage] = useState(true);
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -47,6 +50,8 @@ export function Dashboard() {
       try {
         if (currentUser?.id) {
           await loadOfficeLogo();
+          // Cargar mensaje de bienvenida en paralelo
+          loadWelcomeMessage(currentUser.id);
         }
 
         if (isAdminOrGerente) {
@@ -66,6 +71,21 @@ export function Dashboard() {
 
     initializeDashboard();
   }, [birthdayFilter, customBirthdayDate, isAdminOrGerente, currentUser?.id]);
+
+  const loadWelcomeMessage = async (userId: string) => {
+    try {
+      setLoadingWelcomeMessage(true);
+      const context = await getUserWelcomeContext(userId);
+      const message = await generateWelcomeMessage(context);
+      setWelcomeMessage(message);
+    } catch (error) {
+      console.error('Error cargando mensaje de bienvenida:', error);
+      // El servicio ya maneja el fallback
+      setWelcomeMessage('Bienvenido a tu plataforma digital. Todo lo que necesitas está a un clic de distancia.');
+    } finally {
+      setLoadingWelcomeMessage(false);
+    }
+  };
 
   const loadOfficeLogo = async () => {
     if (!currentUser?.id) return;
@@ -229,6 +249,20 @@ export function Dashboard() {
             />
           </div>
 
+          {/* Mensaje de bienvenida personalizado */}
+          {loadingWelcomeMessage ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+              <Sparkles className="w-4 h-4 animate-pulse" />
+              <span className="italic">Preparando tu mensaje personalizado...</span>
+            </div>
+          ) : welcomeMessage && (
+            <div className="mb-4 p-3 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {welcomeMessage}
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
             {currentUser?.web_slug ? (
               <a
@@ -337,6 +371,20 @@ export function Dashboard() {
               className="h-12 w-auto object-contain"
             />
           </div>
+
+          {/* Mensaje de bienvenida personalizado */}
+          {loadingWelcomeMessage ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500 mt-4">
+              <Sparkles className="w-4 h-4 animate-pulse" />
+              <span className="italic">Preparando tu mensaje personalizado...</span>
+            </div>
+          ) : welcomeMessage && (
+            <div className="mt-4 p-3 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {welcomeMessage}
+              </p>
+            </div>
+          )}
 
         <div className="flex flex-wrap gap-2 mt-4">
           {currentUser?.web_slug ? (

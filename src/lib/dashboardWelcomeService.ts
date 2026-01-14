@@ -1,0 +1,335 @@
+import { supabase } from './supabase';
+
+export interface UserWelcomeContext {
+  nombre: string;
+  rol: string;
+  oficina?: string;
+  produccion_mes_actual?: number;
+  produccion_mes_anterior?: number;
+  posicion_nacional?: number;
+  posicion_oficina?: number;
+  tareas_pendientes?: number;
+  tareas_vencidas?: number;
+  cotizaciones_activas?: number;
+  eventos_proximos?: number;
+  crm_contactos_sin_seguimiento?: number;
+  ultimo_acceso?: string;
+  comisiones_mes_actual?: number;
+  comisiones_mes_anterior?: number;
+}
+
+/**
+ * Recopila el contexto completo del usuario para generar el mensaje de bienvenida
+ */
+export async function getUserWelcomeContext(userId: string): Promise<UserWelcomeContext> {
+  try {
+    // Información básica del usuario
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select(`
+        nombre,
+        rol,
+        ultimo_acceso,
+        oficinas(nombre)
+      `)
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!usuario) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    const context: UserWelcomeContext = {
+      nombre: usuario.nombre || 'Usuario',
+      rol: usuario.rol || 'Agente',
+      oficina: usuario.oficinas?.nombre,
+      ultimo_acceso: usuario.ultimo_acceso,
+    };
+
+    // Ejecutar todas las consultas en paralelo para mayor eficiencia
+    const [
+      produccionData,
+      tareasData,
+      cotizacionesData,
+      eventosData,
+      comisionesData,
+    ] = await Promise.allSettled([
+      getProduccionData(userId),
+      getTareasData(userId),
+      getCotizacionesData(userId),
+      getEventosProximos(userId),
+      getComisionesData(userId),
+    ]);
+
+    // Agregar datos de producción si están disponibles
+    if (produccionData.status === 'fulfilled' && produccionData.value) {
+      Object.assign(context, produccionData.value);
+    }
+
+    // Agregar datos de tareas si están disponibles
+    if (tareasData.status === 'fulfilled' && tareasData.value) {
+      Object.assign(context, tareasData.value);
+    }
+
+    // Agregar datos de cotizaciones si están disponibles
+    if (cotizacionesData.status === 'fulfilled' && cotizacionesData.value) {
+      Object.assign(context, cotizacionesData.value);
+    }
+
+    // Agregar eventos próximos si están disponibles
+    if (eventosData.status === 'fulfilled' && eventosData.value) {
+      Object.assign(context, eventosData.value);
+    }
+
+    // Agregar datos de comisiones si están disponibles
+    if (comisionesData.status === 'fulfilled' && comisionesData.value) {
+      Object.assign(context, comisionesData.value);
+    }
+
+    return context;
+  } catch (error) {
+    console.error('Error obteniendo contexto del usuario:', error);
+    throw error;
+  }
+}
+
+/**
+ * Obtiene datos de producción del usuario
+ */
+async function getProduccionData(userId: string) {
+  try {
+    const now = new Date();
+    const mesActual = now.getMonth() + 1;
+    const anioActual = now.getFullYear();
+    const mesAnterior = mesActual === 1 ? 12 : mesActual - 1;
+    const anioAnterior = mesActual === 1 ? anioActual - 1 : anioActual;
+
+    // Producción mes actual
+    const { data: produccionActual } = await supabase
+      .from('production_records')
+      .select('prima_neta')
+      .eq('vendor_id', userId)
+      .eq('mes', mesActual)
+      .eq('anio', anioActual);
+
+    // Producción mes anterior
+    const { data: produccionAnterior } = await supabase
+      .from('production_records')
+      .select('prima_neta')
+      .eq('vendor_id', userId)
+      .eq('mes', mesAnterior)
+      .eq('anio', anioAnterior);
+
+    const totalActual = produccionActual?.reduce((sum, p) => sum + (p.prima_neta || 0), 0) || 0;
+    const totalAnterior = produccionAnterior?.reduce((sum, p) => sum + (p.prima_neta || 0), 0) || 0;
+
+    return {
+      produccion_mes_actual: Math.round(totalActual),
+      produccion_mes_anterior: Math.round(totalAnterior),
+    };
+  } catch (error) {
+    console.error('Error obteniendo producción:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene datos de tareas del usuario
+ */
+async function getTareasData(userId: string) {
+  try {
+    const now = new Date().toISOString();
+
+    // Tareas pendientes
+    const { count: pendientes } = await supabase
+      .from('crm_tareas')
+      .select('*', { count: 'exact', head: true })
+      .eq('usuario_id', userId)
+      .eq('estado', 'pendiente');
+
+    // Tareas vencidas
+    const { count: vencidas } = await supabase
+      .from('crm_tareas')
+      .select('*', { count: 'exact', head: true })
+      .eq('usuario_id', userId)
+      .eq('estado', 'pendiente')
+      .lt('fecha_vencimiento', now);
+
+    // Contactos sin seguimiento reciente (más de 30 días)
+    const hace30Dias = new Date();
+    hace30Dias.setDate(hace30Dias.getDate() - 30);
+
+    const { data: contactos } = await supabase
+      .from('crm_contactos')
+      .select('id, updated_at')
+      .eq('usuario_id', userId);
+
+    const sinSeguimiento = contactos?.filter(c => {
+      const ultimaActualizacion = new Date(c.updated_at);
+      return ultimaActualizacion < hace30Dias;
+    }).length || 0;
+
+    return {
+      tareas_pendientes: pendientes || 0,
+      tareas_vencidas: vencidas || 0,
+      crm_contactos_sin_seguimiento: sinSeguimiento,
+    };
+  } catch (error) {
+    console.error('Error obteniendo tareas:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene datos de cotizaciones activas del usuario
+ */
+async function getCotizacionesData(userId: string) {
+  try {
+    const { count } = await supabase
+      .from('crm_cotizaciones')
+      .select('*', { count: 'exact', head: true })
+      .eq('usuario_id', userId)
+      .eq('estado', 'activa');
+
+    return {
+      cotizaciones_activas: count || 0,
+    };
+  } catch (error) {
+    console.error('Error obteniendo cotizaciones:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene eventos próximos del usuario
+ */
+async function getEventosProximos(userId: string) {
+  try {
+    const hoy = new Date();
+    const en7Dias = new Date();
+    en7Dias.setDate(en7Dias.getDate() + 7);
+
+    const { count } = await supabase
+      .from('aula_eventos')
+      .select('*', { count: 'exact', head: true })
+      .gte('fecha_hora_inicio', hoy.toISOString())
+      .lte('fecha_hora_inicio', en7Dias.toISOString())
+      .or(`creador_id.eq.${userId},visible_para_todos.eq.true`);
+
+    return {
+      eventos_proximos: count || 0,
+    };
+  } catch (error) {
+    console.error('Error obteniendo eventos:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene datos de comisiones del usuario
+ */
+async function getComisionesData(userId: string) {
+  try {
+    const now = new Date();
+    const mesActual = now.getMonth() + 1;
+    const anioActual = now.getFullYear();
+    const mesAnterior = mesActual === 1 ? 12 : mesActual - 1;
+    const anioAnterior = mesActual === 1 ? anioActual - 1 : anioActual;
+
+    // Comisiones mes actual
+    const { data: comisionesActuales } = await supabase
+      .from('commission_details')
+      .select('importe_pago')
+      .eq('agent_id', userId)
+      .eq('mes', mesActual)
+      .eq('anio', anioActual);
+
+    // Comisiones mes anterior
+    const { data: comisionesAnteriores } = await supabase
+      .from('commission_details')
+      .select('importe_pago')
+      .eq('agent_id', userId)
+      .eq('mes', mesAnterior)
+      .eq('anio', anioAnterior);
+
+    const totalActual = comisionesActuales?.reduce((sum, c) => sum + (c.importe_pago || 0), 0) || 0;
+    const totalAnterior = comisionesAnteriores?.reduce((sum, c) => sum + (c.importe_pago || 0), 0) || 0;
+
+    return {
+      comisiones_mes_actual: Math.round(totalActual),
+      comisiones_mes_anterior: Math.round(totalAnterior),
+    };
+  } catch (error) {
+    console.error('Error obteniendo comisiones:', error);
+    return null;
+  }
+}
+
+/**
+ * Genera un mensaje de bienvenida personalizado usando ChatGPT
+ */
+export async function generateWelcomeMessage(context: UserWelcomeContext): Promise<string> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('No active session');
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const apiUrl = `${supabaseUrl}/functions/v1/generate-welcome-message`;
+
+    // Preparar el contexto limpio (solo datos que existen)
+    const contextData: Record<string, any> = {};
+    Object.entries(context).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        contextData[key] = value;
+      }
+    });
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        context: contextData,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al generar mensaje');
+    }
+
+    const data = await response.json();
+    return data.message || getFallbackMessage(context);
+  } catch (error) {
+    console.error('Error generando mensaje de bienvenida:', error);
+    return getFallbackMessage(context);
+  }
+}
+
+/**
+ * Mensaje de respaldo si falla la generación con IA
+ */
+function getFallbackMessage(context: UserWelcomeContext): string {
+  const messages = [
+    'Bienvenido a tu plataforma digital. Todo lo que necesitas está a un clic de distancia.',
+    'Tu espacio de trabajo está listo. Explora las herramientas disponibles para ti.',
+    'Comienza tu día explorando las oportunidades disponibles en tu dashboard.',
+  ];
+
+  // Si hay tareas pendientes, usar un mensaje más específico
+  if (context.tareas_pendientes && context.tareas_pendientes > 0) {
+    return `Tienes ${context.tareas_pendientes} tarea${context.tareas_pendientes > 1 ? 's' : ''} pendiente${context.tareas_pendientes > 1 ? 's' : ''}. Revisarlas puede ayudarte a mantener el ritmo de tu trabajo.`;
+  }
+
+  // Si hay cotizaciones activas
+  if (context.cotizaciones_activas && context.cotizaciones_activas > 0) {
+    return `Tienes ${context.cotizaciones_activas} cotización${context.cotizaciones_activas > 1 ? 'es' : ''} activa${context.cotizaciones_activas > 1 ? 's' : ''}. Darle seguimiento puede marcar la diferencia.`;
+  }
+
+  // Mensaje aleatorio de respaldo
+  return messages[Math.floor(Math.random() * messages.length)];
+}
