@@ -228,7 +228,7 @@ export default function CalendarioEventos() {
     const eventos: CalendarioEvento[] = [];
 
     for (const contacto of data) {
-      const fechaNacimiento = new Date(contacto.fecha_nacimiento!);
+      const fechaNacimiento = new Date(contacto.fecha_nacimiento! + 'T00:00:00');
 
       const cumpleanosEsteAno = new Date(
         anoActual,

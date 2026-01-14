@@ -300,7 +300,7 @@ export function PerfilUsuario() {
                 <div>
                   <span className="text-slate-500">Cumpleaños:</span>
                   <p className="text-slate-900 font-medium">
-                    {new Date(usuario.fecha_nacimiento).toLocaleDateString('es-MX', {
+                    {new Date(usuario.fecha_nacimiento + 'T00:00:00').toLocaleDateString('es-MX', {
                       day: 'numeric',
                       month: 'long'
                     })}
@@ -311,7 +311,7 @@ export function PerfilUsuario() {
                 <div>
                   <span className="text-slate-500">Aniversario Laboral:</span>
                   <p className="text-slate-900 font-medium">
-                    {new Date(usuario.fecha_ingreso).toLocaleDateString('es-MX', {
+                    {new Date(usuario.fecha_ingreso + 'T00:00:00').toLocaleDateString('es-MX', {
                       day: 'numeric',
                       month: 'long',
                       year: 'numeric'

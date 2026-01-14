@@ -171,7 +171,7 @@ export function Dashboard() {
 
     const filtered = data?.filter((usuario) => {
       if (!usuario.fecha_nacimiento) return false;
-      const birthDate = new Date(usuario.fecha_nacimiento);
+      const birthDate = new Date(usuario.fecha_nacimiento + 'T00:00:00');
       return birthDate.getMonth() + 1 === targetMonth;
     }) || [];
 
@@ -198,10 +198,10 @@ export function Dashboard() {
 
     const filtered = data?.filter((usuario) => {
       if (!usuario.fecha_ingreso) return false;
-      const ingresoDate = new Date(usuario.fecha_ingreso);
+      const ingresoDate = new Date(usuario.fecha_ingreso + 'T00:00:00');
       return ingresoDate.getMonth() + 1 === targetMonth;
     }).map((usuario) => {
-      const ingresoDate = new Date(usuario.fecha_ingreso!);
+      const ingresoDate = new Date(usuario.fecha_ingreso! + 'T00:00:00');
       const years = today.getFullYear() - ingresoDate.getFullYear();
       return { ...usuario, yearsOfService: years };
     }) || [];
@@ -211,13 +211,13 @@ export function Dashboard() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = new Date(dateString + 'T00:00:00');
     return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
   };
 
   const calculateAge = (birthDate: string) => {
     const today = new Date();
-    const birth = new Date(birthDate);
+    const birth = new Date(birthDate + 'T00:00:00');
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {

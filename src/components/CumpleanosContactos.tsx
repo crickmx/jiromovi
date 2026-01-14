@@ -49,7 +49,7 @@ export default function CumpleanosContactos() {
 
       const contactosConCumpleanos = (data || [])
         .map((contacto) => {
-          const fechaNacimiento = new Date(contacto.fecha_nacimiento!);
+          const fechaNacimiento = new Date(contacto.fecha_nacimiento! + 'T00:00:00');
 
           const cumpleanosEsteAno = new Date(
             anoActual,
@@ -93,7 +93,7 @@ export default function CumpleanosContactos() {
   };
 
   const formatFecha = (fecha: string) => {
-    const date = new Date(fecha);
+    const date = new Date(fecha + 'T00:00:00');
     return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
   };
 
