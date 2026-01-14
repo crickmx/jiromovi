@@ -22,8 +22,10 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('=== GENERATE WELCOME MESSAGE START ===');
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('Missing Authorization header');
       throw new Error('Missing Authorization header');
     }
 
@@ -31,8 +33,23 @@ Deno.serve(async (req) => {
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
+    console.log('Environment check:');
+    console.log('- SUPABASE_URL:', supabaseUrl ? 'SET' : 'MISSING');
+    console.log('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceRoleKey ? 'SET' : 'MISSING');
+    console.log('- OPENAI_API_KEY:', openaiApiKey ? 'SET (length: ' + openaiApiKey.length + ')' : 'MISSING');
+
     if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+      console.error('OPENAI_API_KEY not configured in environment variables');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'OPENAI_API_KEY not configured. Please set the environment variable in Supabase Dashboard.',
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
@@ -43,14 +60,18 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
+      console.error('Unauthorized:', userError?.message);
       throw new Error('Unauthorized');
     }
 
+    console.log('User authenticated:', user.id);
+
     const { context } = await req.json() as WelcomeMessageRequest;
 
-    console.log('=== GENERATE WELCOME MESSAGE ===');
-    console.log('User ID:', user.id);
-    console.log('Context keys:', Object.keys(context));
+    console.log('Context received:');
+    console.log('- Keys:', Object.keys(context));
+    console.log('- Nombre:', context.nombre);
+    console.log('- Rol:', context.rol);
 
     // Sistema con instrucciones específicas
     const systemPrompt = `Eres un asistente inteligente integrado en la plataforma MOVI Digital, una plataforma tecnológica avanzada para agentes, empleados y gerentes del sector asegurador en México.
@@ -79,12 +100,13 @@ Solo usa información que venga explícitamente en el contexto. Si un dato no es
 
     // Agregar semilla aleatoria para variación
     const seed = Math.random().toString(36).substring(7);
+    const timestamp = new Date().toISOString();
     const userPrompt = `Genera un mensaje de bienvenida personalizado para este usuario.
 
 Contexto del usuario:
 ${JSON.stringify(context, null, 2)}
 
-Variación: ${seed}
+Variación temporal: ${seed} - ${timestamp}
 
 Genera SOLO el mensaje, sin explicaciones adicionales.`;
 
@@ -94,6 +116,8 @@ Genera SOLO el mensaje, sin explicaciones adicionales.`;
     ];
 
     console.log('Calling OpenAI API...');
+    const openaiStartTime = Date.now();
+
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -103,22 +127,52 @@ Genera SOLO el mensaje, sin explicaciones adicionales.`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: messages,
-        temperature: 0.8,
+        temperature: 0.9,
         max_tokens: 150,
       }),
     });
 
+    const openaiDuration = Date.now() - openaiStartTime;
+    console.log(`OpenAI Response: ${openaiResponse.status} (${openaiDuration}ms)`);
+
     if (!openaiResponse.ok) {
       const errorData = await openaiResponse.text();
       console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${openaiResponse.status}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `OpenAI API error: ${openaiResponse.status}`,
+          details: errorData.substring(0, 200),
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const openaiData = await openaiResponse.json();
+
+    if (!openaiData.choices || openaiData.choices.length === 0) {
+      console.error('OpenAI returned no choices');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'OpenAI returned no choices',
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     const welcomeMessage = openaiData.choices[0].message.content.trim();
 
     console.log('Welcome message generated successfully');
     console.log('Message length:', welcomeMessage.length);
+    console.log('Message preview:', welcomeMessage.substring(0, 100));
+    console.log('=== GENERATE WELCOME MESSAGE END ===');
 
     return new Response(
       JSON.stringify({
@@ -131,12 +185,15 @@ Genera SOLO el mensaje, sin explicaciones adicionales.`;
       }
     );
   } catch (error: any) {
-    console.error('Error generating welcome message:', error);
+    console.error('=== ERROR ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: error.message || 'Unknown error',
       }),
       {
         status: 500,

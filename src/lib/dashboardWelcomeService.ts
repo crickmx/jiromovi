@@ -312,7 +312,11 @@ export async function generateWelcomeMessage(context: UserWelcomeContext): Promi
       nombre: contextData.nombre,
       rol: contextData.rol,
       keys: Object.keys(contextData),
+      fullContext: contextData,
     });
+
+    console.log('🔑 Enviando petición a Edge Function...');
+    const startTime = Date.now();
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -325,21 +329,39 @@ export async function generateWelcomeMessage(context: UserWelcomeContext): Promi
       }),
     });
 
-    console.log('📡 Response status:', response.status);
+    const duration = Date.now() - startTime;
+    console.log(`📡 Response status: ${response.status} (${duration}ms)`);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Error response:', errorText);
-      throw new Error(`Error al generar mensaje: ${response.status}`);
+      console.error('❌ Status code:', response.status);
+      console.error('❌ Status text:', response.statusText);
+      throw new Error(`Error al generar mensaje: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    console.log('✅ Mensaje generado exitosamente:', data.message?.substring(0, 50) + '...');
+    console.log('📦 Response data:', data);
 
-    return data.message || getFallbackMessage(context);
+    if (!data.success) {
+      console.error('❌ Edge Function reportó error:', data.error);
+      throw new Error(data.error || 'Error desconocido');
+    }
+
+    if (!data.message || data.message.trim().length === 0) {
+      console.error('❌ Mensaje vacío recibido');
+      throw new Error('Mensaje vacío');
+    }
+
+    console.log('✅ Mensaje generado exitosamente:', data.message);
+
+    return data.message;
   } catch (error: any) {
     console.error('❌ Error generando mensaje de bienvenida:', error);
-    console.error('Stack:', error.stack);
+    console.error('❌ Error type:', error.constructor.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Stack:', error.stack);
+    console.warn('⚠️  Usando mensaje de fallback');
     return getFallbackMessage(context);
   }
 }
