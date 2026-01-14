@@ -78,7 +78,7 @@ export function EspacioJiro() {
   const loadReservas = async () => {
     let query = supabase
       .from('reservas_espacio')
-      .select('*, areas(nombre), usuarios!reservas_espacio_usuario_fkey(nombre, apellidos, celular_personal, email_laboral), oficinas(nombre)')
+      .select('*, areas(nombre), usuarios!usuario_id(nombre, apellidos, celular_personal, email_laboral), oficinas(nombre)')
       .order('created_at', { ascending: false });
 
     if (isEmpleadoOrAgente) {
