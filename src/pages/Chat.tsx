@@ -205,6 +205,14 @@ export function Chat() {
     loadChats();
   };
 
+  const handleChatDeleted = () => {
+    // Recargar la lista de chats
+    loadChats();
+    // Si el chat eliminado era el seleccionado, deseleccionarlo
+    setSelectedChat(null);
+    setShowChatInfo(false);
+  };
+
   const getChatName = (chat: Chat): string => {
     if (chat.tipo === 'group') {
       return chat.nombre || 'Grupo sin nombre';
@@ -304,6 +312,7 @@ export function Chat() {
                 onSelectChat={handleChatSelect}
                 getChatName={getChatName}
                 currentUserId={usuario.id}
+                onChatDeleted={handleChatDeleted}
               />
             )}
           </div>
