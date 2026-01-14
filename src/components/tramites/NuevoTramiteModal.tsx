@@ -127,6 +127,14 @@ export function NuevoTramiteModal({
   }, [tipoTramite, usuario]);
 
   useEffect(() => {
+    if (tipoTramite === 'correccion_comisiones' && asignado) {
+      // Reset lote selection when assigned user changes
+      setLoteSeleccionado('');
+      loadLotesDisponibles(asignado);
+    }
+  }, [asignado]);
+
+  useEffect(() => {
     if (loteSeleccionado) {
       loadDocumentosLote();
     } else {
@@ -174,17 +182,64 @@ export function NuevoTramiteModal({
     if (data) setUsuariosDisponibles(data);
   };
 
-  const loadLotesDisponibles = async () => {
+  const loadLotesDisponibles = async (forUserId?: string) => {
     if (!usuario) return;
 
-    const { data } = await supabase
-      .from('commission_batches')
-      .select('*')
-      .eq('status', 'completed')
-      .order('date_from', { ascending: false })
-      .limit(20);
+    try {
+      const targetUserId = forUserId || asignado;
 
-    if (data) setLotesDisponibles(data);
+      if (targetUserId) {
+        // Get user email to find agent
+        const { data: userData } = await supabase
+          .from('usuarios')
+          .select('email_laboral')
+          .eq('id', targetUserId)
+          .single();
+
+        if (userData?.email_laboral) {
+          // Find commission agent by email
+          const { data: agentData } = await supabase
+            .from('commission_agents')
+            .select('id')
+            .eq('email', userData.email_laboral)
+            .single();
+
+          if (agentData) {
+            // Get batches that have commission details for this agent
+            const { data } = await supabase
+              .from('commission_batches')
+              .select(`
+                *,
+                details:commission_details!inner(id)
+              `)
+              .eq('details.agent_id', agentData.id)
+              .in('status', ['confirmed', 'closed'])
+              .order('date_from', { ascending: false })
+              .limit(20);
+
+            if (data) {
+              // Remove the details field from the response
+              const batches = data.map(({ details, ...batch }) => batch);
+              setLotesDisponibles(batches);
+              return;
+            }
+          }
+        }
+      }
+
+      // Fallback: load all batches if no agent specified or not found
+      const { data } = await supabase
+        .from('commission_batches')
+        .select('*')
+        .in('status', ['confirmed', 'closed'])
+        .order('date_from', { ascending: false })
+        .limit(20);
+
+      if (data) setLotesDisponibles(data);
+    } catch (error) {
+      console.error('Error loading commission batches:', error);
+      setLotesDisponibles([]);
+    }
   };
 
   const loadDocumentosLote = async () => {
