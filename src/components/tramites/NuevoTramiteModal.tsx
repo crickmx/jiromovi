@@ -288,11 +288,6 @@ export function NuevoTramiteModal({
   };
 
   const validateForm = (): boolean => {
-    if (!descripcion.trim()) {
-      setError('La descripción es obligatoria');
-      return false;
-    }
-
     if (!isAgent && !asignado) {
       setError('Debe seleccionar a quién asignar el trámite');
       return false;
@@ -357,7 +352,7 @@ export function NuevoTramiteModal({
         tipo_tramite: tipoTramite,
         estatus_id: estatusNuevo.id,
         prioridad,
-        instrucciones: descripcion.trim(),
+        instrucciones: descripcion.trim() || 'Sin descripción',
         creado_por: usuario.id,
         modificado_por: usuario.id,
         assigned_to_user_id: assignedTo,
@@ -922,13 +917,13 @@ export function NuevoTramiteModal({
 
         <div>
           <label className="block text-sm font-semibold text-neutral-900 mb-2">
-            Descripción / Notas *
+            Descripción / Notas
           </label>
           <textarea
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             rows={4}
-            placeholder="Describe el motivo del trámite con el mayor detalle posible..."
+            placeholder="Describe el motivo del trámite con el mayor detalle posible... (Opcional)"
             className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
           />
         </div>
