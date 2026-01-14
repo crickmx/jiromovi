@@ -370,8 +370,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
           {children}
         </main>
 
-        <FloatingAssistantButton />
-        <AssistantModal />
+        {isAdmin && <FloatingAssistantButton />}
+        {isAdmin && <AssistantModal />}
         <InstallBanner />
       </div>
     </div>
