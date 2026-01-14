@@ -53,7 +53,7 @@ export default function StoreMisPedidos() {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver al Store</span>
+          <span className="font-medium">Volver a MOVI Store</span>
         </button>
 
         <div className="flex items-center gap-3 mb-8">
@@ -67,7 +67,7 @@ export default function StoreMisPedidos() {
             <h3 className="text-xl font-semibold text-gray-700 mb-2">
               No tienes pedidos aún
             </h3>
-            <p className="text-gray-500 mb-6">Realiza tu primer pedido en el Store</p>
+            <p className="text-gray-500 mb-6">Realiza tu primer pedido en MOVI Store</p>
             <button
               onClick={() => navigate('/store')}
               className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium"

@@ -107,7 +107,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/gmm/tarifas', label: 'GMM Tarifas Admin', icon: Settings, show: isAdmin },
     { path: '/mi-pagina-web', label: 'Mi Página Web', icon: Globe2, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
-    { path: '/store', label: 'Store', icon: ShoppingBag, show: true },
+    { path: '/store', label: 'MOVI Store', icon: ShoppingBag, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
     { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, show: canAccessDirectorio },
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },

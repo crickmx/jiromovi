@@ -136,12 +136,12 @@ export default function StoreAdmin() {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver al Store</span>
+          <span className="font-medium">Volver a MOVI Store</span>
         </button>
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-primary-600">Administración del Store</h1>
+            <h1 className="text-3xl font-bold text-primary-600">Administración de MOVI Store</h1>
             <p className="text-gray-600 mt-1">Gestiona productos y categorías</p>
           </div>
         </div>

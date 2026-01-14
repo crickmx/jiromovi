@@ -104,14 +104,14 @@ export default function StorePedidos() {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Volver al Store</span>
+          <span className="font-medium">Volver a MOVI Store</span>
         </button>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-primary-600">Gestión de Pedidos</h1>
             <p className="text-gray-600 mt-1">
-              Administra todos los pedidos del Store
+              Administra todos los pedidos de MOVI Store
               {pedidos.length > 0 && (
                 <span className="ml-2 text-sm font-semibold text-primary-600">
                   • {pedidos.length} pedidos de {new Set(pedidos.map(p => p.usuario_id)).size} usuarios

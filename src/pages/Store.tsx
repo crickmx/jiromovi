@@ -84,7 +84,7 @@ export default function Store() {
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-primary-600">Store MOVI</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary-600">MOVI Store</h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">Explora nuestro catálogo de productos</p>
           </div>
 
