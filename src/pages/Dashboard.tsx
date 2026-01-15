@@ -258,15 +258,19 @@ export function Dashboard() {
 
           {/* Mensaje de bienvenida personalizado */}
           {loadingWelcomeMessage ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-              <Sparkles className="w-4 h-4 animate-pulse text-primary-500" />
-              <span className="italic">Preparando tu mensaje personalizado...</span>
+            <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 animate-pulse text-primary-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
+                  Hola {currentUser?.nombre_completo?.split(' ')[0] || 'Usuario'}...
+                </p>
+              </div>
             </div>
           ) : welcomeMessage && (
             <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100 relative group">
               <div className="flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
                   {welcomeMessage}
                 </p>
                 <button
@@ -391,15 +395,19 @@ export function Dashboard() {
 
           {/* Mensaje de bienvenida personalizado */}
           {loadingWelcomeMessage ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500 mt-4">
-              <Sparkles className="w-4 h-4 animate-pulse text-primary-500" />
-              <span className="italic">Preparando tu mensaje personalizado...</span>
+            <div className="mt-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 animate-pulse text-primary-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
+                  Hola {currentUser?.nombre_completo?.split(' ')[0] || 'Usuario'}...
+                </p>
+              </div>
             </div>
           ) : welcomeMessage && (
             <div className="mt-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100 relative group">
               <div className="flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
                   {welcomeMessage}
                 </p>
                 <button

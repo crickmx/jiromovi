@@ -396,20 +396,22 @@ export async function generateWelcomeMessage(
  * Mensaje de respaldo si falla la generación con IA
  */
 function getFallbackMessage(context: UserWelcomeContext): string {
+  const primerNombre = context.nombre.split(' ')[0];
+
   const messages = [
-    'Bienvenido a tu plataforma digital. Todo lo que necesitas está a un clic de distancia.',
-    'Tu espacio de trabajo está listo. Explora las herramientas disponibles para ti.',
-    'Comienza tu día explorando las oportunidades disponibles en tu dashboard.',
+    `Hola ${primerNombre}, todo listo para arrancar. Tu espacio de trabajo está esperándote.`,
+    `Hola ${primerNombre}, bienvenido de vuelta. Las herramientas que necesitas están a tu alcance.`,
+    `Hola ${primerNombre}, es un buen momento para revisar lo que tienes pendiente hoy.`,
   ];
 
   // Si hay tareas pendientes, usar un mensaje más específico
   if (context.tareas_pendientes && context.tareas_pendientes > 0) {
-    return `Tienes ${context.tareas_pendientes} tarea${context.tareas_pendientes > 1 ? 's' : ''} pendiente${context.tareas_pendientes > 1 ? 's' : ''}. Revisarlas puede ayudarte a mantener el ritmo de tu trabajo.`;
+    return `Hola ${primerNombre}, tienes ${context.tareas_pendientes} tarea${context.tareas_pendientes > 1 ? 's' : ''} pendiente${context.tareas_pendientes > 1 ? 's' : ''}. Vale la pena revisarlas para mantener el ritmo.`;
   }
 
   // Si hay cotizaciones activas
   if (context.cotizaciones_activas && context.cotizaciones_activas > 0) {
-    return `Tienes ${context.cotizaciones_activas} cotización${context.cotizaciones_activas > 1 ? 'es' : ''} activa${context.cotizaciones_activas > 1 ? 's' : ''}. Darle seguimiento puede marcar la diferencia.`;
+    return `Hola ${primerNombre}, llevas ${context.cotizaciones_activas} cotización${context.cotizaciones_activas > 1 ? 'es' : ''} activa${context.cotizaciones_activas > 1 ? 's' : ''}. Darle seguimiento puede marcar la diferencia.`;
   }
 
   // Mensaje aleatorio de respaldo
