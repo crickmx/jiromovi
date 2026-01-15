@@ -68,7 +68,50 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
     if (accion.includes('cerrado')) return 'bg-red-100 text-red-700 border-red-300';
     if (accion.includes('reabierto')) return 'bg-primary-100 text-primary-700 border-primary-300';
     if (accion.includes('actualizado')) return 'bg-yellow-100 text-yellow-700 border-yellow-300';
+    if (accion.includes('Comentario')) return 'bg-blue-100 text-blue-700 border-blue-300';
+    if (accion.includes('Archivo')) return 'bg-purple-100 text-purple-700 border-purple-300';
+    if (accion.includes('asignado')) return 'bg-orange-100 text-orange-700 border-orange-300';
     return 'bg-neutral-100 text-neutral-700 border-neutral-300';
+  };
+
+  const formatDetalle = (key: string, value: any) => {
+    const labels: Record<string, string> = {
+      'folio': 'Folio',
+      'agente': 'Agente',
+      'estatus': 'Estatus',
+      'prioridad': 'Prioridad',
+      'poliza': 'Póliza',
+      'estatus_anterior': 'Estatus anterior',
+      'estatus_nuevo': 'Nuevo estatus',
+      'prioridad_anterior': 'Prioridad anterior',
+      'prioridad_nueva': 'Nueva prioridad',
+      'agente_anterior': 'Agente anterior',
+      'agente_nuevo': 'Nuevo agente',
+      'cerrado_por': 'Cerrado por',
+      'fecha_cierre': 'Fecha de cierre',
+      'fecha_reapertura': 'Fecha de reapertura',
+      'poliza_anterior': 'Póliza anterior',
+      'poliza_nueva': 'Nueva póliza',
+      'usuario': 'Usuario',
+      'mensaje_preview': 'Mensaje',
+      'nombre_archivo': 'Archivo',
+      'tipo': 'Tipo',
+      'tamano_mb': 'Tamaño',
+      'ejecutivo': 'Ejecutivo',
+      'asignado_por': 'Asignado por'
+    };
+
+    const label = labels[key] || key.replace(/_/g, ' ');
+
+    if (key === 'fecha_cierre' || key === 'fecha_reapertura') {
+      return `${label}: ${new Date(value).toLocaleString('es-MX')}`;
+    }
+
+    if (key === 'tamano_mb') {
+      return `${label}: ${value} MB`;
+    }
+
+    return `${label}: ${value}`;
   };
 
   if (loading) {
@@ -125,13 +168,25 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
                   {item.detalle && Object.keys(item.detalle).length > 0 && (
                     <div className="mt-3 p-3 bg-neutral-50 rounded-lg">
                       <p className="text-xs font-semibold text-neutral-700 mb-2">Detalles:</p>
-                      <div className="text-xs text-neutral-600 space-y-1">
-                        {Object.entries(item.detalle).map(([key, value]: [string, any]) => (
-                          <div key={key} className="flex items-start space-x-2">
-                            <span className="font-medium capitalize">{key.replace('_', ' ')}:</span>
-                            <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                          </div>
-                        ))}
+                      <div className="text-xs text-neutral-600 space-y-1.5">
+                        {Object.entries(item.detalle).map(([key, value]: [string, any]) => {
+                          if (typeof value === 'object' && value !== null) {
+                            return (
+                              <div key={key} className="space-y-1">
+                                <span className="font-medium capitalize block">{key.replace(/_/g, ' ')}:</span>
+                                <pre className="ml-3 text-xs bg-white p-2 rounded border border-neutral-200 overflow-x-auto">
+                                  {JSON.stringify(value, null, 2)}
+                                </pre>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={key} className="grid grid-cols-[120px_1fr] gap-2">
+                              <span className="font-medium text-neutral-700">{formatDetalle(key, value).split(':')[0]}:</span>
+                              <span className="text-neutral-900">{formatDetalle(key, value).split(':').slice(1).join(':').trim()}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
