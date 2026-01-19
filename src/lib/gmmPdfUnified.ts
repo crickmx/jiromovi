@@ -579,7 +579,7 @@ export async function generateUnifiedQuotePDF(
 
   const contactParts: string[] = [];
   if (asesor.nombre) contactParts.push(asesor.nombre);
-  if (asesor.web_slug) contactParts.push(`agentedeseguros.online/${asesor.web_slug}`);
+  if (asesor.web_slug) contactParts.push(`agentedeseguros.website/${asesor.web_slug}`);
   if (asesor.celular) contactParts.push(asesor.celular);
 
   const contactText = contactParts.join('  |  ');

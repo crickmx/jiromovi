@@ -230,7 +230,7 @@ Deno.serve(async (req: Request) => {
       try {
         // Construir URL de página web pública
         const paginaWeb = userData.web_slug
-          ? `https://agentedeseguros.online/${userData.web_slug}`
+          ? `https://agentedeseguros.website/${userData.web_slug}`
           : 'No configurada aún';
 
         // Obtener nombre de oficina

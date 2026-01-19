@@ -57,7 +57,7 @@ const DEFAULT_STYLE: TextStyle = {
 };
 
 const DEFAULT_URLS = {
-  miPaginaWeb: 'agentedeseguros.online',
+  miPaginaWeb: 'agentedeseguros.website',
   telefono: ''
 };
 
@@ -726,7 +726,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                       type="text"
                       value={urlJiro}
                       onChange={(e) => handleUrlChange(setUrlJiro, e.target.value)}
-                      placeholder="agentedeseguros.online/ejemplo"
+                      placeholder="agentedeseguros.website/ejemplo"
                       className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                     <StyleControls style={styleJiro} field="jiro" />

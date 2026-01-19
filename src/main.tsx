@@ -4,7 +4,7 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import App from './App.tsx';
 import './index.css';
 
-const PUBLIC_HOSTS = new Set(["agentedeseguros.online", "www.agentedeseguros.online"]);
+const PUBLIC_HOSTS = new Set(["agentedeseguros.website", "www.agentedeseguros.website"]);
 const MAIN_REDIRECT = "https://www.movi.digital";
 
 function normalizeHost(h: string) {

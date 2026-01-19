@@ -3,13 +3,13 @@
  * Basadas únicamente en el slug del usuario
  */
 
-export const WEB_DOMAIN = 'agentedeseguros.online';
+export const WEB_DOMAIN = 'agentedeseguros.website';
 export const MULTICOTIZADOR_BASE = 'https://www.multicotizador.digital/cotiza';
 
 /**
  * Genera la URL de "Mi Página Web" visible para el usuario
  * @param slug - Slug único del usuario
- * @returns URL sin https (ej: agentedeseguros.online/juanperez)
+ * @returns URL sin https (ej: agentedeseguros.website/juanperez)
  */
 export function getMiPaginaWeb(slug: string | null | undefined): string {
   if (!slug) return '';
@@ -19,7 +19,7 @@ export function getMiPaginaWeb(slug: string | null | undefined): string {
 /**
  * Genera la URL completa de "Mi Página Web" con protocolo
  * @param slug - Slug único del usuario
- * @returns URL completa (ej: https://agentedeseguros.online/juanperez)
+ * @returns URL completa (ej: https://agentedeseguros.website/juanperez)
  */
 export function getMiPaginaWebFull(slug: string | null | undefined): string {
   if (!slug) return '';

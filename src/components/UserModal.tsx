@@ -581,7 +581,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     />
                     <p className="text-xs text-slate-500 mt-1">
                       {formData.web_slug ? (
-                        <>URL: <span className="font-mono text-primary-600">agentedeseguros.online/{formData.web_slug}</span></>
+                        <>URL: <span className="font-mono text-primary-600">agentedeseguros.website/{formData.web_slug}</span></>
                       ) : (
                         'Solo letras minúsculas, números y guiones'
                       )}

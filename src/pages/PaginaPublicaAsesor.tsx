@@ -221,7 +221,7 @@ export default function PaginaPublicaAsesor() {
         <meta property="og:type" content="profile" />
         {user.photo_url && <meta property="og:image" content={user.photo_url} />}
         <meta name="robots" content="index, follow" />
-        <link rel="canonical" href={`https://agentedeseguros.online/${slug}`} />
+        <link rel="canonical" href={`https://agentedeseguros.website/${slug}`} />
         <script src={`https://www.google.com/recaptcha/api.js?render=${import.meta.env.VITE_RECAPTCHA_SITE_KEY}`} async defer />
       </Helmet>
 

@@ -162,7 +162,7 @@ export default function MiPaginaWeb() {
                       <div className="text-sm">
                         <p className="font-medium text-green-800 mb-1">Tu página está en línea</p>
                         <a
-                          href={`https://agentedeseguros.online/${usuario?.web_slug}`}
+                          href={`https://agentedeseguros.website/${usuario?.web_slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-green-700 hover:text-green-800 font-medium"
@@ -313,7 +313,7 @@ export default function MiPaginaWeb() {
                   <div className="w-2 h-2 rounded-full bg-green-400"></div>
                 </div>
                 <span className="flex-1 text-center">
-                  agentedeseguros.online/{usuario?.web_slug || 'tu-slug'}
+                  agentedeseguros.website/{usuario?.web_slug || 'tu-slug'}
                 </span>
               </div>
 

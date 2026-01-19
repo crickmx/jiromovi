@@ -9,7 +9,7 @@ const corsHeaders = {
 // Helper para generar Mi Página Web desde slug
 function getMiPaginaWeb(slug: string | null | undefined): string {
   if (!slug) return '';
-  return `agentedeseguros.online/${slug}`;
+  return `agentedeseguros.website/${slug}`;
 }
 
 interface SendEmailRequest {
