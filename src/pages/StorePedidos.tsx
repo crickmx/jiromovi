@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Eye, Filter, Download, Search, Calendar, ArrowLeft } from 'lucide-react';
-import { obtenerTodosPedidos } from '../lib/storeUtils';
+import { Package, Eye, Filter, Download, Search, Calendar, ArrowLeft, Trash2 } from 'lucide-react';
+import { obtenerTodosPedidos, eliminarPedido } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -16,6 +16,8 @@ export default function StorePedidos() {
   const [loading, setLoading] = useState(true);
   const [filtroEstatus, setFiltroEstatus] = useState<string>('');
   const [busqueda, setBusqueda] = useState('');
+  const [pedidoAEliminar, setPedidoAEliminar] = useState<StorePedido | null>(null);
+  const [eliminando, setEliminando] = useState(false);
 
   useEffect(() => {
     if (usuario?.rol !== 'Administrador') {
@@ -61,6 +63,22 @@ export default function StorePedidos() {
     }
 
     setPedidosFiltrados(resultado);
+  };
+
+  const handleEliminarPedido = async () => {
+    if (!pedidoAEliminar) return;
+
+    try {
+      setEliminando(true);
+      await eliminarPedido(pedidoAEliminar.id);
+      await cargarPedidos();
+      setPedidoAEliminar(null);
+    } catch (error) {
+      console.error('Error al eliminar pedido:', error);
+      alert('Error al eliminar el pedido. Por favor intenta de nuevo.');
+    } finally {
+      setEliminando(false);
+    }
   };
 
   const getEstatusColor = (estatusNombre: string) => {
@@ -274,13 +292,24 @@ export default function StorePedidos() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => navigate(`/store/pedido/${pedido.id}`)}
-                          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-800 font-medium"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Ver Detalle
-                        </button>
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => navigate(`/store/pedido/${pedido.id}`)}
+                            className="inline-flex items-center gap-1.5 text-primary-600 hover:text-primary-800 font-medium transition-colors"
+                            title="Ver detalle del pedido"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Ver
+                          </button>
+                          <button
+                            onClick={() => setPedidoAEliminar(pedido)}
+                            className="inline-flex items-center gap-1.5 text-red-600 hover:text-red-800 font-medium transition-colors"
+                            title="Eliminar pedido"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Eliminar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -296,6 +325,71 @@ export default function StorePedidos() {
           </div>
         )}
       </div>
+
+      {pedidoAEliminar && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Eliminar Pedido</h3>
+                <p className="text-sm text-gray-500">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-gray-700 mb-2">
+                Estás a punto de eliminar el siguiente pedido:
+              </p>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-gray-900">
+                  Folio: {pedidoAEliminar.folio_oc || 'Pendiente'}
+                </p>
+                <p className="text-sm text-gray-700">
+                  Cliente: {pedidoAEliminar.usuario?.nombre || 'N/A'}
+                </p>
+                <p className="text-sm text-gray-700">
+                  Total: ${pedidoAEliminar.total?.toLocaleString('es-MX', { minimumFractionDigits: 2 }) || '0.00'}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-6">
+              Se eliminarán todos los datos relacionados con este pedido, incluyendo detalles,
+              notas administrativas e historial de cambios.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPedidoAEliminar(null)}
+                disabled={eliminando}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEliminarPedido}
+                disabled={eliminando}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {eliminando ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar Pedido
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

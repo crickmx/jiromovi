@@ -711,3 +711,12 @@ export async function agregarNotaPedido(pedidoId: string, nota: string) {
   if (error) throw error;
   return data;
 }
+
+export async function eliminarPedido(pedidoId: string) {
+  const { error } = await supabase
+    .from('store_pedidos')
+    .delete()
+    .eq('id', pedidoId);
+
+  if (error) throw error;
+}
