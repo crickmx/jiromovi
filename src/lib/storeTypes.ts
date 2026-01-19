@@ -35,6 +35,16 @@ export interface StoreEstatusPedido {
   created_at: string;
 }
 
+export type FormaPagoOC = 'Contado' | 'Mensual' | 'Trimestral' | 'Semestral';
+
+export type MetodoPagoOC =
+  | 'Cargo a Oficina'
+  | 'Cargo a Bono de Agente'
+  | 'Pago Directo'
+  | 'Descuento de Comisiones'
+  | 'Cargo a Nómina'
+  | 'Otro';
+
 export interface StorePedido {
   id: string;
   usuario_id: string;
@@ -44,6 +54,15 @@ export interface StorePedido {
   created_at: string;
   updated_at: string;
   total?: number;
+  // Campos de Orden de Compra
+  forma_pago?: FormaPagoOC;
+  metodo_pago?: MetodoPagoOC;
+  metodo_pago_otro_detalle?: string;
+  folio_oc?: string;
+  observaciones_oc?: string;
+  oc_generada_por?: string;
+  oc_generada_en?: string;
+  // Relaciones
   estatus?: StoreEstatusPedido;
   usuario?: {
     nombre: string;
@@ -52,6 +71,11 @@ export interface StorePedido {
     telefono?: string;
     celular_laboral?: string;
     celular_personal?: string;
+    email_laboral?: string;
+    rol?: string;
+  };
+  oc_generada_por_usuario?: {
+    nombre_completo?: string;
   };
 }
 

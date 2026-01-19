@@ -466,7 +466,7 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
   // Obtener usuario del pedido con información completa
   const { data: usuarioData } = await supabase
     .from('usuarios')
-    .select('nombre, nombre_completo, oficina_id, celular_laboral, celular_personal')
+    .select('nombre, nombre_completo, oficina_id, celular_laboral, celular_personal, email_laboral, rol')
     .eq('id', pedido.usuario_id)
     .single();
 
@@ -481,6 +481,17 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     oficinaData = data;
   }
 
+  // Obtener información del admin que generó la OC (si existe)
+  let ocGeneradaPorUsuario = null;
+  if (pedido.oc_generada_por) {
+    const { data } = await supabase
+      .from('usuarios')
+      .select('nombre_completo')
+      .eq('id', pedido.oc_generada_por)
+      .single();
+    ocGeneradaPorUsuario = data;
+  }
+
   // Construir objeto usuario completo
   const usuario = {
     nombre: usuarioData?.nombre || '',
@@ -488,7 +499,9 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     oficina: oficinaData?.nombre || 'Sin oficina asignada',
     telefono: usuarioData?.celular_laboral || usuarioData?.celular_personal || 'Sin teléfono',
     celular_laboral: usuarioData?.celular_laboral,
-    celular_personal: usuarioData?.celular_personal
+    celular_personal: usuarioData?.celular_personal,
+    email_laboral: usuarioData?.email_laboral,
+    rol: usuarioData?.rol
   };
 
   // Agregar usuario al pedido
@@ -567,7 +580,8 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     ...pedidoConUsuario,
     detalle: detalle as StorePedidoDetalle[],
     notas: notas as StorePedidoNota[],
-    historial: historial as StorePedidoHistorial[]
+    historial: historial as StorePedidoHistorial[],
+    oc_generada_por_usuario: ocGeneradaPorUsuario
   } as StorePedidoCompleto;
 }
 

@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Package, User, MapPin, FileText, Clock, MessageSquare, History } from 'lucide-react';
+import { ArrowLeft, Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CheckCircle } from 'lucide-react';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus } from '../lib/storeUtils';
-import type { StorePedidoCompleto, StoreEstatusPedido } from '../lib/storeTypes';
+import type { StorePedidoCompleto, StoreEstatusPedido, FormaPagoOC, MetodoPagoOC } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { generarFolioOC, generarPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
+import { supabase } from '../lib/supabase';
 
 export default function StorePedidoDetalle() {
   const { usuario } = useAuth();
@@ -19,6 +21,14 @@ export default function StorePedidoDetalle() {
   const [nuevaNota, setNuevaNota] = useState('');
   const [agregandoNota, setAgregandoNota] = useState(false);
 
+  // Estados para Orden de Compra
+  const [formaPago, setFormaPago] = useState<FormaPagoOC | ''>('');
+  const [metodoPago, setMetodoPago] = useState<MetodoPagoOC | ''>('');
+  const [metodoPagoOtroDetalle, setMetodoPagoOtroDetalle] = useState('');
+  const [observacionesOC, setObservacionesOC] = useState('');
+  const [guardandoPago, setGuardandoPago] = useState(false);
+  const [generandoOC, setGenerandoOC] = useState(false);
+
   const isAdmin = usuario?.rol === 'Administrador';
 
   useEffect(() => {
@@ -26,6 +36,15 @@ export default function StorePedidoDetalle() {
       cargarDatos();
     }
   }, [pedidoId]);
+
+  useEffect(() => {
+    if (pedido) {
+      setFormaPago(pedido.forma_pago || '');
+      setMetodoPago(pedido.metodo_pago || '');
+      setMetodoPagoOtroDetalle(pedido.metodo_pago_otro_detalle || '');
+      setObservacionesOC(pedido.observaciones_oc || '');
+    }
+  }, [pedido]);
 
   const cargarDatos = async () => {
     if (!pedidoId) return;
@@ -79,6 +98,89 @@ export default function StorePedidoDetalle() {
       alert('Error al agregar nota');
     } finally {
       setAgregandoNota(false);
+    }
+  };
+
+  const handleGuardarPago = async () => {
+    if (!pedidoId || !isAdmin) return;
+
+    if (!formaPago || !metodoPago) {
+      alert('Debe seleccionar forma y método de pago');
+      return;
+    }
+
+    if (metodoPago === 'Otro' && !metodoPagoOtroDetalle.trim()) {
+      alert('Debe especificar el detalle del método de pago "Otro"');
+      return;
+    }
+
+    try {
+      setGuardandoPago(true);
+      const { error } = await supabase
+        .from('store_pedidos')
+        .update({
+          forma_pago: formaPago,
+          metodo_pago: metodoPago,
+          metodo_pago_otro_detalle: metodoPago === 'Otro' ? metodoPagoOtroDetalle : null,
+          observaciones_oc: observacionesOC || null,
+        })
+        .eq('id', pedidoId);
+
+      if (error) throw error;
+
+      alert('Información de pago guardada exitosamente');
+      await cargarDatos();
+    } catch (error) {
+      console.error('Error guardando pago:', error);
+      alert('Error al guardar información de pago');
+    } finally {
+      setGuardandoPago(false);
+    }
+  };
+
+  const handleDescargarOC = async () => {
+    if (!pedidoId || !pedido || !isAdmin) return;
+
+    // Validar que tenga datos de pago completos
+    const validacion = validarDatosPagoCompletos(pedido);
+    if (!validacion.valido) {
+      alert('Error: ' + validacion.errores.join('\n'));
+      return;
+    }
+
+    try {
+      setGenerandoOC(true);
+
+      // Generar folio si no existe
+      let folio = pedido.folio_oc;
+      if (!folio) {
+        folio = await generarFolioOC();
+
+        const { error } = await supabase
+          .from('store_pedidos')
+          .update({
+            folio_oc: folio,
+            oc_generada_por: usuario?.id,
+            oc_generada_en: new Date().toISOString(),
+          })
+          .eq('id', pedidoId);
+
+        if (error) throw error;
+
+        // Recargar datos para obtener el folio
+        await cargarDatos();
+      }
+
+      // Generar PDF con datos actualizados
+      const pedidoActualizado = { ...pedido, folio_oc: folio };
+      await generarPDFOrdenCompra(pedidoActualizado as StorePedidoCompleto);
+
+      alert('Orden de Compra descargada exitosamente');
+    } catch (error) {
+      console.error('Error generando OC:', error);
+      alert('Error al generar Orden de Compra');
+    } finally {
+      setGenerandoOC(false);
     }
   };
 
@@ -280,6 +382,112 @@ export default function StorePedidoDetalle() {
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Información de Pago
+                </h2>
+
+                {pedido.folio_oc && (
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-green-900">OC Generada</p>
+                      <p className="text-xs text-green-700 font-mono">Folio: {pedido.folio_oc}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Forma de Pago *
+                    </label>
+                    <select
+                      value={formaPago}
+                      onChange={(e) => setFormaPago(e.target.value as FormaPagoOC)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="Contado">Contado</option>
+                      <option value="Mensual">Mensual</option>
+                      <option value="Trimestral">Trimestral</option>
+                      <option value="Semestral">Semestral</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Método de Pago *
+                    </label>
+                    <select
+                      value={metodoPago}
+                      onChange={(e) => setMetodoPago(e.target.value as MetodoPagoOC)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="Cargo a Oficina">Cargo a Oficina</option>
+                      <option value="Cargo a Bono de Agente">Cargo a Bono de Agente</option>
+                      <option value="Pago Directo">Pago Directo</option>
+                      <option value="Descuento de Comisiones">Descuento de Comisiones</option>
+                      <option value="Cargo a Nómina">Cargo a Nómina</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+
+                  {metodoPago === 'Otro' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Especificar método *
+                      </label>
+                      <input
+                        type="text"
+                        value={metodoPagoOtroDetalle}
+                        onChange={(e) => setMetodoPagoOtroDetalle(e.target.value)}
+                        placeholder="Especifique el método de pago..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Observaciones (opcional)
+                    </label>
+                    <textarea
+                      value={observacionesOC}
+                      onChange={(e) => setObservacionesOC(e.target.value)}
+                      placeholder="Observaciones sobre el pedido..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={handleGuardarPago}
+                    disabled={guardandoPago || !formaPago || !metodoPago}
+                    className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    {guardandoPago ? 'Guardando...' : 'Guardar Información de Pago'}
+                  </button>
+
+                  <button
+                    onClick={handleDescargarOC}
+                    disabled={generandoOC || !pedido.forma_pago || !pedido.metodo_pago}
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                    title={!pedido.forma_pago || !pedido.metodo_pago ? 'Debe guardar la información de pago primero' : ''}
+                  >
+                    <Download className="w-4 h-4" />
+                    {generandoOC ? 'Generando...' : 'Descargar Orden de Compra'}
+                  </button>
+                </div>
               </div>
             )}
 
