@@ -99,9 +99,15 @@ export default function StoreMisPedidos() {
                   {pedidos.map(pedido => (
                     <tr key={pedido.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono text-gray-900">
-                          {pedido.id.substring(0, 8)}...
-                        </span>
+                        {pedido.folio_oc ? (
+                          <span className="text-sm font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded">
+                            {pedido.folio_oc}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-400 italic">
+                            Pendiente
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">

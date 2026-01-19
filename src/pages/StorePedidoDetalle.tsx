@@ -234,7 +234,13 @@ export default function StorePedidoDetalle() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Detalle de Pedido</h1>
-            <p className="text-gray-600 mt-1 font-mono">ID: {pedido.id.substring(0, 16)}...</p>
+            <p className="text-gray-600 mt-1">
+              Folio: {pedido.folio_oc ? (
+                <span className="font-semibold text-primary-600">{pedido.folio_oc}</span>
+              ) : (
+                <span className="text-gray-400 italic">Pendiente de asignación</span>
+              )}
+            </p>
           </div>
           <span className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${getEstatusColor(pedido.estatus?.nombre || 'Pendiente')}`}>
             {pedido.estatus?.nombre || 'Pendiente'}

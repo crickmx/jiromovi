@@ -55,6 +55,7 @@ export default function StorePedidos() {
       const busquedaLower = busqueda.toLowerCase();
       resultado = resultado.filter(p =>
         p.id.toLowerCase().includes(busquedaLower) ||
+        p.folio_oc?.toLowerCase().includes(busquedaLower) ||
         p.usuario?.nombre?.toLowerCase().includes(busquedaLower)
       );
     }
@@ -171,7 +172,7 @@ export default function StorePedidos() {
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por ID o cliente..."
+                placeholder="Buscar por folio, ID o cliente..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -244,9 +245,15 @@ export default function StorePedidos() {
                   {pedidosFiltrados.map(pedido => (
                     <tr key={pedido.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono text-gray-900">
-                          {pedido.id.substring(0, 8)}...
-                        </span>
+                        {pedido.folio_oc ? (
+                          <span className="text-sm font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded">
+                            {pedido.folio_oc}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-400 italic">
+                            Pendiente
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">{pedido.usuario?.nombre || 'N/A'}</span>
