@@ -5,11 +5,26 @@ import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
 import { ImageUploader } from './ImageUploader';
 import { ExpedienteSection } from './ExpedienteSection';
-import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette } from 'lucide-react';
+import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette, Shield } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
+
+interface ModuloSistema {
+  id: string;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  categoria: string | null;
+  activo: boolean;
+  orden: number;
+}
+
+interface PermisoAdicional {
+  modulo_id: string;
+  modulo_codigo: string;
+}
 
 interface UserModalProps {
   user: Usuario | null;
@@ -52,6 +67,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     plan_mkt_premium: false,
   });
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
+  const [modulosSistema, setModulosSistema] = useState<ModuloSistema[]>([]);
+  const [permisosAdicionales, setPermisosAdicionales] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -63,6 +80,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
 
   useEffect(() => {
     loadOficinas();
+    loadModulosSistema();
     if (user) {
       setFormData({
         password: '',
@@ -87,6 +105,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         equipo_celular: user.equipo_celular || '',
         plan_mkt_premium: user.plan_mkt_premium || false,
       });
+      loadPermisosAdicionales(user.id);
     }
   }, [user]);
 
@@ -97,6 +116,63 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
       .eq('activa', true)
       .order('nombre');
     if (data) setOficinas(data);
+  };
+
+  const loadModulosSistema = async () => {
+    const { data } = await supabase
+      .from('modulos_sistema')
+      .select('*')
+      .eq('activo', true)
+      .order('orden, nombre');
+    if (data) setModulosSistema(data);
+  };
+
+  const loadPermisosAdicionales = async (userId: string) => {
+    const { data } = await supabase
+      .from('permisos_adicionales_gerente')
+      .select('modulo_id')
+      .eq('usuario_id', userId);
+    if (data) {
+      setPermisosAdicionales(data.map(p => p.modulo_id));
+    }
+  };
+
+  const togglePermisoModulo = (moduloId: string) => {
+    setPermisosAdicionales(prev => {
+      if (prev.includes(moduloId)) {
+        return prev.filter(id => id !== moduloId);
+      } else {
+        return [...prev, moduloId];
+      }
+    });
+  };
+
+  const savePermisosAdicionales = async (userId: string) => {
+    try {
+      // Primero eliminar permisos existentes
+      await supabase
+        .from('permisos_adicionales_gerente')
+        .delete()
+        .eq('usuario_id', userId);
+
+      // Luego insertar los nuevos permisos
+      if (permisosAdicionales.length > 0) {
+        const permisosToInsert = permisosAdicionales.map(moduloId => ({
+          usuario_id: userId,
+          modulo_id: moduloId,
+          asignado_por: currentUser?.id,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('permisos_adicionales_gerente')
+          .insert(permisosToInsert);
+
+        if (insertError) throw insertError;
+      }
+    } catch (err) {
+      console.error('Error saving additional permissions:', err);
+      throw err;
+    }
   };
 
   const validateSlug = (slug: string): boolean => {
@@ -223,6 +299,11 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
 
         if (updateError) throw updateError;
 
+        // Guardar permisos adicionales si es Gerente
+        if (formData.rol === 'Gerente' && isAdmin) {
+          await savePermisosAdicionales(user.id);
+        }
+
         if (formData.password) {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) throw new Error('No hay sesión activa');
@@ -331,6 +412,11 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 .eq('id', userId);
             }
           }
+        }
+
+        // Guardar permisos adicionales si es Gerente
+        if (result.userId && formData.rol === 'Gerente' && isAdmin) {
+          await savePermisosAdicionales(result.userId);
         }
       }
 
@@ -590,6 +676,69 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 )}
               </div>
             </div>
+
+            {/* Permisos Adicionales - Solo para Gerentes y solo si el usuario actual es Admin */}
+            {isAdmin && formData.rol === 'Gerente' && (
+              <div className="bg-gradient-to-br from-blue-50 to-primary-50 border-2 border-blue-200 rounded-xl p-6">
+                <h3 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-blue-600" />
+                  Permisos Adicionales (Nivel Administrador por Módulo)
+                </h3>
+                <p className="text-xs text-slate-600 mb-4">
+                  Al activar un módulo, este Gerente tendrá permisos de Administrador únicamente dentro de dicho módulo, sin convertirse en administrador global.
+                </p>
+
+                {modulosSistema.length === 0 ? (
+                  <p className="text-sm text-slate-500 italic">Cargando módulos...</p>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Agrupar por categoría */}
+                    {Array.from(new Set(modulosSistema.map(m => m.categoria || 'Otros'))).map(categoria => {
+                      const modulosCategoria = modulosSistema.filter(m => (m.categoria || 'Otros') === categoria);
+
+                      return (
+                        <div key={categoria} className="bg-white rounded-lg p-4 border border-slate-200">
+                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
+                            {categoria}
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {modulosCategoria.map(modulo => (
+                              <label
+                                key={modulo.id}
+                                className="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={permisosAdicionales.includes(modulo.id)}
+                                  onChange={() => togglePermisoModulo(modulo.id)}
+                                  className="mt-1 h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-slate-900">
+                                    {modulo.nombre}
+                                  </div>
+                                  {modulo.descripcion && (
+                                    <div className="text-xs text-slate-500 mt-0.5">
+                                      {modulo.descripcion}
+                                    </div>
+                                  )}
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-xs text-blue-800">
+                    <strong>💡 Nota:</strong> Los módulos seleccionados otorgarán permisos completos de administrador únicamente dentro de ese módulo. El usuario seguirá siendo Gerente en el resto del sistema.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

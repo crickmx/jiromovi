@@ -2,8 +2,11 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
+import { cargarPermisosAdicionales } from '../lib/permisosUtils';
 
-type Usuario = Database['public']['Tables']['usuarios']['Row'];
+type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
+  permisosAdicionales?: string[]; // Códigos de módulos con permisos admin
+};
 
 interface AuthContextType {
   user: User | null;
@@ -71,7 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email_laboral: data.email_laboral
       });
 
-      setUsuario(data);
+      // Si el usuario es Gerente, cargar sus permisos adicionales
+      if (data.rol === 'Gerente') {
+        const permisos = await cargarPermisosAdicionales(data.id);
+        console.log('[AuthContext] Permisos adicionales cargados:', permisos);
+        setUsuario({ ...data, permisosAdicionales: permisos });
+      } else {
+        setUsuario(data);
+      }
     } catch (err) {
       console.error('[AuthContext] Unexpected error fetching usuario:', err);
       setUsuario(null);
