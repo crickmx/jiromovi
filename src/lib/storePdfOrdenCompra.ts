@@ -86,15 +86,11 @@ export async function generarPDFOrdenCompra(pedido: StorePedidoCompleto): Promis
   doc.text(nombreCompleto, 60, yPos);
 
   if (pedido.usuario?.nombre_sicas) {
-    yPos += 5;
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Usuario SICAS: ${pedido.usuario.nombre_sicas}`, 60, yPos);
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(10);
+    yPos += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('SICAS:', 14, yPos);
     doc.setFont('helvetica', 'normal');
-    yPos += 1;
+    doc.text(pedido.usuario.nombre_sicas, 60, yPos);
   }
 
   yPos += 6;
