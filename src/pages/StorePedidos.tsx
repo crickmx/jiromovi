@@ -7,6 +7,7 @@ import { obtenerTodosPedidos, eliminarPedido } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
 
 export default function StorePedidos() {
   const { usuario } = useAuth();
@@ -104,6 +105,65 @@ export default function StorePedidos() {
   };
 
   const stats = calcularEstadisticas();
+
+  const exportarAExcel = () => {
+    const datosExportar = pedidosFiltrados.map(pedido => ({
+      'Folio OC': pedido.folio_oc || 'Pendiente',
+      'Estado': pedido.estatus?.nombre || 'Pendiente',
+      'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy HH:mm', { locale: es }),
+      'Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
+      'Nombre SICAS': pedido.usuario?.nombre_sicas || 'N/A',
+      'Oficina': pedido.usuario?.oficina || 'N/A',
+      'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
+      'Email': pedido.usuario?.email_laboral || 'N/A',
+      'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
+      'Forma de Pago': pedido.forma_pago || 'N/A',
+      'Método de Pago': pedido.metodo_pago === 'Otro'
+        ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
+        : (pedido.metodo_pago || 'N/A'),
+      'Responsable de Pago': pedido.responsable_pago
+        ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
+        : 'N/A',
+      'Total': pedido.total || 0,
+      'Observaciones OC': pedido.observaciones_oc || '',
+      'OC Generada Por': pedido.oc_generada_por_usuario?.nombre_completo || 'N/A',
+      'Fecha Generación OC': pedido.oc_generada_en
+        ? format(new Date(pedido.oc_generada_en), 'dd/MM/yyyy HH:mm', { locale: es })
+        : 'N/A',
+      'Notas Usuario': pedido.notas_usuario || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(datosExportar);
+
+    const columnWidths = [
+      { wch: 15 }, // Folio OC
+      { wch: 12 }, // Estado
+      { wch: 18 }, // Fecha Pedido
+      { wch: 25 }, // Cliente
+      { wch: 25 }, // Nombre SICAS
+      { wch: 20 }, // Oficina
+      { wch: 15 }, // Teléfono
+      { wch: 30 }, // Email
+      { wch: 40 }, // Dirección Entrega
+      { wch: 15 }, // Forma de Pago
+      { wch: 20 }, // Método de Pago
+      { wch: 25 }, // Responsable de Pago
+      { wch: 12 }, // Total
+      { wch: 40 }, // Observaciones OC
+      { wch: 25 }, // OC Generada Por
+      { wch: 18 }, // Fecha Generación OC
+      { wch: 40 }  // Notas Usuario
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedidos');
+
+    const fechaExportacion = format(new Date(), 'dd-MM-yyyy_HHmm', { locale: es });
+    const nombreArchivo = `MOVI_Store_Pedidos_${fechaExportacion}.xlsx`;
+
+    XLSX.writeFile(workbook, nombreArchivo);
+  };
 
   if (loading) {
     return (
@@ -213,11 +273,12 @@ export default function StorePedidos() {
 
             {pedidosFiltrados.length > 0 && (
               <button
-                onClick={() => alert('Función de exportar en desarrollo')}
-                className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                onClick={exportarAExcel}
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+                title="Exportar pedidos a Excel"
               >
                 <Download className="w-5 h-5" />
-                Exportar
+                Exportar Excel
               </button>
             )}
           </div>

@@ -396,18 +396,45 @@ export async function obtenerTodosPedidos() {
 
     // Obtener IDs únicos de usuarios
     const usuarioIds = [...new Set(pedidos.map(p => p.usuario_id))];
+    const responsableIds = [...new Set(pedidos.filter(p => p.responsable_pago_id).map(p => p.responsable_pago_id))];
+    const ocGeneradaPorIds = [...new Set(pedidos.filter(p => p.oc_generada_por).map(p => p.oc_generada_por))];
     console.log(`📋 Pedidos: ${pedidos.length}, Usuarios: ${usuarioIds.length}`);
 
-    // Obtener información de los usuarios
+    // Obtener información completa de los usuarios
     const { data: usuarios, error: usuariosError } = await supabase
       .from('usuarios')
-      .select('id, nombre')
+      .select('id, nombre, nombre_completo, oficina_id, celular_laboral, celular_personal, email_laboral, rol')
       .in('id', usuarioIds);
 
     if (usuariosError) {
       console.error('⚠️ Error obteniendo usuarios:', usuariosError);
-      // Continuar sin nombres de usuario
     }
+
+    // Obtener oficinas
+    const oficinaIds = [...new Set(usuarios?.filter(u => u.oficina_id).map(u => u.oficina_id) || [])];
+    const { data: oficinas } = await supabase
+      .from('oficinas')
+      .select('id, nombre')
+      .in('id', oficinaIds);
+
+    // Obtener nombres SICAS desde vendor_mappings
+    const { data: vendorMappings } = await supabase
+      .from('vendor_mappings')
+      .select('movi_user_id, source_value')
+      .in('movi_user_id', usuarioIds)
+      .eq('status', 'active');
+
+    // Obtener responsables de pago
+    const { data: responsables } = await supabase
+      .from('usuarios')
+      .select('id, nombre, nombre_completo')
+      .in('id', responsableIds);
+
+    // Obtener quién generó la OC
+    const { data: ocGeneradores } = await supabase
+      .from('usuarios')
+      .select('id, nombre_completo')
+      .in('id', ocGeneradaPorIds);
 
     // Obtener todos los detalles de pedidos para calcular totales
     const pedidoIds = pedidos.map(p => p.id);
@@ -418,7 +445,6 @@ export async function obtenerTodosPedidos() {
 
     if (detallesError) {
       console.error('⚠️ Error obteniendo detalles:', detallesError);
-      // Continuar sin totales
     }
 
     // Calcular totales por pedido
@@ -434,15 +460,39 @@ export async function obtenerTodosPedidos() {
       console.log(`💰 Totales calculados para ${totalesPorPedido.size} pedidos`);
     }
 
-    // Mapear usuarios y totales a los pedidos
-    const pedidosConUsuarios = pedidos.map(pedido => ({
-      ...pedido,
-      usuario: usuarios?.find(u => u.id === pedido.usuario_id),
-      total: totalesPorPedido.get(pedido.id) || 0
-    }));
+    // Mapear toda la información a los pedidos
+    const pedidosCompletos = pedidos.map(pedido => {
+      const usuarioData = usuarios?.find(u => u.id === pedido.usuario_id);
+      const oficinaData = oficinas?.find(o => o.id === usuarioData?.oficina_id);
+      const vendorMapping = vendorMappings?.find(v => v.movi_user_id === pedido.usuario_id);
+      const responsableData = responsables?.find(r => r.id === pedido.responsable_pago_id);
+      const ocGeneradorData = ocGeneradores?.find(g => g.id === pedido.oc_generada_por);
 
-    console.log(`✅ Pedidos cargados exitosamente: ${pedidosConUsuarios.length} pedidos`);
-    return pedidosConUsuarios as StorePedido[];
+      return {
+        ...pedido,
+        usuario: usuarioData ? {
+          nombre: usuarioData.nombre,
+          nombre_completo: usuarioData.nombre_completo,
+          nombre_sicas: vendorMapping?.source_value,
+          oficina: oficinaData?.nombre,
+          celular_laboral: usuarioData.celular_laboral,
+          celular_personal: usuarioData.celular_personal,
+          email_laboral: usuarioData.email_laboral,
+          rol: usuarioData.rol
+        } : undefined,
+        responsable_pago: responsableData ? {
+          nombre: responsableData.nombre,
+          nombre_completo: responsableData.nombre_completo
+        } : undefined,
+        oc_generada_por_usuario: ocGeneradorData ? {
+          nombre_completo: ocGeneradorData.nombre_completo
+        } : undefined,
+        total: totalesPorPedido.get(pedido.id) || 0
+      };
+    });
+
+    console.log(`✅ Pedidos cargados exitosamente: ${pedidosCompletos.length} pedidos`);
+    return pedidosCompletos as StorePedido[];
 
   } catch (error) {
     console.error('❌ Error fatal en obtenerTodosPedidos:', error);
