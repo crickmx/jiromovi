@@ -84,6 +84,14 @@ export async function generarPDFOrdenCompra(pedido: StorePedidoCompleto): Promis
   doc.setFont('helvetica', 'normal');
   doc.text(pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A', 60, yPos);
 
+  if (pedido.usuario?.nombre_sicas) {
+    yPos += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Usuario SICAS:', 14, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(pedido.usuario.nombre_sicas, 60, yPos);
+  }
+
   yPos += 6;
   doc.setFont('helvetica', 'bold');
   doc.text('Rol:', 14, yPos);
@@ -195,6 +203,14 @@ export async function generarPDFOrdenCompra(pedido: StorePedidoCompleto): Promis
     yPos += 8;
 
     doc.setFontSize(10);
+    if (pedido.responsable_pago) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Responsable de pago:', 14, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text(pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A', 60, yPos);
+      yPos += 6;
+    }
+
     if (pedido.forma_pago) {
       doc.setFont('helvetica', 'bold');
       doc.text('Forma de pago:', 14, yPos);

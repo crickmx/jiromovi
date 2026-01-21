@@ -481,6 +481,28 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     oficinaData = data;
   }
 
+  // Obtener nombre SICAS del usuario
+  let nombreSicas = null;
+  if (pedido.usuario_id) {
+    const { data } = await supabase
+      .from('accesos_nacional')
+      .select('usuario_sicas')
+      .eq('usuario_id', pedido.usuario_id)
+      .maybeSingle();
+    nombreSicas = data?.usuario_sicas || null;
+  }
+
+  // Obtener información del responsable de pago (si existe)
+  let responsablePago = null;
+  if (pedido.responsable_pago_id) {
+    const { data } = await supabase
+      .from('usuarios')
+      .select('nombre, nombre_completo')
+      .eq('id', pedido.responsable_pago_id)
+      .maybeSingle();
+    responsablePago = data;
+  }
+
   // Obtener información del admin que generó la OC (si existe)
   let ocGeneradaPorUsuario = null;
   if (pedido.oc_generada_por) {
@@ -496,6 +518,7 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
   const usuario = {
     nombre: usuarioData?.nombre || '',
     nombre_completo: usuarioData?.nombre_completo || usuarioData?.nombre || '',
+    nombre_sicas: nombreSicas,
     oficina: oficinaData?.nombre || 'Sin oficina asignada',
     telefono: usuarioData?.celular_laboral || usuarioData?.celular_personal || 'Sin teléfono',
     celular_laboral: usuarioData?.celular_laboral,
@@ -504,8 +527,12 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     rol: usuarioData?.rol
   };
 
-  // Agregar usuario al pedido
-  const pedidoConUsuario = { ...pedido, usuario };
+  // Agregar usuario y responsable de pago al pedido
+  const pedidoConUsuario = {
+    ...pedido,
+    usuario,
+    responsable_pago: responsablePago
+  };
 
   // Obtener detalle
   const { data: detalle, error: detalleError } = await supabase
@@ -589,7 +616,8 @@ export async function crearPedido(
   usuarioId: string,
   itemsCarrito: StoreCarritoItem[],
   notasUsuario?: string,
-  direccionEntrega?: string
+  direccionEntrega?: string,
+  responsablePagoId?: string
 ) {
   const estatusPendiente = await obtenerEstatus();
   const estatusId = estatusPendiente.find(e => e.nombre === 'Pendiente')?.id;
@@ -602,7 +630,8 @@ export async function crearPedido(
       usuario_id: usuarioId,
       notas_usuario: notasUsuario,
       direccion_entrega: direccionEntrega,
-      estatus_id: estatusId
+      estatus_id: estatusId,
+      responsable_pago_id: responsablePagoId || null
     })
     .select()
     .single();

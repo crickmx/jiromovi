@@ -54,6 +54,7 @@ export interface StorePedido {
   created_at: string;
   updated_at: string;
   total?: number;
+  responsable_pago_id?: string;
   // Campos de Orden de Compra
   forma_pago?: FormaPagoOC;
   metodo_pago?: MetodoPagoOC;
@@ -67,12 +68,17 @@ export interface StorePedido {
   usuario?: {
     nombre: string;
     nombre_completo?: string;
+    nombre_sicas?: string;
     oficina?: string;
     telefono?: string;
     celular_laboral?: string;
     celular_personal?: string;
     email_laboral?: string;
     rol?: string;
+  };
+  responsable_pago?: {
+    nombre_completo?: string;
+    nombre?: string;
   };
   oc_generada_por_usuario?: {
     nombre_completo?: string;

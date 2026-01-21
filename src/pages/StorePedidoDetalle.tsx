@@ -22,6 +22,8 @@ export default function StorePedidoDetalle() {
   const [agregandoNota, setAgregandoNota] = useState(false);
 
   // Estados para Orden de Compra
+  const [responsablePagoId, setResponsablePagoId] = useState('');
+  const [usuariosOficina, setUsuariosOficina] = useState<any[]>([]);
   const [formaPago, setFormaPago] = useState<FormaPagoOC | ''>('');
   const [metodoPago, setMetodoPago] = useState<MetodoPagoOC | ''>('');
   const [metodoPagoOtroDetalle, setMetodoPagoOtroDetalle] = useState('');
@@ -39,12 +41,41 @@ export default function StorePedidoDetalle() {
 
   useEffect(() => {
     if (pedido) {
+      setResponsablePagoId(pedido.responsable_pago_id || '');
       setFormaPago(pedido.forma_pago || '');
       setMetodoPago(pedido.metodo_pago || '');
       setMetodoPagoOtroDetalle(pedido.metodo_pago_otro_detalle || '');
       setObservacionesOC(pedido.observaciones_oc || '');
+      cargarUsuariosOficina();
     }
   }, [pedido]);
+
+  const cargarUsuariosOficina = async () => {
+    if (!pedido?.usuario_id) return;
+
+    try {
+      const { data: usuarioPedido, error: errorUsuario } = await supabase
+        .from('usuarios')
+        .select('oficina_id')
+        .eq('id', pedido.usuario_id)
+        .maybeSingle();
+
+      if (errorUsuario || !usuarioPedido?.oficina_id) return;
+
+      const { data: usuarios, error: errorUsuarios } = await supabase
+        .from('usuarios')
+        .select('id, nombre, apellidos, nombre_completo')
+        .eq('oficina_id', usuarioPedido.oficina_id)
+        .eq('estado', 'activo')
+        .order('nombre_completo');
+
+      if (!errorUsuarios && usuarios) {
+        setUsuariosOficina(usuarios);
+      }
+    } catch (error) {
+      console.error('Error cargando usuarios de oficina:', error);
+    }
+  };
 
   const cargarDatos = async () => {
     if (!pedidoId) return;
@@ -119,6 +150,7 @@ export default function StorePedidoDetalle() {
       const { error } = await supabase
         .from('store_pedidos')
         .update({
+          responsable_pago_id: responsablePagoId || null,
           forma_pago: formaPago,
           metodo_pago: metodoPago,
           metodo_pago_otro_detalle: metodoPago === 'Otro' ? metodoPagoOtroDetalle : null,
@@ -325,6 +357,11 @@ export default function StorePedidoDetalle() {
                   <p className="text-gray-700">
                     {pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}
                   </p>
+                  {isAdmin && pedido.usuario?.nombre_sicas && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Usuario SICAS: <span className="font-mono font-semibold text-primary-600">{pedido.usuario.nombre_sicas}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="font-medium text-gray-900 mb-1">Oficina</p>
@@ -409,6 +446,29 @@ export default function StorePedidoDetalle() {
                 )}
 
                 <div className="space-y-4 mb-4">
+                  {usuariosOficina.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Responsable de Pago (opcional)
+                      </label>
+                      <select
+                        value={responsablePagoId}
+                        onChange={(e) => setResponsablePagoId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {usuariosOficina.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.nombre_completo || `${u.nombre} ${u.apellidos || ''}`.trim()}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Usuarios de la misma oficina del solicitante
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Forma de Pago *
