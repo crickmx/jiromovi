@@ -549,15 +549,16 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     oficinaData = data;
   }
 
-  // Obtener nombre SICAS del usuario
+  // Obtener nombre SICAS del usuario desde vendor_mappings
   let nombreSicas = null;
   if (pedido.usuario_id) {
     const { data } = await supabase
-      .from('accesos_nacional')
-      .select('usuario_sicas')
-      .eq('usuario_id', pedido.usuario_id)
+      .from('vendor_mappings')
+      .select('source_value')
+      .eq('movi_user_id', pedido.usuario_id)
+      .eq('status', 'active')
       .maybeSingle();
-    nombreSicas = data?.usuario_sicas || null;
+    nombreSicas = data?.source_value || null;
   }
 
   // Obtener información del responsable de pago (si existe)
