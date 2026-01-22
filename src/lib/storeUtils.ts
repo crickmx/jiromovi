@@ -472,6 +472,14 @@ export async function obtenerTodosPedidos() {
     }
 
     console.log(`📦 Detalles encontrados: ${detalles?.length || 0} productos en total`);
+    if (detalles && detalles.length > 0) {
+      console.log(`📦 Ejemplo de detalle RAW:`, {
+        pedido_id: detalles[0].pedido_id,
+        cantidad: detalles[0].cantidad,
+        precio_unitario: detalles[0].precio_unitario,
+        tipo: typeof detalles[0].precio_unitario
+      });
+    }
 
     // Calcular totales por pedido y agrupar detalles
     const totalesPorPedido = new Map<string, number>();
@@ -480,7 +488,11 @@ export async function obtenerTodosPedidos() {
     if (detalles && detalles.length > 0) {
       detalles.forEach((detalle: any) => {
         const total = totalesPorPedido.get(detalle.pedido_id) || 0;
-        const subtotal = (detalle.cantidad || 0) * (detalle.precio_unitario || 0);
+        // IMPORTANTE: Convertir precio_unitario a número (viene como string desde PostgreSQL)
+        const precioUnitario = typeof detalle.precio_unitario === 'string'
+          ? parseFloat(detalle.precio_unitario)
+          : (detalle.precio_unitario || 0);
+        const subtotal = (detalle.cantidad || 0) * precioUnitario;
         totalesPorPedido.set(
           detalle.pedido_id,
           total + subtotal
@@ -490,12 +502,17 @@ export async function obtenerTodosPedidos() {
         const detallesPedido = detallesPorPedido.get(detalle.pedido_id) || [];
         detallesPedido.push({
           ...detalle,
+          precio_unitario: precioUnitario,
           producto: detalle.store_productos
         });
         detallesPorPedido.set(detalle.pedido_id, detallesPedido);
       });
       console.log(`💰 Totales calculados para ${totalesPorPedido.size} pedidos`);
-      console.log(`💵 Ejemplo de totales:`, Array.from(totalesPorPedido.entries()).slice(0, 3));
+      const ejemploTotales = Array.from(totalesPorPedido.entries()).slice(0, 3);
+      console.log(`💵 Ejemplo de totales:`, ejemploTotales.map(([id, total]) => ({
+        pedido_id: id.substring(0, 8) + '...',
+        total: `$${total.toFixed(2)}`
+      })));
     } else {
       console.warn('⚠️ No se encontraron detalles de productos para ningún pedido');
     }
