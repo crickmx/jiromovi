@@ -119,8 +119,8 @@ export default function StorePedidos() {
           'Folio OC': pedido.folio_oc || 'Pendiente',
           'Estado': pedido.estatus?.nombre || 'Pendiente',
           'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy HH:mm', { locale: es }),
-          'Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
-          'Nombre SICAS': pedido.usuario?.nombre_sicas || 'N/A',
+          'Cliente': pedido.usuario?.nombre_sicas || pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
+          'Nombre Real': (pedido.usuario?.nombre_sicas ? (pedido.usuario?.nombre_completo || pedido.usuario?.nombre || '') : ''),
           'Oficina': pedido.usuario?.oficina || 'N/A',
           'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
           'Email': pedido.usuario?.email_laboral || 'N/A',
@@ -155,8 +155,8 @@ export default function StorePedidos() {
             'Folio OC': pedido.folio_oc || 'Pendiente',
             'Estado': pedido.estatus?.nombre || 'Pendiente',
             'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy HH:mm', { locale: es }),
-            'Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
-            'Nombre SICAS': pedido.usuario?.nombre_sicas || 'N/A',
+            'Cliente': pedido.usuario?.nombre_sicas || pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
+            'Nombre Real': (pedido.usuario?.nombre_sicas ? (pedido.usuario?.nombre_completo || pedido.usuario?.nombre || '') : ''),
             'Oficina': pedido.usuario?.oficina || 'N/A',
             'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
             'Email': pedido.usuario?.email_laboral || 'N/A',
@@ -192,8 +192,8 @@ export default function StorePedidos() {
       { wch: 15 }, // Folio OC
       { wch: 12 }, // Estado
       { wch: 18 }, // Fecha Pedido
-      { wch: 25 }, // Cliente
-      { wch: 25 }, // Nombre SICAS
+      { wch: 30 }, // Cliente (SICAS o nombre completo)
+      { wch: 25 }, // Nombre Real (si tiene SICAS)
       { wch: 20 }, // Oficina
       { wch: 15 }, // Teléfono
       { wch: 30 }, // Email
@@ -394,7 +394,16 @@ export default function StorePedidos() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">{pedido.usuario?.nombre || 'N/A'}</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm text-gray-900">
+                            {pedido.usuario?.nombre_sicas || pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}
+                          </span>
+                          {pedido.usuario?.nombre_sicas && (
+                            <span className="text-xs text-gray-500">
+                              ({pedido.usuario?.nombre_completo || pedido.usuario?.nombre})
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">

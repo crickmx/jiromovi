@@ -353,16 +353,16 @@ export default function StorePedidoDetalle() {
               </h2>
               <div className="space-y-3 text-sm">
                 <div>
-                  <p className="font-medium text-gray-900 mb-1">Nombre Completo</p>
-                  <p className="text-gray-700">
-                    {pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}
+                  <p className="font-medium text-gray-900 mb-1">Cliente</p>
+                  <p className="text-gray-700 font-semibold">
+                    {pedido.usuario?.nombre_sicas || pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}
                   </p>
                 </div>
-                {pedido.usuario?.nombre_sicas && (
+                {pedido.usuario?.nombre_sicas && (pedido.usuario?.nombre_completo || pedido.usuario?.nombre) && (
                   <div>
-                    <p className="font-medium text-gray-900 mb-1">SICAS</p>
-                    <p className="text-gray-700 font-mono">
-                      {pedido.usuario.nombre_sicas}
+                    <p className="font-medium text-gray-900 mb-1">Nombre Real</p>
+                    <p className="text-gray-700 text-xs">
+                      {pedido.usuario.nombre_completo || pedido.usuario.nombre}
                     </p>
                   </div>
                 )}
