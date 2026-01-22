@@ -2,13 +2,15 @@
 
 ## Resumen
 
-Se ha implementado un sistema unificado para mapear usuarios MOVI con usuarios SICAS, garantizando relaciones **1:1 estrictas** en todos los sistemas.
+Se ha implementado un sistema unificado para mapear usuarios MOVI con usuarios SICAS, garantizando relaciones **1:1 estrictas** en todos los sistemas. **Commission Agents ha sido eliminado** y todos los datos de comisiones ahora apuntan directamente a usuarios.
 
 ## 📊 Arquitectura
 
 ### Fuente Única de Verdad
 
-**Campo `usuarios.nombre_sicas`** - Almacena el nombre del usuario en SICAS directamente en la tabla usuarios.
+**Tabla `usuarios`** - Contiene toda la información del usuario incluyendo datos SICAS:
+- `usuarios.nombre_sicas` - Nombre del usuario en SICAS
+- `usuarios.id_sicas` - ID del vendedor en SICAS
 
 ```sql
 SELECT
@@ -39,20 +41,19 @@ CREATE TABLE sicas_mapeo_vendedor_usuario (
 );
 ```
 
-#### 2. **commission_agents**
-- Sistema de comisiones
-- **UNIQUE constraint en `usuario_id`** → cada usuario MOVI solo puede tener 1 agente de comisiones
-- Link directo a `usuarios(id)`
+#### 2. **commission_details**
+- Sistema de comisiones UNIFICADO
+- **Apunta directamente a `usuarios.id`** → eliminada la tabla intermedia commission_agents
+- Cada comisión está vinculada a un usuario MOVI
 
 ```sql
--- Estructura
-CREATE TABLE commission_agents (
+-- Estructura simplificada
+CREATE TABLE commission_details (
   id uuid PRIMARY KEY,
-  name text NOT NULL,
-  email text NOT NULL,
-  usuario_id uuid UNIQUE,  -- 1:1 con usuarios
-  office_id uuid,
-  fiscal_regime_id uuid
+  usuario_id uuid NOT NULL REFERENCES usuarios(id),  -- Directo a usuarios
+  poliza text,
+  commission_neta numeric,
+  ...
 );
 ```
 
@@ -96,9 +97,12 @@ WHERE estado_consistencia != 'CONSISTENTE';
 - `usuario_id` - ID del usuario MOVI
 - `nombre_movi` - Nombre completo en MOVI
 - `nombre_sicas` - Nombre en SICAS (fuente de verdad)
+- `id_sicas` - ID del vendedor en SICAS
 - `oficina_nombre` - Oficina del usuario
+- `regimen_fiscal_nombre` - Régimen fiscal del usuario
 - `sicas_mapping_id` - ID del mapeo SICAS oficial
-- `commission_agent_id` - ID del agente de comisiones
+- `comisiones_count` - Cantidad de comisiones
+- `comisiones_total` - Suma total de comisiones
 - `estado_mapeo` - Estado general del mapeo
 - `estado_consistencia` - Indicador de inconsistencias
 
@@ -125,9 +129,10 @@ SELECT get_user_nombre_sicas('e721d4ed-4ba4-499a-a08c-3b881ff380ea');
 ✅ Un usuario SICAS solo puede estar asignado a 1 usuario MOVI
 ✅ Enforced por UNIQUE constraints a nivel de base de datos
 
-### 2. Relación 1:1 Usuario MOVI ↔ Commission Agent
-✅ Un usuario MOVI solo puede tener 1 agente de comisiones
-✅ Enforced por UNIQUE constraint en `commission_agents.usuario_id`
+### 2. Comisiones → Usuarios (Directo)
+✅ Eliminada tabla intermedia `commission_agents`
+✅ `commission_details.usuario_id` apunta directamente a `usuarios.id`
+✅ Simplifica arquitectura y elimina duplicación de datos
 
 ### 3. Vendor Mappings Activos
 ✅ Un usuario MOVI solo puede tener 1 mapeo de vendedor activo
@@ -219,21 +224,24 @@ WHERE id IN (SELECT id FROM ranked WHERE rn > 1);
 
 ## 📊 Estadísticas
 
-### Ver Mapeos por Tipo
+### Ver Estado de Usuarios
 
 ```sql
 SELECT
-  CASE
-    WHEN smu.id IS NOT NULL THEN 'SICAS'
-    WHEN ca.id IS NOT NULL THEN 'Comisiones'
-    ELSE 'Sin Mapeo'
-  END as tipo_mapeo,
+  estado_mapeo,
   COUNT(*) as cantidad
-FROM usuarios u
-LEFT JOIN sicas_mapeo_vendedor_usuario smu ON smu.movi_user_id = u.id
-LEFT JOIN commission_agents ca ON ca.usuario_id = u.id
-WHERE u.deleted_at IS NULL
-GROUP BY tipo_mapeo;
+FROM vista_mapeo_usuarios_unificado
+GROUP BY estado_mapeo
+ORDER BY cantidad DESC;
+```
+
+### Ver Comisiones por Usuario
+
+```sql
+SELECT * FROM vista_comisiones_por_usuario
+WHERE total_polizas > 0
+ORDER BY total_commission_neta DESC
+LIMIT 10;
 ```
 
 ### Ver Usuarios Sin Mapeo SICAS
@@ -280,9 +288,9 @@ ORDER BY o.nombre, u.nombre_completo;
    - Ya tiene relación 1:1 con `usuarios.usuario_id`
    - No necesita campo adicional `nombre_sicas`
 
-## 🚀 Migración Aplicada
+## 🚀 Migraciones Aplicadas
 
-**Archivo:** `20260122000000_unify_user_sicas_mapping_system.sql`
+### Migración 1: `20260122000000_unify_user_sicas_mapping_system.sql`
 
 **Cambios realizados:**
 1. ✅ Agregado campo `usuarios.nombre_sicas`
@@ -294,8 +302,30 @@ ORDER BY o.nombre, u.nombre_completo;
 7. ✅ Limpieza de duplicados en `vendor_mappings`
 8. ✅ Sincronización de datos existentes
 
+### Migración 2: `20260122050000_unify_commission_agents_with_usuarios.sql`
+
+**Cambios realizados:**
+1. ✅ Agregado campo `usuarios.id_sicas`
+2. ✅ Migrado `commission_details.agent_id` → `commission_details.usuario_id`
+3. ✅ **Eliminada tabla `commission_agents`** (ya no existe)
+4. ✅ Trigger actualizado para sincronizar `nombre_sicas` e `id_sicas`
+5. ✅ Vista unificada actualizada con campos de comisiones
+6. ✅ Nueva vista `vista_comisiones_por_usuario`
+7. ✅ Función helper `get_usuario_by_sicas_id()`
+8. ✅ 12 comisiones migradas exitosamente
+
+## 🎯 Resumen Final
+
+**Sistema Unificado Completo:**
+- ✅ 1 tabla de usuarios (usuarios)
+- ✅ 1 tabla de mapeo SICAS (sicas_mapeo_vendedor_usuario)
+- ✅ 1 tabla de comisiones (commission_details) → apunta directo a usuarios
+- ✅ 1 tabla de mapeo producción (vendor_mappings)
+- ❌ commission_agents **ELIMINADA**
+- ❌ commission_offices **ELIMINADA**
+
 ---
 
 **Fecha de Implementación:** 22 de Enero 2026
 **Estado:** ✅ Activo y Funcionando
-**Versión:** 1.0
+**Versión:** 2.0 (Unificado Completo)
