@@ -20,6 +20,7 @@ export interface VendorMapping {
   usuarios?: {
     nombre_completo: string;
     email: string;
+    nombre_sicas: string | null;
   };
 }
 

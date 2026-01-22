@@ -36,7 +36,7 @@ export default function MapeoVendedoresAdmin() {
     try {
       const { data, error } = await supabase
         .from('vendor_mappings')
-        .select('*, usuarios(nombre_completo, email_laboral, email_personal)')
+        .select('*, usuarios(nombre_completo, email_laboral, email_personal, nombre_sicas)')
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -242,6 +242,9 @@ export default function MapeoVendedoresAdmin() {
                     Usuario MOVI asignado
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Usuario SICAS
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Estado
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -285,6 +288,21 @@ export default function MapeoVendedoresAdmin() {
                         </div>
                       ) : (
                         <span className="text-sm text-gray-400">Usuario no encontrado</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {mapping.usuarios?.nombre_sicas ? (
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                          <span className="text-sm text-gray-900 font-medium">
+                            {mapping.usuarios.nombre_sicas}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                          <span className="text-xs text-gray-400 italic">Sin mapeo SICAS</span>
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4">
