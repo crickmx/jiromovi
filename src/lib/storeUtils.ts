@@ -202,9 +202,9 @@ export async function obtenerCarrito(usuarioId: string) {
     .from('store_carrito')
     .select(`
       *,
-      producto:store_productos(
+      producto:producto_id(
         *,
-        categoria:store_categorias(*)
+        categoria:categoria_id(*)
       )
     `)
     .eq('usuario_id', usuarioId)
@@ -442,9 +442,10 @@ export async function obtenerTodosPedidos() {
       .from('store_pedidos_detalle')
       .select(`
         pedido_id,
+        producto_id,
         cantidad,
         precio_unitario,
-        producto:store_productos(
+        producto:producto_id(
           nombre,
           descripcion,
           codigo
@@ -606,9 +607,9 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     .from('store_pedidos_detalle')
     .select(`
       *,
-      producto:store_productos(
+      producto:producto_id(
         *,
-        categoria:store_categorias(*)
+        categoria:categoria_id(*)
       )
     `)
     .eq('pedido_id', pedidoId);

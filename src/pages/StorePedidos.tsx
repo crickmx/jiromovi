@@ -112,7 +112,6 @@ export default function StorePedidos() {
 
     pedidosFiltrados.forEach(pedido => {
       const detalles = pedido.detalles || [];
-      console.log('📦 Pedido:', pedido.folio_oc, 'Detalles:', detalles.length, detalles);
 
       if (detalles.length === 0) {
         // Si no hay detalles, crear una fila con la información del pedido
