@@ -369,9 +369,6 @@ export default function StorePedidos() {
                       Fecha
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Total
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Estatus
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
@@ -406,11 +403,6 @@ export default function StorePedidos() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">
                           {format(new Date(pedido.created_at), "d MMM yyyy", { locale: es })}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-gray-900">
-                          ${pedido.total?.toLocaleString('es-MX', { minimumFractionDigits: 2 }) || '0.00'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
