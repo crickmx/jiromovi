@@ -438,6 +438,8 @@ export async function obtenerTodosPedidos() {
 
     // Obtener todos los detalles de pedidos con productos
     const pedidoIds = pedidos.map(p => p.id);
+    console.log(`🔍 Buscando detalles para ${pedidoIds.length} pedidos...`);
+
     const { data: detalles, error: detallesError } = await supabase
       .from('store_pedidos_detalle')
       .select(`
@@ -445,7 +447,7 @@ export async function obtenerTodosPedidos() {
         producto_id,
         cantidad,
         precio_unitario,
-        producto:producto_id(
+        producto:store_productos(
           nombre,
           descripcion,
           codigo
@@ -457,16 +459,19 @@ export async function obtenerTodosPedidos() {
       console.error('⚠️ Error obteniendo detalles:', detallesError);
     }
 
+    console.log(`📦 Detalles encontrados: ${detalles?.length || 0} productos en total`);
+
     // Calcular totales por pedido y agrupar detalles
     const totalesPorPedido = new Map<string, number>();
     const detallesPorPedido = new Map<string, any[]>();
 
-    if (detalles) {
+    if (detalles && detalles.length > 0) {
       detalles.forEach(detalle => {
         const total = totalesPorPedido.get(detalle.pedido_id) || 0;
+        const subtotal = (detalle.cantidad || 0) * (detalle.precio_unitario || 0);
         totalesPorPedido.set(
           detalle.pedido_id,
-          total + (detalle.cantidad * detalle.precio_unitario)
+          total + subtotal
         );
 
         // Agrupar detalles por pedido
@@ -475,6 +480,9 @@ export async function obtenerTodosPedidos() {
         detallesPorPedido.set(detalle.pedido_id, detallesPedido);
       });
       console.log(`💰 Totales calculados para ${totalesPorPedido.size} pedidos`);
+      console.log(`💵 Ejemplo de totales:`, Array.from(totalesPorPedido.entries()).slice(0, 3));
+    } else {
+      console.warn('⚠️ No se encontraron detalles de productos para ningún pedido');
     }
 
     // Mapear toda la información a los pedidos
@@ -484,6 +492,9 @@ export async function obtenerTodosPedidos() {
       const vendorMapping = vendorMappings?.find(v => v.movi_user_id === pedido.usuario_id);
       const responsableData = responsables?.find(r => r.id === pedido.responsable_pago_id);
       const ocGeneradorData = ocGeneradores?.find(g => g.id === pedido.oc_generada_por);
+
+      const pedidoTotal = totalesPorPedido.get(pedido.id) || 0;
+      const pedidoDetalles = detallesPorPedido.get(pedido.id) || [];
 
       return {
         ...pedido,
@@ -504,12 +515,18 @@ export async function obtenerTodosPedidos() {
         oc_generada_por_usuario: ocGeneradorData ? {
           nombre_completo: ocGeneradorData.nombre_completo
         } : undefined,
-        total: totalesPorPedido.get(pedido.id) || 0,
-        detalles: detallesPorPedido.get(pedido.id) || []
+        total: pedidoTotal,
+        detalles: pedidoDetalles
       };
     });
 
+    const pedidosConTotal = pedidosCompletos.filter(p => p.total > 0).length;
+    const pedidosConDetalles = pedidosCompletos.filter(p => p.detalles.length > 0).length;
+
     console.log(`✅ Pedidos cargados exitosamente: ${pedidosCompletos.length} pedidos`);
+    console.log(`   💰 Pedidos con total > 0: ${pedidosConTotal}`);
+    console.log(`   📦 Pedidos con detalles: ${pedidosConDetalles}`);
+
     return pedidosCompletos as StorePedido[];
 
   } catch (error) {
