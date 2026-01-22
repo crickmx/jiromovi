@@ -315,6 +315,43 @@ export default function SicasAdmin() {
 
         <TabsContent value="conexion">
           <Section>
+            {message && message.type === 'error' && message.text.includes('Error en Ejecución') && (
+              <Card className="mb-6 border-amber-200 bg-amber-50">
+                <CardHeader>
+                  <CardTitle className="text-amber-900 flex items-center gap-2">
+                    <XCircle className="w-5 h-5" />
+                    Catálogo No Disponible
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div>
+                    <p className="text-amber-800 font-medium mb-2">
+                      El catálogo que intentas sincronizar no está disponible en SICAS en este momento.
+                    </p>
+                    <p className="text-amber-700 mb-3">
+                      Esto puede deberse a:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 text-amber-700 ml-2">
+                      <li>El catálogo está en mantenimiento</li>
+                      <li>Restricciones temporales del webservice</li>
+                      <li>El tipo de catálogo requiere permisos especiales</li>
+                      <li>Sobrecarga en los servidores de SICAS</li>
+                    </ul>
+                  </div>
+
+                  <div className="pt-3 border-t border-amber-200">
+                    <p className="font-medium text-amber-900 mb-2">Recomendaciones:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-amber-700 ml-2">
+                      <li>Usa el "Modo Diagnóstico" para probar catálogos individuales</li>
+                      <li>Intenta con catálogos esenciales primero: 12 (Aseguradoras), 9 (Ramos)</li>
+                      <li>Si persiste, intenta en otro horario</li>
+                      <li>Verifica que tus credenciales tengan acceso a este catálogo</li>
+                    </ol>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Configuración de Conexión</CardTitle>
@@ -331,58 +368,67 @@ export default function SicasAdmin() {
                   <p className="text-xs text-neutral-500">Configurado automáticamente desde variables de entorno</p>
                 </div>
 
-                <div className="flex gap-4">
-                  <Button
-                    onClick={handleTestConnection}
-                    disabled={testingConnection}
-                    variant="outline"
-                  >
-                    {testingConnection ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Probando...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Probar Conexión
-                      </>
-                    )}
-                  </Button>
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={handleTestConnection}
+                      disabled={testingConnection}
+                      variant="outline"
+                    >
+                      {testingConnection ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Probando...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Probar Conexión
+                        </>
+                      )}
+                    </Button>
 
-                  <Button
-                    onClick={() => handleSync('despachos')}
-                    disabled={syncingDespachos}
-                  >
-                    {syncingDespachos ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Sincronizando...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Sincronizar Despachos
-                      </>
-                    )}
-                  </Button>
+                    <Button
+                      onClick={() => handleSync('despachos')}
+                      disabled={syncingDespachos}
+                    >
+                      {syncingDespachos ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sincronizando...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Sincronizar Despachos
+                        </>
+                      )}
+                    </Button>
 
-                  <Button
-                    onClick={() => handleSync('vendedores')}
-                    disabled={syncingVendedores}
-                  >
-                    {syncingVendedores ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Sincronizando...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Sincronizar Vendedores
-                      </>
-                    )}
-                  </Button>
+                    <Button
+                      onClick={() => handleSync('vendedores')}
+                      disabled={syncingVendedores}
+                    >
+                      {syncingVendedores ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sincronizando...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Sincronizar Vendedores
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      <strong>Nota:</strong> Si un catálogo no está disponible, usa el "Modo Diagnóstico"
+                      para probar catálogos alternativos como Aseguradoras (12) o Ramos (9).
+                    </p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6 pt-6 border-t">
@@ -651,9 +697,22 @@ export default function SicasAdmin() {
                       onChange={(e) => setDiagnosticCatalogId(e.target.value)}
                       placeholder="12"
                     />
-                    <p className="text-xs text-neutral-500">
-                      Catálogos comunes: 10=Oficinas, 11=Despachos, 12=Compañías, 13=Agentes, 32=Vendedores
-                    </p>
+                    <div className="text-xs text-neutral-600 space-y-1">
+                      <p className="font-medium">Catálogos disponibles para probar:</p>
+                      <ul className="list-disc list-inside ml-2 space-y-0.5">
+                        <li><strong>9:</strong> Ramos (tipos de seguro)</li>
+                        <li><strong>10:</strong> Oficinas</li>
+                        <li><strong>11:</strong> Despachos</li>
+                        <li><strong>12:</strong> Aseguradoras/Compañías</li>
+                        <li><strong>13:</strong> Agentes individuales</li>
+                        <li><strong>15:</strong> Agentes (alternativo)</li>
+                        <li><strong>32:</strong> Vendedores</li>
+                        <li><strong>34:</strong> Oficinas (alternativo)</li>
+                      </ul>
+                      <p className="text-amber-600 font-medium mt-2">
+                        ⚠️ No todos los catálogos están disponibles. Algunos requieren permisos especiales.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
