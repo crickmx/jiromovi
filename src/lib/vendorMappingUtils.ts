@@ -56,6 +56,28 @@ export async function crearVendorMapping(
   },
   userId: string
 ): Promise<VendorMapping> {
+  // Primero desactivar cualquier mapeo activo existente con el mismo source
+  await supabase
+    .from('vendor_mappings')
+    .update({
+      status: 'inactive',
+      updated_by: userId,
+    })
+    .eq('source_type', mapping.source_type)
+    .eq('source_value', mapping.source_value)
+    .eq('status', 'active');
+
+  // Desactivar cualquier otro mapeo activo del usuario
+  await supabase
+    .from('vendor_mappings')
+    .update({
+      status: 'inactive',
+      updated_by: userId,
+    })
+    .eq('movi_user_id', mapping.movi_user_id)
+    .eq('status', 'active');
+
+  // Ahora crear el nuevo mapeo activo
   const { data, error } = await supabase
     .from('vendor_mappings')
     .insert({
