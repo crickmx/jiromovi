@@ -447,7 +447,7 @@ export async function obtenerTodosPedidos() {
         producto_id,
         cantidad,
         precio_unitario,
-        producto:store_productos(
+        store_productos!store_pedidos_detalle_producto_id_fkey(
           nombre,
           descripcion,
           codigo
@@ -466,7 +466,7 @@ export async function obtenerTodosPedidos() {
     const detallesPorPedido = new Map<string, any[]>();
 
     if (detalles && detalles.length > 0) {
-      detalles.forEach(detalle => {
+      detalles.forEach((detalle: any) => {
         const total = totalesPorPedido.get(detalle.pedido_id) || 0;
         const subtotal = (detalle.cantidad || 0) * (detalle.precio_unitario || 0);
         totalesPorPedido.set(
@@ -474,9 +474,12 @@ export async function obtenerTodosPedidos() {
           total + subtotal
         );
 
-        // Agrupar detalles por pedido
+        // Agrupar detalles por pedido y renombrar store_productos a producto
         const detallesPedido = detallesPorPedido.get(detalle.pedido_id) || [];
-        detallesPedido.push(detalle);
+        detallesPedido.push({
+          ...detalle,
+          producto: detalle.store_productos
+        });
         detallesPorPedido.set(detalle.pedido_id, detallesPedido);
       });
       console.log(`💰 Totales calculados para ${totalesPorPedido.size} pedidos`);
@@ -620,19 +623,22 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     responsable_pago: responsablePago
   };
 
-  // Obtener detalle
+  // Obtener detalle con productos
   const { data: detalle, error: detalleError } = await supabase
     .from('store_pedidos_detalle')
     .select(`
       *,
-      producto:producto_id(
+      store_productos!store_pedidos_detalle_producto_id_fkey(
         *,
-        categoria:categoria_id(*)
+        store_categorias!store_productos_categoria_id_fkey(*)
       )
     `)
     .eq('pedido_id', pedidoId);
 
-  if (detalleError) throw detalleError;
+  if (detalleError) {
+    console.error('Error obteniendo detalle:', detalleError);
+    throw detalleError;
+  }
 
   // Obtener notas con información del admin
   const { data: notasData, error: notasError } = await supabase
@@ -689,9 +695,18 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     }
   }
 
+  // Mapear detalles para renombrar store_productos a producto
+  const detallesMapeados = (detalle || []).map((d: any) => ({
+    ...d,
+    producto: d.store_productos ? {
+      ...d.store_productos,
+      categoria: d.store_productos.store_categorias
+    } : undefined
+  }));
+
   return {
     ...pedidoConUsuario,
-    detalle: detalle as StorePedidoDetalle[],
+    detalle: detallesMapeados as StorePedidoDetalle[],
     notas: notas as StorePedidoNota[],
     historial: historial as StorePedidoHistorial[],
     oc_generada_por_usuario: ocGeneradaPorUsuario
