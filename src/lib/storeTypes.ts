@@ -83,6 +83,16 @@ export interface StorePedido {
   oc_generada_por_usuario?: {
     nombre_completo?: string;
   };
+  detalles?: Array<{
+    pedido_id: string;
+    cantidad: number;
+    precio_unitario: number;
+    producto?: {
+      nombre?: string;
+      descripcion?: string;
+      codigo?: string;
+    };
+  }>;
 }
 
 export interface StorePedidoDetalle {

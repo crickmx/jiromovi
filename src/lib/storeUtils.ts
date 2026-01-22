@@ -436,19 +436,30 @@ export async function obtenerTodosPedidos() {
       .select('id, nombre_completo')
       .in('id', ocGeneradaPorIds);
 
-    // Obtener todos los detalles de pedidos para calcular totales
+    // Obtener todos los detalles de pedidos con productos
     const pedidoIds = pedidos.map(p => p.id);
     const { data: detalles, error: detallesError } = await supabase
       .from('store_pedidos_detalle')
-      .select('pedido_id, cantidad, precio_unitario')
+      .select(`
+        pedido_id,
+        cantidad,
+        precio_unitario,
+        producto:store_productos(
+          nombre,
+          descripcion,
+          codigo
+        )
+      `)
       .in('pedido_id', pedidoIds);
 
     if (detallesError) {
       console.error('⚠️ Error obteniendo detalles:', detallesError);
     }
 
-    // Calcular totales por pedido
+    // Calcular totales por pedido y agrupar detalles
     const totalesPorPedido = new Map<string, number>();
+    const detallesPorPedido = new Map<string, any[]>();
+
     if (detalles) {
       detalles.forEach(detalle => {
         const total = totalesPorPedido.get(detalle.pedido_id) || 0;
@@ -456,6 +467,11 @@ export async function obtenerTodosPedidos() {
           detalle.pedido_id,
           total + (detalle.cantidad * detalle.precio_unitario)
         );
+
+        // Agrupar detalles por pedido
+        const detallesPedido = detallesPorPedido.get(detalle.pedido_id) || [];
+        detallesPedido.push(detalle);
+        detallesPorPedido.set(detalle.pedido_id, detallesPedido);
       });
       console.log(`💰 Totales calculados para ${totalesPorPedido.size} pedidos`);
     }
@@ -487,7 +503,8 @@ export async function obtenerTodosPedidos() {
         oc_generada_por_usuario: ocGeneradorData ? {
           nombre_completo: ocGeneradorData.nombre_completo
         } : undefined,
-        total: totalesPorPedido.get(pedido.id) || 0
+        total: totalesPorPedido.get(pedido.id) || 0,
+        detalles: detallesPorPedido.get(pedido.id) || []
       };
     });
 

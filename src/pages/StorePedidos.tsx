@@ -107,31 +107,84 @@ export default function StorePedidos() {
   const stats = calcularEstadisticas();
 
   const exportarAExcel = () => {
-    const datosExportar = pedidosFiltrados.map(pedido => ({
-      'Folio OC': pedido.folio_oc || 'Pendiente',
-      'Estado': pedido.estatus?.nombre || 'Pendiente',
-      'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy HH:mm', { locale: es }),
-      'Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
-      'Nombre SICAS': pedido.usuario?.nombre_sicas || 'N/A',
-      'Oficina': pedido.usuario?.oficina || 'N/A',
-      'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
-      'Email': pedido.usuario?.email_laboral || 'N/A',
-      'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
-      'Forma de Pago': pedido.forma_pago || 'N/A',
-      'Método de Pago': pedido.metodo_pago === 'Otro'
-        ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
-        : (pedido.metodo_pago || 'N/A'),
-      'Responsable de Pago': pedido.responsable_pago
-        ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
-        : 'N/A',
-      'Total': pedido.total || 0,
-      'Observaciones OC': pedido.observaciones_oc || '',
-      'OC Generada Por': pedido.oc_generada_por_usuario?.nombre_completo || 'N/A',
-      'Fecha Generación OC': pedido.oc_generada_en
-        ? format(new Date(pedido.oc_generada_en), 'dd/MM/yyyy HH:mm', { locale: es })
-        : 'N/A',
-      'Notas Usuario': pedido.notas_usuario || ''
-    }));
+    // Crear una fila por cada producto en cada pedido
+    const datosExportar: any[] = [];
+
+    pedidosFiltrados.forEach(pedido => {
+      const detalles = pedido.detalles || [];
+
+      if (detalles.length === 0) {
+        // Si no hay detalles, crear una fila con la información del pedido
+        datosExportar.push({
+          'Folio OC': pedido.folio_oc || 'Pendiente',
+          'Estado': pedido.estatus?.nombre || 'Pendiente',
+          'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy HH:mm', { locale: es }),
+          'Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
+          'Nombre SICAS': pedido.usuario?.nombre_sicas || 'N/A',
+          'Oficina': pedido.usuario?.oficina || 'N/A',
+          'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
+          'Email': pedido.usuario?.email_laboral || 'N/A',
+          'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
+          'Forma de Pago': pedido.forma_pago || 'N/A',
+          'Método de Pago': pedido.metodo_pago === 'Otro'
+            ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
+            : (pedido.metodo_pago || 'N/A'),
+          'Responsable de Pago': pedido.responsable_pago
+            ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
+            : 'N/A',
+          'Código Producto': 'N/A',
+          'Producto': 'Sin productos',
+          'Descripción Producto': 'N/A',
+          'Cantidad': 0,
+          'Precio Unitario': 0,
+          'Subtotal': 0,
+          'Total Pedido': pedido.total || 0,
+          'Observaciones OC': pedido.observaciones_oc || '',
+          'OC Generada Por': pedido.oc_generada_por_usuario?.nombre_completo || 'N/A',
+          'Fecha Generación OC': pedido.oc_generada_en
+            ? format(new Date(pedido.oc_generada_en), 'dd/MM/yyyy HH:mm', { locale: es })
+            : 'N/A',
+          'Notas Usuario': pedido.notas_usuario || ''
+        });
+      } else {
+        // Crear una fila por cada producto
+        detalles.forEach(detalle => {
+          const subtotal = detalle.cantidad * detalle.precio_unitario;
+
+          datosExportar.push({
+            'Folio OC': pedido.folio_oc || 'Pendiente',
+            'Estado': pedido.estatus?.nombre || 'Pendiente',
+            'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy HH:mm', { locale: es }),
+            'Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
+            'Nombre SICAS': pedido.usuario?.nombre_sicas || 'N/A',
+            'Oficina': pedido.usuario?.oficina || 'N/A',
+            'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
+            'Email': pedido.usuario?.email_laboral || 'N/A',
+            'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
+            'Forma de Pago': pedido.forma_pago || 'N/A',
+            'Método de Pago': pedido.metodo_pago === 'Otro'
+              ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
+              : (pedido.metodo_pago || 'N/A'),
+            'Responsable de Pago': pedido.responsable_pago
+              ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
+              : 'N/A',
+            'Código Producto': detalle.producto?.codigo || 'N/A',
+            'Producto': detalle.producto?.nombre || 'N/A',
+            'Descripción Producto': detalle.producto?.descripcion || 'N/A',
+            'Cantidad': detalle.cantidad,
+            'Precio Unitario': detalle.precio_unitario,
+            'Subtotal': subtotal,
+            'Total Pedido': pedido.total || 0,
+            'Observaciones OC': pedido.observaciones_oc || '',
+            'OC Generada Por': pedido.oc_generada_por_usuario?.nombre_completo || 'N/A',
+            'Fecha Generación OC': pedido.oc_generada_en
+              ? format(new Date(pedido.oc_generada_en), 'dd/MM/yyyy HH:mm', { locale: es })
+              : 'N/A',
+            'Notas Usuario': pedido.notas_usuario || ''
+          });
+        });
+      }
+    });
 
     const worksheet = XLSX.utils.json_to_sheet(datosExportar);
 
@@ -148,7 +201,13 @@ export default function StorePedidos() {
       { wch: 15 }, // Forma de Pago
       { wch: 20 }, // Método de Pago
       { wch: 25 }, // Responsable de Pago
-      { wch: 12 }, // Total
+      { wch: 15 }, // Código Producto
+      { wch: 35 }, // Producto
+      { wch: 40 }, // Descripción Producto
+      { wch: 10 }, // Cantidad
+      { wch: 15 }, // Precio Unitario
+      { wch: 15 }, // Subtotal
+      { wch: 15 }, // Total Pedido
       { wch: 40 }, // Observaciones OC
       { wch: 25 }, // OC Generada Por
       { wch: 18 }, // Fecha Generación OC
