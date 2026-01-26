@@ -140,7 +140,7 @@ export function Publicidad() {
 
   const handleEliminarPlantilla = async (plantilla: Plantilla) => {
     if (!isAdmin) {
-      alert('Solo los administradores pueden eliminar plantillas');
+      alert('No tienes permisos para eliminar plantillas');
       return;
     }
 

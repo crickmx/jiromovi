@@ -202,7 +202,21 @@ Pero **NO** puede:
 
 ---
 
+## 🎨 Actualización UI (Fase 2)
+
+Se actualizaron todos los mensajes de interfaz de usuario para ser más precisos:
+
+### Mensajes Actualizados:
+1. **Aula Virtual** - "Solo administradores" → "Requiere permisos de administrador"
+2. **Publicidad** - "Solo los administradores pueden eliminar" → "No tienes permisos para eliminar"
+3. **Comunicados** - "Solo los administradores pueden gestionar" → "No tienes permisos para gestionar"
+4. **Comentarios de código** - Simplificados para reflejar permisos dinámicos
+
+Ver detalles completos en: `ACTUALIZACION_UI_PERMISOS.md`
+
+---
+
 **Fecha de Fix:** 2026-01-26
 **Autor:** Sistema
-**Versión:** 1.0.0
-**Estado:** ✅ Completado (parcial - 3 de 7 módulos)
+**Versión:** 2.1.0
+**Estado:** ✅ COMPLETADO (7 de 7 módulos - 100% con UI actualizada)

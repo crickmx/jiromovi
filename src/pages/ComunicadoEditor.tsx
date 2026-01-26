@@ -647,7 +647,7 @@ export default function ComunicadoEditor() {
                 </div>
               )}
 
-              {/* Fijar comunicado - Solo Administradores */}
+              {/* Fijar comunicado */}
               {esAdmin && (
                 <label className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer">
                   <input

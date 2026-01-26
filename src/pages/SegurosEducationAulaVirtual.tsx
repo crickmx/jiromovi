@@ -725,7 +725,7 @@ function GrabacionesModal({
                   )}
                   {!isAdmin && (
                     <div className="text-xs text-slate-400 text-center">
-                      Solo administradores
+                      Requiere permisos de administrador
                     </div>
                   )}
                 </div>

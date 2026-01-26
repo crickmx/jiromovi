@@ -138,7 +138,7 @@ export default function ComunicadoCategorias() {
               Acceso Denegado
             </h2>
             <p className="text-gray-600 mb-6">
-              Solo los administradores pueden gestionar categorías.
+              No tienes permisos para gestionar categorías.
             </p>
             <button
               onClick={() => navigate('/comunicados')}
