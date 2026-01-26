@@ -12,12 +12,13 @@ import {
 import type { StoreProducto, StoreCategoria } from '../lib/storeTypes';
 import { ProductoCard } from '../components/store/ProductoCard';
 import { ProductoDetalleModal } from '../components/store/ProductoDetalleModal';
+import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 
 export default function Store() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
 
-  const isAdmin = usuario?.rol === 'Administrador';
+  const isAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.STORE);
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string>('');

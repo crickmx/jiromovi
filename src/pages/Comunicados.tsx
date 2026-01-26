@@ -12,6 +12,7 @@ import { obtenerComunicados, obtenerCategoriasActivas } from '../lib/comunicados
 import type { ComunicadoPublicacion, ComunicadoCategoria } from '../lib/comunicadosTypes';
 import { extraerTextoPlano, formatearFecha } from '../lib/comunicadosUtils';
 import { cn } from '@/lib/utils';
+import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 
 export default function Comunicados() {
   const { usuario } = useAuth();
@@ -29,7 +30,7 @@ export default function Comunicados() {
   const [fechaHasta, setFechaHasta] = useState<string>('');
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
-  const esAdmin = usuario?.rol === 'Administrador';
+  const esAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.COMUNICADOS);
   const esGerente = usuario?.rol === 'Gerente';
   const puedeCrear = esAdmin || esGerente;
   const ITEMS_PER_PAGE = 10;

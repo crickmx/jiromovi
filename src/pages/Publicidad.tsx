@@ -5,6 +5,7 @@ import { Image, Video, Plus, Search, Filter, CreditCard as Edit, Trash2, Copy, P
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
+import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 
 interface Categoria {
   id: string;
@@ -58,7 +59,7 @@ export function Publicidad() {
   const [selectedPlantilla, setSelectedPlantilla] = useState<Plantilla | null>(null);
   const [showPlanBlock, setShowPlanBlock] = useState(false);
 
-  const isAdmin = usuario?.rol === 'Administrador';
+  const isAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.PUBLICIDAD);
   const isAgente = usuario?.rol === 'Agente';
   const hasPlanPremium = usuario?.plan_mkt_premium || false;
 

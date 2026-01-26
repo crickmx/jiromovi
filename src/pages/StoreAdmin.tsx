@@ -16,6 +16,7 @@ import {
 } from '../lib/storeUtils';
 import type { StoreProducto, StoreCategoria } from '../lib/storeTypes';
 import { BaseModal } from '../components/BaseModal';
+import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 
 export default function StoreAdmin() {
   const { usuario } = useAuth();
@@ -31,7 +32,7 @@ export default function StoreAdmin() {
   const [categoriaEditando, setCategoriaEditando] = useState<StoreCategoria | null>(null);
 
   useEffect(() => {
-    if (usuario?.rol !== 'Administrador') {
+    if (!tienePermisoAdminEnModulo(usuario, MODULOS.STORE)) {
       navigate('/store');
       return;
     }

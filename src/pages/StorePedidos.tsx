@@ -8,6 +8,7 @@ import type { StorePedido } from '../lib/storeTypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
+import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 
 export default function StorePedidos() {
   const { usuario } = useAuth();
@@ -21,7 +22,7 @@ export default function StorePedidos() {
   const [eliminando, setEliminando] = useState(false);
 
   useEffect(() => {
-    if (usuario?.rol !== 'Administrador') {
+    if (!tienePermisoAdminEnModulo(usuario, MODULOS.STORE)) {
       navigate('/store');
       return;
     }
