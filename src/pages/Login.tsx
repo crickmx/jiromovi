@@ -238,6 +238,16 @@ export function Login() {
                     'Iniciar Sesión'
                   )}
                 </Button>
+
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => window.location.href = '/registro'}
+                    className="text-sm text-primary-600 hover:text-primary-700 font-medium hover:underline transition-colors"
+                  >
+                    Aún no soy usuario
+                  </button>
+                </div>
               </form>
             ) : (
               <form onSubmit={handlePasswordReset} className="space-y-5">

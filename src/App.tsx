@@ -6,6 +6,7 @@ import { AssistantProvider } from './contexts/AssistantContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
+import Registro from './pages/Registro';
 import { ResetPassword } from './pages/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 import { Perfil } from './pages/Perfil';
@@ -737,6 +738,7 @@ function App() {
               <Routes>
               {/* Rutas autenticadas - se evalúan primero */}
               <Route path="/login" element={<Login />} />
+              <Route path="/registro" element={<Registro />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><Layout><Perfil /></Layout></ProtectedRoute>} />
