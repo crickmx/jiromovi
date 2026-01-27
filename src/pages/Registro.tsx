@@ -228,7 +228,7 @@ export default function Registro() {
         <div className="bg-gradient-to-r from-primary-600 to-blue-600 p-8 text-white">
           <div className="flex items-center gap-3 mb-2">
             <UserPlus className="w-8 h-8" />
-            <h1 className="text-3xl font-bold">Aún no soy usuario</h1>
+            <h1 className="text-3xl font-bold text-white">Aún no soy usuario</h1>
           </div>
           <p className="text-blue-100">
             Completa el formulario y nos pondremos en contacto contigo
