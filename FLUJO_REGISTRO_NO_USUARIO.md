@@ -169,8 +169,8 @@ Resultado: 1 tarea por administrador
 
 ```javascript
 {
-  titulo: "Nuevo registro: [Nombre Completo]",
-  descripcion: `
+  tipo_tramite: "Lead – Registro MOVI",
+  instrucciones: `
     **Nuevo registro recibido**
 
     **Nombre completo:** Juan Pérez
@@ -182,15 +182,20 @@ Resultado: 1 tarea por administrador
 
     Por favor, contacta a esta persona lo antes posible.
   `,
-  categoria: "Lead – Registro MOVI",
   prioridad: "alta",
-  estado: "abierto",
+  estatus_id: "[uuid-estado-nuevo]",
+  assigned_to_user_id: "[uuid-destinatario]",
+  agente_id: "[uuid-destinatario]",
+  creado_por: "[uuid-destinatario]",
   metadata: {
     registro_id: "[uuid]",
-    tipo: "registro_no_usuario"
+    tipo: "registro_no_usuario",
+    titulo: "Nuevo registro: [Nombre Completo]"
   }
 }
 ```
+
+**Nota:** El sistema utiliza la estructura real de la tabla `tickets` con campos como `tipo_tramite`, `instrucciones`, `estatus_id`, y `assigned_to_user_id`.
 
 ---
 
@@ -333,6 +338,39 @@ Equipo contacta al interesado
 ### Modificados
 1. ✅ `src/pages/Login.tsx` - Agregado enlace "Aún no soy usuario"
 2. ✅ `src/App.tsx` - Agregada ruta `/registro`
+
+### Migraciones
+1. ✅ `create_registro_no_usuario_system.sql` - Sistema completo inicial
+2. ✅ `fix_procesar_registro_tickets_structure.sql` - Corrección estructura tickets
+
+---
+
+## 🔧 Correcciones Aplicadas
+
+### Estructura de Tabla `tickets`
+
+Durante la implementación se detectó que la tabla `tickets` tiene una estructura diferente a la esperada. Se aplicó una corrección para usar los campos correctos:
+
+**Campos Reales de la Tabla:**
+```sql
+- folio (text, autogenerado)
+- assigned_to_user_id (uuid) ← en lugar de usuario_id
+- estatus_id (uuid) ← en lugar de estado
+- prioridad (text)
+- instrucciones (text) ← en lugar de descripcion
+- tipo_tramite (text) ← en lugar de categoria
+- agente_id (uuid)
+- creado_por (uuid)
+- metadata (jsonb)
+```
+
+**Cambios Aplicados:**
+- ✅ Función actualizada para usar `assigned_to_user_id`
+- ✅ Estado obtenido dinámicamente: busca UUID del estado "Nuevo"
+- ✅ Campo `instrucciones` para descripción
+- ✅ Campo `tipo_tramite` para categoría
+- ✅ Título guardado en metadata para referencia
+- ✅ Migración `fix_procesar_registro_tickets_structure.sql` aplicada
 
 ---
 
