@@ -559,7 +559,7 @@ export async function obtenerTodosPedidos() {
     }
 
     // Mapear toda la información a los pedidos
-    const pedidosCompletos = pedidos.map(pedido => {
+    const pedidosCompletos = pedidos.map((pedido, index) => {
       const usuarioData = usuarios?.find(u => u.id === pedido.usuario_id);
       const oficinaData = oficinas?.find(o => o.id === usuarioData?.oficina_id);
       const nombreSicas = vendorMappingMap.get(pedido.usuario_id) || null;
@@ -569,18 +569,29 @@ export async function obtenerTodosPedidos() {
       const pedidoTotal = totalesPorPedido.get(pedido.id) || 0;
       const pedidoDetalles = detallesPorPedido.get(pedido.id) || [];
 
-      // Log del primer pedido para debug
-      if (pedido.id === pedidos[0].id) {
-        console.log(`🔍 DEBUG Pedido ${pedido.id}:`, {
-          usuario_id: pedido.usuario_id,
+      // Log de los primeros 3 pedidos para debug
+      if (index < 3) {
+        console.log(`🔍 DEBUG Pedido ${index + 1}/${pedidos.length}:`, {
+          pedido_id: pedido.id.substring(0, 8) + '...',
+          usuario_id: pedido.usuario_id?.substring(0, 8) + '...',
           usuarioData: usuarioData ? {
-            id: usuarioData.id,
+            id: usuarioData.id.substring(0, 8) + '...',
             nombre: usuarioData.nombre,
             nombre_completo: usuarioData.nombre_completo
           } : 'NO ENCONTRADO',
+          nombreSicas,
           oficinaData: oficinaData?.nombre || 'Sin oficina',
           total: pedidoTotal,
           num_detalles: pedidoDetalles.length
+        });
+      }
+
+      // Log si no se encuentra usuario
+      if (!usuarioData && pedido.usuario_id) {
+        console.warn(`⚠️ Usuario NO encontrado para pedido ${pedido.id.substring(0, 8)}`, {
+          usuario_id_buscado: pedido.usuario_id,
+          usuarios_disponibles: usuarios?.length || 0,
+          usuario_ids_disponibles: usuarios?.slice(0, 3).map(u => u.id.substring(0, 8)) || []
         });
       }
 
