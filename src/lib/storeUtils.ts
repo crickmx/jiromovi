@@ -403,7 +403,7 @@ export async function obtenerTodosPedidos() {
     // Obtener información completa de los usuarios
     const { data: usuarios, error: usuariosError } = await supabase
       .from('usuarios')
-      .select('id, nombre, nombre_completo, oficina_id, celular_laboral, celular_personal, email_laboral, rol')
+      .select('id, nombre, nombre_completo, clave_agente, oficina_id, celular_laboral, celular_personal, email, email_laboral, rol')
       .in('id', usuarioIds);
 
     if (usuariosError) {
@@ -534,9 +534,11 @@ export async function obtenerTodosPedidos() {
           nombre: usuarioData.nombre,
           nombre_completo: usuarioData.nombre_completo,
           nombre_sicas: nombreSicas,
+          clave_agente: usuarioData.clave_agente,
           oficina: oficinaData?.nombre || null,
           celular_laboral: usuarioData.celular_laboral,
           celular_personal: usuarioData.celular_personal,
+          email: usuarioData.email,
           email_laboral: usuarioData.email_laboral,
           rol: usuarioData.rol
         } : undefined,

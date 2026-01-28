@@ -118,34 +118,42 @@ export default function StorePedidos() {
         // Si no hay detalles, crear una fila con la información del pedido
         datosExportar.push({
           'Folio OC': pedido.folio_oc || 'Pendiente',
+          'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy', { locale: es }),
+          'Hora Pedido': format(new Date(pedido.created_at), 'HH:mm', { locale: es }),
           'Estado': pedido.estatus?.nombre || 'Pendiente',
-          'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy HH:mm', { locale: es }),
-          'Nombre Completo': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
-          'Usuario SICAS': pedido.usuario?.nombre_sicas || 'Sin usuario SICAS relacionado',
+
+          'Nombre Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
+          'Usuario SICAS': pedido.usuario?.nombre_sicas || 'Sin usuario SICAS',
+          'Clave Agente': pedido.usuario?.clave_agente || 'N/A',
           'Oficina': pedido.usuario?.oficina || 'N/A',
+          'Email': pedido.usuario?.email_laboral || pedido.usuario?.email || 'N/A',
           'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
-          'Email': pedido.usuario?.email_laboral || 'N/A',
-          'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
+
+          'Código Producto': 'N/A',
+          'Nombre Producto': 'Sin productos',
+          'Descripción': 'N/A',
+          'Cantidad': 0,
+          'Precio Unitario': '$0.00',
+          'Subtotal': '$0.00',
+
+          'Responsable de Pago': pedido.responsable_pago
+            ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
+            : 'N/A',
           'Forma de Pago': pedido.forma_pago || 'N/A',
           'Método de Pago': pedido.metodo_pago === 'Otro'
             ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
             : (pedido.metodo_pago || 'N/A'),
-          'Responsable de Pago': pedido.responsable_pago
-            ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
-            : 'N/A',
-          'Código Producto': 'N/A',
-          'Producto': 'Sin productos',
-          'Descripción Producto': 'N/A',
-          'Cantidad': 0,
-          'Precio Unitario': 0,
-          'Subtotal': 0,
-          'Total Pedido': pedido.total || 0,
+
+          'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+
+          'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
+          'Notas del Cliente': pedido.notas_usuario || '',
           'Observaciones OC': pedido.observaciones_oc || '',
+
           'OC Generada Por': pedido.oc_generada_por_usuario?.nombre_completo || 'N/A',
           'Fecha Generación OC': pedido.oc_generada_en
             ? format(new Date(pedido.oc_generada_en), 'dd/MM/yyyy HH:mm', { locale: es })
-            : 'N/A',
-          'Notas Usuario': pedido.notas_usuario || ''
+            : 'N/A'
         });
       } else {
         // Crear una fila por cada producto
@@ -154,34 +162,42 @@ export default function StorePedidos() {
 
           datosExportar.push({
             'Folio OC': pedido.folio_oc || 'Pendiente',
+            'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy', { locale: es }),
+            'Hora Pedido': format(new Date(pedido.created_at), 'HH:mm', { locale: es }),
             'Estado': pedido.estatus?.nombre || 'Pendiente',
-            'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy HH:mm', { locale: es }),
-            'Nombre Completo': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
-            'Usuario SICAS': pedido.usuario?.nombre_sicas || 'Sin usuario SICAS relacionado',
+
+            'Nombre Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
+            'Usuario SICAS': pedido.usuario?.nombre_sicas || 'Sin usuario SICAS',
+            'Clave Agente': pedido.usuario?.clave_agente || 'N/A',
             'Oficina': pedido.usuario?.oficina || 'N/A',
+            'Email': pedido.usuario?.email_laboral || pedido.usuario?.email || 'N/A',
             'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
-            'Email': pedido.usuario?.email_laboral || 'N/A',
-            'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
+
+            'Código Producto': detalle.producto?.codigo || 'N/A',
+            'Nombre Producto': detalle.producto?.nombre || 'N/A',
+            'Descripción': detalle.producto?.descripcion || 'N/A',
+            'Cantidad': detalle.cantidad,
+            'Precio Unitario': `$${detalle.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            'Subtotal': `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+
+            'Responsable de Pago': pedido.responsable_pago
+              ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
+              : 'N/A',
             'Forma de Pago': pedido.forma_pago || 'N/A',
             'Método de Pago': pedido.metodo_pago === 'Otro'
               ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
               : (pedido.metodo_pago || 'N/A'),
-            'Responsable de Pago': pedido.responsable_pago
-              ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
-              : 'N/A',
-            'Código Producto': detalle.producto?.codigo || 'N/A',
-            'Producto': detalle.producto?.nombre || 'N/A',
-            'Descripción Producto': detalle.producto?.descripcion || 'N/A',
-            'Cantidad': detalle.cantidad,
-            'Precio Unitario': detalle.precio_unitario,
-            'Subtotal': subtotal,
-            'Total Pedido': pedido.total || 0,
+
+            'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+
+            'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
+            'Notas del Cliente': pedido.notas_usuario || '',
             'Observaciones OC': pedido.observaciones_oc || '',
+
             'OC Generada Por': pedido.oc_generada_por_usuario?.nombre_completo || 'N/A',
             'Fecha Generación OC': pedido.oc_generada_en
               ? format(new Date(pedido.oc_generada_en), 'dd/MM/yyyy HH:mm', { locale: es })
-              : 'N/A',
-            'Notas Usuario': pedido.notas_usuario || ''
+              : 'N/A'
           });
         });
       }
@@ -191,33 +207,41 @@ export default function StorePedidos() {
 
     const columnWidths = [
       { wch: 15 }, // Folio OC
+      { wch: 12 }, // Fecha Pedido
+      { wch: 8 },  // Hora Pedido
       { wch: 12 }, // Estado
-      { wch: 18 }, // Fecha Pedido
-      { wch: 30 }, // Nombre Completo
+
+      { wch: 30 }, // Nombre Cliente
       { wch: 35 }, // Usuario SICAS
-      { wch: 20 }, // Oficina
-      { wch: 15 }, // Teléfono
+      { wch: 15 }, // Clave Agente
+      { wch: 25 }, // Oficina
       { wch: 30 }, // Email
-      { wch: 40 }, // Dirección Entrega
-      { wch: 15 }, // Forma de Pago
-      { wch: 20 }, // Método de Pago
-      { wch: 25 }, // Responsable de Pago
+      { wch: 15 }, // Teléfono
+
       { wch: 15 }, // Código Producto
-      { wch: 35 }, // Producto
-      { wch: 40 }, // Descripción Producto
+      { wch: 40 }, // Nombre Producto
+      { wch: 50 }, // Descripción
       { wch: 10 }, // Cantidad
       { wch: 15 }, // Precio Unitario
       { wch: 15 }, // Subtotal
+
+      { wch: 30 }, // Responsable de Pago
+      { wch: 20 }, // Forma de Pago
+      { wch: 25 }, // Método de Pago
+
       { wch: 15 }, // Total Pedido
-      { wch: 40 }, // Observaciones OC
+
+      { wch: 45 }, // Dirección Entrega
+      { wch: 45 }, // Notas del Cliente
+      { wch: 45 }, // Observaciones OC
+
       { wch: 25 }, // OC Generada Por
-      { wch: 18 }, // Fecha Generación OC
-      { wch: 40 }  // Notas Usuario
+      { wch: 18 }  // Fecha Generación OC
     ];
     worksheet['!cols'] = columnWidths;
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedidos');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedidos Detallados');
 
     const fechaExportacion = format(new Date(), 'dd-MM-yyyy_HHmm', { locale: es });
     const nombreArchivo = `MOVI_Store_Pedidos_${fechaExportacion}.xlsx`;

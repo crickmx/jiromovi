@@ -69,10 +69,12 @@ export interface StorePedido {
     nombre: string;
     nombre_completo?: string;
     nombre_sicas?: string;
+    clave_agente?: string;
     oficina?: string;
     telefono?: string;
     celular_laboral?: string;
     celular_personal?: string;
+    email?: string;
     email_laboral?: string;
     rol?: string;
   };
