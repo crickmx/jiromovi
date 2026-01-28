@@ -18,19 +18,17 @@ export interface CommissionFiscalRegime {
 
 export interface CommissionAgent {
   id: string;
-  name: string;
+  nombre: string;
+  apellidos: string;
   email: string;
-  office_id: string | null;
-  fiscal_regime_id: string | null;
-  usuario_id: string | null;
-  created_at: string;
-  office?: CommissionOffice;
-  fiscal_regime?: CommissionFiscalRegime;
-  usuario?: {
+  oficina_id: string | null;
+  regimen_fiscal_id: string | null;
+  created_at?: string;
+  oficina?: {
     id: string;
-    regimen_fiscal_id: string | null;
-    regimen_fiscal?: CommissionFiscalRegime;
+    nombre: string;
   };
+  regimen_fiscal?: CommissionFiscalRegime;
 }
 
 export interface CommissionBusinessRule {

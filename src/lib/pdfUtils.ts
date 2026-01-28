@@ -345,7 +345,7 @@ export async function generateCommissionPDF(
   doc.setTextColor(0);
   doc.text('Agente:', 15, yPosition);
   doc.setFont(undefined, 'bold');
-  const vendorName = agentDetails[0].vendor_name_raw || agent.name;
+  const vendorName = agentDetails[0].vendor_name_raw || `${agent.nombre} ${agent.apellidos}`.trim();
   doc.text(vendorName, 40, yPosition);
   doc.setFont(undefined, 'normal');
 
@@ -355,7 +355,7 @@ export async function generateCommissionPDF(
 
   yPosition += 7;
   doc.text('Oficina:', 15, yPosition);
-  doc.text(agent.office?.name || 'N/A', 40, yPosition);
+  doc.text((agent as any).oficina?.nombre || 'N/A', 40, yPosition);
 
   yPosition += 15;
 
@@ -592,7 +592,7 @@ export async function generateOrdenDePagoPDF(
   doc.setTextColor(0);
   doc.text('Agente:', marginLeft, yPosition);
   doc.setFont(undefined, 'normal');
-  const vendorNameOrden = agentDetails[0].vendor_name_raw || agent.name;
+  const vendorNameOrden = agentDetails[0].vendor_name_raw || `${agent.nombre} ${agent.apellidos}`.trim();
   doc.text(vendorNameOrden, marginLeft + 18, yPosition);
 
   yPosition += 5;
@@ -600,7 +600,7 @@ export async function generateOrdenDePagoPDF(
   doc.setFont(undefined, 'bold');
   doc.text('Oficina:', marginLeft, yPosition);
   doc.setFont(undefined, 'normal');
-  doc.text(agent.office?.name || 'N/A', marginLeft + 18, yPosition);
+  doc.text((agent as any).oficina?.nombre || 'N/A', marginLeft + 18, yPosition);
 
   yPosition += 5;
 
@@ -789,10 +789,11 @@ export async function generateOrdenDePagoPDF(
   }
 
   // Usar régimen fiscal del lote (no del usuario actual)
-  const regimenFiscalName = batchData.regimen_fiscal || agent.usuario?.regimen_fiscal?.name || agent.fiscal_regime?.name || 'HONORARIOS';
+  const regimenFiscalName = batchData.regimen_fiscal || agent.regimen_fiscal?.name || 'HONORARIOS';
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
-  console.log(`[PDF] Generando para ${agent.name}: Régimen fiscal del lote = ${regimenFiscalName} (normalizado: ${regimenFiscal}), tax_version=${batchData.tax_version}`);
+  const agentFullName = `${agent.nombre} ${agent.apellidos}`.trim();
+  console.log(`[PDF] Generando para ${agentFullName}: Régimen fiscal del lote = ${regimenFiscalName} (normalizado: ${regimenFiscal}), tax_version=${batchData.tax_version}`);
 
   // ============================================================================
   // REGLA ABSOLUTA: PDF SOLO LEE, NUNCA CALCULA

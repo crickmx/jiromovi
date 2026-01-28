@@ -45,10 +45,10 @@ export default function ComisionesLote() {
 
     console.log('[ComisionesLote] DIAGNÓSTICO - Conteo simple (sin JOINs):', simpleCountResult);
 
-    // DIAGNÓSTICO: Intentar query simple con solo agent_id
+    // DIAGNÓSTICO: Intentar query simple con solo usuario_id
     const simpleDetailsResult = await supabase
       .from('commission_details')
-      .select('id, poliza, agent_id')
+      .select('id, poliza, usuario_id')
       .eq('batch_id', id)
       .limit(5);
 
@@ -58,13 +58,20 @@ export default function ComisionesLote() {
       supabase.from('commission_batches').select('*').eq('id', id).single(),
       supabase.from('commission_details').select(`
         *,
-        agent:agent_id(
-          *,
-          office:office_id(*),
-          fiscal_regime:fiscal_regime_id(*),
-          usuario:usuario_id(
-            *,
-            regimen_fiscal:regimen_fiscal_id(*)
+        agent:usuario_id(
+          id,
+          nombre,
+          apellidos,
+          email,
+          oficina_id,
+          regimen_fiscal_id,
+          oficina:oficina_id(
+            id,
+            nombre
+          ),
+          regimen_fiscal:regimen_fiscal_id(
+            id,
+            name
           )
         )
       `).eq('batch_id', id),
@@ -92,7 +99,7 @@ export default function ComisionesLote() {
 
       const fallbackResult = await supabase
         .from('commission_details')
-        .select('*, agent:agent_id(id, name, email)')
+        .select('*, agent:usuario_id(id, nombre, apellidos, email)')
         .eq('batch_id', id);
 
       console.log('[ComisionesLote] EMERGENCIA - Resultado sin JOINs profundos:', fallbackResult);
@@ -123,20 +130,18 @@ export default function ComisionesLote() {
     if (!batch || !confirm('¿Estás seguro de cerrar este lote? Ya no podrás modificarlo.')) return;
 
     try {
-      // 1. Query commission_details con información del régimen fiscal del agente
+      // 1. Query commission_details con información del régimen fiscal del usuario
       const { data: detailsWithRegime, error: detailsError } = await supabase
         .from('commission_details')
         .select(`
           *,
-          agent:agent_id(
+          agent:usuario_id(
             id,
-            name,
+            nombre,
+            apellidos,
             email,
-            usuario_id,
-            usuario:usuario_id(
-              regimen_fiscal_id,
-              regimen_fiscal:regimen_fiscal_id(name)
-            )
+            regimen_fiscal_id,
+            regimen_fiscal:regimen_fiscal_id(name)
           )
         `)
         .eq('batch_id', batch.id);
@@ -347,21 +352,22 @@ export default function ComisionesLote() {
     }
   };
 
-  const handleDownloadOrdenDePago = async (agentId: string) => {
+  const handleDownloadOrdenDePago = async (usuarioId: string) => {
     if (!batch) return;
 
-    const agentDetails = details.filter(d => d.agent_id === agentId);
+    const agentDetails = details.filter(d => d.usuario_id === usuarioId);
 
     if (agentDetails.length === 0) {
-      alert('No hay datos para este agente');
+      alert('No hay datos para este usuario');
       return;
     }
 
-    setGeneratingPDF(agentId);
+    setGeneratingPDF(usuarioId);
 
     try {
       const pdfBlob = await generateOrdenDePagoPDF(agentDetails, batch);
-      const agentName = agentDetails[0].agent?.name || 'Agente';
+      const agent = agentDetails[0].agent;
+      const agentName = agent ? `${agent.nombre} ${agent.apellidos}` : 'Usuario';
       const fileName = `Orden_de_Pago_${batch.name.replace(/\s+/g, '_')}_${agentName.replace(/\s+/g, '_')}.pdf`;
       downloadPDF(pdfBlob, fileName);
     } catch (error: any) {

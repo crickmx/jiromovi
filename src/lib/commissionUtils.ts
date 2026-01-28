@@ -216,19 +216,19 @@ export function calculateAgentSummaries(details: CommissionDetail[]): AgentSumma
       ? (detail.adjusted_commission_neta || 0)
       : detail.commission_neta;
 
-    if (!agentMap.has(detail.agent_id)) {
-      agentMap.set(detail.agent_id, {
-        agent_id: detail.agent_id,
-        agent_name: detail.agent.name,
+    if (!agentMap.has(detail.usuario_id)) {
+      agentMap.set(detail.usuario_id, {
+        agent_id: detail.usuario_id,
+        agent_name: `${detail.agent.nombre || ''} ${detail.agent.apellidos || ''}`.trim(),
         agent_email: detail.agent.email,
-        office_name: detail.agent.office?.name || null,
-        regime_name: detail.agent.fiscal_regime?.name || null,
+        office_name: (detail.agent as any).oficina?.nombre || null,
+        regime_name: detail.agent.regimen_fiscal?.name || null,
         total_commission: 0,
         total_polizas: 0
       });
     }
 
-    const agentSummary = agentMap.get(detail.agent_id)!;
+    const agentSummary = agentMap.get(detail.usuario_id)!;
     agentSummary.total_commission += commission;
     agentSummary.total_polizas++;
   });
