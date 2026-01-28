@@ -92,6 +92,9 @@ export interface StorePedido {
     producto?: {
       titulo?: string;
       descripcion?: string;
+      categoria?: {
+        nombre?: string;
+      };
     };
   }>;
 }

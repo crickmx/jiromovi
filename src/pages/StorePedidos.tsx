@@ -130,6 +130,7 @@ export default function StorePedidos() {
           'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
 
           'Nombre Producto': 'Sin productos',
+          'Categoría': 'N/A',
           'Descripción': 'N/A',
           'Cantidad': 0,
           'Precio Unitario': '$0.00',
@@ -173,6 +174,7 @@ export default function StorePedidos() {
             'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
 
             'Nombre Producto': detalle.producto?.titulo || 'N/A',
+            'Categoría': detalle.producto?.categoria?.nombre || 'N/A',
             'Descripción': detalle.producto?.descripcion || 'N/A',
             'Cantidad': detalle.cantidad,
             'Precio Unitario': `$${detalle.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -217,6 +219,7 @@ export default function StorePedidos() {
       { wch: 15 }, // Teléfono
 
       { wch: 40 }, // Nombre Producto
+      { wch: 20 }, // Categoría
       { wch: 50 }, // Descripción
       { wch: 10 }, // Cantidad
       { wch: 15 }, // Precio Unitario

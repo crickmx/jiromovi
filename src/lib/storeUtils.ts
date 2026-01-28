@@ -495,7 +495,10 @@ export async function obtenerTodosPedidos() {
         precio_unitario,
         store_productos!store_pedidos_detalle_producto_id_fkey(
           titulo,
-          descripcion
+          descripcion,
+          store_categorias!store_productos_categoria_id_fkey(
+            nombre
+          )
         )
       `)
       .in('pedido_id', pedidoIds);
@@ -533,10 +536,15 @@ export async function obtenerTodosPedidos() {
 
         // Agrupar detalles por pedido y renombrar store_productos a producto
         const detallesPedido = detallesPorPedido.get(detalle.pedido_id) || [];
+        const productoData = detalle.store_productos;
         detallesPedido.push({
           ...detalle,
           precio_unitario: precioUnitario,
-          producto: detalle.store_productos
+          producto: productoData ? {
+            titulo: productoData.titulo,
+            descripcion: productoData.descripcion,
+            categoria: productoData.store_categorias
+          } : null
         });
         detallesPorPedido.set(detalle.pedido_id, detallesPedido);
       });
@@ -584,6 +592,7 @@ export async function obtenerTodosPedidos() {
           nombre_sicas: nombreSicas,
           clave_agente: usuarioData.clave_agente,
           oficina: oficinaData?.nombre || null,
+          telefono: usuarioData.celular_laboral || usuarioData.celular_personal || 'Sin teléfono',
           celular_laboral: usuarioData.celular_laboral,
           celular_personal: usuarioData.celular_personal,
           email: usuarioData.email,
