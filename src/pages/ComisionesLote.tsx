@@ -62,7 +62,7 @@ export default function ComisionesLote() {
           id,
           nombre,
           apellidos,
-          email,
+          email_laboral,
           oficina_id,
           regimen_fiscal_id,
           oficina:oficina_id(
@@ -99,7 +99,7 @@ export default function ComisionesLote() {
 
       const fallbackResult = await supabase
         .from('commission_details')
-        .select('*, agent:usuario_id(id, nombre, apellidos, email)')
+        .select('*, agent:usuario_id(id, nombre, apellidos, email_laboral)')
         .eq('batch_id', id);
 
       console.log('[ComisionesLote] EMERGENCIA - Resultado sin JOINs profundos:', fallbackResult);
@@ -139,7 +139,7 @@ export default function ComisionesLote() {
             id,
             nombre,
             apellidos,
-            email,
+            email_laboral,
             regimen_fiscal_id,
             regimen_fiscal:regimen_fiscal_id(name)
           )

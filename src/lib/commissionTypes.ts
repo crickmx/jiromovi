@@ -20,7 +20,7 @@ export interface CommissionAgent {
   id: string;
   nombre: string;
   apellidos: string;
-  email: string;
+  email_laboral: string;
   oficina_id: string | null;
   regimen_fiscal_id: string | null;
   created_at?: string;

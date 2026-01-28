@@ -351,7 +351,7 @@ export async function generateCommissionPDF(
 
   yPosition += 7;
   doc.text('Email:', 15, yPosition);
-  doc.text(agent.email, 40, yPosition);
+  doc.text(agent.email_laboral, 40, yPosition);
 
   yPosition += 7;
   doc.text('Oficina:', 15, yPosition);

@@ -220,7 +220,7 @@ export function calculateAgentSummaries(details: CommissionDetail[]): AgentSumma
       agentMap.set(detail.usuario_id, {
         agent_id: detail.usuario_id,
         agent_name: `${detail.agent.nombre || ''} ${detail.agent.apellidos || ''}`.trim(),
-        agent_email: detail.agent.email,
+        agent_email: detail.agent.email_laboral,
         office_name: (detail.agent as any).oficina?.nombre || null,
         regime_name: detail.agent.regimen_fiscal?.name || null,
         total_commission: 0,
