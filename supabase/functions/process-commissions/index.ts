@@ -140,20 +140,20 @@ Deno.serve(async (req: Request) => {
 
     console.log('[process-commissions] Config loaded:', JSON.stringify(commissionConfig));
 
-    console.log('[process-commissions] Loading commission agents...');
-    const { data: agents, error: agentsError } = await supabase
-      .from('commission_agents')
-      .select('id, name, email, office_id, fiscal_regime_id');
+    console.log('[process-commissions] Loading usuarios...');
+    const { data: usuarios, error: usuariosError } = await supabase
+      .from('usuarios')
+      .select('id, nombre_completo, nombre, email_laboral, email_personal, oficina_id, regimen_fiscal_id');
 
-    if (agentsError) {
-      throw new Error(`No se pudieron cargar los agentes de comisiones: ${agentsError.message}`);
+    if (usuariosError) {
+      throw new Error(`No se pudieron cargar los usuarios: ${usuariosError.message}`);
     }
 
-    if (!agents || agents.length === 0) {
-      throw new Error('No hay agentes registrados en el sistema de comisiones.');
+    if (!usuarios || usuarios.length === 0) {
+      throw new Error('No hay usuarios registrados en el sistema.');
     }
 
-    console.log('[process-commissions] Commission agents loaded:', agents.length);
+    console.log('[process-commissions] Usuarios loaded:', usuarios.length);
 
     console.log('[process-commissions] Loading fiscal regimes...');
     const { data: fiscalRegimes, error: regimesError } = await supabase
@@ -176,15 +176,16 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const agentsMap = new Map<string, CommissionAgent>();
-    agents.forEach(agent => {
-      if (agent.email) {
-        const fiscalRegime = agent.fiscal_regime_id ? regimesMap.get(agent.fiscal_regime_id) : null;
-        agentsMap.set(agent.email.toLowerCase(), {
-          id: agent.id,
-          name: agent.name,
-          email: agent.email,
-          office_id: agent.office_id,
+    const usuariosMap = new Map<string, CommissionAgent>();
+    usuarios.forEach(usuario => {
+      const email = usuario.email_laboral || usuario.email_personal;
+      if (email) {
+        const fiscalRegime = usuario.regimen_fiscal_id ? regimesMap.get(usuario.regimen_fiscal_id) : null;
+        usuariosMap.set(email.toLowerCase(), {
+          id: usuario.id,
+          name: usuario.nombre_completo || usuario.nombre,
+          email: email,
+          office_id: usuario.oficina_id,
           fiscal_regime: fiscalRegime || null
         });
       }
@@ -300,7 +301,7 @@ Deno.serve(async (req: Request) => {
 
         const normalizedEmail = normalizeEmail(vendorEmail);
         if (normalizedEmail) {
-          agent = agentsMap.get(normalizedEmail);
+          agent = usuariosMap.get(normalizedEmail);
           if (agent) {
             matchMethod = 'direct_email';
             agentId = agent.id;
@@ -310,14 +311,15 @@ Deno.serve(async (req: Request) => {
         if (!agent) {
           const mappedUserId = mappingsMap.get(vendorKey);
           if (mappedUserId) {
-            const mappedAgent = agents.find(a => a.id === mappedUserId);
-            if (mappedAgent) {
-              const fiscalRegime = mappedAgent.fiscal_regime_id ? regimesMap.get(mappedAgent.fiscal_regime_id) : null;
+            const mappedUsuario = usuarios.find(u => u.id === mappedUserId);
+            if (mappedUsuario) {
+              const fiscalRegime = mappedUsuario.regimen_fiscal_id ? regimesMap.get(mappedUsuario.regimen_fiscal_id) : null;
+              const email = mappedUsuario.email_laboral || mappedUsuario.email_personal;
               agent = {
-                id: mappedAgent.id,
-                name: mappedAgent.name,
-                email: mappedAgent.email,
-                office_id: mappedAgent.office_id,
+                id: mappedUsuario.id,
+                name: mappedUsuario.nombre_completo || mappedUsuario.nombre,
+                email: email,
+                office_id: mappedUsuario.oficina_id,
                 fiscal_regime: fiscalRegime || null
               };
               agentId = agent.id;
@@ -405,7 +407,7 @@ Deno.serve(async (req: Request) => {
 
         detailsToInsert.push({
           batch_id: batch.id,
-          agent_id: agentId,
+          usuario_id: agentId,
           poliza: row.Poliza || row.Documento || '',
           ramo,
           aseguradora,

@@ -239,49 +239,20 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        // Get commission_agent_id from the map, or create if doesn't exist
-        let commissionAgentId = item.movi_user_id ? usuarioToAgentMap.get(item.movi_user_id) : null;
+        // Usar usuario_id directamente (no necesitamos commission_agents)
+        const usuarioId = item.movi_user_id;
 
-        if (!commissionAgentId && item.movi_user_id) {
-          console.log(`[create-weekly-batches] Creating commission_agent for usuario_id: ${item.movi_user_id}`);
-
-          // Get user's fiscal regime
-          const usuario = usuariosConRegimen?.find(u => u.id === item.movi_user_id);
-          const fiscalRegimeId = usuario?.regimen_fiscal_id || null;
-
-          // Create commission_agent
-          const { data: newAgent, error: agentError } = await supabase
-            .from('commission_agents')
-            .insert({
-              usuario_id: item.movi_user_id,
-              fiscal_regime_id: fiscalRegimeId,
-              tipo_calculo: 'honorarios'
-            })
-            .select('id')
-            .single();
-
-          if (agentError) {
-            console.error(`[create-weekly-batches] Error creating agent:`, agentError);
-            calculationWarnings.push({
-              code: 'AGENT_CREATION_ERROR',
-              message: `Error al crear agente de comisión: ${agentError.message}`,
-            });
-            continue;
-          }
-
-          if (newAgent) {
-            commissionAgentId = newAgent.id;
-            usuarioToAgentMap.set(item.movi_user_id, commissionAgentId);
-            console.log(`[create-weekly-batches] Created commission_agent ${commissionAgentId} for usuario ${item.movi_user_id}`);
-          } else {
-            console.error(`[create-weekly-batches] Failed to create commission_agent`);
-            continue;
-          }
+        if (!usuarioId) {
+          console.warn(`[create-weekly-batches] Item sin usuario_id: ${item.poliza}`);
+          calculationWarnings.push({
+            code: 'MISSING_USUARIO',
+            message: 'Item sin usuario asignado',
+          });
         }
 
         detailsToInsert.push({
           batch_id: batch.id,
-          agent_id: commissionAgentId,
+          usuario_id: usuarioId,
           poliza: item.poliza,
           ramo: item.ramo,
           aseguradora: item.aseguradora,

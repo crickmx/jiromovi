@@ -197,28 +197,9 @@ Deno.serve(async (req: Request) => {
         let assignmentStatus = "assigned";
         let vendorGroupKey = null;
 
-        // Si tiene usuario asignado, buscar o crear commission_agent
+        // Si tiene usuario asignado, usar directamente el usuario_id
         if (doc.movi_user_id && doc.movi_user) {
-          const { data: existingAgent } = await supabase
-            .from("commission_agents")
-            .select("id")
-            .eq("email", doc.movi_user?.email_laboral || doc.movi_user?.email_personal)
-            .maybeSingle();
-
-          agentId = existingAgent?.id;
-
-          if (!agentId) {
-            const { data: newAgent } = await supabase
-              .from("commission_agents")
-              .insert({
-                email: doc.movi_user.email_laboral || doc.movi_user.email_personal,
-                name: doc.movi_user.nombre_completo,
-              })
-              .select()
-              .single();
-
-            agentId = newAgent?.id;
-          }
+          agentId = doc.movi_user_id;
         } else {
           // Documento SIN usuario asignado
           pendingAssignment = true;
@@ -246,7 +227,7 @@ Deno.serve(async (req: Request) => {
 
         commissionDetails.push({
           batch_id: commissionBatch.id,
-          agent_id: agentId, // puede ser null
+          usuario_id: agentId, // puede ser null
           ramo: docData.ramo || "Sin especificar",
           aseguradora: docData.aseguradora || docData.aseguradora_abreviacion || "Sin especificar",
           poliza: docData.poliza || docData.documento || doc.document_id,

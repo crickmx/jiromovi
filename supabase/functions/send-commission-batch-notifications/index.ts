@@ -11,12 +11,11 @@ interface RequestBody {
   batchId: string;
 }
 
-interface CommissionAgent {
-  agent_id: string;
-  agent_name: string;
-  agent_email: string;
-  agent_phone: string | null;
-  agent_usuario_id: string | null;
+interface CommissionUsuario {
+  usuario_id: string;
+  usuario_name: string;
+  usuario_email: string;
+  usuario_phone: string | null;
   office_name: string | null;
   total_commission: number;
 }
@@ -94,17 +93,15 @@ Deno.serve(async (req: Request) => {
       .from("commission_details")
       .select(`
         *,
-        agent:agent_id(
+        usuario:usuario_id(
           id,
-          name,
-          usuario_id,
-          office:office_id(name),
-          usuario:usuario_id(
-            email_laboral,
-            email_personal,
-            celular_laboral,
-            celular_personal
-          )
+          nombre_completo,
+          nombre,
+          email_laboral,
+          email_personal,
+          celular_laboral,
+          celular_personal,
+          oficina:oficina_id(nombre)
         )
       `)
       .eq("batch_id", batchId);
@@ -116,34 +113,35 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Found ${details?.length || 0} commission details`);
 
-    const agentMap = new Map<string, CommissionAgent>();
+    const usuarioMap = new Map<string, CommissionUsuario>();
 
     for (const detail of details || []) {
-      const agentId = detail.agent_id;
-      if (!agentMap.has(agentId)) {
-        const usuario = detail.agent?.usuario;
+      const usuarioId = detail.usuario_id;
+      if (!usuarioId) continue;
+
+      if (!usuarioMap.has(usuarioId)) {
+        const usuario = detail.usuario;
         const email = usuario?.email_laboral || usuario?.email_personal || "";
         const phone = usuario?.celular_laboral || usuario?.celular_personal || null;
 
-        agentMap.set(agentId, {
-          agent_id: agentId,
-          agent_name: detail.agent?.name || "Agente",
-          agent_email: email,
-          agent_phone: phone,
-          agent_usuario_id: detail.agent?.usuario_id || null,
-          office_name: detail.agent?.office?.name || "Sin oficina",
+        usuarioMap.set(usuarioId, {
+          usuario_id: usuarioId,
+          usuario_name: usuario?.nombre_completo || usuario?.nombre || "Usuario",
+          usuario_email: email,
+          usuario_phone: phone,
+          office_name: usuario?.oficina?.nombre || "Sin oficina",
           total_commission: 0,
         });
       }
 
-      const agentData = agentMap.get(agentId)!;
+      const usuarioData = usuarioMap.get(usuarioId)!;
       const commission = detail.is_manual_adjusted
         ? (detail.adjusted_commission_neta || 0)
         : detail.commission_neta;
-      agentData.total_commission += commission;
+      usuarioData.total_commission += commission;
     }
 
-    console.log(`Processing ${agentMap.size} unique agents`);
+    console.log(`Processing ${usuarioMap.size} unique usuarios`);
 
     const { data: template, error: templateError } = await supabase
       .from("transactional_notification_templates")
@@ -168,24 +166,24 @@ Deno.serve(async (req: Request) => {
 
     const results = [];
 
-    console.log(`\n=== Starting notifications for ${agentMap.size} agents ===\n`);
+    console.log(`\n=== Starting notifications for ${usuarioMap.size} usuarios ===\n`);
 
-    for (const [agentId, agentData] of agentMap.entries()) {
-      console.log(`\nProcessing agent: ${agentData.agent_name}`);
-      console.log(`  Email: ${agentData.agent_email}`);
-      console.log(`  Phone: ${agentData.agent_phone}`);
-      console.log(`  Usuario ID: ${agentData.agent_usuario_id}`);
-      console.log(`  Total commission: ${agentData.total_commission}`);
+    for (const [usuarioId, usuarioData] of usuarioMap.entries()) {
+      console.log(`\nProcessing usuario: ${usuarioData.usuario_name}`);
+      console.log(`  Email: ${usuarioData.usuario_email}`);
+      console.log(`  Phone: ${usuarioData.usuario_phone}`);
+      console.log(`  Usuario ID: ${usuarioId}`);
+      console.log(`  Total commission: ${usuarioData.total_commission}`);
 
       const ordenDePagoUrl = `/mis-comisiones`;
 
       const context = {
-        agent_name: agentData.agent_name,
-        office_name: agentData.office_name || "Sin oficina",
+        agent_name: usuarioData.usuario_name,
+        office_name: usuarioData.office_name || "Sin oficina",
         week_number: weekNumber,
         period_start: formatDate(batch.date_from),
         period_end: formatDate(batch.date_to),
-        net_commission_total: formatCurrency(agentData.total_commission),
+        net_commission_total: formatCurrency(usuarioData.total_commission),
         orden_de_pago_url: ordenDePagoUrl,
       };
 
@@ -200,29 +198,25 @@ Deno.serve(async (req: Request) => {
       console.log(`    - WhatsApp: ${whatsappBody?.substring(0, 50)}...`);
       console.log(`    - InApp title: ${inappTitle}`);
 
-      if (agentData.agent_usuario_id) {
-        console.log(`  → Sending in-app notification...`);
-        const { error: notifError } = await supabase
-          .from("notifications")
-          .insert({
-            user_id: agentData.agent_usuario_id,
-            title: inappTitle,
-            body: inappBody,
-            link_url: ordenDePagoUrl,
-            is_read: false,
-          });
+      console.log(`  → Sending in-app notification...`);
+      const { error: notifError } = await supabase
+        .from("notifications")
+        .insert({
+          user_id: usuarioId,
+          title: inappTitle,
+          body: inappBody,
+          link_url: ordenDePagoUrl,
+          is_read: false,
+        });
 
-        if (notifError) {
-          console.error(`  ✗ In-app notification failed:`, notifError);
-        } else {
-          console.log(`  ✓ In-app notification sent`);
-        }
+      if (notifError) {
+        console.error(`  ✗ In-app notification failed:`, notifError);
       } else {
-        console.log(`  ⊘ No usuario_id, skipping in-app notification`);
+        console.log(`  ✓ In-app notification sent`);
       }
 
-      if (agentData.agent_email && emailSubject && emailBody) {
-        console.log(`  → Sending email to ${agentData.agent_email}...`);
+      if (usuarioData.usuario_email && emailSubject && emailBody) {
+        console.log(`  → Sending email to ${usuarioData.usuario_email}...`);
         try {
           const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-direct-email`, {
             method: "POST",
@@ -231,7 +225,7 @@ Deno.serve(async (req: Request) => {
               "Authorization": `Bearer ${supabaseServiceRoleKey}`,
             },
             body: JSON.stringify({
-              to: agentData.agent_email,
+              to: usuarioData.usuario_email,
               subject: emailSubject,
               html: emailBody,
             }),
@@ -251,8 +245,8 @@ Deno.serve(async (req: Request) => {
         console.log(`  ⊘ No email or missing template, skipping email`);
       }
 
-      if (agentData.agent_phone && whatsappBody) {
-        console.log(`  → Sending WhatsApp to ${agentData.agent_phone}...`);
+      if (usuarioData.usuario_phone && whatsappBody) {
+        console.log(`  → Sending WhatsApp to ${usuarioData.usuario_phone}...`);
         try {
           const whatsappResponse = await fetch(`${supabaseUrl}/functions/v1/send-direct-whatsapp`, {
             method: "POST",
@@ -261,7 +255,7 @@ Deno.serve(async (req: Request) => {
               "Authorization": `Bearer ${supabaseServiceRoleKey}`,
             },
             body: JSON.stringify({
-              phone: agentData.agent_phone,
+              phone: usuarioData.usuario_phone,
               message: whatsappBody,
             }),
           });
@@ -281,12 +275,12 @@ Deno.serve(async (req: Request) => {
       }
 
       results.push({
-        agent_id: agentId,
-        agent_name: agentData.agent_name,
+        usuario_id: usuarioId,
+        usuario_name: usuarioData.usuario_name,
         notifications_sent: {
-          in_app: !!agentData.agent_usuario_id,
-          email: !!agentData.agent_email,
-          whatsapp: !!agentData.agent_phone,
+          in_app: true,
+          email: !!usuarioData.usuario_email,
+          whatsapp: !!usuarioData.usuario_phone,
         },
       });
     }
