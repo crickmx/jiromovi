@@ -82,7 +82,8 @@ export interface CommissionBatch {
 export interface CommissionDetail {
   id: string;
   batch_id: string;
-  agent_id: string;
+  usuario_id: string;
+  agent_id?: string;
   ramo: string;
   aseguradora: string;
   office_id: string | null;

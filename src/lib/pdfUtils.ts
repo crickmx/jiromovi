@@ -27,18 +27,18 @@ interface PdfFiscalRow {
  * para los cálculos fiscales de ASIMILADOS.
  *
  * @param batchId - ID del lote de comisiones
- * @param agentId - ID del agente
+ * @param usuarioId - ID del usuario
  * @returns DesgloseFiscal consultado desde la base de datos
  */
 async function obtenerDesgloseFiscalDesdeDB(
   batchId: string,
-  agentId: string
+  usuarioId: string
 ): Promise<DesgloseFiscal> {
   const { supabase } = await import('./supabase');
 
   const { data, error } = await supabase.rpc('calcular_desglose_fiscal_asimilados', {
     p_batch_id: batchId,
-    p_agent_id: agentId
+    p_usuario_id: usuarioId
   });
 
   if (error) {
@@ -801,7 +801,7 @@ export async function generateOrdenDePagoPDF(
 
   // GUARD CLAUSE: ASIMILADOS usa su propio flujo de base de datos (NO TOCAR)
   if (regimenFiscal === 'ASIMILADOS') {
-    desgloseFiscal = await obtenerDesgloseFiscalDesdeDB(batch.id, agentDetails[0].agent_id);
+    desgloseFiscal = await obtenerDesgloseFiscalDesdeDB(batch.id, agentDetails[0].usuario_id);
   }
   // HONORARIOS y RESICO: Usar valores ya cargados del batch
   else if (regimenFiscal === 'HONORARIOS' || regimenFiscal === 'RESICO') {
