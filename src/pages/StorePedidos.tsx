@@ -129,7 +129,6 @@ export default function StorePedidos() {
           'Email': pedido.usuario?.email_laboral || pedido.usuario?.email || 'N/A',
           'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
 
-          'Código Producto': 'N/A',
           'Nombre Producto': 'Sin productos',
           'Descripción': 'N/A',
           'Cantidad': 0,
@@ -173,8 +172,7 @@ export default function StorePedidos() {
             'Email': pedido.usuario?.email_laboral || pedido.usuario?.email || 'N/A',
             'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
 
-            'Código Producto': detalle.producto?.codigo || 'N/A',
-            'Nombre Producto': detalle.producto?.nombre || 'N/A',
+            'Nombre Producto': detalle.producto?.titulo || 'N/A',
             'Descripción': detalle.producto?.descripcion || 'N/A',
             'Cantidad': detalle.cantidad,
             'Precio Unitario': `$${detalle.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -218,7 +216,6 @@ export default function StorePedidos() {
       { wch: 30 }, // Email
       { wch: 15 }, // Teléfono
 
-      { wch: 15 }, // Código Producto
       { wch: 40 }, // Nombre Producto
       { wch: 50 }, // Descripción
       { wch: 10 }, // Cantidad

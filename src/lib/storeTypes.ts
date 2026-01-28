@@ -90,9 +90,8 @@ export interface StorePedido {
     cantidad: number;
     precio_unitario: number;
     producto?: {
-      nombre?: string;
+      titulo?: string;
       descripcion?: string;
-      codigo?: string;
     };
   }>;
 }

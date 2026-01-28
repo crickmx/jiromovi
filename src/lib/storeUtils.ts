@@ -494,9 +494,8 @@ export async function obtenerTodosPedidos() {
         cantidad,
         precio_unitario,
         store_productos!store_pedidos_detalle_producto_id_fkey(
-          nombre,
-          descripcion,
-          codigo
+          titulo,
+          descripcion
         )
       `)
       .in('pedido_id', pedidoIds);
