@@ -323,8 +323,22 @@ function isSicasNotAvailable(processData: any): boolean {
   const hasSicasOnline = /SICASOnline/i.test(msg);
   const hasWS = /\bWS\b/i.test(msg);
 
-  // Caso especial SICAS: RESPONSETXT=SUCESS + RESPONSENBR=0 + mensaje de error = catálogo no disponible
+  // LOG COMPLETO cuando detectamos este patrón
   if (txt === 'SUCESS' && nbr === '0' && (hasErrorEjecucion || hasProcesoInterno || hasSicasOnline)) {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('[SICAS Parser] CATÁLOGO NO DISPONIBLE DETECTADO');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('RESPONSETXT:', txt);
+    console.log('RESPONSENBR:', nbr);
+    console.log('MESSAGE (COMPLETO):', msg);
+    console.log('MESSAGE Length:', msg.length, 'chars');
+    console.log('Patrones detectados:', {
+      hasErrorEjecucion,
+      hasProcesoInterno,
+      hasSicasOnline,
+      hasWS
+    });
+    console.log('═══════════════════════════════════════════════════════');
     return true;
   }
 

@@ -141,7 +141,7 @@ export default function SicasAdmin() {
         if (result.warning) {
           setMessage({
             type: 'error',
-            text: `Catálogo temporalmente no disponible en SICAS. Este catálogo podría estar restringido o en mantenimiento. Mensaje: ${result.warning}`
+            text: `⚠️ Catálogo no disponible en SICAS\n\nMensaje del WebService:\n${result.warning}\n\nEsto significa que el catálogo está restringido, en mantenimiento, o requiere configuración adicional en SICAS. Contacta a soporte de SICAS para más información.`
           });
         } else {
           setMessage({
@@ -156,7 +156,7 @@ export default function SicasAdmin() {
           await loadVendedores();
         }
       } else {
-        setMessage({ type: 'error', text: `Error: ${result.error}` });
+        setMessage({ type: 'error', text: `Error de sincronización:\n\n${result.error}` });
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
@@ -300,7 +300,7 @@ export default function SicasAdmin() {
             ) : (
               <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             )}
-            <p className="text-sm font-medium">{message.text}</p>
+            <p className="text-sm font-medium whitespace-pre-wrap break-words">{message.text}</p>
           </div>
         </div>
       )}
@@ -818,9 +818,18 @@ export default function SicasAdmin() {
                     </div>
 
                     {diagnosticResult.warning && (
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="font-medium text-yellow-900 mb-1">Advertencia</div>
-                        <div className="text-sm text-yellow-800">{diagnosticResult.warning}</div>
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-3">
+                        <div>
+                          <div className="font-medium text-yellow-900 mb-1">Advertencia / Mensaje de SICAS</div>
+                          <div className="text-sm text-yellow-800 font-mono whitespace-pre-wrap break-words">
+                            {diagnosticResult.warning}
+                          </div>
+                        </div>
+                        {diagnosticResult.warning.length > 100 && (
+                          <div className="text-xs text-yellow-700 pt-2 border-t border-yellow-200">
+                            Mensaje completo ({diagnosticResult.warning.length} caracteres)
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -860,9 +869,28 @@ export default function SicasAdmin() {
                     )}
 
                     {!diagnosticResult.success && diagnosticResult.error && (
-                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="font-medium text-red-900 mb-1">Error</div>
-                        <div className="text-sm text-red-800">{diagnosticResult.error}</div>
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
+                        <div>
+                          <div className="font-medium text-red-900 mb-1">Error Completo</div>
+                          <div className="text-sm text-red-800 font-mono whitespace-pre-wrap break-words">
+                            {diagnosticResult.error}
+                          </div>
+                        </div>
+                        {diagnosticResult.error.length > 100 && (
+                          <div className="text-xs text-red-700 pt-2 border-t border-red-200">
+                            Mensaje completo ({diagnosticResult.error.length} caracteres)
+                          </div>
+                        )}
+                        {diagnosticResult.stack && (
+                          <details className="pt-2">
+                            <summary className="text-xs text-red-700 cursor-pointer hover:text-red-900">
+                              Ver Stack Trace
+                            </summary>
+                            <pre className="mt-2 p-2 bg-red-100 rounded text-xs overflow-x-auto">
+                              {diagnosticResult.stack}
+                            </pre>
+                          </details>
+                        )}
                       </div>
                     )}
                   </div>
