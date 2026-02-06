@@ -9,7 +9,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Building2, MapPin, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Info, Search } from 'lucide-react';
 import type { Database } from '../lib/database.types';
-import { DIAS_SEMANA_LABELS, validarHorario, getEstadoReservaBadgeClass, getEstadoReservaLabel, type DisponibilidadSemanal } from '../lib/espacioJiroUtils';
+import { DIAS_SEMANA, DIAS_SEMANA_LABELS, validarHorario, getEstadoReservaBadgeClass, getEstadoReservaLabel, type DisponibilidadSemanal } from '../lib/espacioJiroUtils';
 import { cn } from '@/lib/utils';
 
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -410,7 +410,7 @@ export function EspacioJiro() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredAreas.map((area) => {
                   const disponibilidad = area.disponibilidad_semanal as unknown as DisponibilidadSemanal;
-                  const diasDisponibles = Object.keys(disponibilidad).filter(
+                  const diasDisponibles = DIAS_SEMANA.filter(
                     (dia) => disponibilidad[dia as keyof DisponibilidadSemanal].length > 0
                   );
 
