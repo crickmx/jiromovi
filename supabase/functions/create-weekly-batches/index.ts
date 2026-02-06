@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('[create-weekly-batches] Grouped into', weekMap.size, 'weeks');
 
-    // Get all unique usuario_ids from items and create usuario_id -> commission_agent_id map
+    // Get all unique usuario_ids from items
     const uniqueUsuarioIds = [...new Set(items.map(i => i.movi_user_id).filter(Boolean))];
 
     // Cargar usuarios con su régimen fiscal
@@ -133,42 +133,7 @@ Deno.serve(async (req: Request) => {
       console.warn('[create-weekly-batches] Error al cargar usuarios:', usuariosError);
     }
 
-    // Cargar commission_agents con JOIN a fiscal_regime
-    const { data: commissionAgents, error: agentsError } = await supabase
-      .from('commission_agents')
-      .select('id, usuario_id, fiscal_regime_id')
-      .in('usuario_id', uniqueUsuarioIds);
-
-    if (agentsError) {
-      throw new Error(`Error al cargar agentes de comisión: ${agentsError.message}`);
-    }
-
-    // Sincronizar fiscal_regime_id desde usuarios a commission_agents si no coincide
-    if (usuariosConRegimen && commissionAgents) {
-      for (const usuario of usuariosConRegimen) {
-        const agent = commissionAgents.find(ca => ca.usuario_id === usuario.id);
-        if (agent && agent.fiscal_regime_id !== usuario.regimen_fiscal_id) {
-          console.log(`[create-weekly-batches] Sincronizando régimen fiscal para agente ${agent.id}: ${usuario.regimen_fiscal_id}`);
-          await supabase
-            .from('commission_agents')
-            .update({ fiscal_regime_id: usuario.regimen_fiscal_id })
-            .eq('id', agent.id);
-          // Actualizar en memoria
-          agent.fiscal_regime_id = usuario.regimen_fiscal_id;
-        }
-      }
-    }
-
-    const usuarioToAgentMap = new Map<string, string>();
-    if (commissionAgents) {
-      commissionAgents.forEach(ca => {
-        if (ca.usuario_id) {
-          usuarioToAgentMap.set(ca.usuario_id, ca.id);
-        }
-      });
-    }
-
-    console.log('[create-weekly-batches] Created usuario->agent map with', usuarioToAgentMap.size, 'entries');
+    console.log('[create-weekly-batches] Loaded', usuariosConRegimen?.length || 0, 'usuarios');
 
     const batchesCreated: any[] = [];
     const batchIds: string[] = [];
