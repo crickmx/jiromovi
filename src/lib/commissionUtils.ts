@@ -11,13 +11,20 @@ import type {
 
 export async function loadAgents(): Promise<CommissionAgent[]> {
   const { data, error } = await supabase
-    .from('commission_agents')
+    .from('usuarios')
     .select(`
-      *,
-      office:office_id(*),
-      fiscal_regime:fiscal_regime_id(*)
+      id,
+      nombre,
+      apellidos,
+      email_laboral,
+      oficina_id,
+      regimen_fiscal_id,
+      created_at,
+      oficina:oficina_id(id, nombre),
+      regimen_fiscal:regimen_fiscal_id(*)
     `)
-    .order('name');
+    .eq('estado', 'activo')
+    .order('nombre');
 
   if (error) {
     console.error('Error loading agents:', error);

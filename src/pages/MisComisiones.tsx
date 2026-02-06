@@ -47,16 +47,7 @@ export default function MisComisiones() {
     const { data: authUser } = await supabase.auth.getUser();
     if (!authUser.user) return;
 
-    const { data: agent } = await supabase
-      .from('commission_agents')
-      .select('id')
-      .eq('usuario_id', authUser.user.id)
-      .maybeSingle();
-
-    if (!agent) {
-      setLoading(false);
-      return;
-    }
+    const usuarioId = authUser.user.id;
 
     const { data: batchesData } = await supabase
       .from('commission_batches')
@@ -76,26 +67,26 @@ export default function MisComisiones() {
           .from('commission_details')
           .select(`
             *,
-            agent:agent_id(
-              *,
-              office:office_id(*),
-              fiscal_regime:fiscal_regime_id(*),
-              usuario:usuario_id(
-                id,
-                regimen_fiscal_id,
-                regimen_fiscal:regimen_fiscal_id(*)
-              )
+            usuario:usuario_id(
+              id,
+              nombre,
+              apellidos,
+              email_laboral,
+              oficina_id,
+              regimen_fiscal_id,
+              oficina:oficina_id(id, nombre),
+              regimen_fiscal:regimen_fiscal_id(*)
             )
           `)
           .eq('batch_id', batch.id)
-          .eq('agent_id', agent.id);
+          .eq('usuario_id', usuarioId);
 
         if (details && details.length > 0) {
           detailsMap.set(batch.id, details);
 
           // Calcular desglose fiscal según el régimen actual del usuario
-          const agentData = details[0].agent;
-          const regimenFiscalName = agentData?.usuario?.regimen_fiscal?.name || agentData?.fiscal_regime?.name || 'HONORARIOS';
+          const usuarioData = details[0].usuario;
+          const regimenFiscalName = usuarioData?.regimen_fiscal?.name || 'HONORARIOS';
           const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
           if (regimenFiscal === 'ASIMILADOS') {

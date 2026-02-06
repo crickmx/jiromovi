@@ -262,7 +262,7 @@ async function getComisionesData(userId: string) {
     const { data: comisionesActuales } = await supabase
       .from('commission_details')
       .select('importe_pago')
-      .eq('agent_id', userId)
+      .eq('usuario_id', userId)
       .eq('mes', mesActual)
       .eq('anio', anioActual);
 
@@ -270,7 +270,7 @@ async function getComisionesData(userId: string) {
     const { data: comisionesAnteriores } = await supabase
       .from('commission_details')
       .select('importe_pago')
-      .eq('agent_id', userId)
+      .eq('usuario_id', userId)
       .eq('mes', mesAnterior)
       .eq('anio', anioAnterior);
 

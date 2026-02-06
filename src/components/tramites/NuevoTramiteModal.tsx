@@ -197,32 +197,23 @@ export function NuevoTramiteModal({
           .single();
 
         if (userData?.email_laboral) {
-          // Find commission agent by email
-          const { data: agentData } = await supabase
-            .from('commission_agents')
-            .select('id')
-            .eq('email', userData.email_laboral)
-            .single();
+          // Get batches that have commission details for this user
+          const { data } = await supabase
+            .from('commission_batches')
+            .select(`
+              *,
+              details:commission_details!inner(id)
+            `)
+            .eq('details.usuario_id', targetUserId)
+            .in('status', ['confirmed', 'closed'])
+            .order('date_from', { ascending: false })
+            .limit(20);
 
-          if (agentData) {
-            // Get batches that have commission details for this agent
-            const { data } = await supabase
-              .from('commission_batches')
-              .select(`
-                *,
-                details:commission_details!inner(id)
-              `)
-              .eq('details.agent_id', agentData.id)
-              .in('status', ['confirmed', 'closed'])
-              .order('date_from', { ascending: false })
-              .limit(20);
-
-            if (data) {
-              // Remove the details field from the response
-              const batches = data.map(({ details, ...batch }) => batch);
-              setLotesDisponibles(batches);
-              return;
-            }
+          if (data) {
+            // Remove the details field from the response
+            const batches = data.map(({ details, ...batch }) => batch);
+            setLotesDisponibles(batches);
+            return;
           }
         }
       }
