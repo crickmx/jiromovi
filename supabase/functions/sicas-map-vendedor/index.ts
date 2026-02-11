@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
         .from('sicas_vendedores')
         .select('id_sicas')
         .eq('id_sicas', id_sicas_vendedor)
-        .single();
+        .maybeSingle();
 
       if (!vendedorExists) {
         throw new Error('El vendedor SICAS no existe. Por favor, sincroniza los vendedores primero desde la pestaña "Conexión".');
@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
         .from('usuarios')
         .select('id')
         .eq('id', movi_user_id)
-        .single();
+        .maybeSingle();
 
       if (!usuarioExists) {
         throw new Error('El usuario MOVI no existe');
