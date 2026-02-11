@@ -1,8 +1,11 @@
 # Actualización de Catálogos SICAS a 96 Tipos Oficiales
 
-## Resumen de Cambios
+## Cambios Importantes
 
-Se actualizó el sistema para soportar **96 catálogos oficiales de SICAS** (anteriormente eran 61).
+1. **96 Catálogos Oficiales**: Se actualizó el sistema para soportar los 96 catálogos oficiales de SICAS (anteriormente eran 61)
+2. **Estructura SOAP Corregida**: El request SOAP ahora usa la estructura correcta según documentación oficial de SICAS (ver `SICAS_SOAP_ACTUALIZACION.md`)
+
+## Resumen de Cambios
 
 ### IDs de Catálogos Clave
 

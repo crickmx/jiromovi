@@ -74,21 +74,25 @@ Deno.serve(async (req: Request) => {
       syncHistoryId = historyRecord.id;
     }
 
-    // ✅ SOAP correcto: autenticación solo en wsAuthConfig, typeReturn configurable
-    // PropertyData_TypeDataReturn: 0=DataSet, 1=XML, 2=JSON
+    // ✅ SOAP según documentación SICAS oficial
+    // PropertyTypeReadData: enum_name del catálogo (ej: eOficias, eDespachos, eAgentes)
+    // PropertyData_TypeDataReturn: Data_XML (siempre XML según SICAS)
+    const typeDataReturnValue = typeReturn === 2 ? 'Data_JSON' : typeReturn === 1 ? 'Data_XML' : 'Data_XML';
+
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soap:Header/>
   <soap:Body>
-    <ReadInfoData xmlns="http://tempuri.org/">
-      <wsReadData>
-        <PropertyData_TypeDataReturn>${Number(typeReturn)}</PropertyData_TypeDataReturn>
-        <PropertyTypeReadData>${catalog_type_id}</PropertyTypeReadData>
-      </wsReadData>
-      <wsAuthConfig>
-        <UserName>${sicasUsername}</UserName>
-        <Password>${sicasPassword}</Password>
-      </wsAuthConfig>
-    </ReadInfoData>
+    <tem:ReadInfoData>
+      <tem:oConfigData>
+        <tem:PropertyTypeReadData>${catalogType.enum_name}</tem:PropertyTypeReadData>
+        <tem:PropertyData_TypeDataReturn>${typeDataReturnValue}</tem:PropertyData_TypeDataReturn>
+      </tem:oConfigData>
+      <tem:oConfigAuth>
+        <tem:UserName>${sicasUsername}</tem:UserName>
+        <tem:Password>${sicasPassword}</tem:Password>
+      </tem:oConfigAuth>
+    </tem:ReadInfoData>
   </soap:Body>
 </soap:Envelope>`;
 
