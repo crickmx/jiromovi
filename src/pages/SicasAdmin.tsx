@@ -54,12 +54,14 @@ export default function SicasAdmin() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'despachos') {
-      loadDespachos();
-    } else if (activeTab === 'vendedores') {
-      loadVendedores();
-    }
-  }, [activeTab, filterUnmappedDespachos, filterUnmappedVendedores]);
+    // Recargar cuando cambian los filtros
+    loadDespachos();
+  }, [filterUnmappedDespachos]);
+
+  useEffect(() => {
+    // Recargar cuando cambian los filtros
+    loadVendedores();
+  }, [filterUnmappedVendedores]);
 
   async function loadData() {
     setLoading(true);
@@ -79,6 +81,10 @@ export default function SicasAdmin() {
         .eq('estado', 'activo')
         .order('nombre');
       setUsuarios(usuariosData || []);
+
+      // Cargar todos los datos de SICAS al inicio
+      await loadDespachos();
+      await loadVendedores();
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
