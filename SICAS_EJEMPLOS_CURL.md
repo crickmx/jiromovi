@@ -4,7 +4,51 @@ Este documento contiene ejemplos prácticos en formato cURL que pueden ejecutars
 
 ---
 
+## 0. CONFIGURACIÓN DE CREDENCIALES (RECOMENDADO)
+
+Para mayor seguridad, usa variables de entorno en lugar de credenciales hardcodeadas:
+
+```bash
+export SICAS_USER='j1r0%25$'
+export SICAS_PASS='$45oc14d05$'
+```
+
+Todos los ejemplos siguientes pueden usar estas variables. Para verificar:
+
+```bash
+echo "Usuario: $SICAS_USER"
+echo "Password configurado: ✓"
+```
+
+---
+
 ## 1. AUTENTICACIÓN (AutentificarWS)
+
+### Request cURL con Variables de Entorno (RECOMENDADO)
+
+```bash
+export SICAS_USER='j1r0%25$'
+export SICAS_PASS='$45oc14d05$'
+
+curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+  -H "Content-Type: text/xml; charset=utf-8" \
+  -H "SOAPAction: \"http://tempuri.org/AutentificarWS\"" \
+  --data-binary @- <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <AutentificarWS xmlns="http://tempuri.org/">
+      <wsAuthConfig>
+        <UserName>'"$SICAS_USER"'</UserName>
+        <Password>'"$SICAS_PASS"'</Password>
+      </wsAuthConfig>
+    </AutentificarWS>
+  </soap:Body>
+</soap:Envelope>
+XML
+```
 
 ### Request cURL
 
@@ -69,6 +113,36 @@ EOF
 
 ## 2. LECTURA DE CATÁLOGO - OFICINAS (ID: 10)
 
+### Request cURL con Variables de Entorno - Formato JSON (RECOMENDADO)
+
+```bash
+export SICAS_USER='j1r0%25$'
+export SICAS_PASS='$45oc14d05$'
+
+curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+  -H "Content-Type: text/xml; charset=utf-8" \
+  -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
+  --data-binary @- <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ReadInfoData xmlns="http://tempuri.org/">
+      <wsReadData>
+        <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
+        <PropertyTypeReadData>10</PropertyTypeReadData>
+      </wsReadData>
+      <wsAuthConfig>
+        <UserName>'"$SICAS_USER"'</UserName>
+        <Password>'"$SICAS_PASS"'</Password>
+      </wsAuthConfig>
+    </ReadInfoData>
+  </soap:Body>
+</soap:Envelope>
+XML
+```
+
 ### Request cURL - Formato JSON
 
 ```bash
@@ -119,6 +193,38 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
 
 ## 3. LECTURA DE CATÁLOGO - AGENTES (ID: 13)
 
+### Con Variables de Entorno (RECOMENDADO)
+
+```bash
+export SICAS_USER='j1r0%25$'
+export SICAS_PASS='$45oc14d05$'
+
+curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+  -H "Content-Type: text/xml; charset=utf-8" \
+  -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
+  --data-binary @- <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ReadInfoData xmlns="http://tempuri.org/">
+      <wsReadData>
+        <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
+        <PropertyTypeReadData>13</PropertyTypeReadData>
+      </wsReadData>
+      <wsAuthConfig>
+        <UserName>'"$SICAS_USER"'</UserName>
+        <Password>'"$SICAS_PASS"'</Password>
+      </wsAuthConfig>
+    </ReadInfoData>
+  </soap:Body>
+</soap:Envelope>
+XML
+```
+
+### Con Verbose (para debugging)
+
 ```bash
 curl -v -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
@@ -145,6 +251,38 @@ EOF
 ---
 
 ## 4. LECTURA DE CATÁLOGO - VENDEDORES (ID: 32)
+
+### Con Variables de Entorno (RECOMENDADO)
+
+```bash
+export SICAS_USER='j1r0%25$'
+export SICAS_PASS='$45oc14d05$'
+
+curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+  -H "Content-Type: text/xml; charset=utf-8" \
+  -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
+  --data-binary @- <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ReadInfoData xmlns="http://tempuri.org/">
+      <wsReadData>
+        <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
+        <PropertyTypeReadData>32</PropertyTypeReadData>
+      </wsReadData>
+      <wsAuthConfig>
+        <UserName>'"$SICAS_USER"'</UserName>
+        <Password>'"$SICAS_PASS"'</Password>
+      </wsAuthConfig>
+    </ReadInfoData>
+  </soap:Body>
+</soap:Envelope>
+XML
+```
+
+### Formato Inline (credenciales directas)
 
 ```bash
 curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
@@ -386,6 +524,87 @@ curl -i -X POST [...]
 ### Ver Request y Response Completos
 ```bash
 curl -v -X POST [...] 2>&1 | tee full_log.txt
+```
+
+---
+
+## 9. VENTAJAS DE USAR VARIABLES DE ENTORNO
+
+### Seguridad
+
+- Las credenciales no quedan registradas en el historial de comandos de bash
+- No aparecen en logs de procesos
+- Facilitan el uso de credenciales diferentes sin modificar scripts
+
+### Uso con .envrc (direnv)
+
+Puedes crear un archivo `.envrc` en tu proyecto:
+
+```bash
+# .envrc
+export SICAS_USER='j1r0%25$'
+export SICAS_PASS='$45oc14d05$'
+```
+
+Y usar `direnv` para cargar automáticamente las variables:
+
+```bash
+direnv allow
+```
+
+### Uso en Scripts
+
+Puedes crear un script reutilizable:
+
+```bash
+#!/bin/bash
+# sicas-query.sh
+
+if [ -z "$SICAS_USER" ] || [ -z "$SICAS_PASS" ]; then
+  echo "Error: Configura SICAS_USER y SICAS_PASS primero"
+  exit 1
+fi
+
+CATALOG_ID="${1:-10}"
+
+curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+  -H "Content-Type: text/xml; charset=utf-8" \
+  -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
+  --data-binary @- <<XML
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ReadInfoData xmlns="http://tempuri.org/">
+      <wsReadData>
+        <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
+        <PropertyTypeReadData>${CATALOG_ID}</PropertyTypeReadData>
+      </wsReadData>
+      <wsAuthConfig>
+        <UserName>$SICAS_USER</UserName>
+        <Password>$SICAS_PASS</Password>
+      </wsAuthConfig>
+    </ReadInfoData>
+  </soap:Body>
+</soap:Envelope>
+XML
+```
+
+Uso:
+
+```bash
+export SICAS_USER='j1r0%25$'
+export SICAS_PASS='$45oc14d05$'
+
+# Consultar catálogo de Oficinas (ID: 10)
+./sicas-query.sh 10
+
+# Consultar catálogo de Agentes (ID: 13)
+./sicas-query.sh 13
+
+# Consultar catálogo de Vendedores (ID: 32)
+./sicas-query.sh 32
 ```
 
 ---
