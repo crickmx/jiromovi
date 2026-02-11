@@ -369,56 +369,82 @@ Deno.serve(async (req: Request) => {
     if (dryRun) {
       console.log('[SICAS Sync] DRY RUN: omitiendo upsert');
     } else {
-      for (const record of parseResult.records) {
-      try {
-        const { data: existingRecord } = await supabase
+      console.log(`[SICAS Sync] Procesando ${parseResult.records.length} registros en lote...`);
+
+      const batchSize = 100;
+      const batches = [];
+      for (let i = 0; i < parseResult.records.length; i += batchSize) {
+        batches.push(parseResult.records.slice(i, i + batchSize));
+      }
+
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+        console.log(`[SICAS Sync] Procesando lote ${batchIndex + 1}/${batches.length} (${batch.length} registros)`);
+
+        const existingIds = new Set<string>();
+
+        const { data: existingRecords } = await supabase
           .from('sicas_catalogos')
-          .select('id')
+          .select('id, id_sicas')
           .eq('catalog_type_id', catalog_type_id)
-          .eq('id_sicas', record.id_sicas)
-          .maybeSingle();
+          .in('id_sicas', batch.map(r => r.id_sicas));
 
-        if (existingRecord) {
-          const { error: updateError } = await supabase
-            .from('sicas_catalogos')
-            .update({
-              nombre: record.nombre,
-              raw: record.raw,
-              metadata: record.metadata,
-              last_sync_at: new Date().toISOString(),
-            })
-            .eq('id', existingRecord.id);
+        if (existingRecords) {
+          existingRecords.forEach(r => existingIds.add(r.id_sicas));
+        }
 
-          if (updateError) {
-            console.error('[SICAS Sync] Error actualizando registro:', updateError);
-            recordsFailed++;
-          } else {
-            recordsUpdated++;
-          }
-        } else {
-          const { error: insertError } = await supabase
-            .from('sicas_catalogos')
-            .insert({
-              catalog_type_id,
-              id_sicas: record.id_sicas,
-              nombre: record.nombre,
-              raw: record.raw,
-              metadata: record.metadata,
-              last_sync_at: new Date().toISOString(),
-            });
+        const toUpdate = batch.filter(r => existingIds.has(r.id_sicas));
+        const toInsert = batch.filter(r => !existingIds.has(r.id_sicas));
 
-          if (insertError) {
-            console.error('[SICAS Sync] Error insertando registro:', insertError);
-            recordsFailed++;
-          } else {
-            recordsInserted++;
+        if (toUpdate.length > 0) {
+          const existingMap = new Map(existingRecords?.map(r => [r.id_sicas, r.id]) || []);
+
+          for (const record of toUpdate) {
+            const id = existingMap.get(record.id_sicas);
+            if (id) {
+              const { error } = await supabase
+                .from('sicas_catalogos')
+                .update({
+                  nombre: record.nombre,
+                  raw: record.raw,
+                  metadata: record.metadata,
+                  last_sync_at: new Date().toISOString(),
+                })
+                .eq('id', id);
+
+              if (error) {
+                console.error('[SICAS Sync] Error actualizando:', error);
+                recordsFailed++;
+              } else {
+                recordsUpdated++;
+              }
+            }
           }
         }
-      } catch (error) {
-        console.error('[SICAS Sync] Exception procesando registro:', error);
-        recordsFailed++;
+
+        if (toInsert.length > 0) {
+          const { error, count } = await supabase
+            .from('sicas_catalogos')
+            .insert(
+              toInsert.map(record => ({
+                catalog_type_id,
+                id_sicas: record.id_sicas,
+                nombre: record.nombre,
+                raw: record.raw,
+                metadata: record.metadata,
+                last_sync_at: new Date().toISOString(),
+              }))
+            )
+            .select('id', { count: 'exact' });
+
+          if (error) {
+            console.error('[SICAS Sync] Error en inserción batch:', error);
+            recordsFailed += toInsert.length;
+          } else {
+            recordsInserted += count || toInsert.length;
+          }
+        }
       }
-    }
     }
 
     console.log(`[SICAS Sync] ${dryRun ? 'DRY RUN - ' : ''}Completado: ${recordsInserted} nuevos, ${recordsUpdated} actualizados`);
