@@ -94,19 +94,25 @@ export default function SicasAdmin() {
 
   async function loadDespachos() {
     try {
+      console.log('Loading despachos...');
       const data = await getAllSicasDespachos();
+      console.log('Despachos loaded:', data.length, 'items');
       setDespachos(data);
     } catch (error) {
       console.error('Error loading despachos:', error);
+      setMessage({ type: 'error', text: `Error cargando despachos: ${error}` });
     }
   }
 
   async function loadVendedores() {
     try {
+      console.log('Loading vendedores...');
       const data = await getSicasVendedores();
+      console.log('Vendedores loaded:', data.length, 'items');
       setVendedores(data);
     } catch (error) {
       console.error('Error loading vendedores:', error);
+      setMessage({ type: 'error', text: `Error cargando vendedores: ${error}` });
     }
   }
 
@@ -539,14 +545,14 @@ export default function SicasAdmin() {
                       <Building className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
                       <p className="text-neutral-600 font-medium mb-2">No hay despachos sincronizados</p>
                       <p className="text-sm text-neutral-500 mb-4">
-                        Haz clic en "Sincronizar Despachos" en la pestaña de Configuración
+                        Haz clic en "Sincronizar Despachos" en la pestaña de Conexión
                       </p>
                       <Button
-                        onClick={() => setActiveTab('configuracion')}
+                        onClick={() => setActiveTab('conexion')}
                         variant="outline"
                         size="sm"
                       >
-                        Ir a Configuración
+                        Ir a Conexión
                       </Button>
                     </div>
                   ) : filteredDespachos.length === 0 ? (
@@ -649,14 +655,14 @@ export default function SicasAdmin() {
                       <Users className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
                       <p className="text-neutral-600 font-medium mb-2">No hay vendedores sincronizados</p>
                       <p className="text-sm text-neutral-500 mb-4">
-                        Haz clic en "Sincronizar Vendedores" en la pestaña de Configuración
+                        Haz clic en "Sincronizar Vendedores" en la pestaña de Conexión
                       </p>
                       <Button
-                        onClick={() => setActiveTab('configuracion')}
+                        onClick={() => setActiveTab('conexion')}
                         variant="outline"
                         size="sm"
                       >
-                        Ir a Configuración
+                        Ir a Conexión
                       </Button>
                     </div>
                   ) : filteredVendedores.length === 0 ? (
