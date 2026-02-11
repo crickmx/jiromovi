@@ -203,6 +203,7 @@ function parseSingleObject(obj: any, catalogName: string): ParseResult {
 
 /**
  * Parse XML string
+ * Mejorado para detectar el tag que se repite dentro del contenedor
  */
 function parseXmlString(xml: string, catalogName: string): ParseResult {
   const result = {
@@ -214,14 +215,51 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
   };
 
   try {
-    const tagMatch = xml.match(/<([A-Z_]+)>/i);
-    if (!tagMatch) {
-      throw new Error('No se encontraron tags XML en el string');
+    console.log('[XML Parser] Analizando XML, longitud:', xml.length);
+    console.log('[XML Parser] Preview:', xml.substring(0, 200));
+
+    // Estrategia 1: Buscar tags que se repiten (más de una ocurrencia)
+    const allTagMatches = xml.matchAll(/<([A-Z_][A-Z0-9_]*)\b[^>]*>/gi);
+    const tagCounts = new Map<string, number>();
+
+    for (const match of allTagMatches) {
+      const tagName = match[1];
+      // Ignorar tags comunes de contenedor
+      if (['Datos', 'NewDataSet', 'Table', 'Root', 'Response'].includes(tagName)) {
+        continue;
+      }
+      tagCounts.set(tagName, (tagCounts.get(tagName) || 0) + 1);
     }
 
-    const recordTag = tagMatch[1];
-    const recordRegex = new RegExp(`<${recordTag}>(.*?)</${recordTag}>`, 'gis');
+    console.log('[XML Parser] Tag counts:', Object.fromEntries(tagCounts));
+
+    // Encontrar el tag que más se repite (registros individuales)
+    let recordTag = '';
+    let maxCount = 0;
+
+    for (const [tag, count] of tagCounts.entries()) {
+      if (count > maxCount) {
+        maxCount = count;
+        recordTag = tag;
+      }
+    }
+
+    // Si no encontramos tags repetidos, usar estrategia fallback
+    if (!recordTag || maxCount < 2) {
+      console.log('[XML Parser] No se encontraron tags repetidos, usando estrategia fallback');
+      const tagMatch = xml.match(/<([A-Z_][A-Z0-9_]*)\b[^>]*>/i);
+      if (!tagMatch) {
+        throw new Error('No se encontraron tags XML en el string');
+      }
+      recordTag = tagMatch[1];
+    }
+
+    console.log('[XML Parser] Tag de registro detectado:', recordTag, 'con', maxCount, 'ocurrencias');
+
+    const recordRegex = new RegExp(`<${recordTag}\\b[^>]*>(.*?)</${recordTag}>`, 'gis');
     const matches = Array.from(xml.matchAll(recordRegex));
+
+    console.log('[XML Parser] Registros encontrados:', matches.length);
 
     result.stats.totalRows = matches.length;
 
@@ -229,7 +267,7 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
       try {
         const recordXml = matches[i][1];
         const fields: any = {};
-        const fieldRegex = /<([A-Z_]+)>(.*?)<\/([A-Z_]+)>/gi;
+        const fieldRegex = /<([A-Z_][A-Z0-9_]*)\b[^>]*>(.*?)<\/\1>/gi;
         let fieldMatch;
 
         while ((fieldMatch = fieldRegex.exec(recordXml)) !== null) {
@@ -238,8 +276,10 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
           fields[fieldName] = fieldValue;
         }
 
-        const id = fields.ID || fields.CVECAMPO || fields.CVE || `${i + 1}`;
-        const nombre = fields.NOMBRE || fields.DESCRIPCION || fields.DESCAMPO || JSON.stringify(fields);
+        console.log(`[XML Parser] Registro ${i + 1} parseado:`, Object.keys(fields));
+
+        const id = fields.ID || fields.CVECAMPO || fields.CVE || fields.IDDESPACHO || fields.IDOFNA || `${i + 1}`;
+        const nombre = fields.NOMBRE || fields.DESCRIPCION || fields.DESCAMPO || fields.DESPACHONOMBRE || fields.OFNANOMBRE || JSON.stringify(fields);
 
         result.records.push({
           id_sicas: String(id),
@@ -257,7 +297,10 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
         result.stats.failed++;
       }
     }
+
+    console.log('[XML Parser] Resultado final:', result.stats);
   } catch (error) {
+    console.error('[XML Parser] Error:', error.message);
     result.errors.push(`Error parseando XML: ${error.message}`);
   }
 
