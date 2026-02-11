@@ -704,7 +704,7 @@ function AppRoutes() {
       <Route
         path="/catalogos-web"
         element={
-          <ProtectedRoute requireRole="admin">
+          <ProtectedRoute requireAdmin>
             <Layout>
               <CatalogosWeb />
             </Layout>
@@ -801,9 +801,9 @@ function App() {
               <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
               <Route path="/gmm/tarifas" element={<ProtectedRoute requireAdmin><GMMTarifasAdmin /></ProtectedRoute>} />
               <Route path="/gmm/cotizador" element={<ProtectedRoute requireAdmin><GMMCotizador /></ProtectedRoute>} />
-              <Route path="/catalogos-web" element={<ProtectedRoute requireRole="admin"><Layout><CatalogosWeb /></Layout></ProtectedRoute>} />
-              <Route path="/sicas" element={<ProtectedRoute requireRole="admin"><Layout><SicasAdmin /></Layout></ProtectedRoute>} />
-              <Route path="/sicas/test-catalogs" element={<ProtectedRoute requireRole="admin"><Layout><SicasTestCatalogs /></Layout></ProtectedRoute>} />
+              <Route path="/catalogos-web" element={<ProtectedRoute requireAdmin><Layout><CatalogosWeb /></Layout></ProtectedRoute>} />
+              <Route path="/sicas" element={<ProtectedRoute requireAdmin><Layout><SicasAdmin /></Layout></ProtectedRoute>} />
+              <Route path="/sicas/test-catalogs" element={<ProtectedRoute requireAdmin><Layout><SicasTestCatalogs /></Layout></ProtectedRoute>} />
               <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
 
