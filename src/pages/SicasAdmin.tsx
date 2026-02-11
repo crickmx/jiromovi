@@ -182,6 +182,16 @@ export default function SicasAdmin() {
   }
 
   async function handleMapDespacho(id_sicas: string, oficina_id: string) {
+    // Validación previa
+    if (despachos.length === 0) {
+      setMessage({
+        type: 'error',
+        text: 'No hay despachos sincronizados. Por favor, sincroniza los despachos desde la pestaña "Conexión" primero.'
+      });
+      setActiveTab('conexion');
+      return;
+    }
+
     try {
       const result = await mapDespacho(id_sicas, oficina_id);
       if (result.success) {
@@ -210,6 +220,16 @@ export default function SicasAdmin() {
   }
 
   async function handleMapVendedor(id_sicas: string, user_id: string) {
+    // Validación previa
+    if (vendedores.length === 0) {
+      setMessage({
+        type: 'error',
+        text: 'No hay vendedores sincronizados. Por favor, sincroniza los vendedores desde la pestaña "Conexión" primero.'
+      });
+      setActiveTab('conexion');
+      return;
+    }
+
     try {
       const result = await mapVendedor(id_sicas, user_id);
       if (result.success) {
@@ -320,8 +340,22 @@ export default function SicasAdmin() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="conexion">Conexión</TabsTrigger>
-          <TabsTrigger value="despachos">Mapeo Despachos</TabsTrigger>
-          <TabsTrigger value="vendedores">Mapeo Vendedores</TabsTrigger>
+          <TabsTrigger value="despachos" className="relative">
+            Mapeo Despachos
+            {despachos.length > 0 && (
+              <Badge className="ml-2 bg-green-500 text-white text-xs px-1.5 py-0">
+                {despachos.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="vendedores" className="relative">
+            Mapeo Vendedores
+            {vendedores.length > 0 && (
+              <Badge className="ml-2 bg-green-500 text-white text-xs px-1.5 py-0">
+                {vendedores.length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
         </TabsList>
 
@@ -517,6 +551,26 @@ export default function SicasAdmin() {
 
         <TabsContent value="despachos">
           <Section>
+            {despachos.length === 0 && (
+              <div className="mb-6 p-6 bg-amber-50 border-2 border-amber-300 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <Building className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-amber-900 mb-1">No hay despachos sincronizados</h3>
+                    <p className="text-sm text-amber-800 mb-3">
+                      Para poder mapear despachos SICAS con oficinas MOVI, primero debes sincronizar los datos desde SICAS.
+                    </p>
+                    <Button
+                      onClick={() => setActiveTab('conexion')}
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
+                      Ir a Sincronizar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             <Card>
               <CardHeader>
                 <CardTitle>Mapeo de Despachos</CardTitle>
@@ -627,6 +681,26 @@ export default function SicasAdmin() {
 
         <TabsContent value="vendedores">
           <Section>
+            {vendedores.length === 0 && (
+              <div className="mb-6 p-6 bg-amber-50 border-2 border-amber-300 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <Users className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-amber-900 mb-1">No hay vendedores sincronizados</h3>
+                    <p className="text-sm text-amber-800 mb-3">
+                      Para poder mapear vendedores SICAS con usuarios MOVI, primero debes sincronizar los datos desde SICAS.
+                    </p>
+                    <Button
+                      onClick={() => setActiveTab('conexion')}
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
+                      Ir a Sincronizar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             <Card>
               <CardHeader>
                 <CardTitle>Mapeo de Vendedores</CardTitle>
