@@ -23,8 +23,8 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { catalog_type_id } = body;
 
-    if (!catalog_type_id || catalog_type_id < 1 || catalog_type_id > 61) {
-      throw new Error('Invalid catalog_type_id. Must be between 1 and 61');
+    if (!catalog_type_id || catalog_type_id < 1 || catalog_type_id > 96) {
+      throw new Error('Invalid catalog_type_id. Must be between 1 and 96');
     }
 
     const typeReturn = Number(body?.typeReturn ?? 1);
