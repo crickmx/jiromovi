@@ -129,6 +129,33 @@ Esta carpeta contiene toda la evidencia técnica del consumo del servicio web SI
 ## 🔧 PRUEBAS RÁPIDAS
 
 ### Test 1: Autenticación
+
+**Con Variables de Entorno (RECOMENDADO):**
+```bash
+export SICAS_USER='j1r0%25$'
+export SICAS_PASS='$45oc14d05$'
+
+curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+  -H "Content-Type: text/xml; charset=utf-8" \
+  -H "SOAPAction: \"http://tempuri.org/AutentificarWS\"" \
+  --data-binary @- <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <AutentificarWS xmlns="http://tempuri.org/">
+      <wsAuthConfig>
+        <UserName>'"$SICAS_USER"'</UserName>
+        <Password>'"$SICAS_PASS"'</Password>
+      </wsAuthConfig>
+    </AutentificarWS>
+  </soap:Body>
+</soap:Envelope>
+XML
+```
+
+**Formato inline (para copiar/pegar rápido):**
 ```bash
 curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
@@ -138,8 +165,8 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
   <soap:Body>
     <AutentificarWS xmlns="http://tempuri.org/">
       <wsAuthConfig>
-        <UserName>TU_USUARIO</UserName>
-        <Password>TU_PASSWORD</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </AutentificarWS>
   </soap:Body>
@@ -148,7 +175,38 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
 
 **Respuesta esperada:** XML con `<RESPONSETXT>SUCESS</RESPONSETXT>` y `<RESPONSENBR>1</RESPONSENBR>`
 
-### Test 2: Catálogo de Oficinas (ID: 10)
+### Test 2: Catálogo de Despachos (ID: 11)
+
+**Con Variables de Entorno (RECOMENDADO):**
+```bash
+export SICAS_USER='j1r0%25$'
+export SICAS_PASS='$45oc14d05$'
+
+curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+  -H "Content-Type: text/xml; charset=utf-8" \
+  -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
+  --data-binary @- <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ReadInfoData xmlns="http://tempuri.org/">
+      <wsReadData>
+        <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
+        <PropertyTypeReadData>11</PropertyTypeReadData>
+      </wsReadData>
+      <wsAuthConfig>
+        <UserName>'"$SICAS_USER"'</UserName>
+        <Password>'"$SICAS_PASS"'</Password>
+      </wsAuthConfig>
+    </ReadInfoData>
+  </soap:Body>
+</soap:Envelope>
+XML
+```
+
+**Formato inline:**
 ```bash
 curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
@@ -159,11 +217,11 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
     <ReadInfoData xmlns="http://tempuri.org/">
       <wsReadData>
         <PropertyData_TypeDataReturn>2</PropertyData_TypeDataReturn>
-        <PropertyTypeReadData>10</PropertyTypeReadData>
+        <PropertyTypeReadData>11</PropertyTypeReadData>
       </wsReadData>
       <wsAuthConfig>
-        <UserName>TU_USUARIO</UserName>
-        <Password>TU_PASSWORD</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </ReadInfoData>
   </soap:Body>

@@ -316,8 +316,8 @@ Guarda este script como `test-sicas.sh` y ejecútalo:
 
 # Configuración
 SICAS_ENDPOINT="https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx"
-SICAS_USERNAME="TU_USUARIO"
-SICAS_PASSWORD="TU_PASSWORD"
+SICAS_USERNAME="j1r0%25$"
+SICAS_PASSWORD="$45oc14d05$"
 
 echo "========================================="
 echo "SICAS Test Script"
@@ -453,8 +453,8 @@ import requests
 
 # Configuración
 SICAS_ENDPOINT = 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx'
-SICAS_USERNAME = 'TU_USUARIO'
-SICAS_PASSWORD = 'TU_PASSWORD'
+SICAS_USERNAME = 'j1r0%25$'
+SICAS_PASSWORD = '$45oc14d05$'
 
 # Autenticación
 auth_soap = f"""<?xml version="1.0" encoding="utf-8"?>
