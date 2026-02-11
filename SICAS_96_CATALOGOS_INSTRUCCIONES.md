@@ -20,6 +20,10 @@ Se actualizó el sistema para soportar **96 catálogos oficiales de SICAS** (ant
 
 ## Instrucciones de Instalación
 
+### IMPORTANTE - Este script limpiará los datos existentes
+
+El script hace `TRUNCATE` en la tabla `sicas_catalog_types`, eliminando todos los catálogos actuales y reemplazándolos con los 96 oficiales de SICAS. Si tienes datos de sincronización en `sicas_sync_history`, se preservarán.
+
 ### Opción 1: Ejecutar en Supabase SQL Editor (Recomendado)
 
 1. Abre tu proyecto en Supabase
@@ -27,7 +31,10 @@ Se actualizó el sistema para soportar **96 catálogos oficiales de SICAS** (ant
 3. Crea una nueva query
 4. Copia y pega todo el contenido del archivo `sicas_96_catalogos_update.sql`
 5. Haz clic en **Run** (o presiona Ctrl/Cmd + Enter)
-6. Verifica que aparezca el mensaje: `✅ Validación completa: Los 96 catálogos SICAS están correctamente configurados`
+6. Verifica que aparezcan estos mensajes:
+   - `✓ Restricción de unicidad en name eliminada`
+   - `✓ Tabla limpiada`
+   - `✅ Validación completa: Los 96 catálogos SICAS están correctamente configurados`
 
 ### Opción 2: Usar la CLI de Supabase
 
