@@ -122,6 +122,7 @@ export interface SicasDespacho {
   nombre: string;
   raw: any;
   is_mapped: boolean;
+  last_sync_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -132,6 +133,7 @@ export interface SicasVendedor {
   nombre: string;
   raw: any;
   is_mapped: boolean;
+  last_sync_at?: string;
   created_at: string;
   updated_at: string;
 }

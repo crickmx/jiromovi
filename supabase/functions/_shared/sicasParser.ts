@@ -278,8 +278,39 @@ function parseXmlString(xml: string, catalogName: string): ParseResult {
 
         console.log(`[XML Parser] Registro ${i + 1} parseado:`, Object.keys(fields));
 
-        const id = fields.ID || fields.CVECAMPO || fields.CVE || fields.IDDESPACHO || fields.IDOFNA || `${i + 1}`;
-        const nombre = fields.NOMBRE || fields.DESCRIPCION || fields.DESCAMPO || fields.DESPACHONOMBRE || fields.OFNANOMBRE || JSON.stringify(fields);
+        // Extraer ID - Intentar múltiples campos comunes
+        const id =
+          fields.ID ||
+          fields.CVECAMPO ||
+          fields.CVE ||
+          fields.IDDESPACHO ||
+          fields.IDVENDEDOR ||
+          fields.IDAGENTE ||
+          fields.IDOFNA ||
+          fields.VENDEDORID ||
+          fields.AGENTEID ||
+          `${i + 1}`;
+
+        // Extraer Nombre - Intentar múltiples campos comunes de diferentes catálogos
+        const nombre =
+          fields.NOMBRE ||
+          fields.DESCRIPCION ||
+          fields.DESCAMPO ||
+          fields.DESPNOMBRE ||           // Despachos - Campo oficial
+          fields.DESPACHONOMBRE ||
+          fields.VENDNOMBRE ||           // Vendedores - Campo oficial SICAS
+          fields.VENDEDORNOMBRE ||
+          fields.NOMBREVENDEDOR ||
+          fields.AGENTENOMBRE ||          // Agentes
+          fields.NOMBREAGENTE ||
+          fields.OFNANOMBRE ||            // Oficinas
+          fields.NOMBREOFNA ||
+          fields.COMPANIANOMBRE ||        // Compañías
+          fields.NOMBRECOMPANIA ||
+          fields.TEXTO ||
+          fields.VALUE ||
+          fields.VAL ||
+          JSON.stringify(fields);
 
         result.records.push({
           id_sicas: String(id),
