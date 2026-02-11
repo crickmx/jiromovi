@@ -96,7 +96,42 @@ Deno.serve(async (req: Request) => {
   </soap:Body>
 </soap:Envelope>`;
 
-    const response = await fetch(sicasEndpoint, {
+    // Función helper para hacer fetch con timeout y reintentos
+    async function fetchWithRetry(url: string, options: any, maxRetries = 3) {
+      const timeout = 45000; // 45 segundos
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[SICAS Sync] Intento ${attempt}/${maxRetries} - Conectando a SICAS...`);
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+          return response;
+        } catch (error: any) {
+          console.error(`[SICAS Sync] Error en intento ${attempt}:`, error.message);
+
+          if (attempt === maxRetries) {
+            throw new Error(`Timeout o error de conexión después de ${maxRetries} intentos: ${error.message}`);
+          }
+
+          // Esperar antes del siguiente intento (backoff exponencial)
+          const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+          console.log(`[SICAS Sync] Esperando ${waitTime}ms antes del siguiente intento...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+
+      throw new Error('No se pudo completar la solicitud después de todos los reintentos');
+    }
+
+    const response = await fetchWithRetry(sicasEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'text/xml; charset=utf-8',
