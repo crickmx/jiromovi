@@ -142,9 +142,9 @@ Deno.serve(async (req: Request) => {
     // Verificar que el usuario existe
     const { data: moviUser, error: userError } = await supabase
       .from("usuarios")
-      .select("id, nombre, rol")
+      .select("id, nombre_completo, rol")
       .eq("id", movi_user_id)
-      .single();
+      .maybeSingle();
 
     if (userError || !moviUser) {
       return new Response(JSON.stringify({
@@ -212,7 +212,7 @@ Deno.serve(async (req: Request) => {
         batch_id,
         vendor_key,
         movi_user_id,
-        user_name: moviUser.nombre,
+        user_name: moviUser.nombre_completo,
         updated_count: result.updated_count,
         mapping_id: result.mapping_id
       }

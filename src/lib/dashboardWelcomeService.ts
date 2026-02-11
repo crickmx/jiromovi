@@ -183,11 +183,11 @@ async function getTareasData(userId: string) {
 
     const { data: contactos } = await supabase
       .from('crm_contactos')
-      .select('id, updated_at')
-      .eq('usuario_id', userId);
+      .select('id, actualizado_en')
+      .eq('creado_por', userId);
 
     const sinSeguimiento = contactos?.filter(c => {
-      const ultimaActualizacion = new Date(c.updated_at);
+      const ultimaActualizacion = new Date(c.actualizado_en);
       return ultimaActualizacion < hace30Dias;
     }).length || 0;
 
@@ -258,24 +258,45 @@ async function getComisionesData(userId: string) {
     const mesAnterior = mesActual === 1 ? 12 : mesActual - 1;
     const anioAnterior = mesActual === 1 ? anioActual - 1 : anioActual;
 
-    // Comisiones mes actual
-    const { data: comisionesActuales } = await supabase
-      .from('commission_details')
-      .select('importe_pago')
-      .eq('usuario_id', userId)
-      .eq('mes', mesActual)
+    // Comisiones mes actual - obtener desde batches
+    const { data: batchesActuales } = await supabase
+      .from('commission_batches')
+      .select('id')
+      .eq('semana_mes', mesActual)
       .eq('anio', anioActual);
 
+    const batchIdsActuales = batchesActuales?.map(b => b.id) || [];
+
+    let totalActual = 0;
+    if (batchIdsActuales.length > 0) {
+      const { data: comisionesActuales } = await supabase
+        .from('commission_details')
+        .select('commission_neta')
+        .eq('usuario_id', userId)
+        .in('batch_id', batchIdsActuales);
+
+      totalActual = comisionesActuales?.reduce((sum, c) => sum + (c.commission_neta || 0), 0) || 0;
+    }
+
     // Comisiones mes anterior
-    const { data: comisionesAnteriores } = await supabase
-      .from('commission_details')
-      .select('importe_pago')
-      .eq('usuario_id', userId)
-      .eq('mes', mesAnterior)
+    const { data: batchesAnteriores } = await supabase
+      .from('commission_batches')
+      .select('id')
+      .eq('semana_mes', mesAnterior)
       .eq('anio', anioAnterior);
 
-    const totalActual = comisionesActuales?.reduce((sum, c) => sum + (c.importe_pago || 0), 0) || 0;
-    const totalAnterior = comisionesAnteriores?.reduce((sum, c) => sum + (c.importe_pago || 0), 0) || 0;
+    const batchIdsAnteriores = batchesAnteriores?.map(b => b.id) || [];
+
+    let totalAnterior = 0;
+    if (batchIdsAnteriores.length > 0) {
+      const { data: comisionesAnteriores } = await supabase
+        .from('commission_details')
+        .select('commission_neta')
+        .eq('usuario_id', userId)
+        .in('batch_id', batchIdsAnteriores);
+
+      totalAnterior = comisionesAnteriores?.reduce((sum, c) => sum + (c.commission_neta || 0), 0) || 0;
+    }
 
     return {
       comisiones_mes_actual: Math.round(totalActual),
