@@ -82,12 +82,12 @@ export default function ProduccionPorVendedorOptimizado() {
   const loadVendors = async (forceRefresh = false) => {
     if (!usuario) return;
 
-    console.log('[ProduccionOptimizado] Cargando vendedores...');
+    console.log('[ProduccionSICAS] Cargando vendedores desde SICAS...');
     setLoading(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-production-vendors-cached`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-get-production`;
 
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -96,7 +96,6 @@ export default function ProduccionPorVendedorOptimizado() {
         ...(filters.mappingStatus !== 'all' && { mappingStatus: filters.mappingStatus }),
         sortBy: filters.sortBy,
         sortOrder: filters.sortOrder,
-        ...(forceRefresh && { forceRefresh: 'true' }),
       });
 
       const response = await fetch(`${apiUrl}?${params}`, {
@@ -117,8 +116,9 @@ export default function ProduccionPorVendedorOptimizado() {
         throw new Error(result.error || 'Error desconocido');
       }
 
-      console.log('[ProduccionOptimizado] Vendedores cargados:', result.vendors.length);
-      console.log('[ProduccionOptimizado] Performance:', result.performance);
+      console.log('[ProduccionSICAS] Vendedores cargados:', result.vendors.length);
+      console.log('[ProduccionSICAS] Performance:', result.performance);
+      console.log('[ProduccionSICAS] Fuente:', result.metadata.source);
 
       setVendors(result.vendors);
       setTotalVendors(result.pagination.total);
@@ -126,8 +126,8 @@ export default function ProduccionPorVendedorOptimizado() {
       setMetadata(result.metadata);
 
     } catch (error: any) {
-      console.error('[ProduccionOptimizado] Error:', error);
-      alert('Error al cargar los datos de producción:\n\n' + error.message);
+      console.error('[ProduccionSICAS] Error:', error);
+      alert('Error al cargar los datos de producción desde SICAS:\n\n' + error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -139,12 +139,12 @@ export default function ProduccionPorVendedorOptimizado() {
       return;
     }
 
-    console.log('[ProduccionOptimizado] Cargando detalles para:', vendNombre);
+    console.log('[ProduccionSICAS] Cargando detalles desde SICAS para:', vendNombre);
     setLoadingDetails(new Map(loadingDetails).set(vendNombre, true));
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendor-production-details`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-get-vendor-details`;
 
       const params = new URLSearchParams({
         vendNombre,
@@ -169,11 +169,11 @@ export default function ProduccionPorVendedorOptimizado() {
         const newDetails = new Map(vendorDetails);
         newDetails.set(vendNombre, result.records);
         setVendorDetails(newDetails);
-        console.log('[ProduccionOptimizado] Detalles cargados:', result.records.length, 'registros');
+        console.log('[ProduccionSICAS] Detalles cargados:', result.records.length, 'registros desde SICAS');
       }
 
     } catch (error: any) {
-      console.error('[ProduccionOptimizado] Error al cargar detalles:', error);
+      console.error('[ProduccionSICAS] Error al cargar detalles:', error);
     } finally {
       const newLoadingDetails = new Map(loadingDetails);
       newLoadingDetails.delete(vendNombre);
@@ -219,11 +219,11 @@ export default function ProduccionPorVendedorOptimizado() {
   };
 
   const exportToExcel = async () => {
-    alert('Exportando todos los datos...');
+    alert('Exportando todos los datos desde SICAS...');
 
     // Cargar todos los vendedores sin paginación
     const { data: { session } } = await supabase.auth.getSession();
-    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-production-vendors-cached`;
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-get-production`;
 
     const params = new URLSearchParams({
       page: '1',
@@ -255,8 +255,8 @@ export default function ProduccionPorVendedorOptimizado() {
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Producción por Vendedor');
-    XLSX.writeFile(wb, `Produccion_Por_Vendedor_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Producción SICAS');
+    XLSX.writeFile(wb, `Produccion_SICAS_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const chartDataByVendor = useMemo(() => {
@@ -295,7 +295,8 @@ export default function ProduccionPorVendedorOptimizado() {
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-neutral-600">Cargando producción por vendedor...</p>
+          <p className="text-neutral-600">Consultando producción desde SICAS...</p>
+          <p className="text-sm text-neutral-500 mt-2">Esto puede tomar unos momentos</p>
         </div>
       </div>
     );
@@ -311,21 +312,22 @@ export default function ProduccionPorVendedorOptimizado() {
                 Producción por Vendedor
               </h1>
               <p className="text-sm sm:text-base text-neutral-600">
-                Vista optimizada con cache y paginación
+                Datos en tiempo real desde SICAS (Reporte H03117)
               </p>
               {metadata && (
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 text-xs text-neutral-500">
                   <div className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    <span>Última actualización: {new Date(metadata.last_fetched_at).toLocaleString('es-MX')}</span>
+                    <span>Consulta: {new Date(metadata.last_fetched_at).toLocaleString('es-MX')}</span>
                   </div>
-                  {metadata.is_valid && (
-                    <div className="flex items-center gap-1 text-green-600">
-                      <CheckCircle className="w-3 h-3" />
-                      <span>Cache válido ({metadata.minutes_until_expiry.toFixed(1)} min restantes)</span>
-                    </div>
+                  <div className="flex items-center gap-1 text-green-600">
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Fuente: {metadata.source || 'SICAS Web Service'}</span>
+                  </div>
+                  <span>Duración: {metadata.last_fetch_duration_ms}ms</span>
+                  {metadata.report_code && (
+                    <span className="text-primary-600">Reporte: {metadata.report_code}</span>
                   )}
-                  <span>Duración carga: {metadata.last_fetch_duration_ms}ms</span>
                 </div>
               )}
             </div>
@@ -336,7 +338,7 @@ export default function ProduccionPorVendedorOptimizado() {
                 className="flex items-center space-x-2 bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm sm:text-base disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                <span>{refreshing ? 'Actualizando...' : 'Actualizar'}</span>
+                <span>{refreshing ? 'Consultando SICAS...' : 'Consultar SICAS'}</span>
               </button>
               {isAdmin && (
                 <button
