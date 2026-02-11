@@ -35,6 +35,26 @@ Deno.serve(async (req: Request) => {
         throw new Error('Missing required fields: id_sicas_vendedor, movi_user_id');
       }
 
+      const { data: vendedorExists } = await supabase
+        .from('sicas_vendedores')
+        .select('id_sicas')
+        .eq('id_sicas', id_sicas_vendedor)
+        .single();
+
+      if (!vendedorExists) {
+        throw new Error('El vendedor SICAS no existe. Por favor, sincroniza los vendedores primero desde la pestaña "Conexión".');
+      }
+
+      const { data: usuarioExists } = await supabase
+        .from('usuarios')
+        .select('id')
+        .eq('id', movi_user_id)
+        .single();
+
+      if (!usuarioExists) {
+        throw new Error('El usuario MOVI no existe');
+      }
+
       const { data, error } = await supabase
         .from('sicas_mapeo_vendedor_usuario')
         .upsert({
@@ -49,6 +69,9 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (error) {
+        if (error.code === '23503') {
+          throw new Error('Error de integridad: Verifica que el vendedor SICAS y el usuario MOVI existan');
+        }
         throw error;
       }
 
