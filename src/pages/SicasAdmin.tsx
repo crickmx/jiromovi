@@ -534,58 +534,84 @@ export default function SicasAdmin() {
                 </div>
 
                 <div className="space-y-3">
-                  {filteredDespachos.map((despacho) => (
-                    <div
-                      key={despacho.id}
-                      className="flex items-center gap-4 p-4 border rounded-xl hover:bg-neutral-50 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{despacho.nombre}</div>
-                        <div className="text-sm text-neutral-500">ID SICAS: {despacho.id_sicas}</div>
-                      </div>
-
-                      <div className="flex-1">
-                        <Select
-                          value={despacho.mapping?.movi_oficina_id || ''}
-                          onValueChange={(value) => handleMapDespacho(despacho.id_sicas, value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar oficina..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {oficinas.map((oficina) => (
-                              <SelectItem key={oficina.id} value={oficina.id}>
-                                {oficina.nombre}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {despacho.is_mapped ? (
-                          <>
-                            <Badge variant="default" className="bg-green-500">Mapeado</Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleUnmapDespacho(despacho.id_sicas)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <Badge variant="secondary">Sin mapear</Badge>
-                        )}
-                      </div>
+                  {despachos.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Building className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
+                      <p className="text-neutral-600 font-medium mb-2">No hay despachos sincronizados</p>
+                      <p className="text-sm text-neutral-500 mb-4">
+                        Haz clic en "Sincronizar Despachos" en la pestaña de Configuración
+                      </p>
+                      <Button
+                        onClick={() => setActiveTab('configuracion')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Ir a Configuración
+                      </Button>
                     </div>
-                  ))}
-
-                  {filteredDespachos.length === 0 && (
+                  ) : filteredDespachos.length === 0 ? (
                     <div className="text-center py-12 text-neutral-500">
                       <Building className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                      <p>No se encontraron despachos</p>
+                      <p>No se encontraron despachos con ese criterio</p>
+                      <Button
+                        onClick={() => {
+                          setSearchDespacho('');
+                          setFilterUnmappedDespachos(false);
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="mt-3"
+                      >
+                        Limpiar filtros
+                      </Button>
                     </div>
+                  ) : (
+                    filteredDespachos.map((despacho) => (
+                      <div
+                        key={despacho.id}
+                        className="flex items-center gap-4 p-4 border rounded-xl hover:bg-neutral-50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium">{despacho.nombre}</div>
+                          <div className="text-sm text-neutral-500">ID SICAS: {despacho.id_sicas}</div>
+                        </div>
+
+                        <div className="flex-1">
+                          <Select
+                            value={despacho.mapping?.movi_oficina_id || ''}
+                            onValueChange={(value) => handleMapDespacho(despacho.id_sicas, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar oficina..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {oficinas.map((oficina) => (
+                                <SelectItem key={oficina.id} value={oficina.id}>
+                                  {oficina.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {despacho.is_mapped ? (
+                            <>
+                              <Badge variant="default" className="bg-green-500">Mapeado</Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUnmapDespacho(despacho.id_sicas)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <Badge variant="secondary">Sin mapear</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </CardContent>
@@ -618,59 +644,85 @@ export default function SicasAdmin() {
                 </div>
 
                 <div className="space-y-3">
-                  {filteredVendedores.map((vendedor) => (
-                    <div
-                      key={vendedor.id}
-                      className="flex items-center gap-4 p-4 border rounded-xl hover:bg-neutral-50 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{vendedor.nombre}</div>
-                        <div className="text-sm text-neutral-500">ID SICAS: {vendedor.id_sicas}</div>
-                      </div>
-
-                      <div className="flex-1">
-                        <Select
-                          value={vendedor.mapping?.movi_user_id || ''}
-                          onValueChange={(value) => handleMapVendedor(vendedor.id_sicas, value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar usuario..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {usuarios.map((usuario) => (
-                              <SelectItem key={usuario.id} value={usuario.id}>
-                                {usuario.nombre} {usuario.apellidos}
-                                {usuario.email_personal && ` (${usuario.email_personal})`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {vendedor.is_mapped ? (
-                          <>
-                            <Badge variant="default" className="bg-green-500">Mapeado</Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleUnmapVendedor(vendedor.id_sicas)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <Badge variant="secondary">Sin mapear</Badge>
-                        )}
-                      </div>
+                  {vendedores.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Users className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
+                      <p className="text-neutral-600 font-medium mb-2">No hay vendedores sincronizados</p>
+                      <p className="text-sm text-neutral-500 mb-4">
+                        Haz clic en "Sincronizar Vendedores" en la pestaña de Configuración
+                      </p>
+                      <Button
+                        onClick={() => setActiveTab('configuracion')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Ir a Configuración
+                      </Button>
                     </div>
-                  ))}
-
-                  {filteredVendedores.length === 0 && (
+                  ) : filteredVendedores.length === 0 ? (
                     <div className="text-center py-12 text-neutral-500">
                       <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                      <p>No se encontraron vendedores</p>
+                      <p>No se encontraron vendedores con ese criterio</p>
+                      <Button
+                        onClick={() => {
+                          setSearchVendedor('');
+                          setFilterUnmappedVendedores(false);
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="mt-3"
+                      >
+                        Limpiar filtros
+                      </Button>
                     </div>
+                  ) : (
+                    filteredVendedores.map((vendedor) => (
+                      <div
+                        key={vendedor.id}
+                        className="flex items-center gap-4 p-4 border rounded-xl hover:bg-neutral-50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium">{vendedor.nombre}</div>
+                          <div className="text-sm text-neutral-500">ID SICAS: {vendedor.id_sicas}</div>
+                        </div>
+
+                        <div className="flex-1">
+                          <Select
+                            value={vendedor.mapping?.movi_user_id || ''}
+                            onValueChange={(value) => handleMapVendedor(vendedor.id_sicas, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar usuario..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {usuarios.map((usuario) => (
+                                <SelectItem key={usuario.id} value={usuario.id}>
+                                  {usuario.nombre} {usuario.apellidos}
+                                  {usuario.email_personal && ` (${usuario.email_personal})`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {vendedor.is_mapped ? (
+                            <>
+                              <Badge variant="default" className="bg-green-500">Mapeado</Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUnmapVendedor(vendedor.id_sicas)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <Badge variant="secondary">Sin mapear</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </CardContent>
