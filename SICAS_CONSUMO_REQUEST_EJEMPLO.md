@@ -16,8 +16,9 @@ Método: SOAP 1.1 Web Service
 ```
 
 ### Credenciales de Autenticación
-- **UserName:** [Configurado en variables de entorno]
-- **Password:** [Configurado en variables de entorno]
+- **UserName:** `j1r0%25$` (codificado URL: representa `j1r0%$`)
+- **Password:** `$45oc14d05$`
+- **Nota:** Las credenciales se almacenan en variables de entorno por seguridad
 
 ---
 
@@ -45,8 +46,8 @@ Content-Length: [calculado]
   <soap:Body>
     <AutentificarWS xmlns="http://tempuri.org/">
       <wsAuthConfig>
-        <UserName>USUARIO_SICAS</UserName>
-        <Password>PASSWORD_SICAS</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </AutentificarWS>
   </soap:Body>
@@ -101,8 +102,8 @@ Content-Length: [calculado]
         <PropertyTypeReadData>10</PropertyTypeReadData>
       </wsReadData>
       <wsAuthConfig>
-        <UserName>USUARIO_SICAS</UserName>
-        <Password>PASSWORD_SICAS</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </ReadInfoData>
   </soap:Body>
@@ -228,8 +229,8 @@ Content-Length: [calculado]
 
 ```typescript
 const sicasEndpoint = 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
-const sicasUsername = 'USUARIO_SICAS';
-const sicasPassword = 'PASSWORD_SICAS';
+const sicasUsername = 'j1r0%25$';
+const sicasPassword = '$45oc14d05$';
 
 const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

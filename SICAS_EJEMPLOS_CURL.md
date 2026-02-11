@@ -17,8 +17,8 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
   <soap:Body>
     <AutentificarWS xmlns="http://tempuri.org/">
       <wsAuthConfig>
-        <UserName>TU_USUARIO</UserName>
-        <Password>TU_PASSWORD</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </AutentificarWS>
   </soap:Body>
@@ -37,8 +37,8 @@ curl -v -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
   <soap:Body>
     <AutentificarWS xmlns="http://tempuri.org/">
       <wsAuthConfig>
-        <UserName>TU_USUARIO</UserName>
-        <Password>TU_PASSWORD</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </AutentificarWS>
   </soap:Body>
@@ -84,8 +84,8 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
         <PropertyTypeReadData>10</PropertyTypeReadData>
       </wsReadData>
       <wsAuthConfig>
-        <UserName>TU_USUARIO</UserName>
-        <Password>TU_PASSWORD</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </ReadInfoData>
   </soap:Body>
@@ -107,8 +107,8 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
         <PropertyTypeReadData>10</PropertyTypeReadData>
       </wsReadData>
       <wsAuthConfig>
-        <UserName>TU_USUARIO</UserName>
-        <Password>TU_PASSWORD</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </ReadInfoData>
   </soap:Body>
@@ -133,8 +133,8 @@ curl -v -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
         <PropertyTypeReadData>13</PropertyTypeReadData>
       </wsReadData>
       <wsAuthConfig>
-        <UserName>TU_USUARIO</UserName>
-        <Password>TU_PASSWORD</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </ReadInfoData>
   </soap:Body>
@@ -159,8 +159,8 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
         <PropertyTypeReadData>32</PropertyTypeReadData>
       </wsReadData>
       <wsAuthConfig>
-        <UserName>TU_USUARIO</UserName>
-        <Password>TU_PASSWORD</Password>
+        <UserName>j1r0%25$</UserName>
+        <Password>$45oc14d05$</Password>
       </wsAuthConfig>
     </ReadInfoData>
   </soap:Body>
