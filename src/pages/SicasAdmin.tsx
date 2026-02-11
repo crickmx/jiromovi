@@ -95,7 +95,6 @@ export default function SicasAdmin() {
   async function loadDespachos() {
     try {
       const data = await getAllSicasDespachos();
-      console.log('Despachos cargados:', data.length, data.slice(0, 3));
       setDespachos(data);
     } catch (error) {
       console.error('Error loading despachos:', error);
@@ -270,11 +269,6 @@ export default function SicasAdmin() {
   const filteredDespachos = despachos
     .filter(d => !filterUnmappedDespachos || !d.is_mapped)
     .filter(d => d.nombre.toLowerCase().includes(searchDespacho.toLowerCase()) || d.id_sicas.includes(searchDespacho));
-
-  console.log('Despachos originales:', despachos.length);
-  console.log('Filtro unmapped activo:', filterUnmappedDespachos);
-  console.log('Búsqueda:', searchDespacho);
-  console.log('Despachos filtrados:', filteredDespachos.length);
 
   const filteredVendedores = vendedores
     .filter(v => !filterUnmappedVendedores || !v.is_mapped)
