@@ -22,7 +22,7 @@
 -- Tabla de configuración
 CREATE TABLE IF NOT EXISTS sicas_config (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  endpoint text NOT NULL DEFAULT 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx',
+  endpoint text NOT NULL DEFAULT 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx',
   last_test_at timestamptz,
   last_test_success boolean,
   last_test_message text,
@@ -247,5 +247,5 @@ CREATE POLICY "Service role can manage vendedor mappings"
 
 -- Insertar configuración inicial
 INSERT INTO sicas_config (endpoint)
-VALUES ('https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx')
+VALUES ('https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx')
 ON CONFLICT DO NOTHING;

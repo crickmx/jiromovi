@@ -462,7 +462,7 @@ Cada sincronización se registra en nuestra base de datos con:
 
 **Verificación:**
 ```bash
-curl -I https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx
+curl -I https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx
 ```
 
 Debe retornar `Content-Type: text/xml`

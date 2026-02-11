@@ -10,7 +10,7 @@
 
 ### Endpoint del Servicio
 ```
-URL: https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx
+URL: https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx
 Protocolo: HTTPS
 Método: SOAP 1.1 Web Service
 ```
@@ -31,7 +31,7 @@ Método: SOAP 1.1 Web Service
 #### Request HTTP Headers
 ```
 POST /SICASOnline/WS_SICASOnline.asmx HTTP/1.1
-Host: www.sicasonline.com
+Host: www.sicasonline.com.mx
 Content-Type: text/xml; charset=utf-8
 SOAPAction: "http://tempuri.org/AutentificarWS"
 Content-Length: [calculado]
@@ -83,7 +83,7 @@ Esta operación se utiliza para sincronizar los 61 catálogos disponibles en SIC
 #### Request HTTP Headers
 ```
 POST /SICASOnline/WS_SICASOnline.asmx HTTP/1.1
-Host: www.sicasonline.com
+Host: www.sicasonline.com.mx
 Content-Type: text/xml; charset=utf-8
 SOAPAction: "http://tempuri.org/ReadInfoData"
 Content-Length: [calculado]
@@ -228,7 +228,7 @@ Content-Length: [calculado]
 ### 4.1 Autenticación
 
 ```typescript
-const sicasEndpoint = 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
+const sicasEndpoint = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
 const sicasUsername = 'j1r0%25$';
 const sicasPassword = '$45oc14d05$';
 

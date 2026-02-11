@@ -20,7 +20,7 @@ NC='\033[0m' # No Color
 
 # Test 1: Autenticación
 echo -e "${YELLOW}Test 1: Autenticación...${NC}"
-response=$(curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+response=$(curl -sS -X POST "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx" \
   -H "Content-Type: text/xml; charset=utf-8" \
   -H "SOAPAction: \"http://tempuri.org/AutentificarWS\"" \
   --data-binary @- <<'XML'
@@ -52,7 +52,7 @@ echo ""
 
 # Test 2: Catálogo de Oficinas (ID: 10)
 echo -e "${YELLOW}Test 2: Catálogo de Oficinas (ID: 10)...${NC}"
-response=$(curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+response=$(curl -sS -X POST "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx" \
   -H "Content-Type: text/xml; charset=utf-8" \
   -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
   --data-binary @- <<'XML'

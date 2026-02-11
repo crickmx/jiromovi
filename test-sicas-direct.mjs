@@ -13,7 +13,7 @@ import 'dotenv/config';
 // Credenciales SICAS (deben estar en .env o en variables de entorno de Supabase)
 const SICAS_USERNAME = process.env.SICAS_USERNAME;
 const SICAS_PASSWORD = process.env.SICAS_PASSWORD;
-const SICAS_ENDPOINT = process.env.SICAS_ENDPOINT || 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
+const SICAS_ENDPOINT = process.env.SICAS_ENDPOINT || 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
 
 console.log('🔌 Test de Conexión SICAS');
 console.log('═══════════════════════════════════════');

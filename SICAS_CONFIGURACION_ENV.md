@@ -7,7 +7,7 @@ Las siguientes variables de entorno son necesarias para la integración con SICA
 ```bash
 SICAS_USERNAME=j1r0%25$
 SICAS_PASSWORD=$45oc14d05$
-SICAS_ENDPOINT=https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx
+SICAS_ENDPOINT=https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx
 ```
 
 ## Configuración en Desarrollo Local
@@ -27,7 +27,7 @@ Para configurar estas variables en el entorno de producción de Supabase:
    ```
    SICAS_USERNAME = j1r0%25$
    SICAS_PASSWORD = $45oc14d05$
-   SICAS_ENDPOINT = https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx
+   SICAS_ENDPOINT = https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx
    ```
 
 4. Guarda los cambios
@@ -40,7 +40,7 @@ Si tienes instalado el CLI de Supabase, puedes usar estos comandos:
 # Configurar las variables de entorno
 supabase secrets set SICAS_USERNAME="j1r0%25$"
 supabase secrets set SICAS_PASSWORD='$45oc14d05$'
-supabase secrets set SICAS_ENDPOINT="https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx"
+supabase secrets set SICAS_ENDPOINT="https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx"
 
 # Verificar las variables configuradas
 supabase secrets list
@@ -77,5 +77,5 @@ Para verificar que las credenciales están correctamente configuradas:
 **Contraseña:** `$45oc14d05$`
 - Los símbolos `$` son parte literal de la contraseña
 
-**Endpoint:** `https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx`
+**Endpoint:** `https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx`
 - Este es el endpoint del webservice SOAP de SICAS Online

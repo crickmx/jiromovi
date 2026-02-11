@@ -30,7 +30,7 @@ echo "Password configurado: ✓"
 export SICAS_USER='j1r0%25$'
 export SICAS_PASS='$45oc14d05$'
 
-curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+curl -sS -X POST "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx" \
   -H "Content-Type: text/xml; charset=utf-8" \
   -H "SOAPAction: \"http://tempuri.org/AutentificarWS\"" \
   --data-binary @- <<'XML'
@@ -53,7 +53,7 @@ XML
 ### Request cURL
 
 ```bash
-curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/AutentificarWS' \
   -d '<?xml version="1.0" encoding="utf-8"?>
@@ -72,7 +72,7 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
 ### Request cURL con formato mejorado (para debugging)
 
 ```bash
-curl -v -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -v -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/AutentificarWS' \
   --data-binary @- << 'EOF'
@@ -119,7 +119,7 @@ EOF
 export SICAS_USER='j1r0%25$'
 export SICAS_PASS='$45oc14d05$'
 
-curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+curl -sS -X POST "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx" \
   -H "Content-Type: text/xml; charset=utf-8" \
   -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
   --data-binary @- <<'XML'
@@ -146,7 +146,7 @@ XML
 ### Request cURL - Formato JSON
 
 ```bash
-curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/ReadInfoData' \
   -d '<?xml version="1.0" encoding="utf-8"?>
@@ -169,7 +169,7 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
 ### Request cURL - Formato XML
 
 ```bash
-curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/ReadInfoData' \
   -d '<?xml version="1.0" encoding="utf-8"?>
@@ -199,7 +199,7 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
 export SICAS_USER='j1r0%25$'
 export SICAS_PASS='$45oc14d05$'
 
-curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+curl -sS -X POST "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx" \
   -H "Content-Type: text/xml; charset=utf-8" \
   -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
   --data-binary @- <<'XML'
@@ -226,7 +226,7 @@ XML
 ### Con Verbose (para debugging)
 
 ```bash
-curl -v -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -v -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/ReadInfoData' \
   --data-binary @- << 'EOF'
@@ -258,7 +258,7 @@ EOF
 export SICAS_USER='j1r0%25$'
 export SICAS_PASS='$45oc14d05$'
 
-curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+curl -sS -X POST "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx" \
   -H "Content-Type: text/xml; charset=utf-8" \
   -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
   --data-binary @- <<'XML'
@@ -285,7 +285,7 @@ XML
 ### Formato Inline (credenciales directas)
 
 ```bash
-curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/ReadInfoData' \
   -d '<?xml version="1.0" encoding="utf-8"?>
@@ -315,7 +315,7 @@ Guarda este script como `test-sicas.sh` y ejecútalo:
 #!/bin/bash
 
 # Configuración
-SICAS_ENDPOINT="https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx"
+SICAS_ENDPOINT="https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx"
 SICAS_USERNAME="j1r0%25$"
 SICAS_PASSWORD="$45oc14d05$"
 
@@ -411,7 +411,7 @@ chmod +x test-sicas.sh
 ### Configuración de Request en Postman
 
 1. **Método:** POST
-2. **URL:** `https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx`
+2. **URL:** `https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx`
 
 3. **Headers:**
 ```
@@ -452,7 +452,7 @@ Crea variables de entorno:
 import requests
 
 # Configuración
-SICAS_ENDPOINT = 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx'
+SICAS_ENDPOINT = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx'
 SICAS_USERNAME = 'j1r0%25$'
 SICAS_PASSWORD = '$45oc14d05$'
 
@@ -567,7 +567,7 @@ fi
 
 CATALOG_ID="${1:-10}"
 
-curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+curl -sS -X POST "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx" \
   -H "Content-Type: text/xml; charset=utf-8" \
   -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
   --data-binary @- <<XML

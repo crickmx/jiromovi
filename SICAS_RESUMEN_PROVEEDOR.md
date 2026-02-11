@@ -20,7 +20,7 @@
 
 ### Endpoint Consumido
 ```
-URL: https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx
+URL: https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx
 Protocolo: HTTPS/SOAP 1.1
 ```
 
@@ -195,7 +195,7 @@ Sincronizamos los siguientes catálogos de la lista de 61 disponibles:
 
 ### cURL - Autenticación
 ```bash
-curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/AutentificarWS' \
   -d '<?xml version="1.0" encoding="utf-8"?>
@@ -213,7 +213,7 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
 
 ### cURL - Lectura Catálogo
 ```bash
-curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/ReadInfoData' \
   -d '<?xml version="1.0" encoding="utf-8"?>

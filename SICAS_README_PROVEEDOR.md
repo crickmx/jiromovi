@@ -135,7 +135,7 @@ Esta carpeta contiene toda la evidencia técnica del consumo del servicio web SI
 export SICAS_USER='j1r0%25$'
 export SICAS_PASS='$45oc14d05$'
 
-curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+curl -sS -X POST "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx" \
   -H "Content-Type: text/xml; charset=utf-8" \
   -H "SOAPAction: \"http://tempuri.org/AutentificarWS\"" \
   --data-binary @- <<'XML'
@@ -157,7 +157,7 @@ XML
 
 **Formato inline (para copiar/pegar rápido):**
 ```bash
-curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/AutentificarWS' \
   -d '<?xml version="1.0" encoding="utf-8"?>
@@ -182,7 +182,7 @@ curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
 export SICAS_USER='j1r0%25$'
 export SICAS_PASS='$45oc14d05$'
 
-curl -sS -X POST "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx" \
+curl -sS -X POST "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx" \
   -H "Content-Type: text/xml; charset=utf-8" \
   -H "SOAPAction: \"http://tempuri.org/ReadInfoData\"" \
   --data-binary @- <<'XML'
@@ -208,7 +208,7 @@ XML
 
 **Formato inline:**
 ```bash
-curl -X POST 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx' \
+curl -X POST 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx' \
   -H 'Content-Type: text/xml; charset=utf-8' \
   -H 'SOAPAction: http://tempuri.org/ReadInfoData' \
   -d '<?xml version="1.0" encoding="utf-8"?>

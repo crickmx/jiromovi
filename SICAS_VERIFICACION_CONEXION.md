@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| **Endpoint** | `https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx` |
+| **Endpoint** | `https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx` |
 | **Última Prueba** | 22 de Enero 2026, 04:34:26 UTC |
 | **Resultado** | ✅ **EXITOSO** |
 | **Estado** | 🟢 **CONECTADO** |
@@ -202,7 +202,7 @@ node test-sicas-direct.mjs
 ```
 🔌 Test de Conexión SICAS
 ═══════════════════════════════════════
-📡 Endpoint: https://www.sicasonline.com/...
+📡 Endpoint: https://www.sicasonline.com.mx/...
 👤 Usuario: tu_usuario
 🔑 Password: ***
 
@@ -244,7 +244,7 @@ Para scripts locales:
 ```env
 SICAS_USERNAME=tu_usuario_sicas
 SICAS_PASSWORD=tu_password_sicas
-SICAS_ENDPOINT=https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx
+SICAS_ENDPOINT=https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx
 ```
 
 ---
