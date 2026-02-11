@@ -72,98 +72,109 @@ export async function syncSicasCatalog(catalogType: 'despachos' | 'vendedores'):
 }
 
 export async function getSicasDespachos(onlyUnmapped = false): Promise<SicasDespachoWithMapping[]> {
-  let query = supabase
-    .from('sicas_despachos')
-    .select(`
-      *,
-      sicas_mapeo_despacho_oficina!inner (
-        *,
-        oficinas (id, nombre)
-      )
-    `)
+  // Catálogo de Despachos: ID 11
+  const CATALOG_TYPE_DESPACHOS = 11;
+
+  const { data: catalogos, error } = await supabase
+    .from('sicas_catalogos')
+    .select('*')
+    .eq('catalog_type_id', CATALOG_TYPE_DESPACHOS)
     .order('nombre');
-
-  if (onlyUnmapped) {
-    query = query.eq('is_mapped', false);
-  }
-
-  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching despachos:', error);
     return [];
   }
 
-  return data.map((item: any) => ({
-    ...item,
-    mapping: item.sicas_mapeo_despacho_oficina?.[0] || null,
-    oficina: item.sicas_mapeo_despacho_oficina?.[0]?.oficinas || null,
-  }));
+  if (!catalogos || catalogos.length === 0) {
+    return [];
+  }
+
+  // Obtener mapeos
+  const { data: mapeos } = await supabase
+    .from('sicas_mapeo_despacho_oficina')
+    .select(`
+      *,
+      oficinas (id, nombre)
+    `)
+    .in('id_sicas_despacho', catalogos.map(c => c.id_sicas));
+
+  const result = catalogos.map((catalogo: any) => {
+    const mapeo = mapeos?.find(m => m.id_sicas_despacho === catalogo.id_sicas);
+    const isMapped = !!mapeo;
+
+    return {
+      id: catalogo.id,
+      id_sicas: catalogo.id_sicas,
+      nombre: catalogo.nombre,
+      raw: catalogo.raw,
+      is_mapped: isMapped,
+      last_sync_at: catalogo.last_sync_at,
+      mapping: mapeo || null,
+      oficina: mapeo?.oficinas || null,
+    };
+  });
+
+  if (onlyUnmapped) {
+    return result.filter(r => !r.is_mapped);
+  }
+
+  return result;
 }
 
 export async function getAllSicasDespachos(): Promise<SicasDespachoWithMapping[]> {
-  const { data, error } = await supabase
-    .from('sicas_despachos')
-    .select(`
-      *,
-      sicas_mapeo_despacho_oficina (
-        *,
-        oficinas (id, nombre)
-      )
-    `)
-    .order('nombre');
-
-  if (error) {
-    console.error('Error fetching despachos:', error);
-    return [];
-  }
-
-  return data.map((item: any) => ({
-    ...item,
-    mapping: item.sicas_mapeo_despacho_oficina?.[0] || null,
-    oficina: item.sicas_mapeo_despacho_oficina?.[0]?.oficinas || null,
-  }));
+  return getSicasDespachos(false);
 }
 
 export async function getSicasVendedores(onlyUnmapped = false): Promise<SicasVendedorWithMapping[]> {
-  let query = supabase
-    .from('sicas_vendedores')
+  // Catálogo de Vendedores: ID 32
+  const CATALOG_TYPE_VENDEDORES = 32;
+
+  const { data: catalogos, error } = await supabase
+    .from('sicas_catalogos')
     .select('*')
+    .eq('catalog_type_id', CATALOG_TYPE_VENDEDORES)
     .order('nombre');
-
-  if (onlyUnmapped) {
-    query = query.eq('is_mapped', false);
-  }
-
-  const { data: vendedores, error } = await query;
 
   if (error) {
     console.error('Error fetching vendedores:', error);
     return [];
   }
 
-  if (!vendedores || vendedores.length === 0) {
+  if (!catalogos || catalogos.length === 0) {
     return [];
   }
 
-  const vendedoresIds = vendedores.map(v => v.id_sicas);
-
+  // Obtener mapeos
   const { data: mapeos } = await supabase
     .from('sicas_mapeo_vendedor_usuario')
     .select(`
       *,
       usuarios!sicas_mapeo_vendedor_usuario_movi_user_id_fkey (id, nombre, apellidos, email_personal)
     `)
-    .in('id_sicas_vendedor', vendedoresIds);
+    .in('id_sicas_vendedor', catalogos.map(c => c.id_sicas));
 
-  return vendedores.map((vendedor: any) => {
-    const mapeo = mapeos?.find(m => m.id_sicas_vendedor === vendedor.id_sicas);
+  const result = catalogos.map((catalogo: any) => {
+    const mapeo = mapeos?.find(m => m.id_sicas_vendedor === catalogo.id_sicas);
+    const isMapped = !!mapeo;
+
     return {
-      ...vendedor,
+      id: catalogo.id,
+      id_sicas: catalogo.id_sicas,
+      nombre: catalogo.nombre,
+      raw: catalogo.raw,
+      is_mapped: isMapped,
+      last_sync_at: catalogo.last_sync_at,
       mapping: mapeo || null,
       usuario: mapeo?.usuarios || null,
     };
   });
+
+  if (onlyUnmapped) {
+    return result.filter(r => !r.is_mapped);
+  }
+
+  return result;
 }
 
 export async function mapDespacho(id_sicas_despacho: string, movi_oficina_id: string): Promise<{
