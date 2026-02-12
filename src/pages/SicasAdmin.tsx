@@ -186,7 +186,7 @@ export default function SicasAdmin() {
     if (despachos.length === 0) {
       setMessage({
         type: 'error',
-        text: 'No hay despachos sincronizados. Por favor, sincroniza los despachos desde la pestaña "Conexión" primero.'
+        text: '⚠️ NO HAY DESPACHOS SINCRONIZADOS\n\nNo se puede realizar el mapeo porque no hay despachos de SICAS en la base de datos local.\n\nPor favor:\n1. Ve a la pestaña "Conexión"\n2. Haz clic en "Sincronizar Despachos"\n3. Espera a que se complete la sincronización\n4. Regresa a esta pestaña para hacer el mapeo'
       });
       setActiveTab('conexion');
       return;
@@ -198,10 +198,20 @@ export default function SicasAdmin() {
         setMessage({ type: 'success', text: 'Mapeo guardado exitosamente' });
         await loadDespachos();
       } else {
-        setMessage({ type: 'error', text: `Error: ${result.error}` });
+        // Mostrar error detallado
+        const errorMsg = result.error || 'Error desconocido';
+        if (errorMsg.includes('sincroniza')) {
+          setMessage({
+            type: 'error',
+            text: `⚠️ ERROR DE SINCRONIZACIÓN\n\n${errorMsg}\n\nEsto generalmente significa que:\n- No has sincronizado los despachos desde SICAS\n- La sincronización falló o se interrumpió\n- Los datos se limpiaron después de la sincronización\n\nSolución: Ve a la pestaña "Conexión" y sincroniza los despachos nuevamente.`
+          });
+          setActiveTab('conexion');
+        } else {
+          setMessage({ type: 'error', text: `Error: ${errorMsg}` });
+        }
       }
     } catch (error: any) {
-      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setMessage({ type: 'error', text: `Error inesperado: ${error.message}` });
     }
   }
 
@@ -224,7 +234,7 @@ export default function SicasAdmin() {
     if (vendedores.length === 0) {
       setMessage({
         type: 'error',
-        text: 'No hay vendedores sincronizados. Por favor, sincroniza los vendedores desde la pestaña "Conexión" primero.'
+        text: '⚠️ NO HAY VENDEDORES SINCRONIZADOS\n\nNo se puede realizar el mapeo porque no hay vendedores de SICAS en la base de datos local.\n\nPor favor:\n1. Ve a la pestaña "Conexión"\n2. Haz clic en "Sincronizar Vendedores"\n3. Espera a que se complete la sincronización\n4. Regresa a esta pestaña para hacer el mapeo'
       });
       setActiveTab('conexion');
       return;
@@ -236,10 +246,20 @@ export default function SicasAdmin() {
         setMessage({ type: 'success', text: 'Mapeo guardado exitosamente' });
         await loadVendedores();
       } else {
-        setMessage({ type: 'error', text: `Error: ${result.error}` });
+        // Mostrar error detallado
+        const errorMsg = result.error || 'Error desconocido';
+        if (errorMsg.includes('sincroniza')) {
+          setMessage({
+            type: 'error',
+            text: `⚠️ ERROR DE SINCRONIZACIÓN\n\n${errorMsg}\n\nEsto generalmente significa que:\n- No has sincronizado los vendedores desde SICAS\n- La sincronización falló o se interrumpió\n- Los datos se limpiaron después de la sincronización\n\nSolución: Ve a la pestaña "Conexión" y sincroniza los vendedores nuevamente.`
+          });
+          setActiveTab('conexion');
+        } else {
+          setMessage({ type: 'error', text: `Error: ${errorMsg}` });
+        }
       }
     } catch (error: any) {
-      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setMessage({ type: 'error', text: `Error inesperado: ${error.message}` });
     }
   }
 

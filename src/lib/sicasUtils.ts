@@ -181,19 +181,50 @@ export async function mapDespacho(id_sicas_despacho: string, movi_oficina_id: st
   success: boolean;
   error?: string;
 }> {
+  // Verificación previa: comprobar que el despacho existe
+  const { data: despachoExists } = await supabase
+    .from('sicas_despachos')
+    .select('id_sicas')
+    .eq('id_sicas', id_sicas_despacho)
+    .maybeSingle();
+
+  if (!despachoExists) {
+    return {
+      success: false,
+      error: 'El despacho SICAS no existe en la base de datos local. Por favor, sincroniza los despachos desde la pestaña "Conexión" antes de intentar mapear.'
+    };
+  }
+
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const token = (await supabase.auth.getSession()).data.session?.access_token;
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/sicas-map-despacho`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ id_sicas_despacho, movi_oficina_id }),
-  });
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/sicas-map-despacho`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id_sicas_despacho, movi_oficina_id }),
+    });
 
-  return await response.json();
+    const result = await response.json();
+
+    // Si el servidor devuelve un error, asegurarnos de que sea visible
+    if (!response.ok || !result.success) {
+      return {
+        success: false,
+        error: result.error || 'Error al crear el mapeo. Por favor, intenta nuevamente.'
+      };
+    }
+
+    return result;
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Error de conexión al servidor'
+    };
+  }
 }
 
 export async function unmapDespacho(id_sicas_despacho: string): Promise<{
@@ -219,19 +250,50 @@ export async function mapVendedor(id_sicas_vendedor: string, movi_user_id: strin
   success: boolean;
   error?: string;
 }> {
+  // Verificación previa: comprobar que el vendedor existe
+  const { data: vendedorExists } = await supabase
+    .from('sicas_vendedores')
+    .select('id_sicas')
+    .eq('id_sicas', id_sicas_vendedor)
+    .maybeSingle();
+
+  if (!vendedorExists) {
+    return {
+      success: false,
+      error: 'El vendedor SICAS no existe en la base de datos local. Por favor, sincroniza los vendedores desde la pestaña "Conexión" antes de intentar mapear.'
+    };
+  }
+
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const token = (await supabase.auth.getSession()).data.session?.access_token;
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/sicas-map-vendedor`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ id_sicas_vendedor, movi_user_id }),
-  });
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/sicas-map-vendedor`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id_sicas_vendedor, movi_user_id }),
+    });
 
-  return await response.json();
+    const result = await response.json();
+
+    // Si el servidor devuelve un error, asegurarnos de que sea visible
+    if (!response.ok || !result.success) {
+      return {
+        success: false,
+        error: result.error || 'Error al crear el mapeo. Por favor, intenta nuevamente.'
+      };
+    }
+
+    return result;
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Error de conexión al servidor'
+    };
+  }
 }
 
 export async function unmapVendedor(id_sicas_vendedor: string): Promise<{
