@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -41,20 +41,43 @@ export function Dashboard() {
   const [officeName, setOfficeName] = useState<string>('JIRO');
   const [welcomeMessage, setWelcomeMessage] = useState<string>('');
   const [loadingWelcomeMessage, setLoadingWelcomeMessage] = useState(true);
+  const isLoadingRef = useRef(false);
+  const lastUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // Evitar re-ejecuciones innecesarias
+    if (!currentUser?.id) return;
+    if (isLoadingRef.current) {
+      console.log('🔒 Dashboard ya está cargando, omitiendo ejecución duplicada');
+      return;
+    }
+
+    // Si es el mismo usuario y no cambiaron los filtros, no recargar
+    const userChanged = lastUserIdRef.current !== currentUser.id;
+    if (!userChanged && lastUserIdRef.current) {
+      // Solo recargar si cambiaron los filtros de cumpleaños
+      console.log('👤 Mismo usuario, solo recargando datos de cumpleaños');
+      if (isAdminOrGerente) {
+        loadDashboardData();
+      }
+      return;
+    }
+
     const initializeDashboard = async () => {
+      console.log('🚀 Inicializando Dashboard para usuario:', currentUser.id);
+      isLoadingRef.current = true;
+      lastUserIdRef.current = currentUser.id;
       setLoading(true);
       const startTime = Date.now();
 
       try {
-        if (currentUser?.id) {
-          await loadOfficeLogo();
-          // Cargar mensaje de bienvenida en paralelo
-          loadWelcomeMessage(currentUser.id);
-        }
+        await loadOfficeLogo();
+        // Cargar mensaje de bienvenida en paralelo
+        loadWelcomeMessage(currentUser.id);
 
-        if (isAdminOrGerente) {
+        // Cargar datos solo si es admin o gerente
+        const shouldLoadData = currentUser.rol === 'Administrador' || currentUser.rol === 'Gerente';
+        if (shouldLoadData) {
           await loadDashboardData();
         }
 
@@ -66,11 +89,13 @@ export function Dashboard() {
         }
       } finally {
         setLoading(false);
+        isLoadingRef.current = false;
+        console.log('✅ Dashboard inicializado');
       }
     };
 
     initializeDashboard();
-  }, [birthdayFilter, customBirthdayDate, isAdminOrGerente, currentUser?.id]);
+  }, [birthdayFilter, customBirthdayDate, currentUser?.id]);
 
   const loadWelcomeMessage = async (userId: string) => {
     try {
