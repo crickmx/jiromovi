@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import * as XLSX from 'xlsx';
+import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 
 interface Poliza {
   id: string;
@@ -78,6 +79,9 @@ export default function MiProduccionSICAS() {
     responsetxt: string;
     message: string;
   } | null>(null);
+
+  // Verificar si el usuario tiene permisos de admin en SICAS
+  const puedeAdministrarSicas = usuario ? tienePermisoAdminEnModulo(usuario, MODULOS.SICAS) : false;
 
   const [polizas, setPolizas] = useState<Poliza[]>([]);
   const [cobranza, setCobranza] = useState<Cobranza[]>([]);
@@ -328,14 +332,16 @@ export default function MiProduccionSICAS() {
               <Filter className="w-4 h-4" />
               Filtros
             </button>
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Sincronizando...' : 'Sincronizar'}
-            </button>
+            {puedeAdministrarSicas && (
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Sincronizando...' : 'Sincronizar'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -443,24 +449,27 @@ export default function MiProduccionSICAS() {
                   No hay datos de producción disponibles
                 </h3>
                 <p className="text-blue-800 mb-4">
-                  Para visualizar tus pólizas, cobranza y renovaciones, primero debes sincronizar
-                  los datos desde SICAS. Este proceso consultará el sistema SICAS y guardará
-                  la información en caché para consulta rápida.
+                  {puedeAdministrarSicas
+                    ? 'Para visualizar tus pólizas, cobranza y renovaciones, primero debes sincronizar los datos desde SICAS. Este proceso consultará el sistema SICAS y guardará la información en caché para consulta rápida.'
+                    : 'No hay datos de producción disponibles en este momento. Por favor contacta a un administrador para sincronizar los datos desde SICAS.'
+                  }
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={handleSync}
-                    disabled={syncing}
-                    className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
-                  >
-                    <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
-                    {syncing ? 'Sincronizando desde SICAS...' : 'Sincronizar Ahora'}
-                  </button>
-                  <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-100 px-4 py-2 rounded-lg">
-                    <Clock className="w-4 h-4" />
-                    <span>La sincronización puede tardar 1-2 minutos</span>
+                {puedeAdministrarSicas && (
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={handleSync}
+                      disabled={syncing}
+                      className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
+                    >
+                      <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
+                      {syncing ? 'Sincronizando desde SICAS...' : 'Sincronizar Ahora'}
+                    </button>
+                    <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-100 px-4 py-2 rounded-lg">
+                      <Clock className="w-4 h-4" />
+                      <span>La sincronización puede tardar 1-2 minutos</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
