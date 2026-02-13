@@ -6,6 +6,7 @@ import { Users, Download, Filter, Calendar, Settings, RefreshCw, Building, User,
 import * as XLSX from 'xlsx';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
+import PanelAgenteProduccion from '../components/produccion/PanelAgenteProduccion';
 
 interface VendorCacheRecord {
   id: string;
@@ -74,10 +75,13 @@ export default function ProduccionPorVendedorOptimizado() {
   });
 
   const isAdmin = usuario?.rol === 'Administrador';
+  const isAgente = usuario?.rol === 'Agente';
 
   useEffect(() => {
-    loadVendors();
-  }, [usuario, currentPage, pageSize, filters]);
+    if (!isAgente) {
+      loadVendors();
+    }
+  }, [usuario, currentPage, pageSize, filters, isAgente]);
 
   const loadVendors = async (forceRefresh = false) => {
     if (!usuario) return;
@@ -289,6 +293,25 @@ export default function ProduccionPorVendedorOptimizado() {
 
   const kpis = calculateKPIs();
   const formatCurrency = (v: number) => `$${v.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+  // Si es agente, mostrar panel individual
+  if (isAgente) {
+    return (
+      <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+          <div className="mb-6">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-2">
+              Mi Producción
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-600">
+              Consulta tus pólizas vigentes, renovaciones y producción del mes
+            </p>
+          </div>
+          <PanelAgenteProduccion />
+        </div>
+      </div>
+    );
+  }
 
   if (loading && vendors.length === 0) {
     return (
