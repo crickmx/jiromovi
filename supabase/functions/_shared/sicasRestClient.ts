@@ -1,3 +1,26 @@
+/**
+ * ⚠️ DEPRECADO - NO USAR ⚠️
+ *
+ * Este cliente REST NO FUNCIONA con SICAS.
+ *
+ * RAZÓN:
+ * El servidor SICAS devuelve error 500:
+ * "Sólo se puede llamar desde un script a los servicios Web con un atributo [ScriptService]"
+ *
+ * Esto significa que el servicio web ASMX de SICAS NO tiene el atributo [ScriptService]
+ * y por lo tanto NO soporta llamadas REST/JSON.
+ *
+ * SOLUCIÓN:
+ * Usar SOAP exclusivamente. Ver funciones como:
+ * - sicas-test-simple
+ * - sicas-get-production
+ * - sicas-sync
+ *
+ * Ver documentación completa en: SICAS_REST_VS_SOAP_CONCLUSION.md
+ *
+ * @deprecated Use SOAP instead. This REST client does not work with SICAS.
+ */
+
 interface SicasTokenCache {
   token: string;
   expiresAt: number;
@@ -47,6 +70,9 @@ interface SicasDigitalFilesResponse {
   Error?: string;
 }
 
+/**
+ * @deprecated This REST client is not functional with SICAS. Use SOAP instead.
+ */
 export class SicasRestClient {
   private baseUrl: string;
   private username: string;
