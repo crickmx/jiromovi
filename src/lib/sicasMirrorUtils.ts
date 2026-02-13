@@ -108,27 +108,7 @@ export async function getMyDocuments(filters?: {
 }): Promise<SicasDocument[]> {
   let query = supabase
     .from('sicas_polizas_vigentes')
-    .select(`
-      id,
-      id_documento,
-      vend_id,
-      vend_nombre,
-      desp_id,
-      desp_nombre,
-      aseguradora,
-      ramo,
-      subramo,
-      contratante,
-      asegurado,
-      no_poliza,
-      vigencia_desde,
-      vigencia_hasta,
-      prima_neta,
-      prima_total,
-      synced_at,
-      created_at,
-      updated_at
-    `)
+    .select('*')
     .order('vigencia_desde', { ascending: false });
 
   if (filters?.ramo) {
@@ -151,8 +131,8 @@ export async function getMyDocuments(filters?: {
     id_docto: item.id_documento,
     vend_id: item.vend_id,
     vend_nombre: item.vend_nombre,
-    usuario_id: null,
-    oficina_id: null,
+    usuario_id: item.usuario_id,
+    oficina_id: item.oficina_id,
     desp_nombre: item.desp_nombre,
     ramo: item.ramo,
     subramo: item.subramo,
@@ -172,15 +152,51 @@ export async function getMyDocuments(filters?: {
 }
 
 export async function getMyCommissions(source: 'pendiente' | 'pagada'): Promise<SicasCommission[]> {
-  // Tabla aún no implementada - retornar array vacío
-  console.log(`Commissions ${source} - tabla no implementada aún`);
-  return [];
+  const { data, error } = await supabase
+    .from('sicas_commissions')
+    .select('*')
+    .eq('source', source)
+    .order('fecha_pago', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching commissions:', error);
+    throw error;
+  }
+
+  return data || [];
 }
 
 export async function getMyReceivables(): Promise<SicasReceivable[]> {
-  // Tabla aún no implementada - retornar array vacío
-  console.log('Receivables - tabla no implementada aún');
-  return [];
+  const { data, error } = await supabase
+    .from('sicas_cobranza_pendiente')
+    .select('*')
+    .order('dias_vencidos', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching receivables:', error);
+    throw error;
+  }
+
+  // Mapear a la interfaz esperada
+  return (data || []).map((item: any) => ({
+    id: item.id,
+    vend_id: item.vend_id,
+    vend_nombre: item.vend_nombre,
+    usuario_id: item.usuario_id,
+    oficina_id: item.oficina_id,
+    id_docto: item.id_documento,
+    poliza: item.no_poliza,
+    cliente: item.cliente,
+    importe_pendiente: item.importe_pendiente,
+    importe_original: null,
+    fecha_limite: item.fecha_limite,
+    fecha_vencimiento: item.fecha_limite,
+    estatus: item.status,
+    dias_vencido: item.dias_vencidos,
+    synced_at: item.created_at,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  }));
 }
 
 export async function getDocumentsPendingRenewal(daysAhead: number = 30): Promise<SicasDocument[]> {
@@ -189,30 +205,9 @@ export async function getDocumentsPendingRenewal(daysAhead: number = 30): Promis
   futureDate.setDate(futureDate.getDate() + daysAhead);
 
   let query = supabase
-    .from('sicas_polizas_vigentes')
-    .select(`
-      id,
-      id_documento,
-      vend_id,
-      vend_nombre,
-      desp_id,
-      desp_nombre,
-      aseguradora,
-      ramo,
-      subramo,
-      contratante,
-      asegurado,
-      no_poliza,
-      vigencia_desde,
-      vigencia_hasta,
-      prima_neta,
-      prima_total,
-      synced_at,
-      created_at,
-      updated_at
-    `)
-    .gte('vigencia_hasta', today.toISOString())
-    .lte('vigencia_hasta', futureDate.toISOString())
+    .from('sicas_renovaciones_proximas')
+    .select('*')
+    .lte('dias_para_vencer', daysAhead)
     .order('vigencia_hasta', { ascending: true });
 
   const { data, error } = await query;
@@ -224,27 +219,27 @@ export async function getDocumentsPendingRenewal(daysAhead: number = 30): Promis
 
   // Mapear a la interfaz esperada
   return (data || []).map((item: any) => ({
-    id: item.id,
+    id: item.id || '',
     id_docto: item.id_documento,
     vend_id: item.vend_id,
     vend_nombre: item.vend_nombre,
-    usuario_id: null,
-    oficina_id: null,
-    desp_nombre: item.desp_nombre,
+    usuario_id: item.usuario_id,
+    oficina_id: item.oficina_id,
+    desp_nombre: null,
     ramo: item.ramo,
-    subramo: item.subramo,
+    subramo: null,
     compania: item.aseguradora,
     poliza: item.no_poliza,
-    cliente: item.contratante || item.asegurado,
-    fecha_captura: item.vigencia_desde,
-    fecha_emision: item.vigencia_desde,
-    vigencia_desde: item.vigencia_desde,
+    cliente: item.contratante,
+    fecha_captura: null,
+    fecha_emision: null,
+    vigencia_desde: null,
     vigencia_hasta: item.vigencia_hasta,
     importe: item.prima_total,
-    prima_neta: item.prima_neta,
-    synced_at: item.synced_at,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
+    prima_neta: null,
+    synced_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   }));
 }
 
