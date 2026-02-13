@@ -106,7 +106,9 @@ export default function MiProduccionSICAS() {
       console.log('[MiProduccionSICAS] Usuario cargado:', {
         id: usuario.id,
         rol: usuario.rol,
-        puedeAdministrarSicas
+        permisosAdicionales: usuario.permisosAdicionales,
+        puedeAdministrarSicas,
+        MODULOS_SICAS: MODULOS.SICAS
       });
       loadData();
     }
@@ -333,6 +335,18 @@ export default function MiProduccionSICAS() {
   return (
     <div className="min-h-screen bg-neutral-50 p-6">
       <div className="max-w-7xl mx-auto">
+        {/* DEBUG INFO - Temporal para diagnosticar */}
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <h3 className="font-semibold text-amber-900 mb-2">Debug Info:</h3>
+          <div className="text-sm text-amber-800 space-y-1">
+            <p><strong>Usuario ID:</strong> {usuario?.id || 'N/A'}</p>
+            <p><strong>Rol:</strong> {usuario?.rol || 'N/A'}</p>
+            <p><strong>Permisos Adicionales:</strong> {usuario?.permisosAdicionales?.join(', ') || 'Ninguno'}</p>
+            <p><strong>Puede Administrar SICAS:</strong> {puedeAdministrarSicas ? 'SÍ ✓' : 'NO ✗'}</p>
+            <p><strong>MODULOS.SICAS:</strong> {MODULOS.SICAS}</p>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-neutral-900">Mi Producción SICAS</h1>

@@ -77,9 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Si el usuario es Gerente, cargar sus permisos adicionales
       if (data.rol === 'Gerente') {
         const permisos = await cargarPermisosAdicionales(data.id);
-        console.log('[AuthContext] Permisos adicionales cargados:', permisos);
+        console.log('[AuthContext] Permisos adicionales cargados para Gerente:', permisos);
         setUsuario({ ...data, permisosAdicionales: permisos });
+      } else if (data.rol === 'Administrador') {
+        console.log('[AuthContext] Usuario es Administrador - No necesita permisos adicionales');
+        setUsuario(data);
       } else {
+        console.log('[AuthContext] Usuario sin permisos adicionales (rol:', data.rol, ')');
         setUsuario(data);
       }
     } catch (err) {

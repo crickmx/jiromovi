@@ -64,20 +64,33 @@ export function tienePermisoAdminEnModulo(
   usuario: UsuarioConPermisos | null,
   moduloCodigo: ModuloCodigo
 ): boolean {
-  if (!usuario) return false;
+  if (!usuario) {
+    console.log('[tienePermisoAdminEnModulo] No hay usuario');
+    return false;
+  }
+
+  console.log('[tienePermisoAdminEnModulo] Verificando permiso:', {
+    moduloCodigo,
+    usuarioRol: usuario.rol,
+    permisosAdicionales: usuario.permisosAdicionales
+  });
 
   // Si es Administrador, siempre tiene permisos
   if (usuario.rol === 'Administrador') {
+    console.log('[tienePermisoAdminEnModulo] Es Administrador - TIENE PERMISO');
     return true;
   }
 
   // Si NO es Gerente, no tiene permisos adicionales
   if (usuario.rol !== 'Gerente') {
+    console.log('[tienePermisoAdminEnModulo] No es Administrador ni Gerente - NO TIENE PERMISO');
     return false;
   }
 
   // Si es Gerente, verificar si tiene permiso adicional en ese módulo
-  return usuario.permisosAdicionales?.includes(moduloCodigo) || false;
+  const tienePermiso = usuario.permisosAdicionales?.includes(moduloCodigo) || false;
+  console.log('[tienePermisoAdminEnModulo] Es Gerente - Tiene permiso:', tienePermiso);
+  return tienePermiso;
 }
 
 /**
