@@ -64,20 +64,42 @@ Deno.serve(async (req: Request) => {
       password: config.sicas_password,
     });
 
-    // Usar códigos manuales si se proporcionan, si no usar los por defecto
+    // Usar códigos manuales si se proporcionan, si no usar los códigos oficiales del manual
     const reportCodes = manualCodes || config.alternate_report_codes || [
-      // Códigos H básicos (0-10)
-      'H0', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10',
-      // Códigos H tradicionales (100-120)
-      'H100', 'H101', 'H102', 'H103', 'H104', 'H105', 'H106', 'H107', 'H108', 'H109', 'H110',
-      // Códigos H comunes (1000-1020)
-      'H1000', 'H1001', 'H1002', 'H1003', 'H1004', 'H1005',
-      // Códigos D
-      'D0', 'D1', 'D2', 'D3', 'D4', 'D5',
-      // Códigos C
-      'C0', 'C1', 'C2', 'C3', 'C4', 'C5',
-      // Códigos simples
-      'POL', 'POLIZAS', 'VIGENTES', 'PRODUCCION',
+      // ============================================
+      // CÓDIGOS OFICIALES DEL MANUAL WS SICASONLINE
+      // (Fuente: Manual WS SICASOnline págs 14-19)
+      // NOTA: Estos son códigos SOAP, pueden no funcionar en REST
+      // ============================================
+
+      // Producción / Pólizas
+      'H03117',          // Pólizas Vigentes (CONFIRMADO)
+
+      // Cobranza
+      'HAPPDATAL_D004',  // Cobranza Pendiente (CONFIRMADO)
+      'H03120_001',      // Cobranza Efectuada/Pagada (CONFIRMADO)
+      'H03846_Cob',      // Toda la Cobranza (CONFIRMADO)
+
+      // Comisiones
+      'H03492_ALL',      // Comisiones Pendientes (CONFIRMADO)
+      'H03797',          // Comisiones Pagadas (CONFIRMADO)
+
+      // ============================================
+      // VARIACIONES COMUNES (puede que funcionen en REST)
+      // ============================================
+
+      // Variaciones de Pólizas Vigentes
+      'H03117_001', 'H03117_ALL', 'H03117_VIGENTES',
+
+      // Variaciones de Comisiones
+      'H03492', 'H03492_001', 'H03797_ALL', 'H03797_001',
+
+      // Variaciones de Cobranza
+      'H03120', 'H03846', 'HAPPDATAL_D004_ALL',
+
+      // Códigos simples que podrían estar mapeados
+      'POLIZAS', 'VIGENTES', 'PRODUCCION', 'COBRANZA', 'COMISIONES',
+      'POL_VIGENTES', 'PROD_VIGENTES', 'COM_PEND', 'COM_PAG',
     ];
 
     console.log(`[Test Reports] Probando ${reportCodes.length} códigos...`);

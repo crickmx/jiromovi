@@ -1747,6 +1747,35 @@ export default function SicasAdmin() {
                   </div>
                 </div>
 
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="space-y-2 text-sm text-amber-900">
+                      <p className="font-medium">Importante: SOAP vs REST</p>
+                      <p>
+                        El Manual oficial de SICAS documenta códigos para <strong>WebService SOAP</strong>.
+                        Esta aplicación usa <strong>API REST</strong>. Los códigos pueden ser diferentes.
+                      </p>
+                      <div className="mt-2 pl-4 border-l-2 border-amber-300">
+                        <p className="text-xs text-amber-800 mb-1 font-medium">Códigos oficiales SOAP (del manual):</p>
+                        <div className="flex flex-wrap gap-1 text-xs font-mono">
+                          <span className="bg-amber-100 px-2 py-0.5 rounded">H03117</span>
+                          <span className="text-amber-600">Pólizas Vigentes</span>
+                          <span className="mx-1">•</span>
+                          <span className="bg-amber-100 px-2 py-0.5 rounded">H03492_ALL</span>
+                          <span className="text-amber-600">Comisiones Pendientes</span>
+                          <span className="mx-1">•</span>
+                          <span className="bg-amber-100 px-2 py-0.5 rounded">HAPPDATAL_D004</span>
+                          <span className="text-amber-600">Cobranza</span>
+                        </div>
+                        <p className="text-xs text-amber-700 mt-2">
+                          Estos códigos se probarán automáticamente, pero tu instalación REST puede usar códigos diferentes.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <Button
                     onClick={handleTestReportCodes}
