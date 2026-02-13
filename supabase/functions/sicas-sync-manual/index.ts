@@ -81,12 +81,27 @@ Deno.serve(async (req: Request) => {
 
         if (cobranzaResponse.ok) {
           const cobranzaData = await cobranzaResponse.json();
-          results.cobranza_pendiente = cobranzaData.records_synced || 0;
-          console.log(`[SICAS-Sync-Manual] Cobranza sincronizada: ${results.cobranza_pendiente}`);
+          results.cobranza_pendiente = cobranzaData.records_count || 0;
+
+          // Si el reporte no está disponible, no es un error
+          if (cobranzaData.report_available === false) {
+            console.log(`[SICAS-Sync-Manual] Reporte de cobranza no disponible en SICAS`);
+          } else {
+            console.log(`[SICAS-Sync-Manual] Cobranza sincronizada: ${results.cobranza_pendiente}`);
+          }
         } else {
           const errorText = await cobranzaResponse.text();
-          results.errors.push(`Error en cobranza: ${errorText}`);
-          console.error("[SICAS-Sync-Manual] Error en cobranza:", errorText);
+          let errorMsg = errorText;
+
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMsg = errorJson.error || errorText;
+          } catch (e) {
+            // Si no es JSON, usar el texto tal cual
+          }
+
+          results.errors.push(`Error en cobranza: ${errorMsg}`);
+          console.error("[SICAS-Sync-Manual] Error en cobranza:", errorMsg);
         }
       } catch (error) {
         results.errors.push(`Error en cobranza: ${error.message}`);

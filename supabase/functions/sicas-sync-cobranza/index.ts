@@ -129,7 +129,23 @@ Deno.serve(async (req: Request) => {
 
     if (!responseNbrMatch || responseNbrMatch[1] === '0') {
       const message = resultContent.match(/<MESSAGE>(.*?)<\/MESSAGE>/)?.[1] || 'Sin mensaje';
-      throw new Error(`SICAS RESPONSENBR=0: ${message}`);
+      console.warn(`[SICAS-Cobranza] Reporte no disponible: ${message}`);
+
+      // Limpiar tabla si el reporte no está disponible
+      await supabase
+        .from("sicas_cobranza_pendiente")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Reporte de cobranza no disponible en SICAS: ${message}`,
+          records_count: 0,
+          report_available: false
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (responseTxtMatch && responseTxtMatch[1] === 'DENIED') {
