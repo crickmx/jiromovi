@@ -63,6 +63,13 @@ export default function MiProduccionSICASMirror() {
   });
 
   useEffect(() => {
+    console.log('[MiProduccionSICASMirror] Componente montado:', {
+      id: usuario?.id,
+      rol: usuario?.rol,
+      permisosAdicionales: usuario?.permisosAdicionales,
+      puedeAdministrarSicas,
+      MODULOS_SICAS: MODULOS.SICAS
+    });
     loadAllData();
   }, []);
 
@@ -188,6 +195,18 @@ export default function MiProduccionSICASMirror() {
 
   return (
     <Container>
+      {/* DEBUG INFO - Temporal para diagnosticar */}
+      <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <h3 className="font-semibold text-amber-900 mb-2">Debug Info (MiProduccionSICASMirror):</h3>
+        <div className="text-sm text-amber-800 space-y-1">
+          <p><strong>Usuario ID:</strong> {usuario?.id || 'N/A'}</p>
+          <p><strong>Rol:</strong> {usuario?.rol || 'N/A'}</p>
+          <p><strong>Permisos Adicionales:</strong> {usuario?.permisosAdicionales?.join(', ') || 'Ninguno'}</p>
+          <p><strong>Puede Administrar SICAS:</strong> {puedeAdministrarSicas ? 'SÍ ✓' : 'NO ✗'}</p>
+          <p><strong>MODULOS.SICAS:</strong> {MODULOS.SICAS}</p>
+        </div>
+      </div>
+
       <PageHeader
         title="Mi Producción SICAS"
         description="Consulta tu producción, comisiones y cobranza desde la base de datos espejo"
