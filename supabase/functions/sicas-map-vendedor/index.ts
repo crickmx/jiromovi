@@ -36,8 +36,9 @@ Deno.serve(async (req: Request) => {
       }
 
       const { data: vendedorExists } = await supabase
-        .from('sicas_vendedores')
+        .from('sicas_catalogos')
         .select('id_sicas')
+        .eq('catalog_type_id', 32)
         .eq('id_sicas', id_sicas_vendedor)
         .maybeSingle();
 

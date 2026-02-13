@@ -35,6 +35,27 @@ Deno.serve(async (req: Request) => {
         throw new Error('Missing required fields: id_sicas_despacho, movi_oficina_id');
       }
 
+      const { data: despachoExists } = await supabase
+        .from('sicas_catalogos')
+        .select('id_sicas')
+        .eq('catalog_type_id', 11)
+        .eq('id_sicas', id_sicas_despacho)
+        .maybeSingle();
+
+      if (!despachoExists) {
+        throw new Error('El despacho SICAS no existe. Por favor, sincroniza los despachos primero desde la pestaña "Conexión".');
+      }
+
+      const { data: oficinaExists } = await supabase
+        .from('oficinas')
+        .select('id')
+        .eq('id', movi_oficina_id)
+        .maybeSingle();
+
+      if (!oficinaExists) {
+        throw new Error('La oficina MOVI no existe');
+      }
+
       const { data, error } = await supabase
         .from('sicas_mapeo_despacho_oficina')
         .upsert({
