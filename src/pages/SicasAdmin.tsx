@@ -55,9 +55,18 @@ export default function SicasAdmin() {
   const [produccionResult, setProduccionResult] = useState<any>(null);
   const [totalPolizas, setTotalPolizas] = useState(0);
 
+  const [syncingComisionesPendientes, setSyncingComisionesPendientes] = useState(false);
+  const [comisionesPendientesResult, setComisionesPendientesResult] = useState<any>(null);
+  const [totalComisionesPendientes, setTotalComisionesPendientes] = useState(0);
+
+  const [syncingComisionesPagadas, setSyncingComisionesPagadas] = useState(false);
+  const [comisionesPagadasResult, setComisionesPagadasResult] = useState<any>(null);
+  const [totalComisionesPagadas, setTotalComisionesPagadas] = useState(0);
+
   useEffect(() => {
     loadData();
     loadTotalPolizas();
+    loadTotalComisiones();
   }, []);
 
   useEffect(() => {
@@ -357,6 +366,91 @@ export default function SicasAdmin() {
 
     if (!error) {
       setTotalPolizas(count || 0);
+    }
+  }
+
+  async function loadTotalComisiones() {
+    const { count: pendientesCount } = await supabase
+      .from('sicas_comisiones_pendientes')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: pagadasCount } = await supabase
+      .from('sicas_comisiones_pagadas')
+      .select('*', { count: 'exact', head: true });
+
+    setTotalComisionesPendientes(pendientesCount || 0);
+    setTotalComisionesPagadas(pagadasCount || 0);
+  }
+
+  async function handleSyncComisionesPendientes() {
+    setSyncingComisionesPendientes(true);
+    setComisionesPendientesResult(null);
+    setMessage(null);
+
+    try {
+      const today = new Date();
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const dateFrom = firstDayOfMonth.toISOString().split('T')[0];
+      const dateTo = today.toISOString().split('T')[0];
+
+      const { data, error } = await supabase.functions.invoke('sicas-sync-comisiones-pendientes', {
+        body: { maxPages: 10, itemsPerPage: 100, dateFrom, dateTo },
+      });
+
+      if (error) throw error;
+
+      setComisionesPendientesResult(data);
+      await loadTotalComisiones();
+
+      if (data.success) {
+        setMessage({
+          type: 'success',
+          text: `Comisiones pendientes sincronizadas: ${data.stats?.records_fetched || 0} registros obtenidos, ${data.stats?.records_inserted || 0} guardados`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setComisionesPendientesResult({ success: false, error: error.message });
+    } finally {
+      setSyncingComisionesPendientes(false);
+    }
+  }
+
+  async function handleSyncComisionesPagadas() {
+    setSyncingComisionesPagadas(true);
+    setComisionesPagadasResult(null);
+    setMessage(null);
+
+    try {
+      const today = new Date();
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const dateFrom = firstDayOfMonth.toISOString().split('T')[0];
+      const dateTo = today.toISOString().split('T')[0];
+
+      const { data, error } = await supabase.functions.invoke('sicas-sync-comisiones-pagadas', {
+        body: { maxPages: 10, itemsPerPage: 100, dateFrom, dateTo },
+      });
+
+      if (error) throw error;
+
+      setComisionesPagadasResult(data);
+      await loadTotalComisiones();
+
+      if (data.success) {
+        setMessage({
+          type: 'success',
+          text: `Comisiones pagadas sincronizadas: ${data.stats?.records_fetched || 0} registros obtenidos, ${data.stats?.records_inserted || 0} guardados`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setComisionesPagadasResult({ success: false, error: error.message });
+    } finally {
+      setSyncingComisionesPagadas(false);
     }
   }
 
@@ -1055,6 +1149,154 @@ export default function SicasAdmin() {
                     </ul>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="w-5 h-5" />
+                  Comisiones Pendientes (H03492_ALL)
+                </CardTitle>
+                <CardDescription>
+                  Sincroniza comisiones pendientes de pago del mes actual
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-orange-900 mb-2">Estado Actual</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-orange-700">Total en BD:</p>
+                      <p className="text-2xl font-bold text-orange-900">{totalComisionesPendientes}</p>
+                    </div>
+                    {comisionesPendientesResult && (
+                      <div>
+                        <p className="text-orange-700">Última Sincronización:</p>
+                        <p className="font-medium text-orange-900">
+                          {comisionesPendientesResult.stats?.records_fetched || 0} comisiones obtenidas
+                        </p>
+                        <p className="text-xs text-orange-600 mt-1">
+                          {comisionesPendientesResult.metadata?.synced_at ?
+                            new Date(comisionesPendientesResult.metadata.synced_at).toLocaleString('es-MX')
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleSyncComisionesPendientes}
+                    disabled={syncingComisionesPendientes}
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                  >
+                    {syncingComisionesPendientes ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Sincronizando...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Sincronizar Comisiones Pendientes
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={loadTotalComisiones}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Actualizar Contador
+                  </Button>
+                </div>
+
+                {comisionesPendientesResult && (
+                  <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                    <h4 className="font-semibold mb-3">Resultado de la Sincronización</h4>
+                    <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
+                      {JSON.stringify(comisionesPendientesResult, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="w-5 h-5" />
+                  Comisiones Pagadas (H03797)
+                </CardTitle>
+                <CardDescription>
+                  Sincroniza comisiones pagadas del mes actual
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-green-900 mb-2">Estado Actual</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-green-700">Total en BD:</p>
+                      <p className="text-2xl font-bold text-green-900">{totalComisionesPagadas}</p>
+                    </div>
+                    {comisionesPagadasResult && (
+                      <div>
+                        <p className="text-green-700">Última Sincronización:</p>
+                        <p className="font-medium text-green-900">
+                          {comisionesPagadasResult.stats?.records_fetched || 0} comisiones obtenidas
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                          {comisionesPagadasResult.metadata?.synced_at ?
+                            new Date(comisionesPagadasResult.metadata.synced_at).toLocaleString('es-MX')
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleSyncComisionesPagadas}
+                    disabled={syncingComisionesPagadas}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    {syncingComisionesPagadas ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Sincronizando...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Sincronizar Comisiones Pagadas
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={loadTotalComisiones}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Actualizar Contador
+                  </Button>
+                </div>
+
+                {comisionesPagadasResult && (
+                  <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                    <h4 className="font-semibold mb-3">Resultado de la Sincronización</h4>
+                    <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
+                      {JSON.stringify(comisionesPagadasResult, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </Section>
