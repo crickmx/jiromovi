@@ -104,21 +104,22 @@ export default function MiProduccionSICASMirror() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const token = (await supabase.auth.getSession()).data.session?.access_token;
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/sync-sicas-polizas-vigentes`, {
+      // Usar la nueva función REST que es más confiable
+      const response = await fetch(`${supabaseUrl}/functions/v1/sync-sicas-polizas-vigentes-rest?maxPages=5&itemsPerPage=200`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ maxPages: 5, itemsPerPage: 200 }),
       });
 
       const result = await response.json();
 
       if (result.success && result.stats) {
+        const report = result.stats.successful_report ? ` (usando reporte ${result.stats.successful_report})` : '';
         setMessage({
           type: 'success',
-          text: `Sincronización exitosa: ${result.stats.records_inserted || 0} pólizas actualizadas`,
+          text: `Sincronización exitosa: ${result.stats.records_inserted || 0} pólizas actualizadas${report}`,
         });
         await loadAllData();
       } else {
