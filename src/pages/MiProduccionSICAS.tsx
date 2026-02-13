@@ -69,7 +69,7 @@ interface Filters {
 }
 
 export default function MiProduccionSICAS() {
-  const { usuario } = useAuth();
+  const { usuario, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('polizas');
@@ -103,9 +103,14 @@ export default function MiProduccionSICAS() {
 
   useEffect(() => {
     if (usuario) {
+      console.log('[MiProduccionSICAS] Usuario cargado:', {
+        id: usuario.id,
+        rol: usuario.rol,
+        puedeAdministrarSicas
+      });
       loadData();
     }
-  }, [usuario]);
+  }, [usuario, puedeAdministrarSicas]);
 
   useEffect(() => {
     // Detectar si no hay datos después de cargar
@@ -113,8 +118,16 @@ export default function MiProduccionSICAS() {
       const noData = polizas.length === 0 && cobranza.length === 0 &&
                      renovaciones.length === 0 && emisionesDelMes.length === 0;
       setHasNoData(noData);
+      console.log('[MiProduccionSICAS] Estado de datos:', {
+        polizas: polizas.length,
+        cobranza: cobranza.length,
+        renovaciones: renovaciones.length,
+        emisionesDelMes: emisionesDelMes.length,
+        hasNoData: noData,
+        puedeAdministrarSicas
+      });
     }
-  }, [loading, polizas, cobranza, renovaciones, emisionesDelMes]);
+  }, [loading, polizas, cobranza, renovaciones, emisionesDelMes, puedeAdministrarSicas]);
 
   const loadData = async () => {
     setLoading(true);
@@ -308,7 +321,8 @@ export default function MiProduccionSICAS() {
   const aseguradorasUnicas = Array.from(new Set(polizas.map(p => p.aseguradora).filter(Boolean)));
   const ramosUnicos = Array.from(new Set(polizas.map(p => p.ramo).filter(Boolean)));
 
-  if (loading) {
+  // Mostrar loading mientras se carga la autenticación o los datos
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
@@ -323,6 +337,9 @@ export default function MiProduccionSICAS() {
           <div>
             <h1 className="text-3xl font-bold text-neutral-900">Mi Producción SICAS</h1>
             <p className="text-neutral-600 mt-1">Consulta tus pólizas, cobranza y renovaciones</p>
+            {puedeAdministrarSicas && (
+              <p className="text-sm text-green-600 mt-1">Tienes permisos de administrador</p>
+            )}
           </div>
           <div className="flex gap-2">
             <button
@@ -336,10 +353,10 @@ export default function MiProduccionSICAS() {
               <button
                 onClick={handleSync}
                 disabled={syncing}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                {syncing ? 'Sincronizando...' : 'Sincronizar'}
+                {syncing ? 'Sincronizando...' : 'Sincronizar desde SICAS'}
               </button>
             )}
           </div>
