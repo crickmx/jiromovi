@@ -63,6 +63,9 @@ export default function SicasAdmin() {
   const [comisionesPagadasResult, setComisionesPagadasResult] = useState<any>(null);
   const [totalComisionesPagadas, setTotalComisionesPagadas] = useState(0);
 
+  const [testingComisiones, setTestingComisiones] = useState(false);
+  const [testComisionesResult, setTestComisionesResult] = useState<any>(null);
+
   useEffect(() => {
     loadData();
     loadTotalPolizas();
@@ -451,6 +454,39 @@ export default function SicasAdmin() {
       setComisionesPagadasResult({ success: false, error: error.message });
     } finally {
       setSyncingComisionesPagadas(false);
+    }
+  }
+
+  async function handleTestComisiones() {
+    setTestingComisiones(true);
+    setTestComisionesResult(null);
+    setMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sicas-test-comisiones', {
+        body: {},
+      });
+
+      if (error) throw error;
+
+      setTestComisionesResult(data);
+
+      if (data.success) {
+        setMessage({
+          type: 'success',
+          text: `Prueba exitosa: ${data.records_found} comisiones encontradas. Revisa el resultado para más detalles.`
+        });
+      } else {
+        setMessage({
+          type: 'error',
+          text: `Prueba falló: ${data.error || 'Error desconocido'}. Revisa el resultado para diagnóstico.`
+        });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setTestComisionesResult({ success: false, error: error.message });
+    } finally {
+      setTestingComisiones(false);
     }
   }
 
@@ -1149,6 +1185,88 @@ export default function SicasAdmin() {
                     </ul>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5" />
+                  Diagnóstico de Comisiones
+                </CardTitle>
+                <CardDescription>
+                  Prueba rápida para verificar conexión y permisos de reportes de comisiones
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-2">Antes de sincronizar comisiones</h4>
+                  <p className="text-sm text-blue-800">
+                    Ejecuta esta prueba primero para verificar que:
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-blue-800 ml-2 mt-2 space-y-1">
+                    <li>Tu usuario tiene permisos para reportes H03492_ALL y H03797</li>
+                    <li>La conexión a SICAS funciona correctamente</li>
+                    <li>Los datos de comisiones están disponibles</li>
+                  </ul>
+                </div>
+
+                <Button
+                  onClick={handleTestComisiones}
+                  disabled={testingComisiones}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {testingComisiones ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Probando...
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Probar Conexión de Comisiones
+                    </>
+                  )}
+                </Button>
+
+                {testComisionesResult && (
+                  <div className={`border rounded-lg p-4 ${
+                    testComisionesResult.success
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <h4 className={`font-semibold mb-3 ${
+                      testComisionesResult.success ? 'text-green-900' : 'text-red-900'
+                    }`}>
+                      Resultado del Diagnóstico
+                    </h4>
+                    <div className="space-y-2 text-sm mb-3">
+                      {testComisionesResult.success ? (
+                        <>
+                          <p className="text-green-800 font-medium">
+                            Conexión exitosa - {testComisionesResult.records_found || 0} comisiones encontradas
+                          </p>
+                          <p className="text-green-700">
+                            El sistema está listo para sincronizar comisiones.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-red-800 font-medium">
+                            Error: {testComisionesResult.error}
+                          </p>
+                          <p className="text-red-700">
+                            Revisa el diagnóstico completo abajo para más detalles.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
+                      {JSON.stringify(testComisionesResult, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
