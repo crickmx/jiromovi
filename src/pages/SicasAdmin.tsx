@@ -49,8 +49,13 @@ export default function SicasAdmin() {
   const [diagnosticRunning, setDiagnosticRunning] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState<any>(null);
 
+  const [syncingProduccion, setSyncingProduccion] = useState(false);
+  const [produccionResult, setProduccionResult] = useState<any>(null);
+  const [totalPolizas, setTotalPolizas] = useState(0);
+
   useEffect(() => {
     loadData();
+    loadTotalPolizas();
   }, []);
 
   useEffect(() => {
@@ -312,6 +317,47 @@ export default function SicasAdmin() {
     }
   }
 
+  async function handleSyncProduccion() {
+    setSyncingProduccion(true);
+    setProduccionResult(null);
+    setMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-sicas-polizas-vigentes', {
+        body: { maxPages: 10, itemsPerPage: 200 },
+      });
+
+      if (error) throw error;
+
+      setProduccionResult(data);
+      await loadTotalPolizas();
+
+      if (data.success) {
+        setMessage({
+          type: 'success',
+          text: `Sincronización completada: ${data.stats?.records_fetched || 0} pólizas obtenidas, ${data.stats?.records_inserted || 0} guardadas`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setProduccionResult({ success: false, error: error.message });
+    } finally {
+      setSyncingProduccion(false);
+    }
+  }
+
+  async function loadTotalPolizas() {
+    const { count, error } = await supabase
+      .from('sicas_polizas_vigentes')
+      .select('*', { count: 'exact', head: true });
+
+    if (!error) {
+      setTotalPolizas(count || 0);
+    }
+  }
+
   const filteredDespachos = despachos
     .filter(d => !filterUnmappedDespachos || !d.is_mapped)
     .filter(d => d.nombre.toLowerCase().includes(searchDespacho.toLowerCase()) || d.id_sicas.includes(searchDespacho));
@@ -358,7 +404,7 @@ export default function SicasAdmin() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="conexion">Conexión</TabsTrigger>
           <TabsTrigger value="despachos" className="relative">
             Mapeo Despachos
@@ -373,6 +419,14 @@ export default function SicasAdmin() {
             {vendedores.length > 0 && (
               <Badge className="ml-2 bg-green-500 text-white text-xs px-1.5 py-0">
                 {vendedores.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="produccion" className="relative">
+            Producción
+            {totalPolizas > 0 && (
+              <Badge className="ml-2 bg-blue-500 text-white text-xs px-1.5 py-0">
+                {totalPolizas}
               </Badge>
             )}
           </TabsTrigger>
@@ -892,6 +946,107 @@ export default function SicasAdmin() {
                       </div>
                     ))
                   )}
+                </div>
+              </CardContent>
+            </Card>
+          </Section>
+        </TabsContent>
+
+        <TabsContent value="produccion">
+          <Section>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="w-5 h-5" />
+                  Sincronización de Producción
+                </CardTitle>
+                <CardDescription>
+                  Sincroniza pólizas vigentes y datos de producción desde SICAS
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-2">Estado Actual</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-blue-700">Total de Pólizas en BD:</p>
+                      <p className="text-2xl font-bold text-blue-900">{totalPolizas}</p>
+                    </div>
+                    {produccionResult && (
+                      <div>
+                        <p className="text-blue-700">Última Sincronización:</p>
+                        <p className="font-medium text-blue-900">
+                          {produccionResult.stats?.records_fetched || 0} pólizas obtenidas
+                        </p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          {produccionResult.metadata?.synced_at ?
+                            new Date(produccionResult.metadata.synced_at).toLocaleString('es-MX')
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleSyncProduccion}
+                    disabled={syncingProduccion}
+                    className="w-full"
+                  >
+                    {syncingProduccion ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Sincronizando...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Sincronizar Pólizas Vigentes
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={loadTotalPolizas}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Actualizar Contador
+                  </Button>
+                </div>
+
+                {produccionResult && (
+                  <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                    <h4 className="font-semibold mb-3">Resultado de la Sincronización</h4>
+                    <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
+                      {JSON.stringify(produccionResult, null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-amber-900 mb-2">Diagnóstico del Problema</h4>
+                  <div className="text-sm text-amber-800 space-y-2">
+                    <p>
+                      Si la sincronización completa exitosamente pero no muestra pólizas (0 registros),
+                      el problema puede ser:
+                    </p>
+                    <ul className="list-disc list-inside ml-2 space-y-1">
+                      <li>El reporte H03117 no está disponible para tu usuario en SICAS</li>
+                      <li>Tu usuario no tiene permisos para ver pólizas vigentes</li>
+                      <li>No hay pólizas vigentes en el sistema SICAS</li>
+                      <li>Se necesita usar un código de reporte diferente</li>
+                    </ul>
+                    <p className="mt-3 font-medium">
+                      Solución: Contacta al proveedor de SICAS para confirmar:
+                    </p>
+                    <ul className="list-disc list-inside ml-2">
+                      <li>Qué código de reporte usar para obtener pólizas vigentes</li>
+                      <li>Si tu usuario tiene permisos para acceder a reportes de producción</li>
+                    </ul>
+                  </div>
                 </div>
               </CardContent>
             </Card>
