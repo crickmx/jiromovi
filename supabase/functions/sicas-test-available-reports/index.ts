@@ -56,9 +56,14 @@ Deno.serve(async (req: Request) => {
     });
 
     // Obtener códigos desde config o usar defaults prioritarios
+    // Códigos más comunes en SICAS según documentación
     const reportCodes = config.alternate_report_codes || [
-      'H03117', 'H03115', 'H03100', 'H03101', 'H03102',
-      'H05106', 'H05107'
+      // Pólizas y producción (más comunes primero)
+      'H05106', 'H05107', 'H05101', 'H05102', 'H05105',
+      // Cobranza
+      'D001', 'D002', 'D003', 'D004',
+      // Comisiones
+      'C001', 'C002', 'C003', 'C004',
     ];
 
     console.log(`[Test Reports] Probando ${reportCodes.length} códigos...`);
