@@ -130,12 +130,29 @@ Deno.serve(async (req: Request) => {
         sortFields: 'FechaCaptura DESC',
       });
 
+      console.log('[Sync Documents] Response Success:', response.Sucess);
+      console.log('[Sync Documents] Response Error:', response.Error);
+
       if (!response.Sucess) {
-        throw new Error(`Error en SICAS: ${response.Error || 'Error desconocido'}`);
+        const errorMsg = response.Error || 'Error desconocido';
+        console.error('[Sync Documents] ❌ Error de SICAS:', errorMsg);
+        console.error('[Sync Documents] Detalles de la solicitud:', {
+          keyCode,
+          pageRequested: currentPage,
+          conditionsDirect,
+          fieldsRequested: fieldsRequested.substring(0, 100) + '...'
+        });
+        throw new Error(`Error en SICAS: ${errorMsg}`);
       }
 
-      const tableInfo = response.Response?.[0]?.TableInfo || [];
-      const tableControl = response.Response?.[0]?.TableControl?.[0];
+      if (!response.Response || !Array.isArray(response.Response) || response.Response.length === 0) {
+        console.warn('[Sync Documents] ⚠️ Respuesta vacía de SICAS');
+        hasMorePages = false;
+        break;
+      }
+
+      const tableInfo = response.Response[0]?.TableInfo || [];
+      const tableControl = response.Response[0]?.TableControl?.[0];
 
       console.log(`[Sync Documents] Registros en página: ${tableInfo.length}`);
       console.log(`[Sync Documents] Control:`, tableControl);
