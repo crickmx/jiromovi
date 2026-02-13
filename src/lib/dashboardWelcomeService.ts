@@ -181,15 +181,15 @@ async function getTareasData(userId: string) {
     const { count: pendientes } = await supabase
       .from('crm_tareas')
       .select('*', { count: 'exact', head: true })
-      .eq('usuario_id', userId)
-      .eq('estado', 'pendiente');
+      .eq('creado_por', userId)
+      .eq('estatus', 'pendiente');
 
     // Tareas vencidas
     const { count: vencidas } = await supabase
       .from('crm_tareas')
       .select('*', { count: 'exact', head: true })
-      .eq('usuario_id', userId)
-      .eq('estado', 'pendiente')
+      .eq('creado_por', userId)
+      .eq('estatus', 'pendiente')
       .lt('fecha_vencimiento', now);
 
     // Contactos sin seguimiento reciente (más de 30 días)
@@ -225,8 +225,8 @@ async function getCotizacionesData(userId: string) {
     const { count } = await supabase
       .from('crm_cotizaciones')
       .select('*', { count: 'exact', head: true })
-      .eq('usuario_id', userId)
-      .eq('estado', 'activa');
+      .eq('creado_por', userId)
+      .eq('estatus_cotizacion', 'activa');
 
     return {
       cotizaciones_activas: count || 0,
