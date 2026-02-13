@@ -47,22 +47,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!config.activa) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'La configuración de SICAS está desactivada'
-        }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
     console.log('[Test Reports] Configuración verificada, creando cliente...');
 
     const sicasClient = createSicasRestClient({
