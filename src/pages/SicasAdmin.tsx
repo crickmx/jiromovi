@@ -434,6 +434,74 @@ export default function SicasAdmin() {
                   <p className="text-xs text-neutral-500">Configurado automáticamente desde variables de entorno</p>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="sicas-usuario">Usuario SICAS *</Label>
+                    <Input
+                      id="sicas-usuario"
+                      value={config?.sicas_usuario || ''}
+                      onChange={(e) => setConfig(config ? { ...config, sicas_usuario: e.target.value } : null)}
+                      placeholder="j1r0%25$"
+                      className="font-mono"
+                    />
+                    <p className="text-xs text-neutral-500">Usuario para autenticación SOAP</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="sicas-password">Contraseña SICAS *</Label>
+                    <Input
+                      id="sicas-password"
+                      type="password"
+                      value={config?.sicas_password || ''}
+                      onChange={(e) => setConfig(config ? { ...config, sicas_password: e.target.value } : null)}
+                      placeholder="••••••••"
+                      className="font-mono"
+                    />
+                    <p className="text-xs text-neutral-500">Contraseña para autenticación SOAP</p>
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="sicas-namespace">Namespace SOAP</Label>
+                    <Input
+                      id="sicas-namespace"
+                      value={config?.sicas_namespace || 'http://www.sicasonline.com.mx/'}
+                      onChange={(e) => setConfig(config ? { ...config, sicas_namespace: e.target.value } : null)}
+                      placeholder="http://www.sicasonline.com.mx/"
+                      className="font-mono"
+                    />
+                    <p className="text-xs text-neutral-500">Namespace del servicio SOAP de SICAS</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={async () => {
+                      if (!config?.sicas_usuario || !config?.sicas_password) {
+                        setMessage({ type: 'error', text: 'Usuario y contraseña son requeridos' });
+                        return;
+                      }
+                      try {
+                        const { error } = await supabase
+                          .from('sicas_config')
+                          .update({
+                            sicas_usuario: config.sicas_usuario,
+                            sicas_password: config.sicas_password,
+                            sicas_namespace: config.sicas_namespace || 'http://www.sicasonline.com.mx/',
+                          })
+                          .eq('id', config.id);
+
+                        if (error) throw error;
+                        setMessage({ type: 'success', text: 'Credenciales guardadas exitosamente' });
+                      } catch (error: any) {
+                        setMessage({ type: 'error', text: `Error al guardar: ${error.message}` });
+                      }
+                    }}
+                    variant="outline"
+                  >
+                    Guardar Credenciales
+                  </Button>
+                </div>
+
                 <div className="space-y-4">
                   <div className="flex gap-4">
                     <Button

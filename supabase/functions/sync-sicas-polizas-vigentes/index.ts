@@ -7,9 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const SICAS_ENDPOINT = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
-const SICAS_USERNAME = Deno.env.get('SICAS_USERNAME') || 'j1r0%25$';
-const SICAS_PASSWORD = Deno.env.get('SICAS_PASSWORD') || '$45oc14d05$';
+const DEFAULT_SICAS_ENDPOINT = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
 
 interface PolizaVigente {
   id_documento: string;
@@ -33,6 +31,9 @@ interface PolizaVigente {
  * Consulta el reporte de pólizas vigentes H03117 desde SICAS
  */
 async function consultarPolizasVigentesSICAS(
+  endpoint: string,
+  username: string,
+  password: string,
   page: number = 1,
   itemsPerPage: number = 100
 ): Promise<PolizaVigente[]> {
@@ -52,14 +53,14 @@ async function consultarPolizasVigentesSICAS(
         <InfoSort>DatDocumentos.FCaptura DESC</InfoSort>
       </wsProcesarData>
       <wsAuthConfig>
-        <UserName>${SICAS_USERNAME}</UserName>
-        <Password>${SICAS_PASSWORD}</Password>
+        <UserName>${username}</UserName>
+        <Password>${password}</Password>
       </wsAuthConfig>
     </ProcesarWS>
   </soap:Body>
 </soap:Envelope>`;
 
-  const response = await fetch(SICAS_ENDPOINT, {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/xml; charset=utf-8',
@@ -246,6 +247,33 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Obtener configuración SICAS
+    const { data: config } = await supabase
+      .from('sicas_config')
+      .select('*')
+      .single();
+
+    if (!config) {
+      return new Response(
+        JSON.stringify({ error: "Configuración SICAS no encontrada" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Usar credenciales de la configuración o variables de entorno
+    const sicasUrl = config.endpoint || Deno.env.get("SICAS_URL") || DEFAULT_SICAS_ENDPOINT;
+    const sicasUsuario = config.sicas_usuario || Deno.env.get("SICAS_USUARIO");
+    const sicasPassword = config.sicas_password || Deno.env.get("SICAS_PASSWORD");
+
+    if (!sicasUsuario || !sicasPassword) {
+      return new Response(
+        JSON.stringify({
+          error: "Configuración SICAS incompleta. Configure las credenciales en Admin > SICAS"
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Parámetros opcionales
     const url = new URL(req.url);
     const maxPages = parseInt(url.searchParams.get('maxPages') || '5');
@@ -260,7 +288,13 @@ Deno.serve(async (req: Request) => {
     // Consultar todas las páginas
     while (currentPage <= maxPages) {
       try {
-        const pagePolizas = await consultarPolizasVigentesSICAS(currentPage, itemsPerPage);
+        const pagePolizas = await consultarPolizasVigentesSICAS(
+          sicasUrl,
+          sicasUsuario,
+          sicasPassword,
+          currentPage,
+          itemsPerPage
+        );
 
         if (pagePolizas.length === 0) {
           console.log(`[Sync] Página ${currentPage} sin resultados, finalizando...`);

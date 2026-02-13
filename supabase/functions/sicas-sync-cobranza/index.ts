@@ -76,11 +76,26 @@ Deno.serve(async (req: Request) => {
 
     console.log("[SICAS-Cobranza] Llamando a SICAS WS...");
 
-    const response = await fetch(config.sicas_url, {
+    // Usar endpoint de la configuración o de las variables de entorno
+    const sicasUrl = config.endpoint || Deno.env.get("SICAS_URL");
+    const sicasUsuario = config.sicas_usuario || Deno.env.get("SICAS_USUARIO");
+    const sicasPassword = config.sicas_password || Deno.env.get("SICAS_PASSWORD");
+    const sicasNamespace = config.sicas_namespace || Deno.env.get("SICAS_NAMESPACE") || "http://www.sicasonline.com.mx/";
+
+    if (!sicasUrl || !sicasUsuario || !sicasPassword) {
+      return new Response(
+        JSON.stringify({
+          error: "Configuración SICAS incompleta. Configure las credenciales en Admin > SICAS"
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const response = await fetch(sicasUrl, {
       method: "POST",
       headers: {
         "Content-Type": "text/xml; charset=utf-8",
-        "SOAPAction": `${config.sicas_namespace}HAPPDATAL_D004`,
+        "SOAPAction": `${sicasNamespace}HAPPDATAL_D004`,
       },
       body: soapRequest,
     });

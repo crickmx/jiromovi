@@ -5,6 +5,9 @@
 export interface SicasConfig {
   id: string;
   endpoint: string;
+  sicas_usuario?: string;
+  sicas_password?: string;
+  sicas_namespace?: string;
   last_test_at: string | null;
   last_test_success: boolean | null;
   last_test_message: string | null;
