@@ -30,9 +30,13 @@ import {
   type SicasReceivable,
   type SicasDigitalFile,
 } from '../lib/sicasMirrorUtils';
+import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 
 export default function MiProduccionSICASMirror() {
   const { usuario } = useAuth();
+
+  // Verificar si el usuario tiene permisos de admin en SICAS
+  const puedeAdministrarSicas = usuario ? tienePermisoAdminEnModulo(usuario, MODULOS.SICAS) : false;
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('polizas');
@@ -193,14 +197,16 @@ export default function MiProduccionSICASMirror() {
               <Filter className="w-4 h-4 mr-2" />
               Filtros
             </Button>
-            <Button onClick={() => handleSync('documents')} disabled={syncing}>
-              {syncing ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              Sincronizar
-            </Button>
+            {puedeAdministrarSicas && (
+              <Button onClick={() => handleSync('documents')} disabled={syncing}>
+                {syncing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Sincronizar
+              </Button>
+            )}
           </div>
         }
       />
