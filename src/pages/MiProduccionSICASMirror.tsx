@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   FileText, DollarSign, Calendar, AlertCircle, Download,
   RefreshCw, Filter, FolderOpen, ChevronDown, ChevronUp,
-  TrendingUp, Clock, CheckCircle, Loader2
+  TrendingUp, Clock, CheckCircle, Loader2, Database
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -197,29 +197,36 @@ export default function MiProduccionSICASMirror() {
               <Filter className="w-4 h-4 mr-2" />
               Filtros
             </Button>
-            {puedeAdministrarSicas && (
-              <Button onClick={() => handleSync('documents')} disabled={syncing}>
-                {syncing ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                )}
-                Sincronizar
-              </Button>
-            )}
+            <Button onClick={() => loadAllData()} disabled={syncing} variant="outline">
+              {syncing ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Recargar Datos
+            </Button>
           </div>
         }
       />
 
+      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-start gap-2">
+          <Database className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm text-blue-900 font-medium">
+              Sincronización automática activa
+            </p>
+            <p className="text-xs text-blue-700 mt-1">
+              Los datos se sincronizan automáticamente cada hora desde SICAS.
+              {lastSync && ` Última sincronización: ${formatDate(lastSync)}`}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {message && (
         <div className={`p-4 mb-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
           {message.text}
-        </div>
-      )}
-
-      {lastSync && (
-        <div className="mb-4 text-sm text-gray-600">
-          Última sincronización: {formatDate(lastSync)}
         </div>
       )}
 
