@@ -1,14 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import * as https from 'node:https';
+import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
-
-const SICAS_ENDPOINT = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
 
 interface PolizaBasica {
   id_documento: string;
@@ -25,45 +23,6 @@ interface PolizaBasica {
   prima_total: number | null;
 }
 
-// Función para hacer petición HTTPS sin verificar certificado
-function httpsRequest(url: string, options: any, data: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const urlParsed = new URL(url);
-
-    const reqOptions = {
-      hostname: urlParsed.hostname,
-      port: 443,
-      path: urlParsed.pathname,
-      method: options.method || 'POST',
-      headers: options.headers || {},
-      rejectUnauthorized: false, // Deshabilitar verificación SSL
-    };
-
-    const req = https.request(reqOptions, (res) => {
-      let responseData = '';
-
-      res.on('data', (chunk) => {
-        responseData += chunk;
-      });
-
-      res.on('end', () => {
-        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(responseData);
-        } else {
-          reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
-        }
-      });
-    });
-
-    req.on('error', (error) => {
-      reject(error);
-    });
-
-    req.write(data);
-    req.end();
-  });
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -73,7 +32,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    console.log('[SICAS Basic] Iniciando sincronización básica...');
+    console.log('[SICAS Basic] Iniciando sincronización básica vía REST API...');
 
     // Inicializar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -85,194 +44,142 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Obtener credenciales SICAS
-    const { data: config } = await supabase
-      .from('sicas_config')
-      .select('sicas_usuario, sicas_password')
-      .single();
+    // Inicializar cliente REST de SICAS
+    const sicasClient = createSicasRestClient();
 
-    if (!config || !config.sicas_usuario || !config.sicas_password) {
-      throw new Error('Credenciales SICAS no configuradas');
+    console.log('[SICAS Basic] Obteniendo pólizas vigentes...');
+
+    // Obtener pólizas vigentes usando el reporte SICAS_PRODUCTIVIDAD_CONSULTAVENDEDOR
+    // Este reporte obtiene las pólizas activas
+    const response = await sicasClient.readReport({
+      keyCode: 'SICAS_PRODUCTIVIDAD_CONSULTAVENDEDOR',
+      pageRequested: 1,
+      itemsForPage: 500,
+      formatResponse: 2,
+      sortFields: 'FCaptura DESC',
+    });
+
+    if (!response.Sucess) {
+      throw new Error(`Error en SICAS API: ${response.Error || 'Unknown error'}`);
     }
 
-    console.log('[SICAS Basic] Credenciales obtenidas');
+    console.log('[SICAS Basic] Respuesta recibida, procesando datos...');
 
-    // Consultar tabla Documentos directamente con SQL
-    const sqlQuery = `
-      SELECT TOP 500
-        IdCaptura as id_documento,
-        NoPoliza as no_poliza,
-        IdVendedor as vend_id,
-        (SELECT Nombre FROM Vendedores WHERE IdVendedor = Documentos.IdVendedor) as vend_nombre,
-        IdDespacho as desp_id,
-        (SELECT Nombre FROM Despachos WHERE IdDespacho = Documentos.IdDespacho) as desp_nombre,
-        (SELECT Nombre FROM Aseguradoras WHERE IdAseguradora = Documentos.IdAseguradora) as aseguradora,
-        (SELECT Nombre FROM Ramos WHERE IdRamo = Documentos.IdRamo) as ramo,
-        Contratante as contratante,
-        VigenciaDesde as vigencia_desde,
-        VigenciaHasta as vigencia_hasta,
-        Importe as prima_total
-      FROM Documentos
-      WHERE VigenciaHasta >= GETDATE()
-      AND Estatus = 'Vigente'
-      ORDER BY FCaptura DESC
-    `;
-
-    const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-  <soap:Body>
-    <ProcesarWS xmlns="http://tempuri.org/">
-      <wsProcesarData>
-        <KeyProcess>QUERY</KeyProcess>
-        <SQLSentence><![CDATA[${sqlQuery}]]></SQLSentence>
-      </wsProcesarData>
-      <wsAuthConfig>
-        <UserName>${config.sicas_usuario}</UserName>
-        <Password>${config.sicas_password}</Password>
-      </wsAuthConfig>
-    </ProcesarWS>
-  </soap:Body>
-</soap:Envelope>`;
-
-    console.log('[SICAS Basic] Enviando consulta SQL...');
-
-    // Hacer petición con node:https (permite ignorar SSL)
-    const responseText = await httpsRequest(
-      SICAS_ENDPOINT,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml; charset=utf-8',
-          'SOAPAction': 'http://tempuri.org/ProcesarWS',
-          'Content-Length': Buffer.byteLength(soapEnvelope),
-        },
-      },
-      soapEnvelope
-    );
-
-    console.log('[SICAS Basic] Respuesta recibida, parseando...');
-
-    // Decodificar entidades HTML
-    const decoded = responseText
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, '&');
-
-    // Extraer el contenido XML
-    const resultMatch = decoded.match(/<ProcesarWSResult>([\s\S]*?)<\/ProcesarWSResult>/);
-    if (!resultMatch) {
-      throw new Error('No se encontró ProcesarWSResult en la respuesta');
-    }
-
-    const xmlContent = resultMatch[1];
-
-    // Buscar errores
-    const errorMatch = xmlContent.match(/<Error>([\s\S]*?)<\/Error>/);
-    if (errorMatch && errorMatch[1].trim()) {
-      throw new Error(`SICAS Error: ${errorMatch[1]}`);
-    }
-
-    // Extraer registros
-    const polizas: PolizaBasica[] = [];
-    const recordMatches = xmlContent.matchAll(/<Record>([\s\S]*?)<\/Record>/g);
-
-    for (const match of recordMatches) {
-      const recordXml = match[1];
-
-      const getField = (fieldName: string): string | null => {
-        const regex = new RegExp(`<${fieldName}>(.*?)</${fieldName}>`, 'i');
-        const match = recordXml.match(regex);
-        return match ? match[1].trim() || null : null;
-      };
-
-      const poliza: PolizaBasica = {
-        id_documento: getField('id_documento') || `DOC_${Date.now()}_${Math.random()}`,
-        no_poliza: getField('no_poliza'),
-        vend_id: getField('vend_id') || '0',
-        vend_nombre: getField('vend_nombre'),
-        desp_id: getField('desp_id'),
-        desp_nombre: getField('desp_nombre'),
-        aseguradora: getField('aseguradora'),
-        ramo: getField('ramo'),
-        contratante: getField('contratante'),
-        vigencia_desde: getField('vigencia_desde'),
-        vigencia_hasta: getField('vigencia_hasta'),
-        prima_total: parseFloat(getField('prima_total') || '0') || null,
-      };
-
-      polizas.push(poliza);
-    }
-
-    console.log(`[SICAS Basic] ${polizas.length} pólizas extraídas`);
-
-    if (polizas.length === 0) {
-      throw new Error('No se obtuvieron pólizas. Verifica que existan documentos vigentes en SICAS.');
-    }
-
-    // Guardar en base de datos
-    console.log('[SICAS Basic] Guardando en base de datos...');
-
-    const { error } = await supabase
-      .from('sicas_polizas_vigentes')
-      .upsert(
-        polizas.map(p => ({
-          ...p,
-          synced_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })),
+    // Extraer datos del reporte
+    const tableInfo = response.Response?.[0]?.TableInfo;
+    if (!tableInfo || tableInfo.length === 0) {
+      console.log('[SICAS Basic] ⚠️ No se encontraron registros');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'No se encontraron registros',
+          polizas_sincronizadas: 0,
+        }),
         {
-          onConflict: 'id_documento',
-          ignoreDuplicates: false,
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
-
-    if (error) {
-      console.error('[SICAS Basic] Error guardando:', error);
-      throw new Error(`Error guardando en DB: ${error.message}`);
     }
 
-    console.log(`[SICAS Basic] ✅ ${polizas.length} pólizas guardadas`);
+    // Convertir los datos al formato esperado
+    const polizas: PolizaBasica[] = tableInfo.map((record: any) => ({
+      id_documento: record.IdCaptura || `DOC_${Date.now()}_${Math.random()}`,
+      no_poliza: record.NoPoliza || null,
+      vend_id: record.IdVendedor || '0',
+      vend_nombre: record.VendedorNombre || null,
+      desp_id: record.IdDespacho || null,
+      desp_nombre: record.DespachoNombre || null,
+      aseguradora: record.AseguradoraNombre || null,
+      ramo: record.RamoNombre || null,
+      contratante: record.Contratante || null,
+      vigencia_desde: record.VigenciaDesde || null,
+      vigencia_hasta: record.VigenciaHasta || null,
+      prima_total: record.Importe ? parseFloat(record.Importe) : null,
+    }));
+
+    console.log(`[SICAS Basic] Procesadas ${polizas.length} pólizas`);
+
+    // Guardar en sicas_mirror_polizas
+    if (polizas.length > 0) {
+      const { error: insertError } = await supabase
+        .from('sicas_mirror_polizas')
+        .upsert(
+          polizas.map(p => ({
+            id_documento: p.id_documento,
+            no_poliza: p.no_poliza,
+            vend_id: p.vend_id,
+            vend_nombre: p.vend_nombre,
+            desp_id: p.desp_id,
+            desp_nombre: p.desp_nombre,
+            aseguradora: p.aseguradora,
+            ramo: p.ramo,
+            contratante: p.contratante,
+            vigencia_desde: p.vigencia_desde,
+            vigencia_hasta: p.vigencia_hasta,
+            prima_total: p.prima_total,
+            sincronizado_en: new Date().toISOString(),
+          })),
+          { onConflict: 'id_documento' }
+        );
+
+      if (insertError) {
+        console.error('[SICAS Basic] Error al guardar pólizas:', insertError);
+        throw insertError;
+      }
+
+      console.log(`[SICAS Basic] ✅ ${polizas.length} pólizas guardadas en sicas_mirror_polizas`);
+    }
+
+    // Registrar sincronización en historial
+    await supabase
+      .from('sicas_sync_history')
+      .insert({
+        sync_type: 'basic',
+        status: 'success',
+        records_synced: polizas.length,
+        message: `Sincronización básica completada. ${polizas.length} pólizas sincronizadas.`,
+      });
 
     return new Response(
       JSON.stringify({
         success: true,
-        stats: {
-          records_fetched: polizas.length,
-          records_inserted: polizas.length,
-          method: 'SQL Direct Query (node:https)',
-        },
-        metadata: {
-          synced_at: new Date().toISOString(),
-          source: 'SICAS SOAP SQL',
-        },
+        message: 'Sincronización básica completada',
+        polizas_sincronizadas: polizas.length,
+        polizas: polizas.slice(0, 10), // Solo mostrar las primeras 10 para no saturar la respuesta
       }),
       {
         status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-
-  } catch (error: any) {
+  } catch (error) {
     console.error('[SICAS Basic] Error:', error);
+
+    // Registrar error en historial
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      await supabase
+        .from('sicas_sync_history')
+        .insert({
+          sync_type: 'basic',
+          status: 'error',
+          records_synced: 0,
+          error_message: (error as Error).message,
+        });
+    }
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
-        timestamp: new Date().toISOString(),
+        error: (error as Error).message,
       }),
       {
         status: 500,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }
