@@ -72,6 +72,8 @@ export default function SicasAdmin() {
   const [reportCodesResult, setReportCodesResult] = useState<any>(null);
   const [testingTimeoutCodes, setTestingTimeoutCodes] = useState(false);
   const [timeoutCodesResult, setTimeoutCodesResult] = useState<any>(null);
+  const [testingH03117, setTestingH03117] = useState(false);
+  const [h03117Result, setH03117Result] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -416,6 +418,36 @@ export default function SicasAdmin() {
       setTimeoutCodesResult({ success: false, error: error.message });
     } finally {
       setTestingTimeoutCodes(false);
+    }
+  }
+
+  async function handleTestH03117() {
+    setTestingH03117(true);
+    setH03117Result(null);
+    setMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sicas-test-h03117-diagnostic');
+
+      if (error) throw error;
+
+      setH03117Result(data);
+
+      if (data.success) {
+        const successful = data.summary?.successful || 0;
+        const total = data.summary?.total_tests || 0;
+        setMessage({
+          type: successful > 0 ? 'success' : 'error',
+          text: `Diagnóstico H03117 completado. ${successful}/${total} pruebas exitosas.`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setH03117Result({ success: false, error: error.message });
+    } finally {
+      setTestingH03117(false);
     }
   }
 
@@ -1811,7 +1843,7 @@ export default function SicasAdmin() {
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     onClick={handleTestReportCodes}
-                    disabled={testingReportCodes || testingTimeoutCodes}
+                    disabled={testingReportCodes || testingTimeoutCodes || testingH03117}
                     className="w-full"
                     variant="outline"
                   >
@@ -1830,7 +1862,7 @@ export default function SicasAdmin() {
 
                   <Button
                     onClick={handleTestTimeoutCodes}
-                    disabled={testingReportCodes || testingTimeoutCodes}
+                    disabled={testingReportCodes || testingTimeoutCodes || testingH03117}
                     className="w-full"
                     variant="outline"
                   >
@@ -1848,9 +1880,29 @@ export default function SicasAdmin() {
                   </Button>
                 </div>
 
+                <Button
+                  onClick={handleTestH03117}
+                  disabled={testingReportCodes || testingTimeoutCodes || testingH03117}
+                  className="w-full"
+                  variant="outline"
+                >
+                  {testingH03117 ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Diagnosticando H03117...
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Diagnóstico Especial H03117 (6 variantes)
+                    </>
+                  )}
+                </Button>
+
                 <div className="text-sm text-neutral-600 space-y-1">
-                  <p><strong>Prueba Rápida:</strong> Prueba 25 códigos en paralelo (30 seg cada uno). Rápido pero algunos pueden dar timeout.</p>
+                  <p><strong>Prueba Rápida:</strong> Prueba 25 códigos en paralelo (60 seg cada uno). Rápido pero algunos pueden dar timeout.</p>
                   <p><strong>Prueba Secuencial:</strong> Prueba 7 códigos uno por uno (90 seg cada uno). Lento pero más preciso para códigos que tardan.</p>
+                  <p><strong>Diagnóstico H03117:</strong> Prueba el código H03117 con 6 configuraciones diferentes de parámetros para identificar el problema exacto.</p>
                 </div>
 
                 {reportCodesResult && (
@@ -2100,6 +2152,140 @@ export default function SicasAdmin() {
                         <div className="font-medium text-red-900 mb-1">Error</div>
                         <div className="text-sm text-red-800 font-mono whitespace-pre-wrap break-words">
                           {timeoutCodesResult.error}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {h03117Result && (
+                  <div className="space-y-4 pt-6 border-t">
+                    <h3 className="font-semibold">Resultados del Diagnóstico H03117</h3>
+
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="p-3 bg-neutral-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Pruebas</div>
+                        <div className="text-lg font-bold text-neutral-900">
+                          {h03117Result.summary?.total_tests || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-green-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Exitosas</div>
+                        <div className="text-lg font-bold text-green-600">
+                          {h03117Result.summary?.successful || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-red-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Errores</div>
+                        <div className="text-lg font-bold text-red-600">
+                          {h03117Result.summary?.errors || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-amber-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Excepciones</div>
+                        <div className="text-lg font-bold text-amber-600">
+                          {h03117Result.summary?.exceptions || 0}
+                        </div>
+                      </div>
+                    </div>
+
+                    {h03117Result.results && (
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-sm text-neutral-700">Detalle de Pruebas</h4>
+                        {h03117Result.results.map((result: any, index: number) => (
+                          <div
+                            key={index}
+                            className={`p-4 rounded-lg border ${
+                              result.status === 'success'
+                                ? 'bg-green-50 border-green-200'
+                                : result.status === 'error'
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-amber-50 border-amber-200'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                <div className="font-semibold text-neutral-900">{result.test}</div>
+                                <Badge
+                                  variant="secondary"
+                                  className={
+                                    result.status === 'success'
+                                      ? 'bg-green-500 text-white'
+                                      : result.status === 'error'
+                                      ? 'bg-red-500 text-white'
+                                      : 'bg-amber-500 text-white'
+                                  }
+                                >
+                                  {result.status}
+                                </Badge>
+                                {result.recordCount > 0 && (
+                                  <span className="text-xs text-green-700 font-medium">
+                                    {result.recordCount} registros
+                                  </span>
+                                )}
+                              </div>
+                              {result.status === 'success' ? (
+                                <CheckCircle className="w-5 h-5 text-green-600" />
+                              ) : (
+                                <XCircle className="w-5 h-5 text-red-600" />
+                              )}
+                            </div>
+
+                            {result.error && (
+                              <div className="mb-2">
+                                <div className="text-xs font-medium text-neutral-600 mb-1">Error:</div>
+                                <div className="text-sm text-red-800 font-mono bg-red-100 p-2 rounded">
+                                  {result.error}
+                                </div>
+                              </div>
+                            )}
+
+                            {result.conditions && (
+                              <div className="text-xs text-neutral-600 mt-2">
+                                <strong>Condiciones:</strong> {result.conditions}
+                              </div>
+                            )}
+
+                            {result.fieldsRequested && (
+                              <div className="text-xs text-neutral-600 mt-1">
+                                <strong>Campos:</strong> {result.fieldsRequested}
+                              </div>
+                            )}
+
+                            {result.response && (
+                              <details className="mt-3">
+                                <summary className="text-xs cursor-pointer text-blue-600 hover:text-blue-700">
+                                  Ver respuesta completa
+                                </summary>
+                                <pre className="mt-2 p-3 bg-white rounded text-xs overflow-x-auto max-h-60">
+                                  {JSON.stringify(result.response, null, 2)}
+                                </pre>
+                              </details>
+                            )}
+
+                            {result.fullError && (
+                              <details className="mt-3">
+                                <summary className="text-xs cursor-pointer text-red-600 hover:text-red-700">
+                                  Ver error completo
+                                </summary>
+                                <pre className="mt-2 p-3 bg-red-100 rounded text-xs overflow-x-auto">
+                                  {result.fullError}
+                                </pre>
+                              </details>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {!h03117Result.success && h03117Result.error && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="font-medium text-red-900 mb-1">Error General</div>
+                        <div className="text-sm text-red-800 font-mono whitespace-pre-wrap break-words">
+                          {h03117Result.error}
                         </div>
                       </div>
                     )}
