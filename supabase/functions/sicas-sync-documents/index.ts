@@ -45,21 +45,13 @@ Deno.serve(async (req: Request) => {
     const keyCode = body.keyCode || 'H03117';
     const itemsPerPage = body.itemsPerPage || 100;
 
+    // Usar solo campos básicos para evitar errores de permisos
     const fieldsRequested = body.fieldsRequested || [
       'IDDocto',
-      'VendNombre',
-      'DespNombre',
-      'Ramo',
-      'SubRamo',
-      'Compania',
       'Poliza',
       'Cliente',
       'FechaCaptura',
-      'FechaEmision',
-      'VigenciaDesde',
-      'VigenciaHasta',
       'Importe',
-      'PrimaNeta',
     ].join(',');
 
     console.log('[Sync Documents] Iniciando sincronización...');
