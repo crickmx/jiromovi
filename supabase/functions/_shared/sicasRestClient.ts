@@ -286,17 +286,38 @@ export class SicasRestClient {
     if (conditions) body.Conditions = conditions;
     if (conditionsDirect) body.ConditionsDirect = conditionsDirect;
 
-    return await this.request<SicasReportResponse>(
-      '/Report/ReadData',
-      {
-        method: 'POST',
-        headers: {
-          'Prop_KeyCode': keyCode,
-        },
-        body,
-        maxRetries: 2,
+    try {
+      const response = await this.request<SicasReportResponse>(
+        '/Report/ReadData',
+        {
+          method: 'POST',
+          headers: {
+            'Prop_KeyCode': keyCode,
+          },
+          body,
+          maxRetries: 2,
+        }
+      );
+
+      // Verificar si el error indica código de reporte inválido
+      if (response.Error) {
+        if (response.Error.includes('Codigo de reporte') ||
+            response.Error.includes('No se encontro') ||
+            response.Error.includes('not found')) {
+          throw new Error(`Codigo de reporte no encontrado: ${keyCode}`);
+        }
+        throw new Error(response.Error);
       }
-    );
+
+      return response;
+    } catch (error: any) {
+      // Mejorar el mensaje de error para códigos de reporte
+      if (error.message?.includes('Codigo de reporte') ||
+          error.message?.includes('not found')) {
+        throw new Error(`Codigo de reporte no encontrado: ${keyCode}`);
+      }
+      throw error;
+    }
   }
 
   public async getDigitalFiles(options: {

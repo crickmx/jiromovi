@@ -68,6 +68,9 @@ export default function SicasAdmin() {
   const [testingComisiones, setTestingComisiones] = useState(false);
   const [testComisionesResult, setTestComisionesResult] = useState<any>(null);
 
+  const [testingReportCodes, setTestingReportCodes] = useState(false);
+  const [reportCodesResult, setReportCodesResult] = useState<any>(null);
+
   useEffect(() => {
     loadData();
     loadTotalPolizas();
@@ -352,6 +355,35 @@ export default function SicasAdmin() {
       setDiagnosticResult({ success: false, error: error.message });
     } finally {
       setDiagnosticRunning(false);
+    }
+  }
+
+  async function handleTestReportCodes() {
+    setTestingReportCodes(true);
+    setReportCodesResult(null);
+    setMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sicas-test-available-reports');
+
+      if (error) throw error;
+
+      setReportCodesResult(data);
+
+      if (data.success) {
+        const available = data.summary.with_data;
+        setMessage({
+          type: 'success',
+          text: `Encontrados ${available} códigos de reporte con datos disponibles`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setReportCodesResult({ success: false, error: error.message });
+    } finally {
+      setTestingReportCodes(false);
     }
   }
 
@@ -1681,6 +1713,181 @@ export default function SicasAdmin() {
                             </pre>
                           </details>
                         )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Stethoscope className="w-5 h-5" />
+                  Diagnóstico de Códigos de Reporte
+                </CardTitle>
+                <CardDescription>
+                  Identifica qué códigos de reporte REST están disponibles en tu instancia de SICAS
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="space-y-2 text-sm text-blue-900">
+                      <p className="font-medium">¿Por qué usar esta herramienta?</p>
+                      <p>
+                        Si ves el error "Código de reporte no encontrado" durante la sincronización,
+                        esta herramienta identificará qué códigos están activos en tu SICAS.
+                      </p>
+                      <p className="text-xs text-blue-700">
+                        Esta prueba tardará aproximadamente 15-30 segundos mientras prueba múltiples códigos de reporte.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Button
+                    onClick={handleTestReportCodes}
+                    disabled={testingReportCodes}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    {testingReportCodes ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Probando códigos de reporte...
+                      </>
+                    ) : (
+                      <>
+                        <Stethoscope className="w-4 h-4 mr-2" />
+                        Identificar Códigos Disponibles
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {reportCodesResult && (
+                  <div className="space-y-4 pt-6 border-t">
+                    <h3 className="font-semibold">Resultados del Diagnóstico</h3>
+
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="p-3 bg-neutral-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Probados</div>
+                        <div className="text-lg font-bold text-neutral-900">
+                          {reportCodesResult.summary?.total_tested || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-green-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Disponibles</div>
+                        <div className="text-lg font-bold text-green-600">
+                          {reportCodesResult.summary?.available || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Con Datos</div>
+                        <div className="text-lg font-bold text-blue-600">
+                          {reportCodesResult.summary?.with_data || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-red-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">No Encontrados</div>
+                        <div className="text-lg font-bold text-red-600">
+                          {reportCodesResult.summary?.not_found || 0}
+                        </div>
+                      </div>
+                    </div>
+
+                    {reportCodesResult.recommendations && reportCodesResult.recommendations.length > 0 && (
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <div className="font-medium text-green-900">
+                            Códigos Recomendados (con datos)
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {reportCodesResult.recommendations.map((code: string) => (
+                            <Badge key={code} className="bg-green-600 text-white font-mono">
+                              {code}
+                            </Badge>
+                          ))}
+                        </div>
+                        <p className="text-sm text-green-800">
+                          Usa estos códigos en la configuración de sincronización de SICAS
+                        </p>
+                      </div>
+                    )}
+
+                    {reportCodesResult.results && (
+                      <div>
+                        <details className="pt-2">
+                          <summary className="text-sm font-medium cursor-pointer hover:text-blue-600 mb-3">
+                            Ver Detalle de Todos los Códigos
+                          </summary>
+                          <div className="space-y-2 mt-3">
+                            {reportCodesResult.results.map((result: any) => (
+                              <div
+                                key={result.keyCode}
+                                className={`p-3 rounded-lg border ${
+                                  result.status === 'available'
+                                    ? 'bg-green-50 border-green-200'
+                                    : result.status === 'not_found'
+                                    ? 'bg-neutral-50 border-neutral-200'
+                                    : 'bg-red-50 border-red-200'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <code className="font-mono font-bold">{result.keyCode}</code>
+                                    <Badge
+                                      variant={
+                                        result.status === 'available' ? 'default' : 'secondary'
+                                      }
+                                      className={
+                                        result.status === 'available'
+                                          ? 'bg-green-500'
+                                          : result.status === 'not_found'
+                                          ? 'bg-neutral-400'
+                                          : 'bg-red-500'
+                                      }
+                                    >
+                                      {result.status}
+                                    </Badge>
+                                    {result.hasData && (
+                                      <span className="text-xs text-green-700">
+                                        {result.recordCount} registros
+                                      </span>
+                                    )}
+                                  </div>
+                                  {result.status === 'available' ? (
+                                    <CheckCircle className="w-4 h-4 text-green-600" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-neutral-400" />
+                                  )}
+                                </div>
+                                {result.error && (
+                                  <div className="text-xs text-neutral-600 mt-2 font-mono">
+                                    {result.error}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                    )}
+
+                    {!reportCodesResult.success && reportCodesResult.error && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="font-medium text-red-900 mb-1">Error</div>
+                        <div className="text-sm text-red-800 font-mono whitespace-pre-wrap break-words">
+                          {reportCodesResult.error}
+                        </div>
                       </div>
                     )}
                   </div>

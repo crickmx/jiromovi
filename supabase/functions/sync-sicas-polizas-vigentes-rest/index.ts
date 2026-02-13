@@ -151,6 +151,12 @@ Deno.serve(async (req: Request) => {
       } catch (error: any) {
         lastError = error.message;
         console.error(`[Sync REST] Error con ${keyCode}:`, error.message);
+
+        // Si el error es específico sobre código de reporte, agregarlo al mensaje
+        if (error.message?.includes('Codigo de reporte') || error.message?.includes('not found')) {
+          console.log(`[Sync REST] ${keyCode} no está disponible en SICAS, probando siguiente...`);
+        }
+
         // Continuar con el siguiente reporte
         continue;
       }
@@ -158,7 +164,11 @@ Deno.serve(async (req: Request) => {
 
     // Si no se obtuvo ningún dato de ningún reporte
     if (allPolizas.length === 0) {
-      throw new Error(`Ningún reporte funcionó. Último error: ${lastError}. Reportes intentados: ${reportCodes.join(', ')}`);
+      const errorMsg = lastError.includes('Codigo de reporte')
+        ? 'Los códigos de reporte configurados no están disponibles en SICAS. Contacta al proveedor para obtener los códigos correctos.'
+        : `Error en SICAS API: ${lastError}`;
+
+      throw new Error(`Ningún reporte funcionó. ${errorMsg}. Reportes intentados: ${reportCodes.join(', ')}`);
     }
 
     console.log(`[Sync REST] Total pólizas obtenidas: ${allPolizas.length}`);
