@@ -116,20 +116,25 @@ async function consultarPolizasVigentesSICAS(
   const responseTxtMatch = resultContent.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/);
   const messageMatch = resultContent.match(/<MESSAGE>(.*?)<\/MESSAGE>/);
 
-  console.log(`[SICAS] RESPONSENBR: ${responseNbrMatch?.[1] || 'N/A'}`);
-  console.log(`[SICAS] RESPONSETXT: ${responseTxtMatch?.[1] || 'N/A'}`);
-  console.log(`[SICAS] MESSAGE: ${messageMatch?.[1] || 'N/A'}`);
+  const sicasDetails = {
+    responsenbr: responseNbrMatch?.[1] || 'N/A',
+    responsetxt: responseTxtMatch?.[1] || 'N/A',
+    message: messageMatch?.[1] || 'N/A',
+  };
+
+  console.log(`[SICAS] RESPONSENBR: ${sicasDetails.responsenbr}`);
+  console.log(`[SICAS] RESPONSETXT: ${sicasDetails.responsetxt}`);
+  console.log(`[SICAS] MESSAGE: ${sicasDetails.message}`);
 
   // Si RESPONSENBR=0, el reporte no tiene datos o no está disponible
   if (!responseNbrMatch || responseNbrMatch[1] === '0') {
-    const message = messageMatch?.[1] || 'Sin mensaje';
-    console.warn(`[SICAS] Reporte sin datos: ${message}`);
+    console.warn(`[SICAS] Reporte sin datos: ${sicasDetails.message}`);
 
     // Logging adicional para debug - primeros 2000 caracteres
     console.log('[SICAS] Preview del contenido:', resultContent.substring(0, 2000));
 
     // No es un error, simplemente no hay datos
-    return [];
+    return { polizas: [], sicasDetails };
   }
 
   // Verificar acceso denegado
@@ -183,7 +188,7 @@ async function consultarPolizasVigentesSICAS(
   }
 
   console.log(`[SICAS] Parseadas ${polizas.length} pólizas`);
-  return polizas;
+  return { polizas, sicasDetails };
 }
 
 /**
@@ -249,7 +254,12 @@ async function registrarSyncLog(
     records_errors: number;
   },
   startedAt: Date,
-  errorMessage?: string
+  errorMessage?: string,
+  sicasDetails?: {
+    responsenbr?: string;
+    responsetxt?: string;
+    message?: string;
+  }
 ) {
   await supabase
     .from('sicas_production_sync_log')
@@ -266,6 +276,7 @@ async function registrarSyncLog(
       metadata: {
         report_code: 'H03117',
         source: 'SICAS Web Service',
+        ...(sicasDetails || {}),
       },
     });
 }
@@ -323,17 +334,21 @@ Deno.serve(async (req: Request) => {
 
     const allPolizas: PolizaVigente[] = [];
     let currentPage = 1;
+    let lastSicasDetails: any = null;
 
     // Consultar todas las páginas
     while (currentPage <= maxPages) {
       try {
-        const pagePolizas = await consultarPolizasVigentesSICAS(
+        const result = await consultarPolizasVigentesSICAS(
           sicasUrl,
           sicasUsuario,
           sicasPassword,
           currentPage,
           itemsPerPage
         );
+
+        const { polizas: pagePolizas, sicasDetails } = result;
+        lastSicasDetails = sicasDetails;
 
         if (pagePolizas.length === 0) {
           console.log(`[Sync] Página ${currentPage} sin resultados, finalizando...`);
@@ -390,7 +405,9 @@ Deno.serve(async (req: Request) => {
         records_updated: saveStats.updated,
         records_errors: saveStats.errors,
       },
-      startedAt
+      startedAt,
+      undefined,
+      lastSicasDetails
     );
 
     const duration = Date.now() - startedAt.getTime();
@@ -413,6 +430,7 @@ Deno.serve(async (req: Request) => {
           duration_ms: duration,
           report_code: 'H03117',
           source: 'SICAS Web Service',
+          ...(lastSicasDetails || {}),
         },
       }),
       {
