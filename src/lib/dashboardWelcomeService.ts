@@ -126,24 +126,39 @@ async function getProduccionData(userId: string) {
     const mesAnterior = mesActual === 1 ? 12 : mesActual - 1;
     const anioAnterior = mesActual === 1 ? anioActual - 1 : anioActual;
 
+    // Obtener nombres de vendedor mapeados a este usuario
+    const { data: vendorMappings } = await supabase
+      .from('production_vendors_cache')
+      .select('vendor_nombre')
+      .eq('movi_user_id', userId);
+
+    if (!vendorMappings || vendorMappings.length === 0) {
+      return {
+        produccion_mes_actual: 0,
+        produccion_mes_anterior: 0,
+      };
+    }
+
+    const vendorNames = vendorMappings.map(v => v.vendor_nombre);
+
     // Producción mes actual
     const { data: produccionActual } = await supabase
       .from('production_records')
-      .select('prima_neta')
-      .eq('vendor_id', userId)
+      .select('prima_ponderada')
+      .in('agente_nombre', vendorNames)
       .eq('mes', mesActual)
       .eq('anio', anioActual);
 
     // Producción mes anterior
     const { data: produccionAnterior } = await supabase
       .from('production_records')
-      .select('prima_neta')
-      .eq('vendor_id', userId)
+      .select('prima_ponderada')
+      .in('agente_nombre', vendorNames)
       .eq('mes', mesAnterior)
       .eq('anio', anioAnterior);
 
-    const totalActual = produccionActual?.reduce((sum, p) => sum + (p.prima_neta || 0), 0) || 0;
-    const totalAnterior = produccionAnterior?.reduce((sum, p) => sum + (p.prima_neta || 0), 0) || 0;
+    const totalActual = produccionActual?.reduce((sum, p) => sum + (p.prima_ponderada || 0), 0) || 0;
+    const totalAnterior = produccionAnterior?.reduce((sum, p) => sum + (p.prima_ponderada || 0), 0) || 0;
 
     return {
       produccion_mes_actual: Math.round(totalActual),
@@ -258,12 +273,20 @@ async function getComisionesData(userId: string) {
     const mesAnterior = mesActual === 1 ? 12 : mesActual - 1;
     const anioAnterior = mesActual === 1 ? anioActual - 1 : anioActual;
 
-    // Comisiones mes actual - obtener desde batches
+    // Calcular rangos de fechas para mes actual
+    const primerDiaMesActual = new Date(anioActual, mesActual - 1, 1).toISOString().split('T')[0];
+    const ultimoDiaMesActual = new Date(anioActual, mesActual, 0).toISOString().split('T')[0];
+
+    // Calcular rangos de fechas para mes anterior
+    const primerDiaMesAnterior = new Date(anioAnterior, mesAnterior - 1, 1).toISOString().split('T')[0];
+    const ultimoDiaMesAnterior = new Date(anioAnterior, mesAnterior, 0).toISOString().split('T')[0];
+
+    // Comisiones mes actual - obtener desde batches que caen en el mes actual
     const { data: batchesActuales } = await supabase
       .from('commission_batches')
       .select('id')
-      .eq('semana_mes', mesActual)
-      .eq('anio', anioActual);
+      .gte('date_from', primerDiaMesActual)
+      .lte('date_from', ultimoDiaMesActual);
 
     const batchIdsActuales = batchesActuales?.map(b => b.id) || [];
 
@@ -282,8 +305,8 @@ async function getComisionesData(userId: string) {
     const { data: batchesAnteriores } = await supabase
       .from('commission_batches')
       .select('id')
-      .eq('semana_mes', mesAnterior)
-      .eq('anio', anioAnterior);
+      .gte('date_from', primerDiaMesAnterior)
+      .lte('date_from', ultimoDiaMesAnterior);
 
     const batchIdsAnteriores = batchesAnteriores?.map(b => b.id) || [];
 
