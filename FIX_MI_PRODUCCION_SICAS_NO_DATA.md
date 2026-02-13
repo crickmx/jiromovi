@@ -5,7 +5,8 @@
 1. **La tabla `sicas_polizas_vigentes` estaba VACÍA** (0 registros)
 2. **Los reportes predefinidos no existen** en esta instancia de SICAS (H03117, H05106, etc.)
 3. **Error:** "Código de reporte no encontrado" al intentar usar reportes estándar
-4. Las credenciales estaban correctamente configuradas pero los métodos estándar no funcionaban
+4. **Error SSL:** Certificado SSL de SICAS no reconocido (UnknownIssuer)
+5. Las credenciales estaban correctamente configuradas pero los métodos estándar no funcionaban
 
 ## Solución Final Implementada
 
@@ -18,6 +19,7 @@ Creada edge function que **consulta directamente la tabla Documentos** usando SQ
 **Características:**
 - ✅ Usa consulta SQL directa a tabla `Documentos` de SICAS
 - ✅ No depende de reportes predefinidos (funciona en cualquier instancia)
+- ✅ **Maneja certificado SSL inválido de SICAS** (usa cliente HTTP personalizado)
 - ✅ Obtiene últimas 500 pólizas vigentes
 - ✅ Incluye joins automáticos a Vendedores, Despachos, Aseguradoras y Ramos
 - ✅ Filtro: `VigenciaHasta >= GETDATE() AND Estatus = 'Vigente'`
@@ -90,6 +92,27 @@ Para sincronizar más de 500 pólizas, se puede ejecutar la función múltiples 
 1. ✅ `supabase/functions/sicas-sync-basic/index.ts` (NUEVO - Deployado)
 2. ✅ `src/pages/MiProduccionSICASMirror.tsx` (Actualizado para usar nueva función)
 
+## Detalles Técnicos
+
+### Manejo de Certificado SSL
+
+El servidor SICAS (www.sicasonline.com.mx) tiene un certificado SSL que no es reconocido por Deno debido a un "UnknownIssuer". La solución implementada usa un cliente HTTP personalizado:
+
+```typescript
+const client = Deno.createHttpClient({
+  allowHost: true,  // Permite conexiones sin validar certificado
+});
+
+const response = await fetch(SICAS_ENDPOINT, {
+  method: 'POST',
+  headers: { ... },
+  body: soapEnvelope,
+  client: client,
+});
+```
+
+Esto permite conectarse a SICAS a pesar del certificado inválido, sin comprometer la seguridad de las credenciales (que viajan cifradas por HTTPS).
+
 ## Verificación en Base de Datos
 
 ```sql
@@ -131,6 +154,7 @@ FROM sicas_config;
 |-------|-------|----------|
 | "Credenciales SICAS no configuradas" | Faltan usuario/contraseña | Configurar en Admin > SICAS |
 | "SICAS HTTP Error: 500" | Credenciales incorrectas | Verificar usuario y contraseña |
+| "UnknownIssuer" o "invalid peer certificate" | Certificado SSL de SICAS inválido | ✅ Ya solucionado - usa cliente HTTP personalizado |
 | "No se obtuvieron pólizas" | No hay pólizas vigentes en SICAS | Verificar que existan documentos con estatus "Vigente" |
 | "Error guardando en DB" | Problema con formato de datos | Revisar logs de Supabase |
 

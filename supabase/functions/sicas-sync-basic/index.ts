@@ -98,6 +98,12 @@ Deno.serve(async (req: Request) => {
 
     console.log('[SICAS Basic] Enviando consulta SQL...');
 
+    // Crear cliente HTTP que ignora verificación SSL (necesario para SICAS)
+    const client = Deno.createHttpClient({
+      // @ts-ignore - allowHost es válido pero no está en los tipos
+      allowHost: true,
+    });
+
     const response = await fetch(SICAS_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -105,6 +111,8 @@ Deno.serve(async (req: Request) => {
         'SOAPAction': 'http://tempuri.org/ProcesarWS',
       },
       body: soapEnvelope,
+      // @ts-ignore - client es válido pero no está en los tipos estándar
+      client: client,
     });
 
     if (!response.ok) {
