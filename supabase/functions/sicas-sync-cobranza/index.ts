@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { parseSicasResponse, parseSoapResponse, checkSoapError } from '../_shared/sicasParser.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,10 +32,6 @@ Deno.serve(async (req: Request) => {
 
     console.log("[SICAS-Cobranza] Iniciando sincronización de cobranza pendiente");
 
-    // Usar el catálogo de Cobranza (ID 50)
-    const CATALOG_ID = 50;
-    const CATALOG_ENUM = "eCobranza";
-
     const sicasUsername = Deno.env.get('SICAS_USERNAME');
     const sicasPassword = Deno.env.get('SICAS_PASSWORD');
     const sicasEndpoint = Deno.env.get('SICAS_ENDPOINT') || 'http://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
@@ -45,141 +40,171 @@ Deno.serve(async (req: Request) => {
       throw new Error('Credenciales SICAS no configuradas');
     }
 
-    console.log("[SICAS-Cobranza] Configuración cargada:", {
-      endpoint: sicasEndpoint,
-      username: sicasUsername ? "***" : "NO"
-    });
+    console.log("[SICAS-Cobranza] Configuración cargada, consultando reporte D004...");
 
-    // Construir solicitud SOAP usando formato ReadInfoData
+    // Construir solicitud SOAP usando ProcesarWS con reporte D004 (HAPPDATAL_D004)
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
-  <soap:Header/>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
-    <tem:ReadInfoData>
-      <tem:oConfigData>
-        <tem:PropertyTypeReadData>${CATALOG_ENUM}</tem:PropertyTypeReadData>
-        <tem:PropertyData_TypeDataReturn>Data_XML</tem:PropertyData_TypeDataReturn>
-      </tem:oConfigData>
-      <tem:oConfigAuth>
-        <tem:UserName>${sicasUsername}</tem:UserName>
-        <tem:Password>${sicasPassword}</tem:Password>
-      </tem:oConfigAuth>
-    </tem:ReadInfoData>
+    <ProcesarWS xmlns="http://tempuri.org/">
+      <wsProcesarData>
+        <KeyProcess>REPORT</KeyProcess>
+        <KeyCode>D004</KeyCode>
+        <Page>1</Page>
+        <ItemForPage>1000</ItemForPage>
+      </wsProcesarData>
+      <wsAuthConfig>
+        <UserName>${sicasUsername}</UserName>
+        <Password>${sicasPassword}</Password>
+      </wsAuthConfig>
+    </ProcesarWS>
   </soap:Body>
 </soap:Envelope>`;
 
-    console.log("[SICAS-Cobranza] Llamando a SICAS con ReadInfoData...");
+    let response;
+    try {
+      response = await fetch(sicasEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          "SOAPAction": "http://tempuri.org/ProcesarWS",
+        },
+        body: soapEnvelope,
+      });
+    } catch (fetchError: any) {
+      console.error("[SICAS-Cobranza] Error en fetch:", fetchError);
 
-    const response = await fetch(sicasEndpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        "SOAPAction": "http://tempuri.org/ReadInfoData",
-      },
-      body: soapEnvelope,
-    });
+      // Si hay error SSL/certificado, intentar con HTTP
+      if (fetchError.message?.includes('certificate') || fetchError.message?.includes('SSL')) {
+        console.warn("[SICAS-Cobranza] Error SSL detectado, intentando con HTTP...");
+        const httpEndpoint = sicasEndpoint.replace('https://', 'http://');
 
-    const xmlText = await response.text();
+        response = await fetch(httpEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "http://tempuri.org/ProcesarWS",
+          },
+          body: soapEnvelope,
+        });
+      } else {
+        throw fetchError;
+      }
+    }
 
     if (!response.ok) {
-      console.error(`[SICAS-Cobranza] Error ${response.status}:`, xmlText);
-
-      // Intentar extraer el mensaje de error SOAP
-      const faultStringMatch = xmlText.match(/<faultstring>(.*?)<\/faultstring>/);
-      const faultDetailMatch = xmlText.match(/<detail>(.*?)<\/detail>/s);
-
-      if (faultStringMatch || faultDetailMatch) {
-        const errorMsg = faultStringMatch ? faultStringMatch[1] : faultDetailMatch?.[1];
-        throw new Error(`Error SOAP SICAS: ${errorMsg}`);
-      }
-
-      throw new Error(`Error en respuesta SICAS: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`[SICAS-Cobranza] Error HTTP ${response.status}:`, errorText);
+      throw new Error(`SICAS HTTP Error: ${response.status} - ${errorText.substring(0, 200)}`);
     }
 
-    console.log("[SICAS-Cobranza] Respuesta recibida exitosamente");
+    const responseText = await response.text();
+    console.log(`[SICAS-Cobranza] Respuesta recibida (${responseText.length} caracteres), parseando...`);
 
-    // Verificar errores SOAP
-    const soapError = checkSoapError(xmlText);
-    if (soapError) {
-      throw new Error(`Error SOAP: ${soapError}`);
-    }
+    // Decodificar entidades HTML
+    const decoded = responseText
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
 
-    // Extraer el resultado del XML
-    const resultMatch = xmlText.match(/<ReadInfoDataResult>([\s\S]*?)<\/ReadInfoDataResult>/);
+    // Extraer el contenido del resultado
+    const resultMatch = decoded.match(/<ProcesarWSResult>([\s\S]*?)<\/ProcesarWSResult>/);
     if (!resultMatch) {
-      throw new Error('No se encontró ReadInfoDataResult en la respuesta');
+      console.error("[SICAS-Cobranza] No se encontró ProcesarWSResult");
+      throw new Error('No se pudo extraer ProcesarWSResult del response');
     }
 
-    let innerXml = resultMatch[1].trim();
+    const resultContent = resultMatch[1];
 
-    // Decodificar entidades HTML si están presentes
-    if (innerXml.includes('&lt;')) {
-      innerXml = innerXml
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&apos;/g, "'")
-        .replace(/&amp;/g, '&');
+    // Verificar estado del proceso
+    const responseNbrMatch = resultContent.match(/<RESPONSENBR>(\d+)<\/RESPONSENBR>/);
+    const responseTxtMatch = resultContent.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/);
+
+    console.log("[SICAS-Cobranza] RESPONSENBR:", responseNbrMatch?.[1]);
+    console.log("[SICAS-Cobranza] RESPONSETXT:", responseTxtMatch?.[1]);
+
+    if (!responseNbrMatch || responseNbrMatch[1] === '0') {
+      const message = resultContent.match(/<MESSAGE>(.*?)<\/MESSAGE>/)?.[1] || 'Sin mensaje';
+      throw new Error(`SICAS RESPONSENBR=0: ${message}`);
     }
 
-    console.log("[SICAS-Cobranza] XML decodificado, parseando registros...");
+    if (responseTxtMatch && responseTxtMatch[1] === 'DENIED') {
+      throw new Error('SICAS: Acceso denegado - verificar credenciales');
+    }
 
-    // Parsear registros de cobranza
+    // Parsear los registros de cobranza
     const parseCobranza = (xml: string): CobranzaRecord[] => {
       const records: CobranzaRecord[] = [];
 
-      // Intentar diferentes formatos de registros
-      let recordMatches = Array.from(xml.matchAll(/<Record>([\s\S]*?)<\/Record>/g));
+      // Los registros pueden venir en diferentes formatos
+      const patterns = [
+        /<DatCobranza>([\s\S]*?)<\/DatCobranza>/g,
+        /<Record>([\s\S]*?)<\/Record>/g,
+        /<Item>([\s\S]*?)<\/Item>/g,
+      ];
 
-      if (recordMatches.length === 0) {
-        recordMatches = Array.from(xml.matchAll(/<Cobranza>([\s\S]*?)<\/Cobranza>/g));
+      let recordMatches: RegExpMatchArray[] = [];
+      for (const pattern of patterns) {
+        const matches = Array.from(xml.matchAll(pattern));
+        if (matches.length > 0) {
+          recordMatches = matches;
+          console.log(`[SICAS-Cobranza] Usando patrón ${pattern}, encontrados ${matches.length} registros`);
+          break;
+        }
       }
 
       if (recordMatches.length === 0) {
-        recordMatches = Array.from(xml.matchAll(/<Item>([\s\S]*?)<\/Item>/g));
+        console.warn("[SICAS-Cobranza] No se encontraron registros en ningún formato");
+        console.log("[SICAS-Cobranza] Muestra XML:", xml.substring(0, 1000));
+        return records;
       }
-
-      console.log(`[SICAS-Cobranza] Encontrados ${recordMatches.length} registros`);
 
       for (const match of recordMatches) {
         const recordXml = match[1];
 
-        const getField = (fieldName: string): string | undefined => {
-          const regex = new RegExp(`<${fieldName}>([^<]*)<\/${fieldName}>`, 'i');
+        const extractField = (fieldName: string): string => {
+          const regex = new RegExp(`<${fieldName}>(.*?)<\/${fieldName}>`, 'i');
           const fieldMatch = recordXml.match(regex);
-          return fieldMatch ? fieldMatch[1].trim() : undefined;
+          return fieldMatch ? fieldMatch[1].trim() : '';
         };
 
-        // Extraer campos (ajustar según estructura real del XML)
-        const vendId = getField("VendID") || getField("IdVendedor") || getField("vendedor_id");
+        const extractNumber = (fieldName: string): number => {
+          const value = extractField(fieldName);
+          return value ? parseFloat(value) : 0;
+        };
+
+        // Extraer campos (ajustar según estructura real)
+        const vendId = extractField("VendID") || extractField("IdVendedor") || extractField("Vendedor");
 
         if (!vendId) {
-          console.warn("[SICAS-Cobranza] Registro sin VendID, saltando:", recordXml.substring(0, 100));
           continue;
         }
 
         records.push({
           vend_id: vendId,
-          vend_nombre: getField("VendNombre") || getField("NombreVendedor"),
-          cliente: getField("Cliente") || getField("Contratante") || getField("Asegurado"),
-          no_poliza: getField("NoPoliza") || getField("Poliza") || getField("NumeroPoliza"),
-          id_documento: getField("IdDocumento") || getField("DocID") || getField("Recibo"),
-          importe_pendiente: parseFloat(getField("ImportePendiente") || getField("Importe") || "0"),
-          fecha_limite: getField("FechaLimite") || getField("FechaVencimiento"),
-          dias_vencidos: parseInt(getField("DiasVencidos") || getField("Vencidos") || "0"),
-          status: getField("Status") || getField("Estado") || "Pendiente",
+          vend_nombre: extractField("VendNombre") || extractField("NombreVendedor") || extractField("Agente"),
+          cliente: extractField("Cliente") || extractField("Contratante") || extractField("Asegurado"),
+          no_poliza: extractField("NoPoliza") || extractField("Poliza") || extractField("NumeroPoliza"),
+          id_documento: extractField("IdDocumento") || extractField("DocID") || extractField("Recibo"),
+          importe_pendiente: extractNumber("ImportePendiente") || extractNumber("Importe") || extractNumber("ImporteTotal"),
+          fecha_limite: extractField("FechaLimite") || extractField("FechaVencimiento") || extractField("FVencimiento"),
+          dias_vencidos: parseInt(extractField("DiasVencidos") || extractField("Vencidos") || "0"),
+          status: extractField("Status") || extractField("Estado") || "Pendiente",
         });
       }
 
       return records;
     };
 
-    const cobranzaRecords = parseCobranza(innerXml);
-    console.log(`[SICAS-Cobranza] ${cobranzaRecords.length} registros parseados correctamente`);
+    const cobranzaRecords = parseCobranza(resultContent);
+    console.log(`[SICAS-Cobranza] ${cobranzaRecords.length} registros parseados`);
 
     if (cobranzaRecords.length === 0) {
       console.log("[SICAS-Cobranza] No se encontraron registros de cobranza");
-      console.log("[SICAS-Cobranza] Muestra del XML:", innerXml.substring(0, 500));
 
       return new Response(
         JSON.stringify({
