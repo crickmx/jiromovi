@@ -1894,6 +1894,112 @@ export default function SicasAdmin() {
                 )}
               </CardContent>
             </Card>
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FlaskConical className="w-5 h-5" />
+                  Probar Código Manual
+                </CardTitle>
+                <CardDescription>
+                  Si conoces un código específico de reporte, pruébalo aquí directamente
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="space-y-2 text-sm text-amber-900">
+                      <p className="font-medium">Códigos de Reporte</p>
+                      <p>
+                        Los códigos de reporte son específicos de cada instalación SICAS.
+                        Si tienes documentación de tu proveedor SICAS o conoces códigos específicos,
+                        ingrésalos aquí para probarlos.
+                      </p>
+                      <p className="text-xs text-amber-700 font-mono mt-2">
+                        Ejemplos: H05106, POL001, PROD2025, etc.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-code">Código de Reporte</Label>
+                    <Input
+                      id="manual-code"
+                      placeholder="Ej: H05106"
+                      className="font-mono uppercase"
+                      onChange={(e) => {
+                        const input = e.target as HTMLInputElement;
+                        input.value = input.value.toUpperCase();
+                      }}
+                    />
+                    <p className="text-xs text-neutral-500">
+                      Ingresa el código exacto como aparece en la documentación
+                    </p>
+                  </div>
+
+                  <div className="flex items-end">
+                    <Button
+                      onClick={async () => {
+                        const input = document.getElementById('manual-code') as HTMLInputElement;
+                        const code = input?.value?.trim();
+
+                        if (!code) {
+                          setMessage({ type: 'error', text: 'Ingresa un código de reporte' });
+                          return;
+                        }
+
+                        setTestingReportCodes(true);
+                        setReportCodesResult(null);
+                        setMessage(null);
+
+                        try {
+                          const { data, error } = await supabase.functions.invoke('sicas-test-available-reports', {
+                            body: { manualCodes: [code] }
+                          });
+
+                          if (error) throw error;
+
+                          setReportCodesResult(data);
+
+                          if (data.success && data.summary.available > 0) {
+                            setMessage({
+                              type: 'success',
+                              text: `Código ${code} encontrado y disponible`
+                            });
+                          } else {
+                            setMessage({
+                              type: 'error',
+                              text: `Código ${code} no encontrado o no disponible en tu instalación SICAS`
+                            });
+                          }
+                        } catch (error: any) {
+                          setMessage({ type: 'error', text: `Error: ${error.message}` });
+                        } finally {
+                          setTestingReportCodes(false);
+                        }
+                      }}
+                      disabled={testingReportCodes}
+                      className="w-full"
+                    >
+                      {testingReportCodes ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Probando...
+                        </>
+                      ) : (
+                        <>
+                          <FlaskConical className="w-4 h-4 mr-2" />
+                          Probar Código
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </Section>
         </TabsContent>
       </Tabs>

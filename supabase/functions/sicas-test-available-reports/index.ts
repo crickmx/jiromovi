@@ -19,6 +19,15 @@ Deno.serve(async (req: Request) => {
   try {
     console.log('[Test Reports] Probando códigos de reporte disponibles...');
 
+    // Leer body si existe (para códigos manuales)
+    let manualCodes: string[] | null = null;
+    try {
+      const body = await req.json();
+      manualCodes = body?.manualCodes || null;
+    } catch (e) {
+      // No hay body, usar códigos por defecto
+    }
+
     // Verificar configuración de SICAS
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -55,9 +64,8 @@ Deno.serve(async (req: Request) => {
       password: config.sicas_password,
     });
 
-    // Probar con un rango más amplio de códigos
-    // Incluye formatos comunes: H seguido de números, códigos simples, etc.
-    const reportCodes = config.alternate_report_codes || [
+    // Usar códigos manuales si se proporcionan, si no usar los por defecto
+    const reportCodes = manualCodes || config.alternate_report_codes || [
       // Códigos H básicos (0-10)
       'H0', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10',
       // Códigos H tradicionales (100-120)
