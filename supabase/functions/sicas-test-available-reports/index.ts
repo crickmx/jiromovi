@@ -104,13 +104,13 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Test Reports] Probando ${reportCodes.length} códigos...`);
 
-    // Probar todos en paralelo con timeout individual
+    // Probar todos en paralelo con timeout individual (60 segundos para reportes grandes)
     const testPromises = reportCodes.map(async (keyCode) => {
       try {
         console.log(`[Test Reports] Probando ${keyCode}...`);
 
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), 10000)
+          setTimeout(() => reject(new Error('Timeout')), 60000)
         );
 
         const response = await Promise.race([

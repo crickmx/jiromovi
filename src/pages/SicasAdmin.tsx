@@ -70,6 +70,8 @@ export default function SicasAdmin() {
 
   const [testingReportCodes, setTestingReportCodes] = useState(false);
   const [reportCodesResult, setReportCodesResult] = useState<any>(null);
+  const [testingTimeoutCodes, setTestingTimeoutCodes] = useState(false);
+  const [timeoutCodesResult, setTimeoutCodesResult] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -384,6 +386,36 @@ export default function SicasAdmin() {
       setReportCodesResult({ success: false, error: error.message });
     } finally {
       setTestingReportCodes(false);
+    }
+  }
+
+  async function handleTestTimeoutCodes() {
+    setTestingTimeoutCodes(true);
+    setTimeoutCodesResult(null);
+    setMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sicas-test-timeout-codes');
+
+      if (error) throw error;
+
+      setTimeoutCodesResult(data);
+
+      if (data.success) {
+        const available = data.summary?.available || 0;
+        const withData = data.summary?.withData || 0;
+        setMessage({
+          type: 'success',
+          text: `Prueba secuencial completada. ${available} códigos disponibles, ${withData} con datos.`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setTimeoutCodesResult({ success: false, error: error.message });
+    } finally {
+      setTestingTimeoutCodes(false);
     }
   }
 
@@ -1776,25 +1808,49 @@ export default function SicasAdmin() {
                   </div>
                 </div>
 
-                <div>
+                <div className="grid grid-cols-2 gap-3">
                   <Button
                     onClick={handleTestReportCodes}
-                    disabled={testingReportCodes}
+                    disabled={testingReportCodes || testingTimeoutCodes}
                     className="w-full"
                     variant="outline"
                   >
                     {testingReportCodes ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Probando códigos de reporte...
+                        Probando...
                       </>
                     ) : (
                       <>
                         <Stethoscope className="w-4 h-4 mr-2" />
-                        Identificar Códigos Disponibles
+                        Prueba Rápida (25 códigos)
                       </>
                     )}
                   </Button>
+
+                  <Button
+                    onClick={handleTestTimeoutCodes}
+                    disabled={testingReportCodes || testingTimeoutCodes}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    {testingTimeoutCodes ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Probando lento...
+                      </>
+                    ) : (
+                      <>
+                        <FlaskConical className="w-4 h-4 mr-2" />
+                        Prueba Secuencial (7 códigos)
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="text-sm text-neutral-600 space-y-1">
+                  <p><strong>Prueba Rápida:</strong> Prueba 25 códigos en paralelo (30 seg cada uno). Rápido pero algunos pueden dar timeout.</p>
+                  <p><strong>Prueba Secuencial:</strong> Prueba 7 códigos uno por uno (90 seg cada uno). Lento pero más preciso para códigos que tardan.</p>
                 </div>
 
                 {reportCodesResult && (
@@ -1916,6 +1972,134 @@ export default function SicasAdmin() {
                         <div className="font-medium text-red-900 mb-1">Error</div>
                         <div className="text-sm text-red-800 font-mono whitespace-pre-wrap break-words">
                           {reportCodesResult.error}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {timeoutCodesResult && (
+                  <div className="space-y-4 pt-6 border-t">
+                    <h3 className="font-semibold">Resultados de la Prueba Secuencial</h3>
+
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="p-3 bg-neutral-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Probados</div>
+                        <div className="text-lg font-bold text-neutral-900">
+                          {timeoutCodesResult.summary?.total || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-green-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Disponibles</div>
+                        <div className="text-lg font-bold text-green-600">
+                          {timeoutCodesResult.summary?.available || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Con Datos</div>
+                        <div className="text-lg font-bold text-blue-600">
+                          {timeoutCodesResult.summary?.withData || 0}
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-amber-50 rounded-lg">
+                        <div className="text-xs text-neutral-500 mb-1">Timeout</div>
+                        <div className="text-lg font-bold text-amber-600">
+                          {timeoutCodesResult.summary?.timeout || 0}
+                        </div>
+                      </div>
+                    </div>
+
+                    {timeoutCodesResult.successfulCodes && timeoutCodesResult.successfulCodes.length > 0 && (
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <div className="font-medium text-green-900">
+                            Códigos Exitosos (con datos)
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {timeoutCodesResult.successfulCodes.map((code: string) => (
+                            <Badge key={code} className="bg-green-600 text-white font-mono">
+                              {code}
+                            </Badge>
+                          ))}
+                        </div>
+                        <p className="text-sm text-green-800">
+                          Estos códigos fueron verificados con timeout extendido (90 segundos)
+                        </p>
+                      </div>
+                    )}
+
+                    {timeoutCodesResult.results && (
+                      <div>
+                        <details className="pt-2">
+                          <summary className="text-sm font-medium cursor-pointer hover:text-blue-600 mb-3">
+                            Ver Detalle de Todos los Códigos Probados
+                          </summary>
+                          <div className="space-y-2 mt-3">
+                            {timeoutCodesResult.results.map((result: any) => (
+                              <div
+                                key={result.keyCode}
+                                className={`p-3 rounded-lg border ${
+                                  result.status === 'available'
+                                    ? 'bg-green-50 border-green-200'
+                                    : result.status === 'timeout'
+                                    ? 'bg-amber-50 border-amber-200'
+                                    : 'bg-red-50 border-red-200'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <code className="font-mono font-bold">{result.keyCode}</code>
+                                    <Badge
+                                      variant="secondary"
+                                      className={
+                                        result.status === 'available'
+                                          ? 'bg-green-500 text-white'
+                                          : result.status === 'timeout'
+                                          ? 'bg-amber-500 text-white'
+                                          : 'bg-red-500 text-white'
+                                      }
+                                    >
+                                      {result.status}
+                                    </Badge>
+                                    {result.recordCount > 0 && (
+                                      <span className="text-xs text-green-700">
+                                        {result.recordCount} registros
+                                      </span>
+                                    )}
+                                    {result.elapsedTime && (
+                                      <span className="text-xs text-neutral-500">
+                                        {(result.elapsedTime / 1000).toFixed(1)}s
+                                      </span>
+                                    )}
+                                  </div>
+                                  {result.status === 'available' ? (
+                                    <CheckCircle className="w-4 h-4 text-green-600" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-neutral-400" />
+                                  )}
+                                </div>
+                                {result.message && (
+                                  <div className="text-xs text-neutral-600 mt-2">
+                                    {result.message}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                    )}
+
+                    {!timeoutCodesResult.success && timeoutCodesResult.error && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="font-medium text-red-900 mb-1">Error</div>
+                        <div className="text-sm text-red-800 font-mono whitespace-pre-wrap break-words">
+                          {timeoutCodesResult.error}
                         </div>
                       </div>
                     )}
