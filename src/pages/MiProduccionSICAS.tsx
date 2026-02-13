@@ -72,11 +72,13 @@ export default function MiProduccionSICAS() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('polizas');
+  const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [polizas, setPolizas] = useState<Poliza[]>([]);
   const [cobranza, setCobranza] = useState<Cobranza[]>([]);
   const [renovaciones, setRenovaciones] = useState<Renovacion[]>([]);
   const [emisionesDelMes, setEmisionesDelMes] = useState<Emision[]>([]);
+  const [hasNoData, setHasNoData] = useState(false);
 
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({
@@ -96,8 +98,18 @@ export default function MiProduccionSICAS() {
     }
   }, [usuario]);
 
+  useEffect(() => {
+    // Detectar si no hay datos después de cargar
+    if (!loading) {
+      const noData = polizas.length === 0 && cobranza.length === 0 &&
+                     renovaciones.length === 0 && emisionesDelMes.length === 0;
+      setHasNoData(noData);
+    }
+  }, [loading, polizas, cobranza, renovaciones, emisionesDelMes]);
+
   const loadData = async () => {
     setLoading(true);
+    setSyncMessage(null);
     try {
       await Promise.all([
         loadPolizasVigentes(),
@@ -167,6 +179,7 @@ export default function MiProduccionSICAS() {
 
   const handleSync = async () => {
     setSyncing(true);
+    setSyncMessage(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
@@ -181,11 +194,26 @@ export default function MiProduccionSICAS() {
         }
       );
 
-      if (response.ok) {
+      const result = await response.json();
+
+      if (response.ok && result.success !== false) {
+        setSyncMessage({
+          type: 'success',
+          text: `Sincronización completada: ${result.polizas_vigentes || 0} pólizas, ${result.cobranza_pendiente || 0} cobranzas`
+        });
         await loadData();
+      } else {
+        setSyncMessage({
+          type: 'error',
+          text: `Error en sincronización: ${result.error || 'Error desconocido'}`
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al sincronizar:', error);
+      setSyncMessage({
+        type: 'error',
+        text: `Error de conexión: ${error.message || 'No se pudo conectar con SICAS'}`
+      });
     } finally {
       setSyncing(false);
     }
@@ -272,6 +300,65 @@ export default function MiProduccionSICAS() {
             </button>
           </div>
         </div>
+
+        {syncMessage && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            syncMessage.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-800'
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}>
+            <div className="flex items-start gap-3">
+              {syncMessage.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <p className="font-medium">{syncMessage.text}</p>
+              </div>
+              <button
+                onClick={() => setSyncMessage(null)}
+                className="text-neutral-500 hover:text-neutral-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {hasNoData && !loading && (
+          <div className="mb-6 bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                  No hay datos de producción disponibles
+                </h3>
+                <p className="text-blue-800 mb-4">
+                  Para visualizar tus pólizas, cobranza y renovaciones, primero debes sincronizar
+                  los datos desde SICAS. Este proceso consultará el sistema SICAS y guardará
+                  la información en caché para consulta rápida.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={handleSync}
+                    disabled={syncing}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
+                  >
+                    <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
+                    {syncing ? 'Sincronizando desde SICAS...' : 'Sincronizar Ahora'}
+                  </button>
+                  <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-100 px-4 py-2 rounded-lg">
+                    <Clock className="w-4 h-4" />
+                    <span>La sincronización puede tardar 1-2 minutos</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showFilters && (
           <div className="bg-white rounded-lg border border-neutral-200 p-4 mb-6">
