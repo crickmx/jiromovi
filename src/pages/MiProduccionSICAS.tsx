@@ -73,6 +73,11 @@ export default function MiProduccionSICAS() {
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('polizas');
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [sicasDiagnostic, setSicasDiagnostic] = useState<{
+    responsenbr: string;
+    responsetxt: string;
+    message: string;
+  } | null>(null);
 
   const [polizas, setPolizas] = useState<Poliza[]>([]);
   const [cobranza, setCobranza] = useState<Cobranza[]>([]);
@@ -180,6 +185,7 @@ export default function MiProduccionSICAS() {
   const handleSync = async () => {
     setSyncing(true);
     setSyncMessage(null);
+    setSicasDiagnostic(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
@@ -200,10 +206,22 @@ export default function MiProduccionSICAS() {
         const polizasCount = result.results?.polizas_vigentes || result.polizas_vigentes || 0;
         const cobranzaCount = result.results?.cobranza_pendiente || result.cobranza_pendiente || 0;
 
-        setSyncMessage({
-          type: 'success',
-          text: `Sincronización completada: ${polizasCount} pólizas, ${cobranzaCount} cobranzas`
-        });
+        if (polizasCount === 0 && result.results?.metadata?.responsenbr === '0') {
+          setSicasDiagnostic({
+            responsenbr: result.results.metadata.responsenbr,
+            responsetxt: result.results.metadata.responsetxt,
+            message: result.results.metadata.message,
+          });
+          setSyncMessage({
+            type: 'error',
+            text: 'SICAS no devolvió pólizas. Ver diagnóstico abajo.'
+          });
+        } else {
+          setSyncMessage({
+            type: 'success',
+            text: `Sincronización completada: ${polizasCount} pólizas, ${cobranzaCount} cobranzas`
+          });
+        }
         await loadData();
       } else {
         const errorMsg = result.error ||
@@ -327,6 +345,74 @@ export default function MiProduccionSICAS() {
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+          </div>
+        )}
+
+        {sicasDiagnostic && (
+          <div className="mb-6 bg-amber-50 border-2 border-amber-300 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-amber-900 mb-2">
+                  Diagnóstico: Error en Reporte SICAS H03117
+                </h3>
+                <p className="text-amber-800 mb-4">
+                  La conexión a SICAS funciona correctamente, pero el reporte no devuelve datos.
+                </p>
+
+                <div className="bg-white rounded-lg p-4 mb-4 space-y-2 text-sm">
+                  <div className="flex gap-2">
+                    <span className="font-semibold text-amber-900 min-w-[140px]">Código de respuesta:</span>
+                    <span className="text-amber-800">{sicasDiagnostic.responsenbr}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-semibold text-amber-900 min-w-[140px]">Estado:</span>
+                    <span className="text-amber-800">{sicasDiagnostic.responsetxt}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-semibold text-amber-900 min-w-[140px]">Mensaje de SICAS:</span>
+                    <span className="text-amber-800">{sicasDiagnostic.message}</span>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg p-4 mb-4">
+                  <h4 className="font-semibold text-amber-900 mb-2">Causa Probable:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-amber-800">
+                    <li>El reporte H03117 no está disponible para tu usuario</li>
+                    <li>Tu usuario no tiene permisos para este reporte</li>
+                    <li>Existe un problema interno en SICAS</li>
+                    <li>Se requiere usar un código de reporte diferente</li>
+                  </ul>
+                </div>
+
+                <div className="bg-amber-100 rounded-lg p-4">
+                  <h4 className="font-semibold text-amber-900 mb-2 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    Acción Requerida
+                  </h4>
+                  <p className="text-sm text-amber-800 mb-3">
+                    Contacta al proveedor de SICAS con la siguiente información:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-amber-800 mb-3">
+                    <li><strong>Código de reporte:</strong> H03117</li>
+                    <li><strong>Mensaje de error:</strong> "{sicasDiagnostic.message}"</li>
+                    <li><strong>Solicitud:</strong> Código correcto para obtener pólizas vigentes</li>
+                  </ul>
+                  <p className="text-xs text-amber-700 mt-2">
+                    Una vez que tengas el código correcto, actualízalo en: Admin {'>'} SICAS {'>'} Configuración
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSicasDiagnostic(null)}
+                  className="mt-4 text-sm text-amber-700 hover:text-amber-900 underline"
+                >
+                  Cerrar diagnóstico
+                </button>
+              </div>
             </div>
           </div>
         )}
