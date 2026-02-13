@@ -61,6 +61,7 @@ Deno.serve(async (req: Request) => {
         .upsert({
           id_sicas_despacho,
           movi_oficina_id,
+          catalog_type_id: 11,
           mapped_by: user.id,
           mapped_at: new Date().toISOString(),
         }, {
