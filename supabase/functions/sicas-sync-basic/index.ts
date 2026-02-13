@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import * as https from 'node:https';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +23,45 @@ interface PolizaBasica {
   vigencia_desde: string | null;
   vigencia_hasta: string | null;
   prima_total: number | null;
+}
+
+// Función para hacer petición HTTPS sin verificar certificado
+function httpsRequest(url: string, options: any, data: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const urlParsed = new URL(url);
+
+    const reqOptions = {
+      hostname: urlParsed.hostname,
+      port: 443,
+      path: urlParsed.pathname,
+      method: options.method || 'POST',
+      headers: options.headers || {},
+      rejectUnauthorized: false, // Deshabilitar verificación SSL
+    };
+
+    const req = https.request(reqOptions, (res) => {
+      let responseData = '';
+
+      res.on('data', (chunk) => {
+        responseData += chunk;
+      });
+
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(responseData);
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      reject(error);
+    });
+
+    req.write(data);
+    req.end();
+  });
 }
 
 Deno.serve(async (req: Request) => {
@@ -98,28 +138,20 @@ Deno.serve(async (req: Request) => {
 
     console.log('[SICAS Basic] Enviando consulta SQL...');
 
-    // Crear cliente HTTP que ignora verificación SSL (necesario para SICAS)
-    const client = Deno.createHttpClient({
-      // @ts-ignore - allowHost es válido pero no está en los tipos
-      allowHost: true,
-    });
-
-    const response = await fetch(SICAS_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': 'http://tempuri.org/ProcesarWS',
+    // Hacer petición con node:https (permite ignorar SSL)
+    const responseText = await httpsRequest(
+      SICAS_ENDPOINT,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'SOAPAction': 'http://tempuri.org/ProcesarWS',
+          'Content-Length': Buffer.byteLength(soapEnvelope),
+        },
       },
-      body: soapEnvelope,
-      // @ts-ignore - client es válido pero no está en los tipos estándar
-      client: client,
-    });
+      soapEnvelope
+    );
 
-    if (!response.ok) {
-      throw new Error(`SICAS HTTP Error: ${response.status}`);
-    }
-
-    const responseText = await response.text();
     console.log('[SICAS Basic] Respuesta recibida, parseando...');
 
     // Decodificar entidades HTML
@@ -210,7 +242,7 @@ Deno.serve(async (req: Request) => {
         stats: {
           records_fetched: polizas.length,
           records_inserted: polizas.length,
-          method: 'SQL Direct Query',
+          method: 'SQL Direct Query (node:https)',
         },
         metadata: {
           synced_at: new Date().toISOString(),

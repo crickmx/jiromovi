@@ -96,22 +96,56 @@ Para sincronizar más de 500 pólizas, se puede ejecutar la función múltiples 
 
 ### Manejo de Certificado SSL
 
-El servidor SICAS (www.sicasonline.com.mx) tiene un certificado SSL que no es reconocido por Deno debido a un "UnknownIssuer". La solución implementada usa un cliente HTTP personalizado:
+El servidor SICAS (www.sicasonline.com.mx) tiene un certificado SSL que no es reconocido por Deno debido a un "UnknownIssuer". La solución implementada usa **node:https** con `rejectUnauthorized: false`:
 
 ```typescript
-const client = Deno.createHttpClient({
-  allowHost: true,  // Permite conexiones sin validar certificado
-});
+import * as https from 'node:https';
 
-const response = await fetch(SICAS_ENDPOINT, {
+function httpsRequest(url: string, options: any, data: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const urlParsed = new URL(url);
+
+    const reqOptions = {
+      hostname: urlParsed.hostname,
+      port: 443,
+      path: urlParsed.pathname,
+      method: options.method || 'POST',
+      headers: options.headers || {},
+      rejectUnauthorized: false, // ← Permite ignorar certificado SSL inválido
+    };
+
+    const req = https.request(reqOptions, (res) => {
+      let responseData = '';
+      res.on('data', (chunk) => { responseData += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(responseData);
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}`));
+        }
+      });
+    });
+
+    req.on('error', (error) => { reject(error); });
+    req.write(data);
+    req.end();
+  });
+}
+
+// Uso:
+const responseText = await httpsRequest(SICAS_ENDPOINT, {
   method: 'POST',
-  headers: { ... },
-  body: soapEnvelope,
-  client: client,
-});
+  headers: {
+    'Content-Type': 'text/xml; charset=utf-8',
+    'SOAPAction': 'http://tempuri.org/ProcesarWS',
+  },
+}, soapEnvelope);
 ```
 
-Esto permite conectarse a SICAS a pesar del certificado inválido, sin comprometer la seguridad de las credenciales (que viajan cifradas por HTTPS).
+**Por qué funciona:**
+- `node:https` es compatible en Deno Deploy
+- `rejectUnauthorized: false` deshabilita la validación del certificado SSL
+- Las credenciales siguen cifradas por HTTPS (solo se ignora la validación del emisor)
 
 ## Verificación en Base de Datos
 
