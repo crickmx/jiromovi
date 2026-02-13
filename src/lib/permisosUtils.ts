@@ -97,7 +97,7 @@ export async function cargarPermisosAdicionales(usuarioId: string): Promise<stri
       return [];
     }
 
-    return data?.map((p: any) => p.modulo_codigo) || [];
+    return data?.map((p: any) => p.codigo) || [];
   } catch (err) {
     console.error('Error loading additional permissions:', err);
     return [];
