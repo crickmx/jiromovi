@@ -65,12 +65,11 @@ Deno.serve(async (req: Request) => {
 
     console.log('[Test Reports] Configuración verificada, creando cliente...');
 
-    // Configurar variables de entorno para el cliente SICAS
-    Deno.env.set('SICAS_REST_API_URL', config.endpoint || 'https://security-services.sicasonline.info/api');
-    Deno.env.set('SICAS_USERNAME', config.sicas_usuario);
-    Deno.env.set('SICAS_PASSWORD', config.sicas_password);
-
-    const sicasClient = createSicasRestClient();
+    const sicasClient = createSicasRestClient({
+      baseUrl: config.endpoint || 'https://security-services.sicasonline.info/api',
+      username: config.sicas_usuario,
+      password: config.sicas_password,
+    });
 
     // Lista extendida de códigos de reporte posibles
     const reportCodes = [

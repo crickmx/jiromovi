@@ -56,10 +56,10 @@ export class SicasRestClient {
   private readonly TOKEN_LIFETIME_MS = 3 * 60 * 1000;
   private readonly TOKEN_REFRESH_BUFFER_MS = 30 * 1000;
 
-  constructor() {
-    this.baseUrl = Deno.env.get('SICAS_REST_API_URL') || 'https://security-services.sicasonline.info/api';
-    this.username = Deno.env.get('SICAS_USERNAME') || '';
-    this.password = Deno.env.get('SICAS_PASSWORD') || '';
+  constructor(config?: { baseUrl?: string; username?: string; password?: string }) {
+    this.baseUrl = config?.baseUrl || Deno.env.get('SICAS_REST_API_URL') || 'https://security-services.sicasonline.info/api';
+    this.username = config?.username || Deno.env.get('SICAS_USERNAME') || '';
+    this.password = config?.password || Deno.env.get('SICAS_PASSWORD') || '';
 
     if (!this.username || !this.password) {
       throw new Error('SICAS credentials not configured');
