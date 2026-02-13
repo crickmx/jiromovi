@@ -31,6 +31,7 @@ import {
   type SicasDigitalFile,
 } from '../lib/sicasMirrorUtils';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
+import { supabase } from '../lib/supabase';
 
 export default function MiProduccionSICASMirror() {
   const { usuario } = useAuth();
@@ -95,31 +96,36 @@ export default function MiProduccionSICASMirror() {
     }
   }
 
-  async function handleSync(module: 'documents' | 'commissions-pendiente' | 'commissions-pagada' | 'receivables') {
+  async function handleManualSync() {
     setSyncing(true);
     setMessage(null);
 
     try {
-      let result;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
 
-      if (module === 'documents') {
-        result = await syncDocuments();
-      } else if (module === 'commissions-pendiente') {
-        result = await syncCommissions('pendiente');
-      } else if (module === 'commissions-pagada') {
-        result = await syncCommissions('pagada');
-      } else {
-        result = await syncReceivables();
-      }
+      const response = await fetch(`${supabaseUrl}/functions/v1/sync-sicas-polizas-vigentes`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ maxPages: 5, itemsPerPage: 200 }),
+      });
 
-      if (result.success) {
+      const result = await response.json();
+
+      if (result.success && result.stats) {
         setMessage({
           type: 'success',
-          text: `Sincronización exitosa: ${result.summary?.records_upserted || 0} registros actualizados`,
+          text: `Sincronización exitosa: ${result.stats.records_inserted || 0} pólizas actualizadas`,
         });
         await loadAllData();
       } else {
-        setMessage({ type: 'error', text: `Error: ${result.error}` });
+        setMessage({
+          type: 'error',
+          text: `Error en sincronización: ${result.error || 'Sin datos disponibles'}`
+        });
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
@@ -205,6 +211,16 @@ export default function MiProduccionSICASMirror() {
               )}
               Recargar Datos
             </Button>
+            {puedeAdministrarSicas && (
+              <Button onClick={() => handleManualSync()} disabled={syncing}>
+                {syncing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Database className="w-4 h-4 mr-2" />
+                )}
+                Sincronizar desde SICAS
+              </Button>
+            )}
           </div>
         }
       />
@@ -212,13 +228,21 @@ export default function MiProduccionSICASMirror() {
       <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div className="flex items-start gap-2">
           <Database className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm text-blue-900 font-medium">
-              Sincronización automática activa
+              Base de datos espejo SICAS
             </p>
             <p className="text-xs text-blue-700 mt-1">
-              Los datos se sincronizan automáticamente cada hora desde SICAS.
-              {lastSync && ` Última sincronización: ${formatDate(lastSync)}`}
+              {documents.length === 0 ? (
+                <span className="font-medium">
+                  No hay pólizas sincronizadas. Use el botón "Sincronizar desde SICAS" para obtener datos.
+                </span>
+              ) : (
+                <>
+                  Mostrando {documents.length} pólizas vigentes.
+                  {lastSync && ` Última sincronización: ${formatDate(lastSync)}`}
+                </>
+              )}
             </p>
           </div>
         </div>
