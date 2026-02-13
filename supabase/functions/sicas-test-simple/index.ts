@@ -9,6 +9,17 @@ const corsHeaders = {
 
 const DEFAULT_SICAS_ENDPOINT = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
 
+// Tipos de error estructurado
+interface ErrorResponse {
+  success: false;
+  error: string;
+  stage: 'AUTH' | 'CONFIG' | 'FETCH_SICAS' | 'PARSE_XML' | 'DB_SAVE' | 'UNKNOWN';
+  http_status?: number;
+  http_body?: string;
+  details?: string;
+  timestamp: string;
+}
+
 /**
  * Función de prueba simple para SICAS
  * Ejecuta el reporte sin filtros para diagnosticar problemas
@@ -82,8 +93,13 @@ Deno.serve(async (req: Request) => {
 </soap:Envelope>`;
 
     const startTime = Date.now();
+    let currentStage: ErrorResponse['stage'] = 'FETCH_SICAS';
+
+    console.log(`[SICAS-Test] STAGE: FETCH_SICAS - Enviando request a: ${sicasUrl}`);
 
     let response;
+    let responseText: string = '';
+
     try {
       response = await fetch(sicasUrl, {
         method: 'POST',
@@ -99,21 +115,48 @@ Deno.serve(async (req: Request) => {
         console.warn(`[SICAS-Test] Error SSL, intentando con HTTP...`);
         const httpEndpoint = sicasUrl.replace('https://', 'http://');
 
-        response = await fetch(httpEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/xml; charset=utf-8',
-            'SOAPAction': 'http://tempuri.org/ProcesarWS',
-          },
-          body: soapEnvelope,
-        });
+        try {
+          response = await fetch(httpEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/xml; charset=utf-8',
+              'SOAPAction': 'http://tempuri.org/ProcesarWS',
+            },
+            body: soapEnvelope,
+          });
+        } catch (httpError: any) {
+          console.error('[SICAS-Test] Error en fallback HTTP:', httpError);
+          throw new Error(`FETCH_SICAS: ${httpError.message}`);
+        }
       } else {
-        throw fetchError;
+        console.error('[SICAS-Test] Error en fetch:', fetchError);
+        throw new Error(`FETCH_SICAS: ${fetchError.message}`);
       }
     }
 
     const duration = Date.now() - startTime;
-    const responseText = await response.text();
+
+    // LOGGING CRÍTICO: Status code real y body
+    console.log(`[SICAS-Test] HTTP Status: ${response.status} ${response.statusText}`);
+
+    try {
+      responseText = await response.text();
+      console.log(`[SICAS-Test] Response length: ${responseText.length} bytes`);
+      console.log(`[SICAS-Test] Response preview:`, responseText.substring(0, 500));
+    } catch (textError: any) {
+      console.error('[SICAS-Test] Error leyendo response body:', textError);
+      throw new Error(`FETCH_SICAS: No se pudo leer el body de la respuesta`);
+    }
+
+    // Verificar status HTTP
+    if (!response.ok) {
+      console.error(`[SICAS-Test] HTTP Error ${response.status}: ${response.statusText}`);
+      console.error(`[SICAS-Test] Body de error:`, responseText.substring(0, 1000));
+
+      throw new Error(
+        `HTTP ${response.status}: ${response.statusText} | Body: ${responseText.substring(0, 200)}`
+      );
+    }
 
     // Decodificar entidades HTML
     const decoded = responseText
@@ -261,16 +304,46 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error: any) {
-    console.error('[SICAS-Test] Error:', error);
+    console.error(`[SICAS-Test] Error en STAGE: ${currentStage}`, error);
+
+    // Extraer información del error
+    const errorMessage = error.message || 'Error desconocido';
+    let httpStatus: number | undefined;
+    let httpBody: string | undefined;
+
+    // Detectar HTTP errors
+    const httpMatch = errorMessage.match(/HTTP (\d+):/);
+    if (httpMatch) {
+      httpStatus = parseInt(httpMatch[1]);
+      const bodyMatch = errorMessage.match(/Body: (.*)/);
+      if (bodyMatch) {
+        httpBody = bodyMatch[1];
+      }
+    }
+
+    // Determinar status code de respuesta basado en stage
+    let responseStatusCode = 500;
+    if (currentStage === 'CONFIG') responseStatusCode = 400;
+    if (currentStage === 'AUTH') responseStatusCode = 401;
+    if (httpStatus) responseStatusCode = httpStatus;
+
+    // Construir respuesta de error estructurada
+    const errorResponse: ErrorResponse = {
+      success: false,
+      error: errorMessage,
+      stage: currentStage,
+      http_status: httpStatus,
+      http_body: httpBody,
+      details: error.stack?.substring(0, 500),
+      timestamp: new Date().toISOString(),
+    };
+
+    console.error('[SICAS-Test] Error Response:', JSON.stringify(errorResponse, null, 2));
 
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        stack: error.stack,
-      }),
+      JSON.stringify(errorResponse),
       {
-        status: 500,
+        status: responseStatusCode,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',

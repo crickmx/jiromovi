@@ -9,6 +9,17 @@ const corsHeaders = {
 
 const DEFAULT_SICAS_ENDPOINT = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
 
+// Tipos de error estructurado
+interface ErrorResponse {
+  success: false;
+  error: string;
+  stage: 'AUTH' | 'CONFIG' | 'FETCH_SICAS' | 'PARSE_XML' | 'DB_SAVE' | 'UNKNOWN';
+  http_status?: number;
+  http_body?: string;
+  details?: string;
+  timestamp: string;
+}
+
 interface PolizaVigente {
   id_documento: string;
   no_poliza: string | null;
@@ -95,7 +106,11 @@ async function consultarPolizasVigentesSICAS(
   };
 
   let response;
+  let responseText: string = '';
+
   try {
+    console.log(`[SICAS] Enviando request a: ${endpoint}`);
+
     response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -110,40 +125,73 @@ async function consultarPolizasVigentesSICAS(
       console.warn(`[SICAS] Error SSL en página ${page}, intentando con HTTP...`);
       const httpEndpoint = endpoint.replace('https://', 'http://');
 
-      response = await fetch(httpEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml; charset=utf-8',
-          'SOAPAction': 'http://tempuri.org/ProcesarWS',
-        },
-        body: soapEnvelope,
-      });
+      try {
+        response = await fetch(httpEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'SOAPAction': 'http://tempuri.org/ProcesarWS',
+          },
+          body: soapEnvelope,
+        });
+      } catch (httpError: any) {
+        console.error('[SICAS] Error en fallback HTTP:', httpError);
+        throw new Error(`FETCH_SICAS: ${httpError.message}`);
+      }
     } else {
-      throw fetchError;
+      console.error('[SICAS] Error en fetch:', fetchError);
+      throw new Error(`FETCH_SICAS: ${fetchError.message}`);
     }
   }
 
-  if (!response.ok) {
-    throw new Error(`SICAS HTTP Error: ${response.status}`);
+  // LOGGING CRÍTICO: Status code real y body
+  console.log(`[SICAS] HTTP Status: ${response.status} ${response.statusText}`);
+
+  try {
+    responseText = await response.text();
+    console.log(`[SICAS] Response length: ${responseText.length} bytes`);
+    console.log(`[SICAS] Response preview (first 500 chars):`, responseText.substring(0, 500));
+  } catch (textError: any) {
+    console.error('[SICAS] Error leyendo response body:', textError);
+    throw new Error(`FETCH_SICAS: No se pudo leer el body de la respuesta`);
   }
 
-  const responseText = await response.text();
+  // Verificar status HTTP
+  if (!response.ok) {
+    console.error(`[SICAS] HTTP Error ${response.status}: ${response.statusText}`);
+    console.error(`[SICAS] Body de error:`, responseText.substring(0, 1000));
+
+    throw new Error(
+      `HTTP ${response.status}: ${response.statusText} | Body: ${responseText.substring(0, 200)}`
+    );
+  }
 
   // Decodificar entidades HTML
-  const decoded = responseText
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
+  let decoded: string;
+  let resultContent: string;
 
-  // Extraer el contenido del resultado
-  const resultMatch = decoded.match(/<ProcesarWSResult>([\s\S]*?)<\/ProcesarWSResult>/);
-  if (!resultMatch) {
-    throw new Error('No se pudo extraer ProcesarWSResult del response');
+  try {
+    decoded = responseText
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
+
+    // Extraer el contenido del resultado
+    const resultMatch = decoded.match(/<ProcesarWSResult>([\s\S]*?)<\/ProcesarWSResult>/);
+    if (!resultMatch) {
+      console.error('[SICAS] No se encontró ProcesarWSResult en el response');
+      console.error('[SICAS] Decoded preview:', decoded.substring(0, 500));
+      throw new Error('PARSE_XML: No se encontró ProcesarWSResult en la respuesta de SICAS');
+    }
+
+    resultContent = resultMatch[1];
+    console.log(`[SICAS] Resultado extraído: ${resultContent.length} bytes`);
+  } catch (parseError: any) {
+    console.error('[SICAS] Error en decode/parse inicial:', parseError);
+    throw new Error(`PARSE_XML: ${parseError.message}`);
   }
-
-  const resultContent = resultMatch[1];
 
   // Verificar estado del proceso
   const responseNbrMatch = resultContent.match(/<RESPONSENBR>(\d+)<\/RESPONSENBR>/);
@@ -402,24 +450,67 @@ Deno.serve(async (req: Request) => {
   }
 
   const startedAt = new Date();
+  let currentStage: ErrorResponse['stage'] = 'UNKNOWN';
 
   try {
+    // STAGE: CONFIG
+    currentStage = 'CONFIG';
+    console.log('[Sync] STAGE: CONFIG - Inicializando configuración...');
+
     // Inicializar Supabase con service role
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      const error: ErrorResponse = {
+        success: false,
+        error: 'Variables de entorno de Supabase no configuradas',
+        stage: 'CONFIG',
+        details: 'SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY faltantes',
+        timestamp: new Date().toISOString(),
+      };
+      return new Response(JSON.stringify(error), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Obtener configuración SICAS
-    const { data: config } = await supabase
+    console.log('[Sync] Obteniendo configuración SICAS de base de datos...');
+    const { data: config, error: configError } = await supabase
       .from('sicas_config')
       .select('*')
       .single();
 
+    if (configError) {
+      console.error('[Sync] Error obteniendo config:', configError);
+      const error: ErrorResponse = {
+        success: false,
+        error: 'Error al obtener configuración SICAS',
+        stage: 'CONFIG',
+        details: configError.message,
+        timestamp: new Date().toISOString(),
+      };
+      return new Response(JSON.stringify(error), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!config) {
-      return new Response(
-        JSON.stringify({ error: "Configuración SICAS no encontrada" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const error: ErrorResponse = {
+        success: false,
+        error: 'Configuración SICAS no encontrada',
+        stage: 'CONFIG',
+        details: 'Configure las credenciales en Admin > SICAS',
+        timestamp: new Date().toISOString(),
+      };
+      return new Response(JSON.stringify(error), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Usar credenciales de la configuración o variables de entorno
@@ -427,13 +518,22 @@ Deno.serve(async (req: Request) => {
     const sicasUsuario = config.sicas_usuario || Deno.env.get("SICAS_USUARIO");
     const sicasPassword = config.sicas_password || Deno.env.get("SICAS_PASSWORD");
 
+    console.log('[Sync] Endpoint SICAS:', sicasUrl);
+    console.log('[Sync] Usuario configurado:', sicasUsuario ? 'SÍ' : 'NO');
+    console.log('[Sync] Password configurado:', sicasPassword ? 'SÍ' : 'NO');
+
     if (!sicasUsuario || !sicasPassword) {
-      return new Response(
-        JSON.stringify({
-          error: "Configuración SICAS incompleta. Configure las credenciales en Admin > SICAS"
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const error: ErrorResponse = {
+        success: false,
+        error: 'Configuración SICAS incompleta',
+        stage: 'CONFIG',
+        details: 'Usuario o password no configurados. Configure las credenciales en Admin > SICAS',
+        timestamp: new Date().toISOString(),
+      };
+      return new Response(JSON.stringify(error), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Parámetros opcionales
@@ -441,8 +541,11 @@ Deno.serve(async (req: Request) => {
     const maxPages = parseInt(url.searchParams.get('maxPages') || '5');
     const itemsPerPage = parseInt(url.searchParams.get('itemsPerPage') || '200');
 
-    console.log('[Sync] Iniciando sincronización de pólizas vigentes...');
     console.log('[Sync] Parámetros:', { maxPages, itemsPerPage });
+
+    // STAGE: FETCH_SICAS
+    currentStage = 'FETCH_SICAS';
+    console.log('[Sync] STAGE: FETCH_SICAS - Consultando datos de SICAS...');
 
     const allPolizas: PolizaVigente[] = [];
     let currentPage = 1;
@@ -453,6 +556,8 @@ Deno.serve(async (req: Request) => {
     // Consultar todas las páginas
     while (currentPage <= maxPages) {
       try {
+        console.log(`[Sync] Consultando página ${currentPage}/${maxPages}...`);
+
         const result = await consultarPolizasVigentesSICAS(
           sicasUrl,
           sicasUsuario,
@@ -465,6 +570,8 @@ Deno.serve(async (req: Request) => {
         lastSicasDetails = sicasDetails;
         lastDiagnostic = diagnostic;
         lastRequestInfo = request;
+
+        console.log(`[Sync] Página ${currentPage}: ${pagePolizas.length} pólizas obtenidas`);
 
         if (pagePolizas.length === 0) {
           console.log(`[Sync] Página ${currentPage} sin resultados, finalizando...`);
@@ -483,28 +590,52 @@ Deno.serve(async (req: Request) => {
         }
       } catch (error: any) {
         console.error(`[Sync] Error en página ${currentPage}:`, error.message);
-        break;
+
+        // Determinar el stage del error
+        if (error.message?.includes('FETCH_SICAS')) {
+          currentStage = 'FETCH_SICAS';
+        } else if (error.message?.includes('PARSE_XML')) {
+          currentStage = 'PARSE_XML';
+        }
+
+        // Si es error fatal, re-lanzar para catch principal
+        throw error;
       }
     }
 
     console.log(`[Sync] Total pólizas obtenidas: ${allPolizas.length}`);
+
+    // STAGE: DB_SAVE
+    currentStage = 'DB_SAVE';
+    console.log('[Sync] STAGE: DB_SAVE - Guardando en base de datos...');
 
     let saveStats = { inserted: 0, updated: 0, errors: 0 };
 
     // Si no hay pólizas, limpiar la tabla
     if (allPolizas.length === 0) {
       console.log('[Sync] No hay pólizas, limpiando tabla...');
-      const { error } = await supabase
-        .from('sicas_polizas_vigentes')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+      try {
+        const { error } = await supabase
+          .from('sicas_polizas_vigentes')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000');
 
-      if (error) {
-        console.error('[Sync] Error al limpiar tabla:', error);
+        if (error) {
+          console.error('[Sync] Error al limpiar tabla:', error);
+          throw new Error(`DB_SAVE: Error al limpiar tabla - ${error.message}`);
+        }
+      } catch (dbError: any) {
+        throw new Error(`DB_SAVE: ${dbError.message}`);
       }
     } else {
       // Guardar en caché
-      saveStats = await guardarPolizasCache(supabase, allPolizas);
+      try {
+        saveStats = await guardarPolizasCache(supabase, allPolizas);
+        console.log(`[Sync] Guardado: ${saveStats.inserted} insertados, ${saveStats.updated} actualizados, ${saveStats.errors} errores`);
+      } catch (saveError: any) {
+        console.error('[Sync] Error al guardar en caché:', saveError);
+        throw new Error(`DB_SAVE: Error al guardar pólizas - ${saveError.message}`);
+      }
     }
 
     // Determinar status final - NUNCA success sin datos reales
@@ -570,7 +701,41 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error: any) {
-    console.error('[Sync] Error fatal:', error);
+    console.error(`[Sync] Error fatal en STAGE: ${currentStage}`, error);
+
+    // Extraer información del error
+    const errorMessage = error.message || 'Error desconocido';
+    let httpStatus: number | undefined;
+    let httpBody: string | undefined;
+
+    // Detectar HTTP errors
+    const httpMatch = errorMessage.match(/HTTP (\d+):/);
+    if (httpMatch) {
+      httpStatus = parseInt(httpMatch[1]);
+      const bodyMatch = errorMessage.match(/Body: (.*)/);
+      if (bodyMatch) {
+        httpBody = bodyMatch[1];
+      }
+    }
+
+    // Determinar status code de respuesta basado en stage
+    let responseStatusCode = 500;
+    if (currentStage === 'CONFIG') responseStatusCode = 400;
+    if (currentStage === 'AUTH') responseStatusCode = 401;
+    if (httpStatus) responseStatusCode = httpStatus;
+
+    // Construir respuesta de error estructurada
+    const errorResponse: ErrorResponse = {
+      success: false,
+      error: errorMessage,
+      stage: currentStage,
+      http_status: httpStatus,
+      http_body: httpBody,
+      details: error.stack?.substring(0, 500),
+      timestamp: new Date().toISOString(),
+    };
+
+    console.error('[Sync] Error Response:', JSON.stringify(errorResponse, null, 2));
 
     // Registrar error en log con diagnóstico completo
     try {
@@ -588,23 +753,28 @@ Deno.serve(async (req: Request) => {
           records_errors: 1,
         },
         startedAt,
-        error.message,
+        errorMessage,
         undefined,
-        { raw_result_length: 0, has_dataset: false, tables_found: [], raw_preview: error.stack?.substring(0, 500) },
-        { report_code: 'H03117', page: 1, items_per_page: 200 }
+        {
+          raw_result_length: 0,
+          has_dataset: false,
+          tables_found: [],
+          raw_preview: error.stack?.substring(0, 500),
+        },
+        {
+          report_code: 'H03117',
+          page: 1,
+          items_per_page: 200,
+        }
       );
     } catch (logError) {
       console.error('[Sync] Error al registrar log:', logError);
     }
 
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        details: error.stack,
-      }),
+      JSON.stringify(errorResponse),
       {
-        status: 500,
+        status: responseStatusCode,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
