@@ -72,6 +72,7 @@ import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 import ChatGPTTest from './pages/ChatGPTTest';
 import SicasAdmin from './pages/SicasAdmin';
 import SicasTestCatalogs from './pages/SicasTestCatalogs';
+import SicasDiagnostico from './pages/SicasDiagnostico';
 import CentroDigital from './pages/CentroDigital';
 import CursoCedulaA from './pages/CursoCedulaA';
 import ModuloViewer from './pages/ModuloViewer';
@@ -806,6 +807,7 @@ function App() {
               <Route path="/catalogos-web" element={<ProtectedRoute requireAdmin><Layout><CatalogosWeb /></Layout></ProtectedRoute>} />
               <Route path="/sicas" element={<ProtectedRoute requireAdmin><Layout><SicasAdmin /></Layout></ProtectedRoute>} />
               <Route path="/sicas/test-catalogs" element={<ProtectedRoute requireAdmin><Layout><SicasTestCatalogs /></Layout></ProtectedRoute>} />
+              <Route path="/sicas/diagnostico" element={<ProtectedRoute requireAdmin><SicasDiagnostico /></ProtectedRoute>} />
               <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
 
