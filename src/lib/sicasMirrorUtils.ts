@@ -97,6 +97,9 @@ export interface SyncRun {
   duration_seconds: number | null;
 }
 
+/**
+ * Obtiene pólizas vigentes desde la tabla sincronizada
+ */
 export async function getMyDocuments(filters?: {
   fromDate?: string;
   toDate?: string;
@@ -104,21 +107,35 @@ export async function getMyDocuments(filters?: {
   compania?: string;
 }): Promise<SicasDocument[]> {
   let query = supabase
-    .from('sicas_documents')
-    .select('*')
-    .order('fecha_captura', { ascending: false });
+    .from('sicas_polizas_vigentes')
+    .select(`
+      id,
+      id_documento,
+      vend_id,
+      vend_nombre,
+      desp_id,
+      desp_nombre,
+      aseguradora,
+      ramo,
+      subramo,
+      contratante,
+      asegurado,
+      no_poliza,
+      vigencia_desde,
+      vigencia_hasta,
+      prima_neta,
+      prima_total,
+      synced_at,
+      created_at,
+      updated_at
+    `)
+    .order('vigencia_desde', { ascending: false });
 
-  if (filters?.fromDate) {
-    query = query.gte('fecha_captura', filters.fromDate);
-  }
-  if (filters?.toDate) {
-    query = query.lte('fecha_captura', filters.toDate);
-  }
   if (filters?.ramo) {
     query = query.eq('ramo', filters.ramo);
   }
   if (filters?.compania) {
-    query = query.eq('compania', filters.compania);
+    query = query.eq('aseguradora', filters.compania);
   }
 
   const { data, error } = await query;
@@ -128,37 +145,42 @@ export async function getMyDocuments(filters?: {
     throw error;
   }
 
-  return data || [];
+  // Mapear a la interfaz esperada
+  return (data || []).map((item: any) => ({
+    id: item.id,
+    id_docto: item.id_documento,
+    vend_id: item.vend_id,
+    vend_nombre: item.vend_nombre,
+    usuario_id: null,
+    oficina_id: null,
+    desp_nombre: item.desp_nombre,
+    ramo: item.ramo,
+    subramo: item.subramo,
+    compania: item.aseguradora,
+    poliza: item.no_poliza,
+    cliente: item.contratante || item.asegurado,
+    fecha_captura: item.vigencia_desde,
+    fecha_emision: item.vigencia_desde,
+    vigencia_desde: item.vigencia_desde,
+    vigencia_hasta: item.vigencia_hasta,
+    importe: item.prima_total,
+    prima_neta: item.prima_neta,
+    synced_at: item.synced_at,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  }));
 }
 
 export async function getMyCommissions(source: 'pendiente' | 'pagada'): Promise<SicasCommission[]> {
-  const { data, error } = await supabase
-    .from('sicas_commissions')
-    .select('*')
-    .eq('source', source)
-    .order('fecha_corte', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching commissions:', error);
-    throw error;
-  }
-
-  return data || [];
+  // Tabla aún no implementada - retornar array vacío
+  console.log(`Commissions ${source} - tabla no implementada aún`);
+  return [];
 }
 
 export async function getMyReceivables(): Promise<SicasReceivable[]> {
-  const { data, error } = await supabase
-    .from('sicas_receivables')
-    .select('*')
-    .eq('estatus', 'pendiente')
-    .order('fecha_limite', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching receivables:', error);
-    throw error;
-  }
-
-  return data || [];
+  // Tabla aún no implementada - retornar array vacío
+  console.log('Receivables - tabla no implementada aún');
+  return [];
 }
 
 export async function getDocumentsPendingRenewal(daysAhead: number = 30): Promise<SicasDocument[]> {
@@ -166,19 +188,64 @@ export async function getDocumentsPendingRenewal(daysAhead: number = 30): Promis
   const futureDate = new Date(today);
   futureDate.setDate(futureDate.getDate() + daysAhead);
 
-  const { data, error } = await supabase
-    .from('sicas_documents')
-    .select('*')
+  let query = supabase
+    .from('sicas_polizas_vigentes')
+    .select(`
+      id,
+      id_documento,
+      vend_id,
+      vend_nombre,
+      desp_id,
+      desp_nombre,
+      aseguradora,
+      ramo,
+      subramo,
+      contratante,
+      asegurado,
+      no_poliza,
+      vigencia_desde,
+      vigencia_hasta,
+      prima_neta,
+      prima_total,
+      synced_at,
+      created_at,
+      updated_at
+    `)
     .gte('vigencia_hasta', today.toISOString())
     .lte('vigencia_hasta', futureDate.toISOString())
     .order('vigencia_hasta', { ascending: true });
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching documents pending renewal:', error);
     throw error;
   }
 
-  return data || [];
+  // Mapear a la interfaz esperada
+  return (data || []).map((item: any) => ({
+    id: item.id,
+    id_docto: item.id_documento,
+    vend_id: item.vend_id,
+    vend_nombre: item.vend_nombre,
+    usuario_id: null,
+    oficina_id: null,
+    desp_nombre: item.desp_nombre,
+    ramo: item.ramo,
+    subramo: item.subramo,
+    compania: item.aseguradora,
+    poliza: item.no_poliza,
+    cliente: item.contratante || item.asegurado,
+    fecha_captura: item.vigencia_desde,
+    fecha_emision: item.vigencia_desde,
+    vigencia_desde: item.vigencia_desde,
+    vigencia_hasta: item.vigencia_hasta,
+    importe: item.prima_total,
+    prima_neta: item.prima_neta,
+    synced_at: item.synced_at,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  }));
 }
 
 export async function getDigitalFiles(idDocto: string, skipCache: boolean = false): Promise<{
@@ -267,31 +334,54 @@ export async function syncReceivables(): Promise<{
 }
 
 export async function getLastSyncRun(module: string): Promise<SyncRun | null> {
+  // Usar sicas_production_sync_log en lugar de sicas_sync_runs
   const { data, error } = await supabase
-    .from('sicas_sync_runs')
+    .from('sicas_production_sync_log')
     .select('*')
-    .eq('module', module)
+    .eq('sync_type', 'polizas_vigentes')
     .order('started_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error fetching last sync run:', error);
     return null;
   }
 
-  return data;
+  if (!data) {
+    return null;
+  }
+
+  // Mapear al formato esperado
+  return {
+    run_id: data.id,
+    module: 'documents',
+    keycode: 'H03117',
+    report_name: 'Pólizas Vigentes',
+    from_date: null,
+    to_date: null,
+    pages_requested: 1,
+    items_per_page: 200,
+    records_fetched: data.records_fetched || 0,
+    records_upserted: data.records_inserted || 0,
+    records_failed: data.records_errors || 0,
+    status: data.status as any,
+    error_message: data.error_message,
+    started_at: data.started_at,
+    finished_at: data.completed_at,
+    duration_seconds: null,
+  } as SyncRun;
 }
 
 export async function getSyncHistory(module?: string, limit: number = 10): Promise<SyncRun[]> {
   let query = supabase
-    .from('sicas_sync_runs')
+    .from('sicas_production_sync_log')
     .select('*')
     .order('started_at', { ascending: false })
     .limit(limit);
 
   if (module) {
-    query = query.eq('module', module);
+    query = query.eq('sync_type', 'polizas_vigentes');
   }
 
   const { data, error } = await query;
@@ -301,7 +391,25 @@ export async function getSyncHistory(module?: string, limit: number = 10): Promi
     return [];
   }
 
-  return data || [];
+  // Mapear al formato esperado
+  return (data || []).map((item: any) => ({
+    run_id: item.id,
+    module: 'documents',
+    keycode: 'H03117',
+    report_name: 'Pólizas Vigentes',
+    from_date: null,
+    to_date: null,
+    pages_requested: 1,
+    items_per_page: 200,
+    records_fetched: item.records_fetched || 0,
+    records_upserted: item.records_inserted || 0,
+    records_failed: item.records_errors || 0,
+    status: item.status as any,
+    error_message: item.error_message,
+    started_at: item.started_at,
+    finished_at: item.completed_at,
+    duration_seconds: null,
+  }));
 }
 
 export function formatCurrency(amount: number | null | undefined): string {
