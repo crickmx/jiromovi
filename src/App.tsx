@@ -63,6 +63,7 @@ import ProduccionPorVendedor from './pages/ProduccionPorVendedor';
 import ProduccionConvenio from './pages/ProduccionConvenio';
 import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
 import MiProduccion from './pages/MiProduccion';
+import MiProduccionSICAS from './pages/MiProduccionSICAS';
 import GMMTarifasAdmin from './pages/GMMTarifasAdmin';
 import GMMCotizador from './pages/GMMCotizador';
 import CatalogosWeb from './pages/CatalogosWeb';
@@ -797,6 +798,7 @@ function App() {
               <Route path="/produccion/total" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionTotal /></Layout></ProtectedRoute>} />
               <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion" element={<ProtectedRoute><Layout><MiProduccion /></Layout></ProtectedRoute>} />
+              <Route path="/mi-produccion-sicas" element={<ProtectedRoute><Layout><MiProduccionSICAS /></Layout></ProtectedRoute>} />
               <Route path="/produccion/por-vendedor" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionPorVendedor /></Layout></ProtectedRoute>} />
               <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
               <Route path="/gmm/tarifas" element={<ProtectedRoute requireAdmin><GMMTarifasAdmin /></ProtectedRoute>} />
