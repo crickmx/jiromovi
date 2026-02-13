@@ -1,16 +1,5 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
-import {
-  getCursor,
-  updateCursor,
-  createSyncRun,
-  updateSyncRun,
-  mapVendorToUser,
-  formatDateForSicas,
-  parseFloat,
-  parseDate,
-  generateHash,
-} from '../_shared/sicasSyncUtils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,291 +7,381 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
-interface SyncDocumentsRequest {
-  keyCode?: string;
-  fromDate?: string;
-  toDate?: string;
-  itemsPerPage?: number;
-  fieldsRequested?: string;
+const DEFAULT_SICAS_ENDPOINT = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
+
+interface SicasDocument {
+  id_documento: string;
+  no_poliza: string | null;
+  vend_id: string;
+  vend_nombre: string | null;
+  desp_id: string | null;
+  desp_nombre: string | null;
+  aseguradora: string | null;
+  ramo: string | null;
+  subramo: string | null;
+  cliente: string | null;
+  fecha_captura: string | null;
+  fecha_emision: string | null;
+  vigencia_desde: string | null;
+  vigencia_hasta: string | null;
+  importe: number | null;
+  prima_neta: number | null;
+}
+
+/**
+ * Consulta el reporte de documentos H03117 desde SICAS usando SOAP
+ */
+async function consultarDocumentosSICAS(
+  endpoint: string,
+  username: string,
+  password: string,
+  page: number = 1,
+  itemsPerPage: number = 100
+): Promise<{
+  documentos: SicasDocument[];
+  sicasDetails: any;
+  diagnostic: any;
+}> {
+  console.log(`[SICAS Documents] Consultando documentos - Página ${page}`);
+
+  const reportCode = 'H03117';
+  const infoSort = 'DatDocumentos.FCaptura DESC';
+
+  const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ProcesarWS xmlns="http://tempuri.org/">
+      <wsProcesarData>
+        <KeyProcess>REPORT</KeyProcess>
+        <KeyCode>${reportCode}</KeyCode>
+        <Page>${page}</Page>
+        <ItemForPage>${itemsPerPage}</ItemForPage>
+        <InfoSort>${infoSort}</InfoSort>
+      </wsProcesarData>
+      <wsAuthConfig>
+        <UserName>${username}</UserName>
+        <Password>${password}</Password>
+      </wsAuthConfig>
+    </ProcesarWS>
+  </soap:Body>
+</soap:Envelope>`;
+
+  let response;
+  let responseText: string = '';
+
+  try {
+    console.log(`[SICAS Documents] Enviando request SOAP a: ${endpoint}`);
+
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'SOAPAction': 'http://tempuri.org/ProcesarWS',
+      },
+      body: soapEnvelope,
+    });
+  } catch (fetchError: any) {
+    // Si hay error SSL, intentar con HTTP
+    if (fetchError.message?.includes('certificate') || fetchError.message?.includes('SSL')) {
+      console.warn(`[SICAS Documents] Error SSL en página ${page}, intentando con HTTP...`);
+      const httpEndpoint = endpoint.replace('https://', 'http://');
+
+      try {
+        response = await fetch(httpEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'SOAPAction': 'http://tempuri.org/ProcesarWS',
+          },
+          body: soapEnvelope,
+        });
+      } catch (httpError: any) {
+        console.error('[SICAS Documents] Error en fallback HTTP:', httpError);
+        throw new Error(`Error de conexión: ${httpError.message}`);
+      }
+    } else {
+      console.error('[SICAS Documents] Error en fetch:', fetchError);
+      throw new Error(`Error de conexión: ${fetchError.message}`);
+    }
+  }
+
+  console.log(`[SICAS Documents] HTTP Status: ${response.status} ${response.statusText}`);
+
+  try {
+    responseText = await response.text();
+    console.log(`[SICAS Documents] Response length: ${responseText.length} bytes`);
+  } catch (textError: any) {
+    console.error('[SICAS Documents] Error leyendo response body:', textError);
+    throw new Error('No se pudo leer la respuesta del servidor');
+  }
+
+  if (!response.ok) {
+    console.error(`[SICAS Documents] HTTP Error ${response.status}: ${response.statusText}`);
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  // Decodificar entidades HTML
+  let decoded: string;
+  let resultContent: string;
+
+  try {
+    decoded = responseText
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
+
+    const resultMatch = decoded.match(/<ProcesarWSResult>([\s\S]*?)<\/ProcesarWSResult>/);
+    if (!resultMatch) {
+      console.error('[SICAS Documents] No se encontró ProcesarWSResult en el response');
+      throw new Error('Respuesta SOAP inválida');
+    }
+
+    resultContent = resultMatch[1];
+    console.log(`[SICAS Documents] Resultado extraído: ${resultContent.length} bytes`);
+  } catch (parseError: any) {
+    console.error('[SICAS Documents] Error en decode/parse inicial:', parseError);
+    throw new Error(`Error parseando respuesta: ${parseError.message}`);
+  }
+
+  // Verificar estado del proceso
+  const responseNbrMatch = resultContent.match(/<RESPONSENBR>(\d+)<\/RESPONSENBR>/);
+  const responseTxtMatch = resultContent.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/);
+  const messageMatch = resultContent.match(/<MESSAGE>(.*?)<\/MESSAGE>/);
+
+  const sicasDetails = {
+    responsenbr: responseNbrMatch?.[1] || 'N/A',
+    responsetxt: responseTxtMatch?.[1] || 'N/A',
+    message: messageMatch?.[1] || 'N/A',
+  };
+
+  console.log(`[SICAS Documents] RESPONSENBR: ${sicasDetails.responsenbr}`);
+  console.log(`[SICAS Documents] RESPONSETXT: ${sicasDetails.responsetxt}`);
+  console.log(`[SICAS Documents] MESSAGE: ${sicasDetails.message}`);
+
+  // Detectar errores internos de SICAS
+  const hasInternalError =
+    sicasDetails.message?.includes('Error en Ejecución') ||
+    sicasDetails.message?.includes('Proceso Interno') ||
+    sicasDetails.message?.includes('Variable de objeto') ||
+    sicasDetails.message?.includes('SICASOnline') ||
+    sicasDetails.message?.toLowerCase().includes('error');
+
+  if (hasInternalError) {
+    console.error('[SICAS Documents] Error interno detectado:', sicasDetails.message);
+    throw new Error(`Error en SICAS: ${sicasDetails.message}`);
+  }
+
+  // Contar registros
+  const docMatches = resultContent.match(/<DatDocumentos>/g);
+  const recordCount = docMatches ? docMatches.length : 0;
+
+  const diagnostic = {
+    raw_result_length: resultContent.length,
+    has_dataset: recordCount > 0,
+    record_count: recordCount,
+  };
+
+  console.log(`[SICAS Documents] Record Count: ${recordCount}`);
+
+  // Verificar acceso denegado
+  if (responseTxtMatch && responseTxtMatch[1] === 'DENIED') {
+    throw new Error('Acceso denegado - verificar credenciales');
+  }
+
+  // Parsear los registros de documentos
+  const documentos: SicasDocument[] = [];
+  const docRegex = /<DatDocumentos>([\s\S]*?)<\/DatDocumentos>/g;
+  let match;
+
+  while ((match = docRegex.exec(resultContent)) !== null) {
+    const docContent = match[1];
+
+    const extractField = (fieldName: string): string | null => {
+      const fieldMatch = docContent.match(new RegExp(`<${fieldName}>(.*?)<\/${fieldName}>`));
+      return fieldMatch ? fieldMatch[1] : null;
+    };
+
+    const extractNumber = (fieldName: string): number | null => {
+      const value = extractField(fieldName);
+      return value ? parseFloat(value) : null;
+    };
+
+    const idDocumento = extractField('IdDocumento') || extractField('IdCaptura') || extractField('IDDocto');
+    const vendId = extractField('IdVendedor') || extractField('VendedorId');
+
+    if (!idDocumento) {
+      console.warn('[SICAS Documents] Registro sin IdDocumento, omitiendo...');
+      continue;
+    }
+
+    documentos.push({
+      id_documento: idDocumento,
+      no_poliza: extractField('NoPoliza') || extractField('Poliza'),
+      vend_id: vendId || '',
+      vend_nombre: extractField('Vendedor') || extractField('NombreVendedor') || extractField('VendNombre'),
+      desp_id: extractField('IdDespacho') || extractField('DespachoId'),
+      desp_nombre: extractField('Despacho') || extractField('Oficina') || extractField('DespNombre'),
+      aseguradora: extractField('Aseguradora') || extractField('Compania'),
+      ramo: extractField('Ramo'),
+      subramo: extractField('SubRamo'),
+      cliente: extractField('Cliente') || extractField('Contratante'),
+      fecha_captura: extractField('FechaCaptura') || extractField('FCaptura'),
+      fecha_emision: extractField('FechaEmision') || extractField('FEmision'),
+      vigencia_desde: extractField('VigenciaDesde') || extractField('FDesde'),
+      vigencia_hasta: extractField('VigenciaHasta') || extractField('FHasta'),
+      importe: extractNumber('Importe') || extractNumber('PrimaTotal'),
+      prima_neta: extractNumber('PrimaNeta') || extractNumber('ImporteNeto'),
+    });
+  }
+
+  console.log(`[SICAS Documents] Parseados ${documentos.length} documentos`);
+
+  return {
+    documentos,
+    sicasDetails,
+    diagnostic,
+  };
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-  let runId: string | null = null;
+  const startedAt = new Date();
 
   try {
-    const body: SyncDocumentsRequest = req.method === 'POST'
-      ? await req.json().catch(() => ({}))
-      : {};
+    console.log('[Sync Documents] Inicializando...');
 
-    const keyCode = body.keyCode || 'H03117';
-    const itemsPerPage = body.itemsPerPage || 100;
+    // Inicializar Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    // Usar solo campos básicos para evitar errores de permisos
-    const fieldsRequested = body.fieldsRequested || [
-      'IDDocto',
-      'Poliza',
-      'Cliente',
-      'FechaCaptura',
-      'Importe',
-    ].join(',');
-
-    console.log('[Sync Documents] Iniciando sincronización...');
-    console.log('[Sync Documents] KeyCode:', keyCode);
-
-    const cursor = await getCursor(supabase, 'documents', keyCode);
-    console.log('[Sync Documents] Cursor actual:', cursor);
-
-    let fromDate: Date;
-    let toDate = new Date();
-
-    if (body.fromDate) {
-      fromDate = new Date(body.fromDate);
-    } else if (cursor?.last_cursor_date) {
-      fromDate = new Date(cursor.last_cursor_date);
-      fromDate.setDate(fromDate.getDate() - (cursor.incremental_days_buffer || 2));
-    } else {
-      fromDate = new Date();
-      fromDate.setMonth(fromDate.getMonth() - 3);
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Variables de entorno de Supabase no configuradas');
     }
 
-    if (body.toDate) {
-      toDate = new Date(body.toDate);
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Obtener configuración SICAS
+    const { data: config, error: configError } = await supabase
+      .from('sicas_config')
+      .select('*')
+      .single();
+
+    if (configError || !config) {
+      throw new Error('Configuración SICAS no encontrada');
     }
 
-    const fromDateStr = formatDateForSicas(fromDate);
-    const toDateStr = formatDateForSicas(toDate);
+    const sicasUrl = config.endpoint || Deno.env.get("SICAS_URL") || DEFAULT_SICAS_ENDPOINT;
+    const sicasUsuario = config.sicas_usuario || Deno.env.get("SICAS_USUARIO");
+    const sicasPassword = config.sicas_password || Deno.env.get("SICAS_PASSWORD");
 
-    console.log('[Sync Documents] Periodo:', fromDateStr, 'a', toDateStr);
+    if (!sicasUsuario || !sicasPassword) {
+      throw new Error('Credenciales SICAS no configuradas');
+    }
 
-    runId = await createSyncRun(supabase, {
-      module: 'documents',
-      keycode: keyCode,
-      report_name: 'Documentos/Producción',
-      from_date: fromDate.toISOString(),
-      to_date: toDate.toISOString(),
-      pages_requested: 0,
-      items_per_page: itemsPerPage,
-      records_fetched: 0,
-      records_upserted: 0,
-      records_failed: 0,
-      status: 'running',
-      started_at: new Date().toISOString(),
-    });
+    // Parámetros
+    const url = new URL(req.url);
+    const maxPages = parseInt(url.searchParams.get('maxPages') || '5');
+    const itemsPerPage = parseInt(url.searchParams.get('itemsPerPage') || '100');
 
-    console.log('[Sync Documents] Run ID:', runId);
+    console.log('[Sync Documents] Parámetros:', { maxPages, itemsPerPage });
 
-    const client = createSicasRestClient();
-
+    // Consultar documentos
+    const allDocumentos: SicasDocument[] = [];
     let currentPage = 1;
-    let totalFetched = 0;
-    let totalUpserted = 0;
-    let totalFailed = 0;
-    let hasMorePages = true;
+    let lastSicasDetails: any = null;
+    let lastDiagnostic: any = null;
 
-    while (hasMorePages) {
-      console.log(`[Sync Documents] Procesando página ${currentPage}...`);
+    while (currentPage <= maxPages) {
+      try {
+        console.log(`[Sync Documents] Consultando página ${currentPage}/${maxPages}...`);
 
-      const conditionsDirect = `FechaCaptura >= '${fromDateStr}' AND FechaCaptura <= '${toDateStr}'`;
+        const result = await consultarDocumentosSICAS(
+          sicasUrl,
+          sicasUsuario,
+          sicasPassword,
+          currentPage,
+          itemsPerPage
+        );
 
-      const response = await client.readReport({
-        keyCode,
-        pageRequested: currentPage,
-        itemsForPage: itemsPerPage,
-        fieldsRequested,
-        formatResponse: 2,
-        conditionsDirect,
-        sortFields: 'FechaCaptura DESC',
-      });
+        const { documentos: pageDocumentos, sicasDetails, diagnostic } = result;
+        lastSicasDetails = sicasDetails;
+        lastDiagnostic = diagnostic;
 
-      console.log('[Sync Documents] Response Success:', response.Sucess);
-      console.log('[Sync Documents] Response Error:', response.Error);
+        console.log(`[Sync Documents] Página ${currentPage}: ${pageDocumentos.length} documentos obtenidos`);
 
-      if (!response.Sucess) {
-        const errorMsg = response.Error || 'Error desconocido';
-        console.error('[Sync Documents] ❌ Error de SICAS:', errorMsg);
-        console.error('[Sync Documents] Detalles de la solicitud:', {
-          keyCode,
-          pageRequested: currentPage,
-          conditionsDirect,
-          fieldsRequested: fieldsRequested.substring(0, 100) + '...'
-        });
-        throw new Error(`Error en SICAS: ${errorMsg}`);
-      }
-
-      if (!response.Response || !Array.isArray(response.Response) || response.Response.length === 0) {
-        console.warn('[Sync Documents] ⚠️ Respuesta vacía de SICAS');
-        hasMorePages = false;
-        break;
-      }
-
-      const tableInfo = response.Response[0]?.TableInfo || [];
-      const tableControl = response.Response[0]?.TableControl?.[0];
-
-      console.log(`[Sync Documents] Registros en página: ${tableInfo.length}`);
-      console.log(`[Sync Documents] Control:`, tableControl);
-
-      if (tableInfo.length === 0) {
-        hasMorePages = false;
-        break;
-      }
-
-      totalFetched += tableInfo.length;
-
-      for (const record of tableInfo) {
-        try {
-          const idDocto = record.IDDocto || record.iddocto;
-          if (!idDocto) {
-            console.warn('[Sync Documents] Registro sin IDDocto, omitiendo:', record);
-            totalFailed++;
-            continue;
-          }
-
-          const vendNombre = record.VendNombre || record.vendnombre || '';
-          const { usuario_id, oficina_id } = await mapVendorToUser(supabase, vendNombre);
-
-          const rawHash = generateHash(record);
-
-          const documentData = {
-            id_docto: idDocto,
-            vend_id: record.VendID || record.vendid,
-            vend_nombre: vendNombre,
-            usuario_id,
-            oficina_id,
-            desp_nombre: record.DespNombre || record.despnombre,
-            ramo: record.Ramo || record.ramo,
-            subramo: record.SubRamo || record.subramo,
-            compania: record.Compania || record.compania,
-            poliza: record.Poliza || record.poliza,
-            cliente: record.Cliente || record.cliente,
-            fecha_captura: parseDate(record.FechaCaptura || record.fechacaptura),
-            fecha_emision: parseDate(record.FechaEmision || record.fechaemision),
-            vigencia_desde: parseDate(record.VigenciaDesde || record.vigenciadesde),
-            vigencia_hasta: parseDate(record.VigenciaHasta || record.vigenciahasta),
-            importe: parseFloat(record.Importe || record.importe),
-            prima_neta: parseFloat(record.PrimaNeta || record.primaneta),
-            raw_data: record,
-            raw_hash: rawHash,
-            synced_at: new Date().toISOString(),
-          };
-
-          const { error: upsertError } = await supabase
-            .from('sicas_documents')
-            .upsert(documentData, {
-              onConflict: 'id_docto',
-            });
-
-          if (upsertError) {
-            console.error('[Sync Documents] Error upserting document:', upsertError);
-            totalFailed++;
-          } else {
-            totalUpserted++;
-          }
-        } catch (error) {
-          console.error('[Sync Documents] Error procesando registro:', error);
-          totalFailed++;
+        if (pageDocumentos.length === 0) {
+          console.log(`[Sync Documents] Página ${currentPage} sin resultados, finalizando...`);
+          break;
         }
-      }
 
-      if (!tableControl || currentPage >= tableControl.Pages) {
-        hasMorePages = false;
-      } else {
+        allDocumentos.push(...pageDocumentos);
         currentPage++;
-      }
 
-      await updateSyncRun(supabase, runId, {
-        pages_requested: currentPage,
-        records_fetched: totalFetched,
-        records_upserted: totalUpserted,
-        records_failed: totalFailed,
-      });
+        if (pageDocumentos.length < itemsPerPage) {
+          console.log('[Sync Documents] Última página alcanzada');
+          break;
+        }
+      } catch (error: any) {
+        console.error(`[Sync Documents] Error en página ${currentPage}:`, error.message);
+        throw error;
+      }
     }
 
-    const finishedAt = new Date();
-    const startedAt = new Date((await supabase
-      .from('sicas_sync_runs')
-      .select('started_at')
-      .eq('run_id', runId)
-      .single()).data?.started_at || finishedAt);
+    console.log(`[Sync Documents] Total documentos obtenidos: ${allDocumentos.length}`);
 
-    const durationSeconds = Math.floor((finishedAt.getTime() - startedAt.getTime()) / 1000);
-
-    await updateSyncRun(supabase, runId, {
-      status: totalFailed > 0 ? 'partial' : 'success',
-      finished_at: finishedAt.toISOString(),
-      duration_seconds: durationSeconds,
-    });
-
-    await updateCursor(supabase, 'documents', keyCode, {
-      last_success_at: finishedAt.toISOString(),
-      last_cursor_date: toDate.toISOString(),
-      last_page: currentPage,
-      total_synced: totalUpserted,
-      last_run_id: runId,
-    });
-
-    console.log('[Sync Documents] ✅ Sincronización completada');
-    console.log('[Sync Documents] Total fetched:', totalFetched);
-    console.log('[Sync Documents] Total upserted:', totalUpserted);
-    console.log('[Sync Documents] Total failed:', totalFailed);
+    const duration = Date.now() - startedAt.getTime();
 
     return new Response(
       JSON.stringify({
         success: true,
-        run_id: runId,
-        summary: {
-          pages_processed: currentPage,
-          records_fetched: totalFetched,
-          records_upserted: totalUpserted,
-          records_failed: totalFailed,
-          duration_seconds: durationSeconds,
-          from_date: fromDateStr,
-          to_date: toDateStr,
+        stats: {
+          records_fetched: allDocumentos.length,
+          pages_processed: currentPage - 1,
+        },
+        documentos: allDocumentos.slice(0, 10), // Primeros 10 para preview
+        metadata: {
+          synced_at: new Date().toISOString(),
+          duration_ms: duration,
+          source: 'SICAS Web Service (SOAP)',
+          sicas_response: lastSicasDetails || {},
+          diagnostic: lastDiagnostic || {},
         },
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
       }
     );
-  } catch (error) {
-    console.error('[Sync Documents] ❌ Error:', error);
 
-    if (runId) {
-      const finishedAt = new Date();
-      const startedAt = new Date((await supabase
-        .from('sicas_sync_runs')
-        .select('started_at')
-        .eq('run_id', runId)
-        .single()).data?.started_at || finishedAt);
-
-      const durationSeconds = Math.floor((finishedAt.getTime() - startedAt.getTime()) / 1000);
-
-      await updateSyncRun(supabase, runId, {
-        status: 'failed',
-        error_message: (error as Error).message,
-        finished_at: finishedAt.toISOString(),
-        duration_seconds: durationSeconds,
-      });
-    }
+  } catch (error: any) {
+    console.error('[Sync Documents] Error:', error);
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: (error as Error).message,
-        stack: (error as Error).stack,
-        run_id: runId,
+        error: error.message,
+        stack: error.stack?.substring(0, 500),
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
       }
     );
   }
