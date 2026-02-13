@@ -53,15 +53,23 @@ Deno.serve(async (req: Request) => {
 
     console.log("[SICAS-Cobranza] Iniciando sincronización de cobranza pendiente");
 
+    // Usar endpoint de la configuración o de las variables de entorno
+    const sicasUrl = config.endpoint || Deno.env.get("SICAS_URL");
+    const sicasUsuario = config.sicas_usuario || Deno.env.get("SICAS_USUARIO");
+    const sicasPassword = config.sicas_password || Deno.env.get("SICAS_PASSWORD");
+    const sicasNamespace = config.sicas_namespace || Deno.env.get("SICAS_NAMESPACE") || "http://www.sicasonline.com.mx/";
+
+    console.log("[SICAS-Cobranza] Configuración cargada:", { sicasUrl, sicasUsuario: sicasUsuario ? "***" : "NO", sicasNamespace });
+
     // Construir solicitud SOAP para reporte de cobranza pendiente (HAPPDATAL_D004)
     const soapRequest = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                xmlns:xsd="http://www.w3.org/2001/XMLSchema"
                xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
-    <HAPPDATAL_D004 xmlns="${config.sicas_namespace}">
-      <vcUsuario>${config.sicas_usuario}</vcUsuario>
-      <vcPassword>${config.sicas_password}</vcPassword>
+    <HAPPDATAL_D004 xmlns="${sicasNamespace}">
+      <vcUsuario>${sicasUsuario}</vcUsuario>
+      <vcPassword>${sicasPassword}</vcPassword>
       <vcXML><![CDATA[
         <Root>
           <Data>
@@ -75,12 +83,6 @@ Deno.serve(async (req: Request) => {
 </soap:Envelope>`;
 
     console.log("[SICAS-Cobranza] Llamando a SICAS WS...");
-
-    // Usar endpoint de la configuración o de las variables de entorno
-    const sicasUrl = config.endpoint || Deno.env.get("SICAS_URL");
-    const sicasUsuario = config.sicas_usuario || Deno.env.get("SICAS_USUARIO");
-    const sicasPassword = config.sicas_password || Deno.env.get("SICAS_PASSWORD");
-    const sicasNamespace = config.sicas_namespace || Deno.env.get("SICAS_NAMESPACE") || "http://www.sicasonline.com.mx/";
 
     if (!sicasUrl || !sicasUsuario || !sicasPassword) {
       return new Response(
@@ -120,12 +122,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const xmlText = await response.text();
+
     if (!response.ok) {
-      throw new Error(`Error en respuesta SICAS: ${response.status} ${response.statusText}`);
+      console.error(`[SICAS-Cobranza] Error ${response.status}:`, xmlText.substring(0, 500));
+      throw new Error(`Error en respuesta SICAS: ${response.status} ${response.statusText} - ${xmlText.substring(0, 200)}`);
     }
 
-    const xmlText = await response.text();
-    console.log("[SICAS-Cobranza] Respuesta recibida");
+    console.log("[SICAS-Cobranza] Respuesta recibida", xmlText.substring(0, 200));
 
     // Parser básico de XML
     const parseCobranza = (xml: string): CobranzaRecord[] => {
