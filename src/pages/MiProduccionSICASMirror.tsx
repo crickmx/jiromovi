@@ -64,19 +64,30 @@ export default function MiProduccionSICASMirror() {
   });
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    if (usuario) {
+      loadAllData();
+    }
+  }, [usuario]);
 
   async function loadAllData() {
+    if (!usuario) {
+      console.log('[MiProduccionSICASMirror] Usuario no disponible, esperando...');
+      return;
+    }
+
     setLoading(true);
+    setMessage(null);
+
     try {
+      console.log('[MiProduccionSICASMirror] Cargando datos...');
+
       const [docs, comPend, comPag, recv, renew, lastRun] = await Promise.all([
-        getMyDocuments(),
-        getMyCommissions('pendiente'),
-        getMyCommissions('pagada'),
-        getMyReceivables(),
-        getDocumentsPendingRenewal(filters.diasRenovacion),
-        getLastSyncRun('documents'),
+        getMyDocuments().catch(err => { console.error('Error docs:', err); return []; }),
+        getMyCommissions('pendiente').catch(err => { console.error('Error com pend:', err); return []; }),
+        getMyCommissions('pagada').catch(err => { console.error('Error com pag:', err); return []; }),
+        getMyReceivables().catch(err => { console.error('Error recv:', err); return []; }),
+        getDocumentsPendingRenewal(filters.diasRenovacion).catch(err => { console.error('Error renew:', err); return []; }),
+        getLastSyncRun('documents').catch(err => { console.error('Error last run:', err); return null; }),
       ]);
 
       setDocuments(docs);
@@ -88,8 +99,16 @@ export default function MiProduccionSICASMirror() {
       if (lastRun) {
         setLastSync(lastRun.finished_at || lastRun.started_at);
       }
+
+      console.log('[MiProduccionSICASMirror] Datos cargados:', {
+        docs: docs.length,
+        comPend: comPend.length,
+        comPag: comPag.length,
+        recv: recv.length,
+        renew: renew.length,
+      });
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('[MiProduccionSICASMirror] Error loading data:', error);
       setMessage({ type: 'error', text: `Error cargando datos: ${error}` });
     } finally {
       setLoading(false);
