@@ -55,15 +55,21 @@ Deno.serve(async (req: Request) => {
       password: config.sicas_password,
     });
 
-    // Obtener códigos desde config o usar defaults prioritarios
-    // Códigos más comunes en SICAS según documentación
+    // Probar con un rango más amplio de códigos
+    // Incluye formatos comunes: H seguido de números, códigos simples, etc.
     const reportCodes = config.alternate_report_codes || [
-      // Pólizas y producción (más comunes primero)
-      'H05106', 'H05107', 'H05101', 'H05102', 'H05105',
-      // Cobranza
-      'D001', 'D002', 'D003', 'D004',
-      // Comisiones
-      'C001', 'C002', 'C003', 'C004',
+      // Códigos H básicos (0-10)
+      'H0', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10',
+      // Códigos H tradicionales (100-120)
+      'H100', 'H101', 'H102', 'H103', 'H104', 'H105', 'H106', 'H107', 'H108', 'H109', 'H110',
+      // Códigos H comunes (1000-1020)
+      'H1000', 'H1001', 'H1002', 'H1003', 'H1004', 'H1005',
+      // Códigos D
+      'D0', 'D1', 'D2', 'D3', 'D4', 'D5',
+      // Códigos C
+      'C0', 'C1', 'C2', 'C3', 'C4', 'C5',
+      // Códigos simples
+      'POL', 'POLIZAS', 'VIGENTES', 'PRODUCCION',
     ];
 
     console.log(`[Test Reports] Probando ${reportCodes.length} códigos...`);
