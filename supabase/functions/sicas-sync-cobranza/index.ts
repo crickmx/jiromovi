@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { parseSicasResponse, parseSoapResponse, checkSoapError } from '../_shared/sicasParser.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,208 +31,201 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "No autorizado" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Obtener configuración SICAS
-    const { data: config } = await supabase
-      .from("sicas_config")
-      .select("*")
-      .single();
-
-    if (!config) {
-      return new Response(
-        JSON.stringify({ error: "Configuración SICAS no encontrada" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     console.log("[SICAS-Cobranza] Iniciando sincronización de cobranza pendiente");
 
-    // Usar endpoint de la configuración o de las variables de entorno
-    const sicasUrl = config.endpoint || Deno.env.get("SICAS_URL");
-    const sicasUsuario = config.sicas_usuario || Deno.env.get("SICAS_USUARIO");
-    const sicasPassword = config.sicas_password || Deno.env.get("SICAS_PASSWORD");
-    const sicasNamespace = config.sicas_namespace || Deno.env.get("SICAS_NAMESPACE") || "http://www.sicasonline.com.mx/";
+    // Usar el catálogo de Cobranza (ID 50)
+    const CATALOG_ID = 50;
+    const CATALOG_ENUM = "eCobranza";
 
-    console.log("[SICAS-Cobranza] Configuración cargada:", { sicasUrl, sicasUsuario: sicasUsuario ? "***" : "NO", sicasNamespace });
+    const sicasUsername = Deno.env.get('SICAS_USERNAME');
+    const sicasPassword = Deno.env.get('SICAS_PASSWORD');
+    const sicasEndpoint = Deno.env.get('SICAS_ENDPOINT') || 'http://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
 
-    // Construir solicitud SOAP para reporte de cobranza pendiente (HAPPDATAL_D004)
-    const soapRequest = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+    if (!sicasUsername || !sicasPassword) {
+      throw new Error('Credenciales SICAS no configuradas');
+    }
+
+    console.log("[SICAS-Cobranza] Configuración cargada:", {
+      endpoint: sicasEndpoint,
+      username: sicasUsername ? "***" : "NO"
+    });
+
+    // Construir solicitud SOAP usando formato ReadInfoData
+    const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soap:Header/>
   <soap:Body>
-    <HAPPDATAL_D004 xmlns="${sicasNamespace}">
-      <vcUsuario>${sicasUsuario}</vcUsuario>
-      <vcPassword>${sicasPassword}</vcPassword>
-      <vcXML><![CDATA[
-        <Root>
-          <Data>
-            <FechaInicio>${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}</FechaInicio>
-            <FechaFin>${new Date().toISOString().split('T')[0]}</FechaFin>
-          </Data>
-        </Root>
-      ]]></vcXML>
-    </HAPPDATAL_D004>
+    <tem:ReadInfoData>
+      <tem:oConfigData>
+        <tem:PropertyTypeReadData>${CATALOG_ENUM}</tem:PropertyTypeReadData>
+        <tem:PropertyData_TypeDataReturn>Data_XML</tem:PropertyData_TypeDataReturn>
+      </tem:oConfigData>
+      <tem:oConfigAuth>
+        <tem:UserName>${sicasUsername}</tem:UserName>
+        <tem:Password>${sicasPassword}</tem:Password>
+      </tem:oConfigAuth>
+    </tem:ReadInfoData>
   </soap:Body>
 </soap:Envelope>`;
 
-    console.log("[SICAS-Cobranza] Llamando a SICAS WS...");
+    console.log("[SICAS-Cobranza] Llamando a SICAS con ReadInfoData...");
 
-    if (!sicasUrl || !sicasUsuario || !sicasPassword) {
-      return new Response(
-        JSON.stringify({
-          error: "Configuración SICAS incompleta. Configure las credenciales en Admin > SICAS"
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    let response;
-    try {
-      response = await fetch(sicasUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          "SOAPAction": `${sicasNamespace}HAPPDATAL_D004`,
-        },
-        body: soapRequest,
-      });
-    } catch (fetchError: any) {
-      // Si hay error SSL, intentar con HTTP en lugar de HTTPS
-      if (fetchError.message?.includes('certificate') || fetchError.message?.includes('SSL')) {
-        console.warn("[SICAS-Cobranza] Error SSL, intentando con HTTP...");
-        const httpUrl = sicasUrl.replace('https://', 'http://');
-
-        response = await fetch(httpUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/xml; charset=utf-8",
-            "SOAPAction": `${sicasNamespace}HAPPDATAL_D004`,
-          },
-          body: soapRequest,
-        });
-      } else {
-        throw fetchError;
-      }
-    }
+    const response = await fetch(sicasEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://tempuri.org/ReadInfoData",
+      },
+      body: soapEnvelope,
+    });
 
     const xmlText = await response.text();
 
     if (!response.ok) {
-      console.error(`[SICAS-Cobranza] Error ${response.status}:`, xmlText.substring(0, 500));
-      throw new Error(`Error en respuesta SICAS: ${response.status} ${response.statusText} - ${xmlText.substring(0, 200)}`);
+      console.error(`[SICAS-Cobranza] Error ${response.status}:`, xmlText);
+
+      // Intentar extraer el mensaje de error SOAP
+      const faultStringMatch = xmlText.match(/<faultstring>(.*?)<\/faultstring>/);
+      const faultDetailMatch = xmlText.match(/<detail>(.*?)<\/detail>/s);
+
+      if (faultStringMatch || faultDetailMatch) {
+        const errorMsg = faultStringMatch ? faultStringMatch[1] : faultDetailMatch?.[1];
+        throw new Error(`Error SOAP SICAS: ${errorMsg}`);
+      }
+
+      throw new Error(`Error en respuesta SICAS: ${response.status} ${response.statusText}`);
     }
 
-    console.log("[SICAS-Cobranza] Respuesta recibida", xmlText.substring(0, 200));
+    console.log("[SICAS-Cobranza] Respuesta recibida exitosamente");
 
-    // Parser básico de XML
+    // Verificar errores SOAP
+    const soapError = checkSoapError(xmlText);
+    if (soapError) {
+      throw new Error(`Error SOAP: ${soapError}`);
+    }
+
+    // Extraer el resultado del XML
+    const resultMatch = xmlText.match(/<ReadInfoDataResult>([\s\S]*?)<\/ReadInfoDataResult>/);
+    if (!resultMatch) {
+      throw new Error('No se encontró ReadInfoDataResult en la respuesta');
+    }
+
+    let innerXml = resultMatch[1].trim();
+
+    // Decodificar entidades HTML si están presentes
+    if (innerXml.includes('&lt;')) {
+      innerXml = innerXml
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&amp;/g, '&');
+    }
+
+    console.log("[SICAS-Cobranza] XML decodificado, parseando registros...");
+
+    // Parsear registros de cobranza
     const parseCobranza = (xml: string): CobranzaRecord[] => {
       const records: CobranzaRecord[] = [];
 
-      // Extraer registros del XML (simplificado)
-      const recordMatches = xml.matchAll(/<Record>([\s\S]*?)<\/Record>/g);
+      // Intentar diferentes formatos de registros
+      let recordMatches = Array.from(xml.matchAll(/<Record>([\s\S]*?)<\/Record>/g));
+
+      if (recordMatches.length === 0) {
+        recordMatches = Array.from(xml.matchAll(/<Cobranza>([\s\S]*?)<\/Cobranza>/g));
+      }
+
+      if (recordMatches.length === 0) {
+        recordMatches = Array.from(xml.matchAll(/<Item>([\s\S]*?)<\/Item>/g));
+      }
+
+      console.log(`[SICAS-Cobranza] Encontrados ${recordMatches.length} registros`);
 
       for (const match of recordMatches) {
         const recordXml = match[1];
 
         const getField = (fieldName: string): string | undefined => {
-          const regex = new RegExp(`<${fieldName}>([^<]*)<\/${fieldName}>`);
+          const regex = new RegExp(`<${fieldName}>([^<]*)<\/${fieldName}>`, 'i');
           const fieldMatch = recordXml.match(regex);
           return fieldMatch ? fieldMatch[1].trim() : undefined;
         };
 
-        const vendId = getField("VendID");
-        if (!vendId) continue;
+        // Extraer campos (ajustar según estructura real del XML)
+        const vendId = getField("VendID") || getField("IdVendedor") || getField("vendedor_id");
+
+        if (!vendId) {
+          console.warn("[SICAS-Cobranza] Registro sin VendID, saltando:", recordXml.substring(0, 100));
+          continue;
+        }
 
         records.push({
           vend_id: vendId,
-          vend_nombre: getField("VendNombre"),
-          cliente: getField("Cliente") || getField("Contratante"),
-          no_poliza: getField("NoPoliza") || getField("Poliza"),
-          id_documento: getField("IdDocumento") || getField("DocID"),
-          importe_pendiente: parseFloat(getField("ImportePendiente") || "0"),
-          fecha_limite: getField("FechaLimite"),
-          dias_vencidos: parseInt(getField("DiasVencidos") || "0"),
-          status: getField("Status") || "Pendiente",
+          vend_nombre: getField("VendNombre") || getField("NombreVendedor"),
+          cliente: getField("Cliente") || getField("Contratante") || getField("Asegurado"),
+          no_poliza: getField("NoPoliza") || getField("Poliza") || getField("NumeroPoliza"),
+          id_documento: getField("IdDocumento") || getField("DocID") || getField("Recibo"),
+          importe_pendiente: parseFloat(getField("ImportePendiente") || getField("Importe") || "0"),
+          fecha_limite: getField("FechaLimite") || getField("FechaVencimiento"),
+          dias_vencidos: parseInt(getField("DiasVencidos") || getField("Vencidos") || "0"),
+          status: getField("Status") || getField("Estado") || "Pendiente",
         });
       }
 
       return records;
     };
 
-    const cobranzaRecords = parseCobranza(xmlText);
-    console.log(`[SICAS-Cobranza] ${cobranzaRecords.length} registros parseados`);
+    const cobranzaRecords = parseCobranza(innerXml);
+    console.log(`[SICAS-Cobranza] ${cobranzaRecords.length} registros parseados correctamente`);
 
-    // Limpiar tabla anterior (podríamos hacer upsert inteligente)
-    await supabase.from("sicas_cobranza_pendiente").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (cobranzaRecords.length === 0) {
+      console.log("[SICAS-Cobranza] No se encontraron registros de cobranza");
+      console.log("[SICAS-Cobranza] Muestra del XML:", innerXml.substring(0, 500));
 
-    // Insertar nuevos registros
-    if (cobranzaRecords.length > 0) {
-      const { error: insertError } = await supabase
-        .from("sicas_cobranza_pendiente")
-        .insert(
-          cobranzaRecords.map(record => ({
-            ...record,
-            synced_at: new Date().toISOString(),
-          }))
-        );
-
-      if (insertError) {
-        console.error("[SICAS-Cobranza] Error al insertar:", insertError);
-        throw insertError;
-      }
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Sin registros de cobranza pendiente",
+          records_count: 0
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Registrar en historial
-    await supabase.from("sicas_sync_history").insert({
-      sync_type: "cobranza_pendiente",
-      status: "success",
-      records_synced: cobranzaRecords.length,
-      sync_date: new Date().toISOString(),
-      details: { message: "Sincronización completada exitosamente" },
-    });
+    // Limpiar tabla anterior
+    const { error: deleteError } = await supabase
+      .from("sicas_cobranza_pendiente")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
 
-    console.log("[SICAS-Cobranza] Sincronización completada");
+    if (deleteError) {
+      console.error("[SICAS-Cobranza] Error limpiando tabla:", deleteError);
+    }
+
+    // Insertar nuevos registros
+    const { error: insertError } = await supabase
+      .from("sicas_cobranza_pendiente")
+      .insert(cobranzaRecords);
+
+    if (insertError) {
+      console.error("[SICAS-Cobranza] Error insertando registros:", insertError);
+      throw insertError;
+    }
+
+    console.log(`[SICAS-Cobranza] Sincronización completada: ${cobranzaRecords.length} registros`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        records_synced: cobranzaRecords.length,
-        synced_at: new Date().toISOString(),
+        message: `Cobranza sincronizada: ${cobranzaRecords.length} registros`,
+        records_count: cobranzaRecords.length
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("[SICAS-Cobranza] Error:", error);
-
-    // Registrar error en historial
-    try {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-
-      await supabase.from("sicas_sync_history").insert({
-        sync_type: "cobranza_pendiente",
-        status: "error",
-        records_synced: 0,
-        sync_date: new Date().toISOString(),
-        details: { error: error.message },
-      });
-    } catch (logError) {
-      console.error("[SICAS-Cobranza] Error al registrar en historial:", logError);
-    }
-
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Error desconocido" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
