@@ -27,6 +27,29 @@ interface PolizaVigente {
   prima_total: number | null;
 }
 
+interface SicasQueryResult {
+  polizas: PolizaVigente[];
+  sicasDetails: {
+    responsenbr: string;
+    responsetxt: string;
+    message: string;
+  };
+  diagnostic: {
+    raw_result_length: number;
+    has_dataset: boolean;
+    tables_found: string[];
+    first_row_sample?: any;
+    raw_preview?: string;
+  };
+  request: {
+    report_code: string;
+    page: number;
+    items_per_page: number;
+    info_sort?: string;
+    conditions_add?: string;
+  };
+}
+
 /**
  * Consulta el reporte de pólizas vigentes H03117 desde SICAS
  */
@@ -36,8 +59,11 @@ async function consultarPolizasVigentesSICAS(
   password: string,
   page: number = 1,
   itemsPerPage: number = 100
-): Promise<PolizaVigente[]> {
+): Promise<SicasQueryResult> {
   console.log(`[SICAS] Consultando pólizas vigentes - Página ${page}`);
+
+  const reportCode = 'H03117';
+  const infoSort = 'DatDocumentos.FCaptura DESC';
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -47,10 +73,10 @@ async function consultarPolizasVigentesSICAS(
     <ProcesarWS xmlns="http://tempuri.org/">
       <wsProcesarData>
         <KeyProcess>REPORT</KeyProcess>
-        <KeyCode>H03117</KeyCode>
+        <KeyCode>${reportCode}</KeyCode>
         <Page>${page}</Page>
         <ItemForPage>${itemsPerPage}</ItemForPage>
-        <InfoSort>DatDocumentos.FCaptura DESC</InfoSort>
+        <InfoSort>${infoSort}</InfoSort>
       </wsProcesarData>
       <wsAuthConfig>
         <UserName>${username}</UserName>
@@ -59,6 +85,14 @@ async function consultarPolizasVigentesSICAS(
     </ProcesarWS>
   </soap:Body>
 </soap:Envelope>`;
+
+  // Request info (sin credenciales) para logging
+  const requestInfo = {
+    report_code: reportCode,
+    page,
+    items_per_page: itemsPerPage,
+    info_sort: infoSort,
+  };
 
   let response;
   try {
@@ -122,31 +156,65 @@ async function consultarPolizasVigentesSICAS(
     message: messageMatch?.[1] || 'N/A',
   };
 
+  // Detectar todas las tablas presentes en el XML
+  const tableRegex = /<(\w+)>[\s\S]*?<\/\1>/g;
+  const tablesFound = new Set<string>();
+  let tableMatch;
+  while ((tableMatch = tableRegex.exec(resultContent)) !== null) {
+    const tableName = tableMatch[1];
+    // Filtrar tags de metadata
+    if (!['RESPONSENBR', 'RESPONSETXT', 'MESSAGE', 'PROCESSDATA'].includes(tableName)) {
+      tablesFound.add(tableName);
+    }
+  }
+
+  // Verificar si hay NewDataSet (indica que hay datos tabulares)
+  const hasNewDataSet = /<NewDataSet>/i.test(resultContent);
+  const hasDatDocumentos = /<DatDocumentos>/i.test(resultContent);
+
+  // Contar registros de DatDocumentos
+  const docMatches = resultContent.match(/<DatDocumentos>/g);
+  const recordCount = docMatches ? docMatches.length : 0;
+
+  const diagnostic = {
+    raw_result_length: resultContent.length,
+    has_dataset: hasNewDataSet || hasDatDocumentos || recordCount > 0,
+    tables_found: Array.from(tablesFound),
+    raw_preview: resultContent.substring(0, 2000),
+  };
+
   console.log(`[SICAS] RESPONSENBR: ${sicasDetails.responsenbr}`);
   console.log(`[SICAS] RESPONSETXT: ${sicasDetails.responsetxt}`);
   console.log(`[SICAS] MESSAGE: ${sicasDetails.message}`);
+  console.log(`[SICAS] Has Dataset: ${diagnostic.has_dataset}`);
+  console.log(`[SICAS] Tables Found: ${diagnostic.tables_found.join(', ')}`);
+  console.log(`[SICAS] Record Count: ${recordCount}`);
 
-  // Si RESPONSENBR=0, verificar si es un error real o simplemente sin datos
+  // REGLA CRÍTICA: Si el mensaje contiene "Error", es un error real, NO éxito
+  const hasInternalError =
+    sicasDetails.message?.includes('Error en Ejecución') ||
+    sicasDetails.message?.includes('Proceso Interno') ||
+    sicasDetails.message?.includes('Variable de objeto') ||
+    sicasDetails.message?.includes('SICASOnline') ||
+    sicasDetails.message?.toLowerCase().includes('error');
+
+  if (hasInternalError) {
+    // Error real de SICAS - lanzar excepción para que se registre como failed
+    console.error('[SICAS] Error interno detectado:', sicasDetails.message);
+    throw new Error(`SICAS Internal Error: ${sicasDetails.message}`);
+  }
+
+  // Si RESPONSENBR=0 pero NO hay error, verificar si hay dataset real
   if (!responseNbrMatch || responseNbrMatch[1] === '0') {
-    console.warn(`[SICAS] Reporte sin datos: ${sicasDetails.message}`);
+    console.warn(`[SICAS] RESPONSENBR=0: ${sicasDetails.message}`);
 
-    // Logging adicional para debug - primeros 2000 caracteres
-    console.log('[SICAS] Preview del contenido:', resultContent.substring(0, 2000));
-
-    // Si el mensaje contiene "Error", es un error real de SICAS, no simplemente "sin datos"
-    const hasInternalError =
-      sicasDetails.message?.includes('Error en Ejecución') ||
-      sicasDetails.message?.includes('Proceso Interno') ||
-      sicasDetails.message?.includes('Variable de objeto') ||
-      sicasDetails.message?.includes('SICASOnline');
-
-    if (hasInternalError) {
-      // Error real de SICAS - lanzar excepción para que se registre como failed
-      throw new Error(`SICAS Internal Error: ${sicasDetails.message}`);
+    // Si NO hay dataset real (tablas o registros), es un error
+    if (!diagnostic.has_dataset) {
+      console.error('[SICAS] No hay dataset en la respuesta');
+      throw new Error(`SICAS: No hay dataset disponible. Message: ${sicasDetails.message}`);
     }
 
-    // Si no hay error interno, simplemente no hay datos
-    return { polizas: [], sicasDetails };
+    console.log('[SICAS] RESPONSENBR=0 pero hay dataset, continuando...');
   }
 
   // Verificar acceso denegado
@@ -200,7 +268,18 @@ async function consultarPolizasVigentesSICAS(
   }
 
   console.log(`[SICAS] Parseadas ${polizas.length} pólizas`);
-  return { polizas, sicasDetails };
+
+  // Agregar first_row_sample para diagnóstico
+  if (polizas.length > 0) {
+    diagnostic.first_row_sample = polizas[0];
+  }
+
+  return {
+    polizas,
+    sicasDetails,
+    diagnostic,
+    request: requestInfo,
+  };
 }
 
 /**
@@ -271,6 +350,19 @@ async function registrarSyncLog(
     responsenbr?: string;
     responsetxt?: string;
     message?: string;
+  },
+  diagnostic?: {
+    raw_result_length?: number;
+    has_dataset?: boolean;
+    tables_found?: string[];
+    first_row_sample?: any;
+    raw_preview?: string;
+  },
+  requestInfo?: {
+    report_code?: string;
+    page?: number;
+    items_per_page?: number;
+    info_sort?: string;
   }
 ) {
   await supabase
@@ -286,9 +378,17 @@ async function registrarSyncLog(
       started_at: startedAt.toISOString(),
       completed_at: new Date().toISOString(),
       metadata: {
-        report_code: 'H03117',
         source: 'SICAS Web Service',
-        ...(sicasDetails || {}),
+        // Request info (sin credenciales)
+        request: requestInfo || {
+          report_code: 'H03117',
+          page: 1,
+          items_per_page: 200,
+        },
+        // Respuesta de SICAS
+        sicas_response: sicasDetails || {},
+        // Diagnóstico completo
+        diagnostic: diagnostic || {},
       },
     });
 }
@@ -347,6 +447,8 @@ Deno.serve(async (req: Request) => {
     const allPolizas: PolizaVigente[] = [];
     let currentPage = 1;
     let lastSicasDetails: any = null;
+    let lastDiagnostic: any = null;
+    let lastRequestInfo: any = null;
 
     // Consultar todas las páginas
     while (currentPage <= maxPages) {
@@ -359,8 +461,10 @@ Deno.serve(async (req: Request) => {
           itemsPerPage
         );
 
-        const { polizas: pagePolizas, sicasDetails } = result;
+        const { polizas: pagePolizas, sicasDetails, diagnostic, request } = result;
         lastSicasDetails = sicasDetails;
+        lastDiagnostic = diagnostic;
+        lastRequestInfo = request;
 
         if (pagePolizas.length === 0) {
           console.log(`[Sync] Página ${currentPage} sin resultados, finalizando...`);
@@ -403,11 +507,13 @@ Deno.serve(async (req: Request) => {
       saveStats = await guardarPolizasCache(supabase, allPolizas);
     }
 
-    // Determinar status final
-    const status = saveStats.errors === 0 ? 'success' :
+    // Determinar status final - NUNCA success sin datos reales
+    const hasRealData = allPolizas.length > 0;
+    const status = !hasRealData ? 'failed' :
+                   saveStats.errors === 0 ? 'success' :
                    saveStats.inserted > 0 ? 'partial' : 'error';
 
-    // Registrar en historial
+    // Registrar en historial con diagnóstico completo
     await registrarSyncLog(
       supabase,
       status,
@@ -418,17 +524,22 @@ Deno.serve(async (req: Request) => {
         records_errors: saveStats.errors,
       },
       startedAt,
-      undefined,
-      lastSicasDetails
+      !hasRealData ? 'No se obtuvieron registros de SICAS' : undefined,
+      lastSicasDetails,
+      lastDiagnostic,
+      lastRequestInfo
     );
 
     const duration = Date.now() - startedAt.getTime();
 
     console.log(`[Sync] Completado en ${duration}ms`);
 
+    // NUNCA devolver success: true sin datos reales
+    const success = hasRealData && status === 'success';
+
     return new Response(
       JSON.stringify({
-        success: true,
+        success,
         status,
         stats: {
           records_fetched: allPolizas.length,
@@ -440,12 +551,17 @@ Deno.serve(async (req: Request) => {
         metadata: {
           synced_at: new Date().toISOString(),
           duration_ms: duration,
-          report_code: 'H03117',
           source: 'SICAS Web Service',
-          ...(lastSicasDetails || {}),
+          // Request (sin credenciales)
+          request: lastRequestInfo || { report_code: 'H03117' },
+          // Respuesta de SICAS
+          sicas_response: lastSicasDetails || {},
+          // Diagnóstico completo
+          diagnostic: lastDiagnostic || {},
         },
       }),
       {
+        status: success ? 200 : 500,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
@@ -456,7 +572,7 @@ Deno.serve(async (req: Request) => {
   } catch (error: any) {
     console.error('[Sync] Error fatal:', error);
 
-    // Registrar error en log
+    // Registrar error en log con diagnóstico completo
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -464,15 +580,18 @@ Deno.serve(async (req: Request) => {
 
       await registrarSyncLog(
         supabase,
-        'error',
+        'failed',
         {
           records_fetched: 0,
           records_inserted: 0,
           records_updated: 0,
-          records_errors: 0,
+          records_errors: 1,
         },
         startedAt,
-        error.message
+        error.message,
+        undefined,
+        { raw_result_length: 0, has_dataset: false, tables_found: [], raw_preview: error.stack?.substring(0, 500) },
+        { report_code: 'H03117', page: 1, items_per_page: 200 }
       );
     } catch (logError) {
       console.error('[Sync] Error al registrar log:', logError);

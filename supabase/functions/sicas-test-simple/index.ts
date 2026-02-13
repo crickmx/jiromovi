@@ -153,19 +153,38 @@ Deno.serve(async (req: Request) => {
     console.log(`[SICAS-Test] RESPONSETXT: ${sicasDetails.responsetxt}`);
     console.log(`[SICAS-Test] MESSAGE: ${sicasDetails.message}`);
 
+    // Detectar todas las tablas presentes en el XML
+    const tableRegex = /<(\w+)>[\s\S]*?<\/\1>/g;
+    const tablesFound = new Set<string>();
+    let tableMatch;
+    while ((tableMatch = tableRegex.exec(resultContent)) !== null) {
+      const tableName = tableMatch[1];
+      if (!['RESPONSENBR', 'RESPONSETXT', 'MESSAGE', 'PROCESSDATA'].includes(tableName)) {
+        tablesFound.add(tableName);
+      }
+    }
+
+    // Verificar si hay dataset real
+    const hasNewDataSet = /<NewDataSet>/i.test(resultContent);
+    const hasDatDocumentos = /<DatDocumentos>/i.test(resultContent);
+
     // Contar registros
     const docRegex = /<DatDocumentos>([\s\S]*?)<\/DatDocumentos>/g;
     const matches = resultContent.match(docRegex);
     const recordCount = matches ? matches.length : 0;
+
+    // Diagnóstico completo
+    const hasDataset = hasNewDataSet || hasDatDocumentos || recordCount > 0;
 
     // Determinar si es un error interno
     const hasInternalError =
       sicasDetails.message?.includes('Error en Ejecución') ||
       sicasDetails.message?.includes('Proceso Interno') ||
       sicasDetails.message?.includes('Variable de objeto') ||
-      sicasDetails.message?.includes('SICASOnline');
+      sicasDetails.message?.includes('SICASOnline') ||
+      sicasDetails.message?.toLowerCase().includes('error');
 
-    // Guardar en log
+    // Guardar en log con diagnóstico completo
     await supabase
       .from('sicas_production_sync_log')
       .insert({
@@ -180,34 +199,58 @@ Deno.serve(async (req: Request) => {
         completed_at: new Date().toISOString(),
         metadata: {
           test_type: 'simple_without_filters',
-          report_code: reportCode,
-          page,
-          itemsPerPage,
+          source: 'SICAS Web Service',
+          // Request (sin credenciales)
+          request: {
+            report_code: reportCode,
+            page,
+            items_per_page: itemsPerPage,
+          },
+          // Respuesta de SICAS
+          sicas_response: sicasDetails,
+          // Diagnóstico completo
+          diagnostic: {
+            raw_result_length: resultContent.length,
+            has_dataset: hasDataset,
+            tables_found: Array.from(tablesFound),
+            raw_preview: resultContent.substring(0, 2000),
+          },
           duration_ms: duration,
-          ...sicasDetails,
         },
       });
 
     return new Response(
       JSON.stringify({
-        success: !hasInternalError,
+        success: !hasInternalError && hasDataset,
         test_type: 'simple_without_filters',
         report_code: reportCode,
         sicas_response: sicasDetails,
         records_found: recordCount,
         duration_ms: duration,
         http_status: response.status,
-        diagnosis: {
+        // Diagnóstico completo
+        diagnostic: {
+          raw_result_length: resultContent.length,
+          has_dataset: hasDataset,
+          tables_found: Array.from(tablesFound),
           has_internal_error: hasInternalError,
           is_access_denied: sicasDetails.responsetxt === 'DENIED',
           has_data: recordCount > 0,
-          recommendation: hasInternalError
-            ? 'El reporte tiene un error interno en SICAS. Contacta al proveedor con el código de reporte y mensaje de error.'
-            : recordCount === 0
-            ? 'El reporte no devolvió datos. Verifica que existan registros en SICAS o prueba con otro código de reporte.'
-            : 'El reporte funciona correctamente.',
+          raw_preview: resultContent.substring(0, 2000),
         },
-        raw_preview: resultContent.substring(0, 2000),
+        // Request (sin credenciales)
+        request: {
+          report_code: reportCode,
+          page,
+          items_per_page: itemsPerPage,
+        },
+        recommendation: hasInternalError
+          ? 'El reporte tiene un error interno en SICAS. Contacta al proveedor con el código de reporte y mensaje de error.'
+          : !hasDataset
+          ? 'El reporte no devolvió dataset. Verifica configuración o prueba con otro código de reporte.'
+          : recordCount === 0
+          ? 'El reporte funciona pero no hay registros. Verifica que existan datos en SICAS.'
+          : 'El reporte funciona correctamente.',
       }),
       {
         headers: {
