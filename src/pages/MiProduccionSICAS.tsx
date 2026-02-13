@@ -113,83 +113,55 @@ export default function MiProduccionSICAS() {
   };
 
   const loadPolizasVigentes = async () => {
-    const { data: mapeo } = await supabase
-      .from('sicas_mapeo_vendedor_usuario')
-      .select('id_sicas_vendedor')
-      .eq('movi_user_id', usuario?.id)
-      .single();
-
-    if (!mapeo) return;
-
     const { data, error } = await supabase
       .from('sicas_polizas_vigentes')
       .select('*')
-      .eq('vend_id', mapeo.id_sicas_vendedor)
       .order('vigencia_hasta', { ascending: true });
 
     if (!error && data) {
       setPolizas(data);
+    } else if (error) {
+      console.error('Error al cargar pólizas:', error);
     }
   };
 
   const loadCobranzaPendiente = async () => {
-    const { data: mapeo } = await supabase
-      .from('sicas_mapeo_vendedor_usuario')
-      .select('id_sicas_vendedor')
-      .eq('movi_user_id', usuario?.id)
-      .single();
-
-    if (!mapeo) return;
-
     const { data, error } = await supabase
       .from('sicas_cobranza_pendiente')
       .select('*')
-      .eq('vend_id', mapeo.id_sicas_vendedor)
       .order('dias_vencidos', { ascending: false });
 
     if (!error && data) {
       setCobranza(data);
+    } else if (error) {
+      console.error('Error al cargar cobranza:', error);
     }
   };
 
   const loadRenovaciones = async () => {
-    const { data: mapeo } = await supabase
-      .from('sicas_mapeo_vendedor_usuario')
-      .select('id_sicas_vendedor')
-      .eq('movi_user_id', usuario?.id)
-      .single();
-
-    if (!mapeo) return;
-
     const { data, error } = await supabase
       .from('sicas_renovaciones_proximas')
       .select('*')
-      .eq('vend_id', mapeo.id_sicas_vendedor)
       .lte('dias_para_vencer', filters.diasRenovacion)
       .order('dias_para_vencer', { ascending: true });
 
     if (!error && data) {
       setRenovaciones(data);
+    } else if (error) {
+      console.error('Error al cargar renovaciones:', error);
     }
   };
 
   const loadEmisionesDelMes = async () => {
-    const { data: mapeo } = await supabase
-      .from('sicas_mapeo_vendedor_usuario')
-      .select('id_sicas_vendedor')
-      .eq('movi_user_id', usuario?.id)
-      .single();
-
-    if (!mapeo) return;
-
     const { data, error } = await supabase
       .from('sicas_emitidas_mes_actual')
       .select('*')
-      .eq('vend_id', mapeo.id_sicas_vendedor)
       .order('vigencia_desde', { ascending: false });
 
     if (!error && data) {
       setEmisionesDelMes(data);
+    } else if (error) {
+      console.error('Error al cargar emisiones:', error);
     }
   };
 
