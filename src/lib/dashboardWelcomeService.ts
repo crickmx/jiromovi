@@ -242,16 +242,17 @@ async function getCotizacionesData(userId: string) {
  */
 async function getEventosProximos(userId: string) {
   try {
-    const hoy = new Date();
+    const hoy = new Date().toISOString().split('T')[0];
     const en7Dias = new Date();
     en7Dias.setDate(en7Dias.getDate() + 7);
+    const fechaEn7Dias = en7Dias.toISOString().split('T')[0];
 
     const { count } = await supabase
       .from('aula_eventos')
       .select('*', { count: 'exact', head: true })
-      .gte('fecha_hora_inicio', hoy.toISOString())
-      .lte('fecha_hora_inicio', en7Dias.toISOString())
-      .or(`creador_id.eq.${userId},visible_para_todos.eq.true`);
+      .gte('fecha', hoy)
+      .lte('fecha', fechaEn7Dias)
+      .or(`creado_por.eq.${userId},visible_para_todos.eq.true`);
 
     return {
       eventos_proximos: count || 0,
