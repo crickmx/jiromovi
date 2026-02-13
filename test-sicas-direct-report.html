@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test SICAS Direct - Reportes de Producción</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: monospace; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+    button:hover { background: #0056b3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    pre { background: #fff; padding: 10px; border: 1px solid #ddd; overflow-x: auto; max-height: 500px; font-size: 11px; }
+    input { padding: 8px; margin: 5px; width: 300px; }
+    .success { color: green; font-weight: bold; }
+    .error { color: red; font-weight: bold; }
+    .info { color: blue; }
+  </style>
+</head>
+<body>
+  <h1>🔬 Test SICAS - Buscar Reportes de Producción</h1>
+
+  <div class="section">
+    <h3>Configuración</h3>
+    <label>Endpoint:</label><br>
+    <input type="text" id="endpoint" value="http://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx"><br>
+    <label>Usuario:</label><br>
+    <input type="text" id="username" value="j1r0%25$"><br>
+    <label>Password:</label><br>
+    <input type="password" id="password" value=""><br><br>
+    <p class="info">ℹ️ El password debe estar configurado en la BD</p>
+  </div>
+
+  <div class="section">
+    <h3>Probar Reportes</h3>
+    <p>Vamos a probar diferentes códigos de reporte para encontrar el que funcione:</p>
+    <button onclick="testReport('H03117')">H03117 - Pólizas Vigentes</button>
+    <button onclick="testReport('H001')">H001 - Producción General</button>
+    <button onclick="testReport('H002')">H002 - Cobranza</button>
+    <button onclick="testReport('H003')">H003 - Renovaciones</button>
+    <button onclick="testReport('H004')">H004 - Emisión</button>
+    <button onclick="testReport('HAPPDATAL')">HAPPDATAL - Data de Aplicación</button>
+    <br><br>
+    <label>Código personalizado:</label>
+    <input type="text" id="customCode" placeholder="ej: H001, D001, etc">
+    <button onclick="testReport(document.getElementById('customCode').value)">Probar</button>
+  </div>
+
+  <div class="section">
+    <h3>Resultado</h3>
+    <div id="status"></div>
+    <pre id="output"></pre>
+  </div>
+
+  <script>
+    async function testReport(keyCode) {
+      if (!keyCode) {
+        alert('Ingresa un código de reporte');
+        return;
+      }
+
+      const endpoint = document.getElementById('endpoint').value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value || 'jir0&2024';
+
+      const statusDiv = document.getElementById('status');
+      const outputPre = document.getElementById('output');
+
+      statusDiv.innerHTML = `⏳ Probando reporte <strong>${keyCode}</strong>...`;
+      outputPre.textContent = '';
+
+      const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ProcesarWS xmlns="http://tempuri.org/">
+      <wsProcesarData>
+        <KeyProcess>REPORT</KeyProcess>
+        <KeyCode>${keyCode}</KeyCode>
+        <Page>1</Page>
+        <ItemForPage>10</ItemForPage>
+      </wsProcesarData>
+      <wsAuthConfig>
+        <UserName>${username}</UserName>
+        <Password>${password}</Password>
+      </wsAuthConfig>
+    </ProcesarWS>
+  </soap:Body>
+</soap:Envelope>`;
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'SOAPAction': 'http://tempuri.org/ProcesarWS',
+          },
+          body: soapEnvelope,
+        });
+
+        const responseText = await response.text();
+
+        // Decodificar entidades HTML
+        const decoded = responseText
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'");
+
+        // Extraer resultado
+        const resultMatch = decoded.match(/<ProcesarWSResult>([\s\S]*?)<\/ProcesarWSResult>/);
+        const resultContent = resultMatch ? resultMatch[1] : decoded;
+
+        // Buscar indicadores clave
+        const responseNbr = resultContent.match(/<RESPONSENBR>(\d+)<\/RESPONSENBR>/)?.[1];
+        const responseTxt = resultContent.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/)?.[1];
+        const message = resultContent.match(/<MESSAGE>(.*?)<\/MESSAGE>/)?.[1];
+
+        console.log('Response NBR:', responseNbr);
+        console.log('Response TXT:', responseTxt);
+        console.log('Message:', message);
+
+        // Verificar si hay registros
+        const hasRecords = resultContent.includes('<Dat') || resultContent.includes('{') ||
+                          resultContent.includes('[') || resultContent.length > 500;
+
+        if (responseNbr === '1' && hasRecords) {
+          statusDiv.innerHTML = `<p class="success">✅ ÉXITO: Reporte ${keyCode} devolvió datos</p>` +
+                               `<p>RESPONSENBR: ${responseNbr}</p>` +
+                               `<p>RESPONSETXT: ${responseTxt || 'N/A'}</p>` +
+                               `<p>MESSAGE: ${message || 'N/A'}</p>` +
+                               `<p>Longitud de respuesta: ${resultContent.length} caracteres</p>`;
+        } else if (responseNbr === '0') {
+          statusDiv.innerHTML = `<p class="error">❌ Reporte ${keyCode} no disponible o sin datos</p>` +
+                               `<p>RESPONSENBR: ${responseNbr}</p>` +
+                               `<p>MESSAGE: ${message || 'N/A'}</p>`;
+        } else if (responseTxt === 'DENIED') {
+          statusDiv.innerHTML = `<p class="error">🔒 Acceso denegado - Verificar credenciales</p>`;
+        } else {
+          statusDiv.innerHTML = `<p class="info">ℹ️ Respuesta recibida para ${keyCode}</p>` +
+                               `<p>RESPONSENBR: ${responseNbr || 'N/A'}</p>` +
+                               `<p>RESPONSETXT: ${responseTxt || 'N/A'}</p>` +
+                               `<p>MESSAGE: ${message || 'N/A'}</p>`;
+        }
+
+        // Mostrar los primeros 2000 caracteres del resultado
+        outputPre.textContent = resultContent.substring(0, 2000) +
+                               (resultContent.length > 2000 ? '\n\n... (truncado)' : '');
+
+      } catch (error) {
+        statusDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+        outputPre.textContent = error.stack;
+      }
+    }
+  </script>
+</body>
+</html>

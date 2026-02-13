@@ -113,9 +113,28 @@ async function consultarPolizasVigentesSICAS(
 
   // Verificar estado del proceso
   const responseNbrMatch = resultContent.match(/<RESPONSENBR>(\d+)<\/RESPONSENBR>/);
+  const responseTxtMatch = resultContent.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/);
+  const messageMatch = resultContent.match(/<MESSAGE>(.*?)<\/MESSAGE>/);
+
+  console.log(`[SICAS] RESPONSENBR: ${responseNbrMatch?.[1] || 'N/A'}`);
+  console.log(`[SICAS] RESPONSETXT: ${responseTxtMatch?.[1] || 'N/A'}`);
+  console.log(`[SICAS] MESSAGE: ${messageMatch?.[1] || 'N/A'}`);
+
+  // Si RESPONSENBR=0, el reporte no tiene datos o no está disponible
   if (!responseNbrMatch || responseNbrMatch[1] === '0') {
-    const message = resultContent.match(/<MESSAGE>(.*?)<\/MESSAGE>/)?.[1] || 'Sin mensaje';
-    throw new Error(`SICAS RESPONSENBR=0: ${message}`);
+    const message = messageMatch?.[1] || 'Sin mensaje';
+    console.warn(`[SICAS] Reporte sin datos: ${message}`);
+
+    // Logging adicional para debug - primeros 2000 caracteres
+    console.log('[SICAS] Preview del contenido:', resultContent.substring(0, 2000));
+
+    // No es un error, simplemente no hay datos
+    return [];
+  }
+
+  // Verificar acceso denegado
+  if (responseTxtMatch && responseTxtMatch[1] === 'DENIED') {
+    throw new Error('SICAS: Acceso denegado - verificar credenciales');
   }
 
   // Parsear los registros de pólizas
@@ -339,8 +358,23 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Sync] Total pólizas obtenidas: ${allPolizas.length}`);
 
-    // Guardar en caché
-    const saveStats = await guardarPolizasCache(supabase, allPolizas);
+    let saveStats = { inserted: 0, updated: 0, errors: 0 };
+
+    // Si no hay pólizas, limpiar la tabla
+    if (allPolizas.length === 0) {
+      console.log('[Sync] No hay pólizas, limpiando tabla...');
+      const { error } = await supabase
+        .from('sicas_polizas_vigentes')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (error) {
+        console.error('[Sync] Error al limpiar tabla:', error);
+      }
+    } else {
+      // Guardar en caché
+      saveStats = await guardarPolizasCache(supabase, allPolizas);
+    }
 
     // Determinar status final
     const status = saveStats.errors === 0 ? 'success' :
