@@ -30,6 +30,23 @@ interface SicasReportResponse {
   Error?: string;
 }
 
+interface SicasDigitalFile {
+  FileName: string;
+  FileExtension: string;
+  FileSize?: number;
+  FileData?: string;
+  DocumentDate?: string;
+  UploadDate?: string;
+  Description?: string;
+}
+
+interface SicasDigitalFilesResponse {
+  Files: SicasDigitalFile[];
+  Sucess: boolean;
+  Message?: string;
+  Error?: string;
+}
+
 export class SicasRestClient {
   private baseUrl: string;
   private username: string;
@@ -277,6 +294,25 @@ export class SicasRestClient {
           'Prop_KeyCode': keyCode,
         },
         body,
+        maxRetries: 2,
+      }
+    );
+  }
+
+  public async getDigitalFiles(options: {
+    identity: string;
+    valuePK: string;
+  }): Promise<SicasDigitalFilesResponse> {
+    const { identity, valuePK } = options;
+
+    return await this.request<SicasDigitalFilesResponse>(
+      '/DigitalCenter/GetFiles',
+      {
+        method: 'POST',
+        body: {
+          Identity: identity,
+          ValuePK: valuePK,
+        },
         maxRetries: 2,
       }
     );
