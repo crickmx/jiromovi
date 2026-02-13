@@ -202,19 +202,32 @@ export default function MiProduccionSICAS() {
 
       const result = await response.json();
 
-      if (response.ok && result.success !== false) {
-        const polizasCount = result.results?.polizas_vigentes || result.polizas_vigentes || 0;
-        const cobranzaCount = result.results?.cobranza_pendiente || result.cobranza_pendiente || 0;
+      // Verificar si hay errores en los resultados
+      const hasErrors = result.results?.errors?.length > 0;
+      const polizasCount = result.results?.polizas_vigentes || result.polizas_vigentes || 0;
+      const cobranzaCount = result.results?.cobranza_pendiente || result.cobranza_pendiente || 0;
 
-        if (polizasCount === 0 && result.results?.metadata?.responsenbr === '0') {
+      if (response.ok && !hasErrors) {
+        // Verificar si SICAS devolvió un error interno (metadata con mensaje de error)
+        const metadata = result.results?.metadata || result.metadata;
+        const hasInternalError = metadata?.message?.includes('Error en Ejecución') ||
+                                 metadata?.message?.includes('Proceso Interno') ||
+                                 metadata?.message?.includes('Variable de objeto');
+
+        if (hasInternalError) {
           setSicasDiagnostic({
-            responsenbr: result.results.metadata.responsenbr,
-            responsetxt: result.results.metadata.responsetxt,
-            message: result.results.metadata.message,
+            responsenbr: metadata.responsenbr || '0',
+            responsetxt: metadata.responsetxt || 'SUCESS',
+            message: metadata.message || 'Error desconocido',
           });
           setSyncMessage({
             type: 'error',
-            text: 'SICAS no devolvió pólizas. Ver diagnóstico abajo.'
+            text: 'SICAS devolvió un error interno. Ver diagnóstico abajo.'
+          });
+        } else if (polizasCount === 0 && cobranzaCount === 0) {
+          setSyncMessage({
+            type: 'error',
+            text: 'No se encontraron datos en SICAS. Verifica que existan registros.'
           });
         } else {
           setSyncMessage({
@@ -224,8 +237,10 @@ export default function MiProduccionSICAS() {
         }
         await loadData();
       } else {
-        const errorMsg = result.error ||
-                        (result.results?.errors?.length > 0 ? result.results.errors.join(', ') : 'Error desconocido');
+        const errorMsg = hasErrors
+          ? result.results.errors.join(', ')
+          : result.error || 'Error desconocido';
+
         setSyncMessage({
           type: 'error',
           text: `Error en sincronización: ${errorMsg}`

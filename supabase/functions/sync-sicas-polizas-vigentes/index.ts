@@ -126,14 +126,26 @@ async function consultarPolizasVigentesSICAS(
   console.log(`[SICAS] RESPONSETXT: ${sicasDetails.responsetxt}`);
   console.log(`[SICAS] MESSAGE: ${sicasDetails.message}`);
 
-  // Si RESPONSENBR=0, el reporte no tiene datos o no está disponible
+  // Si RESPONSENBR=0, verificar si es un error real o simplemente sin datos
   if (!responseNbrMatch || responseNbrMatch[1] === '0') {
     console.warn(`[SICAS] Reporte sin datos: ${sicasDetails.message}`);
 
     // Logging adicional para debug - primeros 2000 caracteres
     console.log('[SICAS] Preview del contenido:', resultContent.substring(0, 2000));
 
-    // No es un error, simplemente no hay datos
+    // Si el mensaje contiene "Error", es un error real de SICAS, no simplemente "sin datos"
+    const hasInternalError =
+      sicasDetails.message?.includes('Error en Ejecución') ||
+      sicasDetails.message?.includes('Proceso Interno') ||
+      sicasDetails.message?.includes('Variable de objeto') ||
+      sicasDetails.message?.includes('SICASOnline');
+
+    if (hasInternalError) {
+      // Error real de SICAS - lanzar excepción para que se registre como failed
+      throw new Error(`SICAS Internal Error: ${sicasDetails.message}`);
+    }
+
+    // Si no hay error interno, simplemente no hay datos
     return { polizas: [], sicasDetails };
   }
 

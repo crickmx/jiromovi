@@ -37,6 +37,7 @@ Deno.serve(async (req: Request) => {
     console.log(`[SICAS-Sync-Manual] Iniciando sincronización: ${syncType || 'completa'}`);
 
     // Sincronizar pólizas vigentes
+    let polizasMetadata: any = null;
     if (!syncType || syncType === 'polizas' || syncType === 'completa') {
       try {
         const polizasResponse = await fetch(
@@ -50,14 +51,21 @@ Deno.serve(async (req: Request) => {
           }
         );
 
+        const polizasData = await polizasResponse.json();
+
         if (polizasResponse.ok) {
-          const polizasData = await polizasResponse.json();
           results.polizas_vigentes = polizasData.stats?.records_inserted || polizasData.stats?.records_fetched || 0;
+          polizasMetadata = polizasData.metadata;
           console.log(`[SICAS-Sync-Manual] Pólizas sincronizadas: ${results.polizas_vigentes}`);
+
+          // Si el metadata indica error interno de SICAS, agregarlo a errores
+          if (polizasMetadata?.message?.includes('Error')) {
+            results.errors.push(`SICAS Error Interno: ${polizasMetadata.message}`);
+          }
         } else {
-          const errorText = await polizasResponse.text();
-          results.errors.push(`Error en pólizas: ${errorText}`);
-          console.error("[SICAS-Sync-Manual] Error en pólizas:", errorText);
+          const errorMsg = polizasData.error || 'Error desconocido';
+          results.errors.push(`Error en pólizas: ${errorMsg}`);
+          console.error("[SICAS-Sync-Manual] Error en pólizas:", errorMsg);
         }
       } catch (error) {
         results.errors.push(`Error en pólizas: ${error.message}`);
