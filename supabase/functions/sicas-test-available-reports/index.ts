@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
 
 const corsHeaders = {
@@ -18,6 +19,51 @@ Deno.serve(async (req: Request) => {
   try {
     console.log('[Test Reports] Probando códigos de reporte disponibles...');
 
+    // Verificar configuración de SICAS
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: config, error: configError } = await supabase
+      .from('sicas_config')
+      .select('*')
+      .single();
+
+    if (configError || !config) {
+      console.error('[Test Reports] Error obteniendo configuración:', configError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'No se pudo obtener la configuración de SICAS',
+          details: configError
+        }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    if (!config.activa) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'La configuración de SICAS está desactivada'
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    console.log('[Test Reports] Configuración verificada, creando cliente...');
     const sicasClient = createSicasRestClient();
 
     // Lista extendida de códigos de reporte posibles
