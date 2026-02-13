@@ -55,47 +55,49 @@ Deno.serve(async (req: Request) => {
       password: config.sicas_password,
     });
 
-    // Lista extendida de códigos de reporte posibles
-    const reportCodes = [
-      // Pólizas y producción
-      'H05106', 'H05107', 'H05105', 'H03117', 'H05101', 'H05102',
-      // Cobranza
-      'D004', 'D001', 'D002', 'D003',
-      // Comisiones
-      'C001', 'C002', 'C003', 'C004',
-      // Otros
-      'R001', 'R002', 'P001', 'P002',
+    // Obtener códigos desde config o usar defaults prioritarios
+    const reportCodes = config.alternate_report_codes || [
+      'H03117', 'H03115', 'H03100', 'H03101', 'H03102',
+      'H05106', 'H05107'
     ];
 
-    const results = [];
+    console.log(`[Test Reports] Probando ${reportCodes.length} códigos...`);
 
-    for (const keyCode of reportCodes) {
+    // Probar todos en paralelo con timeout individual
+    const testPromises = reportCodes.map(async (keyCode) => {
       try {
         console.log(`[Test Reports] Probando ${keyCode}...`);
 
-        const response = await sicasClient.readReport({
-          keyCode,
-          pageRequested: 1,
-          itemsForPage: 1,
-          formatResponse: 2,
-        });
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout')), 10000)
+        );
+
+        const response = await Promise.race([
+          sicasClient.readReport({
+            keyCode,
+            pageRequested: 1,
+            itemsForPage: 1,
+            formatResponse: 2,
+          }),
+          timeoutPromise
+        ]) as any;
 
         if (response.Sucess && !response.Error) {
           const hasData = response.Response?.[0]?.TableInfo?.length > 0;
-          results.push({
+          console.log(`[Test Reports] ✅ ${keyCode} - Disponible (${hasData ? 'con datos' : 'sin datos'})`);
+          return {
             keyCode,
             status: 'available',
             hasData,
             recordCount: response.Response?.[0]?.TableInfo?.length || 0,
-          });
-          console.log(`[Test Reports] ✅ ${keyCode} - Disponible (${hasData ? 'con datos' : 'sin datos'})`);
+          };
         } else {
-          results.push({
+          console.log(`[Test Reports] ❌ ${keyCode} - Error: ${response.Error}`);
+          return {
             keyCode,
             status: 'error',
             error: response.Error || 'Sin datos',
-          });
-          console.log(`[Test Reports] ❌ ${keyCode} - Error: ${response.Error}`);
+          };
         }
       } catch (error: any) {
         const errorMsg = error.message || 'Error desconocido';
@@ -103,17 +105,16 @@ Deno.serve(async (req: Request) => {
                           errorMsg.includes('not found') ||
                           errorMsg.includes('Codigo de reporte');
 
-        results.push({
+        console.log(`[Test Reports] ⚠️ ${keyCode} - ${isNotFound ? 'No encontrado' : 'Error'}: ${errorMsg}`);
+        return {
           keyCode,
           status: isNotFound ? 'not_found' : 'error',
           error: errorMsg,
-        });
-        console.log(`[Test Reports] ⚠️ ${keyCode} - ${isNotFound ? 'No encontrado' : 'Error'}: ${errorMsg}`);
+        };
       }
+    });
 
-      // Pequeña pausa entre requests para no saturar
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    const results = await Promise.all(testPromises);
 
     // Resumen
     const available = results.filter(r => r.status === 'available');
