@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
 
         if (polizasResponse.ok) {
           const polizasData = await polizasResponse.json();
-          results.polizas_vigentes = polizasData.records_synced || 0;
+          results.polizas_vigentes = polizasData.stats?.records_inserted || polizasData.stats?.records_fetched || 0;
           console.log(`[SICAS-Sync-Manual] Pólizas sincronizadas: ${results.polizas_vigentes}`);
         } else {
           const errorText = await polizasResponse.text();

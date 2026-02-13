@@ -197,15 +197,20 @@ export default function MiProduccionSICAS() {
       const result = await response.json();
 
       if (response.ok && result.success !== false) {
+        const polizasCount = result.results?.polizas_vigentes || result.polizas_vigentes || 0;
+        const cobranzaCount = result.results?.cobranza_pendiente || result.cobranza_pendiente || 0;
+
         setSyncMessage({
           type: 'success',
-          text: `Sincronización completada: ${result.polizas_vigentes || 0} pólizas, ${result.cobranza_pendiente || 0} cobranzas`
+          text: `Sincronización completada: ${polizasCount} pólizas, ${cobranzaCount} cobranzas`
         });
         await loadData();
       } else {
+        const errorMsg = result.error ||
+                        (result.results?.errors?.length > 0 ? result.results.errors.join(', ') : 'Error desconocido');
         setSyncMessage({
           type: 'error',
-          text: `Error en sincronización: ${result.error || 'Error desconocido'}`
+          text: `Error en sincronización: ${errorMsg}`
         });
       }
     } catch (error: any) {
