@@ -69,12 +69,13 @@ Deno.serve(async (req: Request) => {
     console.log('[Office-Vendors] Usuario:', usuario.id, 'Rol:', usuario.rol);
 
     // Determinar qué vendedores puede ver según su rol
+    // Especificamos la relación exacta usando el nombre del FK
     let vendedoresQuery = supabase
       .from('sicas_mapeo_vendedor_usuario')
       .select(`
         id_sicas_vendedor,
         movi_user_id,
-        usuarios!inner(
+        movi_usuario:usuarios!sicas_mapeo_vendedor_usuario_movi_user_id_fkey(
           id,
           nombre_completo,
           email_laboral,
@@ -87,7 +88,7 @@ Deno.serve(async (req: Request) => {
     // Filtrar según rol
     if (usuario.rol !== 'admin' && usuario.rol !== 'Administrador') {
       // Gerentes y empleados ven solo su oficina
-      vendedoresQuery = vendedoresQuery.eq('usuarios.oficina_id', usuario.oficina_id);
+      vendedoresQuery = vendedoresQuery.eq('movi_usuario.oficina_id', usuario.oficina_id);
     }
 
     const { data: vendedores, error: vendedoresError } = await vendedoresQuery;
@@ -124,7 +125,7 @@ Deno.serve(async (req: Request) => {
 
     for (const vendedor of vendedores) {
       const vendId = vendedor.id_sicas_vendedor.toString();
-      const usuarioData = vendedor.usuarios as any;
+      const usuarioData = vendedor.movi_usuario as any;
 
       // Contar pólizas vigentes
       const { count: totalPolizas } = await supabase
