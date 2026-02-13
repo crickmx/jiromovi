@@ -91,14 +91,34 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const response = await fetch(sicasUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        "SOAPAction": `${sicasNamespace}HAPPDATAL_D004`,
-      },
-      body: soapRequest,
-    });
+    let response;
+    try {
+      response = await fetch(sicasUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          "SOAPAction": `${sicasNamespace}HAPPDATAL_D004`,
+        },
+        body: soapRequest,
+      });
+    } catch (fetchError: any) {
+      // Si hay error SSL, intentar con HTTP en lugar de HTTPS
+      if (fetchError.message?.includes('certificate') || fetchError.message?.includes('SSL')) {
+        console.warn("[SICAS-Cobranza] Error SSL, intentando con HTTP...");
+        const httpUrl = sicasUrl.replace('https://', 'http://');
+
+        response = await fetch(httpUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": `${sicasNamespace}HAPPDATAL_D004`,
+          },
+          body: soapRequest,
+        });
+      } else {
+        throw fetchError;
+      }
+    }
 
     if (!response.ok) {
       throw new Error(`Error en respuesta SICAS: ${response.status} ${response.statusText}`);

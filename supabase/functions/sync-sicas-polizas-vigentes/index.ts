@@ -60,14 +60,34 @@ async function consultarPolizasVigentesSICAS(
   </soap:Body>
 </soap:Envelope>`;
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/xml; charset=utf-8',
-      'SOAPAction': 'http://tempuri.org/ProcesarWS',
-    },
-    body: soapEnvelope,
-  });
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'SOAPAction': 'http://tempuri.org/ProcesarWS',
+      },
+      body: soapEnvelope,
+    });
+  } catch (fetchError: any) {
+    // Si hay error SSL, intentar con HTTP en lugar de HTTPS
+    if (fetchError.message?.includes('certificate') || fetchError.message?.includes('SSL')) {
+      console.warn(`[SICAS] Error SSL en página ${page}, intentando con HTTP...`);
+      const httpEndpoint = endpoint.replace('https://', 'http://');
+
+      response = await fetch(httpEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'SOAPAction': 'http://tempuri.org/ProcesarWS',
+        },
+        body: soapEnvelope,
+      });
+    } else {
+      throw fetchError;
+    }
+  }
 
   if (!response.ok) {
     throw new Error(`SICAS HTTP Error: ${response.status}`);
