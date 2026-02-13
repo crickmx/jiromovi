@@ -74,24 +74,34 @@ export class SicasRestClient {
 
   private async getToken(): Promise<string> {
     console.log('[SICAS REST] Obteniendo nuevo token...');
+    console.log('[SICAS REST] URL:', `${this.baseUrl}/Security/GetToken`);
+    console.log('[SICAS REST] Username:', this.username);
 
     const params = new URLSearchParams({
       sUserName: this.username,
       sPassword: this.password,
     });
 
-    const response = await fetch(`${this.baseUrl}/Security/GetToken?${params.toString()}`, {
+    const url = `${this.baseUrl}/Security/GetToken?${params.toString()}`;
+    console.log('[SICAS REST] Request URL completa:', url);
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
+    console.log('[SICAS REST] Response status:', response.status, response.statusText);
+
+    const responseText = await response.text();
+    console.log('[SICAS REST] Response body:', responseText);
+
     if (!response.ok) {
-      throw new Error(`Failed to get token: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to get token: ${response.status} ${response.statusText} - Body: ${responseText}`);
     }
 
-    const data: SicasAuthResponse = await response.json();
+    const data: SicasAuthResponse = JSON.parse(responseText);
 
     if (!data.Sucess || !data.Token) {
       throw new Error(`Authentication failed: ${data.Message || 'Unknown error'}`);
