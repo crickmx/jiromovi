@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabase';
 import {
   getSicasConfig,
   testSicasConnection,
+  testSicasRestConnection,
   syncSicasCatalog,
   getAllSicasDespachos,
   getSicasVendedores,
@@ -31,6 +32,7 @@ export default function SicasAdmin() {
   const [config, setConfig] = useState<SicasConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [testingRestConnection, setTestingRestConnection] = useState(false);
   const [syncingDespachos, setSyncingDespachos] = useState(false);
   const [syncingVendedores, setSyncingVendedores] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -154,6 +156,28 @@ export default function SicasAdmin() {
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
       setTestingConnection(false);
+    }
+  }
+
+  async function handleTestRestConnection() {
+    setTestingRestConnection(true);
+    setMessage(null);
+
+    try {
+      const result = await testSicasRestConnection();
+      if (result.success && result.connectionSuccess) {
+        setMessage({
+          type: 'success',
+          text: `${result.message}\n\nAPI: ${result.apiType}\nEndpoint: ${result.endpoint}`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error REST: ${result.message || result.error}` });
+      }
+      await loadData();
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error REST: ${error.message}` });
+    } finally {
+      setTestingRestConnection(false);
     }
   }
 
@@ -708,7 +732,25 @@ export default function SicasAdmin() {
                       ) : (
                         <>
                           <CheckCircle className="w-4 h-4 mr-2" />
-                          Probar Conexión
+                          Probar Conexión SOAP
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={handleTestRestConnection}
+                      disabled={testingRestConnection}
+                      variant="default"
+                    >
+                      {testingRestConnection ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Probando...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Probar Conexión REST
                         </>
                       )}
                     </Button>

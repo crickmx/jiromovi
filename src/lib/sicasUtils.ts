@@ -48,6 +48,28 @@ export async function testSicasConnection(): Promise<{
   return await response.json();
 }
 
+export async function testSicasRestConnection(): Promise<{
+  success: boolean;
+  connectionSuccess?: boolean;
+  message?: string;
+  error?: string;
+  apiType?: string;
+  endpoint?: string;
+}> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/sicas-rest-test`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  return await response.json();
+}
+
 export async function syncSicasCatalog(catalogType: 'despachos' | 'vendedores'): Promise<{
   success: boolean;
   itemsProcessed?: number;
