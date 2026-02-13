@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useRef } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
@@ -23,8 +23,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastFetchedUserIdRef = useRef<string | null>(null);
+  const isFetchingRef = useRef(false);
 
-  const fetchUsuario = async (userId: string) => {
+  const fetchUsuario = async (userId: string, forceRefresh: boolean = false) => {
+    // Evitar fetches duplicados
+    if (!forceRefresh && isFetchingRef.current) {
+      console.log('[AuthContext] ⏸️ Ya hay un fetch en progreso, omitiendo');
+      return;
+    }
+
+    if (!forceRefresh && lastFetchedUserIdRef.current === userId) {
+      console.log('[AuthContext] ✅ Usuario ya cargado, omitiendo fetch duplicado');
+      return;
+    }
+
+    isFetchingRef.current = true;
     try {
       console.log('[AuthContext] Fetching usuario for ID:', userId);
 
@@ -86,16 +100,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[AuthContext] Usuario sin permisos adicionales (rol:', data.rol, ')');
         setUsuario(data);
       }
+
+      // Marcar como exitoso
+      lastFetchedUserIdRef.current = userId;
     } catch (err) {
       console.error('[AuthContext] Unexpected error fetching usuario:', err);
       setUsuario(null);
+      lastFetchedUserIdRef.current = null;
       throw err; // Propagamos el error
+    } finally {
+      isFetchingRef.current = false;
     }
   };
 
   const refreshUsuario = async () => {
     if (user) {
-      await fetchUsuario(user.id);
+      console.log('[AuthContext] 🔄 Forzando refresh del usuario');
+      lastFetchedUserIdRef.current = null; // Resetear para forzar el fetch
+      await fetchUsuario(user.id, true);
     }
   };
 
@@ -276,14 +298,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(null);
   };
 
-  const value = {
-    user,
-    usuario,
-    loading,
-    signIn,
-    signOut,
-    refreshUsuario,
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      usuario,
+      loading,
+      signIn,
+      signOut,
+      refreshUsuario,
+    }),
+    [user, usuario, loading]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

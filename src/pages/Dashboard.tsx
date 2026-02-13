@@ -43,10 +43,25 @@ export function Dashboard() {
   const [loadingWelcomeMessage, setLoadingWelcomeMessage] = useState(true);
   const isLoadingRef = useRef(false);
   const lastUserIdRef = useRef<string | null>(null);
+  const renderCountRef = useRef(0);
+  const initCountRef = useRef(0);
 
   useEffect(() => {
+    renderCountRef.current++;
+    console.log(`🔄 Dashboard useEffect disparado (render #${renderCountRef.current})`, {
+      userId: currentUser?.id,
+      birthdayFilter,
+      customBirthdayDate,
+      isLoading: isLoadingRef.current,
+      lastUserId: lastUserIdRef.current
+    });
+
     // Evitar re-ejecuciones innecesarias
-    if (!currentUser?.id) return;
+    if (!currentUser?.id) {
+      console.log('⏸️ No hay usuario, saltando inicialización');
+      return;
+    }
+
     if (isLoadingRef.current) {
       console.log('🔒 Dashboard ya está cargando, omitiendo ejecución duplicada');
       return;
@@ -64,7 +79,8 @@ export function Dashboard() {
     }
 
     const initializeDashboard = async () => {
-      console.log('🚀 Inicializando Dashboard para usuario:', currentUser.id);
+      initCountRef.current++;
+      console.log(`🚀 Inicializando Dashboard (init #${initCountRef.current}) para usuario:`, currentUser.id);
       isLoadingRef.current = true;
       lastUserIdRef.current = currentUser.id;
       setLoading(true);
