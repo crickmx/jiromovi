@@ -181,10 +181,11 @@ export async function mapDespacho(id_sicas_despacho: string, movi_oficina_id: st
   success: boolean;
   error?: string;
 }> {
-  // Verificación previa: comprobar que el despacho existe
+  // Verificación previa: comprobar que el despacho existe en sicas_catalogos
   const { data: despachoExists } = await supabase
-    .from('sicas_despachos')
+    .from('sicas_catalogos')
     .select('id_sicas')
+    .eq('catalog_type_id', 11)
     .eq('id_sicas', id_sicas_despacho)
     .maybeSingle();
 
@@ -250,10 +251,11 @@ export async function mapVendedor(id_sicas_vendedor: string, movi_user_id: strin
   success: boolean;
   error?: string;
 }> {
-  // Verificación previa: comprobar que el vendedor existe
+  // Verificación previa: comprobar que el vendedor existe en sicas_catalogos
   const { data: vendedorExists } = await supabase
-    .from('sicas_vendedores')
+    .from('sicas_catalogos')
     .select('id_sicas')
+    .eq('catalog_type_id', 32)
     .eq('id_sicas', id_sicas_vendedor)
     .maybeSingle();
 
