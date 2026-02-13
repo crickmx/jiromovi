@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
 import PanelAgenteProduccion from '../components/produccion/PanelAgenteProduccion';
+import PanelVendedoresOficina from '../components/produccion/PanelVendedoresOficina';
 
 interface VendorCacheRecord {
   id: string;
@@ -76,12 +77,14 @@ export default function ProduccionPorVendedorOptimizado() {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isAgente = usuario?.rol === 'Agente';
+  const isGerenteOrEmpleado = usuario?.rol === 'gerente' || usuario?.rol === 'empleado';
 
   useEffect(() => {
-    if (!isAgente) {
+    // Solo cargar desde SICAS si es admin y no es gerente/empleado
+    if (isAdmin && !isGerenteOrEmpleado && !isAgente) {
       loadVendors();
     }
-  }, [usuario, currentPage, pageSize, filters, isAgente]);
+  }, [usuario, currentPage, pageSize, filters, isAdmin, isGerenteOrEmpleado, isAgente]);
 
   const loadVendors = async (forceRefresh = false) => {
     if (!usuario) return;
@@ -308,6 +311,27 @@ export default function ProduccionPorVendedorOptimizado() {
             </p>
           </div>
           <PanelAgenteProduccion />
+        </div>
+      </div>
+    );
+  }
+
+  // Si es gerente o empleado, mostrar vendedores de oficina
+  if (isGerenteOrEmpleado || (isAdmin && !isAgente)) {
+    return (
+      <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
+          <div className="mb-6">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 mb-2">
+              Producción por Vendedor
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-600">
+              {isAdmin && !isGerenteOrEmpleado
+                ? 'Vista consolidada de todos los vendedores'
+                : 'Vista de vendedores de tu oficina'}
+            </p>
+          </div>
+          <PanelVendedoresOficina />
         </div>
       </div>
     );
