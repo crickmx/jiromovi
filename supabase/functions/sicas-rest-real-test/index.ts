@@ -230,6 +230,57 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Test nuevo: POST /readreport (endpoint real de MOVI)
+    if (endpoint === 'readreport' || endpoint === 'all') {
+      try {
+        const url = `${SICAS_REST_BASE_URL}/readreport`;
+        const body = {
+          keyCode: 'H03117',
+          pageRequested: 1,
+          itemsForPage: 10,
+          formatResponse: 2
+        };
+
+        results.push({
+          test: 'POST /readreport (sin token)',
+          request: {
+            method: 'POST',
+            url,
+            headers: { 'Content-Type': 'application/json' },
+            body
+          }
+        });
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        const responseText = await response.text();
+
+        results[results.length - 1].response = {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          body: responseText.substring(0, 1000),
+          bodyLength: responseText.length,
+          bodyParsed: (() => {
+            try {
+              return JSON.parse(responseText);
+            } catch {
+              return null;
+            }
+          })()
+        };
+      } catch (error: any) {
+        results[results.length - 1].error = error.message;
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
