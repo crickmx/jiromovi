@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test SICAS Vigentes - Prueba Quirúrgica</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #1e40af;
+      margin-top: 0;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #374151;
+    }
+    input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .success {
+      background: #ecfdf5;
+      border-left: 4px solid #10b981;
+      padding: 16px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    .error {
+      background: #fef2f2;
+      border-left: 4px solid #ef4444;
+      padding: 16px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    .info {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      padding: 16px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: #374151;
+    }
+    tr:hover {
+      background: #f9fafb;
+    }
+    pre {
+      background: #1f2937;
+      color: #f3f4f6;
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #6b7280;
+    }
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #2563eb;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .badge-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔬 SICAS - Prueba Quirúrgica: Documentos Vigentes</h1>
+
+    <div class="info">
+      <strong>Objetivo:</strong> Obtener AL MENOS 1 registro válido de pólizas/documentos vigentes<br>
+      <strong>Reporte:</strong> H03117<br>
+      <strong>Enfoque:</strong> 1 reporte, 1 página, lote pequeño
+    </div>
+
+    <div class="controls">
+      <div>
+        <label for="page">Página</label>
+        <input type="number" id="page" value="1" min="1">
+      </div>
+      <div>
+        <label for="itemsForPage">Items por Página</label>
+        <input type="number" id="itemsForPage" value="10" min="1" max="100">
+      </div>
+    </div>
+
+    <button id="runTest" onclick="runTest()">🚀 Ejecutar Prueba</button>
+  </div>
+
+  <div id="results"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjA5OTAsImV4cCI6MjA3NzI5Njk5MH0.bIlGsgeAC6oxGUalODg0C5-l6KaJip0wWa9IbQ7MjTQ';
+
+    async function runTest() {
+      const button = document.getElementById('runTest');
+      const results = document.getElementById('results');
+
+      button.disabled = true;
+      button.textContent = '⏳ Ejecutando...';
+
+      results.innerHTML = `
+        <div class="container">
+          <div class="loading">
+            <div class="spinner"></div>
+            <div>Llamando a SICAS...</div>
+          </div>
+        </div>
+      `;
+
+      const page = parseInt(document.getElementById('page').value) || 1;
+      const itemsForPage = parseInt(document.getElementById('itemsForPage').value) || 10;
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/sicas-get-vigentes-page`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ page, itemsForPage }),
+          }
+        );
+
+        const data = await response.json();
+        displayResults(data);
+      } catch (error) {
+        results.innerHTML = `
+          <div class="container">
+            <div class="error">
+              <strong>❌ Error de red:</strong><br>
+              ${error.message}
+            </div>
+          </div>
+        `;
+      } finally {
+        button.disabled = false;
+        button.textContent = '🚀 Ejecutar Prueba';
+      }
+    }
+
+    function displayResults(data) {
+      const results = document.getElementById('results');
+
+      let html = '<div class="container">';
+
+      // Estado general
+      if (data.ok) {
+        html += `
+          <div class="success">
+            <strong>✅ ÉXITO: ${data.records.length} registro(s) obtenido(s)</strong><br>
+            El reporte H03117 devolvió datos válidos.
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="error">
+            <strong>❌ FALLO en stage: ${data.stage}</strong><br>
+            ${data.message || 'Error desconocido'}
+          </div>
+        `;
+      }
+
+      // Metadatos SICAS
+      if (data.raw) {
+        html += `
+          <div style="background: #f9fafb; padding: 16px; border-radius: 4px; margin-bottom: 16px;">
+            <h3 style="margin-top: 0;">Response SICAS</h3>
+            <div style="font-family: monospace; font-size: 13px;">
+              <div><strong>RESPONSENBR:</strong> ${data.raw.responseNbr}</div>
+              <div><strong>RESPONSETXT:</strong> ${data.raw.responseTxt}</div>
+              <div><strong>MESSAGE:</strong> ${data.raw.message}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Tabla de registros
+      if (data.records && data.records.length > 0) {
+        html += `
+          <h3>Registros Obtenidos (${data.records.length})</h3>
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID Docto</th>
+                  <th>Póliza</th>
+                  <th>Fecha</th>
+                  <th>Oficina</th>
+                  <th>Vendedor</th>
+                  <th>Aseguradora</th>
+                  <th>Ramo</th>
+                  <th>Importe</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        data.records.forEach(record => {
+          html += `
+            <tr>
+              <td>${record.idDocto || '-'}</td>
+              <td>${record.poliza || '-'}</td>
+              <td>${record.fecha || '-'}</td>
+              <td>${record.oficina || '-'}</td>
+              <td>${record.vendedor || '-'}</td>
+              <td>${record.aseguradora || '-'}</td>
+              <td>${record.ramo || '-'}</td>
+              <td>${record.importe || '-'}</td>
+            </tr>
+          `;
+        });
+
+        html += `
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        // XML crudo del primer registro
+        if (data.records[0].rawRecord) {
+          html += `
+            <details style="margin-top: 16px;">
+              <summary style="cursor: pointer; font-weight: 600; margin-bottom: 8px;">
+                Ver XML crudo del primer registro
+              </summary>
+              <pre>${escapeHtml(data.records[0].rawRecord)}</pre>
+            </details>
+          `;
+        }
+      }
+
+      // Debug info
+      if (data.debug) {
+        html += `
+          <details style="margin-top: 16px;">
+            <summary style="cursor: pointer; font-weight: 600; margin-bottom: 8px;">
+              Ver información de debug
+            </summary>
+            <pre>${JSON.stringify(data.debug, null, 2)}</pre>
+          </details>
+        `;
+      }
+
+      // Respuesta completa
+      html += `
+        <details style="margin-top: 16px;">
+          <summary style="cursor: pointer; font-weight: 600; margin-bottom: 8px;">
+            Ver respuesta completa JSON
+          </summary>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        </details>
+      `;
+
+      html += '</div>';
+
+      // Próximos pasos
+      if (data.ok && data.records.length > 0) {
+        html += `
+          <div class="container">
+            <div class="info">
+              <h3 style="margin-top: 0;">🎉 Siguiente Paso</h3>
+              <ul style="margin: 8px 0;">
+                <li>Subir itemsForPage a 50/100</li>
+                <li>Iterar páginas hasta que venga vacío</li>
+                <li>Guardar en tabla sicas_documents</li>
+                <li>Construir "vigentes por vendedor" y "por renovar"</li>
+              </ul>
+            </div>
+          </div>
+        `;
+      }
+
+      results.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Auto-ejecutar al cargar
+    window.addEventListener('load', () => {
+      console.log('Página cargada. Presiona el botón para ejecutar la prueba.');
+    });
+  </script>
+</body>
+</html>
