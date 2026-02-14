@@ -164,6 +164,14 @@
       </div>
     </div>
 
+    <div style="margin-bottom: 16px;">
+      <label for="vendedorId">ID Vendedor SICAS (Opcional - recomendado para primera prueba)</label>
+      <input type="text" id="vendedorId" placeholder="Ej: 1241" value="1241">
+      <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+        💡 Usa un vendedor específico para evitar errores de SICAS. Ejemplo: 1241 (ABARCA GARCIA ALEJANDRA)
+      </div>
+    </div>
+
     <button id="runTest" onclick="runTest()">🚀 Ejecutar Prueba</button>
   </div>
 
@@ -191,6 +199,12 @@
 
       const page = parseInt(document.getElementById('page').value) || 1;
       const itemsForPage = parseInt(document.getElementById('itemsForPage').value) || 10;
+      const vendedorId = document.getElementById('vendedorId').value.trim();
+
+      const requestBody = { page, itemsForPage };
+      if (vendedorId) {
+        requestBody.vendedorId = vendedorId;
+      }
 
       try {
         const response = await fetch(
@@ -201,7 +215,7 @@
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             },
-            body: JSON.stringify({ page, itemsForPage }),
+            body: JSON.stringify(requestBody),
           }
         );
 

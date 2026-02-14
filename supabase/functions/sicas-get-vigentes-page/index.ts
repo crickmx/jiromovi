@@ -14,6 +14,7 @@ interface VigentesPageRequest {
   itemsForPage?: number;
   fromDate?: string; // YYYY-MM-DD
   toDate?: string;   // YYYY-MM-DD
+  vendedorId?: string; // ID del vendedor SICAS (opcional)
 }
 
 interface VigentesPageResponse {
@@ -63,6 +64,7 @@ Deno.serve(async (req: Request) => {
     const body: VigentesPageRequest = await req.json().catch(() => ({}));
     const page = body.page || 1;
     const itemsForPage = body.itemsForPage || 10;
+    const vendedorId = body.vendedorId;
 
     // Fechas por defecto: últimos 365 días
     const today = new Date();
@@ -72,6 +74,9 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[SICAS Vigentes] Solicitando página ${page}, items: ${itemsForPage}`);
     console.log(`[SICAS Vigentes] Rango de fechas: ${fromDate} a ${toDate}`);
+    if (vendedorId) {
+      console.log(`[SICAS Vigentes] Filtro vendedor: ${vendedorId}`);
+    }
 
     // Obtener configuración SICAS
     stage = 'CONFIG';
@@ -92,6 +97,9 @@ Deno.serve(async (req: Request) => {
     stage = 'BUILD_SOAP';
     const reportCode = 'H03117';
 
+    // Construir filtros opcionales
+    const filterSection = vendedorId ? `<VendID>${vendedorId}</VendID>` : '';
+
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                xmlns:xsd="http://www.w3.org/2001/XMLSchema"
@@ -103,6 +111,7 @@ Deno.serve(async (req: Request) => {
         <KeyCode>${reportCode}</KeyCode>
         <Page>${page}</Page>
         <ItemForPage>${itemsForPage}</ItemForPage>
+        ${filterSection}
       </wsProcesarData>
       <wsAuthConfig>
         <UserName>${sicasUsuario}</UserName>
