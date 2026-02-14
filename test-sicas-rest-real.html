@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SICAS REST API - Prueba Real</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold mb-2 text-blue-600">SICAS REST API - Prueba Real</h1>
+            <p class="text-gray-600 mb-4">
+                Prueba la API REST de SICAS (security-services.sicasonline.info) vs SOAP (sicasonline.com/ASMX)
+            </p>
+
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700">
+                            <strong>Importante:</strong> Esta prueba llama al REST API REAL de SICAS, no al ASMX.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Usuario SICAS</label>
+                    <input type="text" id="usuario"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Dejar vacío para usar env var">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password SICAS</label>
+                    <input type="password" id="password"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Dejar vacío para usar env var">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button onclick="testEndpoint('GetToken')"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                    GET /Security/GetToken
+                </button>
+                <button onclick="testEndpoint('GetTokenPOST')"
+                        class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition">
+                    POST /Security/GetToken
+                </button>
+                <button onclick="testEndpoint('all')"
+                        class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition">
+                    Probar Todo
+                </button>
+            </div>
+
+            <div id="loading" class="hidden mb-6">
+                <div class="flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span class="ml-3 text-gray-600">Ejecutando pruebas...</span>
+                </div>
+            </div>
+
+            <div id="results" class="hidden">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Resultados</h2>
+                <div id="resultsContent" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 class="font-semibold text-blue-900 mb-2">Información</h3>
+            <ul class="text-sm text-blue-800 space-y-1">
+                <li><strong>REST API:</strong> https://security-services.sicasonline.info/api</li>
+                <li><strong>SOAP API:</strong> https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx</li>
+                <li><strong>Diferencia:</strong> Son dos servidores y protocolos diferentes</li>
+                <li><strong>Token REST:</strong> Expira en 3 minutos</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://fzsgjhawetxyzcxaaeyi.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6c2dqaGF3ZXR4eXpjeGFhZXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzAxNzcxNjQsImV4cCI6MjA0NTc1MzE2NH0.a3H8KnXDN7SWjBDk2JJQN0Kn2K4tPnWRTZmxRQlqGa4';
+
+        async function testEndpoint(endpoint) {
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const resultsContent = document.getElementById('resultsContent');
+
+            const usuario = document.getElementById('usuario').value;
+            const password = document.getElementById('password').value;
+
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            resultsContent.innerHTML = '';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/sicas-rest-real-test`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        endpoint,
+                        ...(usuario && { usuario }),
+                        ...(password && { password })
+                    })
+                });
+
+                const data = await response.json();
+
+                loading.classList.add('hidden');
+                results.classList.remove('hidden');
+
+                // Mostrar configuración
+                resultsContent.innerHTML += `
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <h3 class="font-semibold text-gray-800 mb-2">Configuración</h3>
+                        <pre class="text-xs text-gray-600 overflow-auto">${JSON.stringify(data.config, null, 2)}</pre>
+                    </div>
+                `;
+
+                // Mostrar cada resultado
+                data.results.forEach((result, index) => {
+                    const isSuccess = result.response?.status >= 200 && result.response?.status < 300;
+                    const borderColor = isSuccess ? 'border-green-500' : 'border-red-500';
+                    const bgColor = isSuccess ? 'bg-green-50' : 'bg-red-50';
+                    const textColor = isSuccess ? 'text-green-800' : 'text-red-800';
+
+                    resultsContent.innerHTML += `
+                        <div class="border-l-4 ${borderColor} ${bgColor} p-4 rounded">
+                            <h4 class="font-semibold ${textColor} mb-2">
+                                ${result.test}
+                                ${result.response ? `- Status: ${result.response.status} ${result.response.statusText || ''}` : ''}
+                            </h4>
+
+                            ${result.request ? `
+                                <details class="mb-2">
+                                    <summary class="cursor-pointer text-sm font-medium text-gray-700">Request</summary>
+                                    <pre class="text-xs text-gray-600 mt-2 overflow-auto p-2 bg-white rounded">${JSON.stringify(result.request, null, 2)}</pre>
+                                </details>
+                            ` : ''}
+
+                            ${result.response ? `
+                                <details ${isSuccess ? 'open' : ''}>
+                                    <summary class="cursor-pointer text-sm font-medium text-gray-700">Response</summary>
+                                    <div class="mt-2 space-y-2">
+                                        ${result.response.bodyParsed ? `
+                                            <div>
+                                                <div class="text-xs font-medium text-gray-600 mb-1">Parsed JSON:</div>
+                                                <pre class="text-xs text-gray-800 overflow-auto p-2 bg-white rounded">${JSON.stringify(result.response.bodyParsed, null, 2)}</pre>
+                                            </div>
+                                        ` : `
+                                            <div>
+                                                <div class="text-xs font-medium text-gray-600 mb-1">Raw Body:</div>
+                                                <pre class="text-xs text-gray-800 overflow-auto p-2 bg-white rounded max-h-40">${result.response.body}</pre>
+                                            </div>
+                                        `}
+                                        ${result.response.bodyLength ? `
+                                            <div class="text-xs text-gray-600">Body length: ${result.response.bodyLength} chars</div>
+                                        ` : ''}
+                                    </div>
+                                </details>
+                            ` : ''}
+
+                            ${result.error ? `
+                                <div class="mt-2 text-sm text-red-700">
+                                    <strong>Error:</strong> ${result.error}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+
+                // Resumen final
+                const totalTests = data.results.length;
+                const successTests = data.results.filter(r => r.response?.status >= 200 && r.response?.status < 300).length;
+                const failedTests = totalTests - successTests;
+
+                resultsContent.innerHTML += `
+                    <div class="bg-gray-100 border border-gray-300 rounded-lg p-4 mt-4">
+                        <h3 class="font-semibold text-gray-800 mb-2">Resumen</h3>
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <div class="text-2xl font-bold text-blue-600">${totalTests}</div>
+                                <div class="text-xs text-gray-600">Total</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-green-600">${successTests}</div>
+                                <div class="text-xs text-gray-600">Exitosas</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-red-600">${failedTests}</div>
+                                <div class="text-xs text-gray-600">Fallidas</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                loading.classList.add('hidden');
+                results.classList.remove('hidden');
+                resultsContent.innerHTML = `
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4">
+                        <h3 class="font-semibold text-red-800 mb-2">Error</h3>
+                        <p class="text-sm text-red-700">${error.message}</p>
+                        <pre class="text-xs text-red-600 mt-2">${error.stack}</pre>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
