@@ -86,13 +86,34 @@ export default function SicasRestTest() {
       />
 
       <Card className="p-6">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+          <div className="flex">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+            <div className="ml-3">
+              <h3 className="text-base font-semibold text-red-800 mb-2">
+                SICAS REST API NO ESTÁ DISPONIBLE
+              </h3>
+              <div className="text-sm text-red-700 space-y-2">
+                <p>
+                  El servidor <code className="bg-red-100 px-1 py-0.5 rounded">https://security-services.sicasonline.info/api</code> devuelve 404 en todos los endpoints.
+                </p>
+                <p>
+                  <strong>Motivo:</strong> SICAS solo soporta protocolo SOAP mediante el endpoint ASMX. El servicio no tiene el atributo <code className="bg-red-100 px-1 py-0.5 rounded">[ScriptService]</code> necesario para REST/JSON.
+                </p>
+                <p>
+                  <strong>Solución:</strong> Use el <a href="/sicas-diagnostico" className="underline font-semibold">Diagnóstico SOAP de SICAS</a> que funciona correctamente.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
           <div className="flex">
             <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5" />
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                <strong>Importante:</strong> Esta prueba llama al REST API REAL
-                de SICAS, no al ASMX/SOAP.
+                Esta página es solo para diagnóstico histórico. Los tests seguirán devolviendo 404.
               </p>
             </div>
           </div>
@@ -249,26 +270,24 @@ export default function SicasRestTest() {
       </Card>
 
       <Card className="p-4 bg-blue-50 border-blue-200">
-        <h3 className="font-semibold text-blue-900 mb-2">Información</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
+        <h3 className="font-semibold text-blue-900 mb-2">Información Técnica</h3>
+        <ul className="text-sm text-blue-800 space-y-2">
           <li>
-            <strong>REST API:</strong>{' '}
-            https://security-services.sicasonline.info/api
+            <strong>REST API (NO DISPONIBLE):</strong>{' '}
+            <span className="text-red-700">https://security-services.sicasonline.info/api - Devuelve 404</span>
           </li>
           <li>
-            <strong>SOAP API:</strong>{' '}
-            https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx
+            <strong>SOAP API (FUNCIONAL):</strong>{' '}
+            <span className="text-green-700">https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx</span>
           </li>
           <li>
-            <strong>Diferencia:</strong> Son dos servidores y protocolos
-            diferentes
+            <strong>Por qué REST no funciona:</strong> El servicio ASMX de SICAS no tiene el atributo <code className="bg-blue-100 px-1 rounded">[ScriptService]</code> necesario para soportar llamadas REST/JSON. Solo acepta XML SOAP.
           </li>
           <li>
-            <strong>Token REST:</strong> Expira en 3 minutos
+            <strong>Diagnóstico funcional:</strong> Use <a href="/sicas-diagnostico" className="underline font-semibold">SicasDiagnostico</a> para probar la conexión SOAP real
           </li>
           <li>
-            <strong>Endpoint /readreport:</strong> Endpoint real que usa MOVI
-            para consultar reportes
+            <strong>Documentación:</strong> Ver <code className="bg-blue-100 px-1 rounded">SICAS_REST_VS_SOAP_CONCLUSION.md</code> para detalles técnicos completos
           </li>
         </ul>
       </Card>
