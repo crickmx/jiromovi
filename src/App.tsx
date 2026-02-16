@@ -812,7 +812,7 @@ function App() {
               <Route path="/sicas" element={<ProtectedRoute requireAdmin><Layout><SicasAdmin /></Layout></ProtectedRoute>} />
               <Route path="/sicas/test-catalogs" element={<ProtectedRoute requireAdmin><Layout><SicasTestCatalogs /></Layout></ProtectedRoute>} />
               <Route path="/sicas/diagnostico" element={<ProtectedRoute requireAdmin><SicasDiagnostico /></ProtectedRoute>} />
-              <Route path="/sicas/rest-test" element={<ProtectedRoute requireAdmin><Layout><SicasRestTest /></Layout></ProtectedRoute>} />
+              <Route path="/sicas/rest-test" element={<ProtectedRoute requireAdminOrGerente><Layout><SicasRestTest /></Layout></ProtectedRoute>} />
               <Route path="/sicas/vigentes-test" element={<ProtectedRoute requireAdmin><Layout><SicasVigentesTest /></Layout></ProtectedRoute>} />
               <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
