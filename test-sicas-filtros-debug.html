@@ -352,7 +352,9 @@
   </div>
 
   <script>
-    const EDGE_FUNCTION_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co/functions/v1/sicas-test-filtros-incrementales';
+    const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjA5OTAsImV4cCI6MjA3NzI5Njk5MH0.bIlGsgeAC6oxGUalODg0C5-l6KaJip0wWa9IbQ7MjTQ';
+    const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/sicas-test-filtros-incrementales`;
 
     async function runTest(testNumber) {
       const resultBox = document.getElementById('resultBox');
@@ -388,6 +390,8 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({ testNumber }),
         });

@@ -156,9 +156,16 @@ SICAS_PASSWORD=password_correcto  # sin o con decoding según resultado
 
 ```bash
 SICAS_SOAP_ENDPOINT=https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx
-SICAS_USERNAME=valor_actual
-SICAS_PASSWORD=valor_actual
+SICAS_USERNAME=j1r0%25$
+SICAS_PASSWORD=$45oc14d05$
 ```
+
+**Análisis de credenciales:**
+- Username contiene `%25` (que es `%` URL-encoded)
+  - Original: `j1r0%25$`
+  - Decodificado: `j1r0%$`
+- Password contiene caracteres especiales válidos en SOAP: `$`, números
+  - En SOAP el `$` se envía tal cual (no requiere escaping XML)
 
 **Nota:** El endpoint `.com` tiene certificado TLS válido esperado por Deno. Si tus credenciales son para `.com.mx`, hay que cambiar el endpoint.
 
