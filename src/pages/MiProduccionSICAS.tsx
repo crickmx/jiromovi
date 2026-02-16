@@ -69,6 +69,8 @@ interface Filters {
 }
 
 export default function MiProduccionSICAS() {
+  console.log('🔷 MiProduccionSICAS: Componente cargado');
+
   const { usuario, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -202,9 +204,15 @@ export default function MiProduccionSICAS() {
   };
 
   const handleSync = async () => {
+    // Test visible inmediato
+    alert('🔴 BOTÓN SINCRONIZAR CLICKEADO - Revisa la consola ahora');
+    console.log('=== FUNCIÓN handleSync EJECUTADA ===');
+    console.log('[SYNC] Estado inicial:', { syncing, hasNoData, puedeAdministrarSicas });
+
     setSyncing(true);
     setSyncMessage(null);
     setSicasDiagnostic(null);
+
     try {
       console.log('[SYNC] Iniciando sincronización...');
       const { data: { session } } = await supabase.auth.getSession();
