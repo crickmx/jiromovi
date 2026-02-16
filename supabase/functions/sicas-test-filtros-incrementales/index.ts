@@ -319,14 +319,20 @@ serve(async (req: Request) => {
       }
     }
 
+    // Detectar errores de autenticación en DATAINFO
+    const isAuthError = tableName === 'DATAINFO' &&
+      (firstRecord?.MsgError?.includes('Usuario o Contraseña') ||
+       firstRecord?.MsgError?.includes('Incorrecta'));
+    const authErrorMessage = isAuthError ? firstRecord.MsgError : '';
+
     // Análisis detallado
-    const hasData = recordCount > 0;
-    const isSuccess = processData.RESPONSETXT === 'SUCESS' || processData.RESPONSETXT === 'SUCCESS';
+    const hasData = recordCount > 0 && !isAuthError && tableName !== 'DATAINFO';
+    const isSuccess = (processData.RESPONSETXT === 'SUCESS' || processData.RESPONSETXT === 'SUCCESS') && !isAuthError;
     const isEmpty = isSuccess && (processData.RESPONSENBR === '0' || recordCount === 0);
-    const isDenied = processData.RESPONSETXT === 'DENIED';
+    const isDenied = processData.RESPONSETXT === 'DENIED' || isAuthError;
 
     const result = {
-      success: true,
+      success: !isAuthError && !isDenied,
       testNumber,
       testDescription,
       endpoint: SICAS_ENDPOINT,
@@ -344,10 +350,11 @@ serve(async (req: Request) => {
         recordCount,
         totalRecordsFromProcess: processData.TOTALRECORDS || 'no especificado',
         rawXmlLength: xmlContent.length,
+        isErrorResponse: tableName === 'DATAINFO'
       },
 
-      // Primer registro de muestra
-      firstRecord: hasData ? firstRecord : null,
+      // Primer registro de muestra (siempre mostrar para ver errores)
+      firstRecord: recordCount > 0 ? firstRecord : null,
 
       // HTTP metadata
       httpMetadata: {
@@ -361,7 +368,11 @@ serve(async (req: Request) => {
         isSuccess,
         isEmpty,
         isDenied,
-        conclusion: hasData
+        isAuthError,
+        authErrorMessage,
+        conclusion: isAuthError
+          ? `🔐 ERROR DE AUTENTICACIÓN: ${authErrorMessage}\n\n💡 Posibles causas:\n1. Endpoint incorrecto (.com vs .com.mx)\n2. Password con encoding incorrecto (%20 vs espacio real)\n3. Usuario/contraseña inválidos`
+          : hasData
           ? `✅ FUNCIONA - ${recordCount} registro(s) encontrado(s)`
           : isEmpty
           ? '⚠️ Reporte sin datos - Filtro puede estar demasiado restrictivo o no hay datos en ese rango'

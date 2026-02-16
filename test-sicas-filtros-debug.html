@@ -456,7 +456,10 @@
 
         // Set status badge
         const badge = document.getElementById('statusBadge');
-        if (result.analysis.hasData) {
+        if (result.analysis.isAuthError) {
+          badge.textContent = '🔐 Auth Error';
+          badge.className = 'status-badge status-error';
+        } else if (result.analysis.hasData) {
           badge.textContent = '✅ Con Datos';
           badge.className = 'status-badge status-success';
         } else if (result.analysis.isEmpty) {
@@ -471,6 +474,16 @@
         }
 
         console.log('Resultado completo:', result);
+
+        // Mostrar alerta si es error de autenticación
+        if (result.analysis.isAuthError) {
+          alert('⚠️ ERROR DE AUTENTICACIÓN DETECTADO\n\n' +
+                'SICAS rechazó las credenciales.\n\n' +
+                'Usa test-sicas-auth-simple.html para probar:\n' +
+                '• Endpoint correcto (.com vs .com.mx)\n' +
+                '• Password con/sin URL encoding (%20 vs espacio)\n\n' +
+                'No tiene sentido seguir probando filtros hasta resolver la autenticación.');
+        }
 
       } catch (error) {
         console.error('Error completo:', error);

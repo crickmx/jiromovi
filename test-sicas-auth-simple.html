@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SICAS - Test de Autenticación</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .warning-box {
+      background: #ff6b6b;
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .btn-test {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 20px 40px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      transition: all 0.3s;
+    }
+
+    .btn-test:hover:not(:disabled) {
+      background: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+
+    .btn-test:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .summary-box {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .summary-box.show {
+      display: block;
+    }
+
+    .summary-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .summary-item {
+      text-align: center;
+      padding: 15px;
+      border-radius: 8px;
+      background: #f5f5f5;
+    }
+
+    .summary-value {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .summary-label {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .recommendation {
+      background: #e8f5e9;
+      border-left: 4px solid #4CAF50;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .recommendation.error {
+      background: #ffebee;
+      border-left-color: #f44336;
+    }
+
+    .recommendation-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .credentials-box {
+      background: #fff9e6;
+      border-left: 4px solid #ff9800;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .credentials-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .credentials-item {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #666;
+      margin: 5px 0;
+    }
+
+    .test-results {
+      display: grid;
+      gap: 15px;
+    }
+
+    .test-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .test-card.success {
+      border-left: 6px solid #4CAF50;
+      background: #e8f5e9;
+    }
+
+    .test-card.auth-error {
+      border-left: 6px solid #ff9800;
+      background: #fff3e0;
+    }
+
+    .test-card.tls-error {
+      border-left: 6px solid #f44336;
+      background: #ffebee;
+    }
+
+    .test-card.error {
+      border-left: 6px solid #9e9e9e;
+      background: #f5f5f5;
+    }
+
+    .test-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .test-number {
+      display: inline-block;
+      background: #2196F3;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 40px;
+      font-weight: bold;
+    }
+
+    .test-status {
+      font-weight: bold;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+
+    .test-status.success {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .test-status.auth-error {
+      background: #ff9800;
+      color: white;
+    }
+
+    .test-status.tls-error {
+      background: #f44336;
+      color: white;
+    }
+
+    .test-status.error {
+      background: #9e9e9e;
+      color: white;
+    }
+
+    .test-description {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .test-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .detail-item {
+      background: rgba(255,255,255,0.7);
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    .detail-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 3px;
+    }
+
+    .detail-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      word-break: break-all;
+    }
+
+    .error-message {
+      background: #f44336;
+      color: white;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+
+    .code-block {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin-top: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: white;
+      font-size: 18px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 SICAS - Test de Autenticación</h1>
+    <div class="subtitle">
+      Prueba automática de 4 combinaciones: .com vs .com.mx × password original vs URL-decoded<br>
+      Identifica cuál endpoint y formato de password funcionan con tus credenciales
+    </div>
+
+    <div class="warning-box">
+      ⚠️ Este test NO ejecuta reportes, solo valida autenticación
+    </div>
+
+    <button id="btnTest" class="btn-test" onclick="runTests()">
+      🚀 Ejecutar 4 Tests de Autenticación
+    </button>
+
+    <div id="loading" class="loading" style="display: none;">
+      <div class="spinner"></div>
+      Probando todas las combinaciones...
+    </div>
+
+    <div id="summaryBox" class="summary-box">
+      <div class="summary-title">📊 Resumen de Resultados</div>
+
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="summary-value" id="totalTests">-</div>
+          <div class="summary-label">Tests Ejecutados</div>
+        </div>
+        <div class="summary-item" style="background: #e8f5e9;">
+          <div class="summary-value" style="color: #4CAF50;" id="successTests">-</div>
+          <div class="summary-label">Exitosos</div>
+        </div>
+        <div class="summary-item" style="background: #fff3e0;">
+          <div class="summary-value" style="color: #ff9800;" id="authErrors">-</div>
+          <div class="summary-label">Errores de Auth</div>
+        </div>
+        <div class="summary-item" style="background: #ffebee;">
+          <div class="summary-value" style="color: #f44336;" id="tlsErrors">-</div>
+          <div class="summary-label">Errores TLS</div>
+        </div>
+      </div>
+
+      <div id="recommendation" class="recommendation">
+        <div class="recommendation-text" id="recommendationText">-</div>
+      </div>
+
+      <div class="credentials-box">
+        <div class="credentials-title">🔑 Credenciales Probadas</div>
+        <div class="credentials-item">Usuario: <strong id="username">-</strong></div>
+        <div class="credentials-item">Password original: <strong id="passwordOriginal">-</strong></div>
+        <div class="credentials-item">Password decoded: <strong id="passwordDecoded">-</strong></div>
+      </div>
+    </div>
+
+    <div id="results" class="test-results"></div>
+  </div>
+
+  <script>
+    const EDGE_FUNCTION_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co/functions/v1/sicas-test-auth-simple';
+
+    async function runTests() {
+      const btn = document.getElementById('btnTest');
+      const loading = document.getElementById('loading');
+      const summaryBox = document.getElementById('summaryBox');
+      const resultsDiv = document.getElementById('results');
+
+      btn.disabled = true;
+      loading.style.display = 'block';
+      summaryBox.classList.remove('show');
+      resultsDiv.innerHTML = '';
+
+      try {
+        const response = await fetch(EDGE_FUNCTION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+
+        console.log('Resultados completos:', data);
+
+        // Actualizar resumen
+        document.getElementById('totalTests').textContent = data.summary.totalTests;
+        document.getElementById('successTests').textContent = data.summary.successful;
+        document.getElementById('authErrors').textContent = data.summary.authenticationErrors;
+        document.getElementById('tlsErrors').textContent = data.summary.tlsErrors;
+        document.getElementById('recommendationText').textContent = data.summary.recommendation;
+
+        const recBox = document.getElementById('recommendation');
+        if (data.summary.successful > 0) {
+          recBox.className = 'recommendation';
+        } else {
+          recBox.className = 'recommendation error';
+        }
+
+        // Credenciales
+        document.getElementById('username').textContent = data.credentials.username;
+        document.getElementById('passwordOriginal').textContent = data.credentials.passwordOriginal;
+        document.getElementById('passwordDecoded').textContent = data.credentials.passwordDecoded;
+
+        summaryBox.classList.add('show');
+
+        // Renderizar resultados individuales
+        data.results.forEach(result => {
+          const card = document.createElement('div');
+
+          let cardClass = 'test-card';
+          let statusClass = 'test-status';
+          let statusText = '';
+
+          if (result.success && result.recordCount > 0) {
+            cardClass += ' success';
+            statusClass += ' success';
+            statusText = '✅ FUNCIONA';
+          } else if (result.isAuthError) {
+            cardClass += ' auth-error';
+            statusClass += ' auth-error';
+            statusText = '🔐 Auth Error';
+          } else if (result.tlsError) {
+            cardClass += ' tls-error';
+            statusClass += ' tls-error';
+            statusText = '🔒 TLS Error';
+          } else {
+            cardClass += ' error';
+            statusClass += ' error';
+            statusText = '❌ Error';
+          }
+
+          card.className = cardClass;
+          card.innerHTML = `
+            <div class="test-header">
+              <span class="test-number">${result.testNumber}</span>
+              <span class="${statusClass}">${statusText}</span>
+            </div>
+            <div class="test-description">${result.description}</div>
+            <div class="test-details">
+              <div class="detail-item">
+                <div class="detail-label">Endpoint</div>
+                <div class="detail-value">${result.endpoint.includes('.com.mx') ? '.com.mx' : '.com'}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Password Format</div>
+                <div class="detail-value">${result.passwordFormat}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">HTTP Status</div>
+                <div class="detail-value">${result.httpStatus}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Tiempo</div>
+                <div class="detail-value">${result.responseTime}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Registros</div>
+                <div class="detail-value">${result.recordCount}</div>
+              </div>
+            </div>
+            ${result.errorMessage && result.errorMessage !== 'Sin error' ? `
+              <div class="error-message">
+                ${result.errorMessage}
+              </div>
+            ` : ''}
+            <details>
+              <summary style="cursor: pointer; font-weight: bold; margin-top: 10px;">Ver respuesta XML</summary>
+              <div class="code-block">${escapeHtml(result.rawResponsePreview)}</div>
+            </details>
+          `;
+
+          resultsDiv.appendChild(card);
+        });
+
+      } catch (error) {
+        console.error('Error:', error);
+        resultsDiv.innerHTML = `
+          <div class="test-card error">
+            <div class="test-description">❌ Error al ejecutar tests</div>
+            <div class="error-message">${error.message}</div>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        loading.style.display = 'none';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
