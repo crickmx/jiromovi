@@ -163,18 +163,51 @@ export class SicasSoapReportClient {
       .replace(/&quot;/g, '"')
       .replace(/&apos;/g, "'");
 
-    // Extraer PROCESSDATA
-    const processDataMatch = decoded.match(/<PROCESSDATA>([\s\S]*?)<\/PROCESSDATA>/i);
-    if (!processDataMatch) {
-      throw new Error('No se encontró PROCESSDATA en la respuesta');
+    console.log('[SICAS SOAP] Respuesta decodificada (primeros 500 chars):', decoded.substring(0, 500));
+
+    // Extraer ProcesarWSResult (estructura alternativa)
+    const resultMatch = decoded.match(/<ProcesarWSResult>([\s\S]*?)<\/ProcesarWSResult>/i);
+    if (resultMatch) {
+      console.log('[SICAS SOAP] Encontrado ProcesarWSResult');
+      const resultContent = resultMatch[1];
+
+      // Intentar parsear como PROCESSDATA
+      const processDataMatch = resultContent.match(/<PROCESSDATA>([\s\S]*?)<\/PROCESSDATA>/i);
+      if (processDataMatch) {
+        console.log('[SICAS SOAP] Encontrado PROCESSDATA dentro de ProcesarWSResult');
+        return this.parseProcessData(processDataMatch[1]);
+      }
+
+      // Si no hay PROCESSDATA, intentar parsear directamente
+      console.log('[SICAS SOAP] No se encontró PROCESSDATA, parseando ProcesarWSResult directamente');
+      return this.parseProcessData(resultContent);
     }
 
-    const processData = processDataMatch[1];
+    // Intentar buscar PROCESSDATA directamente
+    const processDataMatch = decoded.match(/<PROCESSDATA>([\s\S]*?)<\/PROCESSDATA>/i);
+    if (processDataMatch) {
+      console.log('[SICAS SOAP] Encontrado PROCESSDATA directamente');
+      return this.parseProcessData(processDataMatch[1]);
+    }
 
+    // Si llegamos aquí, la respuesta no tiene el formato esperado
+    console.error('[SICAS SOAP] Formato de respuesta desconocido');
+    console.error('[SICAS SOAP] Respuesta completa:', decoded.substring(0, 2000));
+    throw new Error('No se encontró PROCESSDATA ni ProcesarWSResult en la respuesta');
+  }
+
+  /**
+   * Parsea los datos de PROCESSDATA
+   */
+  private parseProcessData(processData: string): SicasReportResponse {
     // Extraer campos básicos
     const responseTxt = this.extractXmlValue(processData, 'RESPONSETXT') || '';
     const responseNbr = this.extractXmlValue(processData, 'RESPONSENBR') || '0';
     const message = this.extractXmlValue(processData, 'MESSAGE') || '';
+
+    console.log('[SICAS SOAP] RESPONSETXT:', responseTxt);
+    console.log('[SICAS SOAP] RESPONSENBR:', responseNbr);
+    console.log('[SICAS SOAP] MESSAGE:', message);
 
     // Verificar si hay error
     if (responseTxt.toUpperCase() !== 'SUCESS' || responseNbr === '0') {
@@ -186,6 +219,7 @@ export class SicasSoapReportClient {
       }
 
       // Catálogo vacío
+      console.log('[SICAS SOAP] Reporte vacío o sin datos');
       return {
         success: true,
         responseNbr,
@@ -197,6 +231,7 @@ export class SicasSoapReportClient {
 
     // Extraer registros
     const records = this.parseRecords(processData);
+    console.log('[SICAS SOAP] Registros parseados:', records.length);
 
     return {
       success: true,
