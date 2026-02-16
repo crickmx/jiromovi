@@ -72,7 +72,7 @@ serve(async (req: Request) => {
   try {
     const { testNumber, customFilters }: TestRequest = await req.json();
 
-    const SICAS_ENDPOINT = 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
+    const SICAS_ENDPOINT = Deno.env.get('SICAS_SOAP_ENDPOINT') || 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
     const keyCode = 'H03400'; // Pólizas vigentes
 
     let conditionsAdd = '';
@@ -334,11 +334,40 @@ serve(async (req: Request) => {
     });
 
   } catch (error: unknown) {
-    console.error('Error:', error);
+    console.error('Error completo:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    const SICAS_ENDPOINT = Deno.env.get('SICAS_SOAP_ENDPOINT') || 'https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx';
+
+    // Detectar tipo de error
+    let errorType = 'unknown';
+    let diagnosis = '';
+
+    if (errorMessage.includes('UnknownIssuer') || errorMessage.includes('invalid peer certificate')) {
+      errorType = 'tls_certificate';
+      diagnosis = 'Certificado TLS inválido o cadena incompleta. El servidor no presenta un certificado confiable.';
+    } else if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+      errorType = 'timeout';
+      diagnosis = 'Timeout de conexión. El servidor no responde dentro del tiempo esperado.';
+    } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('connection refused')) {
+      errorType = 'connection_refused';
+      diagnosis = 'Conexión rechazada. El servidor no está escuchando o no es accesible.';
+    } else if (errorMessage.includes('DNS') || errorMessage.includes('getaddrinfo')) {
+      errorType = 'dns';
+      diagnosis = 'Error de resolución DNS. El dominio no se puede resolver.';
+    }
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido',
+        error: errorMessage,
+        errorType,
+        diagnosis,
+        endpoint: SICAS_ENDPOINT,
+        timestamp: new Date().toISOString(),
+        suggestion: errorType === 'tls_certificate'
+          ? 'Intenta cambiar el endpoint a .com (sin .mx) o contacta al proveedor para arreglar el certificado.'
+          : 'Verifica conectividad y configuración del servidor SICAS.',
       }),
       {
         status: 500,
