@@ -125,29 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('[AuthContext] Initializing...');
     let isInitialLoad = true;
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('[AuthContext] Initial session check:', session?.user?.email || 'No session');
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        try {
-          await fetchUsuario(session.user.id);
-        } catch (error) {
-          console.error('[AuthContext] Error loading initial usuario:', error);
-        }
-      }
-      // Solo ponemos loading en false después del fetch inicial
-      setLoading(false);
-      isInitialLoad = false;
-    });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[AuthContext] Auth state changed:', event, session?.user?.email || 'No session');
-
-      // Ignorar el evento INITIAL_SESSION porque ya lo manejamos arriba
-      if (isInitialLoad && event === 'INITIAL_SESSION') {
-        console.log('[AuthContext] Ignoring INITIAL_SESSION event (already handled)');
-        return;
-      }
 
       (async () => {
         setUser(session?.user ?? null);
@@ -156,7 +135,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setUsuario(null);
         }
+
+        // Solo ponemos loading en false después del primer evento
+        if (isInitialLoad) {
+          console.log('[AuthContext] Initial load complete via onAuthStateChange');
+          setLoading(false);
+          isInitialLoad = false;
+        }
       })();
+    });
+
+    // También verificar sesión actual por si onAuthStateChange no se dispara
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      // Si después de 2 segundos el isInitialLoad sigue true, significa que onAuthStateChange no se disparó
+      setTimeout(() => {
+        if (isInitialLoad) {
+          console.log('[AuthContext] Fallback: onAuthStateChange no se disparó, completando carga manualmente');
+          setLoading(false);
+          isInitialLoad = false;
+        }
+      }, 2000);
     });
 
     return () => subscription.unsubscribe();
