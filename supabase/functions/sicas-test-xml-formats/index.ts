@@ -47,8 +47,8 @@ Deno.serve(async (req: Request) => {
         <Password>${escapeXml(SICAS_PASSWORD)}</Password>
       </Credentials>
       <Proceso>
-        <NombreProceso>H03400</NombreProceso>
-        <Reporte>H03400</Reporte>
+        <NombreProceso>H03117</NombreProceso>
+        <Reporte>H03117</Reporte>
         <EsCatalogo>N</EsCatalogo>
         <Company>01</Company>
         <Branch>01</Branch>
@@ -76,8 +76,8 @@ Deno.serve(async (req: Request) => {
         <Password>${escapeXml(SICAS_PASSWORD)}</Password>
       </Credentials>
       <Proceso>
-        <NombreProceso>H03400</NombreProceso>
-        <Reporte>H03400</Reporte>
+        <NombreProceso>H03117</NombreProceso>
+        <Reporte>H03117</Reporte>
         <EsCatalogo>N</EsCatalogo>
         <Company>01</Company>
         <Branch>01</Branch>
@@ -102,8 +102,8 @@ Deno.serve(async (req: Request) => {
         <Password>${escapeXml(SICAS_PASSWORD)}</Password>
       </Credentials>
       <Proceso>
-        <NombreProceso>H03400</NombreProceso>
-        <Reporte>H03400</Reporte>
+        <NombreProceso>H03117</NombreProceso>
+        <Reporte>H03117</Reporte>
         <EsCatalogo>N</EsCatalogo>
         <Company>01</Company>
         <Branch>01</Branch>
@@ -132,8 +132,8 @@ Deno.serve(async (req: Request) => {
         <Password>${escapeXml(SICAS_PASSWORD)}</Password>
       </Credentials>
       <Proceso>
-        <NombreProceso>H03400</NombreProceso>
-        <Reporte>H03400</Reporte>
+        <NombreProceso>H03117</NombreProceso>
+        <Reporte>H03117</Reporte>
         <EsCatalogo>S</EsCatalogo>
         <Company>01</Company>
         <Branch>01</Branch>
@@ -156,7 +156,7 @@ Deno.serve(async (req: Request) => {
         <Password>${escapeXml(SICAS_PASSWORD)}</Password>
       </Credentials>
       <Proceso>
-        <NombreProceso>H03400</NombreProceso>
+        <NombreProceso>H03117</NombreProceso>
       </Proceso>
     </ProcesarWS>
   </soap:Body>
@@ -176,8 +176,8 @@ Deno.serve(async (req: Request) => {
         <Password>${escapeXml(SICAS_PASSWORD)}</Password>
       </Credentials>
       <Proceso>
-        <NombreProceso>H03400</NombreProceso>
-        <Reporte>H03400</Reporte>
+        <NombreProceso>H03117</NombreProceso>
+        <Reporte>H03117</Reporte>
         <EsCatalogo>N</EsCatalogo>
         <Company>01</Company>
         <Branch>01</Branch>
