@@ -124,10 +124,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('[AuthContext] Initializing...');
     let isInitialLoad = true;
+    let loadingSetToFalse = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[AuthContext] Auth state changed:', event, session?.user?.email || 'No session');
 
+      // Si ya se completó la carga inicial, solo actualizar estado
+      if (!isInitialLoad) {
+        (async () => {
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            await fetchUsuario(session.user.id);
+          } else {
+            setUsuario(null);
+          }
+        })();
+        return;
+      }
+
+      // Durante la carga inicial, solo procesar si no hay fetch en progreso
+      if (isFetchingRef.current) {
+        console.log('[AuthContext] Fetch en progreso, ignorando evento', event);
+        return;
+      }
+
+      // Procesar el primer evento que llegue
       (async () => {
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -136,28 +157,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUsuario(null);
         }
 
-        // Solo ponemos loading en false después del primer evento
-        if (isInitialLoad) {
+        // Solo ponemos loading en false después de completar el fetch
+        if (isInitialLoad && !loadingSetToFalse) {
           console.log('[AuthContext] Initial load complete via onAuthStateChange');
           setLoading(false);
           isInitialLoad = false;
+          loadingSetToFalse = true;
         }
       })();
     });
 
-    // También verificar sesión actual por si onAuthStateChange no se dispara
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      // Si después de 2 segundos el isInitialLoad sigue true, significa que onAuthStateChange no se disparó
-      setTimeout(() => {
-        if (isInitialLoad) {
-          console.log('[AuthContext] Fallback: onAuthStateChange no se disparó, completando carga manualmente');
-          setLoading(false);
-          isInitialLoad = false;
-        }
-      }, 2000);
-    });
+    // Fallback por si onAuthStateChange no se dispara en 2 segundos
+    const fallbackTimeout = setTimeout(() => {
+      if (isInitialLoad && !loadingSetToFalse) {
+        console.log('[AuthContext] Fallback: completando carga manualmente');
+        setLoading(false);
+        isInitialLoad = false;
+        loadingSetToFalse = true;
+      }
+    }, 2000);
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(fallbackTimeout);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
