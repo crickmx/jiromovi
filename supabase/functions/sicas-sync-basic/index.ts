@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
+import { SicasSoapReportClient, SICAS_REPORT_KEYCODES } from '../_shared/sicasSoapReportClient.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,7 +32,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    console.log('[SICAS Basic] Iniciando sincronización básica vía REST API...');
+    console.log('[SICAS Basic] Iniciando sincronización básica usando ProcesarWS oficial...');
+    console.log(`[SICAS Basic] Usando KeyCode: ${SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES}`);
 
     // Inicializar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -44,39 +45,61 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verificar credenciales SICAS antes de inicializar cliente
+    // Verificar credenciales SICAS
     const sicasUsername = Deno.env.get('SICAS_USERNAME');
     const sicasPassword = Deno.env.get('SICAS_PASSWORD');
+    const sicasEndpoint = Deno.env.get('SICAS_ENDPOINT') || 'https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx';
 
     if (!sicasUsername || !sicasPassword) {
       throw new Error('Credenciales SICAS no configuradas (SICAS_USERNAME, SICAS_PASSWORD)');
     }
 
-    // Inicializar cliente REST de SICAS
-    const sicasClient = createSicasRestClient();
+    console.log('[SICAS Basic] Credenciales configuradas, inicializando cliente SOAP...');
 
-    console.log('[SICAS Basic] Obteniendo pólizas vigentes...');
-
-    // Obtener pólizas vigentes usando el reporte SICAS_PRODUCTIVIDAD_CONSULTAVENDEDOR
-    // Este reporte obtiene las pólizas activas
-    const response = await sicasClient.readReport({
-      keyCode: 'SICAS_PRODUCTIVIDAD_CONSULTAVENDEDOR',
-      pageRequested: 1,
-      itemsForPage: 500,
-      formatResponse: 2,
-      sortFields: 'FCaptura DESC',
+    // Inicializar cliente SOAP con ProcesarWS (método oficial)
+    const client = new SicasSoapReportClient({
+      endpoint: sicasEndpoint,
+      username: sicasUsername,
+      password: sicasPassword,
     });
 
-    if (!response.Sucess) {
-      throw new Error(`Error en SICAS API: ${response.Error || 'Unknown error'}`);
+    // Construir filtros según documentación oficial
+    const filters = [
+      // Filtro de estatus vigente (documentos activos)
+      SicasSoapReportClient.createStatusVicenteFilter(),
+      // Filtro de tipo de documento (solo pólizas, no endosos)
+      SicasSoapReportClient.createDocumentTypeFilter(),
+    ];
+
+    console.log(`[SICAS Basic] Obteniendo pólizas vigentes con ${filters.length} filtros...`);
+
+    // Ejecutar reporte oficial
+    const result = await client.executeReport({
+      keyCode: SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES,
+      page: 1,
+      itemsPerPage: 500,
+      sortField: 'DatDocumentos.FCaptura DESC',
+      filters,
+    });
+
+    console.log(`[SICAS Basic] Respuesta recibida - Success: ${result.success}`);
+    console.log(`[SICAS Basic] Registros encontrados: ${result.records.length}`);
+
+    if (!result.success) {
+      throw new Error(`Error en SICAS API: ${result.message}`);
     }
 
-    console.log('[SICAS Basic] Respuesta recibida, procesando datos...');
+    if (result.records.length === 0) {
+      console.log('[SICAS Basic] No se encontraron registros');
+      await supabase
+        .from('sicas_sync_history')
+        .insert({
+          sync_type: 'basic',
+          status: 'success',
+          records_synced: 0,
+          message: 'Sincronización completada sin registros',
+        });
 
-    // Extraer datos del reporte
-    const tableInfo = response.Response?.[0]?.TableInfo;
-    if (!tableInfo || tableInfo.length === 0) {
-      console.log('[SICAS Basic] ⚠️ No se encontraron registros');
       return new Response(
         JSON.stringify({
           success: true,
@@ -91,19 +114,19 @@ Deno.serve(async (req: Request) => {
     }
 
     // Convertir los datos al formato esperado
-    const polizas: PolizaBasica[] = tableInfo.map((record: any) => ({
-      id_documento: record.IdCaptura || `DOC_${Date.now()}_${Math.random()}`,
-      no_poliza: record.NoPoliza || null,
-      vend_id: record.IdVendedor || '0',
-      vend_nombre: record.VendedorNombre || null,
-      desp_id: record.IdDespacho || null,
-      desp_nombre: record.DespachoNombre || null,
-      aseguradora: record.AseguradoraNombre || null,
-      ramo: record.RamoNombre || null,
-      contratante: record.Contratante || null,
-      vigencia_desde: record.VigenciaDesde || null,
-      vigencia_hasta: record.VigenciaHasta || null,
-      prima_total: record.Importe ? parseFloat(record.Importe) : null,
+    const polizas: PolizaBasica[] = result.records.map((record: any) => ({
+      id_documento: record.IdDocumento || record.IDDocto || `DOC_${Date.now()}_${Math.random()}`,
+      no_poliza: record.Documento || record.NoPoliza || record.Poliza || null,
+      vend_id: record.IDVend || record.IdVendedor || '0',
+      vend_nombre: record.VendNombre || record.Vendedor || record.NombreVendedor || null,
+      desp_id: record.IDDesp || record.IdDespacho || null,
+      desp_nombre: record.DespNombre || record.Despacho || record.Oficina || null,
+      aseguradora: record.CiaNombre || record.Aseguradora || record.Compania || null,
+      ramo: record.RamoNombre || record.Ramo || null,
+      contratante: record.Contratante || record.Cliente || null,
+      vigencia_desde: record.FDesde || record.VigenciaDesde || null,
+      vigencia_hasta: record.FHasta || record.VigenciaHasta || null,
+      prima_total: record.Importe || record.PrimaTotal || null,
     }));
 
     console.log(`[SICAS Basic] Procesadas ${polizas.length} pólizas`);
@@ -146,7 +169,7 @@ Deno.serve(async (req: Request) => {
         sync_type: 'basic',
         status: 'success',
         records_synced: polizas.length,
-        message: `Sincronización básica completada. ${polizas.length} pólizas sincronizadas.`,
+        message: `Sincronización básica completada. ${polizas.length} pólizas sincronizadas vía ProcesarWS oficial.`,
       });
 
     return new Response(
@@ -154,7 +177,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         message: 'Sincronización básica completada',
         polizas_sincronizadas: polizas.length,
-        polizas: polizas.slice(0, 10), // Solo mostrar las primeras 10 para no saturar la respuesta
+        polizas: polizas.slice(0, 10), // Solo mostrar las primeras 10
       }),
       {
         status: 200,
