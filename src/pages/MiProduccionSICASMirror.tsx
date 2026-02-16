@@ -150,13 +150,19 @@ export default function MiProduccionSICASMirror() {
       const result = await response.json();
       console.log('[SYNC] Resultado completo:', JSON.stringify(result, null, 2));
 
-      if (result.success && result.stats) {
+      if (result.success) {
         console.log('[SYNC] ✅ Sincronización exitosa!');
-        console.log('[SYNC] Stats:', result.stats);
-        const method = result.stats.method ? ` (${result.stats.method})` : '';
+
+        // Manejar diferentes formatos de respuesta
+        const polizasSincronizadas = result.stats?.records_inserted || result.polizas_sincronizadas || 0;
+        const method = result.stats?.method ? ` (${result.stats.method})` : '';
+        const mensaje = result.message || `${polizasSincronizadas} pólizas actualizadas`;
+
+        console.log('[SYNC] Pólizas sincronizadas:', polizasSincronizadas);
+
         setMessage({
           type: 'success',
-          text: `Sincronización exitosa: ${result.stats.records_inserted || 0} pólizas actualizadas${method}`,
+          text: `Sincronización exitosa: ${mensaje}${method}`,
         });
         await loadAllData();
       } else {
