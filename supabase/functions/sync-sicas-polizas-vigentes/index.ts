@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { SicasSoapReportClient, SICAS_REPORT_KEYCODES } from '../_shared/sicasSoapReportClient.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,7 +63,9 @@ interface SicasQueryResult {
 }
 
 /**
- * Consulta el reporte de pólizas vigentes H03117 desde SICAS
+ * Consulta el reporte de pólizas vigentes usando el método oficial ProcesarWS con filtros
+ * Basado en la documentación oficial de SICAS (páginas 27+)
+ * Usa el KeyCode H03400 con filtros para pólizas vigentes
  */
 async function consultarPolizasVigentesSICAS(
   endpoint: string,
@@ -72,262 +75,109 @@ async function consultarPolizasVigentesSICAS(
   itemsPerPage: number = 100
 ): Promise<SicasQueryResult> {
   console.log(`[SICAS] Consultando pólizas vigentes - Página ${page}`);
+  console.log(`[SICAS] Usando KeyCode: ${SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES}`);
 
-  const reportCode = 'H03117';
-  const infoSort = 'DatDocumentos.FCaptura DESC';
+  // Inicializar cliente SOAP con ProcesarWS
+  const client = new SicasSoapReportClient({
+    endpoint,
+    username,
+    password,
+  });
 
-  const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-  <soap:Body>
-    <ProcesarWS xmlns="http://tempuri.org/">
-      <wsProcesarData>
-        <KeyProcess>REPORT</KeyProcess>
-        <KeyCode>${reportCode}</KeyCode>
-        <Page>${page}</Page>
-        <ItemForPage>${itemsPerPage}</ItemForPage>
-        <InfoSort>${infoSort}</InfoSort>
-      </wsProcesarData>
-      <wsAuthConfig>
-        <UserName>${username}</UserName>
-        <Password>${password}</Password>
-      </wsAuthConfig>
-    </ProcesarWS>
-  </soap:Body>
-</soap:Envelope>`;
+  // Construir filtros según documentación oficial
+  const filters = [
+    // Filtro de estatus vigente (documentos activos)
+    SicasSoapReportClient.createStatusVicenteFilter(),
 
-  // Request info (sin credenciales) para logging
+    // Filtro de tipo de documento (solo pólizas, no endosos)
+    SicasSoapReportClient.createDocumentTypeFilter(),
+  ];
+
   const requestInfo = {
-    report_code: reportCode,
+    report_code: SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES,
     page,
     items_per_page: itemsPerPage,
-    info_sort: infoSort,
+    info_sort: 'DatDocumentos.FCaptura DESC',
+    filters_applied: filters.length,
   };
 
-  let response;
-  let responseText: string = '';
+  console.log(`[SICAS] Filtros aplicados: ${filters.length}`);
 
   try {
-    console.log(`[SICAS] Enviando request a: ${endpoint}`);
-
-    response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'SOAPAction': 'http://tempuri.org/ProcesarWS',
-      },
-      body: soapEnvelope,
+    // Ejecutar reporte con el cliente oficial
+    const result = await client.executeReport({
+      keyCode: SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES,
+      page,
+      itemsPerPage,
+      sortField: 'DatDocumentos.FCaptura DESC',
+      filters,
     });
-  } catch (fetchError: any) {
-    // Si hay error SSL, intentar con HTTP en lugar de HTTPS
-    if (fetchError.message?.includes('certificate') || fetchError.message?.includes('SSL')) {
-      console.warn(`[SICAS] Error SSL en página ${page}, intentando con HTTP...`);
-      const httpEndpoint = endpoint.replace('https://', 'http://');
 
-      try {
-        response = await fetch(httpEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/xml; charset=utf-8',
-            'SOAPAction': 'http://tempuri.org/ProcesarWS',
-          },
-          body: soapEnvelope,
-        });
-      } catch (httpError: any) {
-        console.error('[SICAS] Error en fallback HTTP:', httpError);
-        throw new Error(`FETCH_SICAS: ${httpError.message}`);
-      }
-    } else {
-      console.error('[SICAS] Error en fetch:', fetchError);
-      throw new Error(`FETCH_SICAS: ${fetchError.message}`);
-    }
-  }
+    console.log(`[SICAS] Respuesta recibida - Success: ${result.success}`);
+    console.log(`[SICAS] Registros encontrados: ${result.records.length}`);
 
-  // LOGGING CRÍTICO: Status code real y body
-  console.log(`[SICAS] HTTP Status: ${response.status} ${response.statusText}`);
-
-  try {
-    responseText = await response.text();
-    console.log(`[SICAS] Response length: ${responseText.length} bytes`);
-    console.log(`[SICAS] Response preview (first 500 chars):`, responseText.substring(0, 500));
-  } catch (textError: any) {
-    console.error('[SICAS] Error leyendo response body:', textError);
-    throw new Error(`FETCH_SICAS: No se pudo leer el body de la respuesta`);
-  }
-
-  // Verificar status HTTP
-  if (!response.ok) {
-    console.error(`[SICAS] HTTP Error ${response.status}: ${response.statusText}`);
-    console.error(`[SICAS] Body de error:`, responseText.substring(0, 1000));
-
-    throw new Error(
-      `HTTP ${response.status}: ${response.statusText} | Body: ${responseText.substring(0, 200)}`
-    );
-  }
-
-  // Decodificar entidades HTML
-  let decoded: string;
-  let resultContent: string;
-
-  try {
-    decoded = responseText
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&')
-      .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'");
-
-    // Extraer el contenido del resultado
-    const resultMatch = decoded.match(/<ProcesarWSResult>([\s\S]*?)<\/ProcesarWSResult>/);
-    if (!resultMatch) {
-      console.error('[SICAS] No se encontró ProcesarWSResult en el response');
-      console.error('[SICAS] Decoded preview:', decoded.substring(0, 500));
-      throw new Error('PARSE_XML: No se encontró ProcesarWSResult en la respuesta de SICAS');
+    if (!result.success) {
+      throw new Error(`SICAS Error: ${result.message}`);
     }
 
-    resultContent = resultMatch[1];
-    console.log(`[SICAS] Resultado extraído: ${resultContent.length} bytes`);
-  } catch (parseError: any) {
-    console.error('[SICAS] Error en decode/parse inicial:', parseError);
-    throw new Error(`PARSE_XML: ${parseError.message}`);
-  }
+    // Convertir los registros al formato esperado
+    const polizas: PolizaVigente[] = result.records.map((record: any) => {
+      // Mapear los campos del reporte H03400 al formato de PolizaVigente
+      return {
+        id_documento: record.IdDocumento || record.IDDocto || `DOC_${Date.now()}_${Math.random()}`,
+        no_poliza: record.Documento || record.NoPoliza || record.Poliza,
+        vend_id: record.IDVend || record.IdVendedor || '0',
+        vend_nombre: record.VendNombre || record.Vendedor || record.NombreVendedor,
+        desp_id: record.IDDesp || record.IdDespacho || null,
+        desp_nombre: record.DespNombre || record.Despacho || record.Oficina || null,
+        aseguradora: record.CiaNombre || record.Aseguradora || record.Compania || null,
+        ramo: record.RamoNombre || record.Ramo || null,
+        subramo: record.SubRamoNombre || record.SubRamo || null,
+        contratante: record.Contratante || record.Cliente || null,
+        asegurado: record.Asegurado || null,
+        vigencia_desde: record.FDesde || record.VigenciaDesde || null,
+        vigencia_hasta: record.FHasta || record.VigenciaHasta || null,
+        prima_neta: record.ImporteNeto || record.PrimaNeta || null,
+        prima_total: record.Importe || record.PrimaTotal || null,
+      };
+    });
 
-  // Verificar estado del proceso
-  const responseNbrMatch = resultContent.match(/<RESPONSENBR>(\d+)<\/RESPONSENBR>/);
-  const responseTxtMatch = resultContent.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/);
-  const messageMatch = resultContent.match(/<MESSAGE>(.*?)<\/MESSAGE>/);
-
-  const sicasDetails = {
-    responsenbr: responseNbrMatch?.[1] || 'N/A',
-    responsetxt: responseTxtMatch?.[1] || 'N/A',
-    message: messageMatch?.[1] || 'N/A',
-  };
-
-  // Detectar todas las tablas presentes en el XML
-  const tableRegex = /<(\w+)>[\s\S]*?<\/\1>/g;
-  const tablesFound = new Set<string>();
-  let tableMatch;
-  while ((tableMatch = tableRegex.exec(resultContent)) !== null) {
-    const tableName = tableMatch[1];
-    // Filtrar tags de metadata
-    if (!['RESPONSENBR', 'RESPONSETXT', 'MESSAGE', 'PROCESSDATA'].includes(tableName)) {
-      tablesFound.add(tableName);
-    }
-  }
-
-  // Verificar si hay NewDataSet (indica que hay datos tabulares)
-  const hasNewDataSet = /<NewDataSet>/i.test(resultContent);
-  const hasDatDocumentos = /<DatDocumentos>/i.test(resultContent);
-
-  // Contar registros de DatDocumentos
-  const docMatches = resultContent.match(/<DatDocumentos>/g);
-  const recordCount = docMatches ? docMatches.length : 0;
-
-  const diagnostic = {
-    raw_result_length: resultContent.length,
-    has_dataset: hasNewDataSet || hasDatDocumentos || recordCount > 0,
-    tables_found: Array.from(tablesFound),
-    raw_preview: resultContent.substring(0, 2000),
-  };
-
-  console.log(`[SICAS] RESPONSENBR: ${sicasDetails.responsenbr}`);
-  console.log(`[SICAS] RESPONSETXT: ${sicasDetails.responsetxt}`);
-  console.log(`[SICAS] MESSAGE: ${sicasDetails.message}`);
-  console.log(`[SICAS] Has Dataset: ${diagnostic.has_dataset}`);
-  console.log(`[SICAS] Tables Found: ${diagnostic.tables_found.join(', ')}`);
-  console.log(`[SICAS] Record Count: ${recordCount}`);
-
-  // REGLA CRÍTICA: Si el mensaje contiene "Error", es un error real, NO éxito
-  const hasInternalError =
-    sicasDetails.message?.includes('Error en Ejecución') ||
-    sicasDetails.message?.includes('Proceso Interno') ||
-    sicasDetails.message?.includes('Variable de objeto') ||
-    sicasDetails.message?.includes('SICASOnline') ||
-    sicasDetails.message?.toLowerCase().includes('error');
-
-  if (hasInternalError) {
-    // Error real de SICAS - lanzar excepción para que se registre como failed
-    console.error('[SICAS] Error interno detectado:', sicasDetails.message);
-    throw new Error(`SICAS Internal Error: ${sicasDetails.message}`);
-  }
-
-  // Si RESPONSENBR=0 pero NO hay error, verificar si hay dataset real
-  if (!responseNbrMatch || responseNbrMatch[1] === '0') {
-    console.warn(`[SICAS] RESPONSENBR=0: ${sicasDetails.message}`);
-
-    // Si NO hay dataset real (tablas o registros), es un error
-    if (!diagnostic.has_dataset) {
-      console.error('[SICAS] No hay dataset en la respuesta');
-      throw new Error(`SICAS: No hay dataset disponible. Message: ${sicasDetails.message}`);
-    }
-
-    console.log('[SICAS] RESPONSENBR=0 pero hay dataset, continuando...');
-  }
-
-  // Verificar acceso denegado
-  if (responseTxtMatch && responseTxtMatch[1] === 'DENIED') {
-    throw new Error('SICAS: Acceso denegado - verificar credenciales');
-  }
-
-  // Parsear los registros de pólizas
-  const polizas: PolizaVigente[] = [];
-  const docRegex = /<DatDocumentos>([\s\S]*?)<\/DatDocumentos>/g;
-  let match;
-
-  while ((match = docRegex.exec(resultContent)) !== null) {
-    const docContent = match[1];
-
-    const extractField = (fieldName: string): string | null => {
-      const fieldMatch = docContent.match(new RegExp(`<${fieldName}>(.*?)<\/${fieldName}>`));
-      return fieldMatch ? fieldMatch[1] : null;
+    const sicasDetails = {
+      responsenbr: result.responseNbr,
+      responsetxt: result.success ? 'SUCESS' : 'ERROR',
+      message: result.message,
     };
 
-    const extractNumber = (fieldName: string): number | null => {
-      const value = extractField(fieldName);
-      return value ? parseFloat(value) : null;
+    const diagnostic = {
+      raw_result_length: result.rawXml?.length || 0,
+      has_dataset: result.records.length > 0,
+      tables_found: ['RECORD'],
+      raw_preview: result.rawXml?.substring(0, 2000) || '',
+      first_row_sample: polizas.length > 0 ? polizas[0] : undefined,
     };
 
-    const idDocumento = extractField('IdDocumento') || extractField('IdCaptura');
-    const vendId = extractField('IdVendedor') || extractField('VendedorId');
+    console.log(`[SICAS] Parseadas ${polizas.length} pólizas`);
 
-    if (!idDocumento || !vendId) {
-      console.warn('[SICAS] Registro sin IdDocumento o VendedorId, omitiendo...');
-      continue;
+    return {
+      polizas,
+      sicasDetails,
+      diagnostic,
+      request: requestInfo,
+    };
+  } catch (error: any) {
+    console.error('[SICAS] Error en consulta:', error.message);
+
+    // Si el error es de código de reporte no encontrado
+    if (error.message?.includes('Codigo de reporte no encontrado') ||
+        error.message?.includes('not found')) {
+      throw new Error(
+        `SICAS Error: El código de reporte ${SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES} no está disponible. ` +
+        `Verifica con el proveedor de SICAS que tu usuario tenga acceso a este reporte.`
+      );
     }
 
-    polizas.push({
-      id_documento: idDocumento,
-      no_poliza: extractField('NoPoliza') || extractField('Poliza'),
-      vend_id: vendId,
-      vend_nombre: extractField('Vendedor') || extractField('NombreVendedor'),
-      desp_id: extractField('IdDespacho') || extractField('DespachoId'),
-      desp_nombre: extractField('Despacho') || extractField('Oficina'),
-      aseguradora: extractField('Aseguradora') || extractField('Compania'),
-      ramo: extractField('Ramo'),
-      subramo: extractField('SubRamo'),
-      contratante: extractField('Contratante') || extractField('Cliente'),
-      asegurado: extractField('Asegurado'),
-      vigencia_desde: extractField('VigenciaDesde') || extractField('FDesde'),
-      vigencia_hasta: extractField('VigenciaHasta') || extractField('FHasta'),
-      prima_neta: extractNumber('PrimaNeta') || extractNumber('ImporteNeto'),
-      prima_total: extractNumber('PrimaTotal') || extractNumber('Importe'),
-    });
+    throw new Error(`FETCH_SICAS: ${error.message}`);
   }
-
-  console.log(`[SICAS] Parseadas ${polizas.length} pólizas`);
-
-  // Agregar first_row_sample para diagnóstico
-  if (polizas.length > 0) {
-    diagnostic.first_row_sample = polizas[0];
-  }
-
-  return {
-    polizas,
-    sicasDetails,
-    diagnostic,
-    request: requestInfo,
-  };
 }
 
 /**

@@ -409,7 +409,7 @@ export default function MiProduccionSICAS() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-amber-900 mb-2">
-                  Diagnóstico: Error en Reporte SICAS H03117
+                  Diagnóstico: Error en Sincronización SICAS
                 </h3>
                 <p className="text-amber-800 mb-4">
                   La conexión a SICAS funciona correctamente, pero el reporte no devuelve datos.
@@ -433,10 +433,10 @@ export default function MiProduccionSICAS() {
                 <div className="bg-white rounded-lg p-4 mb-4">
                   <h4 className="font-semibold text-amber-900 mb-2">Causa Probable:</h4>
                   <ul className="list-disc list-inside space-y-1 text-sm text-amber-800">
-                    <li>El reporte H03117 no está disponible para tu usuario</li>
+                    <li>El reporte H03400 (Pólizas Vigentes) no está disponible para tu usuario</li>
                     <li>Tu usuario no tiene permisos para este reporte</li>
                     <li>Existe un problema interno en SICAS</li>
-                    <li>Se requiere usar un código de reporte diferente</li>
+                    <li>Se requiere verificar la configuración con el proveedor</li>
                   </ul>
                 </div>
 
@@ -449,12 +449,13 @@ export default function MiProduccionSICAS() {
                     Contacta al proveedor de SICAS con la siguiente información:
                   </p>
                   <ul className="list-disc list-inside space-y-1 text-sm text-amber-800 mb-3">
-                    <li><strong>Código de reporte:</strong> H03117</li>
+                    <li><strong>Código de reporte requerido:</strong> H03400 (Pólizas Vigentes con filtros)</li>
+                    <li><strong>Código alternativo:</strong> H03430_001 (Cobranza con filtros)</li>
                     <li><strong>Mensaje de error:</strong> "{sicasDiagnostic.message}"</li>
-                    <li><strong>Solicitud:</strong> Código correcto para obtener pólizas vigentes</li>
+                    <li><strong>Solicitud:</strong> Verificar que tu usuario tenga acceso a reportes con filtros avanzados</li>
                   </ul>
                   <p className="text-xs text-amber-700 mt-2">
-                    Una vez que tengas el código correcto, actualízalo en: Admin {'>'} SICAS {'>'} Configuración
+                    Sistema actualizado para usar los códigos de reporte oficiales según documentación SICAS
                   </p>
                 </div>
 
