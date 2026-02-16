@@ -1,18 +1,30 @@
 # SICAS - Diagnóstico de Autenticación y Filtros
 
-## Problema Identificado
+## ✅ AUTENTICACIÓN CONFIRMADA (2026-02-16)
 
-**ERROR RAÍZ:** Las credenciales SICAS no están autenticando correctamente.
-
-**Evidencia:**
+**Credenciales Validadas:**
+```bash
+✅ Endpoint: https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx
+✅ Username: j1r0%25$
+✅ Password: $45oc14d05$
+✅ HTTP Status: 200 OK
+✅ RESPONSETXT: SUCESS
 ```
-DATAINFO {
-  Sucess: '0',
-  MsgError: 'Error: Usuario o Contraseña Incorrecta, Verificar Datos'
-}
+
+## ⚠️ Problema Actual: Error de Formato XML
+
+**ERROR IDENTIFICADO:**
+```
+Error en Ejecución de WS o Proceso Interno de SICASOnline
+--Variable de objeto o de bloque With no establecida.
 ```
 
-Todas las pruebas de filtros están fallando porque SICAS rechaza la autenticación **antes** de ejecutar cualquier reporte.
+**Análisis:**
+- ✅ Las credenciales son correctas (HTTP 200, RESPONSETXT: SUCESS)
+- ✅ El endpoint `.com` funciona (`.com.mx` tiene certificado TLS inválido)
+- ❌ El formato del XML request tiene un problema de estructura Visual Basic
+
+**Causa:** SICAS espera un formato XML específico o campos obligatorios que no estamos enviando correctamente.
 
 ---
 
@@ -267,11 +279,50 @@ console.log('RESULTADO COMPLETO', result);
 
 ---
 
+## 🔬 Test de Formatos XML (Siguiente Paso)
+
+### Archivo: `test-sicas-xml-formats.html`
+
+**Propósito:** Probar 6 variantes de XML para identificar el formato correcto que SICAS espera.
+
+**Edge Function:** `sicas-test-xml-formats`
+
+**Variantes a probar:**
+1. **Original completo** - Estructura actual con todos los campos
+2. **Sin campos vacíos** - Eliminando `ConditionsAdd`, `FieldsRequeried`, `InfoSort` vacíos
+3. **Con FILTROS explícito** - Agregando nodo `<FILTROS>` con fechas
+4. **Catálogo simple** - Usando `EsCatalogo=S` (modo catálogo)
+5. **Minimalista** - Solo credenciales + nombre de proceso
+6. **Con despacho y vendedor** - Agregando filtros `DESPACHO` y `VENDEDOR`
+
+**Instrucciones:**
+```bash
+1. Abre test-sicas-xml-formats.html en el navegador
+2. Clic en "Ejecutar 6 Tests de Formato XML"
+3. Esperá 10-15 segundos
+4. El test mostrará:
+   - ✅ Variantes que funcionan sin error
+   - ⚠️ Variantes con error VB (mismo que ahora)
+   - ❌ Variantes con otros errores
+```
+
+**Resultados esperados:**
+- Si **todas** dan el mismo error VB → El problema es el proceso H03400 o permisos
+- Si **alguna** funciona → Identificamos el formato correcto
+- Si **todas** fallan diferente → Hay un problema más profundo
+
+### Hipótesis Actuales
+
+1. **FILTROS requeridos:** Quizás SICAS necesita `<FILTROS>` con campos específicos
+2. **Proceso H03400 inválido:** El proceso no existe o no tenemos permisos
+3. **Campos obligatorios faltantes:** Hay campos que SICAS requiere y no estamos enviando
+4. **Estructura del nodo:** El XML debe tener una estructura específica
+
+---
+
 ## Resumen
 
-**Problema:** Autenticación fallando
-**Causa probable:** Endpoint incorrecto o password con encoding mal
-**Solución:** Usar `test-sicas-auth-simple.html` para identificar combinación correcta
-**Después:** Actualizar `.env` y volver a probar con `test-sicas-filtros-debug.html`
-
-**No tiene sentido probar filtros hasta resolver autenticación.**
+**Estado:** ✅ Autenticación funcionando
+**Problema actual:** Error de formato XML (Visual Basic object error)
+**Siguiente paso:** Ejecutar `test-sicas-xml-formats.html` para identificar formato correcto
+**Después:** Actualizar el código con el formato que funcione
