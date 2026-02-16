@@ -129,8 +129,30 @@ export class SicasSoapReportClient {
   async executeReport(options: SicasReportOptions): Promise<SicasReportResponse> {
     const soapEnvelope = this.buildSoapEnvelope(options);
 
-    console.log('[SICAS SOAP Report] Ejecutando reporte:', options.keyCode);
-    console.log('[SICAS SOAP Report] Filtros aplicados:', options.filters?.length || 0);
+    console.log('========================================');
+    console.log('[SICAS SOAP] 🔵 INICIANDO REQUEST');
+    console.log('========================================');
+    console.log('[SICAS SOAP] KeyCode:', options.keyCode);
+    console.log('[SICAS SOAP] Page:', options.page || 1);
+    console.log('[SICAS SOAP] ItemsPerPage:', options.itemsPerPage || -1);
+    console.log('[SICAS SOAP] SortField:', options.sortField || '(ninguno)');
+    console.log('[SICAS SOAP] Filtros aplicados:', options.filters?.length || 0);
+
+    if (options.filters && options.filters.length > 0) {
+      console.log('[SICAS SOAP] 📋 DETALLE DE FILTROS:');
+      options.filters.forEach((f, idx) => {
+        console.log(`  Filtro ${idx + 1}: ${f.name}`);
+        console.log(`    - Type: ${f.type}, Subtype: ${f.subtype}`);
+        console.log(`    - Values: ${f.values.join(', ')}`);
+        console.log(`    - Texts: ${f.texts.join(', ')}`);
+        console.log(`    - FieldDb: ${f.fieldDb}`);
+      });
+    }
+
+    // Log del request SOAP (sin password)
+    const requestForLog = soapEnvelope.replace(/<tem:Password>.*?<\/tem:Password>/, '<tem:Password>***HIDDEN***</tem:Password>');
+    console.log('[SICAS SOAP] 📤 REQUEST XML:');
+    console.log(requestForLog);
 
     const response = await fetch(this.endpoint, {
       method: 'POST',
@@ -141,11 +163,16 @@ export class SicasSoapReportClient {
       body: soapEnvelope,
     });
 
+    console.log('[SICAS SOAP] 📥 HTTP Response Status:', response.status, response.statusText);
+
     if (!response.ok) {
       throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
     }
 
     const responseText = await response.text();
+    console.log('[SICAS SOAP] 📥 Response Length:', responseText.length, 'bytes');
+    console.log('[SICAS SOAP] 📥 Response Preview (primeros 1000 chars):');
+    console.log(responseText.substring(0, 1000));
 
     // Parse SOAP response
     return this.parseSoapResponse(responseText);
@@ -200,26 +227,37 @@ export class SicasSoapReportClient {
    * Parsea los datos de PROCESSDATA
    */
   private parseProcessData(processData: string): SicasReportResponse {
+    console.log('========================================');
+    console.log('[SICAS SOAP] 🔍 PARSEANDO PROCESSDATA');
+    console.log('========================================');
+
     // Extraer campos básicos
     const responseTxt = this.extractXmlValue(processData, 'RESPONSETXT') || '';
     const responseNbr = this.extractXmlValue(processData, 'RESPONSENBR') || '0';
     const message = this.extractXmlValue(processData, 'MESSAGE') || '';
 
-    console.log('[SICAS SOAP] RESPONSETXT:', responseTxt);
-    console.log('[SICAS SOAP] RESPONSENBR:', responseNbr);
-    console.log('[SICAS SOAP] MESSAGE:', message);
+    console.log('[SICAS SOAP] ✅ RESPONSETXT:', responseTxt);
+    console.log('[SICAS SOAP] 📊 RESPONSENBR:', responseNbr);
+    console.log('[SICAS SOAP] 💬 MESSAGE:', message);
 
-    // Verificar si hay error
+    // 🔥 CRÍTICO: Detectar errores en MESSAGE
+    if (message && (
+      message.toLowerCase().includes('error') ||
+      message.toLowerCase().includes('denied') ||
+      message.toLowerCase().includes('denegad') ||
+      message.toLowerCase().includes('variable de objeto') ||
+      message.toLowerCase().includes('no se puede') ||
+      message.toLowerCase().includes('failed')
+    )) {
+      console.error('[SICAS SOAP] ❌ ERROR DETECTADO EN MESSAGE:', message);
+      throw new Error(`Error en SICAS: ${message}`);
+    }
+
+    // Verificar si hay error por RESPONSETXT
     if (responseTxt.toUpperCase() !== 'SUCESS' || responseNbr === '0') {
-      // Puede ser catálogo vacío o error real
-      if (message.toLowerCase().includes('error') ||
-          message.toLowerCase().includes('denied') ||
-          message.toLowerCase().includes('denegad')) {
-        throw new Error(`SICAS: ${message}`);
-      }
+      console.log('[SICAS SOAP] ⚠️ RESPONSETXT no es SUCCESS o RESPONSENBR es 0');
+      console.log('[SICAS SOAP] Interpretando como: sin datos disponibles');
 
-      // Catálogo vacío
-      console.log('[SICAS SOAP] Reporte vacío o sin datos');
       return {
         success: true,
         responseNbr,
@@ -230,8 +268,16 @@ export class SicasSoapReportClient {
     }
 
     // Extraer registros
+    console.log('[SICAS SOAP] 🔎 Buscando registros en PROCESSDATA...');
     const records = this.parseRecords(processData);
-    console.log('[SICAS SOAP] Registros parseados:', records.length);
+    console.log('[SICAS SOAP] ✅ Registros parseados:', records.length);
+
+    if (records.length > 0) {
+      console.log('[SICAS SOAP] 📋 Campos del primer registro:');
+      console.log(JSON.stringify(Object.keys(records[0]), null, 2));
+      console.log('[SICAS SOAP] 📄 Primer registro completo:');
+      console.log(JSON.stringify(records[0], null, 2));
+    }
 
     return {
       success: true,
@@ -258,18 +304,45 @@ export class SicasSoapReportClient {
   private parseRecords(xml: string): any[] {
     const records: any[] = [];
 
+    console.log('[SICAS SOAP] 🔍 Buscando tag DATAINFO...');
+
     // Buscar DATAINFO
     const dataInfoMatch = xml.match(/<DATAINFO>([\s\S]*?)<\/DATAINFO>/i);
     if (!dataInfoMatch) {
+      console.log('[SICAS SOAP] ⚠️ No se encontró tag DATAINFO');
+      console.log('[SICAS SOAP] 📄 XML completo (primeros 2000 chars):');
+      console.log(xml.substring(0, 2000));
+
+      // Intentar buscar otras estructuras comunes
+      console.log('[SICAS SOAP] 🔍 Buscando estructuras alternativas...');
+
+      // Buscar NewDataSet (estructura alternativa)
+      const newDataSetMatch = xml.match(/<NewDataSet>([\s\S]*?)<\/NewDataSet>/i);
+      if (newDataSetMatch) {
+        console.log('[SICAS SOAP] ✅ Encontrado NewDataSet!');
+        return this.parseNewDataSet(newDataSetMatch[1]);
+      }
+
+      // Buscar tablas directamente (Table, DatDocumentos, etc)
+      const tableMatch = xml.match(/<(Table|DatDocumentos|Documentos)[^>]*>([\s\S]*?)<\/\1>/i);
+      if (tableMatch) {
+        console.log('[SICAS SOAP] ✅ Encontrada tabla:', tableMatch[1]);
+        return this.parseTableRows(xml, tableMatch[1]);
+      }
+
+      console.log('[SICAS SOAP] ❌ No se encontró ninguna estructura conocida');
       return records;
     }
 
+    console.log('[SICAS SOAP] ✅ Tag DATAINFO encontrado');
     const dataInfo = dataInfoMatch[1];
 
     // Extraer todos los registros
     const recordMatches = dataInfo.matchAll(/<RECORD>([\s\S]*?)<\/RECORD>/gi);
+    let recordCount = 0;
 
     for (const recordMatch of recordMatches) {
+      recordCount++;
       const recordXml = recordMatch[1];
       const record: any = {};
 
@@ -281,6 +354,80 @@ export class SicasSoapReportClient {
         const fieldValue = fieldMatch[2].trim();
 
         // Convertir valores numéricos
+        if (fieldValue && !isNaN(Number(fieldValue)) && fieldValue !== '') {
+          record[fieldName] = Number(fieldValue);
+        } else {
+          record[fieldName] = fieldValue;
+        }
+      }
+
+      if (Object.keys(record).length > 0) {
+        records.push(record);
+      }
+    }
+
+    console.log('[SICAS SOAP] ✅ Encontrados', recordCount, 'tags RECORD');
+    console.log('[SICAS SOAP] ✅ Parseados', records.length, 'registros válidos');
+
+    return records;
+  }
+
+  /**
+   * Parsea NewDataSet (estructura alternativa de SICAS)
+   */
+  private parseNewDataSet(xml: string): any[] {
+    const records: any[] = [];
+
+    // Buscar todas las tablas dentro de NewDataSet
+    const tableMatches = xml.matchAll(/<(Table|DatDocumentos|Documentos)[^>]*>([\s\S]*?)<\/\1>/gi);
+
+    for (const tableMatch of tableMatches) {
+      const tableName = tableMatch[1];
+      const tableContent = tableMatch[2];
+
+      console.log('[SICAS SOAP] 📊 Parseando tabla:', tableName);
+
+      const record: any = {};
+      const fieldMatches = tableContent.matchAll(/<([^>]+)>([^<]*)<\/\1>/g);
+
+      for (const fieldMatch of fieldMatches) {
+        const fieldName = fieldMatch[1];
+        const fieldValue = fieldMatch[2].trim();
+
+        if (fieldValue && !isNaN(Number(fieldValue)) && fieldValue !== '') {
+          record[fieldName] = Number(fieldValue);
+        } else {
+          record[fieldName] = fieldValue;
+        }
+      }
+
+      if (Object.keys(record).length > 0) {
+        records.push(record);
+      }
+    }
+
+    console.log('[SICAS SOAP] ✅ Parseados', records.length, 'registros de NewDataSet');
+    return records;
+  }
+
+  /**
+   * Parsea filas de una tabla específica
+   */
+  private parseTableRows(xml: string, tableName: string): any[] {
+    const records: any[] = [];
+    const regex = new RegExp(`<${tableName}[^>]*>([\\s\\S]*?)<\/${tableName}>`, 'gi');
+    const matches = xml.matchAll(regex);
+
+    for (const match of matches) {
+      const rowContent = match[1];
+      const record: any = {};
+
+      const fieldMatches = rowContent.matchAll(/<([^>]+)>([^<]*)<\/\1>/g);
+
+      for (const fieldMatch of fieldMatches) {
+        const fieldName = fieldMatch[1];
+        const fieldValue = fieldMatch[2].trim();
+
         if (fieldValue && !isNaN(Number(fieldValue)) && fieldValue !== '') {
           record[fieldName] = Number(fieldValue);
         } else {
