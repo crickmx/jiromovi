@@ -281,6 +281,7 @@
         <div class="status-badge" id="statusBadge">Procesando...</div>
       </div>
 
+      <div class="section-title">🎯 PROCESSDATA - Respuesta del Servidor</div>
       <div class="info-grid">
         <div class="info-item">
           <div class="info-label">RESPONSETXT</div>
@@ -291,18 +292,50 @@
           <div class="info-value" id="responseNbr">-</div>
         </div>
         <div class="info-item">
-          <div class="info-label">Registros</div>
-          <div class="info-value" id="recordCount">-</div>
+          <div class="info-label">MESSAGE</div>
+          <div class="info-value" id="message">-</div>
         </div>
         <div class="info-item">
-          <div class="info-label">Tiempo</div>
+          <div class="info-label">TOTALRECORDS</div>
+          <div class="info-value" id="totalRecords">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">PROCESSTIME</div>
+          <div class="info-value" id="processTime">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">HTTP Tiempo</div>
           <div class="info-value" id="responseTime">-</div>
         </div>
       </div>
 
+      <div class="section-title">📊 Dataset Info</div>
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Tabla</div>
+          <div class="info-value" id="tableName">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Registros Parseados</div>
+          <div class="info-value" id="recordCount">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Tamaño XML</div>
+          <div class="info-value" id="xmlLength">-</div>
+        </div>
+      </div>
+
+      <div class="section-title">🔍 Primer Registro (Muestra)</div>
+      <div class="code-block" id="firstRecord">-</div>
+
       <div class="section-title">📋 Descripción del Test</div>
       <div class="info-item">
         <div class="info-value" id="testDesc" style="font-size: 14px; font-weight: normal;"></div>
+      </div>
+
+      <div class="section-title">🌐 Endpoint</div>
+      <div class="info-item">
+        <div class="info-value" id="endpoint" style="font-size: 12px; font-weight: normal; color: #666;"></div>
       </div>
 
       <div class="section-title">🔧 ConditionsAdd Enviado</div>
@@ -335,9 +368,16 @@
       // Reset values
       document.getElementById('responseTxt').textContent = 'Cargando...';
       document.getElementById('responseNbr').textContent = 'Cargando...';
-      document.getElementById('recordCount').textContent = 'Cargando...';
+      document.getElementById('message').textContent = 'Cargando...';
+      document.getElementById('totalRecords').textContent = 'Cargando...';
+      document.getElementById('processTime').textContent = 'Cargando...';
       document.getElementById('responseTime').textContent = 'Cargando...';
+      document.getElementById('tableName').textContent = 'Cargando...';
+      document.getElementById('recordCount').textContent = 'Cargando...';
+      document.getElementById('xmlLength').textContent = 'Cargando...';
+      document.getElementById('firstRecord').textContent = 'Cargando...';
       document.getElementById('testDesc').textContent = 'Cargando...';
+      document.getElementById('endpoint').textContent = 'Cargando...';
       document.getElementById('conditionsAdd').textContent = 'Cargando...';
       document.getElementById('soapRequest').textContent = 'Cargando...';
       document.getElementById('rawResponse').textContent = 'Cargando...';
@@ -369,20 +409,49 @@
         }
 
         // Validate result structure
-        if (!result || !result.response || !result.analysis) {
+        if (!result || !result.analysis) {
           throw new Error('Estructura de respuesta inválida');
         }
 
-        // Update UI
+        // Log completo para diagnóstico
+        console.log('PROCESSDATA', result.processData);
+        console.log('DATASET INFO', result.datasetInfo);
+        console.log('FIRST RECORD', result.firstRecord);
+        console.log('RESULTADO COMPLETO', result);
+
+        // Update UI - PROCESSDATA
         document.getElementById('resultTitle').textContent = `Test ${testNumber} - Resultados`;
-        document.getElementById('responseTxt').textContent = result.response.responseTxt || 'N/A';
-        document.getElementById('responseNbr').textContent = result.response.responseNbr || 'N/A';
-        document.getElementById('recordCount').textContent = result.response.recordCount || 0;
-        document.getElementById('responseTime').textContent = result.response.responseTime || 'N/A';
+        document.getElementById('responseTxt').textContent = result.processData?.RESPONSETXT || 'N/A';
+        document.getElementById('responseNbr').textContent = result.processData?.RESPONSENBR || 'N/A';
+        document.getElementById('message').textContent = result.processData?.MESSAGE || 'N/A';
+        document.getElementById('totalRecords').textContent = result.processData?.TOTALRECORDS || 'N/A';
+        document.getElementById('processTime').textContent = result.processData?.PROCESSTIME || 'N/A';
+
+        // Dataset Info
+        document.getElementById('tableName').textContent = result.datasetInfo?.tableName || 'N/A';
+        document.getElementById('recordCount').textContent = result.datasetInfo?.recordCount || 0;
+        document.getElementById('xmlLength').textContent = result.datasetInfo?.rawXmlLength
+          ? `${(result.datasetInfo.rawXmlLength / 1024).toFixed(2)} KB`
+          : 'N/A';
+
+        // Primer registro (formateado bonito)
+        if (result.firstRecord && Object.keys(result.firstRecord).length > 0) {
+          document.getElementById('firstRecord').textContent = JSON.stringify(result.firstRecord, null, 2);
+        } else {
+          document.getElementById('firstRecord').textContent = 'Sin datos (0 registros)';
+        }
+
+        // HTTP Metadata
+        document.getElementById('responseTime').textContent = result.httpMetadata?.responseTime || 'N/A';
+
+        // Test info
         document.getElementById('testDesc').textContent = result.testDescription || 'N/A';
+        document.getElementById('endpoint').textContent = result.endpoint || 'N/A';
         document.getElementById('conditionsAdd').textContent = result.conditionsAdd || '(sin filtros)';
-        document.getElementById('soapRequest').textContent = result.soapRequest || 'N/A';
-        document.getElementById('rawResponse').textContent = result.rawResponse || 'N/A';
+
+        // Debug
+        document.getElementById('soapRequest').textContent = result.debug?.soapRequest || 'N/A';
+        document.getElementById('rawResponse').textContent = result.debug?.rawResponsePreview || 'N/A';
         document.getElementById('conclusion').textContent = result.analysis.conclusion || 'N/A';
 
         // Set status badge

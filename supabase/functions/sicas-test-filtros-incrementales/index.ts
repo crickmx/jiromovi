@@ -279,50 +279,102 @@ serve(async (req: Request) => {
     const resultMatch = decoded.match(/<ProcesarWSResult>(.*?)<\/ProcesarWSResult>/is);
     const xmlContent = resultMatch ? resultMatch[1] : '';
 
-    // Contar registros
-    const recordMatches = xmlContent.match(/<RECORD>/g);
-    const recordCount = recordMatches ? recordMatches.length : 0;
-
-    // Extraer PROCESSDATA
+    // Extraer PROCESSDATA completo
     const processDataMatch = xmlContent.match(/<PROCESSDATA>(.*?)<\/PROCESSDATA>/is);
-    let responseTxt = '';
-    let responseNbr = '';
-    let message = '';
+    const processData: Record<string, string> = {};
 
     if (processDataMatch) {
-      responseTxt = processDataMatch[1].match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i)?.[1] || '';
-      responseNbr = processDataMatch[1].match(/<RESPONSENBR>(.*?)<\/RESPONSENBR>/i)?.[1] || '';
-      message = processDataMatch[1].match(/<MESSAGE>(.*?)<\/MESSAGE>/i)?.[1] || '';
+      const pdContent = processDataMatch[1];
+      processData.RESPONSETXT = pdContent.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i)?.[1] || '';
+      processData.RESPONSENBR = pdContent.match(/<RESPONSENBR>(.*?)<\/RESPONSENBR>/i)?.[1] || '';
+      processData.MESSAGE = pdContent.match(/<MESSAGE>(.*?)<\/MESSAGE>/i)?.[1] || '';
+      processData.TOTALRECORDS = pdContent.match(/<TOTALRECORDS>(.*?)<\/TOTALRECORDS>/i)?.[1] || '';
+      processData.PROCESSTIME = pdContent.match(/<PROCESSTIME>(.*?)<\/PROCESSTIME>/i)?.[1] || '';
     }
+
+    // Detectar tabla/dataset
+    const newDatasetMatch = xmlContent.match(/<NEWDATASET>(.*?)<\/NEWDATASET>/is);
+    const datasetContent = newDatasetMatch ? newDatasetMatch[1] : '';
+
+    // Identificar nombre de tabla (puede ser DatDocumentos, Table, etc.)
+    const tableNameMatch = datasetContent.match(/<([A-Z][a-zA-Z0-9_]+)>/);
+    const tableName = tableNameMatch ? tableNameMatch[1] : 'RECORD';
+
+    // Contar registros (buscar por nombre de tabla o RECORD genérico)
+    const recordPattern = new RegExp(`<${tableName}>`, 'g');
+    const recordMatches = datasetContent.match(recordPattern);
+    const recordCount = recordMatches ? recordMatches.length : 0;
+
+    // Extraer primer registro completo para análisis
+    let firstRecord: Record<string, string> = {};
+    if (recordCount > 0) {
+      const firstRecordMatch = datasetContent.match(new RegExp(`<${tableName}>(.*?)</${tableName}>`, 'is'));
+      if (firstRecordMatch) {
+        const recordContent = firstRecordMatch[1];
+        // Extraer todos los campos del primer registro
+        const fieldMatches = recordContent.matchAll(/<([^>]+)>([^<]*)<\/\1>/g);
+        for (const match of fieldMatches) {
+          firstRecord[match[1]] = match[2];
+        }
+      }
+    }
+
+    // Análisis detallado
+    const hasData = recordCount > 0;
+    const isSuccess = processData.RESPONSETXT === 'SUCESS' || processData.RESPONSETXT === 'SUCCESS';
+    const isEmpty = isSuccess && (processData.RESPONSENBR === '0' || recordCount === 0);
+    const isDenied = processData.RESPONSETXT === 'DENIED';
 
     const result = {
       success: true,
       testNumber,
       testDescription,
+      endpoint: SICAS_ENDPOINT,
       conditionsAdd: conditionsAdd || '(sin filtros)',
-      response: {
+
+      // PROCESSDATA completo
+      processData: {
+        ...processData,
+        note: isEmpty ? 'Reporte sin datos - puede ser filtro restrictivo o catálogo vacío' : ''
+      },
+
+      // Dataset info
+      datasetInfo: {
+        tableName,
+        recordCount,
+        totalRecordsFromProcess: processData.TOTALRECORDS || 'no especificado',
+        rawXmlLength: xmlContent.length,
+      },
+
+      // Primer registro de muestra
+      firstRecord: hasData ? firstRecord : null,
+
+      // HTTP metadata
+      httpMetadata: {
         httpStatus: response.status,
         responseTime: `${responseTime}ms`,
-        responseTxt,
-        responseNbr,
-        message,
-        recordCount,
       },
+
+      // Análisis
       analysis: {
-        hasData: recordCount > 0,
-        isAvailable: responseTxt === 'SUCESS' && responseNbr === '1',
-        isEmpty: responseTxt === 'SUCESS' && responseNbr === '0',
-        isDenied: responseTxt === 'DENIED',
-        conclusion: recordCount > 0
-          ? '✅ FUNCIONA - Filtro devuelve datos'
-          : responseTxt === 'SUCESS' && responseNbr === '0'
-          ? '⚠️ Reporte sin datos - Filtro puede estar demasiado restrictivo'
-          : responseTxt === 'DENIED'
+        hasData,
+        isSuccess,
+        isEmpty,
+        isDenied,
+        conclusion: hasData
+          ? `✅ FUNCIONA - ${recordCount} registro(s) encontrado(s)`
+          : isEmpty
+          ? '⚠️ Reporte sin datos - Filtro puede estar demasiado restrictivo o no hay datos en ese rango'
+          : isDenied
           ? '❌ Acceso denegado - Problema de autenticación'
-          : '❌ Error desconocido'
+          : `❌ Error: ${processData.RESPONSETXT || 'desconocido'}`
       },
-      soapRequest: soapBody,
-      rawResponse: decoded.substring(0, 3000),
+
+      // Debug info
+      debug: {
+        soapRequest: soapBody,
+        rawResponsePreview: decoded.substring(0, 2000),
+      }
     };
 
     console.log('\n--- Análisis ---');
