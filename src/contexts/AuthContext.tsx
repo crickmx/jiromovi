@@ -123,19 +123,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     console.log('[AuthContext] Initializing...');
+    let isInitialLoad = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log('[AuthContext] Initial session check:', session?.user?.email || 'No session');
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUsuario(session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
+        try {
+          await fetchUsuario(session.user.id);
+        } catch (error) {
+          console.error('[AuthContext] Error loading initial usuario:', error);
+        }
       }
+      // Solo ponemos loading en false después del fetch inicial
+      setLoading(false);
+      isInitialLoad = false;
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[AuthContext] Auth state changed:', event, session?.user?.email || 'No session');
+
+      // Ignorar el evento INITIAL_SESSION porque ya lo manejamos arriba
+      if (isInitialLoad && event === 'INITIAL_SESSION') {
+        console.log('[AuthContext] Ignoring INITIAL_SESSION event (already handled)');
+        return;
+      }
+
       (async () => {
         setUser(session?.user ?? null);
         if (session?.user) {
