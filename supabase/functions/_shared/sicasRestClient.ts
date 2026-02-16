@@ -73,15 +73,17 @@ export class SicasRestClient {
   private baseUrl: string;
   private username: string;
   private password: string;
+  private sCodeAuth?: string;
   private tokenCache: SicasTokenCache | null = null;
 
   private readonly TOKEN_LIFETIME_MS = 3 * 60 * 1000;
   private readonly TOKEN_REFRESH_BUFFER_MS = 30 * 1000;
 
-  constructor(config?: { baseUrl?: string; username?: string; password?: string }) {
+  constructor(config?: { baseUrl?: string; username?: string; password?: string; sCodeAuth?: string }) {
     this.baseUrl = config?.baseUrl || Deno.env.get('SICAS_REST_API_URL') || 'https://security-services.sicasonline.info/api';
     this.username = config?.username || Deno.env.get('SICAS_USERNAME') || '';
     this.password = config?.password || Deno.env.get('SICAS_PASSWORD') || '';
+    this.sCodeAuth = config?.sCodeAuth || Deno.env.get('SICAS_CODE_AUTH') || undefined;
 
     if (!this.username || !this.password) {
       throw new Error('SICAS credentials not configured');
@@ -99,10 +101,16 @@ export class SicasRestClient {
     console.log('[SICAS REST] URL:', `${this.baseUrl}/Security/GetToken`);
     console.log('[SICAS REST] Username:', this.username);
 
+    // Según manual oficial (página 5-6): parámetros sUserName, sPassword, sCodeAuth (opcional)
     const params = new URLSearchParams({
       sUserName: this.username,
       sPassword: this.password,
     });
+
+    // Agregar sCodeAuth solo si está configurado
+    if (this.sCodeAuth) {
+      params.append('sCodeAuth', this.sCodeAuth);
+    }
 
     const url = `${this.baseUrl}/Security/GetToken?${params.toString()}`;
     console.log('[SICAS REST] Request URL completa:', url);
@@ -111,6 +119,7 @@ export class SicasRestClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
     });
 
@@ -243,15 +252,12 @@ export class SicasRestClient {
         };
 
         if (body && method === 'POST') {
+          // Según el manual, los reportes usan JSON, no form-urlencoded
           if (typeof body === 'string') {
             requestOptions.body = body;
           } else {
-            const formData = new URLSearchParams();
-            Object.entries(body).forEach(([key, value]) => {
-              formData.append(key, String(value));
-            });
-            requestOptions.body = formData.toString();
-            requestHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+            requestOptions.body = JSON.stringify(body);
+            requestHeaders['Content-Type'] = 'application/json';
           }
         }
 
@@ -286,13 +292,23 @@ export class SicasRestClient {
     throw lastError || new Error('Request failed after retries');
   }
 
+  /**
+   * Método para leer reportes según manual oficial (páginas 27-31)
+   * Endpoint: POST /Report/ReadData
+   * Headers: Authorization (token), Prop_KeyCode (código de reporte)
+   * Body: PageRequested, ItemsForPage, SortFields, FieldsRequested, FormatResponse, Conditions, ConditionsDirect
+   *
+   * KeyCodes importantes:
+   * - HWS_DOCTOS: Documentos (pólizas, órdenes, fianzas)
+   * - HWSDOC: Solo pólizas (sin órdenes ni fianzas)
+   */
   public async readReport(options: {
     keyCode: string;
     pageRequested?: number;
     itemsForPage?: number;
     sortFields?: string;
     fieldsRequested?: string;
-    formatResponse?: 0 | 2;
+    formatResponse?: 0 | 2; // 0 = XML, 2 = JSON
     conditions?: string;
     conditionsDirect?: string;
   }): Promise<SicasReportResponse> {
@@ -302,7 +318,7 @@ export class SicasRestClient {
       itemsForPage = 100,
       sortFields,
       fieldsRequested,
-      formatResponse = 2,
+      formatResponse = 2, // JSON por defecto
       conditions,
       conditionsDirect,
     } = options;
@@ -318,6 +334,9 @@ export class SicasRestClient {
     if (conditions) body.Conditions = conditions;
     if (conditionsDirect) body.ConditionsDirect = conditionsDirect;
 
+    console.log('[SICAS REST] readReport - KeyCode:', keyCode);
+    console.log('[SICAS REST] readReport - Body:', JSON.stringify(body, null, 2));
+
     try {
       const response = await this.request<SicasReportResponse>(
         '/Report/ReadData',
@@ -326,7 +345,7 @@ export class SicasRestClient {
           headers: {
             'Prop_KeyCode': keyCode,
           },
-          body,
+          body: JSON.stringify(body),
           maxRetries: 2,
         }
       );
@@ -341,8 +360,10 @@ export class SicasRestClient {
         throw new Error(response.Error);
       }
 
+      console.log('[SICAS REST] readReport - Success. Records:', response.Response?.[0]?.TableInfo?.length || 0);
       return response;
     } catch (error: any) {
+      console.error('[SICAS REST] readReport - Error:', error.message);
       // Mejorar el mensaje de error para códigos de reporte
       if (error.message?.includes('Codigo de reporte') ||
           error.message?.includes('not found')) {

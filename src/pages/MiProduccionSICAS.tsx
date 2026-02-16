@@ -133,6 +133,14 @@ export default function MiProduccionSICAS() {
     }
   }, [loading, polizas, cobranza, renovaciones, emisionesDelMes, puedeAdministrarSicas]);
 
+  // Recargar pólizas cuando cambien los filtros de fecha
+  useEffect(() => {
+    if (usuario && (filters.fechaDesde || filters.fechaHasta)) {
+      console.log('[MiProduccionSICAS] Filtros de fecha cambiados, recargando pólizas...');
+      loadPolizasVigentes();
+    }
+  }, [filters.fechaDesde, filters.fechaHasta]);
+
   const loadData = async () => {
     setLoading(true);
     setSyncMessage(null);
@@ -151,15 +159,77 @@ export default function MiProduccionSICAS() {
   };
 
   const loadPolizasVigentes = async () => {
-    const { data, error } = await supabase
-      .from('sicas_polizas_vigentes')
-      .select('*')
-      .order('vigencia_hasta', { ascending: true });
+    try {
+      console.log('[MiProduccionSICAS] Cargando pólizas vigentes via REST API');
 
-    if (!error && data) {
-      setPolizas(data);
-    } else if (error) {
-      console.error('Error al cargar pólizas:', error);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Preparar filtros para la API REST
+      const requestBody: any = {
+        solo_polizas: true,
+        page: 1,
+        items_per_page: 1000,
+      };
+
+      // Aplicar filtros de fecha si existen
+      if (filters.fechaDesde) {
+        requestBody.fecha_desde = filters.fechaDesde;
+      }
+      if (filters.fechaHasta) {
+        requestBody.fecha_hasta = filters.fechaHasta;
+      }
+
+      console.log('[MiProduccionSICAS] Request body:', requestBody);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-get-polizas-vigentes-rest`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('[MiProduccionSICAS] Respuesta REST:', {
+        success: result.success,
+        polizas: result.polizas?.length || 0,
+        stats: result.stats
+      });
+
+      if (result.success && result.polizas) {
+        // Mapear los datos de SICAS REST a nuestro formato
+        const polizasMapeadas = result.polizas.map((p: any) => ({
+          id: p.DDocId || p.id,
+          id_documento: p.DDocId || '',
+          no_poliza: p.DPoliza || '',
+          aseguradora: p.CiaDescripcion || p.aseguradora || '',
+          ramo: p.RamoDescripcion || p.ramo || '',
+          subramo: p.SubramoDescripcion || p.subramo || '',
+          contratante: p.DContratante || '',
+          asegurado: p.DAsegurado || '',
+          vigencia_desde: p.FDesde || '',
+          vigencia_hasta: p.FHasta || '',
+          prima_neta: parseFloat(p.DPrimaNeta || 0),
+          prima_total: parseFloat(p.DPrimaTotal || 0),
+        }));
+
+        setPolizas(polizasMapeadas);
+        console.log('[MiProduccionSICAS] Pólizas cargadas exitosamente:', polizasMapeadas.length);
+      } else {
+        console.error('[MiProduccionSICAS] Error en respuesta:', result.error);
+        setPolizas([]);
+      }
+    } catch (error: any) {
+      console.error('[MiProduccionSICAS] Error al cargar pólizas:', error);
+      setPolizas([]);
     }
   };
 

@@ -1,102 +1,157 @@
-# SICAS: Conclusión sobre REST vs SOAP
+# SICAS: API REST - Documentación Actualizada
 
 ## Fecha
-13 de Febrero de 2026
+16 de Febrero de 2026
 
-## Diagnóstico Realizado
+## ACTUALIZACIÓN IMPORTANTE
 
-Se realizaron pruebas exhaustivas del endpoint REST de SICAS usando el diagnóstico especial H03117.
+**SICAS SÍ SOPORTA REST API**
 
-## Error Encontrado
+La información previa en este documento era incorrecta. SICAS cuenta con una API REST completamente funcional.
+
+## Confirmación de Funcionamiento
+
+Se ha confirmado que la API REST de SICAS funciona correctamente:
 
 ```
-System.InvalidOperationException: Sólo se puede llamar desde un script a los servicios Web con un atributo [ScriptService] en la definición de clase.
+✅ Conexión REST exitosa
+✅ Token obtenido: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+✅ API: REST
+✅ Endpoint: https://security-services.sicasonline.info/api
 ```
 
-### Detalles Técnicos
+## Documentación Oficial
 
-- **Error**: ASP.NET InvalidOperationException
-- **Causa**: El servicio web ASMX de SICAS **NO tiene** el atributo `[ScriptService]`
-- **Implicación**: El servidor NO soporta llamadas REST/JSON
+La documentación oficial se encuentra en el manual **API-Servicios_REST.pdf** proporcionado por SICAS.
 
-## Análisis
+### Endpoints REST Funcionales
 
-Los servicios web ASMX tradicionales de .NET solo soportan SOAP por defecto. Para que un servicio ASMX acepte llamadas REST/JSON, necesita:
+#### Autenticación
+```
+POST https://security-services.sicasonline.info/api/Security/GetToken
+Parámetros (Query String):
+- sUserName: Usuario SICAS
+- sPassword: Contraseña SICAS
+- sCodeAuth: Código de autenticación (opcional)
 
-```csharp
-[System.Web.Script.Services.ScriptService]
-public class WS_SICASOnline : System.Web.Services.WebService
+Response:
 {
-    // ...
+  "Token": "eyJhbGc...",
+  "Sucess": true,
+  "Message": "Token generado exitosamente"
 }
 ```
 
-**SICAS NO tiene este atributo**, por lo tanto:
-- ❌ **NO se pueden hacer llamadas REST/JSON**
-- ✅ **SOLO funciona SOAP XML**
-
-## Conclusión
-
-**El sistema SICAS SOLO soporta SOAP. No es posible usar REST.**
-
-## Acciones Tomadas
-
-1. ✅ Se mantiene el sistema SOAP que ya funciona correctamente
-2. ✅ Se depreca `sicasRestClient.ts`
-3. ✅ Todas las funciones usan SOAP exclusivamente
-4. ✅ Documentado en esta guía
-
-## Endpoints Funcionales (SOAP)
-
-### Endpoint Principal
+#### Validación y Renovación de Token
 ```
-POST https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx
-Content-Type: text/xml; charset=utf-8
-SOAPAction: http://tempuri.org/ProcesarWS
+GET https://security-services.sicasonline.info/api/Security/ValidateToken?ReactiveIf=true
+Headers:
+- Authorization: {token}
+
+Response:
+{
+  "Token": "nuevo_token", // Si se renovó
+  "Status": "OK" | "RENEW" | "ERR",
+  "Sucess": true
+}
 ```
 
-### Estructura SOAP que Funciona
+#### Lectura de Reportes
+```
+POST https://security-services.sicasonline.info/api/Report/ReadData
+Headers:
+- Authorization: {token}
+- Prop_KeyCode: {código_reporte} // Ej: HWSDOC, HWS_DOCTOS
 
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-  <soap:Body>
-    <ProcesarWS xmlns="http://tempuri.org/">
-      <wsProcesarData>
-        <KeyProcess>REPORT</KeyProcess>
-        <KeyCode>H03117</KeyCode>
-        <Page>1</Page>
-        <ItemForPage>10</ItemForPage>
-      </wsProcesarData>
-      <wsAuthConfig>
-        <UserName>usuario</UserName>
-        <Password>password</Password>
-      </wsAuthConfig>
-    </ProcesarWS>
-  </soap:Body>
-</soap:Envelope>
+Body (JSON):
+{
+  "PageRequested": 1,
+  "ItemsForPage": 100,
+  "FormatResponse": 2, // 0 = XML, 2 = JSON
+  "SortFields": "DatDocumentos.FDesde",
+  "FieldsRequested": "...", // Opcional
+  "Conditions": "DatDocumentos.Estatus=V AND ...",
+  "ConditionsDirect": "DatDocumentos.VendId IN (1,2,3)"
+}
+
+Response:
+{
+  "Response": [{
+    "TableInfo": [...], // Array de registros
+    "TableControl": [{
+      "MaxRecords": 150,
+      "Pages": 2,
+      "Page": 1,
+      "ItemForPage": 100
+    }]
+  }],
+  "Sucess": true
+}
 ```
 
-## Funciones Actuales (Todas SOAP)
+### KeyCodes Importantes
 
-### Funcionales
-- ✅ `sicas-test-simple` - Prueba básica SOAP
-- ✅ `sicas-test-catalog` - Catálogos SOAP
-- ✅ `sicas-get-production` - Producción SOAP
-- ✅ `sicas-sync` - Sincronización completa
-- ✅ `sicas-sync-basic` - Sincronización básica
-- ✅ `sicas-sync-commissions` - Comisiones
-- ✅ `sicas-sync-receivables` - Cobranza
+Según el manual oficial (página 32):
 
-### Deprecadas (REST no funciona)
-- ❌ `sicas-rest-test` - No funciona (REST)
-- ❌ `sync-sicas-polizas-vigentes-rest` - No funciona (REST)
-- ❌ `sicasRestClient.ts` - Deprecado
+- **HWS_DOCTOS**: Documentos completos (pólizas, órdenes, fianzas)
+- **HWSDOC**: Solo pólizas (excluye órdenes y fianzas)
+- **H03117**: Reporte de producción (uso legacy SOAP)
+- **H03400**: Pólizas vigentes con filtros (uso legacy SOAP)
 
-## Recomendación Final
+## Implementación Actual
 
-**Usar exclusivamente SOAP para todas las integraciones con SICAS.**
+### REST Client
+- ✅ `sicasRestClient.ts` - Cliente REST funcional y actualizado según manual oficial
+- ✅ Soporte para autenticación con sCodeAuth opcional
+- ✅ Renovación automática de tokens (3 min lifetime, hasta 10 min)
+- ✅ Manejo de paginación
+- ✅ Filtros avanzados (Conditions y ConditionsDirect)
 
-No intentar usar REST porque el servidor no lo soporta a nivel de configuración del servicio web ASMX.
+### Edge Functions REST
+- ✅ `sicas-get-polizas-vigentes-rest` - Obtiene pólizas vigentes usando REST
+- ✅ Soporte para filtros por fecha
+- ✅ Soporte para filtros por vendedor
+- ✅ Paginación automática
+- ✅ Formato JSON directo
+
+### Páginas Frontend
+- ✅ `MiProduccionSICAS.tsx` - Actualizada para usar REST API
+- ✅ Carga de pólizas vigentes desde REST
+- ✅ Filtros dinámicos por fecha
+- ✅ Preparado para filtros por vendedor
+
+## Comparación REST vs SOAP
+
+### REST (Recomendado)
+- ✅ Más moderno y estándar
+- ✅ JSON nativo
+- ✅ Más fácil de usar
+- ✅ Mejor documentación
+- ✅ Autenticación con JWT
+- ✅ Soporte oficial de SICAS
+
+### SOAP (Legacy)
+- ✅ Funcional pero legacy
+- ⚠️ XML verbose
+- ⚠️ Más complejo de implementar
+- ⚠️ Menos flexible
+- ⚠️ Autenticación en cada request
+
+## Recomendación Actualizada
+
+**Usar REST API para todas las integraciones nuevas con SICAS.**
+
+El REST API es la forma moderna y recomendada de integración. El SOAP sigue funcionando pero es legacy.
+
+## Funciones Migradas a REST
+
+- ✅ Obtención de pólizas vigentes
+- ⏳ Cobranza pendiente (siguiente)
+- ⏳ Comisiones (siguiente)
+- ⏳ Documentos digitales (siguiente)
+
+## Referencias
+
+- **Manual oficial**: API-Servicios_REST.pdf
+- **Endpoint producción**: https://security-services.sicasonline.info/api
+- **Endpoint QUA**: https://www.sicasonline.net/security-services/api
