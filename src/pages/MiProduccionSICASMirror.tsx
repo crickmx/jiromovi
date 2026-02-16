@@ -34,6 +34,8 @@ import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import { supabase } from '../lib/supabase';
 
 export default function MiProduccionSICASMirror() {
+  console.log('🔷 MiProduccionSICASMirror: Componente cargado');
+
   const { usuario } = useAuth();
 
   // Verificar si el usuario tiene permisos de admin en SICAS
@@ -116,14 +118,24 @@ export default function MiProduccionSICASMirror() {
   }
 
   async function handleManualSync() {
+    // Test visible inmediato
+    alert('🔴 BOTÓN SINCRONIZAR CLICKEADO - Revisa la consola ahora');
+    console.log('=== FUNCIÓN handleManualSync EJECUTADA ===');
+    console.log('[SYNC] Estado inicial:', { syncing, puedeAdministrarSicas, documents: documents.length });
+
     setSyncing(true);
     setMessage(null);
 
     try {
+      console.log('[SYNC] Iniciando sincronización...');
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      console.log('[SYNC] Supabase URL:', supabaseUrl);
+
       const token = (await supabase.auth.getSession()).data.session?.access_token;
+      console.log('[SYNC] Token obtenido:', token ? 'SI' : 'NO');
 
       // Usar consulta SQL directa (método más compatible)
+      console.log('[SYNC] Llamando a edge function sicas-sync-basic...');
       const response = await fetch(`${supabaseUrl}/functions/v1/sicas-sync-basic`, {
         method: 'POST',
         headers: {
@@ -132,9 +144,15 @@ export default function MiProduccionSICASMirror() {
         },
       });
 
+      console.log('[SYNC] Response status:', response.status);
+      console.log('[SYNC] Response ok:', response.ok);
+
       const result = await response.json();
+      console.log('[SYNC] Resultado completo:', JSON.stringify(result, null, 2));
 
       if (result.success && result.stats) {
+        console.log('[SYNC] ✅ Sincronización exitosa!');
+        console.log('[SYNC] Stats:', result.stats);
         const method = result.stats.method ? ` (${result.stats.method})` : '';
         setMessage({
           type: 'success',
@@ -142,14 +160,19 @@ export default function MiProduccionSICASMirror() {
         });
         await loadAllData();
       } else {
+        console.log('[SYNC] ❌ Error en sincronización');
+        console.log('[SYNC] Error:', result.error);
         setMessage({
           type: 'error',
           text: `Error en sincronización: ${result.error || 'Sin datos disponibles'}`
         });
       }
     } catch (error: any) {
+      console.error('[SYNC] ⚠️ Exception capturada:', error);
+      console.error('[SYNC] Stack trace:', error.stack);
       setMessage({ type: 'error', text: `Error: ${error.message}` });
     } finally {
+      console.log('[SYNC] Finalizando sincronización...');
       setSyncing(false);
     }
   }
