@@ -444,7 +444,52 @@ export class SicasSoapReportClient {
   }
 
   /**
-   * Helper: Crear filtro de fecha (rango)
+   * Helper: Crear filtro de fecha por CAPTURA (recomendado según ejemplo oficial)
+   * Formato: DD/MM/YYYY HH:mm o DD/MM/YYYY HH:mm:ss
+   */
+  static createDateRangeFilterByCaptura(
+    dateFrom: string,
+    dateTo: string,
+    dateFromText: string,
+    dateToText: string
+  ): FilterCondition {
+    return {
+      name: 'Desde|Hasta|Captura',
+      type: 3,
+      subtype: 1,
+      values: [dateFrom, dateTo],
+      texts: [dateFromText, dateToText],
+      flag1: 0,
+      flag2: -1, // Flags invertidos como en el ejemplo oficial
+      fieldDb: 'DatDocumentos.FCaptura',
+    };
+  }
+
+  /**
+   * Helper: Crear filtro de fecha por VIGENCIA (FDesde)
+   * Formato: DD/MM/YYYY HH:mm o DD/MM/YYYY HH:mm:ss
+   */
+  static createDateRangeFilterByVigencia(
+    dateFrom: string,
+    dateTo: string,
+    dateFromText: string,
+    dateToText: string
+  ): FilterCondition {
+    return {
+      name: 'Desde|Hasta|Desde',
+      type: 3,
+      subtype: 1,
+      values: [dateFrom, dateTo],
+      texts: [dateFromText, dateToText],
+      flag1: 0,
+      flag2: -1, // Flags invertidos como en el ejemplo oficial
+      fieldDb: 'DatDocumentos.FDesde',
+    };
+  }
+
+  /**
+   * Helper genérico: Crear filtro de fecha (rango)
+   * @deprecated Use createDateRangeFilterByCaptura o createDateRangeFilterByVigencia
    */
   static createDateRangeFilter(
     dateFrom: string,
@@ -460,7 +505,7 @@ export class SicasSoapReportClient {
       values: [dateFrom, dateTo],
       texts: [dateFromText, dateToText],
       flag1: 0,
-      flag2: 0,
+      flag2: -1, // Actualizado para coincidir con ejemplo oficial
       fieldDb,
     };
   }
