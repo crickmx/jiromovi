@@ -206,6 +206,7 @@ export default function MiProduccionSICAS() {
     setSyncMessage(null);
     setSicasDiagnostic(null);
     try {
+      console.log('[SYNC] Iniciando sincronización...');
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-sync-manual`,
@@ -219,21 +220,43 @@ export default function MiProduccionSICAS() {
         }
       );
 
+      console.log('[SYNC] Response status:', response.status);
+      console.log('[SYNC] Response ok:', response.ok);
+
       const result = await response.json();
+      console.log('[SYNC] Response completa:', JSON.stringify(result, null, 2));
 
       // Verificar si hay errores en los resultados
       const hasErrors = result.results?.errors?.length > 0;
       const polizasCount = result.results?.polizas_vigentes || result.polizas_vigentes || 0;
       const cobranzaCount = result.results?.cobranza_pendiente || result.cobranza_pendiente || 0;
 
+      console.log('[SYNC] Datos extraídos:', {
+        hasErrors,
+        polizasCount,
+        cobranzaCount,
+        responseOk: response.ok
+      });
+
+      // Mostrar metadata completo si existe
+      const metadata = result.results?.metadata || result.metadata;
+      if (metadata) {
+        console.log('[SYNC] Metadata SICAS:', JSON.stringify(metadata, null, 2));
+      }
+
+      // Mostrar errores si existen
+      if (result.results?.errors && result.results.errors.length > 0) {
+        console.error('[SYNC] Errores en sincronización:', result.results.errors);
+      }
+
       if (response.ok && !hasErrors) {
         // Verificar si SICAS devolvió un error interno (metadata con mensaje de error)
-        const metadata = result.results?.metadata || result.metadata;
         const hasInternalError = metadata?.message?.includes('Error en Ejecución') ||
                                  metadata?.message?.includes('Proceso Interno') ||
                                  metadata?.message?.includes('Variable de objeto');
 
         if (hasInternalError) {
+          console.error('[SYNC] SICAS error interno detectado:', metadata.message);
           setSicasDiagnostic({
             responsenbr: metadata.responsenbr || '0',
             responsetxt: metadata.responsetxt || 'SUCESS',
@@ -244,11 +267,21 @@ export default function MiProduccionSICAS() {
             text: 'SICAS devolvió un error interno. Ver diagnóstico abajo.'
           });
         } else if (polizasCount === 0 && cobranzaCount === 0) {
+          console.warn('[SYNC] Sin datos disponibles de SICAS');
+          // Mostrar diagnóstico si hay metadata
+          if (metadata) {
+            console.log('[SYNC] Response de SICAS:', {
+              responsenbr: metadata.sicas_response?.responsenbr,
+              responsetxt: metadata.sicas_response?.responsetxt,
+              message: metadata.sicas_response?.message
+            });
+          }
           setSyncMessage({
             type: 'error',
-            text: 'No se encontraron datos en SICAS. Verifica que existan registros.'
+            text: 'Sin datos disponibles'
           });
         } else {
+          console.log('[SYNC] Sincronización exitosa');
           setSyncMessage({
             type: 'success',
             text: `Sincronización completada: ${polizasCount} pólizas, ${cobranzaCount} cobranzas`
@@ -260,6 +293,7 @@ export default function MiProduccionSICAS() {
           ? result.results.errors.join(', ')
           : result.error || 'Error desconocido';
 
+        console.error('[SYNC] Error en sincronización:', errorMsg);
         setSyncMessage({
           type: 'error',
           text: `Error en sincronización: ${errorMsg}`
