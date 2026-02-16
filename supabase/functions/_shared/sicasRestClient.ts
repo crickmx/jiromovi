@@ -1,24 +1,23 @@
 /**
- * ⚠️ DEPRECADO - NO USAR ⚠️
+ * SICAS REST API Client
  *
- * Este cliente REST NO FUNCIONA con SICAS.
+ * Cliente oficial para consumir la API REST de SICAS.
+ * Basado en la documentación oficial: API-Servicios_REST.pdf (páginas 27-31)
  *
- * RAZÓN:
- * El servidor SICAS devuelve error 500:
- * "Sólo se puede llamar desde un script a los servicios Web con un atributo [ScriptService]"
+ * ENDPOINTS:
+ * - QUA: https://www.sicasonline.net/security-services/api
+ * - PROD: https://security-services.sicasonline.info/api
  *
- * Esto significa que el servicio web ASMX de SICAS NO tiene el atributo [ScriptService]
- * y por lo tanto NO soporta llamadas REST/JSON.
+ * FLUJO DE AUTENTICACIÓN:
+ * 1. POST /Security/GetToken → Obtener token inicial (params: sUserName, sPassword, sCodeAuth)
+ * 2. GET /Security/ValidateToken?ReactiveIf=true → Validar y renovar token
+ * 3. Token válido por 3 minutos, renovable hasta 10 minutos
  *
- * SOLUCIÓN:
- * Usar SOAP exclusivamente. Ver funciones como:
- * - sicas-test-simple
- * - sicas-get-production
- * - sicas-sync
- *
- * Ver documentación completa en: SICAS_REST_VS_SOAP_CONCLUSION.md
- *
- * @deprecated Use SOAP instead. This REST client does not work with SICAS.
+ * CONSUMO DE REPORTES/CATÁLOGOS:
+ * - POST /Report/ReadData
+ * - Headers: Authorization (token), Prop_KeyCode (código de reporte)
+ * - Body: PageRequested, ItemsForPage, SortFields, FieldsRequested, FormatResponse, Conditions, ConditionsDirect
+ * - Response: JSON con TableInfo (datos) y TableControl (paginación)
  */
 
 interface SicasTokenCache {
@@ -70,9 +69,6 @@ interface SicasDigitalFilesResponse {
   Error?: string;
 }
 
-/**
- * @deprecated This REST client is not functional with SICAS. Use SOAP instead.
- */
 export class SicasRestClient {
   private baseUrl: string;
   private username: string;
