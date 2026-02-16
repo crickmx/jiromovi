@@ -44,6 +44,14 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Verificar credenciales SICAS antes de inicializar cliente
+    const sicasUsername = Deno.env.get('SICAS_USERNAME');
+    const sicasPassword = Deno.env.get('SICAS_PASSWORD');
+
+    if (!sicasUsername || !sicasPassword) {
+      throw new Error('Credenciales SICAS no configuradas (SICAS_USERNAME, SICAS_PASSWORD)');
+    }
+
     // Inicializar cliente REST de SICAS
     const sicasClient = createSicasRestClient();
 
