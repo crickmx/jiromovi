@@ -352,7 +352,26 @@
           body: JSON.stringify({ testNumber }),
         });
 
-        const result = await response.json();
+        // Check content type
+        const contentType = response.headers.get('content-type') || '';
+        let result;
+
+        if (contentType.includes('application/json')) {
+          result = await response.json();
+        } else {
+          const text = await response.text();
+          throw new Error(`Respuesta no JSON (${response.status}): ${text.substring(0, 200)}`);
+        }
+
+        // Check HTTP status
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${result.error || result.message || 'Error desconocido'}`);
+        }
+
+        // Validate result structure
+        if (!result || !result.response || !result.analysis) {
+          throw new Error('Estructura de respuesta inválida');
+        }
 
         // Update UI
         document.getElementById('resultTitle').textContent = `Test ${testNumber} - Resultados`;
@@ -385,8 +404,16 @@
         console.log('Resultado completo:', result);
 
       } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('conclusion').textContent = `❌ Error: ${error.message}`;
+        console.error('Error completo:', error);
+        const errorMsg = error.message || 'Error desconocido';
+
+        document.getElementById('conclusion').textContent = `❌ ${errorMsg}`;
+        document.getElementById('responseTxt').textContent = errorMsg;
+        document.getElementById('responseNbr').textContent = 'ERROR';
+        document.getElementById('recordCount').textContent = '0';
+        document.getElementById('responseTime').textContent = 'N/A';
+        document.getElementById('testDesc').textContent = `Test ${testNumber} - Error en ejecución`;
+
         document.getElementById('statusBadge').textContent = '❌ Error';
         document.getElementById('statusBadge').className = 'status-badge status-error';
       } finally {
