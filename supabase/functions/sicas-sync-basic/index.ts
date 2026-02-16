@@ -32,8 +32,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    console.log('[SICAS Basic] Iniciando sincronización básica usando ProcesarWS oficial...');
-    console.log(`[SICAS Basic] Usando KeyCode: ${SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES}`);
+    console.log('========================================');
+    console.log('[SICAS Basic] 🔵 INICIANDO SINCRONIZACIÓN BÁSICA');
+    console.log('========================================');
+    console.log(`[SICAS Basic] KeyCode: ${SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES}`);
 
     // Inicializar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -54,7 +56,9 @@ Deno.serve(async (req: Request) => {
       throw new Error('Credenciales SICAS no configuradas (SICAS_USERNAME, SICAS_PASSWORD)');
     }
 
-    console.log('[SICAS Basic] Credenciales configuradas, inicializando cliente SOAP...');
+    console.log('[SICAS Basic] ✅ Credenciales configuradas');
+    console.log('[SICAS Basic] Endpoint:', sicasEndpoint);
+    console.log('[SICAS Basic] Usuario:', sicasUsername);
 
     // Inicializar cliente SOAP con ProcesarWS (método oficial)
     const client = new SicasSoapReportClient({
@@ -63,34 +67,126 @@ Deno.serve(async (req: Request) => {
       password: sicasPassword,
     });
 
-    // Construir filtros según documentación oficial
+    // 🔥 PRUEBA MÍNIMA: Rango amplio de fechas + límite de 10 registros
+    const today = new Date();
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setFullYear(today.getFullYear() - 1);
+
+    const dateFrom = oneYearAgo.toISOString().split('T')[0].split('-').reverse().join('/');
+    const dateTo = today.toISOString().split('T')[0].split('-').reverse().join('/');
+
+    // Construir filtros
     const filters = [
-      // Filtro de estatus vigente (documentos activos)
+      // Filtro de estatus vigente
       SicasSoapReportClient.createStatusVicenteFilter(),
-      // Filtro de tipo de documento (solo pólizas, no endosos)
+      // Filtro de tipo de documento (solo pólizas)
       SicasSoapReportClient.createDocumentTypeFilter(),
+      // Filtro de fechas amplio
+      SicasSoapReportClient.createDateRangeFilter(
+        dateFrom,
+        dateTo,
+        dateFrom,
+        dateTo,
+        'DatDocumentos.FDesde'
+      ),
     ];
 
-    console.log(`[SICAS Basic] Obteniendo pólizas vigentes con ${filters.length} filtros...`);
+    console.log('[SICAS Basic] 📋 Filtros aplicados:');
+    console.log(`  - Estatus: Vigentes`);
+    console.log(`  - Tipo: Pólizas`);
+    console.log(`  - Fecha desde: ${dateFrom}`);
+    console.log(`  - Fecha hasta: ${dateTo}`);
+    console.log('[SICAS Basic] 🔍 Solicitando máximo 10 registros para diagnóstico...');
 
-    // Ejecutar reporte oficial
+    // Ejecutar reporte con límite de 10 para diagnóstico
     const result = await client.executeReport({
       keyCode: SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES,
       page: 1,
-      itemsPerPage: 500,
+      itemsPerPage: 10,
       sortField: 'DatDocumentos.FCaptura DESC',
       filters,
     });
 
-    console.log(`[SICAS Basic] Respuesta recibida - Success: ${result.success}`);
-    console.log(`[SICAS Basic] Registros encontrados: ${result.records.length}`);
+    console.log('========================================');
+    console.log('[SICAS Basic] 📥 RESULTADO DE SICAS');
+    console.log('========================================');
+    console.log('[SICAS Basic] Success:', result.success);
+    console.log('[SICAS Basic] ResponseNbr:', result.responseNbr);
+    console.log('[SICAS Basic] Message:', result.message || '(vacío)');
+    console.log('[SICAS Basic] Total Records:', result.totalRecords);
+    console.log('[SICAS Basic] Registros parseados:', result.records.length);
+
+    if (result.rawXml) {
+      console.log('[SICAS Basic] Raw XML length:', result.rawXml.length, 'chars');
+    }
+
+    // 🔥 DIAGNÓSTICO: Preparar respuesta con toda la info
+    const diagnosticInfo = {
+      report_code: SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES,
+      request_meta: {
+        page: 1,
+        items_per_page: 10,
+        date_from: dateFrom,
+        date_to: dateTo,
+        filters_count: filters.length,
+      },
+      processdata: {
+        response_txt: result.success ? 'SUCESS' : 'ERROR',
+        response_nbr: result.responseNbr,
+        message: result.message || '',
+      },
+      dataset_info: {
+        raw_xml_length: result.rawXml?.length || 0,
+        total_records: result.totalRecords || 0,
+        parsed_records: result.records.length,
+      },
+      first_record_sample: result.records.length > 0 ? result.records[0] : null,
+    };
+
+    console.log('[SICAS Basic] 📊 DIAGNÓSTICO COMPLETO:');
+    console.log(JSON.stringify(diagnosticInfo, null, 2));
+
+    // 🔥 CRÍTICO: Detectar si MESSAGE tiene error
+    if (result.message && (
+      result.message.toLowerCase().includes('error en ejecución') ||
+      result.message.toLowerCase().includes('variable de objeto') ||
+      result.message.toLowerCase().includes('denied')
+    )) {
+      console.error('[SICAS Basic] ❌ ERROR DETECTADO EN MESSAGE');
+
+      await supabase
+        .from('sicas_sync_history')
+        .insert({
+          sync_type: 'basic',
+          status: 'error',
+          records_synced: 0,
+          error_message: result.message,
+        });
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Error en SICAS: ${result.message}`,
+          diagnostic: diagnosticInfo,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     if (!result.success) {
       throw new Error(`Error en SICAS API: ${result.message}`);
     }
 
     if (result.records.length === 0) {
-      console.log('[SICAS Basic] No se encontraron registros');
+      console.log('[SICAS Basic] ⚠️ NO SE ENCONTRARON REGISTROS');
+      console.log('[SICAS Basic] Esto puede significar:');
+      console.log('  1. SICAS devolvió 0 filas reales');
+      console.log('  2. El parser no encontró las tablas correctas');
+      console.log('  3. Los filtros son muy restrictivos');
+
       await supabase
         .from('sicas_sync_history')
         .insert({
@@ -105,6 +201,7 @@ Deno.serve(async (req: Request) => {
           success: true,
           message: 'No se encontraron registros',
           polizas_sincronizadas: 0,
+          diagnostic: diagnosticInfo,
         }),
         {
           status: 200,
