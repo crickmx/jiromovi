@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import {
   FileText, DollarSign, Calendar, AlertCircle, Download,
   RefreshCw, Filter, Search, X, TrendingUp, Clock, CheckCircle,
-  FolderOpen, ChevronDown, ChevronUp
+  FolderOpen, ChevronDown, ChevronUp, Info
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import * as XLSX from 'xlsx';
