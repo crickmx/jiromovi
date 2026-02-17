@@ -1,6 +1,11 @@
 # Configuración SICAS - Resumen Completo
 
-## ✅ Estado Actual
+## ✅ Estado Actual (Actualizado)
+
+### ⚠️ Corrección Aplicada
+- ✅ **Fix crítico aplicado**: La función `sync-sicas-polizas-vigentes` ahora guarda correctamente en `sicas_documents` (tabla base) en lugar de `sicas_polizas_vigentes` (vista)
+- ✅ La vista `sicas_polizas_vigentes` se actualiza automáticamente y filtra solo pólizas vigentes
+- ✅ La función está deployada y lista para usar
 
 ### 1. Credenciales Configuradas
 - ✅ Usuario SICAS: `j1r0%25$`
@@ -34,12 +39,17 @@
    - El sistema intentará cargar las pólizas automáticamente
    - Si no hay datos, mostrará un mensaje vacío
 
-2. **Ejecutar sincronización manual**
-   - Puedes llamar a la Edge Function directamente desde la consola del navegador:
+2. **Ejecutar sincronización manual desde Integración SICAS**
+   - URL: `/mi-produccion-sicas-mirror`
+   - Hacer clic en el botón "Sincronizar Pólizas Vigentes"
+   - La sincronización se ejecuta automáticamente y muestra el progreso
+
+3. **Ejecutar desde consola del navegador (alternativa)**
+   - Puedes llamar a la Edge Function directamente:
 
 ```javascript
 // Abrir consola del navegador (F12) y ejecutar:
-fetch(`${window.location.origin}/functions/v1/sicas-sync-polizas-vigentes`, {
+fetch(`${window.location.origin}/functions/v1/sync-sicas-polizas-vigentes`, {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,

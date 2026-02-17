@@ -199,19 +199,31 @@ async function guardarPolizasCache(
     const batch = polizas.slice(i, i + batchSize);
 
     try {
+      // Mapear al esquema de sicas_documents
+      const documentsToUpsert = batch.map(p => ({
+        id_docto: p.id_documento,
+        poliza: p.no_poliza,
+        vend_id: p.vend_id,
+        vend_nombre: p.vend_nombre,
+        desp_nombre: p.desp_nombre,
+        compania: p.aseguradora,
+        ramo: p.ramo,
+        subramo: p.subramo,
+        cliente: p.contratante || p.asegurado,
+        vigencia_desde: p.vigencia_desde,
+        vigencia_hasta: p.vigencia_hasta,
+        prima_neta: p.prima_neta,
+        importe: p.prima_total,
+        synced_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
       const { error } = await supabase
-        .from('sicas_polizas_vigentes')
-        .upsert(
-          batch.map(p => ({
-            ...p,
-            synced_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })),
-          {
-            onConflict: 'id_documento',
-            ignoreDuplicates: false,
-          }
-        );
+        .from('sicas_documents')
+        .upsert(documentsToUpsert, {
+          onConflict: 'id_docto',
+          ignoreDuplicates: false,
+        });
 
       if (error) {
         console.error('[Cache] Error en lote:', error);
@@ -461,12 +473,12 @@ Deno.serve(async (req: Request) => {
 
     let saveStats = { inserted: 0, updated: 0, errors: 0 };
 
-    // Si no hay pólizas, limpiar la tabla
+    // Si no hay pólizas, limpiar la tabla base
     if (allPolizas.length === 0) {
       console.log('[Sync] No hay pólizas, limpiando tabla...');
       try {
         const { error } = await supabase
-          .from('sicas_polizas_vigentes')
+          .from('sicas_documents')
           .delete()
           .neq('id', '00000000-0000-0000-0000-000000000000');
 
