@@ -56,6 +56,8 @@ export default function SicasAdmin() {
   const [syncingProduccion, setSyncingProduccion] = useState(false);
   const [produccionResult, setProduccionResult] = useState<any>(null);
   const [totalPolizas, setTotalPolizas] = useState(0);
+  const [testingProduccion, setTestingProduccion] = useState(false);
+  const [testProduccionResult, setTestProduccionResult] = useState<any>(null);
 
   const [syncingComisionesPendientes, setSyncingComisionesPendientes] = useState(false);
   const [comisionesPendientesResult, setComisionesPendientesResult] = useState<any>(null);
@@ -448,6 +450,43 @@ export default function SicasAdmin() {
       setH03117Result({ success: false, error: error.message });
     } finally {
       setTestingH03117(false);
+    }
+  }
+
+  async function handleTestProduccion() {
+    setTestingProduccion(true);
+    setTestProduccionResult(null);
+    setMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-sync-polizas-vigentes');
+
+      if (error) throw error;
+
+      setTestProduccionResult(data);
+
+      if (data.success && data.diagnostico) {
+        const { diagnostico } = data;
+
+        if (diagnostico.problema_detectado) {
+          setMessage({
+            type: 'error',
+            text: `${diagnostico.problema_detectado} - ${diagnostico.solucion_sugerida}`
+          });
+        } else {
+          setMessage({
+            type: 'success',
+            text: `Diagnóstico completado: ${diagnostico.test_sin_filtros.registros} registros sin filtros, ${diagnostico.test_con_filtros.registros} con filtros`
+          });
+        }
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setTestProduccionResult({ success: false, error: error.message });
+    } finally {
+      setTestingProduccion(false);
     }
   }
 
@@ -1265,6 +1304,25 @@ export default function SicasAdmin() {
 
                 <div className="space-y-3">
                   <Button
+                    onClick={handleTestProduccion}
+                    disabled={testingProduccion}
+                    variant="outline"
+                    className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                  >
+                    {testingProduccion ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Ejecutando Diagnóstico...
+                      </>
+                    ) : (
+                      <>
+                        <Stethoscope className="w-4 h-4 mr-2" />
+                        Diagnóstico Completo (Recomendado primero)
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
                     onClick={handleSyncProduccion}
                     disabled={syncingProduccion}
                     className="w-full"
@@ -1291,6 +1349,74 @@ export default function SicasAdmin() {
                     Actualizar Contador
                   </Button>
                 </div>
+
+                {testProduccionResult && (
+                  <div className="bg-blue-50 border border-blue-300 rounded-lg p-4">
+                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                      <Stethoscope className="w-5 h-5" />
+                      Resultado del Diagnóstico
+                    </h4>
+
+                    {testProduccionResult.diagnostico && (
+                      <div className="space-y-4">
+                        {testProduccionResult.diagnostico.problema_detectado && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-medium text-red-900 mb-1">Problema Detectado:</p>
+                                <p className="text-red-800">{testProduccionResult.diagnostico.problema_detectado}</p>
+                                <p className="font-medium text-red-900 mt-3 mb-1">Solución Sugerida:</p>
+                                <p className="text-red-800">{testProduccionResult.diagnostico.solucion_sugerida}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {!testProduccionResult.diagnostico.problema_detectado && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-medium text-green-900 mb-1">Todo Funciona Correctamente</p>
+                                <p className="text-green-800">SICAS está respondiendo correctamente a las consultas.</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div className="bg-white rounded-lg p-3 border">
+                            <p className="font-medium text-neutral-900 mb-2">Test Sin Filtros:</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {testProduccionResult.diagnostico.test_sin_filtros.registros}
+                            </p>
+                            <p className="text-xs text-neutral-500 mt-1">registros encontrados</p>
+                          </div>
+
+                          <div className="bg-white rounded-lg p-3 border">
+                            <p className="font-medium text-neutral-900 mb-2">Test Con Filtros:</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {testProduccionResult.diagnostico.test_con_filtros.registros}
+                            </p>
+                            <p className="text-xs text-neutral-500 mt-1">registros filtrados</p>
+                          </div>
+                        </div>
+
+                        {testProduccionResult.resultados && (
+                          <details className="mt-4">
+                            <summary className="cursor-pointer font-medium text-neutral-700 hover:text-neutral-900">
+                              Ver muestra de datos
+                            </summary>
+                            <pre className="text-xs bg-white p-3 rounded border mt-2 overflow-auto max-h-60">
+                              {JSON.stringify(testProduccionResult.resultados, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {produccionResult && (
                   <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
