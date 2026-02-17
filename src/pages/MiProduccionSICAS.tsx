@@ -77,9 +77,12 @@ export default function MiProduccionSICAS() {
   const [activeTab, setActiveTab] = useState('polizas');
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [sicasDiagnostic, setSicasDiagnostic] = useState<{
-    responsenbr: string;
-    responsetxt: string;
-    message: string;
+    responsenbr?: string;
+    responsetxt?: string;
+    message?: string;
+    stats?: any;
+    filters?: any;
+    polizas_count?: number;
   } | null>(null);
 
   // Verificar si el usuario tiene permisos de admin en SICAS
@@ -198,10 +201,21 @@ export default function MiProduccionSICAS() {
       }
 
       const result = await response.json();
-      console.log('[MiProduccionSICAS] Respuesta REST:', {
-        success: result.success,
-        polizas: result.polizas?.length || 0,
-        stats: result.stats
+      console.log('[MiProduccionSICAS] Respuesta REST completa:', result);
+
+      // Guardar diagnóstico de SICAS
+      setSicasDiagnostic({
+        stats: result.stats,
+        filters: result.filters,
+        polizas_count: result.polizas?.length || 0,
+        message: result.message || 'Sin mensaje'
+      });
+
+      console.log('[MiProduccionSICAS] Diagnóstico guardado:', {
+        total_records: result.stats?.total_records,
+        page: result.stats?.page,
+        filters_applied: result.stats?.filters_applied,
+        polizas_count: result.polizas?.length || 0
       });
 
       if (result.success && result.polizas) {
@@ -514,66 +528,88 @@ export default function MiProduccionSICAS() {
         )}
 
         {sicasDiagnostic && (
-          <div className="mb-6 bg-amber-50 border-2 border-amber-300 rounded-lg p-6">
+          <div className="mb-6 bg-blue-50 border-2 border-blue-300 rounded-lg p-6">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="w-6 h-6 text-amber-600" />
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Info className="w-6 h-6 text-blue-600" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-amber-900 mb-2">
-                  Diagnóstico: Error en Sincronización SICAS
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                  Diagnóstico de consulta SICAS REST
                 </h3>
-                <p className="text-amber-800 mb-4">
-                  La conexión a SICAS funciona correctamente, pero el reporte no devuelve datos.
+                <p className="text-blue-800 mb-4">
+                  {sicasDiagnostic.polizas_count === 0
+                    ? 'SICAS no devolvió pólizas con los filtros aplicados. Verifica los detalles a continuación:'
+                    : `La consulta se realizó correctamente. Se obtuvieron ${sicasDiagnostic.polizas_count} pólizas.`}
                 </p>
 
-                <div className="bg-white rounded-lg p-4 mb-4 space-y-2 text-sm">
-                  <div className="flex gap-2">
-                    <span className="font-semibold text-amber-900 min-w-[140px]">Código de respuesta:</span>
-                    <span className="text-amber-800">{sicasDiagnostic.responsenbr}</span>
+                <div className="bg-white rounded-lg p-4 mb-4 space-y-4 text-sm">
+                  <div>
+                    <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                      📊 Estadísticas
+                    </h4>
+                    <div className="space-y-1 pl-4">
+                      <div className="flex gap-2">
+                        <span className="font-medium text-blue-800 min-w-[180px]">Total en servidor:</span>
+                        <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.total_records || 0} registros</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="font-medium text-blue-800 min-w-[180px]">Página actual:</span>
+                        <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.page || 1} de {sicasDiagnostic.stats?.total_pages || 1}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="font-medium text-blue-800 min-w-[180px]">Registros por página:</span>
+                        <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.items_per_page || 100}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="font-medium text-blue-800 min-w-[180px]">Filtros aplicados:</span>
+                        <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.filters_applied || 0}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <span className="font-semibold text-amber-900 min-w-[140px]">Estado:</span>
-                    <span className="text-amber-800">{sicasDiagnostic.responsetxt}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="font-semibold text-amber-900 min-w-[140px]">Mensaje de SICAS:</span>
-                    <span className="text-amber-800">{sicasDiagnostic.message}</span>
+
+                  <div>
+                    <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                      🔍 Filtros
+                    </h4>
+                    <div className="space-y-1 pl-4">
+                      <div className="flex gap-2">
+                        <span className="font-medium text-blue-800 min-w-[180px]">Fecha desde:</span>
+                        <span className="text-blue-700 font-mono">{sicasDiagnostic.filters?.fecha_desde || 'No especificada'}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="font-medium text-blue-800 min-w-[180px]">Fecha hasta:</span>
+                        <span className="text-blue-700 font-mono">{sicasDiagnostic.filters?.fecha_hasta || 'No especificada'}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="font-medium text-blue-800 min-w-[180px]">Solo pólizas:</span>
+                        <span className="text-blue-700 font-mono">{sicasDiagnostic.filters?.solo_polizas ? 'Sí' : 'No'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-4 mb-4">
-                  <h4 className="font-semibold text-amber-900 mb-2">Causa Probable:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-amber-800">
-                    <li>El reporte H03400 (Pólizas Vigentes) no está disponible para tu usuario</li>
-                    <li>Tu usuario no tiene permisos para este reporte</li>
-                    <li>Existe un problema interno en SICAS</li>
-                    <li>Se requiere verificar la configuración con el proveedor</li>
-                  </ul>
-                </div>
-
-                <div className="bg-amber-100 rounded-lg p-4">
-                  <h4 className="font-semibold text-amber-900 mb-2 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" />
-                    Acción Requerida
-                  </h4>
-                  <p className="text-sm text-amber-800 mb-3">
-                    Contacta al proveedor de SICAS con la siguiente información:
-                  </p>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-amber-800 mb-3">
-                    <li><strong>Código de reporte requerido:</strong> H03400 (Pólizas Vigentes con filtros)</li>
-                    <li><strong>Código alternativo:</strong> H03430_001 (Cobranza con filtros)</li>
-                    <li><strong>Mensaje de error:</strong> "{sicasDiagnostic.message}"</li>
-                    <li><strong>Solicitud:</strong> Verificar que tu usuario tenga acceso a reportes con filtros avanzados</li>
-                  </ul>
-                  <p className="text-xs text-amber-700 mt-2">
-                    Sistema actualizado para usar los códigos de reporte oficiales según documentación SICAS
-                  </p>
-                </div>
+                {sicasDiagnostic.polizas_count === 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-amber-900 mb-2 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Posibles causas de 0 registros
+                    </h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-amber-800">
+                      <li>El rango de fechas no contiene pólizas vigentes</li>
+                      <li>Las pólizas están en un estado diferente a "Vigente"</li>
+                      <li>Los datos aún no están sincronizados en SICAS</li>
+                      <li>Tu usuario no tiene acceso a pólizas en el sistema SICAS</li>
+                    </ul>
+                    <p className="text-xs text-amber-700 mt-3">
+                      💡 <strong>Sugerencia:</strong> Verifica en SICAS directamente que existan pólizas vigentes en el rango de fechas consultado.
+                    </p>
+                  </div>
+                )}
 
                 <button
                   onClick={() => setSicasDiagnostic(null)}
-                  className="mt-4 text-sm text-amber-700 hover:text-amber-900 underline"
+                  className="mt-4 text-sm text-blue-700 hover:text-blue-900 underline"
                 >
                   Cerrar diagnóstico
                 </button>
