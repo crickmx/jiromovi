@@ -802,8 +802,8 @@ function App() {
               <Route path="/produccion/total" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionTotal /></Layout></ProtectedRoute>} />
               <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion" element={<ProtectedRoute><Layout><MiProduccion /></Layout></ProtectedRoute>} />
-              <Route path="/mi-produccion-sicas" element={<ProtectedRoute><Layout><MiProduccionSICASMirror /></Layout></ProtectedRoute>} />
-              <Route path="/mi-produccion-sicas-legacy" element={<ProtectedRoute><Layout><MiProduccionSICAS /></Layout></ProtectedRoute>} />
+              <Route path="/mi-produccion-sicas" element={<ProtectedRoute><Layout><MiProduccionSICAS /></Layout></ProtectedRoute>} />
+              <Route path="/mi-produccion-sicas-soap" element={<ProtectedRoute><Layout><MiProduccionSICASMirror /></Layout></ProtectedRoute>} />
               <Route path="/produccion/por-vendedor" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionPorVendedor /></Layout></ProtectedRoute>} />
               <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
               <Route path="/gmm/tarifas" element={<ProtectedRoute requireAdmin><GMMTarifasAdmin /></ProtectedRoute>} />
