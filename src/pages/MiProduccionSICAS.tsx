@@ -83,6 +83,7 @@ export default function MiProduccionSICAS() {
     stats?: any;
     filters?: any;
     polizas_count?: number;
+    error?: boolean;
   } | null>(null);
 
   // Verificar si el usuario tiene permisos de admin en SICAS
@@ -197,7 +198,10 @@ export default function MiProduccionSICAS() {
       );
 
       if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
+        if (response.status === 504) {
+          throw new Error('Timeout: SICAS tardó más de 60 segundos en responder. Verifica que las credenciales SICAS estén configuradas correctamente en Supabase.');
+        }
+        throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
@@ -243,6 +247,16 @@ export default function MiProduccionSICAS() {
       }
     } catch (error: any) {
       console.error('[MiProduccionSICAS] Error al cargar pólizas:', error);
+
+      // Guardar error en el diagnóstico
+      setSicasDiagnostic({
+        stats: null,
+        filters: null,
+        polizas_count: 0,
+        message: error.message || 'Error desconocido',
+        error: true
+      });
+
       setPolizas([]);
     }
   };
@@ -528,68 +542,115 @@ export default function MiProduccionSICAS() {
         )}
 
         {sicasDiagnostic && (
-          <div className="mb-6 bg-blue-50 border-2 border-blue-300 rounded-lg p-6">
+          <div className={`mb-6 border-2 rounded-lg p-6 ${
+            sicasDiagnostic.error
+              ? 'bg-red-50 border-red-300'
+              : 'bg-blue-50 border-blue-300'
+          }`}>
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Info className="w-6 h-6 text-blue-600" />
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                sicasDiagnostic.error
+                  ? 'bg-red-100'
+                  : 'bg-blue-100'
+              }`}>
+                {sicasDiagnostic.error ? (
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                ) : (
+                  <Info className="w-6 h-6 text-blue-600" />
+                )}
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                  Diagnóstico de consulta SICAS REST
+                <h3 className={`text-lg font-semibold mb-2 ${
+                  sicasDiagnostic.error
+                    ? 'text-red-900'
+                    : 'text-blue-900'
+                }`}>
+                  {sicasDiagnostic.error
+                    ? 'Error de conexión con SICAS'
+                    : 'Diagnóstico de consulta SICAS REST'}
                 </h3>
-                <p className="text-blue-800 mb-4">
-                  {sicasDiagnostic.polizas_count === 0
-                    ? 'SICAS no devolvió pólizas con los filtros aplicados. Verifica los detalles a continuación:'
-                    : `La consulta se realizó correctamente. Se obtuvieron ${sicasDiagnostic.polizas_count} pólizas.`}
+                <p className={`mb-4 ${
+                  sicasDiagnostic.error
+                    ? 'text-red-800'
+                    : 'text-blue-800'
+                }`}>
+                  {sicasDiagnostic.error
+                    ? sicasDiagnostic.message
+                    : sicasDiagnostic.polizas_count === 0
+                      ? 'SICAS no devolvió pólizas con los filtros aplicados. Verifica los detalles a continuación:'
+                      : `La consulta se realizó correctamente. Se obtuvieron ${sicasDiagnostic.polizas_count} pólizas.`}
                 </p>
 
-                <div className="bg-white rounded-lg p-4 mb-4 space-y-4 text-sm">
-                  <div>
-                    <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                      📊 Estadísticas
+                {sicasDiagnostic.error ? (
+                  <div className="bg-white rounded-lg p-4 mb-4">
+                    <h4 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Pasos para resolver
                     </h4>
-                    <div className="space-y-1 pl-4">
-                      <div className="flex gap-2">
-                        <span className="font-medium text-blue-800 min-w-[180px]">Total en servidor:</span>
-                        <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.total_records || 0} registros</span>
+                    <ul className="list-disc list-inside space-y-2 text-sm text-red-800">
+                      <li><strong>Verifica las credenciales SICAS</strong> en las variables de entorno de Supabase Edge Functions:
+                        <ul className="list-disc list-inside pl-6 mt-1 space-y-1">
+                          <li><code className="text-xs bg-red-100 px-1 py-0.5 rounded">SICAS_USERNAME</code></li>
+                          <li><code className="text-xs bg-red-100 px-1 py-0.5 rounded">SICAS_PASSWORD</code></li>
+                          <li><code className="text-xs bg-red-100 px-1 py-0.5 rounded">SICAS_REST_API_URL</code></li>
+                          <li><code className="text-xs bg-red-100 px-1 py-0.5 rounded">SICAS_CODE_AUTH</code> (opcional)</li>
+                        </ul>
+                      </li>
+                      <li><strong>Verifica que la URL de SICAS REST</strong> sea accesible:
+                        <code className="text-xs bg-red-100 px-1 py-0.5 rounded ml-1">https://security-services.sicasonline.info/api</code>
+                      </li>
+                      <li><strong>Contacta con soporte técnico de SICAS</strong> si el problema persiste.</li>
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-lg p-4 mb-4 space-y-4 text-sm">
+                    <div>
+                      <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                        📊 Estadísticas
+                      </h4>
+                      <div className="space-y-1 pl-4">
+                        <div className="flex gap-2">
+                          <span className="font-medium text-blue-800 min-w-[180px]">Total en servidor:</span>
+                          <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.total_records || 0} registros</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="font-medium text-blue-800 min-w-[180px]">Página actual:</span>
+                          <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.page || 1} de {sicasDiagnostic.stats?.total_pages || 1}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="font-medium text-blue-800 min-w-[180px]">Registros por página:</span>
+                          <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.items_per_page || 100}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="font-medium text-blue-800 min-w-[180px]">Filtros aplicados:</span>
+                          <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.filters_applied || 0}</span>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <span className="font-medium text-blue-800 min-w-[180px]">Página actual:</span>
-                        <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.page || 1} de {sicasDiagnostic.stats?.total_pages || 1}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="font-medium text-blue-800 min-w-[180px]">Registros por página:</span>
-                        <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.items_per_page || 100}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="font-medium text-blue-800 min-w-[180px]">Filtros aplicados:</span>
-                        <span className="text-blue-700 font-mono">{sicasDiagnostic.stats?.filters_applied || 0}</span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                        🔍 Filtros
+                      </h4>
+                      <div className="space-y-1 pl-4">
+                        <div className="flex gap-2">
+                          <span className="font-medium text-blue-800 min-w-[180px]">Fecha desde:</span>
+                          <span className="text-blue-700 font-mono">{sicasDiagnostic.filters?.fecha_desde || 'No especificada'}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="font-medium text-blue-800 min-w-[180px]">Fecha hasta:</span>
+                          <span className="text-blue-700 font-mono">{sicasDiagnostic.filters?.fecha_hasta || 'No especificada'}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="font-medium text-blue-800 min-w-[180px]">Solo pólizas:</span>
+                          <span className="text-blue-700 font-mono">{sicasDiagnostic.filters?.solo_polizas ? 'Sí' : 'No'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
+                )}
 
-                  <div>
-                    <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                      🔍 Filtros
-                    </h4>
-                    <div className="space-y-1 pl-4">
-                      <div className="flex gap-2">
-                        <span className="font-medium text-blue-800 min-w-[180px]">Fecha desde:</span>
-                        <span className="text-blue-700 font-mono">{sicasDiagnostic.filters?.fecha_desde || 'No especificada'}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="font-medium text-blue-800 min-w-[180px]">Fecha hasta:</span>
-                        <span className="text-blue-700 font-mono">{sicasDiagnostic.filters?.fecha_hasta || 'No especificada'}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className="font-medium text-blue-800 min-w-[180px]">Solo pólizas:</span>
-                        <span className="text-blue-700 font-mono">{sicasDiagnostic.filters?.solo_polizas ? 'Sí' : 'No'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {sicasDiagnostic.polizas_count === 0 && (
+                {!sicasDiagnostic.error && sicasDiagnostic.polizas_count === 0 && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                     <h4 className="font-semibold text-amber-900 mb-2 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" />
