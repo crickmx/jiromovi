@@ -65,6 +65,7 @@ import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
 import MiProduccion from './pages/MiProduccion';
 import MiProduccionSICAS from './pages/MiProduccionSICAS';
 import MiProduccionSICASMirror from './pages/MiProduccionSICASMirror';
+import MisPolizas from './pages/MisPolizas';
 import GMMTarifasAdmin from './pages/GMMTarifasAdmin';
 import GMMCotizador from './pages/GMMCotizador';
 import CatalogosWeb from './pages/CatalogosWeb';
@@ -804,6 +805,7 @@ function App() {
               <Route path="/mi-produccion" element={<ProtectedRoute><Layout><MiProduccion /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion-sicas" element={<ProtectedRoute><Layout><MiProduccionSICAS /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion-sicas-soap" element={<ProtectedRoute><Layout><MiProduccionSICASMirror /></Layout></ProtectedRoute>} />
+              <Route path="/mis-polizas" element={<ProtectedRoute><Layout><MisPolizas /></Layout></ProtectedRoute>} />
               <Route path="/produccion/por-vendedor" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionPorVendedor /></Layout></ProtectedRoute>} />
               <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
               <Route path="/gmm/tarifas" element={<ProtectedRoute requireAdmin><GMMTarifasAdmin /></ProtectedRoute>} />
