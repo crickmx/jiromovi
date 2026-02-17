@@ -30,6 +30,28 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Validar que las credenciales SICAS estén configuradas ANTES de hacer nada
+    const sicasUsername = Deno.env.get('SICAS_USERNAME');
+    const sicasPassword = Deno.env.get('SICAS_PASSWORD');
+
+    if (!sicasUsername || !sicasPassword) {
+      console.error('[SICAS REST Pólizas] ❌ Credenciales SICAS no configuradas');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Credenciales SICAS no configuradas en el servidor. Contacta al administrador.',
+          details: {
+            username_configured: !!sicasUsername,
+            password_configured: !!sicasPassword,
+          }
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
