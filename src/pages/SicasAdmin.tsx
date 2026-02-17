@@ -1354,7 +1354,7 @@ export default function SicasAdmin() {
                   <div className="bg-blue-50 border border-blue-300 rounded-lg p-4">
                     <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
                       <Stethoscope className="w-5 h-5" />
-                      Resultado del Diagnóstico
+                      Resultado del Diagnóstico Completo
                     </h4>
 
                     {testProduccionResult.diagnostico && (
@@ -1363,10 +1363,10 @@ export default function SicasAdmin() {
                           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                             <div className="flex items-start gap-2">
                               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                              <div>
+                              <div className="flex-1">
                                 <p className="font-medium text-red-900 mb-1">Problema Detectado:</p>
-                                <p className="text-red-800">{testProduccionResult.diagnostico.problema_detectado}</p>
-                                <p className="font-medium text-red-900 mt-3 mb-1">Solución Sugerida:</p>
+                                <p className="text-red-800 mb-3">{testProduccionResult.diagnostico.problema_detectado}</p>
+                                <p className="font-medium text-red-900 mb-1">Solución Sugerida:</p>
                                 <p className="text-red-800">{testProduccionResult.diagnostico.solucion_sugerida}</p>
                               </div>
                             </div>
@@ -1379,37 +1379,83 @@ export default function SicasAdmin() {
                               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                               <div>
                                 <p className="font-medium text-green-900 mb-1">Todo Funciona Correctamente</p>
-                                <p className="text-green-800">SICAS está respondiendo correctamente a las consultas.</p>
+                                <p className="text-green-800">{testProduccionResult.diagnostico.solucion_sugerida}</p>
                               </div>
                             </div>
                           </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                          <div className="bg-white rounded-lg p-3 border">
-                            <p className="font-medium text-neutral-900 mb-2">Test Sin Filtros:</p>
-                            <p className="text-2xl font-bold text-blue-600">
-                              {testProduccionResult.diagnostico.test_sin_filtros.registros}
-                            </p>
-                            <p className="text-xs text-neutral-500 mt-1">registros encontrados</p>
+                        {testProduccionResult.diagnostico.codigos_probados && (
+                          <div className="bg-white border border-neutral-200 rounded-lg p-4">
+                            <h5 className="font-semibold text-neutral-900 mb-3">
+                              Códigos de Reporte Probados ({testProduccionResult.diagnostico.codigos_probados.length})
+                            </h5>
+                            <div className="space-y-2 max-h-96 overflow-y-auto">
+                              {testProduccionResult.diagnostico.codigos_probados.map((code: any) => (
+                                <div
+                                  key={code.code}
+                                  className={`flex items-center justify-between p-3 rounded-lg ${
+                                    code.registros > 0
+                                      ? 'bg-green-50 border border-green-200'
+                                      : 'bg-neutral-50 border border-neutral-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    {code.registros > 0 ? (
+                                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                                    ) : (
+                                      <XCircle className="w-5 h-5 text-neutral-400 flex-shrink-0" />
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium text-neutral-900 truncate">
+                                        {code.code} - {code.name}
+                                      </p>
+                                      <p className="text-xs text-neutral-600 truncate">{code.message}</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right ml-4 flex-shrink-0">
+                                    <p className={`text-lg font-bold ${
+                                      code.registros > 0 ? 'text-green-600' : 'text-neutral-400'
+                                    }`}>
+                                      {code.registros}
+                                    </p>
+                                    <p className="text-xs text-neutral-500">registros</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
+                        )}
 
-                          <div className="bg-white rounded-lg p-3 border">
-                            <p className="font-medium text-neutral-900 mb-2">Test Con Filtros:</p>
-                            <p className="text-2xl font-bold text-blue-600">
-                              {testProduccionResult.diagnostico.test_con_filtros.registros}
+                        {testProduccionResult.diagnostico.codigos_con_datos?.length > 0 && (
+                          <div className="bg-green-50 border border-green-300 rounded-lg p-4">
+                            <h5 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
+                              <CheckCircle className="w-5 h-5" />
+                              Mejor Código de Reporte
+                            </h5>
+                            <p className="text-green-800 mb-2">
+                              Se recomienda usar: <span className="font-mono font-bold">{testProduccionResult.diagnostico.mejor_codigo}</span>
                             </p>
-                            <p className="text-xs text-neutral-500 mt-1">registros filtrados</p>
+                            <div className="text-sm text-green-700">
+                              Códigos disponibles con datos:
+                              <ul className="list-disc list-inside mt-1 ml-2">
+                                {testProduccionResult.diagnostico.codigos_con_datos.map((c: any) => (
+                                  <li key={c.code}>
+                                    {c.code}: {c.name} ({c.registros} registros)
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           </div>
-                        </div>
+                        )}
 
-                        {testProduccionResult.resultados && (
+                        {testProduccionResult.resultados?.mejor_resultado && (
                           <details className="mt-4">
                             <summary className="cursor-pointer font-medium text-neutral-700 hover:text-neutral-900">
-                              Ver muestra de datos
+                              Ver muestra de datos del mejor código
                             </summary>
                             <pre className="text-xs bg-white p-3 rounded border mt-2 overflow-auto max-h-60">
-                              {JSON.stringify(testProduccionResult.resultados, null, 2)}
+                              {JSON.stringify(testProduccionResult.resultados.mejor_resultado, null, 2)}
                             </pre>
                           </details>
                         )}

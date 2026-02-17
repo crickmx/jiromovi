@@ -63,57 +63,131 @@ Deno.serve(async (req: Request) => {
       password: sicasPassword,
     });
 
-    // Test 1: Sin filtros (obtener todo)
+    // Test 1: Probar todos los códigos de reporte disponibles
     console.log('\n' + '='.repeat(80));
-    console.log('TEST 1: Consulta SIN FILTROS (primeros 10 registros)');
+    console.log('TEST 1: PROBAR TODOS LOS CÓDIGOS DE REPORTE');
     console.log('='.repeat(80));
 
-    const result1 = await client.executeReport({
-      keyCode: SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES,
-      page: 1,
-      itemsPerPage: 10,
-      sortField: 'DatDocumentos.FCaptura DESC',
-      filters: [],
-    });
-
-    console.log('\n✅ Resultado Test 1:');
-    console.log('  - Success:', result1.success);
-    console.log('  - ResponseNbr:', result1.responseNbr);
-    console.log('  - Message:', result1.message);
-    console.log('  - Registros:', result1.records.length);
-
-    if (result1.records.length > 0) {
-      console.log('\n📄 Primer registro:');
-      console.log(JSON.stringify(result1.records[0], null, 2));
-    }
-
-    // Test 2: Con filtros de estatus y tipo
-    console.log('\n' + '='.repeat(80));
-    console.log('TEST 2: Consulta CON FILTROS (estatus vigente + tipo póliza)');
-    console.log('='.repeat(80));
-
-    const filters = [
-      SicasSoapReportClient.createStatusVicenteFilter(),
-      SicasSoapReportClient.createDocumentTypeFilter(),
+    const reportCodes = [
+      { code: 'H03400', name: 'Pólizas Vigentes', sortField: 'DatDocumentos.FCaptura DESC' },
+      { code: 'H03410', name: 'Documentos por ID', sortField: 'DatDocumentos.FCaptura DESC' },
+      { code: 'H02761', name: 'Renovaciones', sortField: 'DatDocumentos.FDesde DESC' },
+      { code: 'H03430_001', name: 'Cobranza con Filtros', sortField: 'DatDocumentos.FCaptura DESC' },
+      { code: 'H03420', name: 'Comisiones Pagadas', sortField: 'DatDocumentos.FCaptura DESC' },
+      { code: 'H03421', name: 'Comisiones Pendientes', sortField: 'DatDocumentos.FCaptura DESC' },
+      // Códigos adicionales comunes
+      { code: 'H03117', name: 'Producción General', sortField: 'DatDocumentos.FCaptura DESC' },
+      { code: 'H03118', name: 'Producción Alternativa', sortField: 'DatDocumentos.FCaptura DESC' },
     ];
 
-    const result2 = await client.executeReport({
-      keyCode: SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES,
-      page: 1,
-      itemsPerPage: 10,
-      sortField: 'DatDocumentos.FCaptura DESC',
-      filters,
-    });
+    const testResults = [];
 
-    console.log('\n✅ Resultado Test 2:');
-    console.log('  - Success:', result2.success);
-    console.log('  - ResponseNbr:', result2.responseNbr);
-    console.log('  - Message:', result2.message);
-    console.log('  - Registros:', result2.records.length);
+    for (const report of reportCodes) {
+      console.log(`\n🔍 Probando ${report.name} (${report.code})...`);
 
-    if (result2.records.length > 0) {
-      console.log('\n📄 Primer registro con filtros:');
-      console.log(JSON.stringify(result2.records[0], null, 2));
+      try {
+        const result = await client.executeReport({
+          keyCode: report.code,
+          page: 1,
+          itemsPerPage: 5,
+          sortField: report.sortField,
+          filters: [],
+        });
+
+        const testData = {
+          code: report.code,
+          name: report.name,
+          success: result.success,
+          responseNbr: result.responseNbr,
+          message: result.message,
+          registros: result.records.length,
+          muestra: result.records.length > 0 ? result.records[0] : null,
+        };
+
+        testResults.push(testData);
+
+        console.log(`  ✅ Success: ${result.success}`);
+        console.log(`  📊 Registros: ${result.records.length}`);
+        console.log(`  📝 Message: ${result.message}`);
+
+        if (result.records.length > 0) {
+          console.log(`  ✨ ESTE CÓDIGO TIENE DATOS!`);
+        }
+
+      } catch (error: any) {
+        console.log(`  ❌ Error: ${error.message}`);
+        testResults.push({
+          code: report.code,
+          name: report.name,
+          success: false,
+          responseNbr: '-1',
+          message: error.message,
+          registros: 0,
+          muestra: null,
+        });
+      }
+    }
+
+    // Encontrar códigos que funcionan
+    const codigosConDatos = testResults.filter(r => r.registros > 0);
+
+    console.log('\n' + '='.repeat(80));
+    console.log('📊 RESUMEN DE CÓDIGOS DE REPORTE');
+    console.log('='.repeat(80));
+    console.log(`✅ Códigos con datos: ${codigosConDatos.length}`);
+    console.log(`❌ Códigos sin datos: ${testResults.length - codigosConDatos.length}`);
+
+    if (codigosConDatos.length > 0) {
+      console.log('\n🎯 CÓDIGOS DISPONIBLES CON DATOS:');
+      codigosConDatos.forEach(c => {
+        console.log(`  - ${c.code}: ${c.name} (${c.registros} registros)`);
+      });
+    }
+
+    // Usar el mejor código disponible para tests adicionales
+    const mejorCodigo = codigosConDatos.length > 0
+      ? codigosConDatos[0].code
+      : SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES;
+
+    const result1 = codigosConDatos.length > 0
+      ? testResults.find(r => r.code === mejorCodigo)!
+      : testResults.find(r => r.code === SICAS_REPORT_KEYCODES.POLIZAS_VIGENTES)!;
+
+    // Test 2: Con filtros (solo si encontramos un código con datos)
+    console.log('\n' + '='.repeat(80));
+    console.log('TEST 2: Consulta CON FILTROS (usando mejor código disponible)');
+    console.log('='.repeat(80));
+
+    let result2;
+    if (codigosConDatos.length > 0) {
+      console.log(`Usando código: ${mejorCodigo}`);
+
+      const filters = [
+        SicasSoapReportClient.createStatusVicenteFilter(),
+        SicasSoapReportClient.createDocumentTypeFilter(),
+      ];
+
+      result2 = await client.executeReport({
+        keyCode: mejorCodigo,
+        page: 1,
+        itemsPerPage: 10,
+        sortField: 'DatDocumentos.FCaptura DESC',
+        filters,
+      });
+
+      console.log('\n✅ Resultado Test 2:');
+      console.log('  - Success:', result2.success);
+      console.log('  - ResponseNbr:', result2.responseNbr);
+      console.log('  - Message:', result2.message);
+      console.log('  - Registros:', result2.records.length);
+
+      if (result2.records.length > 0) {
+        console.log('\n📄 Primer registro con filtros:');
+        console.log(JSON.stringify(result2.records[0], null, 2));
+      }
+    } else {
+      console.log('⚠️ No se encontraron códigos con datos, omitiendo test con filtros');
+      result2 = { success: false, responseNbr: '-1', message: 'No hay datos', records: [] };
     }
 
     // Test 3: Verificar estructura de la tabla sicas_documents
@@ -139,15 +213,22 @@ Deno.serve(async (req: Request) => {
         usuario_configurado: !!sicasUsuario,
         password_configurado: !!sicasPassword,
       },
+      codigos_probados: testResults,
+      codigos_con_datos: codigosConDatos.map(c => ({
+        code: c.code,
+        name: c.name,
+        registros: c.registros,
+      })),
+      mejor_codigo: mejorCodigo,
       test_sin_filtros: {
         success: result1.success,
-        registros: result1.records.length,
+        registros: result1.registros,
         responseNbr: result1.responseNbr,
         message: result1.message,
       },
       test_con_filtros: {
         success: result2.success,
-        registros: result2.records.length,
+        registros: result2.records?.length || 0,
         responseNbr: result2.responseNbr,
         message: result2.message,
       },
@@ -159,18 +240,15 @@ Deno.serve(async (req: Request) => {
     };
 
     // Detectar problemas
-    if (!result1.success && !result2.success) {
-      diagnostico.problema_detectado = 'SICAS no devuelve datos con ninguna consulta';
-      diagnostico.solucion_sugerida = 'Verificar que el código de reporte H03400 esté disponible para tu usuario SICAS';
-    } else if (result1.records.length === 0 && result2.records.length === 0) {
-      diagnostico.problema_detectado = 'No hay pólizas vigentes en SICAS';
-      diagnostico.solucion_sugerida = 'Verificar que existan pólizas vigentes en el sistema SICAS';
-    } else if (result1.records.length > 0 && result2.records.length === 0) {
+    if (codigosConDatos.length === 0) {
+      diagnostico.problema_detectado = 'Ningún código de reporte devuelve datos';
+      diagnostico.solucion_sugerida = `Se probaron ${reportCodes.length} códigos diferentes. Posibles causas: (1) No hay pólizas en el sistema, (2) Tu usuario no tiene permisos para estos reportes, (3) Verifica con SICAS qué códigos de reporte tienes disponibles`;
+    } else if (codigosConDatos.length > 0 && result2.records.length === 0) {
       diagnostico.problema_detectado = 'Los filtros están eliminando todos los registros';
-      diagnostico.solucion_sugerida = 'Ajustar o eliminar filtros en la función de sincronización';
+      diagnostico.solucion_sugerida = `Usa el código ${mejorCodigo} sin filtros o ajusta los filtros de estatus/tipo de documento`;
     } else {
       diagnostico.problema_detectado = null;
-      diagnostico.solucion_sugerida = 'Todo funciona correctamente';
+      diagnostico.solucion_sugerida = `Todo funciona correctamente. Usa el código ${mejorCodigo} para la sincronización de producción`;
     }
 
     console.log('\n📊 DIAGNÓSTICO FINAL:');
@@ -181,13 +259,15 @@ Deno.serve(async (req: Request) => {
         success: true,
         diagnostico,
         resultados: {
-          sin_filtros: {
-            registros: result1.records.length,
-            muestra: result1.records.slice(0, 2),
-          },
+          todos_codigos: testResults,
+          mejor_resultado: codigosConDatos.length > 0 ? {
+            code: mejorCodigo,
+            registros: result1.registros,
+            muestra: result1.muestra,
+          } : null,
           con_filtros: {
-            registros: result2.records.length,
-            muestra: result2.records.slice(0, 2),
+            registros: result2.records?.length || 0,
+            muestra: result2.records?.slice(0, 2) || [],
           },
         },
       }, null, 2),
