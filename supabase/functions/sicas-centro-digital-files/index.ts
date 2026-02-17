@@ -97,8 +97,8 @@ Deno.serve(async (req: Request) => {
 
     // Validar permisos
     if (documento) {
-      const esAdmin = usuarioData.rol === 'admin';
-      const esGerente = usuarioData.rol === 'gerente' && documento.oficina_id === usuarioData.oficina_id;
+      const esAdmin = usuarioData.rol === 'Administrador';
+      const esGerente = usuarioData.rol === 'Gerente' && documento.oficina_id === usuarioData.oficina_id;
       const esPropietario = documento.usuario_id === user.id;
 
       if (!esAdmin && !esGerente && !esPropietario) {

@@ -107,10 +107,10 @@ Deno.serve(async (req: Request) => {
       .select('*', { count: 'exact' });
 
     // Aplicar filtros según rol
-    if (usuarioData.rol === 'admin') {
-      console.log('[Pólizas List] Admin: sin filtros de permisos');
-      // Admin ve todo
-    } else if (usuarioData.rol === 'gerente' || usuarioData.rol === 'empleado') {
+    if (usuarioData.rol === 'Administrador') {
+      console.log('[Pólizas List] Administrador: sin filtros de permisos');
+      // Administrador ve todo
+    } else if (usuarioData.rol === 'Gerente' || usuarioData.rol === 'Empleado') {
       console.log('[Pólizas List] Gerente/Empleado: filtrar por oficina');
       // Gerente/Empleado: solo su oficina
       if (usuarioData.oficina_id) {
@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
         // Sin oficina = sin resultados
         query = query.eq('oficina_id', '00000000-0000-0000-0000-000000000000');
       }
-    } else if (usuarioData.rol === 'agente') {
+    } else if (usuarioData.rol === 'Agente') {
       console.log('[Pólizas List] Agente: filtrar por usuario_id');
       // Agente: solo sus pólizas
       query = query.eq('usuario_id', user.id);
