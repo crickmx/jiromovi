@@ -35,10 +35,18 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: RequestBody = await req.json();
+
+    // Aplicar fechas por defecto si no se especifican (último año)
+    const now = new Date();
+    const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+
+    const defaultFechaDesde = oneYearAgo.toISOString().split('T')[0];
+    const defaultFechaHasta = now.toISOString().split('T')[0];
+
     const {
       vendedor_ids,
-      fecha_desde,
-      fecha_hasta,
+      fecha_desde = defaultFechaDesde,
+      fecha_hasta = defaultFechaHasta,
       solo_polizas = true,
       page = 1,
       items_per_page = 100,
@@ -46,8 +54,8 @@ Deno.serve(async (req: Request) => {
     } = body;
 
     console.log('[SICAS REST Pólizas] Iniciando consulta');
-    console.log('[SICAS REST Pólizas] Fecha desde:', fecha_desde || 'Sin filtro');
-    console.log('[SICAS REST Pólizas] Fecha hasta:', fecha_hasta || 'Sin filtro');
+    console.log('[SICAS REST Pólizas] Fecha desde:', fecha_desde);
+    console.log('[SICAS REST Pólizas] Fecha hasta:', fecha_hasta);
     console.log('[SICAS REST Pólizas] Vendedores:', vendedor_ids?.length || 'Todos');
 
     // Inicializar cliente REST
@@ -97,6 +105,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Ejecutar reporte usando KeyCode HWSDOC según manual (página 32)
+    console.log('[SICAS REST Pólizas] Ejecutando readReport con KeyCode: HWSDOC');
     const result = await client.readReport({
       keyCode: 'HWSDOC', // Solo pólizas según manual
       pageRequested: page,
@@ -107,12 +116,22 @@ Deno.serve(async (req: Request) => {
       sortFields: sort_field,
     });
 
+    console.log('[SICAS REST Pólizas] Respuesta completa de SICAS:', JSON.stringify(result, null, 2));
+
     // Extraer datos del response según estructura del manual (página 28-29)
     const records = result.Response?.[0]?.TableInfo || [];
     const tableControl = result.Response?.[0]?.TableControl?.[0];
 
     console.log('[SICAS REST Pólizas] Registros encontrados:', records.length);
     console.log('[SICAS REST Pólizas] Total en servidor:', tableControl?.MaxRecords || records.length);
+
+    // Log adicional para diagnóstico
+    if (records.length === 0) {
+      console.warn('[SICAS REST Pólizas] ADVERTENCIA: No se encontraron registros');
+      console.warn('[SICAS REST Pólizas] Response.Success:', result.Sucess);
+      console.warn('[SICAS REST Pólizas] Response.Error:', result.Error);
+      console.warn('[SICAS REST Pólizas] Response.Message:', result.Message);
+    }
 
     // Formatear respuesta
     const response = {
