@@ -96,171 +96,171 @@ export default function MapeoVendedores() {
         </div>
       )}
 
-    <div>
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-              <Link2 className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-primary-600">Mapeo de Vendedores</h1>
-              <p className="text-gray-600">
-                Gestiona las relaciones entre vendedores externos y usuarios MOVI
-              </p>
-              {ultimaCarga && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Última actualización: {ultimaCarga.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      <div>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <Link2 className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-primary-600">Mapeo de Vendedores</h1>
+                <p className="text-gray-600">
+                  Gestiona las relaciones entre vendedores externos y usuarios MOVI
                 </p>
-              )}
+                {ultimaCarga && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Última actualización: {ultimaCarga.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={cargarDatos}
+                disabled={loading}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Recargar datos desde la base de datos"
+              >
+                <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                <span>Cargar</span>
+              </button>
+              <button
+                onClick={() => setNuevoMapeo(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Nuevo Mapeo</span>
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={cargarDatos}
-              disabled={loading}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Recargar datos desde la base de datos"
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Mapeos</p>
+                  <p className="text-2xl font-bold text-gray-900">{mapeos.length}</p>
+                </div>
+                <Link2 className="h-8 w-8 text-primary-600" />
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Por Email</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {mapeos.filter((m) => m.source_type === 'email').length}
+                  </p>
+                </div>
+                <Mail className="h-8 w-8 text-primary-600" />
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Por Nombre</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {mapeos.filter((m) => m.source_type === 'name').length}
+                  </p>
+                </div>
+                <User className="h-8 w-8 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por vendedor o usuario MOVI..."
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
+              />
+            </div>
+            <select
+              value={filtroEstatus}
+              onChange={(e) => setFiltroEstatus(e.target.value as any)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
             >
-              <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
-              <span>Cargar</span>
-            </button>
-            <button
-              onClick={() => setNuevoMapeo(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              <Plus className="h-5 w-5" />
-              <span>Nuevo Mapeo</span>
-            </button>
+              <option value="all">Todos los mapeos</option>
+              <option value="active">Solo activos</option>
+              <option value="inactive">Solo inactivos</option>
+            </select>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Mapeos</p>
-                <p className="text-2xl font-bold text-gray-900">{mapeos.length}</p>
-              </div>
-              <Link2 className="h-8 w-8 text-primary-600" />
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Por Email</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {mapeos.filter((m) => m.source_type === 'email').length}
-                </p>
-              </div>
-              <Mail className="h-8 w-8 text-primary-600" />
-            </div>
+        ) : mapeosFiltrados.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <Link2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay mapeos</h3>
+            <p className="text-gray-600 mb-4">
+              {busqueda
+                ? 'No se encontraron mapeos con esos criterios de búsqueda.'
+                : 'Los mapeos se crean automáticamente al asignar vendedores no reconocidos.'}
+            </p>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Por Nombre</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {mapeos.filter((m) => m.source_type === 'name').length}
-                </p>
-              </div>
-              <User className="h-8 w-8 text-purple-600" />
-            </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Tipo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Vendedor Externo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Usuario MOVI
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Última Actualización
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {mapeosFiltrados.map((mapeo) => (
+                  <MapeoRow
+                    key={mapeo.id}
+                    mapeo={mapeo}
+                    usuarios={usuarios}
+                    onUpdate={cargarDatos}
+                    userId={user?.id || ''}
+                    onMarkUnsaved={handleMarkUnsaved}
+                    onMarkSaved={handleMarkSaved}
+                    hasUnsavedChanges={cambiosSinGuardar.has(mapeo.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+        )}
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por vendedor o usuario MOVI..."
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
-            />
-          </div>
-          <select
-            value={filtroEstatus}
-            onChange={(e) => setFiltroEstatus(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
-          >
-            <option value="all">Todos los mapeos</option>
-            <option value="active">Solo activos</option>
-            <option value="inactive">Solo inactivos</option>
-          </select>
-        </div>
+        {nuevoMapeo && (
+          <NuevoMapeoModal
+            usuarios={usuarios}
+            onClose={() => setNuevoMapeo(false)}
+            onSuccess={() => {
+              setNuevoMapeo(false);
+              alert('Mapeo creado correctamente. Haz clic en "Cargar" para ver los cambios.');
+            }}
+            userId={user?.id || ''}
+          />
+        )}
       </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        </div>
-      ) : mapeosFiltrados.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <Link2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay mapeos</h3>
-          <p className="text-gray-600 mb-4">
-            {busqueda
-              ? 'No se encontraron mapeos con esos criterios de búsqueda.'
-              : 'Los mapeos se crean automáticamente al asignar vendedores no reconocidos.'}
-          </p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Tipo
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Vendedor Externo
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Usuario MOVI
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Última Actualización
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {mapeosFiltrados.map((mapeo) => (
-                <MapeoRow
-                  key={mapeo.id}
-                  mapeo={mapeo}
-                  usuarios={usuarios}
-                  onUpdate={cargarDatos}
-                  userId={user?.id || ''}
-                  onMarkUnsaved={handleMarkUnsaved}
-                  onMarkSaved={handleMarkSaved}
-                  hasUnsavedChanges={cambiosSinGuardar.has(mapeo.id)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {nuevoMapeo && (
-        <NuevoMapeoModal
-          usuarios={usuarios}
-          onClose={() => setNuevoMapeo(false)}
-          onSuccess={() => {
-            setNuevoMapeo(false);
-            alert('Mapeo creado correctamente. Haz clic en "Cargar" para ver los cambios.');
-            // NO recargar automáticamente - el usuario debe hacer clic en "Cargar"
-          }}
-          userId={user?.id || ''}
-        />
-      )}
     </div>
   );
 }
