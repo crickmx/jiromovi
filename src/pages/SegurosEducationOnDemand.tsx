@@ -63,12 +63,44 @@ export function SegurosEducationOnDemand() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
-
-  const isAdmin = usuario?.rol === 'Administrador';
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    checkAdminPermissions();
     fetchData();
   }, [usuario]);
+
+  const checkAdminPermissions = async () => {
+    if (!usuario) {
+      setIsAdmin(false);
+      return;
+    }
+
+    // Si es administrador global, tiene todos los permisos
+    if (usuario.rol === 'Administrador') {
+      setIsAdmin(true);
+      return;
+    }
+
+    // Si es gerente, verificar permisos adicionales en el módulo
+    if (usuario.rol === 'Gerente') {
+      try {
+        const { data, error } = await supabase.rpc('tiene_permiso_admin_en_modulo', {
+          p_usuario_id: usuario.id,
+          p_modulo_codigo: 'seguros_education'
+        });
+
+        if (!error && data) {
+          setIsAdmin(true);
+          return;
+        }
+      } catch (error) {
+        console.error('Error verificando permisos:', error);
+      }
+    }
+
+    setIsAdmin(false);
+  };
 
   useEffect(() => {
     filterLessons();

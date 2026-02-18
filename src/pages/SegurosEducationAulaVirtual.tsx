@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import {
   Calendar, Clock, Plus, Users, Video, AlertCircle,
   Play, Pause, Link as LinkIcon, Copy, CheckCircle,
@@ -40,12 +41,42 @@ export function SegurosEducationAulaVirtual() {
   const [grabacionAPublicar, setGrabacionAPublicar] = useState<AulaGrabacion | null>(null);
   const [selectedSession, setSelectedSession] = useState<AulaSession | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
-
-  const isAdmin = usuario?.rol === 'Administrador';
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    checkAdminPermissions();
     fetchData();
-  }, []);
+  }, [usuario]);
+
+  const checkAdminPermissions = async () => {
+    if (!usuario) {
+      setIsAdmin(false);
+      return;
+    }
+
+    if (usuario.rol === 'Administrador') {
+      setIsAdmin(true);
+      return;
+    }
+
+    if (usuario.rol === 'Gerente') {
+      try {
+        const { data, error } = await supabase.rpc('tiene_permiso_admin_en_modulo', {
+          p_usuario_id: usuario.id,
+          p_modulo_codigo: 'seguros_education'
+        });
+
+        if (!error && data) {
+          setIsAdmin(true);
+          return;
+        }
+      } catch (error) {
+        console.error('Error verificando permisos:', error);
+      }
+    }
+
+    setIsAdmin(false);
+  };
 
   const fetchData = async () => {
     try {

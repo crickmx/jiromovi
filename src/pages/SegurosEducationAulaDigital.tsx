@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Video } from 'lucide-react';
 import { Layout } from '../components/Layout';
+import { supabase } from '../lib/supabase';
 import {
   obtenerEventos,
   crearEvento,
@@ -25,12 +26,42 @@ export function SegurosEducationAulaDigital() {
   const [showEventoModal, setShowEventoModal] = useState(false);
   const [eventoSeleccionado, setEventoSeleccionado] = useState<AulaEvento | null>(null);
   const [permisosSeleccionados, setPermisosSeleccionados] = useState<PermisosSeleccionados | undefined>();
-
-  const isAdmin = usuario?.rol === 'Administrador';
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    checkAdminPermissions();
     cargarEventos();
-  }, []);
+  }, [usuario]);
+
+  const checkAdminPermissions = async () => {
+    if (!usuario) {
+      setIsAdmin(false);
+      return;
+    }
+
+    if (usuario.rol === 'Administrador') {
+      setIsAdmin(true);
+      return;
+    }
+
+    if (usuario.rol === 'Gerente') {
+      try {
+        const { data, error } = await supabase.rpc('tiene_permiso_admin_en_modulo', {
+          p_usuario_id: usuario.id,
+          p_modulo_codigo: 'seguros_education'
+        });
+
+        if (!error && data) {
+          setIsAdmin(true);
+          return;
+        }
+      } catch (error) {
+        console.error('Error verificando permisos:', error);
+      }
+    }
+
+    setIsAdmin(false);
+  };
 
   const cargarEventos = async () => {
     try {
