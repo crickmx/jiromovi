@@ -776,6 +776,7 @@ function App() {
               <Route path="/seguros-education" element={<ProtectedRoute><SegurosEducation /></ProtectedRoute>} />
               <Route path="/seguros-education/on-demand" element={<ProtectedRoute><SegurosEducationOnDemand /></ProtectedRoute>} />
               <Route path="/seguros-education/aula-virtual" element={<ProtectedRoute><SegurosEducationAulaDigital /></ProtectedRoute>} />
+              <Route path="/seguros-education/analytics" element={<ProtectedRoute><SegurosEducationAnalytics /></ProtectedRoute>} />
               <Route path="/seguros-education/aula-virtual-old" element={<ProtectedRoute><SegurosEducationAulaVirtual /></ProtectedRoute>} />
               <Route path="/aula-virtual/sala/:roomId" element={<ProtectedRoute><AulaVirtualSala /></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a" element={<ProtectedRoute><Layout><CursoCedulaA /></Layout></ProtectedRoute>} />
