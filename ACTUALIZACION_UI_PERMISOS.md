@@ -1,184 +1,203 @@
-# 🎨 Actualización UI - Sistema de Permisos Gerentes
+# Actualización: Permisos de Gerentes en Seguros Education
 
-**Fecha:** 2026-01-26
-**Estado:** ✅ COMPLETADO
+## Problemas Resueltos
 
-## 📋 Resumen
+### 1. Error al Crear Categorías
+**Error anterior:**
+```
+POST .../rest/v1/seguros_categories 403 (Forbidden)
+Error: new row violates row-level security policy for table "seguros_categories"
+```
 
-Se actualizaron todos los mensajes de la interfaz de usuario para reflejar correctamente que los **Gerentes con permisos adicionales** ahora tienen acceso de administrador a módulos específicos.
+**Causa**: Las políticas RLS solo permitían a usuarios con rol `Administrador` crear categorías, pero no verificaban los permisos adicionales de los Gerentes.
 
----
+**Usuario afectado**: `recluta.cdmx@jiro.mx` (rol: Gerente con permisos en `seguros_education`)
 
-## 🔄 Cambios Realizados
+### 2. Cambios No Se Guardan al Editar Lecciones
+**Síntoma**: Al editar el título u otros campos de una lección, los cambios no se guardaban.
 
-### 1. **Aula Virtual** (`SegurosEducationAulaVirtual.tsx`)
+**Causa**: Mismo problema de permisos RLS. Los Gerentes no tenían permisos de UPDATE en `seguros_lessons`.
 
+## Solución Implementada
+
+### Migración Aplicada: `fix_seguros_education_permissions_gerentes`
+
+Se actualizaron las políticas RLS de las siguientes tablas:
+
+#### 1. `seguros_categories`
 **Antes:**
-```tsx
-<div className="text-xs text-slate-400 text-center">
-  Solo administradores
-</div>
+```sql
+CREATE POLICY "Admins can manage categories"
+  ON seguros_categories FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM usuarios
+      WHERE usuarios.id = auth.uid()
+      AND usuarios.rol = 'Administrador'
+      AND usuarios.activo = true
+    )
+  );
 ```
 
-**Después:**
-```tsx
-<div className="text-xs text-slate-400 text-center">
-  Requiere permisos de administrador
-</div>
+**Ahora:**
+```sql
+CREATE POLICY "Admins and authorized gerentes can manage categories"
+  ON seguros_categories FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM usuarios
+      WHERE usuarios.id = auth.uid()
+      AND usuarios.rol = 'Administrador'
+      AND usuarios.estado = 'activo'
+    )
+    OR
+    tiene_permiso_admin_en_modulo(auth.uid(), 'seguros_education')
+  )
+  WITH CHECK (...); -- Similar al USING
 ```
 
-**Ubicación:** Línea 728 - Modal de Grabaciones
-**Contexto:** Mensaje que aparece cuando un usuario sin permisos intenta publicar contenido On Demand
+#### 2. `seguros_lessons`
+Se aplicó la misma actualización para permitir INSERT, UPDATE, DELETE a Gerentes con permisos.
 
----
+#### 3. `seguros_sessions`
+Se aplicó la misma actualización para permitir gestión de sesiones en vivo.
 
-### 2. **Publicidad** (`Publicidad.tsx`)
+## Verificación
 
-**Antes:**
-```typescript
-alert('Solo los administradores pueden eliminar plantillas');
+### Usuario: recluta.cdmx@jiro.mx
+
+```sql
+-- ✅ Permisos asignados correctamente
+SELECT modulo FROM permisos_adicionales_gerente 
+WHERE usuario_id = '7d8c03e2-db2e-4780-91dc-5b11b84bec83';
+
+-- Resultado:
+- publicidad
+- comunicados
+- directorio
+- usuarios
+- centro_digital
+- seguros_education ✅
+- crm
+- aula_virtual
+- cedula_a
+- espaciojiro
 ```
 
-**Después:**
-```typescript
-alert('No tienes permisos para eliminar plantillas');
+```sql
+-- ✅ Función verifica correctamente
+SELECT tiene_permiso_admin_en_modulo(
+  '7d8c03e2-db2e-4780-91dc-5b11b84bec83', 
+  'seguros_education'
+); 
+-- Resultado: true ✅
 ```
 
-**Ubicación:** Línea 143 - Función `handleEliminarPlantilla`
-**Contexto:** Alerta que aparece cuando un usuario sin permisos intenta eliminar una plantilla
+## Permisos Ahora Disponibles
 
----
+Los Gerentes con el permiso `seguros_education` ahora pueden:
 
-### 3. **Comunicados - Editor** (`ComunicadoEditor.tsx`)
+### En Seguros Education (On Demand):
+- ✅ **Crear** nuevas categorías
+- ✅ **Editar** categorías existentes
+- ✅ **Eliminar** categorías
+- ✅ **Crear** nuevas lecciones/videos
+- ✅ **Editar** lecciones existentes (título, descripción, etc.)
+- ✅ **Eliminar** lecciones
+- ✅ **Asignar** oficinas a lecciones
 
-**Antes:**
-```tsx
-{/* Fijar comunicado - Solo Administradores */}
+### En Aula Virtual:
+- ✅ **Crear** nuevas sesiones en vivo
+- ✅ **Editar** sesiones programadas
+- ✅ **Eliminar** sesiones
+- ✅ **Iniciar/detener** sesiones en vivo
+
+## Testing
+
+### Caso 1: Crear Categoría
+1. Iniciar sesión como `recluta.cdmx@jiro.mx`
+2. Ir a Seguros Education → On Demand
+3. Hacer clic en "Nueva Categoría"
+4. **Resultado esperado**: ✅ Categoría se crea sin errores
+
+### Caso 2: Editar Lección
+1. Iniciar sesión como `recluta.cdmx@jiro.mx`
+2. Ir a Seguros Education → On Demand
+3. Seleccionar una lección
+4. Cambiar el título
+5. Guardar
+6. **Resultado esperado**: ✅ Cambios se guardan correctamente
+
+### Caso 3: Usuario Sin Permisos
+1. Iniciar sesión como un Gerente SIN el permiso `seguros_education`
+2. Ir a Seguros Education → On Demand
+3. Intentar crear categoría
+4. **Resultado esperado**: ❌ Error 403 (comportamiento correcto)
+
+## Cómo Asignar Permisos a Otros Gerentes
+
+Para dar permisos de administrador de Seguros Education a otro Gerente:
+
+```sql
+-- 1. Obtener el ID del módulo
+SELECT id FROM modulos_sistema WHERE codigo = 'seguros_education';
+-- Resultado: [UUID_MODULO]
+
+-- 2. Obtener el ID del usuario
+SELECT id FROM usuarios WHERE email_laboral = 'gerente@ejemplo.com';
+-- Resultado: [UUID_USUARIO]
+
+-- 3. Asignar el permiso
+INSERT INTO permisos_adicionales_gerente (usuario_id, modulo_id, asignado_por)
+VALUES (
+  '[UUID_USUARIO]',
+  (SELECT id FROM modulos_sistema WHERE codigo = 'seguros_education'),
+  auth.uid() -- El ID del admin que asigna
+);
 ```
 
-**Después:**
-```tsx
-{/* Fijar comunicado */}
+O más simple:
+```sql
+INSERT INTO permisos_adicionales_gerente (usuario_id, modulo_id)
+SELECT '[UUID_GERENTE]', id 
+FROM modulos_sistema 
+WHERE codigo = 'seguros_education';
 ```
 
-**Ubicación:** Línea 650 - Comentario interno
-**Contexto:** Comentario de código que describía la funcionalidad
+## Otros Módulos Disponibles
 
----
+El mismo sistema de permisos está disponible para:
 
-### 4. **Comunicados - Categorías** (`ComunicadoCategorias.tsx`)
+- `vacaciones` - Gestión de vacaciones
+- `usuarios` - Gestión de usuarios
+- `directorio` - Directorio de empleados
+- `comisiones` - Gestión de comisiones
+- `produccion` - Reportes de producción
+- `crm` - CRM
+- `tramites` - Trámites y tickets
+- `store` - Tienda interna
+- `espaciojiro` - Reservas de espacios
+- `seguros_education` - Plataforma de capacitación ✅
+- `cedula_a` - Curso Cédula A
+- `aula_virtual` - Sesiones en vivo
+- `publicidad` - Materiales publicitarios
+- `comunicados` - Comunicados internos
+- `mi_pagina_web` - Editor de página web
+- `accesos_nacional` - Credenciales portales
+- `notificaciones` - Configuración de notificaciones
+- `correos` - Gestión de correos
+- `oficinas` - Gestión de oficinas
+- `centro_digital` - Documentos compartidos
+- Y más...
 
-**Antes:**
-```tsx
-<p className="text-gray-600 mb-6">
-  Solo los administradores pueden gestionar categorías.
-</p>
-```
+## Resumen
 
-**Después:**
-```tsx
-<p className="text-gray-600 mb-6">
-  No tienes permisos para gestionar categorías.
-</p>
-```
+✅ **Problema resuelto**: Gerentes con permisos ahora pueden gestionar Seguros Education
+✅ **Políticas RLS actualizadas**: 3 tablas (categories, lessons, sessions)
+✅ **Usuario verificado**: recluta.cdmx@jiro.mx tiene permisos correctos
+✅ **Sistema escalable**: Fácil agregar permisos a otros Gerentes
+✅ **Build exitoso**: Sin errores de compilación
 
-**Ubicación:** Línea 141 - Mensaje de acceso denegado
-**Contexto:** Mensaje mostrado cuando un usuario sin permisos accede a la página de categorías
-
----
-
-## ✅ Verificación
-
-### Compilación
-- ✅ Build exitoso sin errores
-- ✅ Sin warnings relacionados con tipos
-- ✅ Todos los módulos compilados correctamente
-
-### Archivos Verificados
-- ✅ `SegurosEducationAulaDigital.tsx`
-- ✅ `SegurosEducationAulaVirtual.tsx`
-- ✅ `SegurosEducationOnDemand.tsx`
-- ✅ `CentroDigital.tsx`
-- ✅ `EspacioJiro.tsx`
-- ✅ `Publicidad.tsx`
-- ✅ `Comunicados.tsx`
-- ✅ `ComunicadoEditor.tsx`
-- ✅ `ComunicadoCategorias.tsx`
-
-### Componentes Internos
-- ✅ `UserModal.tsx` - Comentarios correctos (no requieren cambio)
-- ✅ `TarjetaEvento.tsx` - Comentarios correctos (no requieren cambio)
-
----
-
-## 🎯 Impacto
-
-### Antes de la Actualización
-Los mensajes decían explícitamente "Solo administradores", lo cual era confuso porque los Gerentes con permisos adicionales SÍ podían realizar las acciones.
-
-### Después de la Actualización
-Los mensajes ahora dicen "Requiere permisos de administrador" o "No tienes permisos", lo cual es más preciso porque:
-- Los Administradores globales tienen acceso
-- Los Gerentes con permisos adicionales específicos tienen acceso
-- Los usuarios sin permisos ven el mensaje correcto
-
----
-
-## 📊 Módulos Afectados
-
-| Módulo | Archivo | Línea | Mensaje Actualizado |
-|--------|---------|-------|---------------------|
-| Aula Virtual | `SegurosEducationAulaVirtual.tsx` | 728 | ✅ "Requiere permisos de administrador" |
-| Publicidad | `Publicidad.tsx` | 143 | ✅ "No tienes permisos..." |
-| Comunicados | `ComunicadoEditor.tsx` | 650 | ✅ Comentario simplificado |
-| Comunicados | `ComunicadoCategorias.tsx` | 141 | ✅ "No tienes permisos..." |
-
----
-
-## 🧪 Testing Sugerido
-
-Para verificar que los cambios funcionan correctamente:
-
-1. **Iniciar sesión como Gerente con permisos** (ej: mercadotecnia@jiro.mx)
-2. **Verificar que NO aparecen mensajes de restricción** en:
-   - Aula Virtual al publicar contenido
-   - Publicidad al eliminar plantillas
-   - Comunicados al gestionar categorías
-
-3. **Iniciar sesión como Gerente SIN permisos**
-4. **Verificar que SÍ aparecen mensajes correctos** de:
-   - "Requiere permisos de administrador"
-   - "No tienes permisos para..."
-
----
-
-## 📝 Notas Técnicas
-
-### Lógica de Permisos
-La función `tienePermisoAdminEnModulo()` verifica:
-```typescript
-// Usuario es Administrador global
-if (usuario?.rol === 'Administrador') return true;
-
-// Usuario es Gerente con permiso específico
-if (usuario?.rol === 'Gerente' && usuario?.permisos_adicionales) {
-  return usuario.permisos_adicionales.includes(modulo);
-}
-
-return false;
-```
-
-### Módulos con Sistema Implementado
-1. ✅ MOVI Store
-2. ✅ Publicidad
-3. ✅ Comunicados
-4. ✅ Seguros Education
-5. ✅ Aula Virtual
-6. ✅ Centro Digital
-7. ✅ Espacio JIRO
-
----
-
-**Versión:** 2.1.0
-**Última Actualización:** 2026-01-26
-**Estado:** ✅ Producción
+**Los cambios están activos inmediatamente. No se requiere reinicio.**
