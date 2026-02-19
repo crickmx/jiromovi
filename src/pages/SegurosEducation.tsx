@@ -254,11 +254,11 @@ export function SegurosEducation() {
           {(usuario?.rol?.toLowerCase() === 'admin' || usuario?.rol?.toLowerCase() === 'administrador') && (
             <button
               onClick={() => navigate('/seguros-education/analytics')}
-              className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-blue-500 shadow-sm hover:shadow-md transition-all group"
+              className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-accent shadow-sm hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                  <BarChart3 className="w-8 h-8 text-blue-600" />
+                <div className="w-16 h-16 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <BarChart3 className="w-8 h-8 text-accent" />
                 </div>
                 <div className="text-left flex-1">
                   <h3 className="text-xl font-bold text-neutral-800 mb-1">Analytics</h3>

@@ -3,6 +3,7 @@ import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';
+import { applyTheme } from '../lib/themeUtils';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   permisosAdicionales?: string[]; // Códigos de módulos con permisos admin
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from('usuarios')
         .select(`
           *,
-          oficina:oficinas(id, nombre),
+          oficina:oficinas(id, nombre, accent_color),
           regimen_fiscal:commission_fiscal_regimes(id, name)
         `)
         .eq('id', userId)
@@ -87,6 +88,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         rol: data.rol,
         email_laboral: data.email_laboral
       });
+
+      // Aplicar tema de la oficina
+      if (data.oficina && typeof data.oficina === 'object' && 'accent_color' in data.oficina) {
+        const accentColor = data.oficina.accent_color || '#0E23E2';
+        console.log('[AuthContext] Aplicando tema de oficina:', accentColor);
+        applyTheme(accentColor);
+      } else {
+        console.log('[AuthContext] Aplicando tema default');
+        applyTheme('#0E23E2');
+      }
 
       // Si el usuario es Gerente, cargar sus permisos adicionales
       if (data.rol === 'Gerente') {

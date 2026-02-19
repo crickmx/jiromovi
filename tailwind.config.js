@@ -5,6 +5,12 @@ export default {
   theme: {
     extend: {
       colors: {
+        accent: {
+          DEFAULT: 'rgb(var(--movi-accent-rgb) / <alpha-value>)',
+          foreground: 'rgb(var(--movi-accent-foreground-rgb) / <alpha-value>)',
+          hover: 'rgb(var(--movi-accent-hover-rgb) / <alpha-value>)',
+          dark: 'rgb(var(--movi-accent-dark-rgb) / <alpha-value>)',
+        },
         ios: {
           blue: '#0E23E2',
           'blue-dark': '#0A1AAB',

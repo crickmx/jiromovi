@@ -634,16 +634,125 @@ export function Oficinas() {
                 ))}
 
                 {selectedOficina && (
-                  <div className="md:col-span-2">
-                    <OficinaLogoEditor
-                      officeId={selectedOficina.id}
-                      officeName={selectedOficina.nombre}
-                      currentLogoUrl={selectedOficina.logo_url}
-                      onLogoChange={async () => {
-                        await loadData();
-                      }}
-                    />
-                  </div>
+                  <>
+                    <div className="md:col-span-2">
+                      <OficinaLogoEditor
+                        officeId={selectedOficina.id}
+                        officeName={selectedOficina.nombre}
+                        currentLogoUrl={selectedOficina.logo_url}
+                        onLogoChange={async () => {
+                          await loadData();
+                        }}
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Color de Acento
+                      </label>
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="color"
+                          value={selectedOficina.accent_color || '#0E23E2'}
+                          onChange={async (e) => {
+                            const newColor = e.target.value;
+                            const { error } = await supabase
+                              .from('oficinas')
+                              .update({ accent_color: newColor })
+                              .eq('id', selectedOficina.id);
+
+                            if (!error) {
+                              await loadData();
+                              // Aplicar tema inmediatamente si es la oficina del usuario actual
+                              const { data: { user } } = await supabase.auth.getUser();
+                              if (user) {
+                                const { data: userData } = await supabase
+                                  .from('usuarios')
+                                  .select('oficina_id')
+                                  .eq('id', user.id)
+                                  .single();
+
+                                if (userData?.oficina_id === selectedOficina.id) {
+                                  const { applyTheme } = await import('../lib/themeUtils');
+                                  applyTheme(newColor);
+                                }
+                              }
+                            }
+                          }}
+                          className="w-16 h-10 rounded cursor-pointer border-2 border-slate-300"
+                        />
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={selectedOficina.accent_color || '#0E23E2'}
+                            onChange={async (e) => {
+                              const newColor = e.target.value;
+                              if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
+                                const { error } = await supabase
+                                  .from('oficinas')
+                                  .update({ accent_color: newColor })
+                                  .eq('id', selectedOficina.id);
+
+                                if (!error) {
+                                  await loadData();
+                                  // Aplicar tema inmediatamente
+                                  const { data: { user } } = await supabase.auth.getUser();
+                                  if (user) {
+                                    const { data: userData } = await supabase
+                                      .from('usuarios')
+                                      .select('oficina_id')
+                                      .eq('id', user.id)
+                                      .single();
+
+                                    if (userData?.oficina_id === selectedOficina.id) {
+                                      const { applyTheme } = await import('../lib/themeUtils');
+                                      applyTheme(newColor);
+                                    }
+                                  }
+                                }
+                              }
+                            }}
+                            placeholder="#0E23E2"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const defaultColor = '#0E23E2';
+                            const { error } = await supabase
+                              .from('oficinas')
+                              .update({ accent_color: defaultColor })
+                              .eq('id', selectedOficina.id);
+
+                            if (!error) {
+                              await loadData();
+                              // Aplicar tema inmediatamente
+                              const { data: { user } } = await supabase.auth.getUser();
+                              if (user) {
+                                const { data: userData } = await supabase
+                                  .from('usuarios')
+                                  .select('oficina_id')
+                                  .eq('id', user.id)
+                                  .single();
+
+                                if (userData?.oficina_id === selectedOficina.id) {
+                                  const { applyTheme } = await import('../lib/themeUtils');
+                                  applyTheme(defaultColor);
+                                }
+                              }
+                            }
+                          }}
+                          className="px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Color personalizado para la UI de esta oficina (formato HEX: #RRGGBB)
+                      </p>
+                    </div>
+                  </>
                 )}
 
                 <div className="md:col-span-2 flex items-center space-x-3">

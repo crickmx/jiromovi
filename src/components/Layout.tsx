@@ -155,7 +155,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               }
               setTimeout(() => navigate('/dashboard'), 0);
             }}
-            className="flex items-center transition-all duration-250 ease-ios-smooth hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg"
+            className="flex items-center transition-all duration-250 ease-ios-smooth hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 rounded-lg"
             aria-label="Ir al Dashboard"
           >
             <img
@@ -191,7 +191,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                     isCollapsed ? "justify-center px-2 py-3" : "justify-start px-4 py-3",
                     "h-auto active:scale-95",
                     isActive
-                      ? "bg-primary-500 text-white hover:bg-primary-600 shadow-ios dark:bg-primary-600 dark:hover:bg-primary-700"
+                      ? "bg-accent text-accent-foreground hover:bg-accent-hover shadow-ios"
                       : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 dark:text-white/80 dark:hover:bg-white/10 dark:hover:text-white"
                   )}
                   onClick={() => handleNavClick(item.path)}
@@ -234,7 +234,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               isCollapsed ? "h-9 w-9" : "h-10 w-10 mr-3"
             )}>
               <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} />
-              <AvatarFallback className="bg-primary-500 text-white font-semibold">
+              <AvatarFallback className="bg-accent text-accent-foreground font-semibold">
                 {getInitials()}
               </AvatarFallback>
             </Avatar>
@@ -294,7 +294,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
             onClick={() => setDesktopSidebarCollapsed(!desktopSidebarCollapsed)}
             className={cn(
               "absolute top-[88px] -right-3 z-50 w-6 h-6 rounded-full bg-white dark:bg-slate-800 border-2 border-neutral-200 dark:border-white/10 flex items-center justify-center hover:bg-neutral-50 dark:hover:bg-slate-700 transition-all duration-250 ease-ios-smooth shadow-sm",
-              "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2",
+              "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
               "active:scale-95"
             )}
             aria-label={desktopSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}

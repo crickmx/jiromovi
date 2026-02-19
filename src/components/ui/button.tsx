@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-gradient-to-br from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 hover:shadow-ios-md dark:from-primary-600 dark:to-primary-700 dark:hover:from-primary-700 dark:hover:to-primary-800 shadow-ios hover:-translate-y-0.5",
+        default: "bg-accent text-accent-foreground hover:bg-accent-hover hover:shadow-ios-md shadow-ios hover:-translate-y-0.5",
         destructive:
           "bg-gradient-to-br from-ios-red to-red-600 text-white hover:from-red-600 hover:to-red-700 hover:shadow-ios-md dark:from-red-600 dark:to-red-700 dark:hover:from-red-700 dark:hover:to-red-800 shadow-ios hover:-translate-y-0.5",
         outline:
-          "border-2 border-primary-500 dark:border-primary-400 bg-transparent text-primary-500 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-500/10 hover:border-primary-600 dark:hover:border-primary-300",
+          "border-2 border-accent bg-transparent text-accent hover:bg-accent/10 hover:border-accent-hover",
         secondary:
           "bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white hover:bg-neutral-200 dark:hover:bg-white/20 hover:-translate-y-0.5",
         ghost: "hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-white text-neutral-700 dark:text-white/80",
-        link: "text-primary-500 dark:text-primary-400 underline-offset-4 hover:underline",
+        link: "text-accent underline-offset-4 hover:underline hover:text-accent-hover",
       },
       size: {
         default: "h-11 px-5 py-2.5",
