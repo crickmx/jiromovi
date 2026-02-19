@@ -48,6 +48,7 @@ export function Oficinas() {
     activa: true,
     es_espacio_jiro: false,
   });
+  const [accentColor, setAccentColor] = useState('#0E23E2');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [newFieldName, setNewFieldName] = useState('');
@@ -120,6 +121,7 @@ export function Oficinas() {
       activa: oficina?.activa ?? true,
       es_espacio_jiro: oficina?.es_espacio_jiro ?? false,
     });
+    setAccentColor(oficina?.accent_color || '#0E23E2');
 
     if (oficina) {
       await loadValoresCampos(oficina.id);
@@ -129,6 +131,42 @@ export function Oficinas() {
 
     setError('');
     setModalOpen(true);
+  };
+
+  const handleSaveAccentColor = async () => {
+    if (!selectedOficina) return;
+
+    try {
+      const { error } = await supabase
+        .from('oficinas')
+        .update({ accent_color: accentColor })
+        .eq('id', selectedOficina.id);
+
+      if (error) throw error;
+
+      // Actualizar estado local
+      setOficinas(prev => prev.map(o =>
+        o.id === selectedOficina.id ? { ...o, accent_color: accentColor } : o
+      ));
+      setSelectedOficina(prev => prev ? { ...prev, accent_color: accentColor } : null);
+
+      // Aplicar tema inmediatamente si es la oficina del usuario actual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: userData } = await supabase
+          .from('usuarios')
+          .select('oficina_id')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (userData?.oficina_id === selectedOficina.id) {
+          const { applyTheme } = await import('../lib/themeUtils');
+          applyTheme(accentColor);
+        }
+      }
+    } catch (error) {
+      console.error('Error guardando color:', error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -653,95 +691,35 @@ export function Oficinas() {
                       <div className="flex items-center space-x-3">
                         <input
                           type="color"
-                          value={selectedOficina.accent_color || '#0E23E2'}
-                          onChange={async (e) => {
-                            const newColor = e.target.value;
-                            const { error } = await supabase
-                              .from('oficinas')
-                              .update({ accent_color: newColor })
-                              .eq('id', selectedOficina.id);
-
-                            if (!error) {
-                              await loadData();
-                              // Aplicar tema inmediatamente si es la oficina del usuario actual
-                              const { data: { user } } = await supabase.auth.getUser();
-                              if (user) {
-                                const { data: userData } = await supabase
-                                  .from('usuarios')
-                                  .select('oficina_id')
-                                  .eq('id', user.id)
-                                  .single();
-
-                                if (userData?.oficina_id === selectedOficina.id) {
-                                  const { applyTheme } = await import('../lib/themeUtils');
-                                  applyTheme(newColor);
-                                }
-                              }
-                            }
-                          }}
+                          value={accentColor}
+                          onChange={(e) => setAccentColor(e.target.value)}
+                          onBlur={handleSaveAccentColor}
                           className="w-16 h-10 rounded cursor-pointer border-2 border-slate-300"
                         />
                         <div className="flex-1">
                           <input
                             type="text"
-                            value={selectedOficina.accent_color || '#0E23E2'}
-                            onChange={async (e) => {
-                              const newColor = e.target.value;
-                              if (/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
-                                const { error } = await supabase
-                                  .from('oficinas')
-                                  .update({ accent_color: newColor })
-                                  .eq('id', selectedOficina.id);
-
-                                if (!error) {
-                                  await loadData();
-                                  // Aplicar tema inmediatamente
-                                  const { data: { user } } = await supabase.auth.getUser();
-                                  if (user) {
-                                    const { data: userData } = await supabase
-                                      .from('usuarios')
-                                      .select('oficina_id')
-                                      .eq('id', user.id)
-                                      .single();
-
-                                    if (userData?.oficina_id === selectedOficina.id) {
-                                      const { applyTheme } = await import('../lib/themeUtils');
-                                      applyTheme(newColor);
-                                    }
-                                  }
-                                }
+                            value={accentColor}
+                            onChange={(e) => setAccentColor(e.target.value)}
+                            onBlur={() => {
+                              if (/^#[0-9A-Fa-f]{6}$/.test(accentColor)) {
+                                handleSaveAccentColor();
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && /^#[0-9A-Fa-f]{6}$/.test(accentColor)) {
+                                handleSaveAccentColor();
                               }
                             }}
                             placeholder="#0E23E2"
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent font-mono text-sm"
                           />
                         </div>
                         <button
                           type="button"
-                          onClick={async () => {
-                            const defaultColor = '#0E23E2';
-                            const { error } = await supabase
-                              .from('oficinas')
-                              .update({ accent_color: defaultColor })
-                              .eq('id', selectedOficina.id);
-
-                            if (!error) {
-                              await loadData();
-                              // Aplicar tema inmediatamente
-                              const { data: { user } } = await supabase.auth.getUser();
-                              if (user) {
-                                const { data: userData } = await supabase
-                                  .from('usuarios')
-                                  .select('oficina_id')
-                                  .eq('id', user.id)
-                                  .single();
-
-                                if (userData?.oficina_id === selectedOficina.id) {
-                                  const { applyTheme } = await import('../lib/themeUtils');
-                                  applyTheme(defaultColor);
-                                }
-                              }
-                            }
+                          onClick={() => {
+                            setAccentColor('#0E23E2');
+                            setTimeout(handleSaveAccentColor, 100);
                           }}
                           className="px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
                         >
