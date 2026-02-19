@@ -93,18 +93,22 @@ export function SegurosEducationAnalytics() {
 
   const checkPermissions = async () => {
     if (!usuario) {
+      console.log('[Analytics] No usuario found, redirecting to login');
       navigate('/login');
       return;
     }
 
     // Check if user is admin (case insensitive)
     const isAdmin = usuario.rol?.toLowerCase() === 'admin' || usuario.rol?.toLowerCase() === 'administrador';
+    console.log('[Analytics] User role:', usuario.rol, 'isAdmin:', isAdmin);
 
     if (!isAdmin) {
+      console.log('[Analytics] User is not admin, redirecting to seguros-education');
       navigate('/seguros-education');
       return;
     }
 
+    console.log('[Analytics] User is admin, fetching data...');
     fetchData();
   };
 
@@ -125,29 +129,52 @@ export function SegurosEducationAnalytics() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log('[Analytics] Starting data fetch...');
       const { start, end } = getDateFilter();
+      console.log('[Analytics] Date range:', start.toISOString(), 'to', end.toISOString());
 
       // Fetch lecciones stats
-      const { data: leccionesData } = await supabase
+      console.log('[Analytics] Fetching lecciones stats...');
+      const { data: leccionesData, error: leccionesError } = await supabase
         .from('v_analytics_lecciones_stats')
         .select('*')
         .order('reproducciones', { ascending: false });
 
+      if (leccionesError) {
+        console.error('[Analytics] Error fetching lecciones:', leccionesError);
+      } else {
+        console.log('[Analytics] Lecciones data:', leccionesData?.length, 'rows');
+      }
+
       // Fetch usuarios stats
-      const { data: usuariosData } = await supabase
+      console.log('[Analytics] Fetching usuarios stats...');
+      const { data: usuariosData, error: usuariosError } = await supabase
         .from('v_analytics_usuarios_stats')
         .select('*')
         .gte('ultimo_acceso', start.toISOString())
         .lte('ultimo_acceso', end.toISOString())
         .order('lecciones_vistas', { ascending: false });
 
+      if (usuariosError) {
+        console.error('[Analytics] Error fetching usuarios:', usuariosError);
+      } else {
+        console.log('[Analytics] Usuarios data:', usuariosData?.length, 'rows');
+      }
+
       // Fetch clases stats
-      const { data: clasesData } = await supabase
+      console.log('[Analytics] Fetching clases stats...');
+      const { data: clasesData, error: clasesError } = await supabase
         .from('v_analytics_clases_stats')
         .select('*')
         .gte('fecha_inicio', start.toISOString())
         .lte('fecha_inicio', end.toISOString())
         .order('usuarios_unicos', { ascending: false });
+
+      if (clasesError) {
+        console.error('[Analytics] Error fetching clases:', clasesError);
+      } else {
+        console.log('[Analytics] Clases data:', clasesData?.length, 'rows');
+      }
 
       setLeccionesStats(leccionesData || []);
       setUsuariosStats(usuariosData || []);
@@ -165,8 +192,15 @@ export function SegurosEducationAnalytics() {
       setUsuariosActivos(totalUsuarios);
       setTiempoTotal(totalTiempo);
       setCompletionRate(avgCompletion);
+
+      console.log('[Analytics] Data fetch complete. Summary:', {
+        totalRepr,
+        totalUsuarios,
+        totalTiempo,
+        avgCompletion
+      });
     } catch (error) {
-      console.error('Error fetching analytics:', error);
+      console.error('[Analytics] Error fetching analytics:', error);
     } finally {
       setLoading(false);
     }
