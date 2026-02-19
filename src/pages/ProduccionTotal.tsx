@@ -456,7 +456,7 @@ export default function ProduccionTotal() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -467,7 +467,7 @@ export default function ProduccionTotal() {
         <div className="mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-display font-bold text-primary-600 mb-1 sm:mb-2">
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-accent mb-1 sm:mb-2">
                 Producción Total
               </h1>
               <p className="text-sm sm:text-base text-neutral-600">
@@ -483,14 +483,14 @@ export default function ProduccionTotal() {
               {isAdmin && (
                 <button
                   onClick={() => navigate('/produccion/configuracion')}
-                  className="flex items-center space-x-2 bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm sm:text-base"
+                  className="flex items-center space-x-2 bg-accent text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm sm:text-base"
                 >
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">Configuración</span>
                   <span className="sm:hidden">Cargar</span>
                 </button>
               )}
-              <TrendingUp className="w-10 h-10 sm:w-12 sm:h-12 text-primary-600 flex-shrink-0" />
+              <TrendingUp className="w-10 h-10 sm:w-12 sm:h-12 text-accent flex-shrink-0" />
             </div>
           </div>
         </div>
@@ -561,7 +561,7 @@ export default function ProduccionTotal() {
                   type="date"
                   value={filters.dateFrom}
                   onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
 
@@ -573,7 +573,7 @@ export default function ProduccionTotal() {
                   type="date"
                   value={filters.dateTo}
                   onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
 
@@ -586,7 +586,7 @@ export default function ProduccionTotal() {
                     <select
                       value={filters.region}
                       onChange={(e) => setFilters({ ...filters, region: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                     >
                       <option value="">Todas</option>
                       {regions.map(r => (
@@ -602,7 +602,7 @@ export default function ProduccionTotal() {
                     <select
                       value={filters.office}
                       onChange={(e) => setFilters({ ...filters, office: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                     >
                       <option value="">Todas</option>
                       {offices.map(o => (
@@ -620,7 +620,7 @@ export default function ProduccionTotal() {
                 <select
                   value={filters.management}
                   onChange={(e) => setFilters({ ...filters, management: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="">Todas</option>
                   {managements.map(m => (
@@ -636,7 +636,7 @@ export default function ProduccionTotal() {
                 <select
                   value={filters.agent}
                   onChange={(e) => setFilters({ ...filters, agent: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="">Todos</option>
                   {agents.map(a => (
@@ -652,7 +652,7 @@ export default function ProduccionTotal() {
                 <select
                   value={filters.ramo}
                   onChange={(e) => setFilters({ ...filters, ramo: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="">Todos</option>
                   {ramos.map(r => (
@@ -668,7 +668,7 @@ export default function ProduccionTotal() {
                 <select
                   value={filters.aseguradora}
                   onChange={(e) => setFilters({ ...filters, aseguradora: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="">Todas</option>
                   {aseguradoras.map(a => (
@@ -684,7 +684,7 @@ export default function ProduccionTotal() {
                 <select
                   value={filters.convenio}
                   onChange={(e) => setFilters({ ...filters, convenio: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="all">Todos</option>
                   <option value="with">Con convenio</option>
@@ -794,7 +794,7 @@ export default function ProduccionTotal() {
             </p>
             <button
               onClick={() => setShowFilters(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium"
             >
               <Filter className="w-4 h-4" />
               <span>Mostrar Filtros</span>
@@ -936,7 +936,7 @@ export default function ProduccionTotal() {
                         onClick={() => goToPage(pageNum)}
                         className={`min-w-[44px] min-h-[44px] text-sm rounded-lg font-medium transition-colors ${
                           currentPage === pageNum
-                            ? 'bg-primary-600 text-white'
+                            ? 'bg-accent text-white'
                             : 'border border-neutral-300 hover:bg-neutral-50'
                         }`}
                       >

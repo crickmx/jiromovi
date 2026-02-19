@@ -236,7 +236,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                 value={asunto}
                 onChange={(e) => setAsunto(e.target.value)}
                 placeholder="Ej: Bienvenido a {{nombre_plataforma}}"
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
               />
               <p className="text-xs text-neutral-500 mt-1">
                 Puedes usar variables como {variablesEmail.slice(0, 3).join(', ')}
@@ -250,7 +250,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                   onClick={() => setPreviewTab('email')}
                   className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium transition-colors ${
                     previewTab === 'email'
-                      ? 'border-primary-600 text-primary-600'
+                      ? 'border-accent text-accent'
                       : 'border-transparent text-neutral-600 hover:text-neutral-800'
                   }`}
                 >
@@ -272,7 +272,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                   onClick={() => setPreviewTab('notificacion')}
                   className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium transition-colors ${
                     previewTab === 'notificacion'
-                      ? 'border-primary-600 text-primary-600'
+                      ? 'border-accent text-accent'
                       : 'border-transparent text-neutral-600 hover:text-neutral-800'
                   }`}
                 >
@@ -384,7 +384,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                       onChange={(e) => setCuerpoEmail(e.target.value)}
                       rows={18}
                       placeholder="<h2>Hola {{nombre}}</h2><p>Tu mensaje aquí...</p>"
-                      className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm resize-none"
+                      className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent font-mono text-sm resize-none"
                     />
                   </div>
 
@@ -480,7 +480,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                     value={tituloNotificacion}
                     onChange={(e) => setTituloNotificacion(e.target.value)}
                     placeholder="Ej: Nueva notificación para {{nombre}}"
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-accent"
                   />
                 </div>
 
@@ -493,7 +493,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
                     onChange={(e) => setCuerpoNotificacion(e.target.value)}
                     rows={8}
                     placeholder="Hola {{nombre}}, tu mensaje aquí..."
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-accent"
                   />
                   <p className="text-xs text-neutral-500 mt-1">
                     Este mensaje aparecerá en el centro de notificaciones (campanita)
@@ -535,7 +535,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, onClose, onSave }: Ed
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Guardando...' : 'Guardar Plantilla'}

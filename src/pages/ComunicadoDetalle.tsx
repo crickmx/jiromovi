@@ -71,7 +71,7 @@ export default function ComunicadoDetalle() {
       <Layout hideHeader>
         <Container size="lg">
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-3 border-primary-500 border-t-transparent"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-3 border-accent border-t-transparent"></div>
           </div>
         </Container>
       </Layout>
@@ -190,7 +190,7 @@ export default function ComunicadoDetalle() {
               )}
               {esDeGerente && comunicado.oficina_origen && (
                 <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-primary-50 text-primary-700 border border-primary-200 rounded-full text-xs sm:text-sm font-semibold">
-                  <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-accent rounded-full"></div>
                   <span className="hidden sm:inline">{comunicado.oficina_origen.nombre}</span>
                 </span>
               )}
@@ -223,14 +223,14 @@ export default function ComunicadoDetalle() {
                 prose-h2:text-xl sm:prose-h2:text-2xl prose-h2:mb-3
                 prose-h3:text-lg sm:prose-h3:text-xl prose-h3:mb-2
                 prose-p:text-sm sm:prose-p:text-base prose-p:leading-relaxed prose-p:mb-4
-                prose-a:text-primary-600 hover:prose-a:text-primary-700
+                prose-a:text-accent hover:prose-a:text-primary-700
                 prose-strong:text-neutral-900 prose-strong:font-semibold
                 prose-ul:list-disc prose-ul:pl-6 prose-ul:mb-4
                 prose-ol:list-decimal prose-ol:pl-6 prose-ol:mb-4
                 prose-li:text-sm sm:prose-li:text-base prose-li:mb-2
                 prose-img:rounded-lg prose-img:shadow-sm prose-img:my-6
-                prose-blockquote:border-l-4 prose-blockquote:border-primary-500 prose-blockquote:pl-4 prose-blockquote:italic
-                prose-code:text-primary-600 prose-code:bg-primary-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                prose-blockquote:border-l-4 prose-blockquote:border-accent prose-blockquote:pl-4 prose-blockquote:italic
+                prose-code:text-accent prose-code:bg-primary-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
                 prose-pre:bg-neutral-900 prose-pre:text-neutral-100 prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto"
               dangerouslySetInnerHTML={{ __html: comunicado.contenido_html }}
             />
@@ -252,7 +252,7 @@ export default function ComunicadoDetalle() {
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
+                          <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-neutral-900 text-sm sm:text-base truncate">
@@ -265,7 +265,7 @@ export default function ComunicadoDetalle() {
                           )}
                         </div>
                       </div>
-                      <Download className="w-5 h-5 text-neutral-400 group-hover:text-primary-600 transition-colors flex-shrink-0 ml-2" />
+                      <Download className="w-5 h-5 text-neutral-400 group-hover:text-accent transition-colors flex-shrink-0 ml-2" />
                     </a>
                   ))}
                 </div>

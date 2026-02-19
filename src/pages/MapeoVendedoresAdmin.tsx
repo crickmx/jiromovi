@@ -126,7 +126,7 @@ export default function MapeoVendedoresAdmin() {
       </button>
 
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-primary-600">
+        <h1 className="text-2xl md:text-3xl font-bold text-accent">
           Administración de mapeos de vendedores
         </h1>
         <p className="text-gray-600 mt-1">
@@ -158,7 +158,7 @@ export default function MapeoVendedoresAdmin() {
 
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-primary-200">
           <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-primary-600" />
+            <Mail className="h-4 w-4 text-accent" />
             <p className="text-xs text-primary-700 font-medium">Por Email</p>
           </div>
           <p className="text-2xl font-bold text-primary-900 mt-1">{stats.byEmail}</p>
@@ -215,7 +215,7 @@ export default function MapeoVendedoresAdmin() {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
           </div>
         ) : filteredMappings.length === 0 ? (
           <div className="text-center py-12">
@@ -262,7 +262,7 @@ export default function MapeoVendedoresAdmin() {
                       <div className="flex items-center gap-2">
                         {mapping.source_type === 'email' ? (
                           <>
-                            <Mail className="h-5 w-5 text-primary-600" />
+                            <Mail className="h-5 w-5 text-accent" />
                             <span className="text-sm font-medium text-gray-900">Email</span>
                           </>
                         ) : (

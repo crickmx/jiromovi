@@ -163,7 +163,7 @@ export default function InstallAppButton({
 
                 <ol className="space-y-3">
                   <li className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
+                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent rounded-full flex items-center justify-center text-xs font-semibold">
                       1
                     </span>
                     <span>
@@ -175,7 +175,7 @@ export default function InstallAppButton({
                     </span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
+                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent rounded-full flex items-center justify-center text-xs font-semibold">
                       2
                     </span>
                     <span>
@@ -183,7 +183,7 @@ export default function InstallAppButton({
                     </span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
+                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent rounded-full flex items-center justify-center text-xs font-semibold">
                       3
                     </span>
                     <span>
@@ -194,7 +194,7 @@ export default function InstallAppButton({
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
                   <div className="flex gap-2">
-                    <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <Info className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-blue-900">
                       La app aparecerá como un ícono en tu pantalla de inicio y podrás usarla sin conexión.
                     </p>

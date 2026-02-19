@@ -47,7 +47,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
         </div>
       </div>
     );
@@ -124,7 +124,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                       }`}
                     >
                       {vendor.vendor_type === 'email' ? (
-                        <Mail className="h-5 w-5 text-primary-600" />
+                        <Mail className="h-5 w-5 text-accent" />
                       ) : vendor.vendor_type === 'name' ? (
                         <User className="h-5 w-5 text-purple-600" />
                       ) : (
@@ -195,7 +195,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                   </div>
 
                   <details className="group">
-                    <summary className="cursor-pointer text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center space-x-1">
+                    <summary className="cursor-pointer text-sm text-accent hover:text-primary-700 font-medium flex items-center space-x-1">
                       <span>Ver ejemplos de pólizas ({vendor.polizas_count})</span>
                       <svg
                         className="h-4 w-4 transition-transform group-open:rotate-180"
@@ -260,7 +260,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
 
                 <button
                   onClick={() => handleAsignar(vendor)}
-                  className="ml-6 flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="ml-6 flex items-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
                 >
                   <UserPlus className="h-4 w-4" />
                   <span>Asignar Usuario MOVI</span>

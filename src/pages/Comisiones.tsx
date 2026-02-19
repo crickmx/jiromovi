@@ -82,7 +82,7 @@ export default function Comisiones() {
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold"
+            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
           >
             Volver al Dashboard
           </button>
@@ -96,7 +96,7 @@ export default function Comisiones() {
       <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-primary-600 mb-1 sm:mb-2">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-accent mb-1 sm:mb-2">
               Comisiones
             </h1>
             <p className="text-sm sm:text-base text-neutral-600">
@@ -117,7 +117,7 @@ export default function Comisiones() {
             onClick={() => setFilter('all')}
             className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-semibold transition-colors min-h-[44px] text-sm sm:text-base ${
               filter === 'all'
-                ? 'bg-primary-600 text-white'
+                ? 'bg-accent text-white'
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
             }`}
           >
@@ -127,7 +127,7 @@ export default function Comisiones() {
             onClick={() => setFilter('draft')}
             className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-semibold transition-colors min-h-[44px] text-sm sm:text-base ${
               filter === 'draft'
-                ? 'bg-primary-600 text-white'
+                ? 'bg-accent text-white'
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
             }`}
           >
@@ -137,7 +137,7 @@ export default function Comisiones() {
             onClick={() => setFilter('closed')}
             className={`flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-semibold transition-colors min-h-[44px] text-sm sm:text-base ${
               filter === 'closed'
-                ? 'bg-primary-600 text-white'
+                ? 'bg-accent text-white'
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
             }`}
           >
@@ -148,7 +148,7 @@ export default function Comisiones() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : filteredBatches.length === 0 ? (
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center">
@@ -161,7 +161,7 @@ export default function Comisiones() {
           </p>
           <button
             onClick={() => navigate('/comisiones/upload-nuevo')}
-            className="inline-flex items-center justify-center space-x-2 bg-primary-600 text-white px-5 sm:px-6 py-3 rounded-xl hover:bg-primary-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
+            className="inline-flex items-center justify-center space-x-2 bg-accent text-white px-5 sm:px-6 py-3 rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px] w-full sm:w-auto"
           >
             <Plus className="w-5 h-5" />
             <span>Cargar Archivo</span>
@@ -180,7 +180,7 @@ export default function Comisiones() {
                   onClick={() => navigate(`/comisiones/lote/${batch.id}`)}
                 >
                   <div className="flex items-start space-x-2 sm:space-x-3 mb-3">
-                    <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 flex-shrink-0 mt-0.5" />
+                    <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-accent flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-2 break-words">
                         {batch.name}

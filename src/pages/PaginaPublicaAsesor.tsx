@@ -147,7 +147,7 @@ export default function PaginaPublicaAsesor() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-primary-600" />
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-accent" />
           <p className="text-gray-600">Cargando página...</p>
         </div>
       </div>
@@ -170,7 +170,7 @@ export default function PaginaPublicaAsesor() {
             </p>
             <a
               href="https://www.movi.digital"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-lg font-semibold hover:bg-accent-hover transition-colors"
             >
               Ir a MOVI Digital
             </a>

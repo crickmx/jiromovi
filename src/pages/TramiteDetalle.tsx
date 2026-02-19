@@ -239,7 +239,7 @@ export function TramiteDetalle() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -290,7 +290,7 @@ export function TramiteDetalle() {
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                      className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold disabled:opacity-50"
                     >
                       <Save className="w-4 h-4" />
                       <span>{saving ? 'Guardando...' : 'Guardar'}</span>
@@ -321,7 +321,7 @@ export function TramiteDetalle() {
         </div>
 
         <div>
-          <h1 className="text-3xl font-display font-bold text-primary-600 mb-2">
+          <h1 className="text-3xl font-display font-bold text-accent mb-2">
             Tramite {tramite.folio}
           </h1>
           <div className="flex items-center space-x-3">
@@ -353,7 +353,7 @@ export function TramiteDetalle() {
               onClick={() => setActiveTab(tab)}
               className={`px-6 py-3 font-semibold transition-all capitalize ${
                 activeTab === tab
-                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  ? 'text-accent border-b-2 border-accent'
                   : 'text-neutral-600 hover:text-neutral-900'
               }`}
             >
@@ -365,7 +365,7 @@ export function TramiteDetalle() {
               onClick={() => setActiveTab('comisiones')}
               className={`px-6 py-3 font-semibold transition-all capitalize ${
                 activeTab === 'comisiones'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  ? 'text-accent border-b-2 border-accent'
                   : 'text-neutral-600 hover:text-neutral-900'
               }`}
             >

@@ -146,7 +146,7 @@ export default function SicasVigentesTest() {
         <Button
           onClick={runTest}
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700"
+          className="w-full bg-accent hover:bg-accent-hover"
         >
           {loading ? (
             <>

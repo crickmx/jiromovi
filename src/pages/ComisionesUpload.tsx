@@ -344,7 +344,7 @@ export default function ComisionesUpload() {
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold"
+            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
           >
             Volver al Dashboard
           </button>
@@ -365,7 +365,7 @@ export default function ComisionesUpload() {
               <ArrowLeft className="w-6 h-6 text-neutral-700" />
             </button>
             <div>
-              <h1 className="text-3xl font-display font-bold text-primary-600 mb-1">
+              <h1 className="text-3xl font-display font-bold text-accent mb-1">
                 Subir Archivo de Comisiones
               </h1>
               <p className="text-neutral-600">
@@ -484,7 +484,7 @@ export default function ComisionesUpload() {
 
             {validating && (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-accent animate-spin" />
                 <span className="ml-3 text-neutral-700">Validando archivo...</span>
               </div>
             )}
@@ -508,7 +508,7 @@ export default function ComisionesUpload() {
                       onClick={() => toggleWeekSelection(index)}
                       className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
                         week.selected
-                          ? 'border-primary-500 bg-primary-50'
+                          ? 'border-accent bg-primary-50'
                           : 'border-neutral-200 hover:border-primary-300'
                       }`}
                     >
@@ -516,7 +516,7 @@ export default function ComisionesUpload() {
                         <div className="flex items-center space-x-4">
                           <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                             week.selected
-                              ? 'bg-primary-600 border-primary-600'
+                              ? 'bg-accent border-accent'
                               : 'border-neutral-400'
                           }`}>
                             {week.selected && (
@@ -533,7 +533,7 @@ export default function ComisionesUpload() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-primary-600">
+                          <div className="text-2xl font-bold text-accent">
                             {week.count}
                           </div>
                           <div className="text-xs text-neutral-600">
@@ -548,7 +548,7 @@ export default function ComisionesUpload() {
                 <div className="flex items-center justify-between pt-4 border-t border-neutral-200">
                   <button
                     onClick={() => setWeeks(prev => prev.map(w => ({ ...w, selected: !prev.every(w => w.selected) })))}
-                    className="text-primary-600 hover:text-primary-700 font-semibold text-sm"
+                    className="text-accent hover:text-primary-700 font-semibold text-sm"
                   >
                     {weeks.every(w => w.selected) ? 'Deseleccionar todas' : 'Seleccionar todas'}
                   </button>

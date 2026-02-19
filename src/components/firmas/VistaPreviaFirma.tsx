@@ -148,7 +148,7 @@ export function VistaPreviaFirma() {
         <button
           onClick={loadPreview}
           disabled={!selectedUsuario || loading}
-          className="flex items-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center space-x-2 px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <RefreshCw className="w-5 h-5 animate-spin" />

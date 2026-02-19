@@ -73,7 +73,7 @@ export default function FiltrosProduccionAgente({
           <Filter className="w-5 h-5 text-neutral-600" />
           <h3 className="font-semibold text-neutral-900">Filtros Avanzados</h3>
           {activeFiltersCount > 0 && (
-            <span className="bg-primary-600 text-white text-xs px-2 py-0.5 rounded-full">
+            <span className="bg-accent text-white text-xs px-2 py-0.5 rounded-full">
               {activeFiltersCount}
             </span>
           )}
@@ -95,7 +95,7 @@ export default function FiltrosProduccionAgente({
                 type="date"
                 value={localFilters.fechaDesde}
                 onChange={(e) => setLocalFilters(prev => ({ ...prev, fechaDesde: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
               />
             </div>
 
@@ -108,7 +108,7 @@ export default function FiltrosProduccionAgente({
                 type="date"
                 value={localFilters.fechaHasta}
                 onChange={(e) => setLocalFilters(prev => ({ ...prev, fechaHasta: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
               />
             </div>
           </div>
@@ -125,7 +125,7 @@ export default function FiltrosProduccionAgente({
                       type="checkbox"
                       checked={localFilters.ramos.includes(ramo)}
                       onChange={() => toggleRamo(ramo)}
-                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      className="rounded border-neutral-300 text-accent focus:ring-accent"
                     />
                     <span className="text-sm text-neutral-700">{ramo}</span>
                   </label>
@@ -146,7 +146,7 @@ export default function FiltrosProduccionAgente({
                       type="checkbox"
                       checked={localFilters.aseguradoras.includes(aseguradora)}
                       onChange={() => toggleAseguradora(aseguradora)}
-                      className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      className="rounded border-neutral-300 text-accent focus:ring-accent"
                     />
                     <span className="text-sm text-neutral-700">{aseguradora}</span>
                   </label>
@@ -166,7 +166,7 @@ export default function FiltrosProduccionAgente({
 
             <button
               onClick={handleApply}
-              className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+              className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium"
             >
               <Filter className="w-4 h-4" />
               <span>Aplicar Filtros</span>

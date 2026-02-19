@@ -420,11 +420,11 @@ export function EspacioJiro() {
                       className="bg-white border border-neutral-200 rounded-lg p-4 hover:shadow-ios hover:border-primary-300 transition-all overflow-hidden group"
                     >
                       <div className="mb-4 min-w-0">
-                        <div className="flex items-center text-sm font-semibold text-primary-600 mb-2 min-w-0">
+                        <div className="flex items-center text-sm font-semibold text-accent mb-2 min-w-0">
                           <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
                           <span className="flex-1 min-w-0 break-words">{area.oficinas?.nombre}</span>
                         </div>
-                        <h3 className="font-bold text-neutral-900 text-lg mb-2 break-words group-hover:text-primary-600 transition-colors">
+                        <h3 className="font-bold text-neutral-900 text-lg mb-2 break-words group-hover:text-accent transition-colors">
                           {area.nombre}
                         </h3>
                         {area.detalles && (
@@ -689,7 +689,7 @@ export function EspacioJiro() {
                       value={formData.notas}
                       onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
                       rows={3}
-                      className="w-full mt-1 px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                      className="w-full mt-1 px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
                       placeholder="Agrega cualquier información adicional..."
                     />
                   </div>

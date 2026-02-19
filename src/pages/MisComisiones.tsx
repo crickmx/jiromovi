@@ -330,7 +330,7 @@ export default function MisComisiones() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -342,14 +342,14 @@ export default function MisComisiones() {
       <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
         <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-primary-600 mb-1 sm:mb-2">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-accent mb-1 sm:mb-2">
               Mis Comisiones
             </h1>
             <p className="text-sm sm:text-base text-neutral-600">
               Consulta tus comisiones pagadas y genera tus recibos
             </p>
           </div>
-          <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 text-primary-600 flex-shrink-0" />
+          <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 text-accent flex-shrink-0" />
         </div>
       </div>
 
@@ -424,7 +424,7 @@ export default function MisComisiones() {
                           handleDownloadPDF(batch.id);
                         }}
                         disabled={generatingPDF === batch.id}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap"
                       >
                         {generatingPDF === batch.id ? (
                           <>
@@ -478,7 +478,7 @@ export default function MisComisiones() {
 
                     {/* 2. DESGLOSE POR RAMO */}
                     <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                      <TrendingUp className="w-5 h-5 text-primary-600" />
+                      <TrendingUp className="w-5 h-5 text-accent" />
                       <h4 className="text-base sm:text-lg font-bold text-neutral-900">
                         Desglose por Ramo
                       </h4>
@@ -555,7 +555,7 @@ export default function MisComisiones() {
                       {details.length > 5 && (
                         <button
                           onClick={() => setShowAllPolicies(showAllPolicies === batch.id ? null : batch.id)}
-                          className="text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-semibold flex items-center space-x-1 self-start sm:self-auto min-h-[44px] sm:min-h-0"
+                          className="text-xs sm:text-sm text-accent hover:text-primary-700 font-semibold flex items-center space-x-1 self-start sm:self-auto min-h-[44px] sm:min-h-0"
                         >
                           {showAllPolicies === batch.id ? (
                             <>

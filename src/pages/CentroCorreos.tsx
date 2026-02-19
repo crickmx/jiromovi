@@ -36,7 +36,7 @@ export function CentroCorreos() {
                 onClick={() => setActiveTab('plantillas')}
                 className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                   activeTab === 'plantillas'
-                    ? 'border-primary-600 text-primary-600'
+                    ? 'border-accent text-accent'
                     : 'border-transparent text-slate-600 hover:text-slate-800'
                 }`}
               >
@@ -47,7 +47,7 @@ export function CentroCorreos() {
               onClick={() => setActiveTab('envio')}
               className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                 activeTab === 'envio'
-                  ? 'border-primary-600 text-primary-600'
+                  ? 'border-accent text-accent'
                   : 'border-transparent text-slate-600 hover:text-slate-800'
               }`}
             >
@@ -59,7 +59,7 @@ export function CentroCorreos() {
                   onClick={() => setActiveTab('programacion')}
                   className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                     activeTab === 'programacion'
-                      ? 'border-primary-600 text-primary-600'
+                      ? 'border-accent text-accent'
                       : 'border-transparent text-slate-600 hover:text-slate-800'
                   }`}
                 >
@@ -69,7 +69,7 @@ export function CentroCorreos() {
                   onClick={() => setActiveTab('historial')}
                   className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                     activeTab === 'historial'
-                      ? 'border-primary-600 text-primary-600'
+                      ? 'border-accent text-accent'
                       : 'border-transparent text-slate-600 hover:text-slate-800'
                   }`}
                 >
@@ -79,7 +79,7 @@ export function CentroCorreos() {
                   onClick={() => setActiveTab('servidor')}
                   className={`px-6 py-4 font-medium transition border-b-2 whitespace-nowrap ${
                     activeTab === 'servidor'
-                      ? 'border-primary-600 text-primary-600'
+                      ? 'border-accent text-accent'
                       : 'border-transparent text-slate-600 hover:text-slate-800'
                   }`}
                 >

@@ -79,14 +79,14 @@ export function TramitesWidget() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-primary-500" />
+            <ClipboardList className="w-5 h-5 text-accent" />
             <CardTitle>Mis Trámites Activos</CardTitle>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate('/tramites')}
-            className="text-primary-500 hover:text-primary-600"
+            className="text-accent hover:text-accent"
           >
             Ver todos
           </Button>
@@ -112,7 +112,7 @@ export function TramitesWidget() {
                 className="p-4 border border-neutral-200 rounded-xl hover:shadow-ios-md hover:border-primary-200 transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-2">
-                  <span className="text-sm font-bold text-primary-500">
+                  <span className="text-sm font-bold text-accent">
                     {tramite.folio}
                   </span>
                   <div className="flex items-center gap-2">

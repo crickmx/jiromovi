@@ -154,7 +154,7 @@ export function ResetPassword() {
         <Card className="w-full max-w-md shadow-strong">
           <CardContent className="pt-6">
             <div className="text-center py-8">
-              <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-neutral-600">Validando link de recuperación...</p>
             </div>
           </CardContent>
@@ -222,7 +222,7 @@ export function ResetPassword() {
           <CardHeader className="text-center pb-6">
             <div className="flex justify-center mb-6">
               <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
-                <Lock className="h-8 w-8 text-primary-600" />
+                <Lock className="h-8 w-8 text-accent" />
               </div>
             </div>
             <CardTitle className="text-3xl mb-2">

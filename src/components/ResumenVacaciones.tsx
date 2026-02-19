@@ -103,7 +103,7 @@ export function ResumenVacaciones() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary-500" />
+            <Calendar className="w-5 h-5 text-accent" />
             {titulo}
           </CardTitle>
           <CardDescription>
@@ -126,7 +126,7 @@ export function ResumenVacaciones() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary-500" />
+              <Calendar className="w-5 h-5 text-accent" />
               {titulo}
             </CardTitle>
             <CardDescription className="mt-1">
@@ -137,7 +137,7 @@ export function ResumenVacaciones() {
             variant="ghost"
             size="sm"
             onClick={() => navigate('/vacaciones')}
-            className="text-primary-500 hover:text-primary-600"
+            className="text-accent hover:text-accent"
           >
             Ver todas →
           </Button>
@@ -182,7 +182,7 @@ export function ResumenVacaciones() {
         {solicitudes.length >= 5 && (
           <Button
             variant="ghost"
-            className="w-full mt-4 text-primary-500 hover:text-primary-600"
+            className="w-full mt-4 text-accent hover:text-accent"
             onClick={() => navigate('/vacaciones')}
           >
             Ver más solicitudes

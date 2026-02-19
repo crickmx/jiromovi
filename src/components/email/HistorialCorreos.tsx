@@ -133,7 +133,7 @@ export function HistorialCorreos() {
   if (loading && page === 0) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -251,7 +251,7 @@ export function HistorialCorreos() {
 
                 <button
                   onClick={() => handleViewEmail(email)}
-                  className="ml-4 p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                  className="ml-4 p-2 text-accent hover:bg-primary-50 rounded-lg transition"
                   title="Ver contenido"
                 >
                   <Eye className="w-5 h-5" />

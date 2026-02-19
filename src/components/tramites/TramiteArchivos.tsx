@@ -152,13 +152,13 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     if (!tipo) return <FileText className="w-8 h-8 text-neutral-400" />;
 
     if (tipo.startsWith('image/')) {
-      return <FileText className="w-8 h-8 text-primary-500" />;
+      return <FileText className="w-8 h-8 text-accent" />;
     }
     if (tipo.includes('pdf')) {
       return <FileText className="w-8 h-8 text-red-500" />;
     }
     if (tipo.includes('word') || tipo.includes('document')) {
-      return <FileText className="w-8 h-8 text-primary-600" />;
+      return <FileText className="w-8 h-8 text-accent" />;
     }
     if (tipo.includes('excel') || tipo.includes('spreadsheet')) {
       return <FileText className="w-8 h-8 text-green-600" />;
@@ -169,7 +169,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -182,7 +182,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
         </h3>
         <label
           htmlFor="file-upload-archivos"
-          className="flex items-center space-x-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl cursor-pointer transition-all font-semibold"
+          className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl cursor-pointer transition-all font-semibold"
         >
           <Upload className="w-5 h-5" />
           <span>{uploading ? 'Subiendo...' : 'Subir Archivo'}</span>

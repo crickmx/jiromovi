@@ -32,9 +32,9 @@ export function StatsCard({
   const colorStyles = {
     primary: {
       bg: 'bg-primary-50',
-      icon: 'text-primary-600',
+      icon: 'text-accent',
       value: 'text-neutral-900',
-      trend: 'text-primary-600'
+      trend: 'text-accent'
     },
     success: {
       bg: 'bg-green-50',
@@ -70,7 +70,7 @@ export function StatsCard({
       className={cn(
         'bg-white/70 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-neutral-200/50 dark:border-white/10 shadow-ios p-4 sm:p-6',
         'transition-all duration-250 ease-ios-smooth',
-        onClick && 'cursor-pointer hover:shadow-ios-lg hover:border-primary-300 dark:hover:border-primary-500/30 hover:-translate-y-0.5 active:scale-[0.98]',
+        onClick && 'cursor-pointer hover:shadow-ios-lg hover:border-primary-300 dark:hover:border-accent/30 hover:-translate-y-0.5 active:scale-[0.98]',
         className
       )}
     >
@@ -121,7 +121,7 @@ export function StatsCard({
           )}>
             <Icon className={cn(
               'w-6 h-6',
-              color === 'primary' && 'text-primary-600 dark:text-primary-400',
+              color === 'primary' && 'text-accent dark:text-primary-400',
               color === 'success' && 'text-green-600 dark:text-green-400',
               color === 'warning' && 'text-orange-600 dark:text-orange-400',
               color === 'danger' && 'text-red-600 dark:text-red-400',

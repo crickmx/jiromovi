@@ -183,7 +183,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
 
           <div className="space-y-4">
             <h3 className="font-semibold text-neutral-900 flex items-center space-x-2">
-              <Mail className="w-5 h-5 text-primary-600" />
+              <Mail className="w-5 h-5 text-accent" />
               <span>Tus credenciales de correo</span>
             </h3>
 
@@ -195,7 +195,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="nombre@jiro.mx"
               />
               <p className="text-xs text-neutral-500 mt-1">
@@ -211,7 +211,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Tu contraseña de correo"
               />
               <p className="text-xs text-neutral-500 mt-1">
@@ -243,7 +243,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
 
           <div className="space-y-4 bg-neutral-50 rounded-xl p-4 border border-neutral-200">
             <h3 className="font-semibold text-neutral-900 flex items-center space-x-2">
-              <Server className="w-5 h-5 text-primary-600" />
+              <Server className="w-5 h-5 text-accent" />
               <span>Servidores (preconfigurados)</span>
             </h3>
 

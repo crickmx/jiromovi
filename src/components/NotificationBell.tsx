@@ -73,7 +73,7 @@ export function NotificationBell() {
       {/* Bell Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-neutral-600 hover:text-primary-600 hover:bg-neutral-100 rounded-lg transition-colors"
+        className="relative p-2 text-neutral-600 hover:text-accent hover:bg-neutral-100 rounded-lg transition-colors"
       >
         <Bell className="w-6 h-6" />
         {unreadCount > 0 && (
@@ -110,7 +110,7 @@ export function NotificationBell() {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-accent bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
                   Marcar todo como leído
@@ -135,7 +135,7 @@ export function NotificationBell() {
                 <select
                   value={filterModule}
                   onChange={(e) => setFilterModule(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 >
                   <option value="all">Todos los módulos</option>
                   {modules.map((module) => (
@@ -176,7 +176,7 @@ export function NotificationBell() {
                         {/* Icon */}
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                           !notification.leida
-                            ? 'bg-primary-100 text-primary-600'
+                            ? 'bg-primary-100 text-accent'
                             : 'bg-neutral-100 text-neutral-600'
                         }`}>
                           <IconComponent className="w-5 h-5" />
@@ -191,7 +191,7 @@ export function NotificationBell() {
                               {notification.titulo}
                             </h4>
                             {!notification.leida && (
-                              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0 mt-1" />
+                              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0 mt-1" />
                             )}
                           </div>
 
@@ -217,7 +217,7 @@ export function NotificationBell() {
                               {notification.accion_url && (
                                 <button
                                   onClick={() => handleNotificationClick(notification)}
-                                  className="px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                                  className="px-2 py-1 text-xs font-medium text-accent hover:bg-primary-50 rounded transition-colors"
                                 >
                                   {notification.accion_texto || 'Ver'}
                                 </button>

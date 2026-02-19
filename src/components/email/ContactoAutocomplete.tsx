@@ -170,7 +170,7 @@ export function ContactoAutocomplete({
               }`}
             >
               <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4 text-primary-600" />
+                <User className="w-4 h-4 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-slate-900 truncate">

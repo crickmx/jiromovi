@@ -100,7 +100,7 @@ export default function VendedoresNoReconocidosTable({
                     <div className="flex items-center gap-2">
                       {group.type === 'name' ? (
                         <>
-                          <User className="h-5 w-5 text-primary-600" />
+                          <User className="h-5 w-5 text-accent" />
                           <span className="text-sm font-medium text-gray-900">Nombre</span>
                         </>
                       ) : group.type === 'email' ? (
@@ -184,7 +184,7 @@ export default function VendedoresNoReconocidosTable({
                   <td className="px-6 py-4">
                     <button
                       onClick={() => handleOpenModal(group)}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition"
+                      className="flex items-center gap-2 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition"
                     >
                       <UserPlus className="h-4 w-4" />
                       Asignar

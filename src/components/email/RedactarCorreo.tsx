@@ -134,17 +134,17 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
                 value={destinatarios}
                 onChange={setDestinatarios}
                 placeholder="Escribe un email o busca en contactos..."
-                className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               />
               <button
                 onClick={() => setShowCC(!showCC)}
-                className="text-sm text-primary-600 hover:text-primary-700 px-3 py-1"
+                className="text-sm text-accent hover:text-primary-700 px-3 py-1"
               >
                 CC
               </button>
               <button
                 onClick={() => setShowBCC(!showBCC)}
-                className="text-sm text-primary-600 hover:text-primary-700 px-3 py-1"
+                className="text-sm text-accent hover:text-primary-700 px-3 py-1"
               >
                 CCO
               </button>
@@ -158,7 +158,7 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
                 value={cc}
                 onChange={setCc}
                 placeholder="CC..."
-                className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
           )}
@@ -170,7 +170,7 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
                 value={bcc}
                 onChange={setBcc}
                 placeholder="CCO..."
-                className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
           )}
@@ -181,7 +181,7 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
               type="text"
               value={asunto}
               onChange={(e) => setAsunto(e.target.value)}
-              className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               placeholder="Asunto del correo"
             />
           </div>
@@ -220,7 +220,7 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
               value={cuerpo}
               onChange={(e) => setCuerpo(e.target.value)}
               rows={12}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+              className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none"
               placeholder="Escribe tu mensaje aquí..."
             />
           </div>
@@ -234,7 +234,7 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
                 type="datetime-local"
                 value={fechaProgramada}
                 onChange={(e) => setFechaProgramada(e.target.value)}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
           )}

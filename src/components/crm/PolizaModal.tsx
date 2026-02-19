@@ -205,7 +205,7 @@ export default function PolizaModal({ contactoId, poliza, onClose, onSave }: Pro
             <label className="block text-sm font-medium text-gray-700 mb-1">Archivo PDF</label>
             <div className="mt-1 flex items-center gap-3">
               <label className="flex-1 cursor-pointer">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-primary-500 transition">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-accent transition">
                   <div className="flex items-center justify-center gap-2 text-gray-600">
                     <Upload className="h-5 w-5" />
                     <span className="text-sm">
@@ -231,7 +231,7 @@ export default function PolizaModal({ contactoId, poliza, onClose, onSave }: Pro
                     <button
                       type="button"
                       onClick={() => abrirArchivoCRM(poliza.archivo_url!)}
-                      className="text-primary-600 hover:text-primary-800 p-1.5 hover:bg-primary-50 rounded transition"
+                      className="text-accent hover:text-primary-800 p-1.5 hover:bg-primary-50 rounded transition"
                       title="Abrir en nueva pestaña"
                     >
                       <ExternalLink className="h-4 w-4" />

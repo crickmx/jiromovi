@@ -98,7 +98,7 @@ export function TramiteDetalles({
             <select
               value={selectedPrioridad}
               onChange={(e) => setSelectedPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
             >
               <option value="Baja">Baja</option>
               <option value="Media">Media</option>
@@ -121,7 +121,7 @@ export function TramiteDetalles({
             <select
               value={selectedEstatus}
               onChange={(e) => setSelectedEstatus(e.target.value)}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
             >
               {estatusList.map(estatus => (
                 <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>

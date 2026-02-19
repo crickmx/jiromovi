@@ -117,7 +117,7 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -140,8 +140,8 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
           <div className="space-y-6">
             {historial.map((item, index) => (
               <div key={item.id} className="relative flex items-start space-x-4 ml-2">
-                <div className="flex-shrink-0 w-8 h-8 bg-white border-2 border-primary-600 rounded-full flex items-center justify-center z-10">
-                  <Clock className="w-4 h-4 text-primary-600" />
+                <div className="flex-shrink-0 w-8 h-8 bg-white border-2 border-accent rounded-full flex items-center justify-center z-10">
+                  <Clock className="w-4 h-4 text-accent" />
                 </div>
                 <div className="flex-1 bg-white border border-neutral-200 rounded-xl p-4">
                   <div className="flex items-start justify-between mb-2">

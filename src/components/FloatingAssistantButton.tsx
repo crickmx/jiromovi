@@ -18,8 +18,8 @@ export function FloatingAssistantButton() {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={`
-          relative h-12 rounded-full bg-primary-600 text-white shadow-lg
-          hover:bg-primary-700 transition-all duration-300 ease-in-out
+          relative h-12 rounded-full bg-accent text-white shadow-lg
+          hover:bg-accent-hover transition-all duration-300 ease-in-out
           flex items-center gap-2 group
           ${isHovered ? 'px-5 w-auto' : 'w-12 px-0 justify-center'}
         `}

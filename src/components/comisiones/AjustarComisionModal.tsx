@@ -167,7 +167,7 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
                 step="0.01"
                 value={newNeta}
                 onChange={(e) => setNewNeta(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-lg font-semibold"
+                className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-accent focus:border-accent text-lg font-semibold"
                 placeholder="0.00"
               />
             </div>
@@ -184,7 +184,7 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={4}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-accent focus:border-accent"
               placeholder="Explica por qué se está ajustando esta comisión..."
             />
           </div>

@@ -272,14 +272,14 @@ export function SegurosEducationAulaVirtual() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/seguros-education')}
-              className="p-2 text-slate-600 hover:text-primary-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 text-slate-600 hover:text-accent hover:bg-slate-100 rounded-lg transition-colors"
               title="Volver a Seguros Education"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Video className="w-6 h-6 text-primary-600" />
+                <Video className="w-6 h-6 text-accent" />
                 Aula Virtual
               </h1>
               <p className="text-slate-600 mt-1">Capacitaciones en vivo con WebRTC</p>
@@ -296,7 +296,7 @@ export function SegurosEducationAulaVirtual() {
             {isAdmin && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
                 Nueva Sesión
@@ -394,7 +394,7 @@ export function SegurosEducationAulaVirtual() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200">
           <div className="p-4 border-b border-slate-200">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary-600" />
+              <Calendar className="w-5 h-5 text-accent" />
               Próximas Sesiones
             </h2>
           </div>
@@ -412,7 +412,7 @@ export function SegurosEducationAulaVirtual() {
                     className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all"
                   >
                     <div className="w-16 h-16 bg-primary-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-medium text-primary-600">
+                      <span className="text-xs font-medium text-accent">
                         {format(new Date(session.fecha_inicio), 'MMM', { locale: es }).toUpperCase()}
                       </span>
                       <span className="text-2xl font-bold text-primary-700">
@@ -577,7 +577,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
         type="submit"
         form="crear-sesion-form"
         disabled={loading}
-        className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-all disabled:opacity-50"
+        className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-all disabled:opacity-50"
       >
         {loading ? 'Creando...' : 'Crear Sesión'}
       </button>
@@ -671,7 +671,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             id="grabar"
             checked={formData.grabar_sesion}
             onChange={(e) => setFormData({ ...formData, grabar_sesion: e.target.checked })}
-            className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-blue-500"
           />
           <label htmlFor="grabar" className="text-sm text-slate-700">
             Grabar sesión automáticamente
@@ -741,7 +741,7 @@ function GrabacionesModal({
                     <a
                       href={grabacion.archivo_procesado_url}
                       download
-                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-sm font-medium transition-all"
+                      className="flex items-center gap-2 px-4 py-2 bg-accent text-white hover:bg-accent-hover rounded-lg text-sm font-medium transition-all"
                       title="Descargar grabación"
                     >
                       <Download className="w-4 h-4" />

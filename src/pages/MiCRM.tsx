@@ -49,7 +49,7 @@ export default function MiCRM() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
       </div>
     );
   }
@@ -57,7 +57,7 @@ export default function MiCRM() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-primary-600">Mi CRM</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-accent">Mi CRM</h1>
         <p className="text-gray-600 mt-1">Gestiona tus prospectos, clientes y ventas</p>
       </div>
 
@@ -157,14 +157,14 @@ export default function MiCRM() {
 
       {/* SECCIÓN 3: Métricas Rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-primary-500">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-accent">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Contactos</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{stats?.totalContactos || 0}</p>
             </div>
             <div className="bg-primary-100 p-3 rounded-lg">
-              <Users className="h-6 w-6 text-primary-600" />
+              <Users className="h-6 w-6 text-accent" />
             </div>
           </div>
         </div>
@@ -221,7 +221,7 @@ export default function MiCRM() {
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
                   <div
-                    className="bg-primary-500 h-3 rounded-full transition-all"
+                    className="bg-accent h-3 rounded-full transition-all"
                     style={{
                       width: `${funnel?.prospectos ? (funnel.prospectos / (stats?.totalContactos || 1)) * 100 : 0}%`,
                     }}
@@ -282,7 +282,7 @@ export default function MiCRM() {
             <div className="mt-6 pt-6 border-t grid grid-cols-2 gap-4">
               <div className="flex items-center space-x-3">
                 <div className="bg-primary-100 p-2 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-primary-600" />
+                  <TrendingUp className="h-5 w-5 text-accent" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-600">Tasa de Conversión</p>
@@ -313,10 +313,10 @@ export default function MiCRM() {
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-primary-50 rounded-lg">
                 <div className="flex items-center">
-                  <Users className="h-5 w-5 text-primary-600 mr-2" />
+                  <Users className="h-5 w-5 text-accent mr-2" />
                   <span className="text-sm font-medium text-gray-700">Prospectos</span>
                 </div>
-                <span className="text-lg font-bold text-primary-600">{funnel?.prospectos || 0}</span>
+                <span className="text-lg font-bold text-accent">{funnel?.prospectos || 0}</span>
               </div>
 
               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">

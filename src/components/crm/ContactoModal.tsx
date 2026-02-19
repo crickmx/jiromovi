@@ -224,7 +224,7 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
                   onClick={() => toggleEtiqueta(etiqueta.nombre)}
                   className={`px-3 py-1 rounded-full text-sm font-medium transition ${
                     formData.etiquetas_segmentacion.includes(etiqueta.nombre)
-                      ? 'bg-primary-600 text-white'
+                      ? 'bg-accent text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -334,7 +334,7 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50"
               disabled={loading}
             >
               {loading ? 'Guardando...' : 'Guardar'}

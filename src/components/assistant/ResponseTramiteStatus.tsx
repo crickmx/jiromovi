@@ -18,7 +18,7 @@ export function ResponseTramiteStatus({ response }: ResponseTramiteStatusProps) 
             <div key={index} className="flex items-start gap-3">
               <div className="mt-0.5">
                 {isCompleted && <CheckCircle className="h-5 w-5 text-green-600" />}
-                {isCurrent && <Clock className="h-5 w-5 text-primary-600" />}
+                {isCurrent && <Clock className="h-5 w-5 text-accent" />}
                 {!isCompleted && !isCurrent && <Circle className="h-5 w-5 text-gray-300" />}
               </div>
               <div className="flex-1">

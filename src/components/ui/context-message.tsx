@@ -17,9 +17,9 @@ export function ContextMessage({
 }: ContextMessageProps) {
   const styles = {
     info: {
-      bg: 'bg-blue-50 dark:bg-blue-500/10',
-      border: 'border-blue-200 dark:border-blue-500/30',
-      icon: 'text-blue-600 dark:text-blue-400',
+      bg: 'bg-blue-50 dark:bg-accent/10',
+      border: 'border-blue-200 dark:border-accent/30',
+      icon: 'text-accent dark:text-blue-400',
       text: 'text-blue-900 dark:text-blue-100'
     },
     success: {

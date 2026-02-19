@@ -133,7 +133,7 @@ export function ProgramacionAutomatica() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -154,7 +154,7 @@ export function ProgramacionAutomatica() {
 
       <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
         <div className="flex items-start space-x-3">
-          <Calendar className="w-5 h-5 text-primary-600 mt-0.5" />
+          <Calendar className="w-5 h-5 text-accent mt-0.5" />
           <div className="flex-1">
             <h3 className="font-semibold text-primary-900 mb-2">Funcionamiento automático</h3>
             <p className="text-sm text-primary-800 mb-2">

@@ -206,7 +206,7 @@ export function AsignacionesFirma() {
             <button
               onClick={handleAdd}
               disabled={!newAsignacion.template_id}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50"
             >
               <Plus className="w-5 h-5" />
               <span>Agregar</span>
@@ -230,7 +230,7 @@ export function AsignacionesFirma() {
                 </span>
                 <span className="font-semibold text-neutral-900">{getAsignacionLabel(asignacion)}</span>
                 <span className="text-neutral-600">→</span>
-                <span className="text-primary-600">{asignacion.firma_templates.nombre}</span>
+                <span className="text-accent">{asignacion.firma_templates.nombre}</span>
               </div>
             </div>
             <button

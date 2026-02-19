@@ -175,7 +175,7 @@ export function CentroNotificaciones() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white">
+        <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-8 text-white">
           <div className="flex items-center gap-3 mb-2">
             <Megaphone className="w-8 h-8" />
             <h1 className="text-3xl font-bold text-white">Centro de Notificaciones Global</h1>
@@ -188,7 +188,7 @@ export function CentroNotificaciones() {
         {/* Send Notification Form */}
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <h2 className="text-xl font-bold text-neutral-800 mb-6 flex items-center gap-2">
-            <Send className="w-5 h-5 text-primary-600" />
+            <Send className="w-5 h-5 text-accent" />
             Enviar Nueva Notificación
           </h2>
 
@@ -201,7 +201,7 @@ export function CentroNotificaciones() {
                 type="text"
                 value={formData.titulo}
                 onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 placeholder="Ej: Nueva política interna"
               />
             </div>
@@ -214,7 +214,7 @@ export function CentroNotificaciones() {
                 value={formData.mensaje}
                 onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
                 rows={4}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 placeholder="Escribe el mensaje de la notificación..."
               />
             </div>
@@ -227,7 +227,7 @@ export function CentroNotificaciones() {
                 type="text"
                 value={formData.accion_url}
                 onChange={(e) => setFormData({ ...formData, accion_url: e.target.value })}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 placeholder="/vacaciones, /seguros-education, etc."
               />
             </div>
@@ -242,11 +242,11 @@ export function CentroNotificaciones() {
                   onClick={() => setFormData({ ...formData, tipo: 'todos' })}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     formData.tipo === 'todos'
-                      ? 'border-primary-500 bg-primary-50'
+                      ? 'border-accent bg-primary-50'
                       : 'border-neutral-200 hover:border-primary-300'
                   }`}
                 >
-                  <Users className="w-6 h-6 mx-auto mb-2 text-primary-600" />
+                  <Users className="w-6 h-6 mx-auto mb-2 text-accent" />
                   <span className="text-sm font-medium">Todos</span>
                 </button>
 
@@ -254,11 +254,11 @@ export function CentroNotificaciones() {
                   onClick={() => setFormData({ ...formData, tipo: 'oficina' })}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     formData.tipo === 'oficina'
-                      ? 'border-primary-500 bg-primary-50'
+                      ? 'border-accent bg-primary-50'
                       : 'border-neutral-200 hover:border-primary-300'
                   }`}
                 >
-                  <Building2 className="w-6 h-6 mx-auto mb-2 text-primary-600" />
+                  <Building2 className="w-6 h-6 mx-auto mb-2 text-accent" />
                   <span className="text-sm font-medium">Oficina</span>
                 </button>
 
@@ -266,11 +266,11 @@ export function CentroNotificaciones() {
                   onClick={() => setFormData({ ...formData, tipo: 'rol' })}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     formData.tipo === 'rol'
-                      ? 'border-primary-500 bg-primary-50'
+                      ? 'border-accent bg-primary-50'
                       : 'border-neutral-200 hover:border-primary-300'
                   }`}
                 >
-                  <UserCheck className="w-6 h-6 mx-auto mb-2 text-primary-600" />
+                  <UserCheck className="w-6 h-6 mx-auto mb-2 text-accent" />
                   <span className="text-sm font-medium">Rol</span>
                 </button>
 
@@ -278,11 +278,11 @@ export function CentroNotificaciones() {
                   onClick={() => setFormData({ ...formData, tipo: 'usuario' })}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     formData.tipo === 'usuario'
-                      ? 'border-primary-500 bg-primary-50'
+                      ? 'border-accent bg-primary-50'
                       : 'border-neutral-200 hover:border-primary-300'
                   }`}
                 >
-                  <Bell className="w-6 h-6 mx-auto mb-2 text-primary-600" />
+                  <Bell className="w-6 h-6 mx-auto mb-2 text-accent" />
                   <span className="text-sm font-medium">Usuario</span>
                 </button>
               </div>
@@ -291,7 +291,7 @@ export function CentroNotificaciones() {
                 <select
                   value={formData.oficina_id}
                   onChange={(e) => setFormData({ ...formData, oficina_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 >
                   <option value="">Seleccionar oficina</option>
                   {oficinas.map((ofi) => (
@@ -306,7 +306,7 @@ export function CentroNotificaciones() {
                 <select
                   value={formData.rol}
                   onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 >
                   <option value="">Seleccionar rol</option>
                   {roles.map((rol) => (
@@ -333,11 +333,11 @@ export function CentroNotificaciones() {
               <div className="space-y-3">
                 {/* Notificación Push (siempre activa) */}
                 <div className="flex items-start gap-3 p-3 bg-primary-50 border border-primary-200 rounded-lg">
-                  <Bell className="w-5 h-5 text-primary-600 mt-0.5" />
+                  <Bell className="w-5 h-5 text-accent mt-0.5" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-primary-900">Notificación Push (Campanita)</span>
-                      <span className="px-2 py-0.5 bg-primary-600 text-white text-xs rounded-full">Siempre</span>
+                      <span className="px-2 py-0.5 bg-accent text-white text-xs rounded-full">Siempre</span>
                     </div>
                     <p className="text-xs text-primary-700 mt-1">
                       Se enviará una notificación en el sistema a todos los destinatarios seleccionados
@@ -385,7 +385,7 @@ export function CentroNotificaciones() {
               <button
                 onClick={handleEnviar}
                 disabled={sending || !formData.titulo || !formData.mensaje}
-                className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-6 py-3 bg-accent text-white font-semibold rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sending ? (
                   <>Enviando...</>
@@ -404,7 +404,7 @@ export function CentroNotificaciones() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
           <div className="p-6 border-b border-neutral-200">
             <h2 className="text-xl font-bold text-neutral-800 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-primary-600" />
+              <CheckCircle className="w-5 h-5 text-accent" />
               Historial de Notificaciones Enviadas
             </h2>
           </div>

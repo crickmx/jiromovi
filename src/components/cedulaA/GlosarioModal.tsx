@@ -50,7 +50,7 @@ export default function GlosarioModal({ moduloId, onClose }: Props) {
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-neutral-200">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-100 rounded-ios flex items-center justify-center flex-shrink-0">
-              <BookMarked className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
+              <BookMarked className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
             </div>
             <div className="min-w-0">
               <h2 className="text-lg sm:text-xl font-bold text-neutral-900 truncate">Glosario de Términos</h2>
@@ -73,7 +73,7 @@ export default function GlosarioModal({ moduloId, onClose }: Props) {
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar término..."
-              className="w-full pl-9 sm:pl-11 pr-4 py-2 sm:py-3 text-sm sm:text-base bg-neutral-50 border border-neutral-200 rounded-ios-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-9 sm:pl-11 pr-4 py-2 sm:py-3 text-sm sm:text-base bg-neutral-50 border border-neutral-200 rounded-ios-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
             />
           </div>
         </div>
@@ -82,7 +82,7 @@ export default function GlosarioModal({ moduloId, onClose }: Props) {
           <div className="w-full sm:w-1/3 border-b sm:border-b-0 sm:border-r border-neutral-200 overflow-y-auto max-h-40 sm:max-h-none">
             {loading ? (
               <div className="p-4 sm:p-8 text-center">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                 <p className="text-xs sm:text-sm text-neutral-600">Cargando...</p>
               </div>
             ) : terminosFiltrados.length === 0 ? (

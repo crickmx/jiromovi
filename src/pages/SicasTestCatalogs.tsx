@@ -118,7 +118,7 @@ export default function SicasTestCatalogs() {
   const getStatusIcon = (status: TestResult['status']) => {
     switch (status) {
       case 'testing':
-        return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
+        return <Loader2 className="h-5 w-5 animate-spin text-accent" />;
       case 'available':
         return <CheckCircle2 className="h-5 w-5 text-green-500" />;
       case 'not_available':

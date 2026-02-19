@@ -276,7 +276,7 @@ export default function MiProduccionSICASMirror() {
 
       <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div className="flex items-start gap-2">
-          <Database className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <Database className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm text-blue-900 font-medium">
               Base de datos espejo SICAS

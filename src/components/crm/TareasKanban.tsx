@@ -37,7 +37,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
       id: 'En Proceso',
       titulo: 'En Proceso',
       icon: Loader,
-      color: 'text-primary-600',
+      color: 'text-accent',
       bgColor: 'bg-primary-50'
     },
     {
@@ -134,7 +134,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
       </div>
     );
   }

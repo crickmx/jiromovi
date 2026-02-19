@@ -555,7 +555,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           <select
             value={style.font}
             onChange={(e) => updateStyle(field, 'font', e.target.value)}
-            className="w-full px-1.5 py-1 border border-neutral-300 rounded text-[11px] focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="w-full px-1.5 py-1 border border-neutral-300 rounded text-[11px] focus:outline-none focus:ring-1 focus:ring-accent"
           >
             {FUENTES.map(f => (
               <option key={f} value={f}>{f}</option>
@@ -570,7 +570,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
             max="100"
             value={style.size}
             onChange={(e) => updateStyle(field, 'size', parseInt(e.target.value))}
-            className="w-full px-1.5 py-1 border border-neutral-300 rounded text-[11px] focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="w-full px-1.5 py-1 border border-neutral-300 rounded text-[11px] focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
         <div>
@@ -586,7 +586,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
               type="text"
               value={style.color}
               onChange={(e) => updateStyle(field, 'color', e.target.value)}
-              className="flex-1 px-1 py-1 border border-neutral-300 rounded text-[10px] focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="flex-1 px-1 py-1 border border-neutral-300 rounded text-[10px] focus:outline-none focus:ring-1 focus:ring-accent"
               placeholder="#fff"
             />
           </div>
@@ -600,7 +600,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
             onClick={() => updateStyle(field, 'align', a)}
             className={`flex-1 px-1.5 py-0.5 border rounded text-[10px] font-medium transition ${
               style.align === a
-                ? 'bg-primary-600 text-white border-primary-600'
+                ? 'bg-accent text-white border-accent'
                 : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
             }`}
           >
@@ -611,7 +611,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           onClick={() => updateStyle(field, 'bold', !style.bold)}
           className={`flex-1 px-1.5 py-0.5 border rounded text-[10px] font-bold transition ${
             style.bold
-              ? 'bg-primary-600 text-white border-primary-600'
+              ? 'bg-accent text-white border-accent'
               : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
           }`}
         >
@@ -621,7 +621,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           onClick={() => updateStyle(field, 'italic', !style.italic)}
           className={`flex-1 px-1.5 py-0.5 border rounded text-[10px] italic transition ${
             style.italic
-              ? 'bg-primary-600 text-white border-primary-600'
+              ? 'bg-accent text-white border-accent'
               : 'bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50'
           }`}
         >
@@ -683,7 +683,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
               <button
                 onClick={handleDescargar}
                 disabled={loading}
-                className="w-full mt-2 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs"
+                className="w-full mt-2 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-accent hover:to-accent-dark text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>{loading ? 'Generando...' : 'Descargar Diseño'}</span>
@@ -695,7 +695,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                 <h3 className="text-xs font-semibold text-neutral-700">Controles</h3>
                 <button
                   onClick={handleReset}
-                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-accent hover:text-primary-700 hover:bg-primary-50 rounded transition-colors"
                 >
                   <RotateCcw className="w-3 h-3" />
                   Restablecer
@@ -711,7 +711,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                       value={nombreCompleto}
                       onChange={(e) => setNombreCompleto(e.target.value)}
                       placeholder="Ej: Juan Pérez García"
-                      className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                   </div>
                   <StyleControls style={styleNombre} field="nombre" />
@@ -727,7 +727,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                       value={urlJiro}
                       onChange={(e) => handleUrlChange(setUrlJiro, e.target.value)}
                       placeholder="agentedeseguros.website/ejemplo"
-                      className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                     <StyleControls style={styleJiro} field="jiro" />
                   </div>
@@ -738,7 +738,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                       value={urlMulticotizador}
                       onChange={(e) => handleUrlChange(setUrlMulticotizador, e.target.value)}
                       placeholder="55 1234 5678"
-                      className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="w-full px-2 py-1.5 border border-neutral-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                     <StyleControls style={styleMulti} field="multi" />
                   </div>
@@ -746,7 +746,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
               </AccordionSection>
 
               <AccordionSection id="logo" title="Logo">
-                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-3 text-center hover:border-primary-500 transition-all">
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-3 text-center hover:border-accent transition-all">
                   <input
                     type="file"
                     accept="image/*"
@@ -760,7 +760,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
                         <img src={logoPreview} alt="Logo" className="max-h-16 mx-auto rounded" />
                         <button
                           type="button"
-                          className="text-primary-600 hover:text-primary-700 text-[10px] font-medium"
+                          className="text-accent hover:text-primary-700 text-[10px] font-medium"
                         >
                           Cambiar logo
                         </button>

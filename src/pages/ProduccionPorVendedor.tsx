@@ -341,7 +341,7 @@ export default function ProduccionPorVendedorOptimizado() {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Consultando producción desde SICAS...</p>
           <p className="text-sm text-neutral-500 mt-2">Esto puede tomar unos momentos</p>
         </div>
@@ -373,7 +373,7 @@ export default function ProduccionPorVendedorOptimizado() {
                   </div>
                   <span>Duración: {metadata.last_fetch_duration_ms}ms</span>
                   {metadata.report_code && (
-                    <span className="text-primary-600">Reporte: {metadata.report_code}</span>
+                    <span className="text-accent">Reporte: {metadata.report_code}</span>
                   )}
                 </div>
               )}
@@ -390,7 +390,7 @@ export default function ProduccionPorVendedorOptimizado() {
               {isAdmin && (
                 <button
                   onClick={() => navigate('/produccion/configuracion')}
-                  className="flex items-center space-x-2 bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm sm:text-base"
+                  className="flex items-center space-x-2 bg-accent text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm sm:text-base"
                 >
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">Configuración</span>
@@ -458,7 +458,7 @@ export default function ProduccionPorVendedorOptimizado() {
                     setCurrentPage(1);
                   }}
                   placeholder="Nombre o usuario MOVI..."
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
 
@@ -472,7 +472,7 @@ export default function ProduccionPorVendedorOptimizado() {
                     setFilters({ ...filters, mappingStatus: e.target.value });
                     setCurrentPage(1);
                   }}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="all">Todos</option>
                   <option value="mapped">Asignados</option>
@@ -487,7 +487,7 @@ export default function ProduccionPorVendedorOptimizado() {
                 <select
                   value={filters.sortBy}
                   onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="total">Producción Total</option>
                   <option value="name">Nombre</option>
@@ -505,7 +505,7 @@ export default function ProduccionPorVendedorOptimizado() {
                     setPageSize(parseInt(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="10">10</option>
                   <option value="25">25</option>
@@ -636,7 +636,7 @@ export default function ProduccionPorVendedorOptimizado() {
                   <div className="border-t border-neutral-200 p-4 bg-neutral-50">
                     {isLoadingDetails ? (
                       <div className="flex justify-center py-8">
-                        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     ) : details ? (
                       <>
@@ -739,7 +739,7 @@ export default function ProduccionPorVendedorOptimizado() {
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Siguiente
               </button>

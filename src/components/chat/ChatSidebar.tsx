@@ -65,7 +65,7 @@ export function ChatSidebar({ chats, selectedChat, onSelectChat, getChatName, cu
               onClick={() => onSelectChat(chat)}
               disabled={isDeleting}
               className={`w-full px-4 py-3 text-left hover:bg-neutral-50 transition-colors ${
-                isSelected ? 'bg-primary-50 border-l-4 border-primary-600' : ''
+                isSelected ? 'bg-primary-50 border-l-4 border-accent' : ''
               } ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className="flex items-center justify-between mb-1">

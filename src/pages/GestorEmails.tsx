@@ -39,7 +39,7 @@ interface EmailMessage {
 type Carpeta = 'INBOX' | 'SENT' | 'DRAFTS' | 'TRASH' | 'SPAM' | 'QUEUE';
 
 const CARPETAS_INFO = {
-  INBOX: { nombre: 'Bandeja de entrada', icon: Inbox, color: 'text-primary-600' },
+  INBOX: { nombre: 'Bandeja de entrada', icon: Inbox, color: 'text-accent' },
   SENT: { nombre: 'Enviados', icon: Send, color: 'text-green-600' },
   DRAFTS: { nombre: 'Borradores', icon: FileText, color: 'text-yellow-600' },
   QUEUE: { nombre: 'En cola', icon: Calendar, color: 'text-purple-600' },
@@ -279,7 +279,7 @@ export function GestorEmails() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -290,9 +290,9 @@ export function GestorEmails() {
       <div className="bg-white border-b border-neutral-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Mail className="w-8 h-8 text-primary-600" />
+            <Mail className="w-8 h-8 text-accent" />
             <div>
-              <h1 className="text-2xl font-display font-bold text-primary-600">
+              <h1 className="text-2xl font-display font-bold text-accent">
                 Mi E-Mail
               </h1>
               {configuracion && (
@@ -306,7 +306,7 @@ export function GestorEmails() {
                     )}
                   </p>
                   {!configuracion.ultima_sincronizacion && mensajes.length === 0 && (
-                    <p className="text-xs text-primary-600 font-semibold mt-1">
+                    <p className="text-xs text-accent font-semibold mt-1">
                       Haz clic en "Actualizar" para sincronizar tus correos
                     </p>
                   )}
@@ -378,7 +378,7 @@ export function GestorEmails() {
               </button>
               <button
                 onClick={() => setShowConfig(true)}
-                className="w-full border-2 border-primary-500 text-primary-600 px-6 py-3 rounded-xl hover:bg-primary-50 transition-all font-semibold"
+                className="w-full border-2 border-accent text-accent px-6 py-3 rounded-xl hover:bg-primary-50 transition-all font-semibold"
               >
                 Configurar aquí
               </button>
@@ -391,7 +391,7 @@ export function GestorEmails() {
           {configuracion && !configuracion.ultima_sincronizacion && mensajes.length === 0 && (
             <div className="bg-primary-50 border-b border-primary-200 px-6 py-4">
               <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 text-accent flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-primary-900">
                     Cuenta configurada exitosamente
@@ -425,13 +425,13 @@ export function GestorEmails() {
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <Icon className={`w-5 h-5 ${isActive ? 'text-primary-600' : info.color}`} />
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-accent' : info.color}`} />
                       <span>{info.nombre}</span>
                     </div>
                     {count > 0 && (
                       <span className={`text-xs px-2 py-1 rounded-full ${
                         isActive
-                          ? 'bg-primary-600 text-white'
+                          ? 'bg-accent text-white'
                           : 'bg-neutral-200 text-neutral-600'
                       }`}>
                         {count}
@@ -461,7 +461,7 @@ export function GestorEmails() {
                 <button
                   onClick={handleSincronizar}
                   disabled={sincronizando}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 text-sm"
+                  className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50 text-sm"
                 >
                   {sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}
                 </button>
@@ -590,7 +590,7 @@ export function GestorEmails() {
                     onClick={() => {
                       setShowRedactar(true);
                     }}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all"
+                    className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all"
                   >
                     Responder
                   </button>

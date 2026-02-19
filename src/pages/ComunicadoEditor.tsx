@@ -452,7 +452,7 @@ export default function ComunicadoEditor() {
       <Layout hideHeader>
         <Container size="lg">
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-3 border-primary-500 border-t-transparent"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-3 border-accent border-t-transparent"></div>
           </div>
         </Container>
       </Layout>
@@ -500,7 +500,7 @@ export default function ComunicadoEditor() {
               id="categoria"
               value={categoriaId}
               onChange={(e) => setCategoriaId(e.target.value)}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-base text-sm sm:text-base bg-white"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-base text-sm sm:text-base bg-white"
             >
               {categorias.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -536,7 +536,7 @@ export default function ComunicadoEditor() {
                 </Button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:border-primary-500 active:border-primary-600 transition-colors bg-neutral-50 hover:bg-neutral-100 btn-touch">
+              <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:border-accent active:border-accent transition-colors bg-neutral-50 hover:bg-neutral-100 btn-touch">
                 <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-neutral-400 mb-2" />
                 <span className="text-sm sm:text-base text-neutral-600 font-medium">Click para subir imagen</span>
                 <span className="text-xs sm:text-sm text-neutral-400 mt-1">JPG, PNG o WEBP</span>
@@ -617,7 +617,7 @@ export default function ComunicadoEditor() {
                     type="radio"
                     checked={publicarAhora}
                     onChange={() => setPublicarAhora(true)}
-                    className="w-4 h-4 text-primary-600"
+                    className="w-4 h-4 text-accent"
                   />
                   <span className="text-gray-700">Publicar ahora</span>
                 </label>
@@ -627,7 +627,7 @@ export default function ComunicadoEditor() {
                     type="radio"
                     checked={!publicarAhora}
                     onChange={() => setPublicarAhora(false)}
-                    className="w-4 h-4 text-primary-600"
+                    className="w-4 h-4 text-accent"
                   />
                   <span className="text-gray-700">Programar publicación</span>
                 </label>
@@ -699,7 +699,7 @@ export default function ComunicadoEditor() {
                               setRolesSeleccionados(rolesSeleccionados.filter(r => r !== rol));
                             }
                           }}
-                          className="w-4 h-4 text-primary-600 rounded"
+                          className="w-4 h-4 text-accent rounded"
                         />
                         <span className="text-gray-700">{rol}s de mi oficina</span>
                       </label>
@@ -728,7 +728,7 @@ export default function ComunicadoEditor() {
                         type="radio"
                         checked={tipoVisibilidad === 'todos'}
                         onChange={() => setTipoVisibilidad('todos')}
-                        className="w-4 h-4 text-primary-600"
+                        className="w-4 h-4 text-accent"
                       />
                       <Users className="w-5 h-5 text-gray-600" />
                       <div>
@@ -742,7 +742,7 @@ export default function ComunicadoEditor() {
                         type="radio"
                         checked={tipoVisibilidad === 'rol'}
                         onChange={() => setTipoVisibilidad('rol')}
-                        className="w-4 h-4 text-primary-600"
+                        className="w-4 h-4 text-accent"
                       />
                       <User className="w-5 h-5 text-gray-600" />
                       <div>
@@ -756,7 +756,7 @@ export default function ComunicadoEditor() {
                         type="radio"
                         checked={tipoVisibilidad === 'oficina'}
                         onChange={() => setTipoVisibilidad('oficina')}
-                        className="w-4 h-4 text-primary-600"
+                        className="w-4 h-4 text-accent"
                       />
                       <Building2 className="w-5 h-5 text-gray-600" />
                       <div>
@@ -786,7 +786,7 @@ export default function ComunicadoEditor() {
                                 setRolesSeleccionados(rolesSeleccionados.filter(r => r !== rol));
                               }
                             }}
-                            className="w-4 h-4 text-primary-600 rounded"
+                            className="w-4 h-4 text-accent rounded"
                           />
                           <span className="text-gray-700">{rol}</span>
                         </label>
@@ -819,7 +819,7 @@ export default function ComunicadoEditor() {
                                 setOficinasSeleccionadas(oficinasSeleccionadas.filter(o => o !== oficina.id));
                               }
                             }}
-                            className="w-4 h-4 text-primary-600 rounded"
+                            className="w-4 h-4 text-accent rounded"
                           />
                           <span className="text-gray-700">{oficina.nombre}</span>
                         </label>

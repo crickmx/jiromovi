@@ -172,7 +172,7 @@ export default function PanelAgenteProduccion() {
   if (loading && polizas.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
         <span className="ml-3 text-lg">Cargando tus pólizas...</span>
       </div>
     );
@@ -209,7 +209,7 @@ export default function PanelAgenteProduccion() {
               <p className="text-sm text-gray-600">Pólizas Vigentes</p>
               <p className="text-3xl font-bold text-gray-900">{stats?.total_polizas || 0}</p>
             </div>
-            <FileText className="h-10 w-10 text-blue-600" />
+            <FileText className="h-10 w-10 text-accent" />
           </div>
         </div>
 
@@ -239,11 +239,11 @@ export default function PanelAgenteProduccion() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Prima Neta</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-2xl font-bold text-accent">
                 {formatCurrency(stats?.total_prima_neta || 0)}
               </p>
             </div>
-            <TrendingUp className="h-10 w-10 text-blue-600" />
+            <TrendingUp className="h-10 w-10 text-accent" />
           </div>
         </div>
       </div>
@@ -256,7 +256,7 @@ export default function PanelAgenteProduccion() {
               onClick={() => { setViewMode('vigentes'); setCurrentPage(1); }}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 viewMode === 'vigentes'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-accent text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -304,7 +304,7 @@ export default function PanelAgenteProduccion() {
                   placeholder="Buscar por contratante, asegurado o no. póliza..."
                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
               <button
@@ -319,7 +319,7 @@ export default function PanelAgenteProduccion() {
               <button
                 onClick={loadPolizas}
                 disabled={loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 inline mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Actualizar
@@ -342,7 +342,7 @@ export default function PanelAgenteProduccion() {
                 <select
                   value={ramoFilter}
                   onChange={(e) => { setRamoFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-accent"
                 >
                   <option value="">Todos</option>
                   {stats && Object.keys(stats.por_ramo).map(ramo => (
@@ -357,7 +357,7 @@ export default function PanelAgenteProduccion() {
                 <select
                   value={aseguradoraFilter}
                   onChange={(e) => { setAseguradoraFilter(e.target.value); setCurrentPage(1); }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-accent"
                 >
                   <option value="">Todas</option>
                   {stats && Object.keys(stats.por_aseguradora).map(aseg => (

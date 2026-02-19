@@ -50,7 +50,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 {producto.titulo}
               </h1>
 
-              <p className="text-4xl font-bold text-primary-600 mb-6">
+              <p className="text-4xl font-bold text-accent mb-6">
                 ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
               </p>
 
@@ -92,7 +92,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleAgregar}
-                  className="flex items-center justify-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-semibold text-lg"
+                  className="flex items-center justify-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-semibold text-lg"
                 >
                   <ShoppingCart className="w-5 h-5" />
                   Agregar al Carrito

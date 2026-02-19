@@ -313,7 +313,7 @@ export default function DocumentosImportar() {
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-primary-600 break-words">Detalle del lote</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-accent break-words">Detalle del lote</h2>
               <p className="text-sm sm:text-base text-gray-600 mt-1 break-words">{selectedBatch.file_name}</p>
             </div>
             {getStatusBadge(selectedBatch.status)}
@@ -558,7 +558,7 @@ export default function DocumentosImportar() {
                           <td className="px-4 py-3">
                             <button
                               onClick={() => navigate(`/comisiones/lote/${batch.id}`)}
-                              className="text-sm text-primary-600 hover:text-primary-800 font-medium flex items-center gap-1"
+                              className="text-sm text-accent hover:text-primary-800 font-medium flex items-center gap-1"
                             >
                               Abrir lote
                               <ArrowRight className="h-4 w-4" />
@@ -674,7 +674,7 @@ export default function DocumentosImportar() {
       </button>
 
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-600">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-accent">
           Importar documentos desde Excel
         </h1>
         <p className="text-sm sm:text-base text-gray-600 mt-1">
@@ -685,7 +685,7 @@ export default function DocumentosImportar() {
       <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-primary-100 rounded-lg flex-shrink-0">
-            <Upload className="h-5 h-5 sm:h-6 sm:w-6 text-primary-600" />
+            <Upload className="h-5 h-5 sm:h-6 sm:w-6 text-accent" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-base sm:text-lg font-semibold text-gray-900">Cargar archivo</h3>
@@ -702,7 +702,7 @@ export default function DocumentosImportar() {
             <div>
               <label
                 htmlFor="file-upload"
-                className="cursor-pointer inline-block text-sm sm:text-base text-primary-600 hover:text-primary-700 font-medium"
+                className="cursor-pointer inline-block text-sm sm:text-base text-accent hover:text-primary-700 font-medium"
                 onClick={(e) => e.stopPropagation()}
               >
                 Selecciona un archivo
@@ -724,7 +724,7 @@ export default function DocumentosImportar() {
             <div className="mt-4 p-4 bg-primary-50 border border-primary-200 rounded-xl">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <FileSpreadsheet className="h-6 h-6 sm:h-8 sm:w-8 text-primary-600 flex-shrink-0" />
+                  <FileSpreadsheet className="h-6 h-6 sm:h-8 sm:w-8 text-accent flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm sm:text-base font-medium text-gray-900 truncate">{selectedFile.name}</p>
                     <p className="text-xs sm:text-sm text-gray-600">
@@ -735,7 +735,7 @@ export default function DocumentosImportar() {
                 <button
                   onClick={handleUpload}
                   disabled={loading}
-                  className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px] font-semibold"
+                  className="w-full sm:w-auto px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px] font-semibold"
                 >
                   {loading ? (
                     <>
@@ -768,7 +768,7 @@ export default function DocumentosImportar() {
 
         {loadingBatches ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
           </div>
         ) : batches.length === 0 ? (
           <div className="text-center py-12">
@@ -848,7 +848,7 @@ export default function DocumentosImportar() {
                       <div className="flex items-center gap-2 sm:gap-3">
                         <button
                           onClick={() => handleViewBatch(batch)}
-                          className="text-xs sm:text-sm font-medium text-primary-600 hover:text-primary-700 transition whitespace-nowrap"
+                          className="text-xs sm:text-sm font-medium text-accent hover:text-primary-700 transition whitespace-nowrap"
                         >
                           Ver
                         </button>

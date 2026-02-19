@@ -391,7 +391,7 @@ export default function ComisionesLote() {
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="w-full px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold min-h-[44px]"
+            className="w-full px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px]"
           >
             Volver al Dashboard
           </button>
@@ -403,7 +403,7 @@ export default function ComisionesLote() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -417,7 +417,7 @@ export default function ComisionesLote() {
         </h3>
         <button
           onClick={() => navigate('/comisiones')}
-          className="mt-4 px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold min-h-[44px]"
+          className="mt-4 px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px]"
         >
           Volver a Comisiones
         </button>
@@ -440,7 +440,7 @@ export default function ComisionesLote() {
               <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-700" />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-primary-600 mb-1 break-words">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-accent mb-1 break-words">
                 {batch.name}
               </h1>
               <p className="text-sm sm:text-base text-neutral-600">
@@ -453,7 +453,7 @@ export default function ComisionesLote() {
             <button
               onClick={handleRecalculateBatch}
               disabled={recalculating}
-              className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold min-h-[44px] w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center space-x-2 px-4 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px] w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {recalculating ? (
                 <>
@@ -502,7 +502,7 @@ export default function ComisionesLote() {
             onClick={() => setActiveTab('resumen')}
             className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
               activeTab === 'resumen'
-                ? 'text-primary-600 border-b-2 border-primary-600'
+                ? 'text-accent border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -512,7 +512,7 @@ export default function ComisionesLote() {
             onClick={() => setActiveTab('agentes')}
             className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
               activeTab === 'agentes'
-                ? 'text-primary-600 border-b-2 border-primary-600'
+                ? 'text-accent border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -522,7 +522,7 @@ export default function ComisionesLote() {
             onClick={() => setActiveTab('polizas')}
             className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
               activeTab === 'polizas'
-                ? 'text-primary-600 border-b-2 border-primary-600'
+                ? 'text-accent border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -533,7 +533,7 @@ export default function ComisionesLote() {
               onClick={() => setActiveTab('errores')}
               className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
                 activeTab === 'errores'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  ? 'text-accent border-b-2 border-accent'
                   : 'text-neutral-600 hover:text-neutral-900'
               }`}
             >
@@ -549,7 +549,7 @@ export default function ComisionesLote() {
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm sm:text-base text-neutral-600 font-medium">Comisión Total</span>
-                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
+                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
               </div>
               <div className="text-2xl sm:text-3xl font-bold text-green-700">
                 {formatCurrency(summary.total_neta)}
@@ -559,7 +559,7 @@ export default function ComisionesLote() {
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm sm:text-base text-neutral-600 font-medium">Total Pólizas</span>
-                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
+                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
               </div>
               <div className="text-2xl sm:text-3xl font-bold text-neutral-900">
                 {summary.total_polizas}

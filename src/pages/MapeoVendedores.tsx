@@ -104,7 +104,7 @@ export default function MapeoVendedores() {
                 <Link2 className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-primary-600">Mapeo de Vendedores</h1>
+                <h1 className="text-2xl font-bold text-accent">Mapeo de Vendedores</h1>
                 <p className="text-gray-600">
                   Gestiona las relaciones entre vendedores externos y usuarios MOVI
                 </p>
@@ -127,7 +127,7 @@ export default function MapeoVendedores() {
               </button>
               <button
                 onClick={() => setNuevoMapeo(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
               >
                 <Plus className="h-5 w-5" />
                 <span>Nuevo Mapeo</span>
@@ -142,7 +142,7 @@ export default function MapeoVendedores() {
                   <p className="text-sm text-gray-600">Total Mapeos</p>
                   <p className="text-2xl font-bold text-gray-900">{mapeos.length}</p>
                 </div>
-                <Link2 className="h-8 w-8 text-primary-600" />
+                <Link2 className="h-8 w-8 text-accent" />
               </div>
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -153,7 +153,7 @@ export default function MapeoVendedores() {
                     {mapeos.filter((m) => m.source_type === 'email').length}
                   </p>
                 </div>
-                <Mail className="h-8 w-8 text-primary-600" />
+                <Mail className="h-8 w-8 text-accent" />
               </div>
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -177,13 +177,13 @@ export default function MapeoVendedores() {
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar por vendedor o usuario MOVI..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-accent"
               />
             </div>
             <select
               value={filtroEstatus}
               onChange={(e) => setFiltroEstatus(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-accent"
             >
               <option value="all">Todos los mapeos</option>
               <option value="active">Solo activos</option>
@@ -194,7 +194,7 @@ export default function MapeoVendedores() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
           </div>
         ) : mapeosFiltrados.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
@@ -428,7 +428,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
           </div>
         ) : (
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center font-semibold text-xs">
+            <div className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-xs">
               {mapeo.usuarios?.nombre_completo.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -505,7 +505,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
             <>
               <button
                 onClick={() => setEditando(true)}
-                className="p-2 rounded-lg text-primary-600 hover:bg-primary-100 transition-colors"
+                className="p-2 rounded-lg text-accent hover:bg-primary-100 transition-colors"
                 title="Editar mapeo"
               >
                 <Edit2 className="h-5 w-5" />
@@ -583,7 +583,7 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
                 onClick={() => setSourceType('email')}
                 className={`p-3 border-2 rounded-lg flex items-center justify-center space-x-2 transition-colors ${
                   sourceType === 'email'
-                    ? 'border-primary-600 bg-primary-50 text-primary-700'
+                    ? 'border-accent bg-primary-50 text-primary-700'
                     : 'border-gray-300 text-gray-700 hover:border-gray-400'
                 }`}
               >
@@ -671,7 +671,7 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
           <button
             onClick={handleCrear}
             disabled={saving}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center space-x-2"
+            className="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 flex items-center space-x-2"
           >
             {saving ? (
               <>

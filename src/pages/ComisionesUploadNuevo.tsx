@@ -164,7 +164,7 @@ export default function ComisionesUploadNuevo() {
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold"
+            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
           >
             Volver al Dashboard
           </button>
@@ -185,7 +185,7 @@ export default function ComisionesUploadNuevo() {
               <ArrowLeft className="w-6 h-6 text-neutral-700" />
             </button>
             <div>
-              <h1 className="text-3xl font-display font-bold text-primary-600 mb-1">
+              <h1 className="text-3xl font-display font-bold text-accent mb-1">
                 Cargar Archivo de Comisiones
               </h1>
               <p className="text-neutral-600">
@@ -315,7 +315,7 @@ export default function ComisionesUploadNuevo() {
 
                     <div className="bg-white rounded-lg p-4 border border-green-200">
                       <div className="flex items-center space-x-2 mb-1">
-                        <Users className="w-5 h-5 text-primary-600" />
+                        <Users className="w-5 h-5 text-accent" />
                         <div className="text-3xl font-bold text-primary-700">
                           {session.recognized_count}
                         </div>

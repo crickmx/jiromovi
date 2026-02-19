@@ -57,7 +57,7 @@ export function ThemeToggle() {
               <Sun className="h-4 w-4 flex-shrink-0" />
               <span>Claro</span>
               {mode === "light" && (
-                <span className="ml-auto text-primary-500 dark:text-primary-400">✓</span>
+                <span className="ml-auto text-accent dark:text-primary-400">✓</span>
               )}
             </button>
 
@@ -72,7 +72,7 @@ export function ThemeToggle() {
               <Moon className="h-4 w-4 flex-shrink-0" />
               <span>Oscuro</span>
               {mode === "dark" && (
-                <span className="ml-auto text-primary-500 dark:text-primary-400">✓</span>
+                <span className="ml-auto text-accent dark:text-primary-400">✓</span>
               )}
             </button>
 
@@ -87,7 +87,7 @@ export function ThemeToggle() {
               <Laptop className="h-4 w-4 flex-shrink-0" />
               <span>Automático</span>
               {mode === "system" && (
-                <span className="ml-auto text-primary-500 dark:text-primary-400">✓</span>
+                <span className="ml-auto text-accent dark:text-primary-400">✓</span>
               )}
             </button>
           </div>

@@ -151,7 +151,7 @@ export function SegurosEducationAulaDigital() {
     return (
       <Layout>
         <div className="flex justify-center items-center py-12">
-          <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
         </div>
       </Layout>
     );
@@ -169,7 +169,7 @@ export function SegurosEducationAulaDigital() {
           <span className="font-medium">Volver a Seguros Education</span>
         </button>
 
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl shadow-lg p-8 text-white">
+        <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl shadow-lg p-8 text-white">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold mb-2 text-white">Aula Digital - Eventos</h1>

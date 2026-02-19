@@ -107,7 +107,7 @@ export function SelectorPermisos({ permisos, onChange }: SelectorPermisosProps) 
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -116,7 +116,7 @@ export function SelectorPermisos({ permisos, onChange }: SelectorPermisosProps) 
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-neutral-800 mb-4 flex items-center gap-2">
-          <UserCheck className="w-5 h-5 text-primary-600" />
+          <UserCheck className="w-5 h-5 text-accent" />
           ¿Quiénes pueden ver este evento?
         </h3>
 
@@ -127,9 +127,9 @@ export function SelectorPermisos({ permisos, onChange }: SelectorPermisosProps) 
               type="checkbox"
               checked={permisos.visible_para_todos}
               onChange={(e) => handleVisibleParaTodosChange(e.target.checked)}
-              className="w-5 h-5 text-primary-600 rounded focus:ring-2 focus:ring-primary-500"
+              className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-accent"
             />
-            <Globe className="w-5 h-5 text-primary-600" />
+            <Globe className="w-5 h-5 text-accent" />
             <div>
               <p className="font-semibold text-neutral-800">Mostrar a todos los usuarios</p>
               <p className="text-sm text-neutral-600">Todos podrán ver este evento</p>
@@ -143,7 +143,7 @@ export function SelectorPermisos({ permisos, onChange }: SelectorPermisosProps) 
             {/* Filtrar por Roles */}
             <div className="border border-neutral-200 rounded-xl p-4">
               <h4 className="font-medium text-neutral-800 mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary-600" />
+                <Users className="w-4 h-4 text-accent" />
                 Filtrar por Roles
               </h4>
               <div className="grid grid-cols-2 gap-2">
@@ -156,7 +156,7 @@ export function SelectorPermisos({ permisos, onChange }: SelectorPermisosProps) 
                       type="checkbox"
                       checked={permisos.roles.includes(rol)}
                       onChange={() => handleRolToggle(rol)}
-                      className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500"
+                      className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent"
                     />
                     <span className="text-sm text-neutral-700">{rol}</span>
                   </label>
@@ -167,7 +167,7 @@ export function SelectorPermisos({ permisos, onChange }: SelectorPermisosProps) 
             {/* Filtrar por Oficinas */}
             <div className="border border-neutral-200 rounded-xl p-4">
               <h4 className="font-medium text-neutral-800 mb-3 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-primary-600" />
+                <Building2 className="w-4 h-4 text-accent" />
                 Filtrar por Oficinas
               </h4>
               <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
@@ -180,7 +180,7 @@ export function SelectorPermisos({ permisos, onChange }: SelectorPermisosProps) 
                       type="checkbox"
                       checked={permisos.oficinas.includes(oficina.id)}
                       onChange={() => handleOficinaToggle(oficina.id)}
-                      className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500"
+                      className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent"
                     />
                     <span className="text-sm text-neutral-700">{oficina.nombre}</span>
                   </label>
@@ -192,13 +192,13 @@ export function SelectorPermisos({ permisos, onChange }: SelectorPermisosProps) 
             <div className="border border-neutral-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-medium text-neutral-800 flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-primary-600" />
+                  <UserCheck className="w-4 h-4 text-accent" />
                   Usuarios Específicos (opcional)
                 </h4>
                 <button
                   type="button"
                   onClick={() => setMostrarUsuarios(!mostrarUsuarios)}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  className="text-sm text-accent hover:text-primary-700 font-medium"
                 >
                   {mostrarUsuarios ? 'Ocultar' : 'Mostrar'}
                 </button>
@@ -215,7 +215,7 @@ export function SelectorPermisos({ permisos, onChange }: SelectorPermisosProps) 
                         type="checkbox"
                         checked={permisos.usuarios.includes(usuario.id)}
                         onChange={() => handleUsuarioToggle(usuario.id)}
-                        className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500"
+                        className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent"
                       />
                       <span className="text-sm text-neutral-700 flex-1">
                         {usuario.nombre_completo}

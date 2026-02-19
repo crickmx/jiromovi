@@ -232,7 +232,7 @@ export default function ModuloViewer() {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando módulo...</p>
         </div>
       </div>
@@ -246,7 +246,7 @@ export default function ModuloViewer() {
           <p className="text-neutral-600">No se encontró el módulo</p>
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
-            className="mt-4 text-primary-600 hover:text-primary-700"
+            className="mt-4 text-accent hover:text-primary-700"
           >
             Volver al curso
           </button>
@@ -292,7 +292,7 @@ export default function ModuloViewer() {
               </div>
               <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
                 <div
-                  className="h-full bg-primary-500 transition-all duration-500"
+                  className="h-full bg-accent transition-all duration-500"
                   style={{ width: `${modulo.progreso?.porcentaje_completado || 0}%` }}
                 />
               </div>
@@ -320,7 +320,7 @@ export default function ModuloViewer() {
                     ) : (
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-medium ${
                         esActual
-                          ? 'border-primary-600 text-primary-600'
+                          ? 'border-accent text-accent'
                           : 'border-neutral-300 text-neutral-400'
                       }`}>
                         {index + 1}
@@ -443,7 +443,7 @@ export default function ModuloViewer() {
 
             <div className="bg-primary-50 rounded-ios-lg p-4 mb-6">
               <div className="flex items-start gap-3">
-                <FileText className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                <FileText className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h4 className="font-semibold text-primary-900 mb-1">Examen del Módulo</h4>
                   <p className="text-sm text-primary-700">
@@ -466,7 +466,7 @@ export default function ModuloViewer() {
               </button>
               <button
                 onClick={irAlExamen}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-ios-lg hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-accent to-accent-dark text-white rounded-ios-lg hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
               >
                 Realizar Examen
               </button>

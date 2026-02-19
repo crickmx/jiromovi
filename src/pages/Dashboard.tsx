@@ -270,7 +270,7 @@ export function Dashboard() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="w-10 h-10 border-[3px] border-ios-blue border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-[3px] border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -282,7 +282,7 @@ export function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-primary-600">
+                <h1 className="text-2xl font-bold text-accent">
                   Hola, {currentUser?.nombre}
                 </h1>
                 <p className="text-sm text-gray-600 mt-0.5 font-semibold">
@@ -301,7 +301,7 @@ export function Dashboard() {
           {loadingWelcomeMessage ? (
             <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
               <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 animate-pulse text-primary-500 mt-0.5 flex-shrink-0" />
+                <Sparkles className="w-4 h-4 animate-pulse text-accent mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
                   Hola {currentUser?.nombre_completo?.split(' ')[0] || 'Usuario'}...
                 </p>
@@ -310,7 +310,7 @@ export function Dashboard() {
           ) : welcomeMessage && (
             <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100 relative group">
               <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+                <Sparkles className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
                   {welcomeMessage}
                 </p>
@@ -319,7 +319,7 @@ export function Dashboard() {
                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white rounded-md"
                   title="Generar nuevo mensaje"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-gray-400 hover:text-primary-600" />
+                  <RefreshCw className="w-3.5 h-3.5 text-gray-400 hover:text-accent" />
                 </button>
               </div>
             </div>
@@ -331,7 +331,7 @@ export function Dashboard() {
                 href={getMiPaginaWebFull(currentUser.web_slug)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-primary-700 transition-colors"
+                className="inline-flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-accent-hover transition-colors"
               >
                 Mi Página Web
                 <ExternalLink className="w-4 h-4" />
@@ -362,7 +362,7 @@ export function Dashboard() {
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between mb-2">
-              <ClipboardList className="w-8 h-8 text-primary-500 group-hover:scale-110 transition-transform" />
+              <ClipboardList className="w-8 h-8 text-accent group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-sm font-semibold text-gray-900">Trámites</p>
             <p className="text-xs text-gray-600 mt-1">Ver todos</p>
@@ -420,7 +420,7 @@ export function Dashboard() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-primary-600">
+              <h1 className="text-2xl font-bold text-accent">
                 Hola, {currentUser?.nombre}
               </h1>
               <p className="text-sm text-gray-600 mt-0.5 font-semibold">
@@ -438,7 +438,7 @@ export function Dashboard() {
           {loadingWelcomeMessage ? (
             <div className="mt-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
               <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 animate-pulse text-primary-500 mt-0.5 flex-shrink-0" />
+                <Sparkles className="w-4 h-4 animate-pulse text-accent mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
                   Hola {currentUser?.nombre_completo?.split(' ')[0] || 'Usuario'}...
                 </p>
@@ -447,7 +447,7 @@ export function Dashboard() {
           ) : welcomeMessage && (
             <div className="mt-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100 relative group">
               <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+                <Sparkles className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
                   {welcomeMessage}
                 </p>
@@ -456,7 +456,7 @@ export function Dashboard() {
                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white rounded-md"
                   title="Generar nuevo mensaje"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-gray-400 hover:text-primary-600" />
+                  <RefreshCw className="w-3.5 h-3.5 text-gray-400 hover:text-accent" />
                 </button>
               </div>
             </div>
@@ -468,7 +468,7 @@ export function Dashboard() {
               href={getMiPaginaWebFull(currentUser.web_slug)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-primary-700 transition-colors"
+              className="inline-flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-accent-hover transition-colors"
             >
               Mi Página Web
               <ExternalLink className="w-4 h-4" />
@@ -488,7 +488,7 @@ export function Dashboard() {
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
-            <Users className="w-8 h-8 text-primary-500 group-hover:scale-110 transition-transform" />
+            <Users className="w-8 h-8 text-accent group-hover:scale-110 transition-transform" />
           </div>
           <p className="text-2xl font-bold text-gray-900">{totalUsuarios}</p>
           <p className="text-xs text-gray-600 mt-1">
@@ -543,7 +543,7 @@ export function Dashboard() {
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="w-8 h-8 text-primary-500 group-hover:scale-110 transition-transform" />
+            <TrendingUp className="w-8 h-8 text-accent group-hover:scale-110 transition-transform" />
           </div>
           <p className="text-sm font-semibold text-gray-900">Producción</p>
           <p className="text-xs text-gray-600 mt-1">Ver reportes</p>
@@ -579,7 +579,7 @@ export function Dashboard() {
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between mb-2">
-              <Settings className="w-8 h-8 text-primary-500 group-hover:scale-110 transition-transform" />
+              <Settings className="w-8 h-8 text-accent group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-sm font-semibold text-gray-900">Config Producción</p>
             <p className="text-xs text-gray-600 mt-1">Google Sheets</p>

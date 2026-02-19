@@ -195,7 +195,7 @@ export function Configuracion() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -219,7 +219,7 @@ export function Configuracion() {
               onClick={() => setActiveTab('permisos')}
               className={`px-6 py-4 font-medium transition border-b-2 ${
                 activeTab === 'permisos'
-                  ? 'border-primary-600 text-primary-600'
+                  ? 'border-accent text-accent'
                   : 'border-transparent text-slate-600 hover:text-slate-800'
               }`}
             >
@@ -229,7 +229,7 @@ export function Configuracion() {
               onClick={() => setActiveTab('campos')}
               className={`px-6 py-4 font-medium transition border-b-2 ${
                 activeTab === 'campos'
-                  ? 'border-primary-600 text-primary-600'
+                  ? 'border-accent text-accent'
                   : 'border-transparent text-slate-600 hover:text-slate-800'
               }`}
             >
@@ -299,7 +299,7 @@ export function Configuracion() {
                                     type="checkbox"
                                     checked={permiso.visible}
                                     onChange={() => toggleVisible(rol, campo.key)}
-                                    className="w-5 h-5 text-primary-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                    className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
                                   />
                                   <span className="text-sm text-slate-600">V</span>
                                 </label>
@@ -331,7 +331,7 @@ export function Configuracion() {
                 <button
                   onClick={handleSavePermisos}
                   disabled={saving}
-                  className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50"
+                  className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50"
                 >
                   <Save className="w-5 h-5" />
                   <span>{saving ? 'Guardando...' : 'Guardar Configuración'}</span>
@@ -346,7 +346,7 @@ export function Configuracion() {
                 </p>
                 <button
                   onClick={() => setShowNewFieldModal(true)}
-                  className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                  className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg font-medium transition"
                 >
                   <Plus className="w-5 h-5" />
                   <span>Agregar Campo</span>
@@ -397,7 +397,7 @@ export function Configuracion() {
                                 onChange={(e) =>
                                   handleUpdateField(campo.id, { visible: e.target.checked })
                                 }
-                                className="w-4 h-4 text-primary-600 rounded"
+                                className="w-4 h-4 text-accent rounded"
                               />
                               <span className="text-sm text-slate-700">Visible</span>
                             </label>
@@ -408,7 +408,7 @@ export function Configuracion() {
                                 onChange={(e) =>
                                   handleUpdateField(campo.id, { editable: e.target.checked })
                                 }
-                                className="w-4 h-4 text-primary-600 rounded"
+                                className="w-4 h-4 text-accent rounded"
                               />
                               <span className="text-sm text-slate-700">Editable</span>
                             </label>
@@ -419,7 +419,7 @@ export function Configuracion() {
                                 onChange={(e) =>
                                   handleUpdateField(campo.id, { requerido: e.target.checked })
                                 }
-                                className="w-4 h-4 text-primary-600 rounded"
+                                className="w-4 h-4 text-accent rounded"
                               />
                               <span className="text-sm text-slate-700">Requerido</span>
                             </label>
@@ -500,7 +500,7 @@ export function Configuracion() {
                     type="checkbox"
                     checked={newField.visible}
                     onChange={(e) => setNewField({ ...newField, visible: e.target.checked })}
-                    className="w-4 h-4 text-primary-600 rounded"
+                    className="w-4 h-4 text-accent rounded"
                   />
                   <span className="text-sm text-slate-700">Visible para usuarios</span>
                 </label>
@@ -509,7 +509,7 @@ export function Configuracion() {
                     type="checkbox"
                     checked={newField.editable}
                     onChange={(e) => setNewField({ ...newField, editable: e.target.checked })}
-                    className="w-4 h-4 text-primary-600 rounded"
+                    className="w-4 h-4 text-accent rounded"
                   />
                   <span className="text-sm text-slate-700">Editable por usuarios</span>
                 </label>
@@ -518,7 +518,7 @@ export function Configuracion() {
                     type="checkbox"
                     checked={newField.requerido}
                     onChange={(e) => setNewField({ ...newField, requerido: e.target.checked })}
-                    className="w-4 h-4 text-primary-600 rounded"
+                    className="w-4 h-4 text-accent rounded"
                   />
                   <span className="text-sm text-slate-700">Campo requerido</span>
                 </label>
@@ -535,7 +535,7 @@ export function Configuracion() {
               <button
                 onClick={handleCreateField}
                 disabled={saving}
-                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition disabled:opacity-50"
+                className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition disabled:opacity-50"
               >
                 {saving ? 'Creando...' : 'Crear Campo'}
               </button>

@@ -63,11 +63,11 @@ export function UltimosCorreos() {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <div className="flex items-center space-x-3 mb-4">
-          <Mail className="w-6 h-6 text-primary-600" />
+          <Mail className="w-6 h-6 text-accent" />
           <h2 className="text-xl font-bold text-slate-900">Últimos Mensajes</h2>
         </div>
         <div className="flex justify-center py-8">
-          <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
         </div>
       </div>
     );
@@ -78,13 +78,13 @@ export function UltimosCorreos() {
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <Mail className="w-6 h-6 text-primary-600" />
+            <Mail className="w-6 h-6 text-accent" />
             <h2 className="text-xl font-bold text-slate-900">Últimos Mensajes</h2>
           </div>
           {emails.length > 0 && (
             <button
               onClick={() => navigate('/mis-correos')}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+              className="text-sm text-accent hover:text-primary-700 font-medium"
             >
               Ver más
             </button>
@@ -106,7 +106,7 @@ export function UltimosCorreos() {
               >
                 <div className="flex-shrink-0 mt-1">
                   <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                    <Mail className="w-5 h-5 text-primary-600" />
+                    <Mail className="w-5 h-5 text-accent" />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -119,7 +119,7 @@ export function UltimosCorreos() {
                         e.stopPropagation();
                         setSelectedEmail(email);
                       }}
-                      className="flex-shrink-0 text-primary-600 hover:text-primary-700 ml-2"
+                      className="flex-shrink-0 text-accent hover:text-primary-700 ml-2"
                     >
                       <Eye className="w-4 h-4" />
                     </button>

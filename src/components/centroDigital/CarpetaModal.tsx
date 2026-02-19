@@ -107,7 +107,7 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Folder className="w-5 h-5 text-blue-600" />
+              <Folder className="w-5 h-5 text-accent" />
             </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
@@ -161,7 +161,7 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                 onChange={(e) =>
                   setFormData({ ...formData, descripcion: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                 rows={3}
                 placeholder="Descripción opcional de la carpeta"
               />

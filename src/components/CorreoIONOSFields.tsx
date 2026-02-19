@@ -98,7 +98,7 @@ export function CorreoIONOSFields({
   return (
     <div className="bg-gradient-to-br from-blue-50 to-neutral-50 rounded-xl border-2 border-primary-200 p-6">
       <div className="flex items-center space-x-3 mb-4">
-        <div className="p-2 bg-primary-600 rounded-lg">
+        <div className="p-2 bg-accent rounded-lg">
           <Mail className="w-6 h-6 text-white" />
         </div>
         <div>
@@ -136,7 +136,7 @@ export function CorreoIONOSFields({
             value={emailCuenta || ''}
             onChange={(e) => onChange('email_cuenta', e.target.value)}
             disabled={!editable}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-100 disabled:text-neutral-500"
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:text-neutral-500"
             placeholder="nombre@jiro.mx"
           />
           <p className="text-xs text-neutral-500 mt-1">
@@ -154,7 +154,7 @@ export function CorreoIONOSFields({
               value={emailPassword || ''}
               onChange={(e) => onChange('email_password', e.target.value)}
               disabled={!editable}
-              className="w-full px-4 py-2.5 pr-10 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-100 disabled:text-neutral-500"
+              className="w-full px-4 py-2.5 pr-10 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:text-neutral-500"
               placeholder="Tu contraseña de correo"
             />
             {emailPassword && (
@@ -178,7 +178,7 @@ export function CorreoIONOSFields({
           <button
             onClick={handleVerificarConexion}
             disabled={verificando}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Shield className="w-5 h-5" />
             <span>{verificando ? 'Verificando conexión...' : 'Verificar conexión'}</span>

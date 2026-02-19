@@ -183,7 +183,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 value="resend"
                 checked={formData.tipo_integracion === 'resend'}
                 onChange={(e) => setFormData({ ...formData, tipo_integracion: e.target.value as 'resend' })}
-                className="w-4 h-4 text-primary-600"
+                className="w-4 h-4 text-accent"
               />
               <span className="text-sm text-neutral-700 font-medium">Resend (Recomendado)</span>
             </label>
@@ -193,7 +193,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 value="smtp"
                 checked={formData.tipo_integracion === 'smtp'}
                 onChange={(e) => setFormData({ ...formData, tipo_integracion: e.target.value as 'smtp' })}
-                className="w-4 h-4 text-primary-600"
+                className="w-4 h-4 text-accent"
               />
               <span className="text-sm text-neutral-700">SMTP</span>
             </label>
@@ -203,7 +203,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 value="sendgrid"
                 checked={formData.tipo_integracion === 'sendgrid'}
                 onChange={(e) => setFormData({ ...formData, tipo_integracion: e.target.value as 'sendgrid' })}
-                className="w-4 h-4 text-primary-600"
+                className="w-4 h-4 text-accent"
               />
               <span className="text-sm text-neutral-700">SendGrid</span>
             </label>
@@ -223,7 +223,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                   value={formData.servidor}
                   onChange={(e) => setFormData({ ...formData, servidor: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   placeholder="smtp.gmail.com"
                 />
               </div>
@@ -237,7 +237,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                   value={formData.puerto}
                   onChange={(e) => setFormData({ ...formData, puerto: parseInt(e.target.value) })}
                   required
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 />
               </div>
             </div>
@@ -251,7 +251,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 value={formData.usuario}
                 onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
                 required
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 placeholder="usuario@dominio.com"
               />
             </div>
@@ -266,7 +266,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required={!config?.id}
-                  className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   placeholder="••••••••"
                 />
                 <button
@@ -286,7 +286,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
               <select
                 value={formData.seguridad}
                 onChange={(e) => setFormData({ ...formData, seguridad: e.target.value as any })}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
               >
                 <option value="tls">TLS</option>
                 <option value="ssl">SSL</option>
@@ -308,7 +308,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 value={formData.api_key}
                 onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
                 required={!config?.id}
-                className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 placeholder="SG.xxxx"
               />
               <button
@@ -343,7 +343,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                   value={formData.resend_api_key}
                   onChange={(e) => setFormData({ ...formData, resend_api_key: e.target.value })}
                   required={!config?.id}
-                  className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   placeholder="re_xxxxxxxxxxxx"
                 />
                 <button
@@ -375,7 +375,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 value={formData.remitente_nombre}
                 onChange={(e) => setFormData({ ...formData, remitente_nombre: e.target.value })}
                 required
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 placeholder="MOVI Digital"
               />
             </div>
@@ -389,7 +389,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 value={formData.remitente_email}
                 onChange={(e) => setFormData({ ...formData, remitente_email: e.target.value })}
                 required
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 placeholder="noreply@jiro.mx"
               />
             </div>
@@ -403,7 +403,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
             id="activo"
             checked={formData.activo}
             onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-            className="w-5 h-5 text-primary-600 rounded focus:ring-2 focus:ring-primary-500"
+            className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-accent"
           />
           <label htmlFor="activo" className="text-sm font-medium text-neutral-700 cursor-pointer">
             Activar sistema de envío de correos
@@ -415,7 +415,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
+            className="flex-1 px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
           >
             <Save className="w-5 h-5" />
             {saving ? 'Guardando...' : 'Guardar Configuración'}
@@ -427,7 +427,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
       {config?.id && (
         <div className="border-t border-neutral-200 pt-6">
           <h3 className="text-lg font-semibold text-neutral-800 mb-4 flex items-center gap-2">
-            <Send className="w-5 h-5 text-primary-600" />
+            <Send className="w-5 h-5 text-accent" />
             Prueba de Envío por Correo
           </h3>
 
@@ -441,7 +441,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 value={testEmail}
                 onChange={(e) => setTestEmail(e.target.value)}
                 placeholder="tucorreo@ejemplo.com"
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
               />
               <p className="text-xs text-neutral-600 mt-1">
                 📧 Ingresa el correo donde recibirás el mensaje de prueba
@@ -457,7 +457,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 value={testAsunto}
                 onChange={(e) => setTestAsunto(e.target.value)}
                 placeholder="Asunto del mensaje..."
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
               />
               <p className="text-xs text-neutral-600 mt-1">
                 📝 Personaliza el asunto del correo de prueba
@@ -473,7 +473,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
                 onChange={(e) => setTestMensaje(e.target.value)}
                 rows={6}
                 placeholder="Escribe tu mensaje de prueba aquí..."
-                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent font-mono text-sm"
               />
               <p className="text-xs text-neutral-600 mt-1">
                 💬 Personaliza el contenido del correo. Se enviará con formato HTML automático.
@@ -484,7 +484,7 @@ export function ConfiguracionSMTP({ config, onConfigSaved }: ConfiguracionSMTPPr
               type="button"
               onClick={handleTestEmail}
               disabled={testing || !testEmail || !testAsunto.trim() || !testMensaje.trim()}
-              className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
+              className="w-full px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
             >
               <Send className="w-5 h-5" />
               {testing ? 'Enviando correo...' : 'Enviar Prueba por Correo'}

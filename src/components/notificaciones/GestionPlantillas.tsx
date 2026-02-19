@@ -119,13 +119,13 @@ export function GestionPlantillas() {
               onClick={() => handleSelectPlantilla(plantilla)}
               className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
                 selectedPlantilla?.id === plantilla.id
-                  ? 'border-primary-500 bg-primary-50'
+                  ? 'border-accent bg-primary-50'
                   : 'border-neutral-200 hover:border-neutral-300 bg-white'
               }`}
             >
               <div className="flex items-start gap-3">
                 <FileText className={`w-5 h-5 flex-shrink-0 ${
-                  selectedPlantilla?.id === plantilla.id ? 'text-primary-600' : 'text-neutral-400'
+                  selectedPlantilla?.id === plantilla.id ? 'text-accent' : 'text-neutral-400'
                 }`} />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-neutral-800 truncate">
@@ -185,7 +185,7 @@ export function GestionPlantillas() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-primary-600" />
+                        <Mail className="w-4 h-4 text-accent" />
                         <Label htmlFor="enviar-correo" className="text-sm font-medium text-neutral-700">
                           Correo Electrónico
                         </Label>
@@ -235,7 +235,7 @@ export function GestionPlantillas() {
                     type="text"
                     value={asunto}
                     onChange={(e) => setAsunto(e.target.value)}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   />
                 </div>
 
@@ -247,7 +247,7 @@ export function GestionPlantillas() {
                     value={cuerpo}
                     onChange={(e) => setCuerpo(e.target.value)}
                     rows={15}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent font-mono text-sm"
                   />
                 </div>
 
@@ -255,7 +255,7 @@ export function GestionPlantillas() {
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 font-medium"
+                    className="flex-1 px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors flex items-center justify-center gap-2 font-medium"
                   >
                     <Save className="w-5 h-5" />
                     {saving ? 'Guardando...' : 'Guardar Cambios'}

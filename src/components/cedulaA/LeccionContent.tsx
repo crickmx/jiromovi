@@ -24,7 +24,7 @@ export default function LeccionContent({ contenido }: Props) {
 
       case 'definicion':
         return (
-          <div key={index} className="bg-primary-600 border-l-4 border-primary-800 rounded-ios-lg p-5 mb-6">
+          <div key={index} className="bg-accent border-l-4 border-primary-800 rounded-ios-lg p-5 mb-6">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 bg-primary-800 rounded-ios flex items-center justify-center flex-shrink-0 mt-0.5">
                 <BookOpen className="w-4 h-4 text-white" />
@@ -76,7 +76,7 @@ export default function LeccionContent({ contenido }: Props) {
             <ul className="space-y-2">
               {seccion.items?.map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
                   <span className="text-neutral-700 leading-relaxed">{item}</span>
                 </li>
               ))}

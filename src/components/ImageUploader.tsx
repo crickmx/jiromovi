@@ -87,7 +87,7 @@ export function ImageUploader({
       <div
         className={`relative border-2 border-dashed rounded-lg transition-colors ${
           isDragging
-            ? 'border-primary-500 bg-primary-50'
+            ? 'border-accent bg-primary-50'
             : 'border-slate-300 hover:border-slate-400'
         }`}
         onDrop={handleDrop}

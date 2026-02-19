@@ -327,12 +327,12 @@ export function AccesosNacional() {
       <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div className="flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-primary-600">Accesos Nacional</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-accent">Accesos Nacional</h1>
             <p className="text-sm sm:text-base text-neutral-600 mt-1">Credenciales compartidas de acceso nacional</p>
           </div>
           <button
             onClick={() => openModal()}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors min-h-[44px] w-full sm:w-auto text-sm sm:text-base font-semibold"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors min-h-[44px] w-full sm:w-auto text-sm sm:text-base font-semibold"
           >
             <Plus className="w-4 h-4" />
             Agregar Acceso
@@ -348,7 +348,7 @@ export function AccesosNacional() {
                 placeholder="Buscar por Aseguradora, Usuario..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px]"
+                className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent min-h-[44px]"
               />
             </div>
             <div className="flex gap-2">
@@ -428,7 +428,7 @@ export function AccesosNacional() {
                                         <span className="text-xs font-mono text-neutral-900">{acceso.clave_agente}</span>
                                         <button
                                           onClick={() => handleCopyToClipboard(acceso.clave_agente!, `clave-${acceso.id}`)}
-                                          className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                          className="p-1 text-neutral-400 hover:text-accent transition-colors rounded"
                                           title="Copiar clave"
                                         >
                                           {copiedId === `clave-${acceso.id}` ? (
@@ -448,7 +448,7 @@ export function AccesosNacional() {
                                         <span className="text-xs text-neutral-900">{acceso.usuario_1}</span>
                                         <button
                                           onClick={() => handleCopyToClipboard(acceso.usuario_1, `user1-${acceso.id}`)}
-                                          className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                          className="p-1 text-neutral-400 hover:text-accent transition-colors rounded"
                                           title="Copiar usuario"
                                         >
                                           {copiedId === `user1-${acceso.id}` ? (
@@ -463,7 +463,7 @@ export function AccesosNacional() {
                                           <span className="text-xs text-neutral-600">{acceso.usuario_2}</span>
                                           <button
                                             onClick={() => handleCopyToClipboard(acceso.usuario_2!, `user2-${acceso.id}`)}
-                                            className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                            className="p-1 text-neutral-400 hover:text-accent transition-colors rounded"
                                             title="Copiar usuario 2"
                                           >
                                             {copiedId === `user2-${acceso.id}` ? (
@@ -481,7 +481,7 @@ export function AccesosNacional() {
                                       <span className="text-xs font-mono text-neutral-900">{acceso.contrasena}</span>
                                       <button
                                         onClick={() => handleCopyToClipboard(acceso.contrasena, `pass-${acceso.id}`)}
-                                        className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                        className="p-1 text-neutral-400 hover:text-accent transition-colors rounded"
                                         title="Copiar contraseña"
                                       >
                                         {copiedId === `pass-${acceso.id}` ? (
@@ -498,7 +498,7 @@ export function AccesosNacional() {
                                         href={acceso.link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary-600 text-white text-xs rounded hover:bg-primary-700 transition-colors font-medium"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-accent text-white text-xs rounded hover:bg-accent-hover transition-colors font-medium"
                                         title="Ingresar al portal"
                                       >
                                         <ExternalLink className="w-3.5 h-3.5" />
@@ -506,14 +506,14 @@ export function AccesosNacional() {
                                       </a>
                                       <button
                                         onClick={() => openDetailsModal(acceso)}
-                                        className="p-1.5 text-neutral-600 hover:text-primary-600 transition-colors rounded hover:bg-neutral-100"
+                                        className="p-1.5 text-neutral-600 hover:text-accent transition-colors rounded hover:bg-neutral-100"
                                         title="Ver detalles"
                                       >
                                         <Eye className="w-4 h-4" />
                                       </button>
                                       <button
                                         onClick={() => openModal(acceso)}
-                                        className="p-1.5 text-neutral-600 hover:text-primary-600 transition-colors rounded hover:bg-neutral-100"
+                                        className="p-1.5 text-neutral-600 hover:text-accent transition-colors rounded hover:bg-neutral-100"
                                         title="Editar"
                                       >
                                         <Edit2 className="w-4 h-4" />
@@ -585,7 +585,7 @@ export function AccesosNacional() {
                                   <span className="text-sm font-mono text-neutral-900">{acceso.clave_agente}</span>
                                   <button
                                     onClick={() => handleCopyToClipboard(acceso.clave_agente!, `mobile-clave-${acceso.id}`)}
-                                    className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                    className="p-1 text-neutral-400 hover:text-accent transition-colors rounded"
                                   >
                                     {copiedId === `mobile-clave-${acceso.id}` ? (
                                       <Check className="w-4 h-4 text-emerald-500" />
@@ -604,7 +604,7 @@ export function AccesosNacional() {
                                   <span className="text-sm text-neutral-900">{acceso.usuario_1}</span>
                                   <button
                                     onClick={() => handleCopyToClipboard(acceso.usuario_1, `mobile-user1-${acceso.id}`)}
-                                    className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                    className="p-1 text-neutral-400 hover:text-accent transition-colors rounded"
                                   >
                                     {copiedId === `mobile-user1-${acceso.id}` ? (
                                       <Check className="w-4 h-4 text-emerald-500" />
@@ -618,7 +618,7 @@ export function AccesosNacional() {
                                     <span className="text-sm text-neutral-600">{acceso.usuario_2}</span>
                                     <button
                                       onClick={() => handleCopyToClipboard(acceso.usuario_2!, `mobile-user2-${acceso.id}`)}
-                                      className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                      className="p-1 text-neutral-400 hover:text-accent transition-colors rounded"
                                     >
                                       {copiedId === `mobile-user2-${acceso.id}` ? (
                                         <Check className="w-4 h-4 text-emerald-500" />
@@ -637,7 +637,7 @@ export function AccesosNacional() {
                                 <span className="text-sm font-mono text-neutral-900">{acceso.contrasena}</span>
                                 <button
                                   onClick={() => handleCopyToClipboard(acceso.contrasena, `mobile-pass-${acceso.id}`)}
-                                  className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded"
+                                  className="p-1 text-neutral-400 hover:text-accent transition-colors rounded"
                                 >
                                   {copiedId === `mobile-pass-${acceso.id}` ? (
                                     <Check className="w-4 h-4 text-emerald-500" />
@@ -653,21 +653,21 @@ export function AccesosNacional() {
                                 href={acceso.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors font-semibold"
+                                className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors font-semibold"
                               >
                                 <ExternalLink className="w-4 h-4" />
                                 Ingresar
                               </a>
                               <button
                                 onClick={() => openDetailsModal(acceso)}
-                                className="p-2 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100 border border-neutral-300"
+                                className="p-2 text-neutral-600 hover:text-accent transition-colors rounded-lg hover:bg-neutral-100 border border-neutral-300"
                                 title="Ver detalles"
                               >
                                 <Eye className="w-5 h-5" />
                               </button>
                               <button
                                 onClick={() => openModal(acceso)}
-                                className="p-2 text-neutral-600 hover:text-primary-600 transition-colors rounded-lg hover:bg-neutral-100 border border-neutral-300"
+                                className="p-2 text-neutral-600 hover:text-accent transition-colors rounded-lg hover:bg-neutral-100 border border-neutral-300"
                                 title="Editar"
                               >
                                 <Edit2 className="w-4 h-4" />
@@ -713,7 +713,7 @@ export function AccesosNacional() {
                   value={formData.aseguradora}
                   onChange={(e) => setFormData({ ...formData, aseguradora: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   placeholder="Nombre de la aseguradora"
                 />
               </div>
@@ -728,7 +728,7 @@ export function AccesosNacional() {
                     value={formData.usuario_1}
                     onChange={(e) => setFormData({ ...formData, usuario_1: e.target.value })}
                     required
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                     placeholder="Primer usuario"
                   />
                 </div>
@@ -739,7 +739,7 @@ export function AccesosNacional() {
                     type="text"
                     value={formData.usuario_2}
                     onChange={(e) => setFormData({ ...formData, usuario_2: e.target.value })}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                     placeholder="Segundo usuario (opcional)"
                   />
                 </div>
@@ -754,7 +754,7 @@ export function AccesosNacional() {
                   value={formData.contrasena}
                   onChange={(e) => setFormData({ ...formData, contrasena: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent font-mono"
                   placeholder="Contraseña"
                 />
               </div>
@@ -768,7 +768,7 @@ export function AccesosNacional() {
                   value={formData.link}
                   onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   placeholder="https://ejemplo.com"
                 />
                 <p className="text-xs text-neutral-500 mt-1">Debe comenzar con http:// o https://</p>
@@ -782,7 +782,7 @@ export function AccesosNacional() {
                   type="text"
                   value={formData.clave_agente}
                   onChange={(e) => setFormData({ ...formData, clave_agente: e.target.value })}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent font-mono"
                   placeholder="Ej. A12345"
                 />
                 <p className="text-xs text-neutral-500 mt-1">Clave alfanumérica de identificación del agente (opcional)</p>
@@ -798,7 +798,7 @@ export function AccesosNacional() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors min-h-[44px] font-semibold"
+                  className="px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors min-h-[44px] font-semibold"
                 >
                   {editingAcceso ? 'Guardar Cambios' : 'Agregar Acceso'}
                 </button>
@@ -836,7 +836,7 @@ export function AccesosNacional() {
                     <p className="text-neutral-900 font-mono">{selectedAcceso.clave_agente}</p>
                     <button
                       onClick={() => handleCopyToClipboard(selectedAcceso.clave_agente!, selectedAcceso.id)}
-                      className="p-1 text-neutral-400 hover:text-primary-600 transition-colors rounded hover:bg-neutral-100"
+                      className="p-1 text-neutral-400 hover:text-accent transition-colors rounded hover:bg-neutral-100"
                       title="Copiar clave"
                     >
                       {copiedId === selectedAcceso.id ? (

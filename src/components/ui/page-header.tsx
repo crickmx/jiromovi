@@ -30,10 +30,10 @@ export function PageHeader({
           <div className="flex items-center gap-3 mb-2">
             {Icon && (
               <div className="flex-shrink-0 p-2 bg-primary-50 rounded-lg">
-                <Icon className="w-6 h-6 text-primary-600" />
+                <Icon className="w-6 h-6 text-accent" />
               </div>
             )}
-            <h1 className="text-2xl sm:text-3xl font-bold text-primary-600 tracking-tight truncate">
+            <h1 className="text-2xl sm:text-3xl font-bold text-accent tracking-tight truncate">
               {title}
             </h1>
           </div>

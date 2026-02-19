@@ -58,7 +58,7 @@ export function ComisionesPendientes({ tramiteId }: ComisionesPendientesProps) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export function ComisionesPendientes({ tramiteId }: ComisionesPendientesProps) {
     <div className="space-y-4">
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
           <div className="flex-1">
             <h3 className="font-semibold text-blue-900 mb-1">
               Comisiones Pendientes de Pago
@@ -98,7 +98,7 @@ export function ComisionesPendientes({ tramiteId }: ComisionesPendientesProps) {
             className="bg-white border border-neutral-200 rounded-xl p-5 hover:shadow-soft transition-shadow"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-primary-600">
+              <h3 className="text-lg font-semibold text-accent">
                 Comisión #{comision.orden}
               </h3>
               <span className="text-xs text-neutral-500">
@@ -161,7 +161,7 @@ export function ComisionesPendientes({ tramiteId }: ComisionesPendientesProps) {
                   >
                     <FileText className="w-4 h-4" />
                     <span className="text-sm truncate">{archivoAsociado.nombre}</span>
-                    <span className="text-xs text-primary-600 ml-auto">
+                    <span className="text-xs text-accent ml-auto">
                       {(archivoAsociado.tamano / 1024).toFixed(2)} KB
                     </span>
                   </a>

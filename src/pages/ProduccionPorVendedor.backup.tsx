@@ -248,7 +248,7 @@ export default function ProduccionPorVendedor() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -275,13 +275,13 @@ export default function ProduccionPorVendedor() {
               {isAdmin && (
                 <button
                   onClick={() => navigate('/produccion/configuracion')}
-                  className="flex items-center space-x-2 bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm sm:text-base"
+                  className="flex items-center space-x-2 bg-accent text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm sm:text-base"
                 >
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">Configuración</span>
                 </button>
               )}
-              <Users className="w-10 h-10 sm:w-12 sm:h-12 text-primary-600 flex-shrink-0" />
+              <Users className="w-10 h-10 sm:w-12 sm:h-12 text-accent flex-shrink-0" />
             </div>
           </div>
         </div>
@@ -341,7 +341,7 @@ export default function ProduccionPorVendedor() {
                   value={filters.searchVendor}
                   onChange={(e) => setFilters({ ...filters, searchVendor: e.target.value })}
                   placeholder="Nombre o usuario MOVI..."
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
 
@@ -352,7 +352,7 @@ export default function ProduccionPorVendedor() {
                 <select
                   value={filters.mappingStatus}
                   onChange={(e) => setFilters({ ...filters, mappingStatus: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="all">Todos</option>
                   <option value="mapped">Asignados</option>
@@ -368,7 +368,7 @@ export default function ProduccionPorVendedor() {
                   type="date"
                   value={filters.dateFrom}
                   onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
 
@@ -380,7 +380,7 @@ export default function ProduccionPorVendedor() {
                   type="date"
                   value={filters.dateTo}
                   onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
 
@@ -393,7 +393,7 @@ export default function ProduccionPorVendedor() {
                   value={filters.ramo}
                   onChange={(e) => setFilters({ ...filters, ramo: e.target.value })}
                   placeholder="Filtrar por ramo..."
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
 
@@ -406,7 +406,7 @@ export default function ProduccionPorVendedor() {
                   value={filters.aseguradora}
                   onChange={(e) => setFilters({ ...filters, aseguradora: e.target.value })}
                   placeholder="Filtrar por aseguradora..."
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
             </div>

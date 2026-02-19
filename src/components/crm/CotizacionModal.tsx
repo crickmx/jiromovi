@@ -165,7 +165,7 @@ export default function CotizacionModal({ contactoId, cotizacion, onClose, onSav
             </label>
             <div className="mt-1 flex items-center gap-3">
               <label className="flex-1 cursor-pointer">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-primary-500 transition">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-accent transition">
                   <div className="flex items-center justify-center gap-2 text-gray-600">
                     <Upload className="h-5 w-5" />
                     <span className="text-sm">
@@ -192,7 +192,7 @@ export default function CotizacionModal({ contactoId, cotizacion, onClose, onSav
                     <button
                       type="button"
                       onClick={() => abrirArchivoCRM(cotizacion.archivo_url!)}
-                      className="text-primary-600 hover:text-primary-800 p-1.5 hover:bg-primary-50 rounded transition"
+                      className="text-accent hover:text-primary-800 p-1.5 hover:bg-primary-50 rounded transition"
                       title="Abrir en nueva pestaña"
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -222,7 +222,7 @@ export default function CotizacionModal({ contactoId, cotizacion, onClose, onSav
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50"
               disabled={loading}
             >
               {loading ? 'Guardando...' : 'Guardar Cotización'}

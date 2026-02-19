@@ -68,7 +68,7 @@ export function UltimoComunicado() {
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <FileText className="w-5 h-5 text-primary-500" />
+            <FileText className="w-5 h-5 text-accent" />
             <CardTitle>Último Comunicado</CardTitle>
           </div>
           <Button
@@ -78,7 +78,7 @@ export function UltimoComunicado() {
               e.stopPropagation();
               navigate('/comunicados');
             }}
-            className="text-primary-500 hover:text-primary-600"
+            className="text-accent hover:text-accent"
           >
             Ver todos
             <ArrowRight className="w-4 h-4 ml-1" />
@@ -117,7 +117,7 @@ export function UltimoComunicado() {
                 </span>
               </div>
 
-              <h4 className="text-lg font-bold text-neutral-900 mb-2 group-hover:text-primary-500 transition-colors line-clamp-2">
+              <h4 className="text-lg font-bold text-neutral-900 mb-2 group-hover:text-accent transition-colors line-clamp-2">
                 {comunicado.titulo}
               </h4>
 
@@ -125,7 +125,7 @@ export function UltimoComunicado() {
                 {extraerTextoPlano(comunicado.contenido_html, 150)}
               </p>
 
-              <button className="text-primary-500 hover:text-primary-600 font-medium text-sm flex items-center gap-1 group/btn">
+              <button className="text-accent hover:text-accent font-medium text-sm flex items-center gap-1 group/btn">
                 Leer más
                 <span className="group-hover/btn:translate-x-1 transition-transform">→</span>
               </button>

@@ -182,7 +182,7 @@ export default function CRMTareas() {
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-primary-600">Mis Tareas</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-accent">Mis Tareas</h1>
             <p className="text-gray-600 mt-1">Gestiona tus actividades y seguimientos</p>
           </div>
           <button

@@ -101,13 +101,13 @@ export default function ReasignarUsuarioModal({
         <div className="p-4 sm:p-6">
           <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
             <div className="flex items-start gap-3">
-              <User className="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+              <User className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-primary-900">Usuario actual</p>
                 <p className="text-sm text-primary-800 mt-1">{group.user_name}</p>
                 <p className="text-xs text-primary-700 mt-0.5">{group.user_email}</p>
                 <div className="flex items-center gap-2 mt-2">
-                  <FileText className="h-4 w-4 text-primary-600 flex-shrink-0" />
+                  <FileText className="h-4 w-4 text-accent flex-shrink-0" />
                   <span className="text-sm font-medium text-primary-900">
                     {group.document_count} documentos asignados
                   </span>
@@ -164,7 +164,7 @@ export default function ReasignarUsuarioModal({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar por nombre o email..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-accent"
               />
             </div>
           </div>
@@ -176,7 +176,7 @@ export default function ReasignarUsuarioModal({
             <div className="border border-gray-200 rounded-xl max-h-64 overflow-y-auto">
               {searching ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                 </div>
               ) : users.length === 0 ? (
                 <div className="text-center py-8 px-4">
@@ -192,7 +192,7 @@ export default function ReasignarUsuarioModal({
                       key={user.id}
                       onClick={() => setSelectedUser(user)}
                       className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition flex items-center gap-3 ${
-                        selectedUser?.id === user.id ? 'bg-primary-50 border-l-4 border-primary-600' : ''
+                        selectedUser?.id === user.id ? 'bg-primary-50 border-l-4 border-accent' : ''
                       }`}
                     >
                       <User className="h-5 w-5 text-gray-400 flex-shrink-0" />
@@ -203,7 +203,7 @@ export default function ReasignarUsuarioModal({
                         <p className="text-xs text-gray-500 truncate">{user.email}</p>
                       </div>
                       {selectedUser?.id === user.id && (
-                        <div className="flex-shrink-0 h-5 w-5 bg-primary-600 rounded-full flex items-center justify-center">
+                        <div className="flex-shrink-0 h-5 w-5 bg-accent rounded-full flex items-center justify-center">
                           <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 12 12">
                             <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" fill="none" />
                           </svg>
@@ -222,7 +222,7 @@ export default function ReasignarUsuarioModal({
                 type="checkbox"
                 checked={saveMapping}
                 onChange={(e) => setSaveMapping(e.target.checked)}
-                className="mt-1 h-4 w-4 text-primary-600 rounded border-gray-300 focus:ring-blue-500"
+                className="mt-1 h-4 w-4 text-accent rounded border-gray-300 focus:ring-blue-500"
               />
               <div className="flex-1">
                 <span className="text-sm font-medium text-gray-900">
@@ -258,7 +258,7 @@ export default function ReasignarUsuarioModal({
             <button
               onClick={handleSubmit}
               disabled={!selectedUser || loading}
-              className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold min-h-[44px]"
+              className="w-full sm:w-auto px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold min-h-[44px]"
             >
               {loading ? (
                 <>

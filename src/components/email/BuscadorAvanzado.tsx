@@ -146,7 +146,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
                 type="text"
                 value={remitente}
                 onChange={(e) => setRemitente(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Nombre o correo del remitente"
               />
             </div>
@@ -160,7 +160,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
                 type="text"
                 value={asunto}
                 onChange={(e) => setAsunto(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Palabras en el asunto"
               />
             </div>
@@ -174,7 +174,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
                 type="text"
                 value={palabrasClave}
                 onChange={(e) => setPalabrasClave(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Buscar en el contenido"
               />
             </div>
@@ -188,7 +188,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
                 type="date"
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
 
@@ -201,7 +201,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
                 type="date"
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
 
@@ -212,7 +212,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
               <select
                 value={carpeta}
                 onChange={(e) => setCarpeta(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
               >
                 <option value="todas">Todas las carpetas</option>
                 <option value="INBOX">Bandeja de entrada</option>
@@ -229,7 +229,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
                   type="checkbox"
                   checked={conAdjuntos}
                   onChange={(e) => setConAdjuntos(e.target.checked)}
-                  className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                  className="w-4 h-4 text-accent border-neutral-300 rounded focus:ring-accent"
                 />
                 <span className="text-sm text-neutral-700 flex items-center space-x-1">
                   <Paperclip className="w-4 h-4" />
@@ -249,7 +249,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
                 type="text"
                 value={nombreBusqueda}
                 onChange={(e) => setNombreBusqueda(e.target.value)}
-                className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Nombre de la búsqueda"
               />
               <button

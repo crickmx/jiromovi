@@ -87,7 +87,7 @@ Prima Total,$${reporteData.primaTotal.toLocaleString('es-MX')}`;
           <ArrowLeft className="h-5 w-5 mr-2" />
           Volver a Mi CRM
         </button>
-        <h1 className="text-2xl md:text-3xl font-bold text-primary-600">Reportes y Analíticas</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-accent">Reportes y Analíticas</h1>
         <p className="text-gray-600 mt-1">Analiza el desempeño de tu CRM</p>
       </div>
 
@@ -126,7 +126,7 @@ Prima Total,$${reporteData.primaTotal.toLocaleString('es-MX')}`;
         <button
           onClick={generarReporte}
           disabled={loading}
-          className="mt-4 bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+          className="mt-4 bg-accent text-white px-6 py-2 rounded-lg hover:bg-accent-hover disabled:opacity-50"
         >
           {loading ? 'Generando...' : 'Generar Reporte'}
         </button>
@@ -141,7 +141,7 @@ Prima Total,$${reporteData.primaTotal.toLocaleString('es-MX')}`;
                   <p className="text-sm text-gray-600">Total Contactos</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">{reporteData.totalContactos}</p>
                 </div>
-                <Users className="h-8 w-8 text-primary-600" />
+                <Users className="h-8 w-8 text-accent" />
               </div>
             </div>
 

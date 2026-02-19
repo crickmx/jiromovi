@@ -190,7 +190,7 @@ export default function CentroDigital() {
       <Layout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto" />
             <p className="mt-4 text-gray-600">Cargando Centro Digital...</p>
           </div>
         </div>
@@ -363,7 +363,7 @@ export default function CentroDigital() {
                       <tr key={archivo.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <File className="w-5 h-5 text-blue-600" />
+                            <File className="w-5 h-5 text-accent" />
                             <span className="font-medium text-gray-900">
                               {archivo.nombre}
                             </span>
@@ -382,7 +382,7 @@ export default function CentroDigital() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleDescargar(archivo)}
-                              className="text-blue-600 hover:text-blue-700"
+                              className="text-accent hover:text-blue-700"
                               title="Descargar"
                             >
                               <Download className="w-5 h-5" />
@@ -483,7 +483,7 @@ export default function CentroDigital() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3 flex-1">
                     <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Folder className="w-6 h-6 text-blue-600" />
+                      <Folder className="w-6 h-6 text-accent" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-gray-900 truncate">
@@ -541,7 +541,7 @@ export default function CentroDigital() {
                   <span className="text-gray-500">
                     {new Date(carpeta.created_at).toLocaleDateString()}
                   </span>
-                  <span className="text-blue-600 group-hover:underline">
+                  <span className="text-accent group-hover:underline">
                     Ver archivos
                   </span>
                 </div>

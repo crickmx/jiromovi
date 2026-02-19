@@ -474,7 +474,7 @@ export function MultiOptionQuote({
                 <div className="pt-4 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
                   <div className="text-center">
                     <div className="text-xs text-gray-500 mb-1">Total a Pagar</div>
-                    <div className="text-2xl font-bold text-primary-600">
+                    <div className="text-2xl font-bold text-accent">
                       {formatCurrency(result.options[idx].totales.total_pagar)}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">

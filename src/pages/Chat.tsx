@@ -245,10 +245,10 @@ export function Chat() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="p-2 bg-primary-100 rounded-lg">
-              <MessageSquare className="w-6 h-6 text-primary-600" />
+              <MessageSquare className="w-6 h-6 text-accent" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-primary-600">Chat</h1>
+              <h1 className="text-2xl font-bold text-accent">Chat</h1>
               <p className="text-sm text-neutral-600">Mensajería interna en tiempo real</p>
             </div>
           </div>
@@ -256,7 +256,7 @@ export function Chat() {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setShowNuevoChat(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all"
+              className="flex items-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all"
             >
               <Plus className="w-5 h-5" />
               <span>Nuevo Chat</span>
@@ -265,7 +265,7 @@ export function Chat() {
             {usuario.rol !== 'Empleado' && (
               <button
                 onClick={() => setShowNuevoGrupo(true)}
-                className="flex items-center space-x-2 px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-all"
+                className="flex items-center space-x-2 px-4 py-2 border border-accent text-accent rounded-lg hover:bg-primary-50 transition-all"
               >
                 <Users className="w-5 h-5" />
                 <span>Nuevo Grupo</span>

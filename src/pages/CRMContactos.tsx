@@ -104,7 +104,7 @@ export default function CRMContactos() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
       </div>
     );
   }
@@ -122,12 +122,12 @@ export default function CRMContactos() {
       </div>
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary-600">Contactos</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-accent">Contactos</h1>
           <p className="text-gray-600 mt-1">Gestiona tus prospectos y clientes</p>
         </div>
         <button
           onClick={handleAgregarContacto}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center justify-center gap-2"
+          className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center justify-center gap-2"
         >
           <Plus className="h-5 w-5" />
           Agregar Contacto
@@ -227,7 +227,7 @@ export default function CRMContactos() {
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           to={`/mi-crm/contactos/${contacto.id}`}
-                          className="text-primary-600 hover:text-primary-900"
+                          className="text-accent hover:text-primary-900"
                         >
                           <Eye className="h-5 w-5" />
                         </Link>

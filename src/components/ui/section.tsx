@@ -28,7 +28,7 @@ export function Section({
   const variantStyles = {
     default: '',
     card: 'bg-white rounded-lg border border-neutral-200 shadow-ios',
-    bordered: 'border-l-4 border-primary-500 pl-4'
+    bordered: 'border-l-4 border-accent pl-4'
   };
 
   return (
@@ -43,7 +43,7 @@ export function Section({
           <div className="flex-1 min-w-0">
             {title && (
               <div className="flex items-center gap-2 mb-1">
-                {Icon && <Icon className="w-5 h-5 text-primary-600 flex-shrink-0" />}
+                {Icon && <Icon className="w-5 h-5 text-accent flex-shrink-0" />}
                 <h2 className="text-lg sm:text-xl font-semibold text-neutral-900 tracking-tight truncate">
                   {title}
                 </h2>

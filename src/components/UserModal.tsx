@@ -448,7 +448,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         type="submit"
         form="user-form"
         disabled={loading}
-        className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition disabled:opacity-50"
+        className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50"
       >
         {loading ? 'Guardando...' : user ? 'Actualizar Usuario' : 'Crear Usuario'}
       </button>
@@ -462,7 +462,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
       title={
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-            <User className="w-5 h-5 text-primary-600" />
+            <User className="w-5 h-5 text-accent" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
@@ -498,7 +498,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap
                   ${
                     activeTab === tab.id
-                      ? 'border-primary-500 text-primary-600'
+                      ? 'border-accent text-accent'
                       : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
                   }
                 `}
@@ -532,7 +532,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       required={!user}
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                       placeholder={user ? 'Dejar en blanco para mantener actual' : 'Mínimo 6 caracteres'}
                     />
                   </div>
@@ -554,7 +554,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     required
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     placeholder="Ej: Juan"
                   />
                 </div>
@@ -566,7 +566,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     value={formData.apellidos}
                     onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
                     required
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     placeholder="Ej: Pérez García"
                   />
                 </div>
@@ -578,7 +578,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
                     required
                     disabled={!isAdmin && !isGerente}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
                     <option value="Empleado">Empleado</option>
                     <option value="Agente">Agente</option>
@@ -598,7 +598,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     type="text"
                     value={formData.puesto}
                     onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     placeholder="Ej: Gerente de Ventas"
                   />
                 </div>
@@ -613,7 +613,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     onChange={(e) => setFormData({ ...formData, oficina_id: e.target.value })}
                     disabled={isGerente}
                     required
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
                     <option value="">Seleccionar oficina</option>
                     {oficinas.map((oficina) => (
@@ -637,7 +637,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     type="date"
                     value={formData.fecha_nacimiento}
                     onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
 
@@ -649,7 +649,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     type="date"
                     value={formData.fecha_ingreso}
                     onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
 
@@ -663,11 +663,11 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                       value={formData.web_slug}
                       onChange={(e) => setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                       placeholder="ejemplo: juanperez"
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     />
                     <p className="text-xs text-slate-500 mt-1">
                       {formData.web_slug ? (
-                        <>URL: <span className="font-mono text-primary-600">agentedeseguros.website/{formData.web_slug}</span></>
+                        <>URL: <span className="font-mono text-accent">agentedeseguros.website/{formData.web_slug}</span></>
                       ) : (
                         'Solo letras minúsculas, números y guiones'
                       )}
@@ -681,7 +681,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
             {isAdmin && formData.rol === 'Gerente' && (
               <div className="bg-gradient-to-br from-blue-50 to-primary-50 border-2 border-blue-200 rounded-xl p-6">
                 <h3 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-blue-600" />
+                  <Shield className="w-5 h-5 text-accent" />
                   Permisos Adicionales (Nivel Administrador por Módulo)
                 </h3>
                 <p className="text-xs text-slate-600 mb-4">
@@ -711,7 +711,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                                   type="checkbox"
                                   checked={permisosAdicionales.includes(modulo.id)}
                                   onChange={() => togglePermisoModulo(modulo.id)}
-                                  className="mt-1 h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                  className="mt-1 h-4 w-4 text-accent border-slate-300 rounded focus:ring-2 focus:ring-accent"
                                 />
                                 <div className="flex-1">
                                   <div className="text-sm font-medium text-slate-900">
@@ -759,7 +759,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   value={formData.email_laboral}
                   onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
                   required
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="usuario@empresa.com"
                 />
                 {!user && (
@@ -775,7 +775,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   type="email"
                   value={formData.email_personal}
                   onChange={(e) => setFormData({ ...formData, email_personal: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="usuario@gmail.com"
                 />
               </div>
@@ -789,7 +789,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   value={formData.celular_laboral}
                   onChange={(e) => setFormData({ ...formData, celular_laboral: e.target.value })}
                   required
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="+52 55 1234 5678"
                 />
               </div>
@@ -802,7 +802,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   type="tel"
                   value={formData.celular_personal}
                   onChange={(e) => setFormData({ ...formData, celular_personal: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="+52 55 8765 4321"
                 />
               </div>
@@ -815,7 +815,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                   type="text"
                   value={formData.extension_telefonica}
                   onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="Ej: 1234"
                 />
               </div>
@@ -887,7 +887,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     id="plan_mkt_premium"
                     checked={formData.plan_mkt_premium}
                     onChange={(e) => setFormData({ ...formData, plan_mkt_premium: e.target.checked })}
-                    className="mt-1 h-4 w-4 text-primary-600 border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
+                    className="mt-1 h-4 w-4 text-accent border-slate-300 rounded focus:ring-2 focus:ring-accent"
                   />
                   <div className="flex-1">
                     <label htmlFor="plan_mkt_premium" className="text-sm font-medium text-slate-900 cursor-pointer">
@@ -921,7 +921,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     const clampedValue = Math.max(0, Math.min(50, value));
                     setFormData({ ...formData, dias_vacaciones_disponibles: clampedValue });
                   }}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                 />
                 <p className="text-xs text-slate-500 mt-1">
                   Rango permitido: 0 - 50 días
@@ -947,7 +947,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                       value={formData.equipo_computo}
                       onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
                       placeholder="Ej: Dell Latitude 5420"
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     />
                     <p className="text-xs text-slate-500 mt-1">
                       Modelo y detalles del equipo de cómputo asignado
@@ -964,7 +964,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                       value={formData.equipo_celular}
                       onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
                       placeholder="Ej: iPhone 13 Pro"
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     />
                     <p className="text-xs text-slate-500 mt-1">
                       Modelo y detalles del equipo celular asignado

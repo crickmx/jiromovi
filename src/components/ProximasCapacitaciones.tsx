@@ -124,7 +124,7 @@ export function ProximasCapacitaciones() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary-500" />
+              <Calendar className="w-5 h-5 text-accent" />
               Próximas Capacitaciones
             </CardTitle>
             <CardDescription className="mt-1">

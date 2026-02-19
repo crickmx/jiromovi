@@ -190,7 +190,7 @@ export function SegurosEducation() {
     <Layout>
       <div className="space-y-8">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white">
+        <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-8 text-white">
           <div className="flex items-center justify-center mb-4">
             <img
               src="/movirecurso_11.png"
@@ -223,11 +223,11 @@ export function SegurosEducation() {
 
           <button
             onClick={() => navigate('/seguros-education/on-demand')}
-            className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-primary-500 shadow-sm hover:shadow-md transition-all group"
+            className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-accent shadow-sm hover:shadow-md transition-all group"
           >
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl bg-primary-100 flex items-center justify-center group-hover:bg-primary-200 transition-colors">
-                <Video className="w-8 h-8 text-primary-600" />
+                <Video className="w-8 h-8 text-accent" />
               </div>
               <div className="text-left flex-1">
                 <h3 className="text-xl font-bold text-neutral-800 mb-1">On Demand</h3>
@@ -273,7 +273,7 @@ export function SegurosEducation() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
           <div className="p-6 border-b border-neutral-200">
             <h2 className="text-xl font-bold text-neutral-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary-600" />
+              <Calendar className="w-5 h-5 text-accent" />
               Próximas Capacitaciones
             </h2>
             <p className="text-sm text-neutral-600 mt-1">Sesiones y eventos programados</p>
@@ -328,7 +328,7 @@ export function SegurosEducation() {
                       </div>
                       <button
                         onClick={() => navigate('/seguros-education/aula-virtual')}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                        className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
                       >
                         Ver Detalles
                       </button>
@@ -344,7 +344,7 @@ export function SegurosEducation() {
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
           <div className="p-6 border-b border-neutral-200">
             <h2 className="text-xl font-bold text-neutral-800 flex items-center gap-2">
-              <Video className="w-5 h-5 text-primary-600" />
+              <Video className="w-5 h-5 text-accent" />
               Últimos Cursos
             </h2>
           </div>
@@ -374,7 +374,7 @@ export function SegurosEducation() {
                       {lesson.progreso > 0 && (
                         <div className="absolute bottom-0 left-0 right-0 h-1 bg-neutral-300">
                           <div
-                            className="h-full bg-primary-600"
+                            className="h-full bg-accent"
                             style={{ width: `${lesson.progreso}%` }}
                           />
                         </div>
@@ -387,7 +387,7 @@ export function SegurosEducation() {
                         </span>
                         <span>{formatDuration(lesson.duracion)}</span>
                       </div>
-                      <h3 className="font-semibold text-neutral-800 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
+                      <h3 className="font-semibold text-neutral-800 mb-2 line-clamp-2 group-hover:text-accent transition-colors">
                         {lesson.titulo}
                       </h3>
                       {lesson.progreso > 0 && (
@@ -420,7 +420,7 @@ export function SegurosEducation() {
           <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-neutral-600 text-sm font-medium">En Proceso</span>
-              <TrendingUp className="w-5 h-5 text-primary-600" />
+              <TrendingUp className="w-5 h-5 text-accent" />
             </div>
             <p className="text-3xl font-bold text-neutral-800">{stats.en_proceso}</p>
           </div>
@@ -439,7 +439,7 @@ export function SegurosEducation() {
           <div className="bg-white rounded-xl p-6 border border-neutral-200 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-neutral-600 text-sm font-medium">Última Lección</span>
-              <Play className="w-5 h-5 text-primary-600" />
+              <Play className="w-5 h-5 text-accent" />
             </div>
             <p className="text-sm font-medium text-neutral-800 line-clamp-2">
               {stats.ultima_leccion || 'Ninguna'}

@@ -126,7 +126,7 @@ export function Tramites() {
       <div className="bg-white rounded-3xl shadow-soft border border-neutral-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-display font-bold text-primary-600 mb-2">
+            <h1 className="text-3xl font-display font-bold text-accent mb-2">
               Gestión de Trámites
             </h1>
             <p className="text-neutral-600">
@@ -147,7 +147,7 @@ export function Tramites() {
             onClick={() => setActiveTab('activos')}
             className={`px-6 py-3 font-semibold transition-all ${
               activeTab === 'activos'
-                ? 'text-primary-600 border-b-2 border-primary-600'
+                ? 'text-accent border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -160,7 +160,7 @@ export function Tramites() {
             onClick={() => setActiveTab('cerrados')}
             className={`px-6 py-3 font-semibold transition-all ${
               activeTab === 'cerrados'
-                ? 'text-primary-600 border-b-2 border-primary-600'
+                ? 'text-accent border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -181,13 +181,13 @@ export function Tramites() {
               placeholder="Buscar por folio, descripción, póliza o agente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
             />
           </div>
           <select
             value={selectedEstatus}
             onChange={(e) => setSelectedEstatus(e.target.value)}
-            className="px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+            className="px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
           >
             <option value="todos">Todos los estatus</option>
             {estatusList.map(estatus => (
@@ -197,7 +197,7 @@ export function Tramites() {
           <select
             value={selectedPrioridad}
             onChange={(e) => setSelectedPrioridad(e.target.value)}
-            className="px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+            className="px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
           >
             <option value="todas">Todas las prioridades</option>
             <option value="Alta">Alta</option>
@@ -209,7 +209,7 @@ export function Tramites() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : filteredTramites.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-12 text-center">
@@ -232,7 +232,7 @@ export function Tramites() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-3">
-                    <span className="text-lg font-bold text-primary-600">{tramite.folio}</span>
+                    <span className="text-lg font-bold text-accent">{tramite.folio}</span>
                     {tramite.estatus && (
                       <span
                         className="px-3 py-1 rounded-full text-xs font-semibold"

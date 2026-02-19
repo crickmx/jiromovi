@@ -77,7 +77,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
     if (!position) return 'text-gray-600';
     if (position === 1) return 'text-yellow-600';
     if (position <= 3) return 'text-orange-600';
-    if (position <= 10) return 'text-primary-600';
+    if (position <= 10) return 'text-accent';
     return 'text-gray-600';
   };
 
@@ -85,7 +85,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
     if (!position) return <Award className="w-8 h-8 text-gray-400" />;
     if (position === 1) return <Trophy className="w-8 h-8 text-yellow-500" />;
     if (position <= 3) return <Award className="w-8 h-8 text-orange-500" />;
-    return <TrendingUp className="w-8 h-8 text-primary-500" />;
+    return <TrendingUp className="w-8 h-8 text-accent" />;
   };
 
   if (loading) {
@@ -136,7 +136,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
                 </span>
               )}
               {ranking.posicion_oficina && ranking.nombre_oficina && (
-                <span className="text-lg font-bold text-primary-600">
+                <span className="text-lg font-bold text-accent">
                   #{ranking.posicion_oficina} en {ranking.nombre_oficina}
                 </span>
               )}
@@ -193,7 +193,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-primary-200">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-3 bg-white rounded-lg shadow-sm">
-                <Users className="w-8 h-8 text-primary-600" />
+                <Users className="w-8 h-8 text-accent" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-gray-600 font-medium">En tu oficina</p>
@@ -204,7 +204,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
             </div>
             {ranking.posicion_oficina && ranking.nombre_oficina ? (
               <div>
-                <div className="text-5xl font-bold text-primary-600 mb-1">
+                <div className="text-5xl font-bold text-accent mb-1">
                   #{ranking.posicion_oficina}
                 </div>
                 <p className="text-sm text-gray-600">

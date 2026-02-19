@@ -41,7 +41,7 @@ function DetalleEvento({ evento, onClose, onNavigate }: DetalleEventoProps) {
             <div className="flex items-center space-x-2 mb-2">
               {evento.tipo === 'evento' ? (
                 <div className="bg-primary-100 p-2 rounded-lg">
-                  <CalendarIcon className="h-5 w-5 text-primary-600" />
+                  <CalendarIcon className="h-5 w-5 text-accent" />
                 </div>
               ) : evento.tipo === 'cumpleanos' ? (
                 <div className="bg-pink-100 p-2 rounded-lg">
@@ -335,7 +335,7 @@ export default function CalendarioEventos() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
           </div>
         ) : (
           <>
@@ -370,7 +370,7 @@ export default function CalendarioEventos() {
                     <div className={`text-xs font-medium mb-1 ${
                       dia.esDelMes
                         ? esHoy(dia.fecha)
-                          ? 'text-primary-600'
+                          ? 'text-accent'
                           : 'text-gray-900'
                         : 'text-gray-400'
                     }`}>
@@ -436,7 +436,7 @@ export default function CalendarioEventos() {
                 <span className="text-gray-600">Cumpleaños / Aniversario</span>
               </div>
               <div className="flex items-center space-x-1.5">
-                <div className="w-2.5 h-2.5 bg-primary-500 rounded"></div>
+                <div className="w-2.5 h-2.5 bg-accent rounded"></div>
                 <span className="text-gray-600">Seguros Education</span>
               </div>
               <div className="flex items-center space-x-1.5">

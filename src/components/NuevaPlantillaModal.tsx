@@ -331,7 +331,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
 
   const renderResizeHandles = (zone: 'logo' | 'texto') => {
     const handleClass = zone === 'logo'
-      ? 'bg-primary-500 border-2 border-white'
+      ? 'bg-accent border-2 border-white'
       : 'bg-green-500 border-2 border-white';
 
     return (
@@ -399,7 +399,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                   type="text"
                   value={titulo}
                   onChange={(e) => setTitulo(e.target.value)}
-                  className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                  className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
                   placeholder="Ej: Publicación Instagram 2025"
                 />
               </div>
@@ -412,7 +412,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                  className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
                   placeholder="Descripción opcional de la plantilla"
                 />
               </div>
@@ -425,7 +425,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                   <select
                     value={categoriaId}
                     onChange={(e) => setCategoriaId(e.target.value)}
-                    className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                    className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
                   >
                     <option value="">Selecciona una categoría</option>
                     {categorias.map(cat => (
@@ -455,7 +455,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                         value={nuevaCategoriaNombre}
                         onChange={(e) => setNuevaCategoriaNombre(e.target.value)}
                         placeholder="Ej: Eventos Corporativos"
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                       />
                     </div>
                     <div>
@@ -467,7 +467,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                         onChange={(e) => setNuevaCategoriaDescripcion(e.target.value)}
                         placeholder="Descripción de la categoría"
                         rows={2}
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                       />
                     </div>
                     <div className="flex space-x-2">
@@ -475,7 +475,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                         type="button"
                         onClick={handleCrearCategoria}
                         disabled={loadingCategoria || !nuevaCategoriaNombre.trim()}
-                        className="flex-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 px-3 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {loadingCategoria ? 'Creando...' : 'Crear Categoría'}
                       </button>
@@ -499,7 +499,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">
                   Archivo (Imagen o Video) *
                 </label>
-                <div className="border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center hover:border-primary-500 transition-all">
+                <div className="border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center hover:border-accent transition-all">
                   <input
                     type="file"
                     accept="image/*,video/*"
@@ -521,7 +521,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                         </p>
                         <button
                           type="button"
-                          className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                          className="text-accent hover:text-primary-700 text-sm font-medium"
                         >
                           Cambiar archivo
                         </button>
@@ -552,7 +552,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                 </p>
                 <div className="flex items-center space-x-4 mb-4">
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-primary-500/30 border-2 border-primary-500 rounded"></div>
+                    <div className="w-4 h-4 bg-accent/30 border-2 border-accent rounded"></div>
                     <span className="text-sm text-neutral-700">Zona Logo</span>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -574,7 +574,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
 
                 {/* Zona Logo */}
                 <div
-                  className={`absolute border-2 ${editingZone === 'logo' ? 'border-primary-500 shadow-lg' : 'border-primary-400'} bg-primary-500/20 cursor-move transition-all`}
+                  className={`absolute border-2 ${editingZone === 'logo' ? 'border-accent shadow-lg' : 'border-primary-400'} bg-accent/20 cursor-move transition-all`}
                   style={{
                     left: `${zonaLogo.x * 100}%`,
                     top: `${zonaLogo.y * 100}%`,
@@ -583,7 +583,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
                   }}
                   onMouseDown={(e) => handleZoneMouseDown('logo', e)}
                 >
-                  <div className="absolute -top-7 left-0 bg-primary-500 text-white px-2 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1 pointer-events-none">
+                  <div className="absolute -top-7 left-0 bg-accent text-white px-2 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1 pointer-events-none">
                     <ImageIcon className="w-3 h-3" />
                     <span>Logo</span>
                   </div>
@@ -611,7 +611,7 @@ export function NuevaPlantillaModal({ isOpen, onClose, onSuccess, categorias }: 
 
               <div className="bg-primary-50 border border-primary-200 rounded-xl p-4">
                 <div className="flex items-start space-x-3">
-                  <Move className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                  <Move className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-primary-900">
                     <p className="font-semibold mb-1">Instrucciones:</p>
                     <ul className="list-disc list-inside space-y-1 text-primary-800">

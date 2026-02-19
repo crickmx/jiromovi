@@ -633,7 +633,7 @@ export function NuevoTramiteModal({
             value={tipoTramite}
             onChange={(e) => setTipoTramite(e.target.value)}
             disabled={!!preloadedData?.tipoTramite}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
           >
             <option value="correccion_poliza_registrada">Corrección de póliza registrada</option>
             <option value="correccion_comisiones">Corrección de comisiones</option>
@@ -654,7 +654,7 @@ export function NuevoTramiteModal({
             <select
               value={asignado}
               onChange={(e) => setAsignado(e.target.value)}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
             >
               <option value="">Selecciona un usuario</option>
               {usuariosDisponibles.map(u => (
@@ -674,7 +674,7 @@ export function NuevoTramiteModal({
             <select
               value={prioridad}
               onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
             >
               <option value="Baja">Baja</option>
               <option value="Media">Media</option>
@@ -694,7 +694,7 @@ export function NuevoTramiteModal({
               value={polizaNumero}
               onChange={(e) => setPolizaNumero(e.target.value)}
               placeholder="Ingresa el número de póliza"
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
         )}
@@ -710,7 +710,7 @@ export function NuevoTramiteModal({
                 value={loteSeleccionado}
                 onChange={(e) => setLoteSeleccionado(e.target.value)}
                 disabled={!!preloadedData?.comisionesLoteId}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-100"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100"
               >
                 <option value="">Selecciona un lote</option>
                 {lotesDisponibles.map(lote => (
@@ -729,14 +729,14 @@ export function NuevoTramiteModal({
                 </label>
                 {loadingDocumentos ? (
                   <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent mx-auto"></div>
                     <p className="text-sm text-neutral-600 mt-2">Cargando documentos...</p>
                   </div>
                 ) : (
                   <select
                     value={documentoSeleccionado}
                     onChange={(e) => setDocumentoSeleccionado(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
                   >
                     <option value="">Selecciona un documento</option>
                     {documentosLote.map(doc => (
@@ -808,7 +808,7 @@ export function NuevoTramiteModal({
                       <select
                         value={pf.aseguradora}
                         onChange={(e) => updatePolizaFile(pf.id, 'aseguradora', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                       >
                         <option value="">Selecciona...</option>
                         {aseguradoras.map(aseg => (
@@ -828,7 +828,7 @@ export function NuevoTramiteModal({
                         value={pf.claveAgente}
                         onChange={(e) => updatePolizaFile(pf.id, 'claveAgente', e.target.value)}
                         placeholder="Ej: ABC123"
-                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                       />
                     </div>
                   </div>
@@ -840,7 +840,7 @@ export function NuevoTramiteModal({
               <button
                 type="button"
                 onClick={addPolizaFile}
-                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-primary-500 hover:text-primary-600 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Añadir otro documento
@@ -889,7 +889,7 @@ export function NuevoTramiteModal({
                         value={comision.numeroPoliza}
                         onChange={(e) => updateComisionPendiente(comision.id, 'numeroPoliza', e.target.value)}
                         placeholder="Ej: 12345678"
-                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                       />
                     </div>
 
@@ -901,7 +901,7 @@ export function NuevoTramiteModal({
                       <select
                         value={comision.aseguradora}
                         onChange={(e) => updateComisionPendiente(comision.id, 'aseguradora', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                       >
                         <option value="">Selecciona...</option>
                         {aseguradoras.map(aseg => (
@@ -923,7 +923,7 @@ export function NuevoTramiteModal({
                         type="date"
                         value={comision.fechaPago}
                         onChange={(e) => updateComisionPendiente(comision.id, 'fechaPago', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                       />
                     </div>
 
@@ -954,7 +954,7 @@ export function NuevoTramiteModal({
               <button
                 type="button"
                 onClick={addComisionPendiente}
-                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-primary-500 hover:text-primary-600 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Añadir otra comisión pendiente
@@ -972,7 +972,7 @@ export function NuevoTramiteModal({
             onChange={(e) => setDescripcion(e.target.value)}
             rows={4}
             placeholder="Describe el motivo del trámite con el mayor detalle posible... (Opcional)"
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent resize-none"
           />
         </div>
 
@@ -983,7 +983,7 @@ export function NuevoTramiteModal({
               Archivos Adjuntos
               <span className="text-xs font-normal text-neutral-500 ml-2">(Máximo 5)</span>
             </label>
-            <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-primary-500 transition-all">
+            <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-accent transition-all">
               <input
                 type="file"
                 multiple
@@ -1045,7 +1045,7 @@ export function NuevoTramiteModal({
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? (
               <>

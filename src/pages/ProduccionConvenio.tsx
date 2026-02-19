@@ -399,7 +399,7 @@ export default function ProduccionConvenio() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -426,14 +426,14 @@ export default function ProduccionConvenio() {
               {isAdmin && (
                 <button
                   onClick={() => navigate('/produccion/configuracion')}
-                  className="flex items-center space-x-2 bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm sm:text-base"
+                  className="flex items-center space-x-2 bg-accent text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm sm:text-base"
                 >
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">Configuración</span>
                   <span className="sm:hidden">Config</span>
                 </button>
               )}
-              <Award className="w-10 h-10 sm:w-12 sm:h-12 text-primary-600 flex-shrink-0" />
+              <Award className="w-10 h-10 sm:w-12 sm:h-12 text-accent flex-shrink-0" />
             </div>
           </div>
         </div>
@@ -444,7 +444,7 @@ export default function ProduccionConvenio() {
             <p className="text-lg sm:text-2xl font-bold text-primary-900 truncate">
               ${(kpis.totalConvenio / 1000000).toFixed(1)}M
             </p>
-            <p className="text-xs text-primary-600 mt-0.5 hidden sm:block">
+            <p className="text-xs text-accent mt-0.5 hidden sm:block">
               ${kpis.totalConvenio.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
           </div>
@@ -492,7 +492,7 @@ export default function ProduccionConvenio() {
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
               />
             </div>
 
@@ -504,7 +504,7 @@ export default function ProduccionConvenio() {
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
               />
             </div>
 
@@ -516,7 +516,7 @@ export default function ProduccionConvenio() {
                 <select
                   value={filters.office}
                   onChange={(e) => setFilters({ ...filters, office: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="">Todas</option>
                   {offices.map(o => (
@@ -533,7 +533,7 @@ export default function ProduccionConvenio() {
               <select
                 value={filters.management}
                 onChange={(e) => setFilters({ ...filters, management: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
               >
                 <option value="">Todas</option>
                 {managements.map(m => (
@@ -549,7 +549,7 @@ export default function ProduccionConvenio() {
               <select
                 value={filters.agent}
                 onChange={(e) => setFilters({ ...filters, agent: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
               >
                 <option value="">Todos</option>
                 {agents.map(a => (
@@ -565,7 +565,7 @@ export default function ProduccionConvenio() {
               <select
                 value={filters.ramo}
                 onChange={(e) => setFilters({ ...filters, ramo: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
               >
                 <option value="">Todos</option>
                 {ramos.map(r => (
@@ -581,7 +581,7 @@ export default function ProduccionConvenio() {
               <select
                 value={filters.aseguradora}
                 onChange={(e) => setFilters({ ...filters, aseguradora: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
               >
                 <option value="">Todas</option>
                 {aseguradoras.map(a => (

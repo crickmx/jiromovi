@@ -104,7 +104,7 @@ export function AssistantAnalytics() {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary-100 rounded-lg">
-              <Brain className="h-5 w-5 text-primary-600" />
+              <Brain className="h-5 w-5 text-accent" />
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Consultas</p>
@@ -128,7 +128,7 @@ export function AssistantAnalytics() {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary-100 rounded-lg">
-              <CheckCircle2 className="h-5 w-5 text-primary-600" />
+              <CheckCircle2 className="h-5 w-5 text-accent" />
             </div>
             <div>
               <p className="text-sm text-gray-600">MOVI</p>

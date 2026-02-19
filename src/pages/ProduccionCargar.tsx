@@ -65,7 +65,7 @@ export default function ProduccionCargar() {
           </p>
           <button
             onClick={() => navigate('/produccion/total')}
-            className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold"
+            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
           >
             Ver Producción
           </button>
@@ -211,7 +211,7 @@ export default function ProduccionCargar() {
                 Sincroniza desde Google Sheets o sube un archivo Excel
               </p>
             </div>
-            <FileSpreadsheet className="w-10 h-10 sm:w-12 sm:h-12 text-primary-600 flex-shrink-0" />
+            <FileSpreadsheet className="w-10 h-10 sm:w-12 sm:h-12 text-accent flex-shrink-0" />
           </div>
         </div>
 
@@ -220,7 +220,7 @@ export default function ProduccionCargar() {
             onClick={() => setMode('sheets')}
             className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold transition-all text-sm sm:text-base ${
               mode === 'sheets'
-                ? 'bg-white text-primary-600 shadow-sm'
+                ? 'bg-white text-accent shadow-sm'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -231,7 +231,7 @@ export default function ProduccionCargar() {
             onClick={() => setMode('excel')}
             className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-semibold transition-all text-sm sm:text-base ${
               mode === 'excel'
-                ? 'bg-white text-primary-600 shadow-sm'
+                ? 'bg-white text-accent shadow-sm'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -244,7 +244,7 @@ export default function ProduccionCargar() {
         <div className="space-y-3 mb-4 sm:mb-6">
           <div className="bg-primary-50 border border-primary-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
             <div className="flex items-start gap-2 sm:gap-3">
-              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-primary-900 mb-1 text-sm sm:text-base">
                   Sincronización Incremental
@@ -259,7 +259,7 @@ export default function ProduccionCargar() {
 
           <div className="bg-primary-50 border border-primary-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
             <div className="flex items-start gap-2 sm:gap-3">
-              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-primary-900 mb-1 text-sm sm:text-base">
                   Límites del sistema
@@ -329,12 +329,12 @@ export default function ProduccionCargar() {
             </div>
           </div>
         ) : (
-          <div className="border-2 border-dashed border-neutral-300 rounded-2xl p-8 text-center hover:border-primary-500 transition-colors">
+          <div className="border-2 border-dashed border-neutral-300 rounded-2xl p-8 text-center hover:border-accent transition-colors">
             <Upload className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
 
             <label
               htmlFor="file-upload"
-              className="inline-flex items-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 transition-colors font-semibold cursor-pointer"
+              className="inline-flex items-center space-x-2 bg-accent text-white px-6 py-3 rounded-xl hover:bg-accent-hover transition-colors font-semibold cursor-pointer"
             >
               <Upload className="w-5 h-5" />
               <span>Seleccionar archivo Excel</span>
@@ -419,7 +419,7 @@ export default function ProduccionCargar() {
 
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm text-neutral-600 mb-1">Prima Convenio</p>
-                <p className="text-2xl font-bold text-primary-600">
+                <p className="text-2xl font-bold text-accent">
                   ${(stats.stats?.totalConvenio || 0).toLocaleString()}
                 </p>
               </div>
@@ -466,7 +466,7 @@ export default function ProduccionCargar() {
 
         {loading && (
           <div className="mt-4 sm:mt-6 text-center px-4">
-            <div className="inline-block w-10 h-10 sm:w-12 sm:h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
+            <div className="inline-block w-10 h-10 sm:w-12 sm:h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
             <p className="text-sm sm:text-base text-neutral-600 font-medium">
               {mode === 'sheets' ? 'Sincronizando desde Google Sheets...' : 'Procesando archivo...'} Esto puede tomar varios minutos.
             </p>
@@ -512,7 +512,7 @@ export default function ProduccionCargar() {
 
         <div className="bg-primary-50 border border-primary-200 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
           <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-accent mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-xs sm:text-sm font-semibold text-primary-900 mb-1">
                 Nombres de columnas exactos
@@ -532,43 +532,43 @@ export default function ProduccionCargar() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm mb-3 sm:mb-4">
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">FechaSimp</code>
             </div>
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">DespNombre</code>
             </div>
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">GerenciaNombre</code>
             </div>
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">VendNombre</code>
             </div>
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Nombre Compañía</code>
             </div>
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Sub Ramo</code>
             </div>
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">IMPORTE PESOS</code>
             </div>
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Prima de convenio</code>
             </div>
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Prima Ponderada</code>
             </div>
             <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-neutral-200">
-              <div className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-accent rounded-full flex-shrink-0"></div>
               <code className="text-xs font-mono text-neutral-800">Bono</code>
             </div>
           </div>

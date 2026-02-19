@@ -244,7 +244,7 @@ export default function PdfFiscalPreview({ regimen, desgloseFiscal }: PdfFiscalP
       {/* Info Panel */}
       <div className="bg-primary-50 border-t border-primary-200 px-4 py-3">
         <div className="flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-primary-600 mt-0.5" />
+          <AlertCircle className="h-4 w-4 text-accent mt-0.5" />
           <div className="flex-1">
             <p className="text-xs text-primary-900 font-medium">
               Campos permitidos en PDF

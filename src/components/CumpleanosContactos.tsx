@@ -115,7 +115,7 @@ export default function CumpleanosContactos() {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
         </div>
       </div>
     );
@@ -136,7 +136,7 @@ export default function CumpleanosContactos() {
           </div>
           <button
             onClick={() => navigate('/mi-crm/contactos')}
-            className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
+            className="text-accent hover:text-primary-700 text-sm font-medium flex items-center gap-1"
           >
             Ver todos
             <ChevronRight className="h-4 w-4" />

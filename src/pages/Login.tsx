@@ -154,7 +154,7 @@ export function Login() {
                 className="h-20 object-contain"
               />
             </div>
-            <CardTitle className="text-3xl mb-3 font-bold bg-gradient-to-r from-primary-600 to-blue-600 bg-clip-text text-transparent">
+            <CardTitle className="text-3xl mb-3 font-bold bg-gradient-to-r from-accent to-blue-600 bg-clip-text text-transparent">
               {showForgotPassword ? 'Recuperar Contraseña' : '¡Bienvenido de nuevo!'}
             </CardTitle>
             <CardDescription className="text-base">
@@ -217,7 +217,7 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                    className="text-sm text-accent hover:text-primary-700 font-medium"
                   >
                     ¿Olvidaste tu contraseña?
                   </button>
@@ -243,7 +243,7 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => window.location.href = '/registro'}
-                    className="text-sm text-primary-600 hover:text-primary-700 font-medium hover:underline transition-colors"
+                    className="text-sm text-accent hover:text-primary-700 font-medium hover:underline transition-colors"
                   >
                     Aún no soy usuario
                   </button>

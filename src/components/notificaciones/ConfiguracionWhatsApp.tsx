@@ -117,7 +117,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 p-4 bg-primary-50 rounded-lg border border-primary-200">
-        <MessageCircle className="w-6 h-6 text-primary-600" />
+        <MessageCircle className="w-6 h-6 text-accent" />
         <div>
           <h3 className="font-semibold text-primary-900">API de WhatsApp - Wazzup24</h3>
           <p className="text-sm text-primary-700">
@@ -153,7 +153,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
               value={formData.api_key}
               onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
               required
-              className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-4 py-2 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
               placeholder="aeaecead58f14a3286b37e4d0b81dc3a"
             />
             <button
@@ -179,7 +179,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
             value={formData.channel_id_uuid}
             onChange={(e) => setFormData({ ...formData, channel_id_uuid: e.target.value })}
             required
-            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
             placeholder="24197d5f-06de-421f-8576-9f6e6cb67f28"
           />
           <p className="text-xs text-neutral-600 mt-1">
@@ -197,7 +197,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
             value={formData.numero_remitente}
             onChange={(e) => setFormData({ ...formData, numero_remitente: e.target.value })}
             required
-            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
             placeholder="5215588545516"
           />
           <p className="text-xs text-neutral-600 mt-1">
@@ -212,7 +212,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
             id="activo_whatsapp"
             checked={formData.activo}
             onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-            className="w-5 h-5 text-primary-600 rounded focus:ring-2 focus:ring-primary-500"
+            className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-accent"
           />
           <label htmlFor="activo_whatsapp" className="text-sm font-medium text-neutral-700 cursor-pointer">
             Activar sistema de envío por WhatsApp
@@ -239,7 +239,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
+            className="flex-1 px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
           >
             <Save className="w-5 h-5" />
             {saving ? 'Guardando...' : 'Guardar Configuración'}
@@ -265,7 +265,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
                 value={testNumero}
                 onChange={(e) => setTestNumero(e.target.value)}
                 placeholder="5520206922 o 525520206922"
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
               />
               <p className="text-xs text-neutral-600 mt-1">
                 📱 Ingresa 10 dígitos o formato completo. El sistema normaliza automáticamente a formato México (52 + 10 dígitos).
@@ -281,7 +281,7 @@ export function ConfiguracionWhatsApp({ config, onConfigSaved }: ConfiguracionWh
                 onChange={(e) => setTestMensaje(e.target.value)}
                 rows={5}
                 placeholder="Escribe tu mensaje de prueba aquí..."
-                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent font-mono text-sm"
               />
               <p className="text-xs text-neutral-600 mt-1">
                 💬 Personaliza el mensaje que se enviará por WhatsApp. Puedes usar saltos de línea y emojis.

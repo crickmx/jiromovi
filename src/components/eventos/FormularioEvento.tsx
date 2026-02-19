@@ -120,7 +120,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
           {/* Información del Evento */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary-600" />
+              <FileText className="w-5 h-5 text-accent" />
               Información del Evento
             </h3>
 
@@ -133,7 +133,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                 type="text"
                 value={formData.titulo}
                 onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-primary-500 transition ${
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-accent transition ${
                   errors.titulo ? 'border-red-500' : 'border-neutral-300'
                 }`}
                 placeholder="Ej: Capacitación en Seguros de Vida"
@@ -152,7 +152,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                 rows={4}
-                className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-primary-500 transition ${
+                className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-accent transition ${
                   errors.descripcion ? 'border-red-500' : 'border-neutral-300'
                 }`}
                 placeholder="Describe el contenido y objetivos del evento..."
@@ -173,7 +173,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                   type="text"
                   value={formData.ponente}
                   onChange={(e) => setFormData({ ...formData, ponente: e.target.value })}
-                  className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-primary-500 transition ${
+                  className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-accent transition ${
                     errors.ponente ? 'border-red-500' : 'border-neutral-300'
                   }`}
                   placeholder="Nombre del instructor"
@@ -197,7 +197,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                     type="date"
                     value={formData.fecha}
                     onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
-                    className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-primary-500 transition ${
+                    className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-accent transition ${
                       errors.fecha ? 'border-red-500' : 'border-neutral-300'
                     }`}
                   />
@@ -218,7 +218,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                     type="time"
                     value={formData.hora}
                     onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
-                    className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-primary-500 transition ${
+                    className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-accent transition ${
                       errors.hora ? 'border-red-500' : 'border-neutral-300'
                     }`}
                   />
@@ -240,7 +240,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                   type="url"
                   value={formData.link_sesion}
                   onChange={(e) => setFormData({ ...formData, link_sesion: e.target.value })}
-                  className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-primary-500 transition ${
+                  className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-accent transition ${
                     errors.link_sesion ? 'border-red-500' : 'border-neutral-300'
                   }`}
                   placeholder="https://meet.google.com/xxx-xxxx-xxx"
@@ -285,7 +285,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl font-semibold hover:from-primary-700 hover:to-primary-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-accent to-accent-dark text-white rounded-xl font-semibold hover:from-primary-700 hover:to-primary-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

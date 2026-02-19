@@ -434,7 +434,7 @@ export function RichTextEditor({
           onInput={handleInput}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-base bg-white overflow-y-auto prose max-w-none"
+          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-base bg-white overflow-y-auto prose max-w-none"
           style={{ minHeight }}
           data-placeholder={placeholder}
         />
@@ -445,7 +445,7 @@ export function RichTextEditor({
           ref={textareaRef}
           value={value}
           onChange={handleHtmlChange}
-          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-base bg-white font-mono text-sm"
+          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-base bg-white font-mono text-sm"
           style={{ minHeight }}
           placeholder="Escribe o pega tu HTML aquí..."
         />

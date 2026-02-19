@@ -122,7 +122,7 @@ export function SubirArchivoModal({
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors">
                   {archivo ? (
                     <div className="flex items-center justify-center gap-3">
-                      <File className="w-8 h-8 text-blue-600" />
+                      <File className="w-8 h-8 text-accent" />
                       <div className="text-left">
                         <p className="font-medium text-gray-900">{archivo.name}</p>
                         <p className="text-sm text-gray-500">
@@ -171,7 +171,7 @@ export function SubirArchivoModal({
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-accent h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progreso}%` }}
                 />
               </div>

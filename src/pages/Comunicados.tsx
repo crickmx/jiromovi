@@ -206,7 +206,7 @@ export default function Comunicados() {
                       id="categoria"
                       value={categoriaSeleccionada}
                       onChange={(e) => setCategoriaSeleccionada(e.target.value)}
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-base text-sm bg-white"
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-base text-sm bg-white"
                     >
                       <option value="">Todas las categorías</option>
                       {categorias.map((cat) => (
@@ -327,7 +327,7 @@ export default function Comunicados() {
                           )}
                           {esDeGerente && comunicado.oficina_origen && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 text-primary-700 border border-primary-200 rounded-full text-xs font-semibold">
-                              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                              <div className="w-2 h-2 bg-accent rounded-full"></div>
                               <span className="hidden sm:inline">{comunicado.oficina_origen.nombre}</span>
                             </span>
                           )}
@@ -339,7 +339,7 @@ export default function Comunicados() {
                         </div>
 
                         {/* Título */}
-                        <h2 className="text-lg font-bold text-neutral-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
+                        <h2 className="text-lg font-bold text-neutral-900 mb-2 line-clamp-2 group-hover:text-accent transition-colors">
                           {comunicado.titulo}
                         </h2>
 
@@ -354,7 +354,7 @@ export default function Comunicados() {
                             <Calendar className="w-3 h-3" />
                             {new Date(comunicado.fecha_publicacion || comunicado.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
                           </span>
-                          <span className="text-primary-600 group-hover:text-primary-700 font-medium text-sm flex items-center gap-1 transition-colors">
+                          <span className="text-accent group-hover:text-primary-700 font-medium text-sm flex items-center gap-1 transition-colors">
                             Leer más
                             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                           </span>
@@ -369,7 +369,7 @@ export default function Comunicados() {
               <div ref={observerTarget} className="py-6">
                 {loadingMore && (
                   <div className="flex justify-center">
-                    <div className="w-8 h-8 border-3 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-8 h-8 border-3 border-accent border-t-transparent rounded-full animate-spin"></div>
                   </div>
                 )}
                 {!hasMore && comunicados.length > 0 && (

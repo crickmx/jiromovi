@@ -183,7 +183,7 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -228,7 +228,7 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
                   <div
                     className={`px-4 py-3 rounded-2xl whitespace-pre-wrap ${
                       isOwn
-                        ? 'bg-primary-600 text-white'
+                        ? 'bg-accent text-white'
                         : 'bg-neutral-100 text-neutral-900'
                     }`}
                   >
@@ -269,7 +269,7 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
               onChange={(e) => setMensaje(e.target.value)}
               placeholder="Escribe un comentario..."
               rows={3}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-none"
+              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                   handleSubmit(e);
@@ -294,7 +294,7 @@ export function TramiteComentarios({ tramiteId }: TramiteComentariosProps) {
             <button
               type="submit"
               disabled={sending || (!mensaje.trim() && !archivo)}
-              className="p-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-3 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               title="Enviar (Ctrl+Enter)"
             >
               <Send className="w-5 h-5" />

@@ -196,7 +196,7 @@ export function Publicidad() {
       <div className="bg-white rounded-2xl sm:rounded-3xl shadow-soft border border-neutral-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-primary-600 mb-1 sm:mb-2">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-accent mb-1 sm:mb-2">
               Publicidad
             </h1>
             <p className="text-sm sm:text-base text-neutral-600">
@@ -219,7 +219,7 @@ export function Publicidad() {
             onClick={() => setActiveTab('biblioteca')}
             className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
               activeTab === 'biblioteca'
-                ? 'text-primary-600 border-b-2 border-primary-600'
+                ? 'text-accent border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -232,7 +232,7 @@ export function Publicidad() {
             onClick={() => setActiveTab('mis-disenos')}
             className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
               activeTab === 'mis-disenos'
-                ? 'text-primary-600 border-b-2 border-primary-600'
+                ? 'text-accent border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -246,7 +246,7 @@ export function Publicidad() {
               onClick={() => setActiveTab('admin')}
               className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
                 activeTab === 'admin'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  ? 'text-accent border-b-2 border-accent'
                   : 'text-neutral-600 hover:text-neutral-900'
               }`}
             >
@@ -270,14 +270,14 @@ export function Publicidad() {
                   placeholder="Buscar plantillas..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all min-h-[44px]"
+                  className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <select
                   value={selectedCategoria}
                   onChange={(e) => setSelectedCategoria(e.target.value)}
-                  className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all min-h-[44px]"
+                  className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
                 >
                   <option value="todas">Todas las categorías</option>
                   {categorias.map(cat => (
@@ -287,7 +287,7 @@ export function Publicidad() {
                 <select
                   value={selectedTipo}
                   onChange={(e) => setSelectedTipo(e.target.value)}
-                  className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all min-h-[44px]"
+                  className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
                 >
                   <option value="todos">Todos los tipos</option>
                   <option value="imagen">Imágenes</option>
@@ -299,7 +299,7 @@ export function Publicidad() {
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : filteredPlantillas.length === 0 ? (
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center">
@@ -387,7 +387,7 @@ export function Publicidad() {
           </h2>
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : disenos.length === 0 ? (
             <div className="text-center py-8 sm:py-12">

@@ -340,7 +340,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       {transactionalTemplates.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+            <div className="w-1 h-6 bg-accent rounded-full"></div>
             <h3 className="text-lg font-bold text-neutral-900">Plantillas Transaccionales</h3>
             <span className="px-2 py-1 bg-primary-100 text-primary-700 text-xs font-semibold rounded-full">
               Automáticas
@@ -350,7 +350,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
           {transactionalTemplates.map((template) => (
             <div key={template.id}>
               {editingTransactional?.id === template.id ? (
-                <div className="bg-white rounded-lg border-2 border-primary-500 shadow-lg p-6 space-y-6">
+                <div className="bg-white rounded-lg border-2 border-accent shadow-lg p-6 space-y-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-neutral-900">{template.name}</h3>
                     <div className="flex items-center space-x-2">
@@ -386,7 +386,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                   <div className="space-y-4">
                     <div>
                       <label className="flex items-center space-x-2 mb-2 text-sm font-semibold text-neutral-900">
-                        <Mail className="w-4 h-4 text-primary-600" />
+                        <Mail className="w-4 h-4 text-accent" />
                         <span>Asunto del Correo</span>
                       </label>
                       <input
@@ -396,13 +396,13 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                           ...editingTransactional,
                           email_subject_template: e.target.value
                         })}
-                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                       />
                     </div>
 
                     <div>
                       <label className="flex items-center space-x-2 mb-2 text-sm font-semibold text-neutral-900">
-                        <Mail className="w-4 h-4 text-primary-600" />
+                        <Mail className="w-4 h-4 text-accent" />
                         <span>Cuerpo del Correo (HTML)</span>
                       </label>
 
@@ -485,7 +485,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                             email_body_template: e.target.value
                           })}
                           rows={12}
-                          className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm resize-none"
+                          className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent font-mono text-sm resize-none"
                         />
                         {showPreview && (
                           <div className="border border-neutral-300 rounded-lg p-3 bg-white overflow-auto h-[300px]">
@@ -510,7 +510,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                           whatsapp_body_template: e.target.value
                         })}
                         rows={6}
-                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                       />
                     </div>
 
@@ -526,7 +526,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                           ...editingTransactional,
                           inapp_title_template: e.target.value
                         })}
-                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                       />
                     </div>
 
@@ -542,7 +542,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                           inapp_body_template: e.target.value
                         })}
                         rows={3}
-                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -552,7 +552,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                   <div className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-4 flex-1">
                       <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                        <Mail className="w-5 h-5 text-primary-600" />
+                        <Mail className="w-5 h-5 text-accent" />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-neutral-800">{template.name}</h3>
@@ -611,7 +611,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       {/* Tipos de Notificaciones Regulares */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-1 h-6 bg-primary-600 rounded-full"></div>
+          <div className="w-1 h-6 bg-accent rounded-full"></div>
           <h3 className="text-lg font-bold text-neutral-900">Notificaciones Programadas</h3>
           <span className="px-3 py-1 bg-primary-50 text-primary-700 text-xs font-semibold rounded-full">
             Editar plantillas de Email, WhatsApp y Campanita en un solo lugar
@@ -624,7 +624,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
             onClick={() => setActiveCategory('generales')}
             className={`flex items-center gap-2 px-4 py-2 font-medium transition-all border-b-2 ${
               activeCategory === 'generales'
-                ? 'text-primary-700 border-primary-600'
+                ? 'text-primary-700 border-accent'
                 : 'text-neutral-600 border-transparent hover:text-neutral-800'
             }`}
           >
@@ -662,7 +662,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         {activeCategory === 'generales' ? (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <div className="flex items-start gap-2">
-              <UserCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <UserCheck className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-blue-900">Notificaciones Automáticas</p>
                 <p className="text-xs text-blue-700 mt-1">
@@ -762,7 +762,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                     <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
                   )}
                   {tipo.enviar_correo && (
-                    <Mail className="w-3.5 h-3.5 text-primary-600" />
+                    <Mail className="w-3.5 h-3.5 text-accent" />
                   )}
                 </div>
 
@@ -897,7 +897,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                 {/* Información para notificaciones generales */}
                 {activeCategory === 'generales' && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <UserCheck className="w-4 h-4 text-accent flex-shrink-0" />
                     <p className="text-xs text-blue-700">
                       Esta notificación se envía automáticamente al usuario relacionado con la acción. No requiere configuración adicional.
                     </p>
@@ -907,7 +907,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                 {/* Botón editar plantillas */}
                 <button
                   onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre })}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
                 >
                   <Edit className="w-4 h-4" />
                   Editar Plantillas de Todos los Canales

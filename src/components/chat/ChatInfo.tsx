@@ -37,7 +37,7 @@ export function ChatInfo({ chat, onClose }: ChatInfoProps) {
               </p>
               {chat.tipo === 'group' && (
                 <button
-                  className="p-1 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                  className="p-1 text-accent hover:bg-primary-50 rounded transition-colors"
                   title="Agregar participante"
                 >
                   <UserPlus className="w-4 h-4" />
@@ -52,7 +52,7 @@ export function ChatInfo({ chat, onClose }: ChatInfoProps) {
                 >
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-primary-600" />
+                      <Users className="w-5 h-5 text-accent" />
                     </div>
                     <div>
                       <p className="font-medium text-neutral-900">

@@ -224,7 +224,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
                     }}
                     onFocus={() => setMostrarLista(true)}
                     placeholder="Buscar por nombre o email..."
-                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-primary-500"
+                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-accent"
                   />
                 </div>
 
@@ -246,7 +246,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
                           }}
                           className="w-full flex items-center space-x-3 p-3 hover:bg-primary-50 border-b border-gray-100 last:border-b-0 text-left transition-colors"
                         >
-                          <div className="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center font-semibold">
+                          <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold">
                             {u.nombre_completo.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1">
@@ -268,7 +268,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
                 type="checkbox"
                 checked={guardarMapeo}
                 onChange={(e) => setGuardarMapeo(e.target.checked)}
-                className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-blue-500"
+                className="mt-1 h-4 w-4 text-accent border-gray-300 rounded focus:ring-blue-500"
               />
               <div>
                 <p className="font-medium text-gray-900 flex items-center space-x-2">
@@ -296,7 +296,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
           <button
             onClick={handleAsignar}
             disabled={!usuarioSeleccionado || loading}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
             {loading ? (
               <>

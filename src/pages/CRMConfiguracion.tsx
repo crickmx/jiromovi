@@ -143,7 +143,7 @@ export default function CRMConfiguracion() {
           <ArrowLeft className="h-5 w-5 mr-2" />
           Volver a Mi CRM
         </button>
-        <h1 className="text-2xl md:text-3xl font-bold text-primary-600">Configuración del CRM</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-accent">Configuración del CRM</h1>
         <p className="text-gray-600 mt-1">Personaliza campos, etiquetas y fuentes de origen</p>
       </div>
 
@@ -160,7 +160,7 @@ export default function CRMConfiguracion() {
                 onClick={() => setTab(t.key as any)}
                 className={`px-6 py-3 font-medium text-sm ${
                   tab === t.key
-                    ? 'text-primary-600 border-b-2 border-primary-600'
+                    ? 'text-accent border-b-2 border-accent'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -174,11 +174,11 @@ export default function CRMConfiguracion() {
           {tab === 'campos' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-primary-600">Campos Personalizados</h2>
+                <h2 className="text-lg font-semibold text-accent">Campos Personalizados</h2>
                 <button
                   onClick={agregarCampo}
                   disabled={loading}
-                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
+                  className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Agregar Campo
@@ -208,11 +208,11 @@ export default function CRMConfiguracion() {
           {tab === 'etiquetas' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-primary-600">Etiquetas de Segmentación</h2>
+                <h2 className="text-lg font-semibold text-accent">Etiquetas de Segmentación</h2>
                 <button
                   onClick={agregarEtiqueta}
                   disabled={loading}
-                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
+                  className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Agregar Etiqueta
@@ -240,11 +240,11 @@ export default function CRMConfiguracion() {
           {tab === 'fuentes' && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-primary-600">Fuentes de Origen</h2>
+                <h2 className="text-lg font-semibold text-accent">Fuentes de Origen</h2>
                 <button
                   onClick={agregarFuente}
                   disabled={loading}
-                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
+                  className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Agregar Fuente

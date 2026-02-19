@@ -200,7 +200,7 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -210,7 +210,7 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-slate-900">Expediente</h3>
         {canEdit && (
-          <label className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg cursor-pointer transition">
+          <label className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg cursor-pointer transition">
             <Upload className="w-4 h-4" />
             <span>{uploading ? 'Subiendo...' : 'Subir Archivo'}</span>
             <input
@@ -275,7 +275,7 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
                     </button>
                     <button
                       onClick={() => saveEdit(file.id)}
-                      className="flex items-center space-x-1 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg transition"
+                      className="flex items-center space-x-1 bg-accent hover:bg-accent-hover text-white px-3 py-1.5 rounded-lg transition"
                     >
                       <Check className="w-4 h-4" />
                       <span className="text-sm">Guardar</span>
@@ -285,7 +285,7 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
               ) : (
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3 flex-1">
-                    <FileText className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+                    <FileText className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
                         <h4 className="font-medium text-slate-900 truncate">
@@ -306,7 +306,7 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
                   <div className="flex items-center space-x-2 ml-3 flex-shrink-0">
                     <button
                       onClick={() => handleDownload(file.archivo_url, file.nombre_archivo)}
-                      className="p-2 text-slate-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                      className="p-2 text-slate-600 hover:text-accent hover:bg-primary-50 rounded-lg transition"
                       title="Descargar"
                     >
                       <Download className="w-4 h-4" />
@@ -315,7 +315,7 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
                       <>
                         <button
                           onClick={() => startEdit(file)}
-                          className="p-2 text-slate-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                          className="p-2 text-slate-600 hover:text-accent hover:bg-primary-50 rounded-lg transition"
                           title="Editar"
                         >
                           <Edit2 className="w-4 h-4" />

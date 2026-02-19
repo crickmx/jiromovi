@@ -280,7 +280,7 @@ export default function MisPolizas() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-6 flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <RefreshCw className="h-12 w-12 animate-spin text-accent mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-300">Cargando pólizas...</p>
         </div>
       </div>
@@ -295,7 +295,7 @@ export default function MisPolizas() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                <FileText className="h-8 w-8 text-blue-600" />
+                <FileText className="h-8 w-8 text-accent" />
                 Mis Pólizas
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -306,7 +306,7 @@ export default function MisPolizas() {
               <button
                 onClick={handleSync}
                 disabled={syncing}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 <RefreshCw className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} />
                 {syncing ? 'Sincronizando...' : 'Sincronizar'}
@@ -342,7 +342,7 @@ export default function MisPolizas() {
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Pólizas</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalRecords}</p>
               </div>
-              <FileText className="h-8 w-8 text-blue-600" />
+              <FileText className="h-8 w-8 text-accent" />
             </div>
           </div>
 
@@ -366,7 +366,7 @@ export default function MisPolizas() {
                   {formatCurrency(stats.totalImporte)}
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-blue-600" />
+              <TrendingUp className="h-8 w-8 text-accent" />
             </div>
           </div>
 
@@ -415,7 +415,7 @@ export default function MisPolizas() {
                     onChange={(e) => setFilters({ ...filters, searchText: e.target.value })}
                     onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
                     placeholder="Póliza, cliente, ID..."
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
@@ -428,7 +428,7 @@ export default function MisPolizas() {
                 <select
                   value={filters.estatus}
                   onChange={(e) => setFilters({ ...filters, estatus: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent dark:bg-gray-700 dark:text-white"
                 >
                   <option value="vigente">Solo Vigentes</option>
                   <option value="no_vigente">Solo No Vigentes</option>
@@ -446,7 +446,7 @@ export default function MisPolizas() {
                   value={filters.aseguradora}
                   onChange={(e) => setFilters({ ...filters, aseguradora: e.target.value })}
                   placeholder="Filtrar por aseguradora"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
 
@@ -460,7 +460,7 @@ export default function MisPolizas() {
                   value={filters.ramo}
                   onChange={(e) => setFilters({ ...filters, ramo: e.target.value })}
                   placeholder="Filtrar por ramo"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
 
@@ -473,7 +473,7 @@ export default function MisPolizas() {
                   type="date"
                   value={filters.fecha_desde}
                   onChange={(e) => setFilters({ ...filters, fecha_desde: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
 
@@ -486,7 +486,7 @@ export default function MisPolizas() {
                   type="date"
                   value={filters.fecha_hasta}
                   onChange={(e) => setFilters({ ...filters, fecha_hasta: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
               </div>
 
@@ -501,7 +501,7 @@ export default function MisPolizas() {
                 </button>
                 <button
                   onClick={applyFilters}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors"
                 >
                   <Search className="h-4 w-4" />
                   Buscar
@@ -610,7 +610,7 @@ export default function MisPolizas() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button
                             onClick={() => handleVerCentroDigital(poliza)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                            className="text-accent hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
                           >
                             <FolderOpen className="h-5 w-5" />
                             <span>Centro Digital</span>
@@ -658,7 +658,7 @@ export default function MisPolizas() {
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <FolderOpen className="h-6 w-6 text-blue-600" />
+                  <FolderOpen className="h-6 w-6 text-accent" />
                   Centro Digital
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -676,7 +676,7 @@ export default function MisPolizas() {
             <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
               {loadingCentroDigital ? (
                 <div className="flex items-center justify-center py-12">
-                  <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                  <RefreshCw className="h-8 w-8 animate-spin text-accent" />
                   <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando archivos...</span>
                 </div>
               ) : centroDigitalFiles.length === 0 ? (
@@ -697,7 +697,7 @@ export default function MisPolizas() {
                       className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-blue-600" />
+                        <FileText className="h-8 w-8 text-accent" />
                         <div>
                           <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                             {archivo.nombre_archivo}
@@ -710,7 +710,7 @@ export default function MisPolizas() {
                       <div className="flex gap-2">
                         <button
                           disabled={!archivo.es_descargable}
-                          className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1 text-sm text-accent hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Eye className="h-4 w-4" />
                           Ver

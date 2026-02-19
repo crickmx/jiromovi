@@ -51,7 +51,7 @@ export function ParticipantsList({
                     <Crown className="w-4 h-4 text-purple-600 flex-shrink-0" title="Anfitrión" />
                   )}
                   {participant.isCohost && participant.role !== 'host' && (
-                    <Crown className="w-4 h-4 text-primary-600 flex-shrink-0" title="Co-anfitrión" />
+                    <Crown className="w-4 h-4 text-accent flex-shrink-0" title="Co-anfitrión" />
                   )}
                   {participant.isScreenSharing && (
                     <Monitor className="w-4 h-4 text-green-600 flex-shrink-0" title="Compartiendo pantalla" />
@@ -78,7 +78,7 @@ export function ParticipantsList({
                   onClick={() => onToggleCohost?.(participant.id, participant.isCohost)}
                   className={`p-2 rounded-lg transition ${
                     participant.isCohost
-                      ? 'text-primary-600 hover:bg-primary-50'
+                      ? 'text-accent hover:bg-primary-50'
                       : 'text-slate-600 hover:bg-slate-200'
                   }`}
                   title={participant.isCohost ? 'Quitar co-anfitrión' : 'Hacer co-anfitrión'}

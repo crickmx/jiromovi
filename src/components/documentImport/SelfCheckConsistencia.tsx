@@ -143,7 +143,7 @@ export default function SelfCheckConsistencia({ batchId, batchName }: SelfCheckP
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary-100 rounded-lg">
-            <FileSearch className="h-5 w-5 text-primary-600" />
+            <FileSearch className="h-5 w-5 text-accent" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">Verificación de Consistencia</h3>
@@ -153,7 +153,7 @@ export default function SelfCheckConsistencia({ batchId, batchName }: SelfCheckP
         <button
           onClick={runSelfCheck}
           disabled={loading}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 flex items-center gap-2 min-h-[44px]"
+          className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition disabled:opacity-50 flex items-center gap-2 min-h-[44px]"
         >
           {loading ? (
             <>

@@ -78,7 +78,7 @@ export default function VendedoresReconocidosTable({
                 <tr key={group.movi_user_id} className="hover:bg-gray-50 transition">
                   <td className="px-3 sm:px-6 py-4">
                     <div className="flex items-center gap-2 min-w-0">
-                      <User className="h-5 w-5 text-primary-600 flex-shrink-0" />
+                      <User className="h-5 w-5 text-accent flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {group.user_name}

@@ -66,7 +66,7 @@ export default function Store() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
       </Layout>
     );
@@ -85,7 +85,7 @@ export default function Store() {
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-primary-600">MOVI Store</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-accent">MOVI Store</h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">Explora nuestro catálogo de productos</p>
           </div>
 
@@ -124,7 +124,7 @@ export default function Store() {
 
             <button
               onClick={() => navigate('/store/carrito')}
-              className="relative flex items-center gap-2 bg-primary-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm text-sm sm:text-base"
+              className="relative flex items-center gap-2 bg-accent text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm text-sm sm:text-base"
             >
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Carrito</span>
@@ -148,7 +148,7 @@ export default function Store() {
               onClick={() => setCategoriaSeleccionada('')}
               className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                 !categoriaSeleccionada
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-accent text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -161,7 +161,7 @@ export default function Store() {
                 onClick={() => setCategoriaSeleccionada(categoria.id)}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                   categoriaSeleccionada === categoria.id
-                    ? 'bg-primary-600 text-white'
+                    ? 'bg-accent text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >

@@ -134,7 +134,7 @@ export function NotificacionesTransaccionales() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl shadow-lg p-8 text-white">
+      <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl shadow-lg p-8 text-white">
         <div className="flex items-center gap-3 mb-2">
           <Mail className="w-8 h-8 text-white" />
           <h1 className="text-3xl font-bold text-white">Notificaciones Transaccionales</h1>
@@ -164,7 +164,7 @@ export function NotificacionesTransaccionales() {
             </div>
             <button
               onClick={fetchData}
-              className="px-4 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium text-accent hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               Actualizar
@@ -218,9 +218,9 @@ export function NotificacionesTransaccionales() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 mb-1">Tipos Activos</p>
-              <p className="text-2xl font-bold text-primary-600">{stats.tipos_activos}</p>
+              <p className="text-2xl font-bold text-accent">{stats.tipos_activos}</p>
             </div>
-            <Send className="w-10 h-10 text-primary-500 opacity-20" />
+            <Send className="w-10 h-10 text-accent opacity-20" />
           </div>
         </div>
       </div>
@@ -233,7 +233,7 @@ export function NotificacionesTransaccionales() {
               onClick={() => setActiveTab('configuracion')}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'configuracion'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  ? 'text-accent border-b-2 border-accent'
                   : 'text-neutral-600 hover:text-neutral-800'
               }`}
             >
@@ -244,7 +244,7 @@ export function NotificacionesTransaccionales() {
               onClick={() => setActiveTab('whatsapp')}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'whatsapp'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  ? 'text-accent border-b-2 border-accent'
                   : 'text-neutral-600 hover:text-neutral-800'
               }`}
             >
@@ -255,7 +255,7 @@ export function NotificacionesTransaccionales() {
               onClick={() => setActiveTab('notificaciones')}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'notificaciones'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  ? 'text-accent border-b-2 border-accent'
                   : 'text-neutral-600 hover:text-neutral-800'
               }`}
             >
@@ -266,7 +266,7 @@ export function NotificacionesTransaccionales() {
               onClick={() => setActiveTab('historial')}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'historial'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  ? 'text-accent border-b-2 border-accent'
                   : 'text-neutral-600 hover:text-neutral-800'
               }`}
             >

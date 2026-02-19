@@ -110,7 +110,7 @@ export function OficinaLogoEditor({
                 Logo de oficina para usuarios sin logotipo personal.
               </p>
               {affectedUsers > 0 && (
-                <div className="flex items-center gap-2 text-primary-600 text-sm">
+                <div className="flex items-center gap-2 text-accent text-sm">
                   <Users className="w-4 h-4" />
                   <span>
                     {affectedUsers} usuario{affectedUsers !== 1 ? 's' : ''} usarán este logo

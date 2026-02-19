@@ -48,7 +48,7 @@ export default function CedulaAExamenes() {
 
   const obtenerColorTipo = (tipo: string) => {
     switch (tipo) {
-      case 'practica': return 'bg-blue-100 text-blue-600';
+      case 'practica': return 'bg-blue-100 text-accent';
       case 'modulo': return 'bg-purple-100 text-purple-600';
       case 'final': return 'bg-amber-100 text-amber-600';
       default: return 'bg-neutral-100 text-neutral-600';
@@ -68,7 +68,7 @@ export default function CedulaAExamenes() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando exámenes...</p>
         </div>
       </div>
@@ -87,7 +87,7 @@ export default function CedulaAExamenes() {
             <span className="text-sm sm:text-base">Volver al curso</span>
           </button>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary-600 rounded-ios-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-accent rounded-ios-xl flex items-center justify-center flex-shrink-0">
               <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
             </div>
             <div>
@@ -104,7 +104,7 @@ export default function CedulaAExamenes() {
             <p className="text-neutral-600 mb-4">Los exámenes estarán disponibles próximamente</p>
             <button
               onClick={() => navigate('/seguros-education/cedula-a')}
-              className="px-6 py-3 bg-primary-600 text-white rounded-ios-lg hover:bg-primary-700 transition-colors"
+              className="px-6 py-3 bg-accent text-white rounded-ios-lg hover:bg-accent-hover transition-colors"
             >
               Volver al curso
             </button>
@@ -130,7 +130,7 @@ export default function CedulaAExamenes() {
                     </span>
                   </div>
 
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2 group-hover:text-primary-600 transition-colors">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-2 group-hover:text-accent transition-colors">
                     {examen.titulo}
                   </h3>
 

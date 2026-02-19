@@ -102,7 +102,7 @@ export default function AsignarVendedorStagingModal({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar por nombre o email..."
-              className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
         </div>
@@ -124,14 +124,14 @@ export default function AsignarVendedorStagingModal({
                   onClick={() => setSelectedUserId(usuario.id)}
                   className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
                     selectedUserId === usuario.id
-                      ? 'border-primary-500 bg-primary-50'
+                      ? 'border-accent bg-primary-50'
                       : 'border-neutral-200 hover:border-primary-300 bg-white'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                       selectedUserId === usuario.id
-                        ? 'bg-primary-600'
+                        ? 'bg-accent'
                         : 'bg-neutral-200'
                     }`}>
                       <User className={`w-5 h-5 ${

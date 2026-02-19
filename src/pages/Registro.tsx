@@ -197,7 +197,7 @@ export default function Registro() {
             </p>
           </div>
 
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 text-left">
+          <div className="bg-blue-50 border-l-4 border-accent p-4 mb-6 text-left">
             <p className="text-sm text-blue-800">
               <strong>Te contactaremos a:</strong>
             </p>
@@ -225,7 +225,7 @@ export default function Registro() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-primary-50 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-blue-600 p-8 text-white">
+        <div className="bg-gradient-to-r from-accent to-blue-600 p-8 text-white">
           <div className="flex items-center gap-3 mb-2">
             <UserPlus className="w-8 h-8" />
             <h1 className="text-3xl font-bold text-white">Aún no soy usuario</h1>
@@ -260,7 +260,7 @@ export default function Registro() {
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
                 errors.nombre
                   ? 'border-red-500 focus:ring-red-500'
-                  : 'border-neutral-300 focus:ring-primary-500'
+                  : 'border-neutral-300 focus:ring-accent'
               }`}
               placeholder="Tu nombre"
               disabled={loading}
@@ -282,7 +282,7 @@ export default function Registro() {
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
                 errors.apellidos
                   ? 'border-red-500 focus:ring-red-500'
-                  : 'border-neutral-300 focus:ring-primary-500'
+                  : 'border-neutral-300 focus:ring-accent'
               }`}
               placeholder="Tus apellidos"
               disabled={loading}
@@ -304,7 +304,7 @@ export default function Registro() {
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
                 errors.email
                   ? 'border-red-500 focus:ring-red-500'
-                  : 'border-neutral-300 focus:ring-primary-500'
+                  : 'border-neutral-300 focus:ring-accent'
               }`}
               placeholder="tu@email.com"
               disabled={loading}
@@ -330,7 +330,7 @@ export default function Registro() {
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
                 errors.whatsapp
                   ? 'border-red-500 focus:ring-red-500'
-                  : 'border-neutral-300 focus:ring-primary-500'
+                  : 'border-neutral-300 focus:ring-accent'
               }`}
               placeholder="5512345678 (10 dígitos)"
               maxLength={10}
@@ -353,7 +353,7 @@ export default function Registro() {
                   name="esAgenteJiro"
                   checked={formData.esAgenteJiro === true}
                   onChange={() => setFormData({ ...formData, esAgenteJiro: true })}
-                  className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                  className="w-4 h-4 text-accent focus:ring-accent"
                   disabled={loading}
                 />
                 <span className="text-neutral-700">Sí</span>
@@ -364,7 +364,7 @@ export default function Registro() {
                   name="esAgenteJiro"
                   checked={formData.esAgenteJiro === false}
                   onChange={() => setFormData({ ...formData, esAgenteJiro: false, oficinaId: '' })}
-                  className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                  className="w-4 h-4 text-accent focus:ring-accent"
                   disabled={loading}
                 />
                 <span className="text-neutral-700">No</span>
@@ -393,7 +393,7 @@ export default function Registro() {
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
                     errors.oficinaId
                       ? 'border-red-500 focus:ring-red-500'
-                      : 'border-neutral-300 focus:ring-primary-500'
+                      : 'border-neutral-300 focus:ring-accent'
                   }`}
                   disabled={loading}
                 >

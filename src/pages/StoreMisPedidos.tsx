@@ -39,7 +39,7 @@ export default function StoreMisPedidos() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
       </Layout>
     );
@@ -57,8 +57,8 @@ export default function StoreMisPedidos() {
         </button>
 
         <div className="flex items-center gap-3 mb-8">
-          <Package className="w-8 h-8 text-primary-600" />
-          <h1 className="text-3xl font-bold text-primary-600">Mis Pedidos</h1>
+          <Package className="w-8 h-8 text-accent" />
+          <h1 className="text-3xl font-bold text-accent">Mis Pedidos</h1>
         </div>
 
         {pedidos.length === 0 ? (
@@ -70,7 +70,7 @@ export default function StoreMisPedidos() {
             <p className="text-gray-500 mb-6">Realiza tu primer pedido en MOVI Store</p>
             <button
               onClick={() => navigate('/store')}
-              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+              className="bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
             >
               Explorar productos
             </button>
@@ -100,7 +100,7 @@ export default function StoreMisPedidos() {
                     <tr key={pedido.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {pedido.folio_oc ? (
-                          <span className="text-sm font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded">
+                          <span className="text-sm font-semibold text-accent bg-primary-50 px-2 py-1 rounded">
                             {pedido.folio_oc}
                           </span>
                         ) : (
@@ -122,7 +122,7 @@ export default function StoreMisPedidos() {
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
                           onClick={() => navigate(`/store/pedido/${pedido.id}`)}
-                          className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-800 font-medium"
+                          className="inline-flex items-center gap-2 text-accent hover:text-primary-800 font-medium"
                         >
                           <Eye className="w-4 h-4" />
                           Ver Detalle

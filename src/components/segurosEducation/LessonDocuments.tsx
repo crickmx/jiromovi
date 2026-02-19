@@ -191,7 +191,7 @@ export function LessonDocuments({ lessonId, isAdmin, isEditMode }: LessonDocumen
 
       {/* Upload section - only for admins when editing existing lesson */}
       {isAdmin && lessonId && documents.length < 5 && isEditMode && (
-        <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center hover:border-primary-500 transition-colors">
+        <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center hover:border-accent transition-colors">
           <input
             type="file"
             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
@@ -229,7 +229,7 @@ export function LessonDocuments({ lessonId, isAdmin, isEditMode }: LessonDocumen
               }`}
             >
               <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                <div className="text-primary-600 flex-shrink-0">
+                <div className="text-accent flex-shrink-0">
                   {getFileIcon(doc.nombre_archivo)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -251,7 +251,7 @@ export function LessonDocuments({ lessonId, isAdmin, isEditMode }: LessonDocumen
                   download
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`text-primary-600 hover:bg-primary-50 rounded-lg transition-colors ${
+                  className={`text-accent hover:bg-primary-50 rounded-lg transition-colors ${
                     isEditMode ? 'p-2' : 'p-1.5'
                   }`}
                   title="Descargar"

@@ -42,7 +42,7 @@ export default function MapaMentalModal({ moduloId, onClose }: Props) {
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-neutral-200">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-100 rounded-ios flex items-center justify-center flex-shrink-0">
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
             </div>
             <div className="min-w-0">
               <h2 className="text-lg sm:text-xl font-bold text-neutral-900 truncate">Mapas Mentales</h2>
@@ -60,7 +60,7 @@ export default function MapaMentalModal({ moduloId, onClose }: Props) {
         {loading ? (
           <div className="flex-1 flex items-center justify-center p-4">
             <div className="text-center">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 border-3 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
               <p className="text-sm sm:text-base text-neutral-600">Cargando mapas...</p>
             </div>
           </div>
@@ -78,7 +78,7 @@ export default function MapaMentalModal({ moduloId, onClose }: Props) {
                     onClick={() => setMapaSeleccionado(mapa)}
                     className={`px-3 sm:px-4 py-2 rounded-ios-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
                       mapaSeleccionado?.id === mapa.id
-                        ? 'bg-primary-600 text-white'
+                        ? 'bg-accent text-white'
                         : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                     }`}
                   >

@@ -163,7 +163,7 @@ export function Directorio() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -273,7 +273,7 @@ export function Directorio() {
                           className="w-10 h-10 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
                           <span className="text-white font-medium text-sm">
                             {usuario.nombre[0]}{usuario.apellidos[0]}
                           </span>
@@ -353,7 +353,7 @@ export function Directorio() {
                           setSelectedUser(usuario);
                           setModalOpen(true);
                         }}
-                        className="flex items-center space-x-1 text-primary-600 hover:text-primary-900 px-2 lg:px-3 py-2 hover:bg-primary-50 rounded-lg transition"
+                        className="flex items-center space-x-1 text-accent hover:text-primary-900 px-2 lg:px-3 py-2 hover:bg-primary-50 rounded-lg transition"
                         title={isReadOnly ? "Ver Usuario" : "Ver / Editar Usuario"}
                       >
                         <Edit className="w-4 h-4" />

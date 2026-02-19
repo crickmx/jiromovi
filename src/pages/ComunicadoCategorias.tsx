@@ -142,7 +142,7 @@ export default function ComunicadoCategorias() {
             </p>
             <button
               onClick={() => navigate('/comunicados')}
-              className="text-primary-600 hover:text-primary-700 font-medium"
+              className="text-accent hover:text-primary-700 font-medium"
             >
               Volver a Comunicados
             </button>
@@ -156,7 +156,7 @@ export default function ComunicadoCategorias() {
     return (
       <Layout hideHeader>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
       </Layout>
     );
@@ -177,7 +177,7 @@ export default function ComunicadoCategorias() {
 
           <button
             onClick={handleNueva}
-            className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm"
+            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
           >
             <Plus className="w-5 h-5" />
             Nueva Categoría
@@ -186,7 +186,7 @@ export default function ComunicadoCategorias() {
 
         {/* Título */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-primary-600 mb-2">
+          <h1 className="text-3xl font-bold text-accent mb-2">
             Gestión de Categorías
           </h1>
           <p className="text-gray-600">
@@ -206,7 +206,7 @@ export default function ComunicadoCategorias() {
             </p>
             <button
               onClick={handleNueva}
-              className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+              className="inline-flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium"
             >
               <Plus className="w-5 h-5" />
               Nueva Categoría
@@ -256,7 +256,7 @@ export default function ComunicadoCategorias() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleEdit(categoria)}
-                        className="text-primary-600 hover:text-primary-900 mr-3"
+                        className="text-accent hover:text-primary-900 mr-3"
                         title="Editar"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -320,7 +320,7 @@ export default function ComunicadoCategorias() {
                     id="activo"
                     checked={formData.activo}
                     onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                    className="h-4 w-4 text-primary-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-accent focus:ring-blue-500 border-gray-300 rounded"
                   />
                   <label htmlFor="activo" className="ml-2 block text-sm text-gray-700">
                     Categoría activa
@@ -341,7 +341,7 @@ export default function ComunicadoCategorias() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                    className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium"
                   >
                     {editando ? 'Actualizar' : 'Crear'}
                   </button>

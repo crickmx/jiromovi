@@ -88,7 +88,7 @@ export default function StoreCarrito() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
       </Layout>
     );
@@ -106,8 +106,8 @@ export default function StoreCarrito() {
         </button>
 
         <div className="flex items-center gap-3 mb-6 sm:mb-8">
-          <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8 text-primary-600" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary-600">Mi Carrito</h1>
+          <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8 text-accent" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-accent">Mi Carrito</h1>
         </div>
 
         {carrito.length === 0 ? (
@@ -119,7 +119,7 @@ export default function StoreCarrito() {
             <p className="text-gray-500 mb-6">Agrega productos para comenzar tu pedido</p>
             <button
               onClick={() => navigate('/store')}
-              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+              className="bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
             >
               Explorar productos
             </button>
@@ -232,7 +232,7 @@ export default function StoreCarrito() {
                   </div>
                   <div className="flex justify-between text-xl font-bold">
                     <span className="text-gray-900">Total:</span>
-                    <span className="text-primary-600">
+                    <span className="text-accent">
                       ${calcularTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
@@ -241,7 +241,7 @@ export default function StoreCarrito() {
                 <button
                   onClick={handleRealizarPedido}
                   disabled={procesando}
-                  className="w-full bg-primary-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-primary-700 transition-colors font-semibold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-accent text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-accent-hover transition-colors font-semibold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {procesando ? 'Procesando...' : 'Realizar Pedido'}
                 </button>

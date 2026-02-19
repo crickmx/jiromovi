@@ -37,7 +37,7 @@ export function EmptyState({
     >
       {Icon && (
         <div className="mb-6 relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary-400/20 to-primary-600/20 dark:from-primary-500/10 dark:to-primary-700/10 blur-2xl rounded-full" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-400/20 to-primary-600/20 dark:from-primary-500/10 dark:to-accent-dark/10 blur-2xl rounded-full" />
           <div className="relative rounded-2xl bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-white/5 dark:to-white/10 p-6 backdrop-blur-sm border border-neutral-200 dark:border-white/10">
             <Icon className="h-12 w-12 text-neutral-400 dark:text-white/40" strokeWidth={1.5} />
           </div>

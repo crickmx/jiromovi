@@ -518,7 +518,7 @@ export default function ProduccionConfiguracion() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando configuración...</p>
         </div>
       </div>
@@ -631,7 +631,7 @@ export default function ProduccionConfiguracion() {
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
+                    className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-accent text-white font-medium rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
                   >
                     {saving ? (
                       <>
@@ -844,7 +844,7 @@ export default function ProduccionConfiguracion() {
                     <button
                       onClick={loadVendors}
                       disabled={loadingVendors || syncingVendors}
-                      className="px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      className="px-3 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                       title="Recargar desde cache"
                     >
                       {loadingVendors ? 'Cargando...' : 'Recargar'}
@@ -902,14 +902,14 @@ export default function ProduccionConfiguracion() {
                     <p className="text-sm mb-3">No hay vendedores cargados</p>
                     <button
                       onClick={loadVendors}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
                     >
                       Cargar Vendedores
                     </button>
                   </div>
                 ) : loadingVendors ? (
                   <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-600 border-t-transparent mx-auto mb-3"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent mx-auto mb-3"></div>
                     <p className="text-sm text-neutral-600">Cargando vendedores desde Google Sheets...</p>
                   </div>
                 ) : (
@@ -935,7 +935,7 @@ export default function ProduccionConfiguracion() {
                       </div>
                       <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
                         <div className="flex items-center gap-2 mb-1">
-                          <Users className="w-4 h-4 text-primary-600" />
+                          <Users className="w-4 h-4 text-accent" />
                           <span className="text-xs font-medium text-primary-700">Total</span>
                         </div>
                         <p className="text-2xl font-bold text-primary-900">
@@ -1006,7 +1006,7 @@ export default function ProduccionConfiguracion() {
                           </div>
                           {savingVendor === vendor.vendor_nombre && (
                             <div className="flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent"></div>
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent border-t-transparent"></div>
                             </div>
                           )}
                         </div>

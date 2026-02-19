@@ -868,7 +868,7 @@ export function SegurosEducationOnDemand() {
             </button>
             <div>
               <h1 className="text-[28px] font-bold text-ios-gray-900 flex items-center gap-2 tracking-tight">
-                <Video className="w-7 h-7 text-ios-blue stroke-[1.5]" />
+                <Video className="w-7 h-7 text-accent stroke-[1.5]" />
                 On Demand
               </h1>
               <p className="text-ios-gray-600 mt-1 text-[15px]">Biblioteca de lecciones grabadas</p>
@@ -894,7 +894,7 @@ export function SegurosEducationOnDemand() {
               </button>
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-ios-blue text-white rounded-ios-lg hover:bg-ios-blue-dark transition-colors text-[15px] font-medium active:scale-95 shadow-ios"
+                className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-ios-lg hover:bg-accent-dark transition-colors text-[15px] font-medium active:scale-95 shadow-ios"
               >
                 <Plus className="w-4 h-4 stroke-[2]" />
                 Subir Lección
@@ -913,7 +913,7 @@ export function SegurosEducationOnDemand() {
                 placeholder="Buscar lecciones..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-ios-blue transition-colors text-[15px]"
+                className="w-full pl-10 pr-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-accent transition-colors text-[15px]"
               />
             </div>
             <div className="relative">
@@ -921,7 +921,7 @@ export function SegurosEducationOnDemand() {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-ios-blue transition-colors appearance-none text-[15px]"
+                className="w-full pl-10 pr-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-accent transition-colors appearance-none text-[15px]"
               >
                 <option value="all">Todas las categorías</option>
                 {categories.map((cat) => (
@@ -971,7 +971,7 @@ export function SegurosEducationOnDemand() {
                   {/* Play Button Overlay */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
                     <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform scale-75 group-hover:scale-100 shadow-ios-lg">
-                      <Play className="w-8 h-8 text-ios-blue ml-1" fill="currentColor" />
+                      <Play className="w-8 h-8 text-accent ml-1" fill="currentColor" />
                     </div>
                   </div>
 
@@ -979,7 +979,7 @@ export function SegurosEducationOnDemand() {
                   {lesson.progreso > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
                       <div
-                        className="h-full bg-ios-blue"
+                        className="h-full bg-accent"
                         style={{ width: `${lesson.progreso}%` }}
                       />
                     </div>
@@ -999,7 +999,7 @@ export function SegurosEducationOnDemand() {
                   <div className="flex items-center justify-between gap-2 text-[11px] mb-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       {lesson.categoria && (
-                        <span className="px-2 py-1 bg-ios-blue/10 text-ios-blue rounded-ios font-semibold">
+                        <span className="px-2 py-1 bg-accent/10 text-accent rounded-ios font-semibold">
                           {lesson.categoria.nombre}
                         </span>
                       )}
@@ -1019,7 +1019,7 @@ export function SegurosEducationOnDemand() {
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           onClick={(e) => handleEditLesson(lesson, e)}
-                          className="p-1.5 text-ios-blue hover:bg-ios-blue/10 rounded-ios transition-colors"
+                          className="p-1.5 text-accent hover:bg-accent/10 rounded-ios transition-colors"
                           title="Editar lección"
                         >
                           <Edit2 className="w-3.5 h-3.5 stroke-[2]" />
@@ -1035,7 +1035,7 @@ export function SegurosEducationOnDemand() {
                     )}
                   </div>
 
-                  <h3 className="font-semibold text-ios-gray-900 mb-2 line-clamp-2 group-hover:text-ios-blue transition-colors text-[15px]">
+                  <h3 className="font-semibold text-ios-gray-900 mb-2 line-clamp-2 group-hover:text-accent transition-colors text-[15px]">
                     {lesson.titulo}
                   </h3>
 
@@ -1071,7 +1071,7 @@ export function SegurosEducationOnDemand() {
                 </h2>
                 <div className="hidden md:flex items-center gap-2 mt-1">
                   {selectedLesson.categoria && (
-                    <span className="inline-flex items-center px-2 py-0.5 bg-ios-blue/10 text-ios-blue rounded-ios text-[11px] font-medium">
+                    <span className="inline-flex items-center px-2 py-0.5 bg-accent/10 text-accent rounded-ios text-[11px] font-medium">
                       {selectedLesson.categoria.nombre}
                     </span>
                   )}
@@ -1120,7 +1120,7 @@ export function SegurosEducationOnDemand() {
                       </span>
                     ) : selectedLesson.progreso > 0 ? (
                       <span className="text-[10px] sm:text-[12px] text-ios-gray-600">
-                        Progreso: <span className="font-semibold text-ios-blue">{Math.floor(selectedLesson.progreso)}%</span>
+                        Progreso: <span className="font-semibold text-accent">{Math.floor(selectedLesson.progreso)}%</span>
                       </span>
                     ) : (
                       <span className="text-[10px] sm:text-[12px] text-ios-gray-500">Sin progreso</span>
@@ -1132,7 +1132,7 @@ export function SegurosEducationOnDemand() {
                       setSelectedLesson(null);
                       fetchData();
                     }}
-                    className="px-3 sm:px-4 py-1 sm:py-1.5 bg-ios-blue text-white rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-ios-blue-dark transition-colors active:scale-95 flex-shrink-0"
+                    className="px-3 sm:px-4 py-1 sm:py-1.5 bg-accent text-white rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-accent-dark transition-colors active:scale-95 flex-shrink-0"
                   >
                     Cerrar
                   </button>
@@ -1171,7 +1171,7 @@ export function SegurosEducationOnDemand() {
                   type="text"
                   value={formData.titulo}
                   onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   placeholder="Nombre de la lección"
                 />
               </div>
@@ -1184,7 +1184,7 @@ export function SegurosEducationOnDemand() {
                   value={formData.descripcion}
                   onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                   placeholder="Descripción de la lección"
                 />
               </div>
@@ -1196,7 +1196,7 @@ export function SegurosEducationOnDemand() {
                 <select
                   value={formData.categoria_id}
                   onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 >
                   <option value="">Seleccionar categoría</option>
                   {categories.map((cat) => (
@@ -1261,7 +1261,7 @@ export function SegurosEducationOnDemand() {
                   Video {!editingLesson && <span className="text-red-500">*</span>}
                   {editingLesson && <span className="text-neutral-500 text-xs">(opcional - dejar vacío para mantener el video actual)</span>}
                 </label>
-                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-accent transition-colors">
                   <input
                     type="file"
                     accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
@@ -1332,7 +1332,7 @@ export function SegurosEducationOnDemand() {
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">
                   Miniatura (opcional)
                 </label>
-                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-accent transition-colors">
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -1372,7 +1372,7 @@ export function SegurosEducationOnDemand() {
 
                     {/* Upload section for new lesson */}
                     {pendingDocuments.length < 5 && (
-                      <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center hover:border-primary-500 transition-colors">
+                      <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center hover:border-accent transition-colors">
                         <input
                           type="file"
                           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
@@ -1409,7 +1409,7 @@ export function SegurosEducationOnDemand() {
                             className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200 hover:bg-neutral-100 transition-colors"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className="text-primary-600">
+                              <div className="text-accent">
                                 <FileText className="w-5 h-5" />
                               </div>
                               <div className="flex-1 min-w-0">
@@ -1452,7 +1452,7 @@ export function SegurosEducationOnDemand() {
                           : 'Finalizando...'}
                       </span>
                       {videoFile && (
-                        <span className="text-xs text-primary-600 mt-1">
+                        <span className="text-xs text-accent mt-1">
                           {videoFile.size >= 1024 * 1024 * 1024
                             ? `${(videoFile.size / (1024 * 1024 * 1024)).toFixed(2)} GB`
                             : `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`
@@ -1461,7 +1461,7 @@ export function SegurosEducationOnDemand() {
                         </span>
                       )}
                       {uploadProgress >= 95 && uploadProgress < 100 && pendingDocuments.length > 0 && (
-                        <span className="text-xs text-primary-600 mt-1">
+                        <span className="text-xs text-accent mt-1">
                           Subiendo {pendingDocuments.length} documento{pendingDocuments.length > 1 ? 's' : ''}...
                         </span>
                       )}
@@ -1470,7 +1470,7 @@ export function SegurosEducationOnDemand() {
                   </div>
                   <div className="w-full h-2 bg-primary-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary-600 transition-all duration-300"
+                      className="h-full bg-accent transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
@@ -1497,7 +1497,7 @@ export function SegurosEducationOnDemand() {
               <button
                 onClick={handleUploadLesson}
                 disabled={uploading || (!editingLesson && !videoFile) || !formData.titulo || !formData.categoria_id}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploading ? (editingLesson ? 'Actualizando...' : 'Subiendo...') : (editingLesson ? 'Actualizar Lección' : 'Subir Lección')}
               </button>
@@ -1526,13 +1526,13 @@ export function SegurosEducationOnDemand() {
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
-                    className="flex-1 px-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-ios-blue transition-colors text-[15px]"
+                    className="flex-1 px-4 py-2.5 border border-ios-gray-300 rounded-ios-lg focus:outline-none focus:border-accent transition-colors text-[15px]"
                     placeholder="Nombre de la categoría"
                   />
                   <button
                     onClick={handleCreateCategory}
                     disabled={!newCategoryName.trim()}
-                    className="px-4 py-2.5 bg-ios-blue text-white rounded-ios-lg hover:bg-ios-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[15px] font-medium active:scale-95 shadow-ios"
+                    className="px-4 py-2.5 bg-accent text-white rounded-ios-lg hover:bg-accent-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[15px] font-medium active:scale-95 shadow-ios"
                   >
                     Crear
                   </button>

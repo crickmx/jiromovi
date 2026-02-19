@@ -382,7 +382,7 @@ export default function MiProduccion() {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando tu producción...</p>
         </div>
       </div>
@@ -405,7 +405,7 @@ export default function MiProduccion() {
             <button
               onClick={handleRefreshCache}
               disabled={syncing}
-              className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="px-6 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {syncing ? (
                 <>
@@ -450,11 +450,11 @@ export default function MiProduccion() {
         <div className="mb-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-3xl font-display font-bold text-primary-600 mb-2">
+              <h1 className="text-3xl font-display font-bold text-accent mb-2">
                 Mi Producción
               </h1>
               <p className="text-neutral-600">
-                Resumen de tu producción como <span className="font-semibold text-primary-600">{vendorName}</span>
+                Resumen de tu producción como <span className="font-semibold text-accent">{vendorName}</span>
               </p>
               {fechaActualizacion && (
                 <p className="text-sm text-neutral-500 mt-2">
@@ -470,7 +470,7 @@ export default function MiProduccion() {
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                   syncing
                     ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
-                    : 'bg-primary-600 text-white hover:bg-primary-700'
+                    : 'bg-accent text-white hover:bg-accent-hover'
                 }`}
               >
                 <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
@@ -483,7 +483,7 @@ export default function MiProduccion() {
         {message && (
           <div className="mb-6 bg-primary-50 border border-primary-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
               <p className="text-sm text-primary-800">{message}</p>
             </div>
           </div>
@@ -502,7 +502,7 @@ export default function MiProduccion() {
 
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-primary-200">
             <div className="flex items-center gap-2 mb-2">
-              <FileText className="w-5 h-5 text-primary-600" />
+              <FileText className="w-5 h-5 text-accent" />
               <p className="text-sm text-primary-700 font-medium">Documentos</p>
             </div>
             <p className="text-2xl font-bold text-primary-900">
@@ -588,7 +588,7 @@ export default function MiProduccion() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por aseguradora, ramo o subramo..."
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
               />
             </div>
           </div>
@@ -597,7 +597,7 @@ export default function MiProduccion() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'fecha' | 'importe')}
-              className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
             >
               <option value="fecha">Por Fecha</option>
               <option value="importe">Por Importe</option>
@@ -664,7 +664,7 @@ export default function MiProduccion() {
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Siguiente
               </button>

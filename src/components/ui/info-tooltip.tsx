@@ -17,7 +17,7 @@ export function InfoTooltip({ content, className = '' }: InfoTooltipProps) {
     >
       <button
         type="button"
-        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary-100 text-primary-600 hover:bg-primary-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary-100 text-accent hover:bg-primary-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
         onClick={(e) => {
           e.preventDefault();
           setIsVisible(!isVisible);

@@ -254,7 +254,7 @@ export function Vacaciones() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -292,7 +292,7 @@ export function Vacaciones() {
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition"
+            className="w-full bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-lg font-medium transition"
           >
             Solicitar Vacaciones
           </button>
@@ -637,7 +637,7 @@ export function Vacaciones() {
                   type="submit"
                   form="vacaciones-form"
                   disabled={diasSolicitados > diasDisponibles || diasSolicitados <= 0}
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Solicitar
                 </button>

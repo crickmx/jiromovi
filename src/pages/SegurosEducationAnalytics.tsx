@@ -319,7 +319,7 @@ export function SegurosEducationAnalytics() {
             </button>
             <div>
               <h1 className="text-3xl font-bold text-neutral-800 flex items-center gap-2">
-                <BarChart3 className="w-8 h-8 text-blue-600" />
+                <BarChart3 className="w-8 h-8 text-accent" />
                 Analytics
               </h1>
               <p className="text-neutral-600 mt-1">Métricas de Seguros Education</p>
@@ -357,7 +357,7 @@ export function SegurosEducationAnalytics() {
             )}
             <button
               onClick={fetchData}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
             >
               Aplicar
             </button>
@@ -378,7 +378,7 @@ export function SegurosEducationAnalytics() {
                 onClick={() => setCurrentTab(tab.id as TabView)}
                 className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
                   currentTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-accent text-accent'
                     : 'border-transparent text-neutral-600 hover:text-neutral-900'
                 }`}
               >
@@ -401,7 +401,7 @@ export function SegurosEducationAnalytics() {
                     <p className="text-3xl font-bold text-neutral-800 mt-1">{totalReproducciones}</p>
                   </div>
                   <div className="p-3 bg-blue-100 rounded-lg">
-                    <Play className="w-6 h-6 text-blue-600" />
+                    <Play className="w-6 h-6 text-accent" />
                   </div>
                 </div>
               </div>

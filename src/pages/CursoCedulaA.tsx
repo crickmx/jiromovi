@@ -86,7 +86,7 @@ export default function CursoCedulaA() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando curso...</p>
         </div>
       </div>
@@ -105,7 +105,7 @@ export default function CursoCedulaA() {
             <span className="text-sm sm:text-base">Volver a Seguros Education</span>
           </button>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary-600 rounded-ios-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-accent rounded-ios-xl flex items-center justify-center flex-shrink-0">
               <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
             </div>
             <div>
@@ -120,9 +120,9 @@ export default function CursoCedulaA() {
             <div className="bg-white rounded-ios-xl p-4 sm:p-6 shadow-ios">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2">
                 <div className="w-10 h-10 bg-primary-100 rounded-ios flex items-center justify-center mb-2 sm:mb-0">
-                  <TrendingUp className="w-5 h-5 text-primary-600" />
+                  <TrendingUp className="w-5 h-5 text-accent" />
                 </div>
-                <span className="text-xl sm:text-2xl font-bold text-primary-600">{estadisticas.porcentaje_global}%</span>
+                <span className="text-xl sm:text-2xl font-bold text-accent">{estadisticas.porcentaje_global}%</span>
               </div>
               <p className="text-xs sm:text-sm text-neutral-600">Progreso Global</p>
             </div>
@@ -142,7 +142,7 @@ export default function CursoCedulaA() {
             <div className="bg-white rounded-ios-xl p-4 sm:p-6 shadow-ios">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2">
                 <div className="w-10 h-10 bg-blue-100 rounded-ios flex items-center justify-center mb-2 sm:mb-0">
-                  <Clock className="w-5 h-5 text-blue-600" />
+                  <Clock className="w-5 h-5 text-accent" />
                 </div>
                 <span className="text-xl sm:text-2xl font-bold text-neutral-900">
                   {formatearTiempoEstudio(estadisticas.tiempo_total_segundos)}
@@ -167,7 +167,7 @@ export default function CursoCedulaA() {
           <button
             onClick={continuarEstudiando}
             disabled={modulos.length === 0}
-            className="bg-primary-600 text-white rounded-ios-xl p-5 sm:p-6 shadow-ios-lg hover:bg-primary-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
+            className="bg-accent text-white rounded-ios-xl p-5 sm:p-6 shadow-ios-lg hover:bg-accent-hover active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
           >
             <Play className="w-7 h-7 sm:w-8 sm:h-8 mb-3 text-white" />
             <h3 className="text-base sm:text-lg font-semibold mb-1 text-white">Continuar Estudiando</h3>
@@ -180,7 +180,7 @@ export default function CursoCedulaA() {
             onClick={() => navigate('/seguros-education/cedula-a/examenes')}
             className="bg-white text-neutral-900 rounded-ios-xl p-5 sm:p-6 shadow-ios hover:shadow-ios-md active:scale-[0.98] transition-all text-left"
           >
-            <FileText className="w-7 h-7 sm:w-8 sm:h-8 mb-3 text-primary-600" />
+            <FileText className="w-7 h-7 sm:w-8 sm:h-8 mb-3 text-accent" />
             <h3 className="text-base sm:text-lg font-semibold mb-1">Realizar Examen</h3>
             <p className="text-xs sm:text-sm text-neutral-600">Practica o toma el examen final</p>
           </button>
@@ -211,12 +211,12 @@ export default function CursoCedulaA() {
                         <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                       ) : (
                         <Icono className={`w-6 h-6 ${
-                          modulo.estado === 'en_progreso' ? 'text-primary-600' : 'text-neutral-600'
+                          modulo.estado === 'en_progreso' ? 'text-accent' : 'text-neutral-600'
                         }`} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-neutral-900 mb-1 group-hover:text-primary-600 transition-colors">
+                      <h3 className="text-lg font-semibold text-neutral-900 mb-1 group-hover:text-accent transition-colors">
                         {modulo.titulo}
                       </h3>
                       <p className="text-sm text-neutral-600 line-clamp-2">{modulo.descripcion}</p>
@@ -245,7 +245,7 @@ export default function CursoCedulaA() {
                           modulo.estado === 'completado'
                             ? 'bg-emerald-500'
                             : modulo.estado === 'en_progreso'
-                            ? 'bg-primary-500'
+                            ? 'bg-accent'
                             : 'bg-neutral-300'
                         }`}
                         style={{ width: `${progreso}%` }}

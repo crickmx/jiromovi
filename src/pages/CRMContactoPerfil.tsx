@@ -141,7 +141,7 @@ export default function CRMContactoPerfil() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
       </div>
     );
   }
@@ -152,7 +152,7 @@ export default function CRMContactoPerfil() {
         <p>Contacto no encontrado</p>
         <button
           onClick={() => navigate('/mi-crm/contactos')}
-          className="text-primary-600 hover:underline mt-4"
+          className="text-accent hover:underline mt-4"
         >
           Volver a contactos
         </button>
@@ -176,7 +176,7 @@ export default function CRMContactoPerfil() {
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-primary-600">{contacto.nombre_completo}</h1>
+              <h1 className="text-2xl font-bold text-accent">{contacto.nombre_completo}</h1>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-semibold ${getEstatusColor(contacto.estatus)}`}
               >
@@ -241,7 +241,7 @@ export default function CRMContactoPerfil() {
           </div>
           <button
             onClick={() => setShowEditModal(true)}
-            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
+            className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
           >
             <Edit className="h-4 w-4" />
             Editar
@@ -258,7 +258,7 @@ export default function CRMContactoPerfil() {
                 onClick={() => setTab(t as any)}
                 className={`px-6 py-3 font-medium text-sm whitespace-nowrap ${
                   tab === t
-                    ? 'text-primary-600 border-b-2 border-primary-600'
+                    ? 'text-accent border-b-2 border-accent'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -298,7 +298,7 @@ export default function CRMContactoPerfil() {
                 <h3 className="text-lg font-semibold text-gray-900">Cotizaciones</h3>
                 <button
                   onClick={handleAgregarCotizacion}
-                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
+                  className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Nueva Cotización
@@ -326,7 +326,7 @@ export default function CRMContactoPerfil() {
                             <div className="flex items-center gap-3 mt-3">
                               <button
                                 onClick={() => abrirArchivoCRM(cot.archivo_url!)}
-                                className="flex items-center gap-2 text-primary-600 hover:text-primary-800 text-sm font-medium hover:bg-primary-50 px-3 py-1.5 rounded transition"
+                                className="flex items-center gap-2 text-accent hover:text-primary-800 text-sm font-medium hover:bg-primary-50 px-3 py-1.5 rounded transition"
                               >
                                 <ExternalLink className="h-4 w-4" />
                                 Abrir PDF
@@ -397,7 +397,7 @@ export default function CRMContactoPerfil() {
                             <div className="flex items-center gap-3 mt-3">
                               <button
                                 onClick={() => abrirArchivoCRM(pol.archivo_url!)}
-                                className="flex items-center gap-2 text-primary-600 hover:text-primary-800 text-sm font-medium hover:bg-primary-50 px-3 py-1.5 rounded transition"
+                                className="flex items-center gap-2 text-accent hover:text-primary-800 text-sm font-medium hover:bg-primary-50 px-3 py-1.5 rounded transition"
                               >
                                 <ExternalLink className="h-4 w-4" />
                                 Abrir PDF

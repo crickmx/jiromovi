@@ -226,7 +226,7 @@ export function PublicarOnDemandModal({
                 type="checkbox"
                 checked={oficinasSeleccionadas.length === oficinas.length}
                 onChange={handleToggleTodasOficinas}
-                className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-blue-500"
+                className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
               />
               <span className="text-sm font-semibold text-slate-800">Todas las oficinas</span>
             </label>
@@ -237,7 +237,7 @@ export function PublicarOnDemandModal({
                     type="checkbox"
                     checked={oficinasSeleccionadas.includes(oficina.id)}
                     onChange={() => handleToggleOficina(oficina.id)}
-                    className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
                   />
                   <span className="text-sm text-slate-700">{oficina.nombre}</span>
                 </label>
@@ -255,7 +255,7 @@ export function PublicarOnDemandModal({
             id="activa"
             checked={activa}
             onChange={(e) => setActiva(e.target.checked)}
-            className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-blue-500"
+            className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
           />
           <label htmlFor="activa" className="text-sm text-slate-700">
             Publicar inmediatamente (visible para usuarios)
@@ -274,7 +274,7 @@ export function PublicarOnDemandModal({
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>

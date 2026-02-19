@@ -118,7 +118,7 @@ export function CustomFields({ usuarioId, editable = false }: CustomFieldsProps)
               checked={valor === 'true'}
               onChange={(e) => handleChange(campo.id, e.target.checked ? 'true' : 'false')}
               disabled={!isEditable}
-              className="w-5 h-5 text-primary-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="ml-3 text-sm text-slate-600">
               {valor === 'true' ? 'Sí' : 'No'}

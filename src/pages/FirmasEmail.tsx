@@ -46,8 +46,8 @@ export function FirmasEmail() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 px-6 py-4 font-semibold transition-all border-b-2 ${
                     isActive
-                      ? 'border-primary-600 text-primary-600 bg-white'
-                      : 'border-transparent text-neutral-600 hover:text-primary-600 hover:bg-white/50'
+                      ? 'border-accent text-accent bg-white'
+                      : 'border-transparent text-neutral-600 hover:text-accent hover:bg-white/50'
                   }`}
                 >
                   <Icon className="w-5 h-5" />

@@ -119,7 +119,7 @@ export default function PanelVendedoresOficina() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
         <span className="ml-3 text-lg">Cargando vendedores...</span>
       </div>
     );
@@ -131,7 +131,7 @@ export default function PanelVendedoresOficina() {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Building className="h-5 w-5 text-blue-600" />
+            <Building className="h-5 w-5 text-accent" />
             <div>
               <p className="text-sm font-medium text-gray-900">
                 {metadata?.scope === 'all' ? 'Todos los Vendedores' : `Oficina: ${metadata?.oficina_nombre}`}
@@ -144,7 +144,7 @@ export default function PanelVendedoresOficina() {
           <button
             onClick={loadVendors}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 inline mr-2 ${loading ? 'animate-spin' : ''}`} />
             Actualizar
@@ -160,7 +160,7 @@ export default function PanelVendedoresOficina() {
               <p className="text-xs text-gray-600">Vendedores</p>
               <p className="text-2xl font-bold text-gray-900">{stats?.total_vendors || 0}</p>
             </div>
-            <Users className="h-8 w-8 text-blue-600" />
+            <Users className="h-8 w-8 text-accent" />
           </div>
         </div>
 
@@ -190,11 +190,11 @@ export default function PanelVendedoresOficina() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-600">Prima Neta</p>
-              <p className="text-xl font-bold text-blue-600">
+              <p className="text-xl font-bold text-accent">
                 {stats ? formatCurrency(stats.total_prima_neta) : '$0'}
               </p>
             </div>
-            <TrendingUp className="h-8 w-8 text-blue-600" />
+            <TrendingUp className="h-8 w-8 text-accent" />
           </div>
         </div>
 
@@ -226,7 +226,7 @@ export default function PanelVendedoresOficina() {
           placeholder="Buscar por nombre, email u oficina..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
         />
       </div>
 
@@ -268,7 +268,7 @@ export default function PanelVendedoresOficina() {
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-semibold">
+                        <span className="text-accent font-semibold">
                           {vendor.nombre_completo.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                         </span>
                       </div>
@@ -312,7 +312,7 @@ export default function PanelVendedoresOficina() {
                       onClick={() => setExpandedVendor(
                         expandedVendor === vendor.usuario_id ? null : vendor.usuario_id
                       )}
-                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                      className="text-accent hover:text-blue-800 transition-colors"
                     >
                       {expandedVendor === vendor.usuario_id ? (
                         <ChevronUp className="h-5 w-5" />
@@ -394,7 +394,7 @@ export default function PanelVendedoresOficina() {
                 <div className="mt-4 flex justify-end">
                   <button
                     onClick={() => handleVerDetalle(vendor.usuario_id)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
                   >
                     Ver Perfil Completo
                   </button>

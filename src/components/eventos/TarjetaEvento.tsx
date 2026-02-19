@@ -43,7 +43,7 @@ export function TarjetaEvento({
       <div className="p-6">
         {/* Título y Descripción */}
         <div className="mb-4">
-          <h3 className="text-xl font-bold text-neutral-800 mb-2 group-hover:text-primary-600 transition">
+          <h3 className="text-xl font-bold text-neutral-800 mb-2 group-hover:text-accent transition">
             {evento.titulo}
           </h3>
           <p className="text-neutral-600 text-sm line-clamp-3">
@@ -55,13 +55,13 @@ export function TarjetaEvento({
         <div className="space-y-2 mb-5">
           {/* Ponente */}
           <div className="flex items-center gap-2 text-neutral-700">
-            <User className="w-4 h-4 text-primary-600 flex-shrink-0" />
+            <User className="w-4 h-4 text-accent flex-shrink-0" />
             <span className="text-sm font-medium">{evento.ponente}</span>
           </div>
 
           {/* Fecha */}
           <div className="flex items-center gap-2 text-neutral-700">
-            <Calendar className="w-4 h-4 text-primary-600 flex-shrink-0" />
+            <Calendar className="w-4 h-4 text-accent flex-shrink-0" />
             <span className="text-sm">
               {formatearFechaEvento(evento.fecha)}
             </span>
@@ -69,7 +69,7 @@ export function TarjetaEvento({
 
           {/* Hora */}
           <div className="flex items-center gap-2 text-neutral-700">
-            <Clock className="w-4 h-4 text-primary-600 flex-shrink-0" />
+            <Clock className="w-4 h-4 text-accent flex-shrink-0" />
             <span className="text-sm font-medium">
               {formatearHoraEvento(evento.hora)}
             </span>
@@ -85,7 +85,7 @@ export function TarjetaEvento({
               className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition ${
                 porComenzar
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 shadow-lg'
-                  : 'bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800'
+                  : 'bg-gradient-to-r from-accent to-accent-dark text-white hover:from-primary-700 hover:to-primary-800'
               }`}
             >
               <ExternalLink className="w-4 h-4" />

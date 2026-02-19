@@ -183,7 +183,7 @@ export function PerfilUsuario() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -252,7 +252,7 @@ export function PerfilUsuario() {
                     className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
                   />
                 ) : (
-                  <div className="w-32 h-32 rounded-full bg-primary-600 flex items-center justify-center border-4 border-white shadow-lg">
+                  <div className="w-32 h-32 rounded-full bg-accent flex items-center justify-center border-4 border-white shadow-lg">
                     <UserIcon className="w-16 h-16 text-white" />
                   </div>
                 )}
@@ -333,7 +333,7 @@ export function PerfilUsuario() {
                       onClick={() => setActiveTab(tab.id)}
                       className={`flex items-center space-x-2 px-4 py-4 border-b-2 font-medium text-sm transition ${
                         activeTab === tab.id
-                          ? 'border-primary-600 text-primary-600'
+                          ? 'border-accent text-accent'
                           : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                       }`}
                     >
@@ -623,7 +623,7 @@ export function PerfilUsuario() {
                                 setTimeout(() => setCopiedUrl(false), 2000);
                               }
                             }}
-                            className="px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center gap-2"
+                            className="px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition flex items-center gap-2"
                           >
                             {copiedUrl ? (
                               <>

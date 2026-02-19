@@ -236,7 +236,7 @@ export default function StorePedidoDetalle() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
       </Layout>
     );
@@ -268,7 +268,7 @@ export default function StorePedidoDetalle() {
             <h1 className="text-3xl font-bold text-gray-900">Detalle de Pedido</h1>
             <p className="text-gray-600 mt-1">
               Folio: {pedido.folio_oc ? (
-                <span className="font-semibold text-primary-600">{pedido.folio_oc}</span>
+                <span className="font-semibold text-accent">{pedido.folio_oc}</span>
               ) : (
                 <span className="text-gray-400 italic">Pendiente de asignación</span>
               )}
@@ -310,7 +310,7 @@ export default function StorePedidoDetalle() {
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-gray-900">Total</span>
-                  <span className="text-2xl font-bold text-primary-600">
+                  <span className="text-2xl font-bold text-accent">
                     ${calcularTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -455,7 +455,7 @@ export default function StorePedidoDetalle() {
                       <select
                         value={responsablePagoId}
                         onChange={(e) => setResponsablePagoId(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
                       >
                         <option value="">Seleccionar...</option>
                         {usuariosOficina.map((u) => (
@@ -477,7 +477,7 @@ export default function StorePedidoDetalle() {
                     <select
                       value={formaPago}
                       onChange={(e) => setFormaPago(e.target.value as FormaPagoOC)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
                     >
                       <option value="">Seleccionar...</option>
                       <option value="Contado">Contado</option>
@@ -494,7 +494,7 @@ export default function StorePedidoDetalle() {
                     <select
                       value={metodoPago}
                       onChange={(e) => setMetodoPago(e.target.value as MetodoPagoOC)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
                     >
                       <option value="">Seleccionar...</option>
                       <option value="Cargo a Oficina">Cargo a Oficina</option>
@@ -516,7 +516,7 @@ export default function StorePedidoDetalle() {
                         value={metodoPagoOtroDetalle}
                         onChange={(e) => setMetodoPagoOtroDetalle(e.target.value)}
                         placeholder="Especifique el método de pago..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
                       />
                     </div>
                   )}
@@ -529,7 +529,7 @@ export default function StorePedidoDetalle() {
                       value={observacionesOC}
                       onChange={(e) => setObservacionesOC(e.target.value)}
                       placeholder="Observaciones sobre el pedido..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
                       rows={3}
                     />
                   </div>
@@ -539,7 +539,7 @@ export default function StorePedidoDetalle() {
                   <button
                     onClick={handleGuardarPago}
                     disabled={guardandoPago || !formaPago || !metodoPago}
-                    className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <Save className="w-4 h-4" />
                     {guardandoPago ? 'Guardando...' : 'Guardar Información de Pago'}
@@ -588,7 +588,7 @@ export default function StorePedidoDetalle() {
                 <button
                   onClick={handleAgregarNota}
                   disabled={agregandoNota || !nuevaNota.trim()}
-                  className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50"
+                  className="w-full bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50"
                 >
                   {agregandoNota ? 'Agregando...' : 'Agregar Nota'}
                 </button>

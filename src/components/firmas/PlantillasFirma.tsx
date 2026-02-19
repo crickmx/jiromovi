@@ -159,7 +159,7 @@ export function PlantillasFirma() {
         <h2 className="text-xl font-bold text-neutral-900">Plantillas de Firma</h2>
         <button
           onClick={handleNew}
-          className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-all"
+          className="flex items-center space-x-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition-all"
         >
           <Plus className="w-5 h-5" />
           <span>Nueva Plantilla</span>
@@ -292,14 +292,14 @@ export function PlantillasFirma() {
                   <div className="flex space-x-2">
                     <button
                       onClick={() => setViewMode('code')}
-                      className={`px-3 py-1 text-sm rounded ${viewMode === 'code' ? 'bg-primary-600 text-white' : 'bg-neutral-200 text-neutral-700'}`}
+                      className={`px-3 py-1 text-sm rounded ${viewMode === 'code' ? 'bg-accent text-white' : 'bg-neutral-200 text-neutral-700'}`}
                     >
                       <Code className="w-4 h-4 inline mr-1" />
                       Código
                     </button>
                     <button
                       onClick={() => setViewMode('preview')}
-                      className={`px-3 py-1 text-sm rounded ${viewMode === 'preview' ? 'bg-primary-600 text-white' : 'bg-neutral-200 text-neutral-700'}`}
+                      className={`px-3 py-1 text-sm rounded ${viewMode === 'preview' ? 'bg-accent text-white' : 'bg-neutral-200 text-neutral-700'}`}
                     >
                       <Eye className="w-4 h-4 inline mr-1" />
                       Vista Previa
@@ -334,7 +334,7 @@ export function PlantillasFirma() {
               <button
                 onClick={handleSave}
                 disabled={!formData.nombre || !formData.html}
-                className="flex items-center space-x-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50"
+                className="flex items-center space-x-2 px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50"
               >
                 <Save className="w-5 h-5" />
                 <span>Guardar</span>

@@ -16,7 +16,7 @@ export function ResponseKPICard({ kpi }: ResponseKPICardProps) {
     <div className="bg-white border rounded-lg p-3 shadow-sm">
       <div className="flex items-start justify-between mb-2">
         <div className="p-2 bg-primary-50 rounded">
-          <IconComponent className="h-4 w-4 text-primary-600" />
+          <IconComponent className="h-4 w-4 text-accent" />
         </div>
         {kpi.trend && TrendIconComponent && (
           <div className={`flex items-center gap-1 text-xs ${getTrendColor(kpi.trend.direction)}`}>

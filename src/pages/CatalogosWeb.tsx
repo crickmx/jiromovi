@@ -387,7 +387,7 @@ export default function CatalogosWeb() {
 
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
                       {IconComponent ? (
-                        <IconComponent className="w-6 h-6 text-primary-600" />
+                        <IconComponent className="w-6 h-6 text-accent" />
                       ) : (
                         <ImageIcon className="w-6 h-6 text-gray-400" />
                       )}
@@ -582,7 +582,7 @@ export default function CatalogosWeb() {
                 const IconPreview = (LucideIcons as any)[categoryForm.lucide_icon];
                 return IconPreview ? (
                   <div className="mt-2 p-3 border rounded bg-gradient-to-br from-blue-50 to-blue-100 flex items-center gap-2">
-                    <IconPreview className="w-6 h-6 text-primary-600" />
+                    <IconPreview className="w-6 h-6 text-accent" />
                     <span className="text-sm text-gray-700">Vista previa del icono</span>
                   </div>
                 ) : (

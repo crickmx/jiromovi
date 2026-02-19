@@ -11,7 +11,7 @@ export function ResponseMessageGenerator({ response }: ResponseMessageGeneratorP
     <div className="space-y-3">
       <div className="p-3 bg-primary-50 border border-primary-200 rounded">
         <div className="flex items-start gap-2 mb-2">
-          <MessageSquare className="h-4 w-4 text-primary-600 mt-0.5" />
+          <MessageSquare className="h-4 w-4 text-accent mt-0.5" />
           <h4 className="font-medium text-sm text-primary-900">Mensaje generado</h4>
         </div>
         <p className="text-sm text-gray-800 whitespace-pre-wrap">{response.message}</p>

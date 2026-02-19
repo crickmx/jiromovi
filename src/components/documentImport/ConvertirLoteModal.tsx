@@ -271,7 +271,7 @@ export default function ConvertirLoteModal({
                         </div>
                         <button
                           onClick={() => handleNavigateToBatch(batch.id)}
-                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center gap-2 text-sm font-medium min-h-[44px]"
+                          className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition flex items-center gap-2 text-sm font-medium min-h-[44px]"
                         >
                           Abrir lote
                           <ArrowRight className="h-4 w-4" />
@@ -325,7 +325,7 @@ export default function ConvertirLoteModal({
         <div className="p-4 sm:p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
             </div>
           ) : error ? (
             <>
@@ -454,7 +454,7 @@ export default function ConvertirLoteModal({
                             <p className="text-2xl font-bold text-green-700">{errorDetails.diagnostic.counts_by_status.valid || 0}</p>
                           </div>
                           <div className="bg-white p-3 rounded border border-primary-200">
-                            <p className="text-xs text-primary-600">Advertencias</p>
+                            <p className="text-xs text-accent">Advertencias</p>
                             <p className="text-2xl font-bold text-primary-700">{errorDetails.diagnostic.counts_by_status.warning || 0}</p>
                           </div>
                           <div className="bg-white p-3 rounded border border-red-200">
@@ -523,7 +523,7 @@ export default function ConvertirLoteModal({
                                     <p className="text-gray-600 col-span-2"><span className="font-semibold">FPago:</span> {sample.fpago_raw}</p>
                                   )}
                                   {sample.warnings && (
-                                    <p className="text-primary-600 col-span-2 text-xs mt-1">
+                                    <p className="text-accent col-span-2 text-xs mt-1">
                                       Advertencias: {sample.warnings}
                                     </p>
                                   )}
@@ -750,7 +750,7 @@ export default function ConvertirLoteModal({
 
               <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-6">
                 <div className="flex items-start gap-3">
-                  <Info className="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                  <Info className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-semibold text-primary-900">Posibles soluciones:</p>
                     <ul className="text-sm text-primary-800 mt-2 space-y-1 list-disc list-inside">
@@ -772,7 +772,7 @@ export default function ConvertirLoteModal({
                 </button>
                 <button
                   onClick={loadValidation}
-                  className="w-full sm:w-auto px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-semibold min-h-[44px]"
+                  className="w-full sm:w-auto px-4 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition font-semibold min-h-[44px]"
                 >
                   Reintentar
                 </button>
@@ -829,7 +829,7 @@ export default function ConvertirLoteModal({
                               </span>
                               <button
                                 onClick={() => downloadErrorsCSV(err)}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition"
                               >
                                 <Download className="h-4 w-4" />
                                 Descargar CSV
@@ -891,7 +891,7 @@ export default function ConvertirLoteModal({
               {warnings.length > 0 && (
                 <div className="space-y-3 mb-6">
                   <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                    <Info className="h-5 w-5 text-primary-600" />
+                    <Info className="h-5 w-5 text-accent" />
                     Advertencias ({warnings.length})
                   </h3>
                   {warnings.map((warn, idx) => (
@@ -911,9 +911,9 @@ export default function ConvertirLoteModal({
                             <p className="text-sm text-primary-800">{warn.message}</p>
                           </div>
                           {expandedErrors.has(idx + blockingErrors.length) ? (
-                            <ChevronUp className="h-5 w-5 text-primary-600 flex-shrink-0" />
+                            <ChevronUp className="h-5 w-5 text-accent flex-shrink-0" />
                           ) : (
-                            <ChevronDown className="h-5 w-5 text-primary-600 flex-shrink-0" />
+                            <ChevronDown className="h-5 w-5 text-accent flex-shrink-0" />
                           )}
                         </div>
                       </div>
@@ -927,7 +927,7 @@ export default function ConvertirLoteModal({
                               </span>
                               <button
                                 onClick={() => downloadErrorsCSV(warn)}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition"
                               >
                                 <Download className="h-4 w-4" />
                                 Descargar CSV

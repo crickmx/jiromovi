@@ -124,7 +124,7 @@ export default function ExamenInterface() {
     const respondida = respuestas[pregunta.id];
 
     if (preguntaActual === indice) {
-      return 'bg-primary-600 text-white ring-2 ring-primary-300';
+      return 'bg-accent text-white ring-2 ring-primary-300';
     } else if (respondida) {
       return 'bg-emerald-500 text-white';
     } else {
@@ -147,7 +147,7 @@ export default function ExamenInterface() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando examen...</p>
         </div>
       </div>
@@ -161,7 +161,7 @@ export default function ExamenInterface() {
           <p className="text-neutral-600 mb-4">No se encontró el examen</p>
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
-            className="text-primary-600 hover:text-primary-700"
+            className="text-accent hover:text-primary-700"
           >
             Volver al curso
           </button>
@@ -196,7 +196,7 @@ export default function ExamenInterface() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-neutral-50 rounded-ios-lg p-4">
-                  <div className="text-3xl font-bold text-primary-600 mb-1">
+                  <div className="text-3xl font-bold text-accent mb-1">
                     {resultado.puntaje}%
                   </div>
                   <div className="text-sm text-neutral-600">Calificación</div>
@@ -227,7 +227,7 @@ export default function ExamenInterface() {
               )}
               <button
                 onClick={() => navigate('/seguros-education/cedula-a')}
-                className="px-6 py-3 bg-primary-600 text-white rounded-ios-lg hover:bg-primary-700 active:scale-[0.98] transition-all font-medium"
+                className="px-6 py-3 bg-accent text-white rounded-ios-lg hover:bg-accent-hover active:scale-[0.98] transition-all font-medium"
               >
                 Volver al Curso
               </button>
@@ -332,7 +332,7 @@ export default function ExamenInterface() {
             <div className="flex items-center gap-4 sm:gap-6">
               <div className="text-center">
                 <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-neutral-900">
-                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
                   <span>{formatearTiempo(tiempoTranscurrido)}</span>
                 </div>
                 <p className="text-xs text-neutral-500 hidden sm:block">Tiempo de referencia: {examen.duracion_referencia_minutos} min</p>
@@ -367,14 +367,14 @@ export default function ExamenInterface() {
                         onClick={() => seleccionarRespuesta(pregunta.id, opcion.letra)}
                         className={`w-full text-left p-4 rounded-ios-lg border-2 transition-all ${
                           seleccionada
-                            ? 'border-primary-600 bg-primary-50'
+                            ? 'border-accent bg-primary-50'
                             : 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50'
                         }`}
                       >
                         <div className="flex items-start gap-3">
                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
                             seleccionada
-                              ? 'border-primary-600 bg-primary-600'
+                              ? 'border-accent bg-accent'
                               : 'border-neutral-300'
                           }`}>
                             {seleccionada && (
@@ -436,7 +436,7 @@ export default function ExamenInterface() {
 
                 <div className="space-y-2 mb-6 text-xs bg-neutral-50 rounded-ios-lg p-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-primary-600 rounded"></div>
+                    <div className="w-3 h-3 bg-accent rounded"></div>
                     <span className="text-neutral-600">Actual</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -464,7 +464,7 @@ export default function ExamenInterface() {
 
                 <button
                   onClick={() => setModalConfirmacion(true)}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-ios-lg hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-accent to-accent-dark text-white rounded-ios-lg hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
                 >
                   <Send className="w-5 h-5" />
                   <span>Enviar Examen</span>
@@ -501,7 +501,7 @@ export default function ExamenInterface() {
               </button>
               <button
                 onClick={enviarExamen}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-ios-lg hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-accent to-accent-dark text-white rounded-ios-lg hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
               >
                 Confirmar
               </button>

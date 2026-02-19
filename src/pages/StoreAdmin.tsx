@@ -123,7 +123,7 @@ export default function StoreAdmin() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
       </Layout>
     );
@@ -142,7 +142,7 @@ export default function StoreAdmin() {
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-primary-600">Administración de MOVI Store</h1>
+            <h1 className="text-3xl font-bold text-accent">Administración de MOVI Store</h1>
             <p className="text-gray-600 mt-1">Gestiona productos y categorías</p>
           </div>
         </div>
@@ -152,7 +152,7 @@ export default function StoreAdmin() {
             onClick={() => setVistaActual('productos')}
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               vistaActual === 'productos'
-                ? 'bg-primary-600 text-white'
+                ? 'bg-accent text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -164,7 +164,7 @@ export default function StoreAdmin() {
             onClick={() => setVistaActual('categorias')}
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               vistaActual === 'categorias'
-                ? 'bg-primary-600 text-white'
+                ? 'bg-accent text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -178,7 +178,7 @@ export default function StoreAdmin() {
             <div className="flex justify-end mb-6">
               <button
                 onClick={handleCrearProducto}
-                className="flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm"
+                className="flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
               >
                 <Plus className="w-5 h-5" />
                 Nuevo Producto
@@ -237,7 +237,7 @@ export default function StoreAdmin() {
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleEditarProducto(producto)}
-                              className="text-primary-600 hover:text-primary-800 transition-colors"
+                              className="text-accent hover:text-primary-800 transition-colors"
                               title="Editar"
                             >
                               <Edit className="w-5 h-5" />
@@ -263,7 +263,7 @@ export default function StoreAdmin() {
             <div className="flex justify-end mb-6">
               <button
                 onClick={handleCrearCategoria}
-                className="flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-sm"
+                className="flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
               >
                 <Plus className="w-5 h-5" />
                 Nueva Categoría
@@ -296,7 +296,7 @@ export default function StoreAdmin() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleEditarCategoria(categoria)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-primary-50 text-primary-600 px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors font-medium"
+                      className="flex-1 flex items-center justify-center gap-2 bg-primary-50 text-accent px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors font-medium"
                     >
                       <Edit className="w-4 h-4" />
                       Editar
@@ -521,7 +521,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
             id="activo"
             checked={activo}
             onChange={(e) => setActivo(e.target.checked)}
-            className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-blue-500"
+            className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
           />
           <label htmlFor="activo" className="text-sm font-medium text-gray-700">
             Producto activo (visible en el catálogo)
@@ -532,7 +532,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
           <button
             onClick={handleGuardar}
             disabled={guardando}
-            className="flex-1 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50"
+            className="flex-1 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50"
           >
             {guardando ? 'Guardando...' : producto ? 'Actualizar' : 'Crear'}
           </button>
@@ -631,7 +631,7 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
             id="activo-cat"
             checked={activo}
             onChange={(e) => setActivo(e.target.checked)}
-            className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-blue-500"
+            className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
           />
           <label htmlFor="activo-cat" className="text-sm font-medium text-gray-700">
             Categoría activa
@@ -642,7 +642,7 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
           <button
             onClick={handleGuardar}
             disabled={guardando}
-            className="flex-1 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50"
+            className="flex-1 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50"
           >
             {guardando ? 'Guardando...' : categoria ? 'Actualizar' : 'Crear'}
           </button>

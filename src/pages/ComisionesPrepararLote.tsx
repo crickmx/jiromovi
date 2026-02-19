@@ -221,7 +221,7 @@ export default function ComisionesPrepararLote() {
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold"
+            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
           >
             Volver al Dashboard
           </button>
@@ -233,7 +233,7 @@ export default function ComisionesPrepararLote() {
   if (loading) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+        <Loader2 className="w-8 h-8 text-accent animate-spin" />
       </div>
     );
   }
@@ -248,7 +248,7 @@ export default function ComisionesPrepararLote() {
           </h2>
           <button
             onClick={() => navigate('/comisiones/upload-nuevo')}
-            className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold"
+            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
           >
             Volver a cargar archivo
           </button>
@@ -272,7 +272,7 @@ export default function ComisionesPrepararLote() {
               <ArrowLeft className="w-6 h-6 text-neutral-700" />
             </button>
             <div>
-              <h1 className="text-3xl font-display font-bold text-primary-600 mb-1">
+              <h1 className="text-3xl font-display font-bold text-accent mb-1">
                 Preparar Lote
               </h1>
               <p className="text-neutral-600">
@@ -421,7 +421,7 @@ export default function ComisionesPrepararLote() {
                       </div>
                       <button
                         onClick={() => setSelectedVendor(group)}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold"
+                        className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-semibold"
                       >
                         Asignar
                       </button>
