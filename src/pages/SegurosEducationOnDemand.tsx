@@ -395,17 +395,20 @@ export function SegurosEducationOnDemand() {
       if (thumbnailFile) {
         console.log('[handleUploadLesson] Starting thumbnail upload');
         const thumbFileName = `${Date.now()}-${thumbnailFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const { error: thumbError } = await supabase.storage
-          .from('seguros-thumbnails')
-          .upload(thumbFileName, thumbnailFile, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: thumbnailFile.type
-          });
 
-        if (thumbError) {
-          console.error('[handleUploadLesson] Thumbnail upload failed:', thumbError);
-          throw thumbError;
+        // Use uploadLargeFile for consistency and retry logic
+        const thumbnailResult = await uploadLargeFile(
+          'seguros-thumbnails',
+          thumbFileName,
+          thumbnailFile,
+          (progress) => {
+            setUploadProgress(70 + Math.floor(progress * 0.1)); // 70-80%
+          }
+        );
+
+        if (thumbnailResult.error) {
+          console.error('[handleUploadLesson] Thumbnail upload failed:', thumbnailResult.error);
+          throw thumbnailResult.error;
         }
 
         const { data: thumbPublicUrl } = supabase.storage
@@ -542,11 +545,18 @@ export function SegurosEducationOnDemand() {
 
       if (thumbnailFile) {
         const thumbFileName = `${Date.now()}-${thumbnailFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const { error: thumbError } = await supabase.storage
-          .from('seguros-thumbnails')
-          .upload(thumbFileName, thumbnailFile);
 
-        if (thumbError) throw thumbError;
+        // Use uploadLargeFile for consistency and retry logic
+        const thumbnailResult = await uploadLargeFile(
+          'seguros-thumbnails',
+          thumbFileName,
+          thumbnailFile,
+          (progress) => {
+            setUploadProgress(60 + Math.floor(progress * 0.2)); // 60-80%
+          }
+        );
+
+        if (thumbnailResult.error) throw thumbnailResult.error;
 
         const { data: thumbPublicUrl } = supabase.storage
           .from('seguros-thumbnails')

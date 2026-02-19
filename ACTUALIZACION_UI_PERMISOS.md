@@ -19,14 +19,20 @@ Error: new row violates row-level security policy for table "seguros_categories"
 **Causa**: Mismo problema de permisos RLS. Los Gerentes no tenían permisos de UPDATE en `seguros_lessons`.
 
 ### 3. Error al Subir Videos/Miniaturas
-**Error anterior:**
+**Errores anteriores:**
 ```
+# Error 1: RLS
 StorageApiError: new row violates row-level security policy
 [Upload] All retry attempts failed
-Failed to upload to seguros-videos bucket
+
+# Error 2: Network (después de fix RLS)
+ERR_HTTP2_PROTOCOL_ERROR
+StorageUnknownError: Failed to fetch
 ```
 
-**Causa**: Las políticas de storage usaban una función SECURITY DEFINER que podría no ejecutarse correctamente en el contexto de RLS de storage. Los JOINs implícitos en funciones pueden causar problemas de permisos.
+**Causas**:
+1. **RLS**: Las políticas de storage usaban una función SECURITY DEFINER que podría no ejecutarse correctamente en el contexto de RLS de storage
+2. **Network**: El upload de thumbnails no usaba la función de reintentos, fallando con errores de red temporales
 
 **Usuario afectado**: `recluta.cdmx@jiro.mx` al intentar subir lecciones con videos
 
@@ -215,7 +221,7 @@ El mismo sistema de permisos está disponible para:
 
 ## Solución Storage
 
-### Migración Aplicada: `fix_storage_rls_debug_and_simplify`
+### A. Migración RLS: `fix_storage_rls_debug_and_simplify`
 
 Se recrearon las políticas de storage con JOINs explícitos inline en lugar de usar la función `tiene_permiso_admin_en_modulo()`:
 
@@ -253,7 +259,38 @@ WITH CHECK (
 );
 ```
 
-### Función de Diagnóstico
+### B. Fix de Frontend: Reintentos en Thumbnails
+
+**Problema**: El upload de thumbnails usaba `supabase.storage.upload()` directo, sin lógica de reintentos.
+
+**Solución**: Cambiado a usar `uploadLargeFile()` con reintentos automáticos en ambas funciones:
+
+```typescript
+// ANTES (sin reintentos)
+const { error: thumbError } = await supabase.storage
+  .from('seguros-thumbnails')
+  .upload(thumbFileName, thumbnailFile);
+
+// AHORA (con reintentos)
+const thumbnailResult = await uploadLargeFile(
+  'seguros-thumbnails',
+  thumbFileName,
+  thumbnailFile,
+  (progress) => setUploadProgress(...)
+);
+```
+
+**Funciones actualizadas**:
+- `handleUploadLesson()` - Al subir nuevas lecciones
+- `handleUpdateLesson()` - Al editar lecciones existentes
+
+**Beneficios**:
+- Hasta 3 reintentos automáticos en caso de error de red
+- Espera progresiva entre reintentos (2s, 4s, 6s)
+- Mejor manejo de errores HTTP/2
+- Progress tracking consistente
+
+### C. Función de Diagnóstico
 
 Se agregó una función helper para diagnosticar permisos:
 
@@ -274,12 +311,23 @@ SELECT * FROM debug_storage_permissions(
 
 ## Resumen
 
-✅ **Problemas resueltos**: 3 errores de permisos corregidos
+✅ **Problemas resueltos**: 3 errores principales + 1 error de red
 ✅ **Políticas RLS actualizadas**: 3 tablas (categories, lessons, sessions)
 ✅ **Storage permissions fijas**: 2 buckets (videos, thumbnails) con 6 políticas
+✅ **Upload mejorado**: Reintentos automáticos para thumbnails y videos
 ✅ **Usuario verificado**: recluta.cdmx@jiro.mx tiene todos los permisos correctos
 ✅ **Sistema escalable**: Fácil agregar permisos a otros Gerentes
 ✅ **Build exitoso**: Sin errores de compilación
 ✅ **Función de diagnóstico**: Disponible para debugging futuro
+✅ **Resilencia de red**: Manejo robusto de errores HTTP/2 y timeouts
 
 **Los cambios están activos inmediatamente. No se requiere reinicio.**
+
+---
+
+## Errores Resueltos en Orden
+
+1. **403 Forbidden** al crear categorías → ✅ Políticas RLS actualizadas
+2. **Cambios no se guardan** al editar lecciones → ✅ Políticas RLS actualizadas
+3. **RLS violation** al subir videos/thumbnails → ✅ Storage policies con JOINs inline
+4. **ERR_HTTP2_PROTOCOL_ERROR** en thumbnails → ✅ Reintentos automáticos implementados
