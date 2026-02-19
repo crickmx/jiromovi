@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
+import { analyticsTracker } from '../lib/analyticsTracker';
 
 interface VideoPlayerProps {
   videoUrl: string;
   onProgressUpdate: (progress: number, currentTime: number) => void;
   initialTime?: number;
   onComplete?: () => void;
+  lessonId?: string;
 }
 
 export function VideoPlayer({
   videoUrl,
   onProgressUpdate,
   initialTime = 0,
-  onComplete
+  onComplete,
+  lessonId
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,6 +27,7 @@ export function VideoPlayer({
   const [volume, setVolume] = useState(1);
   const [showControls, setShowControls] = useState(true);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasTrackedPlay = useRef(false);
 
   const isGoogleDriveUrl = videoUrl.includes('drive.google.com');
 
@@ -69,6 +73,17 @@ export function VideoPlayer({
 
     const handleEnded = () => {
       setIsPlaying(false);
+
+      // Track complete event
+      if (lessonId && duration > 0) {
+        analyticsTracker.trackLessonComplete(
+          lessonId,
+          Math.floor(video.currentTime),
+          100,
+          Math.floor(duration)
+        );
+      }
+
       if (onComplete) {
         onComplete();
       }
@@ -92,6 +107,16 @@ export function VideoPlayer({
         if (video && duration > 0) {
           const progress = (video.currentTime / duration) * 100;
           onProgressUpdate(progress, video.currentTime);
+
+          // Track progress event (throttled automáticamente en analyticsTracker)
+          if (lessonId) {
+            analyticsTracker.trackLessonProgress(
+              lessonId,
+              Math.floor(video.currentTime),
+              progress,
+              Math.floor(duration)
+            );
+          }
         }
       }, 5000);
     } else {
@@ -105,7 +130,7 @@ export function VideoPlayer({
         clearInterval(progressIntervalRef.current);
       }
     };
-  }, [isPlaying, duration, onProgressUpdate]);
+  }, [isPlaying, duration, onProgressUpdate, lessonId]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -113,8 +138,18 @@ export function VideoPlayer({
 
     if (isPlaying) {
       video.pause();
+      // Track pause event
+      if (lessonId && duration > 0) {
+        const progressPercent = (video.currentTime / duration) * 100;
+        analyticsTracker.trackLessonPause(lessonId, Math.floor(video.currentTime), progressPercent);
+      }
     } else {
       video.play();
+      // Track play event (solo la primera vez)
+      if (lessonId && !hasTrackedPlay.current) {
+        analyticsTracker.trackLessonPlay(lessonId, Math.floor(duration));
+        hasTrackedPlay.current = true;
+      }
     }
     setIsPlaying(!isPlaying);
   };

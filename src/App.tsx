@@ -27,6 +27,7 @@ import { SegurosEducation } from './pages/SegurosEducation';
 import { SegurosEducationOnDemand } from './pages/SegurosEducationOnDemand';
 import { SegurosEducationAulaVirtual } from './pages/SegurosEducationAulaVirtual';
 import { SegurosEducationAulaDigital } from './pages/SegurosEducationAulaDigital';
+import { SegurosEducationAnalytics } from './pages/SegurosEducationAnalytics';
 import { CentroNotificaciones } from './pages/CentroNotificaciones';
 import { Tramites } from './pages/Tramites';
 import { TramiteDetalle } from './pages/TramiteDetalle';
@@ -308,6 +309,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <SegurosEducationAulaDigital />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/seguros-education/analytics"
+        element={
+          <ProtectedRoute>
+            <SegurosEducationAnalytics />
           </ProtectedRoute>
         }
       />

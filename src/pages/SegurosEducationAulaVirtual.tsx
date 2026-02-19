@@ -26,6 +26,7 @@ import {
   type AulaSession,
   type AulaGrabacion
 } from '../lib/aulaVirtualUtils';
+import { analyticsTracker } from '../lib/analyticsTracker';
 
 export function SegurosEducationAulaVirtual() {
   const { usuario } = useAuth();
@@ -198,7 +199,14 @@ export function SegurosEducationAulaVirtual() {
 
   const handleUnirseASesion = async (sessionId: string) => {
     try {
+      // Track class join click
+      analyticsTracker.trackClassJoinClick(sessionId);
+
       const result = await unirseASesion(sessionId);
+
+      // Track class join success
+      analyticsTracker.trackClassJoinSuccess(sessionId);
+
       window.location.href = `/aula-virtual/sala/${result.session.room_id}`;
     } catch (error: any) {
       alert(error.message || 'Error al unirse a la sesión');

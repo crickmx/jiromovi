@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, Edit2, FileText } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
+import { analyticsTracker } from '../lib/analyticsTracker';
 
 interface Category {
   id: string;
@@ -762,6 +763,9 @@ export function SegurosEducationOnDemand() {
   const handleLessonClick = (lesson: Lesson) => {
     setSelectedLesson(lesson);
     setShowVideoModal(true);
+
+    // Track lesson view start
+    analyticsTracker.trackLessonViewStart(lesson.id, lesson.duracion);
   };
 
   const handleProgressUpdate = async (progress: number, currentTime: number) => {
@@ -1099,6 +1103,7 @@ export function SegurosEducationOnDemand() {
                 initialTime={selectedLesson.tiempo_reproduccion || 0}
                 onProgressUpdate={handleProgressUpdate}
                 onComplete={handleVideoComplete}
+                lessonId={selectedLesson.id}
               />
             </div>
 

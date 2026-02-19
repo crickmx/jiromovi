@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Video, Calendar, Clock, Play, Award, TrendingUp, GraduationCap } from 'lucide-react';
+import { Video, Calendar, Clock, Play, Award, TrendingUp, GraduationCap, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { obtenerSesiones } from '../lib/aulaVirtualUtils';
@@ -202,7 +202,7 @@ export function SegurosEducation() {
         </div>
 
         {/* Quick Access Buttons - TOP PRIORITY */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
             className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-8 shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
@@ -250,6 +250,23 @@ export function SegurosEducation() {
               </div>
             </div>
           </button>
+
+          {usuario?.rol === 'Administrador' && (
+            <button
+              onClick={() => navigate('/seguros-education/analytics')}
+              className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-blue-500 shadow-sm hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                  <BarChart3 className="w-8 h-8 text-blue-600" />
+                </div>
+                <div className="text-left flex-1">
+                  <h3 className="text-xl font-bold text-neutral-800 mb-1">Analytics</h3>
+                  <p className="text-neutral-600 text-sm">Métricas y reportes</p>
+                </div>
+              </div>
+            </button>
+          )}
         </div>
 
         {/* Próximas Capacitaciones */}
