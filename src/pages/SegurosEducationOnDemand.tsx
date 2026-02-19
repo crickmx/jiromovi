@@ -255,33 +255,85 @@ export function SegurosEducationOnDemand() {
       timestamp: new Date().toISOString()
     });
 
-    try {
-      // Supabase automatically handles large files using TUS protocol for files > 6MB
-      const result = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type || 'video/mp4'
-        });
-
-      if (result.error) {
-        console.error('[Upload] Error from Supabase:', {
-          error: result.error,
-          message: result.error.message,
-          statusCode: result.error.statusCode,
-          details: result.error
-        });
-      } else {
-        console.log('[Upload] Success:', result.data);
-      }
-
-      if (onProgress) onProgress(100);
-      return result;
-    } catch (error) {
-      console.error('[Upload] Exception during upload:', error);
-      throw error;
+    // For large files in development environment, show warning
+    const isLargeFile = file.size > 100 * 1024 * 1024; // 100MB
+    if (isLargeFile && window.location.hostname.includes('webcontainer')) {
+      console.warn('[Upload] Large file upload in WebContainer may fail due to HTTP/2 limitations');
+      showToast('Advertencia: Archivos grandes pueden fallar en este entorno de desarrollo', 'warning');
     }
+
+    const MAX_RETRIES = 3;
+    let lastError: any = null;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[Upload] Attempt ${attempt}/${MAX_RETRIES}`);
+
+        // Use standard upload - Supabase automatically handles TUS for files > 6MB
+        const result = await supabase.storage
+          .from(bucket)
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: file.type || 'video/mp4'
+          });
+
+        if (result.error) {
+          console.error(`[Upload] Attempt ${attempt} error:`, {
+            error: result.error,
+            message: result.error.message,
+            statusCode: result.error.statusCode
+          });
+
+          lastError = result.error;
+
+          // Check for specific errors
+          if (result.error.message?.includes('HTTP2') ||
+              result.error.message?.includes('protocol') ||
+              result.error.message?.includes('Failed to fetch')) {
+
+            // This is a network/protocol error - wait before retry
+            if (attempt < MAX_RETRIES) {
+              const waitTime = attempt * 2000; // Progressive backoff: 2s, 4s, 6s
+              console.log(`[Upload] Network error, waiting ${waitTime}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            } else {
+              throw new Error(
+                'Error de red al subir el video. Esto puede ocurrir en entornos de desarrollo con archivos grandes. ' +
+                'En producción, este problema no debería ocurrir. Si persiste, contacta soporte.'
+              );
+            }
+          }
+
+          // Other errors - don't retry
+          throw result.error;
+        }
+
+        // Success!
+        console.log(`[Upload] Success on attempt ${attempt}:`, result.data);
+        if (onProgress) onProgress(100);
+        return result;
+
+      } catch (error: any) {
+        console.error(`[Upload] Exception on attempt ${attempt}:`, error);
+        lastError = error;
+
+        // If it's the last attempt, throw the error
+        if (attempt === MAX_RETRIES) {
+          break;
+        }
+
+        // Wait before next retry
+        const waitTime = attempt * 2000;
+        console.log(`[Upload] Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+
+    // All retries failed
+    console.error('[Upload] All retry attempts failed:', lastError);
+    throw lastError;
   };
 
   const handleUploadLesson = async () => {
@@ -1201,16 +1253,33 @@ export function SegurosEducationOnDemand() {
                     onChange={(e) => {
                       const file = e.target.files?.[0] || null;
                       if (file) {
-                        const maxSize = 5 * 1024 * 1024 * 1024; // 5GB
+                        const maxSize = 10 * 1024 * 1024 * 1024; // 10GB (matching backend)
                         if (file.size > maxSize) {
-                          showToast('El archivo supera el límite de 5GB. Por favor, comprime el video o divide el contenido en lecciones más cortas.', 'error');
+                          showToast('El archivo supera el límite de 10GB. Por favor, comprime el video o divide el contenido en lecciones más cortas.', 'error');
                           e.target.value = '';
                           return;
                         }
-                        // Advertencia para archivos muy grandes
-                        if (file.size > 1024 * 1024 * 1024) { // > 1GB
-                          const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
-                          showToast(`Archivo de ${sizeGB}GB detectado. La subida puede tomar varios minutos. Por favor no cierres esta ventana.`, 'warning');
+
+                        // Warning for large files in development environment
+                        if (file.size > 100 * 1024 * 1024) {
+                          const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                          const isWebContainer = window.location.hostname.includes('webcontainer') ||
+                                                 window.location.hostname.includes('stackblitz');
+
+                          if (isWebContainer) {
+                            showToast(
+                              `Archivo de ${sizeMB}MB detectado. IMPORTANTE: En este entorno de desarrollo, ` +
+                              `archivos mayores a 100MB pueden fallar por limitaciones de HTTP/2. ` +
+                              `Si el upload falla, por favor usa un archivo más pequeño o prueba en producción.`,
+                              'warning'
+                            );
+                          } else {
+                            showToast(
+                              `Archivo de ${sizeMB}MB detectado. La subida puede tomar varios minutos. ` +
+                              `Por favor no cierres esta ventana.`,
+                              'warning'
+                            );
+                          }
                         }
                       }
                       setVideoFile(file);
