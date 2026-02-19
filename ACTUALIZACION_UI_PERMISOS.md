@@ -18,6 +18,18 @@ Error: new row violates row-level security policy for table "seguros_categories"
 
 **Causa**: Mismo problema de permisos RLS. Los Gerentes no tenían permisos de UPDATE en `seguros_lessons`.
 
+### 3. Error al Subir Videos/Miniaturas
+**Error anterior:**
+```
+StorageApiError: new row violates row-level security policy
+[Upload] All retry attempts failed
+Failed to upload to seguros-videos bucket
+```
+
+**Causa**: Las políticas de storage usaban una función SECURITY DEFINER que podría no ejecutarse correctamente en el contexto de RLS de storage. Los JOINs implícitos en funciones pueden causar problemas de permisos.
+
+**Usuario afectado**: `recluta.cdmx@jiro.mx` al intentar subir lecciones con videos
+
 ## Solución Implementada
 
 ### Migración Aplicada: `fix_seguros_education_permissions_gerentes`
@@ -130,10 +142,19 @@ Los Gerentes con el permiso `seguros_education` ahora pueden:
 5. Guardar
 6. **Resultado esperado**: ✅ Cambios se guardan correctamente
 
-### Caso 3: Usuario Sin Permisos
+### Caso 3: Subir Lección con Video
+1. Iniciar sesión como `recluta.cdmx@jiro.mx`
+2. Ir a Seguros Education → On Demand
+3. Hacer clic en "Subir Lección"
+4. Seleccionar un archivo de video (MP4, MOV, WebM)
+5. Seleccionar una miniatura (opcional)
+6. Llenar formulario y guardar
+7. **Resultado esperado**: ✅ Video se sube sin errores de RLS
+
+### Caso 4: Usuario Sin Permisos
 1. Iniciar sesión como un Gerente SIN el permiso `seguros_education`
 2. Ir a Seguros Education → On Demand
-3. Intentar crear categoría
+3. Intentar crear categoría o subir video
 4. **Resultado esperado**: ❌ Error 403 (comportamiento correcto)
 
 ## Cómo Asignar Permisos a Otros Gerentes
@@ -192,12 +213,73 @@ El mismo sistema de permisos está disponible para:
 - `centro_digital` - Documentos compartidos
 - Y más...
 
+## Solución Storage
+
+### Migración Aplicada: `fix_storage_rls_debug_and_simplify`
+
+Se recrearon las políticas de storage con JOINs explícitos inline en lugar de usar la función `tiene_permiso_admin_en_modulo()`:
+
+**Antes:**
+```sql
+CREATE POLICY "..."
+WITH CHECK (
+  bucket_id = 'seguros-videos'
+  AND (
+    -- Admin check
+    OR tiene_permiso_admin_en_modulo(auth.uid(), 'seguros_education')
+  )
+);
+```
+
+**Ahora:**
+```sql
+CREATE POLICY "..."
+WITH CHECK (
+  bucket_id = 'seguros-videos'
+  AND (
+    -- Admin check
+    OR EXISTS (
+      SELECT 1
+      FROM usuarios u
+      JOIN permisos_adicionales_gerente pag ON pag.usuario_id = u.id
+      JOIN modulos_sistema ms ON ms.id = pag.modulo_id
+      WHERE u.id = auth.uid()
+        AND u.rol = 'Gerente'
+        AND u.estado = 'activo'
+        AND ms.codigo = 'seguros_education'
+        AND ms.activo = true
+    )
+  )
+);
+```
+
+### Función de Diagnóstico
+
+Se agregó una función helper para diagnosticar permisos:
+
+```sql
+SELECT * FROM debug_storage_permissions(
+  '7d8c03e2-db2e-4780-91dc-5b11b84bec83'::uuid,
+  'seguros-videos'
+);
+```
+
+**Resultado:**
+| Check | Passed | Details |
+|-------|--------|---------|
+| Usuario activo | ✅ true | Gerente - recluta.cdmx@jiro.mx |
+| Es Administrador | ❌ false | Gerente |
+| Tiene permiso seguros_education | ✅ true | seguros_education, ... (10 módulos) |
+| Debería poder subir a seguros-videos | ✅ true | Combinación OK |
+
 ## Resumen
 
-✅ **Problema resuelto**: Gerentes con permisos ahora pueden gestionar Seguros Education
+✅ **Problemas resueltos**: 3 errores de permisos corregidos
 ✅ **Políticas RLS actualizadas**: 3 tablas (categories, lessons, sessions)
-✅ **Usuario verificado**: recluta.cdmx@jiro.mx tiene permisos correctos
+✅ **Storage permissions fijas**: 2 buckets (videos, thumbnails) con 6 políticas
+✅ **Usuario verificado**: recluta.cdmx@jiro.mx tiene todos los permisos correctos
 ✅ **Sistema escalable**: Fácil agregar permisos a otros Gerentes
 ✅ **Build exitoso**: Sin errores de compilación
+✅ **Función de diagnóstico**: Disponible para debugging futuro
 
 **Los cambios están activos inmediatamente. No se requiere reinicio.**
