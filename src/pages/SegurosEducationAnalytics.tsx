@@ -97,7 +97,10 @@ export function SegurosEducationAnalytics() {
       return;
     }
 
-    if (usuario.rol !== 'Administrador') {
+    // Check if user is admin (case insensitive)
+    const isAdmin = usuario.rol?.toLowerCase() === 'admin' || usuario.rol?.toLowerCase() === 'administrador';
+
+    if (!isAdmin) {
       navigate('/seguros-education');
       return;
     }

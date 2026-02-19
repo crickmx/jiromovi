@@ -251,7 +251,7 @@ export function SegurosEducation() {
             </div>
           </button>
 
-          {usuario?.rol === 'Administrador' && (
+          {(usuario?.rol?.toLowerCase() === 'admin' || usuario?.rol?.toLowerCase() === 'administrador') && (
             <button
               onClick={() => navigate('/seguros-education/analytics')}
               className="bg-white rounded-xl p-8 border-2 border-neutral-200 hover:border-blue-500 shadow-sm hover:shadow-md transition-all group"
@@ -327,11 +327,7 @@ export function SegurosEducation() {
                         )}
                       </div>
                       <button
-                        onClick={() => navigate(
-                          session.tipo === 'evento'
-                            ? '/seguros-education/aula-digital'
-                            : '/seguros-education/aula-virtual'
-                        )}
+                        onClick={() => navigate('/seguros-education/aula-digital')}
                         className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
                       >
                         Ver Detalles
