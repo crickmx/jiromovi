@@ -15,7 +15,7 @@ export function hexToRgb(hex: string): string {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) {
     console.warn(`Color HEX inválido: ${hex}, usando default`);
-    return '14 35 226'; // Default azul MOVI
+    return '22 66 129'; // Default #164281
   }
 
   const r = parseInt(result[1], 16);
@@ -81,7 +81,7 @@ export function applyTheme(accentColor: string): void {
  * Remueve el tema personalizado y vuelve al default
  */
 export function resetTheme(): void {
-  applyTheme('#0E23E2'); // Azul MOVI default
+  applyTheme('#164281'); // Azul por defecto
 }
 
 /**
@@ -89,7 +89,7 @@ export function resetTheme(): void {
  */
 export function getCurrentTheme(): ThemeColors {
   const root = document.documentElement;
-  const accentRgb = getComputedStyle(root).getPropertyValue('--movi-accent-rgb').trim() || '14 35 226';
+  const accentRgb = getComputedStyle(root).getPropertyValue('--movi-accent-rgb').trim() || '22 66 129';
   const accentForegroundRgb = getComputedStyle(root).getPropertyValue('--movi-accent-foreground-rgb').trim() || '255 255 255';
 
   return {

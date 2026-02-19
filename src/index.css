@@ -16,10 +16,10 @@
        COLORES DE ACENTO DINÁMICOS POR OFICINA
        Se actualizan en runtime según la oficina del usuario
        ============================================ */
-    --movi-accent-rgb: 14 35 226; /* Default: Azul MOVI */
+    --movi-accent-rgb: 22 66 129; /* Default: #164281 */
     --movi-accent-foreground-rgb: 255 255 255; /* Texto sobre accent */
-    --movi-accent-hover-rgb: 34 55 246; /* Hover state */
-    --movi-accent-dark-rgb: 0 15 206; /* Dark variant */
+    --movi-accent-hover-rgb: 42 86 149; /* Hover state */
+    --movi-accent-dark-rgb: 2 46 109; /* Dark variant */
 
     /* Colores primarios - MOVI Blue (fallback/legacy) */
     --color-primary-50: 230 240 255;
