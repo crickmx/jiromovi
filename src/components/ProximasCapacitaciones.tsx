@@ -150,7 +150,7 @@ export function ProximasCapacitaciones() {
               return (
                 <div
                   key={sesion.id}
-                  onClick={() => navigate(sesion.tipo === 'evento' ? '/seguros-education/aula-digital' : '/seguros-education/aula-virtual')}
+                  onClick={() => navigate('/seguros-education/aula-virtual')}
                   className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 hover:bg-neutral-100 hover:border-primary-200 hover:shadow-ios transition-all cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-2">
