@@ -23,7 +23,7 @@ interface Lesson {
   id: string;
   titulo: string;
   descripcion: string;
-  categoria: { nombre: string; id: string } | null;
+  categorias: { nombre: string; id: string }[];
   miniatura_url: string | null;
   video_url: string;
   duracion: number;
@@ -57,7 +57,7 @@ export function SegurosEducationOnDemand() {
   const [formData, setFormData] = useState({
     titulo: '',
     descripcion: '',
-    categoria_id: '',
+    categoria_ids: [] as string[],
     oficinas_asignadas: [] as string[],
   });
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -127,18 +127,16 @@ export function SegurosEducationOnDemand() {
         .order('nombre');
       setOficinas(ofis || []);
 
-      // Fetch lessons with progress
+      // Fetch lessons with progress and categories
       const { data: lessonsData } = await supabase
         .from('seguros_lessons')
-        .select(`
-          *,
-          categoria:seguros_categories(id, nombre)
-        `)
+        .select('*')
         .order('fecha_creacion', { ascending: false });
 
       if (lessonsData) {
         const lessonsWithProgress = await Promise.all(
           lessonsData.map(async (lesson) => {
+            // Get progress
             const { data: progress } = await supabase
               .from('seguros_progress')
               .select('progreso, completado, tiempo_reproduccion')
@@ -146,8 +144,23 @@ export function SegurosEducationOnDemand() {
               .eq('user_id', usuario.id)
               .maybeSingle();
 
+            // Get categories via junction table
+            const { data: lessonCategories } = await supabase
+              .from('seguros_lesson_categories')
+              .select(`
+                category_id,
+                seguros_categories(id, nombre)
+              `)
+              .eq('lesson_id', lesson.id);
+
+            const categorias = lessonCategories?.map(lc => ({
+              id: lc.seguros_categories.id,
+              nombre: lc.seguros_categories.nombre
+            })) || [];
+
             return {
               ...lesson,
+              categorias,
               progreso: progress?.progreso || 0,
               completado: progress?.completado || false,
               tiempo_reproduccion: progress?.tiempo_reproduccion || 0,
@@ -179,7 +192,7 @@ export function SegurosEducationOnDemand() {
 
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(
-        (lesson) => lesson.categoria?.id === selectedCategory
+        (lesson) => lesson.categorias?.some(cat => cat.id === selectedCategory)
       );
     }
 
@@ -210,21 +223,13 @@ export function SegurosEducationOnDemand() {
 
   const handleDeleteCategory = async (categoryId: string) => {
     const confirmDelete = window.confirm(
-      '¿Estás seguro de eliminar esta categoría? Las lecciones asociadas no se eliminarán, pero perderán su categoría.'
+      '¿Estás seguro de eliminar esta categoría? Las lecciones asociadas no se eliminarán, pero perderán esta categoría.'
     );
 
     if (!confirmDelete) return;
 
     try {
-      // Primero, desasociar las lecciones de esta categoría
-      const { error: updateError } = await supabase
-        .from('seguros_lessons')
-        .update({ categoria_id: null })
-        .eq('categoria_id', categoryId);
-
-      if (updateError) throw updateError;
-
-      // Luego, eliminar la categoría
+      // Eliminar la categoría (las relaciones en seguros_lesson_categories se eliminarán automáticamente por CASCADE)
       const { error: deleteError } = await supabase
         .from('seguros_categories')
         .delete()
@@ -343,8 +348,8 @@ export function SegurosEducationOnDemand() {
       return;
     }
 
-    if (!videoFile || !formData.titulo || !formData.categoria_id) {
-      showToast('Complete todos los campos requeridos', 'error');
+    if (!videoFile || !formData.titulo || formData.categoria_ids.length === 0) {
+      showToast('Complete todos los campos requeridos (incluyendo al menos una categoría)', 'error');
       return;
     }
 
@@ -436,7 +441,6 @@ export function SegurosEducationOnDemand() {
         .insert({
           titulo: formData.titulo,
           descripcion: formData.descripcion,
-          categoria_id: formData.categoria_id || null,
           video_url: videoPublicUrl.publicUrl,
           miniatura_url: thumbnailUrl,
           duracion: Math.floor(videoDuration),
@@ -447,6 +451,18 @@ export function SegurosEducationOnDemand() {
         .single();
 
       if (lessonError) throw lessonError;
+
+      // Assign categories to the lesson
+      const { error: categoriesError } = await supabase.rpc('assign_lesson_categories', {
+        p_lesson_id: newLesson.id,
+        p_category_ids: formData.categoria_ids
+      });
+
+      if (categoriesError) {
+        console.error('Error assigning categories:', categoriesError);
+        // No throw - lesson was created successfully, just log the error
+      }
+
       setUploadProgress(95);
 
       // Upload pending documents if any
@@ -508,8 +524,8 @@ export function SegurosEducationOnDemand() {
   };
 
   const handleUpdateLesson = async () => {
-    if (!editingLesson || !formData.titulo || !formData.categoria_id) {
-      showToast('Complete todos los campos requeridos', 'error');
+    if (!editingLesson || !formData.titulo || formData.categoria_ids.length === 0) {
+      showToast('Complete todos los campos requeridos (incluyendo al menos una categoría)', 'error');
       return;
     }
 
@@ -572,7 +588,6 @@ export function SegurosEducationOnDemand() {
         .update({
           titulo: formData.titulo,
           descripcion: formData.descripcion,
-          categoria_id: formData.categoria_id || null,
           video_url: videoUrl,
           miniatura_url: thumbnailUrl,
           duracion: duration,
@@ -581,6 +596,18 @@ export function SegurosEducationOnDemand() {
         .eq('id', editingLesson.id);
 
       if (updateError) throw updateError;
+
+      // Update categories
+      const { error: categoriesError } = await supabase.rpc('assign_lesson_categories', {
+        p_lesson_id: editingLesson.id,
+        p_category_ids: formData.categoria_ids
+      });
+
+      if (categoriesError) {
+        console.error('Error updating categories:', categoriesError);
+        // No throw - lesson was updated successfully, just log the error
+      }
+
       setUploadProgress(100);
 
       showToast('Lección actualizada exitosamente', 'success');
@@ -603,7 +630,7 @@ export function SegurosEducationOnDemand() {
     setFormData({
       titulo: lesson.titulo,
       descripcion: lesson.descripcion || '',
-      categoria_id: lesson.categoria?.id || '',
+      categoria_ids: lesson.categorias?.map(c => c.id) || [],
       oficinas_asignadas: [],
     });
     setShowUploadModal(true);
@@ -751,7 +778,7 @@ export function SegurosEducationOnDemand() {
     setFormData({
       titulo: '',
       descripcion: '',
-      categoria_id: '',
+      categoria_ids: [],
       oficinas_asignadas: [],
     });
     setVideoFile(null);
@@ -998,11 +1025,11 @@ export function SegurosEducationOnDemand() {
                 <div className="p-4">
                   <div className="flex items-center justify-between gap-2 text-[11px] mb-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {lesson.categoria && (
-                        <span className="px-2 py-1 bg-accent/10 text-accent rounded-ios font-semibold">
-                          {lesson.categoria.nombre}
+                      {lesson.categorias && lesson.categorias.length > 0 && lesson.categorias.map(cat => (
+                        <span key={cat.id} className="px-2 py-1 bg-accent/10 text-accent rounded-ios font-semibold">
+                          {cat.nombre}
                         </span>
-                      )}
+                      ))}
                       {lesson.duracion && lesson.duracion > 0 ? (
                         <span className="flex items-center gap-1 text-ios-gray-600 font-medium">
                           <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
@@ -1069,12 +1096,12 @@ export function SegurosEducationOnDemand() {
                 <h2 className="text-[14px] sm:text-[18px] font-semibold text-ios-gray-900 truncate">
                   {selectedLesson.titulo}
                 </h2>
-                <div className="hidden md:flex items-center gap-2 mt-1">
-                  {selectedLesson.categoria && (
-                    <span className="inline-flex items-center px-2 py-0.5 bg-accent/10 text-accent rounded-ios text-[11px] font-medium">
-                      {selectedLesson.categoria.nombre}
+                <div className="hidden md:flex items-center gap-2 mt-1 flex-wrap">
+                  {selectedLesson.categorias && selectedLesson.categorias.length > 0 && selectedLesson.categorias.map(cat => (
+                    <span key={cat.id} className="inline-flex items-center px-2 py-0.5 bg-accent/10 text-accent rounded-ios text-[11px] font-medium">
+                      {cat.nombre}
                     </span>
-                  )}
+                  ))}
                   {formatDuration(selectedLesson.duracion) && (
                     <span className="flex items-center gap-1 text-ios-gray-600 text-[11px]">
                       <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
@@ -1191,20 +1218,54 @@ export function SegurosEducationOnDemand() {
 
               <div>
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                  Categoría <span className="text-red-500">*</span>
+                  Categorías <span className="text-red-500">*</span>
+                  <span className="text-xs text-neutral-500 ml-2">(Selecciona una o más)</span>
                 </label>
-                <select
-                  value={formData.categoria_id}
-                  onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
-                >
-                  <option value="">Seleccionar categoría</option>
+                <div className="border border-neutral-300 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.nombre}
-                    </option>
+                    <label key={cat.id} className="flex items-center gap-2 cursor-pointer hover:bg-neutral-50 p-2 rounded">
+                      <input
+                        type="checkbox"
+                        checked={formData.categoria_ids.includes(cat.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({
+                              ...formData,
+                              categoria_ids: [...formData.categoria_ids, cat.id]
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              categoria_ids: formData.categoria_ids.filter(id => id !== cat.id)
+                            });
+                          }
+                        }}
+                        className="w-4 h-4 text-accent focus:ring-2 focus:ring-accent rounded"
+                      />
+                      <span className="text-sm text-neutral-700">{cat.nombre}</span>
+                    </label>
                   ))}
-                </select>
+                  {categories.length === 0 && (
+                    <p className="text-sm text-neutral-500 text-center py-2">
+                      No hay categorías disponibles. Crea una primero.
+                    </p>
+                  )}
+                </div>
+                {formData.categoria_ids.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {formData.categoria_ids.map(catId => {
+                      const cat = categories.find(c => c.id === catId);
+                      return cat ? (
+                        <span
+                          key={catId}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent text-xs rounded-full"
+                        >
+                          {cat.nombre}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>
