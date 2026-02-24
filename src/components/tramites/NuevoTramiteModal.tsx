@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -101,14 +101,25 @@ export function NuevoTramiteModal({
     { id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }
   ]);
 
+  // Ref para rastrear si estamos inicializando con datos precargados
+  const isInitializingWithPreloadedData = useRef(false);
+
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
 
   useEffect(() => {
     if (isOpen && usuario) {
+      // Marcar si estamos inicializando con datos precargados
+      isInitializingWithPreloadedData.current = !!preloadedData?.comisionesLoteId;
+
       resetForm();
       loadUsuarios();
       loadLotesDisponibles();
+
+      // Resetear la bandera después de un breve delay para permitir que los efectos se ejecuten
+      setTimeout(() => {
+        isInitializingWithPreloadedData.current = false;
+      }, 100);
     }
   }, [isOpen, preloadedData]);
 
@@ -120,13 +131,18 @@ export function NuevoTramiteModal({
 
   useEffect(() => {
     if (tipoTramite === 'correccion_comisiones' && asignado) {
-      // Reset lote selection when assigned user changes
-      setLoteSeleccionado('');
+      console.log('👤 asignado cambió:', asignado, 'isInitializing:', isInitializingWithPreloadedData.current);
+      // Reset lote selection when assigned user changes, unless we're initializing with preloaded data
+      if (!isInitializingWithPreloadedData.current) {
+        console.log('🧹 Limpiando lote porque no está inicializando');
+        setLoteSeleccionado('');
+      }
       loadLotesDisponibles(asignado);
     }
   }, [asignado]);
 
   useEffect(() => {
+    console.log('📋 loteSeleccionado cambió a:', loteSeleccionado);
     if (loteSeleccionado) {
       loadDocumentosLote();
     } else {
@@ -161,6 +177,7 @@ export function NuevoTramiteModal({
 
     // Respetar lote precargado si existe
     if (preloadedData?.comisionesLoteId) {
+      console.log('📦 Estableciendo lote precargado:', preloadedData.comisionesLoteId);
       setLoteSeleccionado(preloadedData.comisionesLoteId);
     } else {
       setLoteSeleccionado('');
