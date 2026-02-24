@@ -85,6 +85,12 @@ export default function ComisionesLote() {
 
     if (batchResult.error) {
       console.error('[ComisionesLote] Error loading batch:', batchResult.error);
+
+      // Si el batch no existe, podría haber sido reorganizado
+      if (batchResult.error.code === 'PGRST116') {
+        alert('Este lote fue reorganizado por usuario. Por favor selecciona uno de los lotes individuales.');
+      }
+
       navigate('/comisiones');
       return;
     }
