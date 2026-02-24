@@ -109,14 +109,6 @@ export function NuevoTramiteModal({
       resetForm();
       loadUsuarios();
       loadLotesDisponibles();
-      if (preloadedData) {
-        if (preloadedData.tipoTramite) {
-          setTipoTramite(preloadedData.tipoTramite);
-        }
-        if (preloadedData.comisionesLoteId) {
-          setLoteSeleccionado(preloadedData.comisionesLoteId);
-        }
-      }
     }
   }, [isOpen, preloadedData]);
 
@@ -166,7 +158,14 @@ export function NuevoTramiteModal({
     setDescripcion('');
     setArchivos([]);
     setPolizaNumero('');
-    setLoteSeleccionado('');
+
+    // Respetar lote precargado si existe
+    if (preloadedData?.comisionesLoteId) {
+      setLoteSeleccionado(preloadedData.comisionesLoteId);
+    } else {
+      setLoteSeleccionado('');
+    }
+
     setDocumentoSeleccionado('');
     setPolizaFiles([{ id: '1', file: null, aseguradora: '', claveAgente: '' }]);
     setComisionesPendientes([{ id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }]);
