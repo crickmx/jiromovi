@@ -56,9 +56,9 @@ import MisComisiones from './pages/MisComisiones';
 import ComisionesUpload from './pages/ComisionesUpload';
 import ComisionesUploadNuevo from './pages/ComisionesUploadNuevo';
 import ComisionesPrepararLote from './pages/ComisionesPrepararLote';
-// import MapeoVendedores from './pages/MapeoVendedores';
+import MapeoVendedores from './pages/MapeoVendedores';
 import DocumentosImportar from './pages/DocumentosImportar';
-// import MapeoVendedoresAdmin from './pages/MapeoVendedoresAdmin';
+import MapeoVendedoresAdmin from './pages/MapeoVendedoresAdmin';
 import ProduccionTotal from './pages/ProduccionTotal';
 import ProduccionPorVendedor from './pages/ProduccionPorVendedor';
 import ProduccionConvenio from './pages/ProduccionConvenio';
@@ -809,7 +809,9 @@ function App() {
               <Route path="/comisiones/upload" element={<ProtectedRoute requireAdmin><Layout><ComisionesUpload /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/upload-nuevo" element={<ProtectedRoute requireAdmin><Layout><ComisionesUploadNuevo /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/preparar-lote/:sessionId" element={<ProtectedRoute requireAdmin><Layout><ComisionesPrepararLote /></Layout></ProtectedRoute>} />
+              <Route path="/comisiones/mapeo-vendedores" element={<ProtectedRoute requireAdmin><Layout><MapeoVendedores /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/importar-documentos" element={<ProtectedRoute requireAdmin><Layout><DocumentosImportar /></Layout></ProtectedRoute>} />
+              <Route path="/configuracion/mapeo-vendedores" element={<ProtectedRoute requireAdmin><Layout><MapeoVendedoresAdmin /></Layout></ProtectedRoute>} />
               <Route path="/mis-comisiones" element={<ProtectedRoute><Layout><MisComisiones /></Layout></ProtectedRoute>} />
               <Route path="/produccion/total" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionTotal /></Layout></ProtectedRoute>} />
               <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />

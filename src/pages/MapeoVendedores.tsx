@@ -12,7 +12,7 @@ import type { VendorMapping, VendorMappingSourceType } from '../lib/vendorMappin
 import { useAuth } from '../contexts/AuthContext';
 
 export default function MapeoVendedores() {
-  const { user } = useAuth();
+  const { usuario, loading: authLoading } = useAuth();
   const [mapeos, setMapeos] = useState<VendorMapping[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -24,8 +24,10 @@ export default function MapeoVendedores() {
   const [ultimaCarga, setUltimaCarga] = useState<Date | null>(null);
 
   useEffect(() => {
-    cargarDatos();
-  }, [filtroEstatus]);
+    if (!authLoading && usuario) {
+      cargarDatos();
+    }
+  }, [filtroEstatus, authLoading, usuario]);
 
   const cargarDatos = async () => {
     try {
@@ -65,6 +67,22 @@ export default function MapeoVendedores() {
       return newSet;
     });
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
+
+  if (!usuario) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-600">No se pudo cargar la información del usuario</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -238,7 +256,7 @@ export default function MapeoVendedores() {
                     mapeo={mapeo}
                     usuarios={usuarios}
                     onUpdate={cargarDatos}
-                    userId={user?.id || ''}
+                    userId={usuario?.id || ''}
                     onMarkUnsaved={handleMarkUnsaved}
                     onMarkSaved={handleMarkSaved}
                     hasUnsavedChanges={cambiosSinGuardar.has(mapeo.id)}
@@ -257,7 +275,7 @@ export default function MapeoVendedores() {
               setNuevoMapeo(false);
               alert('Mapeo creado correctamente. Haz clic en "Cargar" para ver los cambios.');
             }}
-            userId={user?.id || ''}
+            userId={usuario?.id || ''}
           />
         )}
       </div>
