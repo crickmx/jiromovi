@@ -12,7 +12,10 @@ import type { VendorMapping, VendorMappingSourceType } from '../lib/vendorMappin
 import { useAuth } from '../contexts/AuthContext';
 
 export default function MapeoVendedores() {
+  console.log('[MapeoVendedores] 🚀 Componente renderizando');
   const { usuario, loading: authLoading } = useAuth();
+  console.log('[MapeoVendedores] Auth state:', { authLoading, usuarioId: usuario?.id, rol: usuario?.rol });
+
   const [mapeos, setMapeos] = useState<VendorMapping[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -24,27 +27,40 @@ export default function MapeoVendedores() {
   const [ultimaCarga, setUltimaCarga] = useState<Date | null>(null);
 
   useEffect(() => {
+    console.log('[MapeoVendedores] useEffect triggered', { authLoading, hasUsuario: !!usuario, filtroEstatus });
     if (!authLoading && usuario) {
+      console.log('[MapeoVendedores] Condiciones cumplidas, llamando cargarDatos()');
       cargarDatos();
+    } else {
+      console.log('[MapeoVendedores] Esperando condiciones:', { authLoading, hasUsuario: !!usuario });
     }
   }, [filtroEstatus, authLoading, usuario]);
 
   const cargarDatos = async () => {
+    console.log('[MapeoVendedores] cargarDatos iniciado');
+    console.log('[MapeoVendedores] Usuario actual:', usuario?.id, usuario?.rol);
     try {
       setLoading(true);
-      const [mapeosData, usuariosData] = await Promise.all([
-        obtenerVendorMappings(filtroEstatus === 'all' ? undefined : filtroEstatus),
-        obtenerUsuariosMOVI(),
-      ]);
+      console.log('[MapeoVendedores] Obteniendo vendor mappings...');
+      const mapeosData = await obtenerVendorMappings(filtroEstatus === 'all' ? undefined : filtroEstatus);
+      console.log('[MapeoVendedores] Vendor mappings obtenidos:', mapeosData?.length || 0);
+
+      console.log('[MapeoVendedores] Obteniendo usuarios MOVI...');
+      const usuariosData = await obtenerUsuariosMOVI();
       console.log('[MapeoVendedores] Usuarios cargados:', usuariosData?.length || 0);
+
       setMapeos(mapeosData);
       setUsuarios(usuariosData || []);
       setUltimaCarga(new Date());
+      console.log('[MapeoVendedores] Datos cargados correctamente');
     } catch (error) {
-      console.error('[MapeoVendedores] Error al cargar datos:', error);
+      console.error('[MapeoVendedores] ❌ ERROR al cargar datos:', error);
+      console.error('[MapeoVendedores] Error completo:', JSON.stringify(error, null, 2));
+      console.error('[MapeoVendedores] Stack trace:', (error as Error).stack);
       alert('Error al cargar datos: ' + (error as Error).message);
     } finally {
       setLoading(false);
+      console.log('[MapeoVendedores] cargarDatos finalizado');
     }
   };
 
