@@ -27,48 +27,21 @@ export default function PdfFiscalPreview({ regimen, desgloseFiscal }: PdfFiscalP
 
     switch (regimen) {
       case 'HONORARIOS':
-        if (desgloseFiscal.iva > 0) {
-          rows.push({ label: 'IVA', value: desgloseFiscal.iva, sign: '+' });
-        }
-        if (desgloseFiscal.retIsr > 0) {
-          rows.push({ label: 'Ret. ISR', value: desgloseFiscal.retIsr, sign: '-' });
-        }
-        if (desgloseFiscal.retIva > 0) {
-          rows.push({ label: 'Ret. IVA', value: desgloseFiscal.retIva, sign: '-' });
-        }
+        rows.push({ label: 'IVA', value: desgloseFiscal.iva, sign: '+' });
+        rows.push({ label: 'Ret. ISR', value: desgloseFiscal.retIsr, sign: '-' });
+        rows.push({ label: 'Ret. IVA', value: desgloseFiscal.retIva, sign: '-' });
         break;
 
       case 'ASIMILADOS':
-        if (desgloseFiscal.retContable > 0) {
-          rows.push({ label: 'Ret. Contable', value: desgloseFiscal.retContable, sign: '-' });
-        }
-        if (desgloseFiscal.costoDispersion > 0) {
-          rows.push({ label: 'Costo Dispersión', value: desgloseFiscal.costoDispersion, sign: '-' });
-        }
-        if (desgloseFiscal.iva > 0) {
-          rows.push({ label: 'IVA', value: desgloseFiscal.iva, sign: '+' });
-        }
-        if (desgloseFiscal.isrTotal > 0) {
-          rows.push({ label: 'ISR Total', value: desgloseFiscal.isrTotal, sign: '-' });
-        }
+        rows.push({ label: 'Ret. Contable', value: desgloseFiscal.retContable, sign: '-' });
+        rows.push({ label: 'Costo Dispersión', value: desgloseFiscal.costoDispersion, sign: '-' });
+        rows.push({ label: 'ISR Total', value: desgloseFiscal.retIsr, sign: '-' });
         break;
 
       case 'RESICO':
-        if (desgloseFiscal.iva > 0) {
-          rows.push({ label: 'IVA', value: desgloseFiscal.iva, sign: '+' });
-        }
-        if (desgloseFiscal.retIsr > 0) {
-          rows.push({ label: 'Ret. ISR', value: desgloseFiscal.retIsr, sign: '-' });
-        }
-        if (desgloseFiscal.retIva > 0) {
-          rows.push({ label: 'Ret. IVA', value: desgloseFiscal.retIva, sign: '-' });
-        }
-        if (desgloseFiscal.retContable > 0) {
-          rows.push({ label: 'Ret. Contable', value: desgloseFiscal.retContable, sign: '-' });
-        }
-        if (desgloseFiscal.costoDispersion > 0) {
-          rows.push({ label: 'Costo Dispersión', value: desgloseFiscal.costoDispersion, sign: '-' });
-        }
+        rows.push({ label: 'IVA', value: desgloseFiscal.iva, sign: '+' });
+        rows.push({ label: 'Ret. ISR', value: desgloseFiscal.retIsr, sign: '-' });
+        rows.push({ label: 'Ret. IVA', value: desgloseFiscal.retIva, sign: '-' });
         break;
     }
 

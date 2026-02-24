@@ -69,77 +69,58 @@ async function obtenerDesgloseFiscalDesdeDB(
  * Genera las filas para el PDF de desglose fiscal.
  * Solo muestra los campos FINALES, SIN valores intermedios como
  * Comisión Base, Vida, Sin Vida, ISR Vida, ISR Daños.
+ * Muestra TODAS las filas relevantes, incluso si son $0.00
  */
 function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal): PdfFiscalRow[] {
   const rows: PdfFiscalRow[] = [];
 
   switch (regimen) {
     case 'HONORARIOS':
-      // Solo mostrar IVA, Retenciones y Total
-      if (desgloseFiscal.iva > 0) {
-        rows.push({
-          label: 'IVA',
-          value: `+ ${formatCurrency(desgloseFiscal.iva)}`
-        });
-      }
-      if (desgloseFiscal.retIsr > 0) {
-        rows.push({
-          label: 'Ret. ISR',
-          value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
-        });
-      }
-      if (desgloseFiscal.retIva > 0) {
-        rows.push({
-          label: 'Ret. IVA',
-          value: `- ${formatCurrency(desgloseFiscal.retIva)}`
-        });
-      }
+      // Siempre mostrar IVA, Retenciones (incluso si son 0)
+      rows.push({
+        label: 'IVA',
+        value: `+ ${formatCurrency(desgloseFiscal.iva)}`
+      });
+      rows.push({
+        label: 'Ret. ISR',
+        value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
+      });
+      rows.push({
+        label: 'Ret. IVA',
+        value: `- ${formatCurrency(desgloseFiscal.retIva)}`
+      });
       break;
 
     case 'ASIMILADOS':
-      // Solo mostrar Ret. Contable, Costo Dispersión, ISR Total
-      // NO mostrar IVA (siempre es 0)
-      if (desgloseFiscal.retContable > 0) {
-        rows.push({
-          label: 'Ret. Contable',
-          value: `- ${formatCurrency(desgloseFiscal.retContable)}`
-        });
-      }
-      if (desgloseFiscal.costoDispersion > 0) {
-        rows.push({
-          label: 'Costo Dispersión',
-          value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
-        });
-      }
-      // Usar ret_isr en lugar de isrTotal (que no se está calculando correctamente)
-      if (desgloseFiscal.retIsr > 0) {
-        rows.push({
-          label: 'ISR Total',
-          value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
-        });
-      }
+      // Siempre mostrar Ret. Contable, Costo Dispersión, ISR Total
+      rows.push({
+        label: 'Ret. Contable',
+        value: `- ${formatCurrency(desgloseFiscal.retContable)}`
+      });
+      rows.push({
+        label: 'Costo Dispersión',
+        value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
+      });
+      rows.push({
+        label: 'ISR Total',
+        value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
+      });
       break;
 
     case 'RESICO':
-      // Solo mostrar IVA, Retenciones y Total
-      if (desgloseFiscal.iva > 0) {
-        rows.push({
-          label: 'IVA',
-          value: `+ ${formatCurrency(desgloseFiscal.iva)}`
-        });
-      }
-      if (desgloseFiscal.retIsr > 0) {
-        rows.push({
-          label: 'Ret. ISR',
-          value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
-        });
-      }
-      if (desgloseFiscal.retIva > 0) {
-        rows.push({
-          label: 'Ret. IVA',
-          value: `- ${formatCurrency(desgloseFiscal.retIva)}`
-        });
-      }
+      // Siempre mostrar IVA, Retenciones (incluso si son 0)
+      rows.push({
+        label: 'IVA',
+        value: `+ ${formatCurrency(desgloseFiscal.iva)}`
+      });
+      rows.push({
+        label: 'Ret. ISR',
+        value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
+      });
+      rows.push({
+        label: 'Ret. IVA',
+        value: `- ${formatCurrency(desgloseFiscal.retIva)}`
+      });
       break;
   }
 
@@ -789,61 +770,68 @@ export async function generateOrdenDePagoPDF(
   };
 
   console.log(`[PDF] Totales calculados: regimen=${regimenFiscal}, ret_isr=${totals.retIsr}, total=${totals.totalNeto}`);
+  console.log('[PDF] Desglose fiscal:', desgloseFiscal);
 
+  // Usar la función de allowlist para generar solo los campos permitidos
+  const fiscalRows = getPdfFiscalRows(regimenFiscal, desgloseFiscal);
+  console.log(`[PDF] Filas fiscales generadas: ${fiscalRows.length}`, fiscalRows);
+
+  // Si no hay espacio en la página actual, crear una nueva
   const availableSpace = pageHeight - yPosition - 8;
-
-  if (availableSpace > 18) {
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 51, 102);
-    doc.text('Cálculo Fiscal (Resumen)', marginLeft, yPosition);
-
-    yPosition += 4;
-
-    // Usar la función de allowlist para generar solo los campos permitidos
-    const fiscalRows = getPdfFiscalRows(regimenFiscal, desgloseFiscal);
-
-    // Convertir a formato de tabla con estilos
-    const desgloseFiscalRows: any[] = fiscalRows.map(row => {
-      if (row.isTotal) {
-        // Fila de Total con estilo destacado
-        return [
-          { content: row.label, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } },
-          { content: row.value, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } }
-        ];
-      } else if (row.isBold) {
-        // Fila en negrita
-        return [
-          { content: row.label, styles: { fontStyle: 'bold' } },
-          { content: row.value, styles: { fontStyle: 'bold' } }
-        ];
-      } else {
-        // Fila normal
-        return [row.label, row.value];
-      }
-    });
-
-    autoTable(doc, {
-      startY: yPosition,
-      head: [['Concepto', 'Importe']],
-      body: desgloseFiscalRows,
-      theme: 'grid',
-      headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 7 },
-      styles: { fontSize: 7, cellPadding: 1.5 },
-      margin: { left: marginLeft, right: marginRight },
-      columnStyles: {
-        0: { cellWidth: contentWidth * 0.6 },
-        1: { cellWidth: contentWidth * 0.4, halign: 'right' }
-      }
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY + 3;
-
-    doc.setFontSize(7);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(60);
-    doc.text(`Régimen fiscal: ${regimenFiscalName}`, marginLeft, yPosition);
+  if (availableSpace < 50) {
+    console.log('[PDF] Espacio insuficiente, creando nueva página');
+    doc.addPage();
+    yPosition = 20;
   }
+
+  // Siempre mostrar el Cálculo Fiscal
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 51, 102);
+  doc.text('Cálculo Fiscal (Resumen)', marginLeft, yPosition);
+
+  yPosition += 4;
+
+  // Convertir a formato de tabla con estilos
+  const desgloseFiscalRows: any[] = fiscalRows.map(row => {
+    if (row.isTotal) {
+      // Fila de Total con estilo destacado
+      return [
+        { content: row.label, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } },
+        { content: row.value, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } }
+      ];
+    } else if (row.isBold) {
+      // Fila en negrita
+      return [
+        { content: row.label, styles: { fontStyle: 'bold' } },
+        { content: row.value, styles: { fontStyle: 'bold' } }
+      ];
+    } else {
+      // Fila normal
+      return [row.label, row.value];
+    }
+  });
+
+  autoTable(doc, {
+    startY: yPosition,
+    head: [['Concepto', 'Importe']],
+    body: desgloseFiscalRows,
+    theme: 'grid',
+    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 7 },
+    styles: { fontSize: 7, cellPadding: 1.5 },
+    margin: { left: marginLeft, right: marginRight },
+    columnStyles: {
+      0: { cellWidth: contentWidth * 0.6 },
+      1: { cellWidth: contentWidth * 0.4, halign: 'right' }
+    }
+  });
+
+  yPosition = (doc as any).lastAutoTable.finalY + 3;
+
+  doc.setFontSize(7);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(60);
+  doc.text(`Régimen fiscal: ${regimenFiscalName}`, marginLeft, yPosition);
 
   const pdfBlob = doc.output('blob');
   return pdfBlob;
