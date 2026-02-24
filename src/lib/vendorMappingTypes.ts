@@ -19,8 +19,9 @@ export interface VendorMapping {
   updated_at: string;
   usuarios?: {
     nombre_completo: string;
-    email: string;
-    nombre_sicas: string | null;
+    email_laboral: string | null;
+    email_personal: string | null;
+    nombre_sicas?: string | null;
   };
 }
 

@@ -405,7 +405,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
               ) : (
                 usuarios.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.nombre_completo} ({u.email})
+                    {u.nombre_completo} ({u.email_laboral || u.email_personal})
                   </option>
                 ))
               )}
@@ -634,7 +634,7 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
               ) : (
                 usuarios.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.nombre_completo} ({u.email})
+                    {u.nombre_completo} ({u.email_laboral || u.email_personal})
                   </option>
                 ))
               )}

@@ -15,7 +15,8 @@ export async function obtenerVendorMappings(status?: VendorMappingStatus): Promi
       *,
       usuarios:movi_user_id (
         nombre_completo,
-        email
+        email_laboral,
+        email_personal
       )
     `)
     .order('created_at', { ascending: false });
@@ -37,7 +38,8 @@ export async function obtenerVendorMapping(id: string): Promise<VendorMapping> {
       *,
       usuarios:movi_user_id (
         nombre_completo,
-        email
+        email_laboral,
+        email_personal
       )
     `)
     .eq('id', id)
@@ -163,7 +165,7 @@ export async function obtenerUsuariosMOVI() {
   console.log('[obtenerUsuariosMOVI] Obteniendo usuarios...');
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre_completo, email, oficina_id')
+    .select('id, nombre_completo, email_laboral, email_personal, oficina_id')
     .neq('estado', 'eliminado')
     .order('nombre_completo');
 
