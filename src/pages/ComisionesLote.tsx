@@ -365,7 +365,18 @@ export default function ComisionesLote() {
     setGeneratingPDF(usuarioId);
 
     try {
-      const pdfBlob = await generateOrdenDePagoPDF(agentDetails, batch);
+      // Recargar el batch con datos actualizados antes de generar PDF
+      const { data: freshBatch, error: batchError } = await supabase
+        .from('commission_batches')
+        .select('*')
+        .eq('id', batch.id)
+        .single();
+
+      if (batchError || !freshBatch) {
+        throw new Error('No se pudo cargar la información actualizada del lote');
+      }
+
+      const pdfBlob = await generateOrdenDePagoPDF(agentDetails, freshBatch);
       const agent = agentDetails[0].agent;
       const agentName = agent ? `${agent.nombre} ${agent.apellidos}` : 'Usuario';
       const fileName = `Orden_de_Pago_${batch.name.replace(/\s+/g, '_')}_${agentName.replace(/\s+/g, '_')}.pdf`;

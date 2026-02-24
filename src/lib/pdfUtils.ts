@@ -37,8 +37,7 @@ async function obtenerDesgloseFiscalDesdeDB(
   const { supabase } = await import('./supabase');
 
   const { data, error } = await supabase.rpc('calcular_desglose_fiscal_asimilados', {
-    p_batch_id: batchId,
-    p_usuario_id: usuarioId
+    p_batch_id: batchId
   });
 
   if (error) {
