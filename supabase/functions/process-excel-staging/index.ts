@@ -411,21 +411,42 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const recognizedCount = itemsToInsert.filter(item => !item.pending_assignment).length;
-    const pendingCount = itemsToInsert.filter(item => item.pending_assignment).length;
+    // Aplicar mapeos de vendedores automáticamente
+    console.log('[process-excel-staging] Applying vendor mappings...');
+    const { data: mappingResult, error: mappingError } = await supabase.rpc(
+      'apply_vendor_mappings_to_staging_session',
+      { p_session_id: session.id }
+    );
+
+    if (mappingError) {
+      console.error('[process-excel-staging] Error applying vendor mappings:', mappingError);
+      // No bloqueamos el proceso, solo registramos el error
+    } else if (mappingResult && mappingResult.length > 0) {
+      const result = mappingResult[0];
+      console.log(`[process-excel-staging] Vendor mappings applied - Processed: ${result.total_processed}, Matched: ${result.matched}, Unmatched: ${result.still_unmatched}`);
+    }
+
+    // Obtener contadores finales después de aplicar mapeos
+    const { data: finalCounts } = await supabase
+      .from('commission_items_staging')
+      .select('pending_assignment', { count: 'exact' })
+      .eq('staging_session_id', session.id);
+
+    const finalRecognizedCount = finalCounts?.filter(item => !item.pending_assignment).length || 0;
+    const finalPendingCount = finalCounts?.filter(item => item.pending_assignment).length || 0;
 
     await supabase
       .from('commission_staging_sessions')
       .update({
         status: 'ready',
         total_items: itemsToInsert.length,
-        recognized_count: recognizedCount,
-        pending_assignment_count: pendingCount,
+        recognized_count: finalRecognizedCount,
+        pending_assignment_count: finalPendingCount,
         processed_at: new Date().toISOString()
       })
       .eq('id', session.id);
 
-    console.log(`[process-excel-staging] Completed - Total: ${itemsToInsert.length}, Matched: ${recognizedCount}, Pending: ${pendingCount}`);
+    console.log(`[process-excel-staging] Completed - Total: ${itemsToInsert.length}, Matched: ${finalRecognizedCount}, Pending: ${finalPendingCount}`);
 
     return new Response(
       JSON.stringify({
@@ -434,8 +455,8 @@ Deno.serve(async (req: Request) => {
           id: session.id,
           file_name: session.file_name,
           total_items: itemsToInsert.length,
-          recognized_count: recognizedCount,
-          pending_assignment_count: pendingCount,
+          recognized_count: finalRecognizedCount,
+          pending_assignment_count: finalPendingCount,
           status: 'ready'
         },
         message: 'Archivo procesado exitosamente'
