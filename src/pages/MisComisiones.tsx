@@ -93,7 +93,7 @@ export default function MisComisiones() {
             // Para ASIMILADOS, usar función de base de datos
             const { data: fiscal, error: fiscalError } = await supabase.rpc('calcular_desglose_fiscal_asimilados', {
               p_batch_id: batch.id,
-              p_agent_id: agent.id
+              p_agent_id: usuarioId
             });
 
             if (!fiscalError && fiscal) {

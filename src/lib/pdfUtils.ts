@@ -221,8 +221,8 @@ export async function generateCommissionPDF(
     throw new Error('No hay detalles para generar el PDF');
   }
 
-  const agent = agentDetails[0].agent;
-  if (!agent) {
+  const usuario = agentDetails[0].usuario;
+  if (!usuario) {
     throw new Error('No se encontró la información del agente');
   }
 
@@ -232,7 +232,7 @@ export async function generateCommissionPDF(
 
   // Cargar el logo de oficina del usuario con dimensiones correctas
   try {
-    const logoUrl = await getOfficeLogo(agent.id);
+    const logoUrl = await getOfficeLogo(usuario.id);
     const logoData = await loadImageWithDimensions(logoUrl);
 
     // Calcular dimensiones manteniendo proporción (max 40mm ancho x 20mm alto)
@@ -463,8 +463,8 @@ export async function generateOrdenDePagoPDF(
     throw new Error('No hay detalles para generar el PDF');
   }
 
-  const agent = agentDetails[0].agent;
-  if (!agent) {
+  const usuario = agentDetails[0].usuario;
+  if (!usuario) {
     throw new Error('No se encontró la información del agente');
   }
 
@@ -483,7 +483,7 @@ export async function generateOrdenDePagoPDF(
 
   // Cargar el logo de oficina del usuario con dimensiones correctas
   try {
-    const logoUrl = await getOfficeLogo(agent.id);
+    const logoUrl = await getOfficeLogo(usuario.id);
     const logoData = await loadImageWithDimensions(logoUrl);
 
     // Calcular dimensiones manteniendo proporción (max 35mm ancho x 18mm alto)
@@ -523,7 +523,7 @@ export async function generateOrdenDePagoPDF(
   doc.setTextColor(0);
   doc.text('Agente:', marginLeft, yPosition);
   doc.setFont(undefined, 'normal');
-  const vendorNameOrden = agentDetails[0].vendor_name_raw || `${agent.nombre} ${agent.apellidos}`.trim();
+  const vendorNameOrden = agentDetails[0].vendor_name_raw || `${usuario.nombre} ${usuario.apellidos}`.trim();
   doc.text(vendorNameOrden, marginLeft + 18, yPosition);
 
   yPosition += 5;
@@ -531,7 +531,7 @@ export async function generateOrdenDePagoPDF(
   doc.setFont(undefined, 'bold');
   doc.text('Oficina:', marginLeft, yPosition);
   doc.setFont(undefined, 'normal');
-  doc.text((agent as any).oficina?.nombre || 'N/A', marginLeft + 18, yPosition);
+  doc.text((usuario as any).oficina?.nombre || 'N/A', marginLeft + 18, yPosition);
 
   yPosition += 5;
 
