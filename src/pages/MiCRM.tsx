@@ -17,12 +17,17 @@ import {
   obtenerTareasPendientes,
 } from '../lib/crmUtils';
 import type { DashboardStats, FunnelData } from '../lib/crmTypes';
+import TablerosSeccion from '../components/crm/TablerosSeccion';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function MiCRM() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
   const [tareasPendientes, setTareasPendientes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { userProfile } = useAuth();
+
+  const rolPermitido = userProfile?.rol && ['Empleado', 'Gerente', 'Administrador'].includes(userProfile.rol);
 
   useEffect(() => {
     cargarDatos();
@@ -60,6 +65,13 @@ export default function MiCRM() {
         <h1 className="text-2xl md:text-3xl font-bold text-accent">Mi CRM</h1>
         <p className="text-gray-600 mt-1">Gestiona tus prospectos, clientes y ventas</p>
       </div>
+
+      {/* SECCIÓN 0: Tableros Compartidos (solo para Empleado/Gerente/Admin) */}
+      {rolPermitido && (
+        <div className="mb-6">
+          <TablerosSeccion />
+        </div>
+      )}
 
       {/* SECCIÓN 1: Botones de Acceso Rápido */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

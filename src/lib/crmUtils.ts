@@ -11,6 +11,10 @@ import type {
   TimelineItem,
   DashboardStats,
   FunnelData,
+  CRMBoardListItem,
+  CRMBoardMemberDetail,
+  MemberRole,
+  SearchableUser,
 } from './crmTypes';
 
 export async function obtenerContactos() {
@@ -449,4 +453,126 @@ export function calcularEdad(fecha_nacimiento?: string): number | null {
   }
 
   return age;
+}
+
+// ============================================================
+// TABLEROS COMPARTIDOS - SHARED BOARDS
+// ============================================================
+
+export async function listarTableros(): Promise<CRMBoardListItem[]> {
+  const { data, error } = await supabase.rpc('crm_list_boards_for_user');
+
+  if (error) throw error;
+  return (data || []) as CRMBoardListItem[];
+}
+
+export async function crearTablero(name: string, ownerOfficeId?: string): Promise<string> {
+  const { data, error } = await supabase.rpc('crm_create_board', {
+    p_name: name,
+    p_owner_office_id: ownerOfficeId || null,
+  });
+
+  if (error) throw error;
+  return data as string;
+}
+
+export async function invitarMiembro(
+  boardId: string,
+  userId: string,
+  memberRole: MemberRole
+): Promise<string> {
+  const { data, error } = await supabase.rpc('crm_invite_member', {
+    p_board_id: boardId,
+    p_user_id: userId,
+    p_member_role: memberRole,
+  });
+
+  if (error) throw error;
+  return data as string;
+}
+
+export async function actualizarRolMiembro(
+  boardId: string,
+  userId: string,
+  newRole: MemberRole
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('crm_update_member_role', {
+    p_board_id: boardId,
+    p_user_id: userId,
+    p_new_role: newRole,
+  });
+
+  if (error) throw error;
+  return data as boolean;
+}
+
+export async function removerMiembro(boardId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('crm_remove_member', {
+    p_board_id: boardId,
+    p_user_id: userId,
+  });
+
+  if (error) throw error;
+  return data as boolean;
+}
+
+export async function obtenerMiembrosTablero(boardId: string): Promise<CRMBoardMemberDetail[]> {
+  const { data, error } = await supabase.rpc('crm_get_board_members', {
+    p_board_id: boardId,
+  });
+
+  if (error) throw error;
+  return (data || []) as CRMBoardMemberDetail[];
+}
+
+export async function buscarUsuariosParaCompartir(query: string): Promise<SearchableUser[]> {
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select(
+      `
+      id,
+      nombre,
+      apellidos,
+      rol,
+      oficina_id,
+      imagen_perfil_url,
+      oficinas!inner(nombre)
+    `
+    )
+    .or(
+      `nombre.ilike.%${query}%,apellidos.ilike.%${query}%,email_laboral.ilike.%${query}%`
+    )
+    .in('rol', ['Empleado', 'Gerente', 'Administrador'])
+    .eq('activo', true)
+    .limit(20);
+
+  if (error) throw error;
+
+  return (
+    data?.map((u: any) => ({
+      id: u.id,
+      nombre_completo: `${u.nombre} ${u.apellidos}`,
+      oficina_nombre: u.oficinas?.nombre || 'Sin oficina',
+      rol: u.rol,
+      avatar_url: u.imagen_perfil_url,
+    })) || []
+  );
+}
+
+export async function eliminarTablero(boardId: string): Promise<void> {
+  const { error } = await supabase
+    .from('crm_boards')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', boardId);
+
+  if (error) throw error;
+}
+
+export async function renombrarTablero(boardId: string, newName: string): Promise<void> {
+  const { error } = await supabase
+    .from('crm_boards')
+    .update({ name: newName })
+    .eq('id', boardId);
+
+  if (error) throw error;
 }

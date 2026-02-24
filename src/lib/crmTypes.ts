@@ -148,3 +148,64 @@ export interface FunnelData {
   negociacion: number;
   clientes: number;
 }
+
+export type MemberRole = 'owner' | 'admin' | 'editor' | 'viewer';
+
+export interface CRMBoard {
+  id: string;
+  name: string;
+  owner_user_id: string;
+  owner_office_id?: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string;
+}
+
+export interface CRMBoardMember {
+  id: string;
+  board_id: string;
+  user_id: string;
+  member_role: MemberRole;
+  added_by: string;
+  created_at: string;
+}
+
+export interface CRMBoardActivity {
+  id: string;
+  board_id: string;
+  actor_user_id: string;
+  action: string;
+  meta: Record<string, any>;
+  created_at: string;
+}
+
+export interface CRMBoardListItem {
+  board_id: string;
+  board_name: string;
+  is_owner: boolean;
+  my_role: MemberRole;
+  owner_name: string;
+  owner_office: string;
+  members_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CRMBoardMemberDetail {
+  member_id: string;
+  user_id: string;
+  user_name: string;
+  user_office: string;
+  user_role_global: string;
+  member_role: MemberRole;
+  added_by_name: string;
+  created_at: string;
+}
+
+export interface SearchableUser {
+  id: string;
+  nombre_completo: string;
+  oficina_nombre: string;
+  rol: string;
+  avatar_url?: string;
+}
