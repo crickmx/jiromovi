@@ -276,17 +276,17 @@ export async function generateCommissionPDF(
   doc.setTextColor(0);
   doc.text('Agente:', 15, yPosition);
   doc.setFont(undefined, 'bold');
-  const vendorName = agentDetails[0].vendor_name_raw || `${agent.nombre} ${agent.apellidos}`.trim();
+  const vendorName = agentDetails[0].vendor_name_raw || `${usuario.nombre} ${usuario.apellidos}`.trim();
   doc.text(vendorName, 40, yPosition);
   doc.setFont(undefined, 'normal');
 
   yPosition += 7;
   doc.text('Email:', 15, yPosition);
-  doc.text(agent.email_laboral, 40, yPosition);
+  doc.text(usuario.email_laboral, 40, yPosition);
 
   yPosition += 7;
   doc.text('Oficina:', 15, yPosition);
-  doc.text((agent as any).oficina?.nombre || 'N/A', 40, yPosition);
+  doc.text((usuario as any).oficina?.nombre || 'N/A', 40, yPosition);
 
   yPosition += 15;
 
@@ -729,7 +729,7 @@ export async function generateOrdenDePagoPDF(
   const regimenFiscalName = detailsData[0].regimen_fiscal || 'HONORARIOS';
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
-  const agentFullName = `${agent.nombre} ${agent.apellidos}`.trim();
+  const agentFullName = `${usuario.nombre} ${usuario.apellidos}`.trim();
   console.log(`[PDF] Generando para ${agentFullName}: Régimen fiscal = ${regimenFiscalName} (normalizado: ${regimenFiscal}), ${detailsData.length} pólizas`);
 
   // Sumar todos los valores fiscales de los details del vendedor
