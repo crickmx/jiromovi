@@ -66,64 +66,39 @@ async function obtenerDesgloseFiscalDesdeDB(
 }
 
 /**
- * Genera las filas completas para el PDF de desglose fiscal.
- * Muestra el desglose completo incluyendo:
- * - Comisión Base Total
- * - Vida
- * - Comisión Sin Vida
- * - IVA con descripción completa
- * - Retenciones con descripción completa
- * - Total a Pagar
+ * Genera las filas para el PDF de desglose fiscal.
+ * Solo muestra los campos FINALES, SIN valores intermedios como
+ * Comisión Base, Vida, Sin Vida, ISR Vida, ISR Daños.
  */
 function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal): PdfFiscalRow[] {
   const rows: PdfFiscalRow[] = [];
-  const comisionBaseTotal = desgloseFiscal.vida + desgloseFiscal.sinVida;
 
   switch (regimen) {
     case 'HONORARIOS':
-      // Comisión Base Total
-      rows.push({
-        label: 'Comisión Base Total',
-        value: formatCurrency(comisionBaseTotal)
-      });
-      // Vida
-      if (desgloseFiscal.vida > 0) {
-        rows.push({
-          label: 'Vida',
-          value: formatCurrency(desgloseFiscal.vida)
-        });
-      }
-      // Comisión Sin Vida
-      rows.push({
-        label: 'Comisión Sin Vida',
-        value: formatCurrency(desgloseFiscal.sinVida)
-      });
-      // IVA (16% Sin Vida)
+      // Solo mostrar IVA, Retenciones y Total
       if (desgloseFiscal.iva > 0) {
         rows.push({
-          label: 'IVA (16% Sin Vida)',
+          label: 'IVA',
           value: `+ ${formatCurrency(desgloseFiscal.iva)}`
         });
       }
-      // Retención ISR (10% Total)
       if (desgloseFiscal.retIsr > 0) {
         rows.push({
-          label: 'Retención ISR (10% Total)',
+          label: 'Ret. ISR',
           value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
         });
       }
-      // Retención IVA (10.667% Sin Vida)
       if (desgloseFiscal.retIva > 0) {
         rows.push({
-          label: 'Retención IVA (10.667% Sin Vida)',
+          label: 'Ret. IVA',
           value: `- ${formatCurrency(desgloseFiscal.retIva)}`
         });
       }
       break;
 
     case 'ASIMILADOS':
-      // ASIMILADOS: Ret. Contable, Costo Dispersión, IVA (siempre 0), ISR Total
-      // NO MOSTRAR: Comisión Base, Vida, Sin Vida (mantener como estaba)
+      // Solo mostrar Ret. Contable, Costo Dispersión, ISR Total
+      // NO mostrar IVA (siempre es 0)
       if (desgloseFiscal.retContable > 0) {
         rows.push({
           label: 'Ret. Contable',
@@ -136,56 +111,32 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
           value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
         });
       }
-      // IVA siempre es 0 para ASIMILADOS
-      rows.push({
-        label: 'IVA',
-        value: formatCurrency(0)
-      });
-      // ISR Total
-      if (desgloseFiscal.isrTotal > 0) {
+      // Usar ret_isr en lugar de isrTotal (que no se está calculando correctamente)
+      if (desgloseFiscal.retIsr > 0) {
         rows.push({
           label: 'ISR Total',
-          value: `- ${formatCurrency(desgloseFiscal.isrTotal)}`
+          value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
         });
       }
       break;
 
     case 'RESICO':
-      // Comisión Base Total
-      rows.push({
-        label: 'Comisión Base Total',
-        value: formatCurrency(comisionBaseTotal)
-      });
-      // Vida
-      if (desgloseFiscal.vida > 0) {
-        rows.push({
-          label: 'Vida',
-          value: formatCurrency(desgloseFiscal.vida)
-        });
-      }
-      // Comisión Sin Vida
-      rows.push({
-        label: 'Comisión Sin Vida',
-        value: formatCurrency(desgloseFiscal.sinVida)
-      });
-      // IVA (16% Sin Vida)
+      // Solo mostrar IVA, Retenciones y Total
       if (desgloseFiscal.iva > 0) {
         rows.push({
-          label: 'IVA (16% Sin Vida)',
+          label: 'IVA',
           value: `+ ${formatCurrency(desgloseFiscal.iva)}`
         });
       }
-      // Retención ISR (1.25% Total)
       if (desgloseFiscal.retIsr > 0) {
         rows.push({
-          label: 'Retención ISR (1.25% Total)',
+          label: 'Ret. ISR',
           value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
         });
       }
-      // Retención IVA (10.667% Sin Vida)
       if (desgloseFiscal.retIva > 0) {
         rows.push({
-          label: 'Retención IVA (10.667% Sin Vida)',
+          label: 'Ret. IVA',
           value: `- ${formatCurrency(desgloseFiscal.retIva)}`
         });
       }
@@ -831,9 +782,9 @@ export async function generateOrdenDePagoPDF(
     iva: totals.iva,
     retIsr: totals.retIsr,
     retIva: totals.retIva,
-    isrVida: 0, // No usado
-    isrDanios: 0, // No usado
-    isrTotal: 0, // No usado
+    isrVida: 0,
+    isrDanios: 0,
+    isrTotal: totals.retIsr, // Para ASIMILADOS, usar ret_isr como isrTotal
     totalAPagar: totals.totalNeto,
   };
 
