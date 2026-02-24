@@ -126,22 +126,46 @@ export default function ComisionesPrepararLote() {
 
       const normalizedName = vendorKey.replace('name:', '');
 
-      const { error: mappingError } = await supabase
+      // Verificar si ya existe un mapeo activo para este source
+      const { data: existingMapping } = await supabase
         .from('vendor_mappings')
-        .upsert({
-          source_type: 'name',
-          source_value: normalizedName,
-          movi_user_id: moviUserId,
-          status: 'active',
-          created_by: usuario?.id,
-        }, {
-          onConflict: 'source_type,source_value',
-          ignoreDuplicates: false
-        });
+        .select('id, movi_user_id')
+        .eq('source_type', 'name')
+        .eq('source_value', normalizedName)
+        .eq('status', 'active')
+        .maybeSingle();
 
-      if (mappingError) {
-        console.error('Error creating persistent mapping:', mappingError);
-        throw mappingError;
+      if (existingMapping) {
+        // Actualizar el mapeo existente
+        const { error: updateError } = await supabase
+          .from('vendor_mappings')
+          .update({
+            movi_user_id: moviUserId,
+            updated_by: usuario?.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingMapping.id);
+
+        if (updateError) {
+          console.error('Error updating persistent mapping:', updateError);
+          throw updateError;
+        }
+      } else {
+        // Crear nuevo mapeo
+        const { error: insertError } = await supabase
+          .from('vendor_mappings')
+          .insert({
+            source_type: 'name',
+            source_value: normalizedName,
+            movi_user_id: moviUserId,
+            status: 'active',
+            created_by: usuario?.id,
+          });
+
+        if (insertError) {
+          console.error('Error creating persistent mapping:', insertError);
+          throw insertError;
+        }
       }
 
       await supabase.rpc('recalculate_staging_session_counters', {
