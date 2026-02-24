@@ -118,7 +118,7 @@ export default function TablerosSeccion() {
   };
 
   const handleAbrirTablero = (boardId: string) => {
-    navigate(`/crm-tareas?board=${boardId}`);
+    navigate(`/mi-crm/tareas?board=${boardId}`);
   };
 
   const getRoleIcon = (role: string) => {
