@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           regimen_fiscal:commission_fiscal_regimes(id, name)
         `)
         .eq('id', userId)
-        .eq('activo', true)
-        .eq('is_deleted', false)
+        .eq('estado', 'activo')
+        .is('deleted_at', null)
         .maybeSingle();
 
       if (error) {
