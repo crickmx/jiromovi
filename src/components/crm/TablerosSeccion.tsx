@@ -21,6 +21,7 @@ import GestionMiembrosTablero from './GestionMiembrosTablero';
 export default function TablerosSeccion() {
   const [tableros, setTableros] = useState<CRMBoardListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const [creandoTablero, setCreandoTablero] = useState(false);
   const [nombreNuevoTablero, setNombreNuevoTablero] = useState('');
   const [compartirModalOpen, setCompartirModalOpen] = useState(false);
@@ -35,6 +36,10 @@ export default function TablerosSeccion() {
   const esAgente = userProfile?.rol === 'Agente';
 
   useEffect(() => {
+    console.log('[TablerosSeccion] userProfile:', userProfile);
+    console.log('[TablerosSeccion] rolPermitido:', rolPermitido);
+    console.log('[TablerosSeccion] esAgente:', esAgente);
+
     if (rolPermitido) {
       cargarTableros();
     } else {
@@ -45,10 +50,14 @@ export default function TablerosSeccion() {
   const cargarTableros = async () => {
     try {
       setLoading(true);
+      setError('');
+      console.log('[TablerosSeccion] Llamando listarTableros()...');
       const data = await listarTableros();
+      console.log('[TablerosSeccion] Tableros recibidos:', data);
       setTableros(data);
-    } catch (err) {
-      console.error('Error cargando tableros:', err);
+    } catch (err: any) {
+      console.error('[TablerosSeccion] Error cargando tableros:', err);
+      setError(err.message || 'Error al cargar tableros');
     } finally {
       setLoading(false);
     }
@@ -141,6 +150,17 @@ export default function TablerosSeccion() {
     }
   };
 
+  // Debug: Siempre mostrar información del usuario
+  if (!userProfile) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg shadow p-6">
+        <p className="text-sm text-yellow-800 text-center">
+          Cargando perfil de usuario...
+        </p>
+      </div>
+    );
+  }
+
   if (esAgente) {
     return null;
   }
@@ -148,8 +168,11 @@ export default function TablerosSeccion() {
   if (!rolPermitido) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-sm text-gray-600 text-center">
+        <p className="text-sm text-gray-600 text-center mb-2">
           Los tableros compartidos están disponibles solo para Empleados, Gerentes y Administradores.
+        </p>
+        <p className="text-xs text-gray-500 text-center">
+          Tu rol actual: {userProfile?.rol || 'No definido'}
         </p>
       </div>
     );
@@ -174,6 +197,12 @@ export default function TablerosSeccion() {
             Nuevo Tablero
           </button>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         {creandoTablero && (
           <form onSubmit={handleCrearTablero} className="mb-4 p-4 bg-gray-50 rounded-lg">
