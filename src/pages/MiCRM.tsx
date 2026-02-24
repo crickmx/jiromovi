@@ -25,13 +25,9 @@ export default function MiCRM() {
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
   const [tareasPendientes, setTareasPendientes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { userProfile } = useAuth();
+  const { usuario } = useAuth();
 
-  const rolPermitido = userProfile?.rol && ['Empleado', 'Gerente', 'Administrador'].includes(userProfile.rol);
-
-  console.log('[MiCRM] userProfile:', userProfile);
-  console.log('[MiCRM] rolPermitido:', rolPermitido);
-  console.log('[MiCRM] Debería mostrar TablerosSeccion:', !!rolPermitido);
+  const rolPermitido = usuario?.rol && ['Empleado', 'Gerente', 'Administrador'].includes(usuario.rol);
 
   useEffect(() => {
     cargarDatos();
