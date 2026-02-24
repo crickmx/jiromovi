@@ -7,11 +7,12 @@ import type { CRMTarea, EstatusTarea, PrioridadTarea, CRMContacto } from '../../
 interface Props {
   contactoId?: string;
   tarea?: CRMTarea;
+  boardId?: string | null;
   onClose: () => void;
   onSave: () => void;
 }
 
-export default function TareaModal({ contactoId, tarea, onClose, onSave }: Props) {
+export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave }: Props) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [contactos, setContactos] = useState<CRMContacto[]>([]);
@@ -27,6 +28,7 @@ export default function TareaModal({ contactoId, tarea, onClose, onSave }: Props
     prioridad: (tarea?.prioridad || 'Media') as PrioridadTarea,
     estatus: (tarea?.estatus || 'Pendiente') as EstatusTarea,
     contacto_id: contactoId || tarea?.contacto_id || '',
+    board_id: boardId || tarea?.board_id || null,
   });
 
   useEffect(() => {
@@ -74,6 +76,7 @@ export default function TareaModal({ contactoId, tarea, onClose, onSave }: Props
         prioridad: formData.prioridad,
         estatus: formData.estatus,
         contacto_id: formData.contacto_id || null,
+        board_id: formData.board_id || null,
       };
 
       if (tarea) {

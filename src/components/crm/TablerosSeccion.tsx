@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutGrid,
   Plus,
@@ -11,6 +12,7 @@ import {
   MoreVertical,
   Trash2,
   Edit3,
+  ArrowRight,
 } from 'lucide-react';
 import { listarTableros, crearTablero, eliminarTablero, renombrarTablero } from '../../lib/crmUtils';
 import type { CRMBoardListItem } from '../../lib/crmTypes';
@@ -19,6 +21,7 @@ import CompartirTableroModal from './CompartirTableroModal';
 import GestionMiembrosTablero from './GestionMiembrosTablero';
 
 export default function TablerosSeccion() {
+  const navigate = useNavigate();
   const [tableros, setTableros] = useState<CRMBoardListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -112,6 +115,10 @@ export default function TablerosSeccion() {
     setTableroSeleccionado(tablero);
     setMiembrosModalOpen(true);
     setMenuAbierto(null);
+  };
+
+  const handleAbrirTablero = (boardId: string) => {
+    navigate(`/crm-tareas?board=${boardId}`);
   };
 
   const getRoleIcon = (role: string) => {
@@ -329,10 +336,17 @@ export default function TablerosSeccion() {
                   </div>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
                   <p className="text-xs text-gray-500">
                     Actualizado {new Date(tablero.updated_at).toLocaleDateString('es-MX')}
                   </p>
+                  <button
+                    onClick={() => handleAbrirTablero(tablero.board_id)}
+                    className="px-3 py-1.5 bg-accent text-white rounded hover:bg-accent/90 transition flex items-center text-xs"
+                  >
+                    Abrir
+                    <ArrowRight className="h-3 w-3 ml-1" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -375,12 +389,21 @@ export default function TablerosSeccion() {
                 </div>
 
                 <div className="mt-2 pt-2 border-t border-gray-200">
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-gray-600 mb-2">
                     Propietario: {tablero.owner_name}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    {tablero.owner_office}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500">
+                      {tablero.owner_office}
+                    </p>
+                    <button
+                      onClick={() => handleAbrirTablero(tablero.board_id)}
+                      className="px-3 py-1.5 bg-accent text-white rounded hover:bg-accent/90 transition flex items-center text-xs"
+                    >
+                      Abrir
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

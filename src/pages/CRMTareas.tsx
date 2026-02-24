@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   LayoutGrid,
@@ -13,6 +13,7 @@ import {
   Search,
   User,
   ArrowLeft,
+  Users,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,9 +24,19 @@ import type { CRMTarea, EstatusTarea } from '../lib/crmTypes';
 type Vista = 'lista' | 'kanban';
 type FiltroEstatus = 'todas' | 'Pendiente' | 'En Proceso' | 'Completada' | 'vencidas';
 
+interface BoardInfo {
+  id: string;
+  name: string;
+  my_role: string;
+  members_count: number;
+}
+
 export default function CRMTareas() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const boardId = searchParams.get('board');
+
   const [vista, setVista] = useState<Vista>('kanban');
   const [tareas, setTareas] = useState<CRMTarea[]>([]);
   const [tareasFiltradas, setTareasFiltradas] = useState<CRMTarea[]>([]);
@@ -35,23 +46,59 @@ export default function CRMTareas() {
   const [filtroEstatus, setFiltroEstatus] = useState<FiltroEstatus>('todas');
   const [filtroPrioridad, setFiltroPrioridad] = useState<string>('todas');
   const [busqueda, setBusqueda] = useState('');
+  const [boardInfo, setBoardInfo] = useState<BoardInfo | null>(null);
 
   useEffect(() => {
     cargarTareas();
-  }, []);
+    if (boardId) {
+      cargarInfoTablero();
+    }
+  }, [boardId]);
 
   useEffect(() => {
     aplicarFiltros();
   }, [tareas, filtroEstatus, filtroPrioridad, busqueda]);
 
+  const cargarInfoTablero = async () => {
+    if (!boardId) return;
+
+    try {
+      const { data, error } = await supabase.rpc('crm_list_boards_for_user');
+
+      if (error) throw error;
+
+      const board = data?.find((b: any) => b.board_id === boardId);
+      if (board) {
+        setBoardInfo({
+          id: board.board_id,
+          name: board.board_name,
+          my_role: board.my_role,
+          members_count: board.members_count,
+        });
+      }
+    } catch (error) {
+      console.error('Error al cargar info del tablero:', error);
+    }
+  };
+
   const cargarTareas = async () => {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('crm_tareas')
         .select('*, crm_contactos(nombre_completo)')
         .order('fecha_vencimiento', { ascending: true });
+
+      // Filtrar por tablero si existe boardId
+      if (boardId) {
+        query = query.eq('board_id', boardId);
+      } else {
+        // Sin boardId, mostrar solo tareas personales (sin tablero)
+        query = query.is('board_id', null);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -182,8 +229,25 @@ export default function CRMTareas() {
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-accent">Mis Tareas</h1>
-            <p className="text-gray-600 mt-1">Gestiona tus actividades y seguimientos</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-accent">
+              {boardInfo ? boardInfo.name : 'Mis Tareas'}
+            </h1>
+            {boardInfo ? (
+              <div className="flex items-center gap-3 mt-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                  <Users className="h-4 w-4" />
+                  {boardInfo.members_count} miembros
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm capitalize">
+                  {boardInfo.my_role === 'owner' && 'Propietario'}
+                  {boardInfo.my_role === 'admin' && 'Administrador'}
+                  {boardInfo.my_role === 'editor' && 'Editor'}
+                  {boardInfo.my_role === 'viewer' && 'Visualizador'}
+                </span>
+              </div>
+            ) : (
+              <p className="text-gray-600 mt-1">Gestiona tus actividades y seguimientos personales</p>
+            )}
           </div>
           <button
             onClick={handleNuevaTarea}
@@ -414,7 +478,14 @@ export default function CRMTareas() {
         </div>
       )}
 
-      {showModal && <TareaModal tarea={tareaEditar} onClose={handleCloseModal} onSave={handleSaveTarea} />}
+      {showModal && (
+        <TareaModal
+          tarea={tareaEditar}
+          boardId={boardId}
+          onClose={handleCloseModal}
+          onSave={handleSaveTarea}
+        />
+      )}
     </div>
   );
 }

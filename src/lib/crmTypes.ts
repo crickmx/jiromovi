@@ -71,6 +71,7 @@ export interface CRMPoliza {
 export interface CRMTarea {
   id: string;
   contacto_id?: string;
+  board_id?: string | null;
   descripcion: string;
   tipo_actividad: TipoActividad;
   fecha_vencimiento: string;
