@@ -112,15 +112,12 @@ export function SegurosEducation() {
       // Fetch recent lessons with progress
       const { data: lessons } = await supabase
         .from('seguros_lessons')
-        .select(`
-          *,
-          categoria:seguros_categories(nombre)
-        `)
+        .select('*')
         .order('fecha_creacion', { ascending: false })
         .limit(5);
 
       if (lessons) {
-        // Get progress for each lesson
+        // Get progress and categories for each lesson
         const lessonsWithProgress = await Promise.all(
           lessons.map(async (lesson) => {
             const { data: progress } = await supabase
@@ -130,9 +127,21 @@ export function SegurosEducation() {
               .eq('user_id', usuario.id)
               .maybeSingle();
 
+            // Get first category for the lesson
+            const { data: categoryData } = await supabase
+              .from('seguros_lesson_categories')
+              .select(`
+                category_id,
+                seguros_categories(nombre)
+              `)
+              .eq('lesson_id', lesson.id)
+              .limit(1)
+              .maybeSingle();
+
             return {
               ...lesson,
               progreso: progress?.progreso || 0,
+              categoria: categoryData?.seguros_categories || null,
             };
           })
         );
