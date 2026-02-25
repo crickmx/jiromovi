@@ -131,10 +131,8 @@ export function NuevoTramiteModal({
 
   useEffect(() => {
     if (tipoTramite === 'correccion_comisiones' && asignado) {
-      console.log('👤 asignado cambió:', asignado, 'isInitializing:', isInitializingWithPreloadedData.current);
       // Reset lote selection when assigned user changes, unless we're initializing with preloaded data
       if (!isInitializingWithPreloadedData.current) {
-        console.log('🧹 Limpiando lote porque no está inicializando');
         setLoteSeleccionado('');
       }
       loadLotesDisponibles(asignado);
@@ -142,7 +140,6 @@ export function NuevoTramiteModal({
   }, [asignado]);
 
   useEffect(() => {
-    console.log('📋 loteSeleccionado cambió a:', loteSeleccionado);
     if (loteSeleccionado) {
       loadDocumentosLote();
     } else {
@@ -177,7 +174,6 @@ export function NuevoTramiteModal({
 
     // Respetar lote precargado si existe
     if (preloadedData?.comisionesLoteId) {
-      console.log('📦 Estableciendo lote precargado:', preloadedData.comisionesLoteId);
       setLoteSeleccionado(preloadedData.comisionesLoteId);
     } else {
       setLoteSeleccionado('');
