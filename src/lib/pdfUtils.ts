@@ -92,7 +92,7 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       break;
 
     case 'ASIMILADOS':
-      // Siempre mostrar Ret. Contable, Costo Dispersión, ISR Total
+      // Siempre mostrar Ret. Contable, Costo Dispersión, IVA, ISR Total
       rows.push({
         label: 'Ret. Contable',
         value: `- ${formatCurrency(desgloseFiscal.retContable)}`
@@ -102,8 +102,12 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
         value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
       });
       rows.push({
+        label: 'IVA',
+        value: formatCurrency(desgloseFiscal.iva)
+      });
+      rows.push({
         label: 'ISR Total',
-        value: `- ${formatCurrency(desgloseFiscal.retIsr)}`
+        value: `- ${formatCurrency(desgloseFiscal.isrTotal)}`
       });
       break;
 
@@ -732,45 +736,79 @@ export async function generateOrdenDePagoPDF(
   const agentFullName = `${usuario.nombre} ${usuario.apellidos}`.trim();
   console.log(`[PDF] Generando para ${agentFullName}: Régimen fiscal = ${regimenFiscalName} (normalizado: ${regimenFiscal}), ${detailsData.length} pólizas`);
 
-  // Sumar todos los valores fiscales de los details del vendedor
-  const totals = detailsData.reduce((acc, detail) => {
-    acc.vida += detail.tipo_ramo === 'VIDA' ? detail.commission_neta : 0;
-    acc.sinVida += detail.tipo_ramo !== 'VIDA' ? detail.commission_neta : 0;
-    acc.iva += detail.iva || 0;
-    acc.retIsr += detail.ret_isr || 0;
-    acc.retIva += detail.ret_iva || 0;
-    acc.retContable += detail.retencion_contable || 0;
-    acc.costoDispersion += detail.costo_dispersion || 0;
-    acc.totalNeto += detail.total_neto || 0;
-    return acc;
-  }, {
-    vida: 0,
-    sinVida: 0,
-    iva: 0,
-    retIsr: 0,
-    retIva: 0,
-    retContable: 0,
-    costoDispersion: 0,
-    totalNeto: 0
-  });
+  let desgloseFiscal: DesgloseFiscal;
 
-  // Construir desglose fiscal desde los totales
-  const desgloseFiscal: DesgloseFiscal = {
-    vida: totals.vida,
-    sinVida: totals.sinVida,
-    retContable: totals.retContable,
-    costoDispersion: totals.costoDispersion,
-    iva: totals.iva,
-    retIsr: totals.retIsr,
-    retIva: totals.retIva,
-    isrVida: 0,
-    isrDanios: 0,
-    isrTotal: totals.retIsr, // Para ASIMILADOS, usar ret_isr como isrTotal
-    totalAPagar: totals.totalNeto,
-  };
+  // Para ASIMILADOS, usar función de agregación para evitar errores de redondeo
+  if (regimenFiscal === 'ASIMILADOS') {
+    const { data: fiscalData, error: fiscalError } = await supabase.rpc(
+      'calculate_batch_asimilados_fiscal',
+      {
+        p_batch_id: batch.id,
+        p_usuario_id: usuario_id
+      }
+    );
 
-  console.log(`[PDF] Totales calculados: regimen=${regimenFiscal}, ret_isr=${totals.retIsr}, total=${totals.totalNeto}`);
-  console.log('[PDF] Desglose fiscal:', desgloseFiscal);
+    if (fiscalError || !fiscalData || fiscalData.length === 0) {
+      throw new Error('Error al calcular desglose fiscal ASIMILADOS desde la base de datos');
+    }
+
+    const fiscal = fiscalData[0];
+    desgloseFiscal = {
+      vida: parseFloat(fiscal.vida) || 0,
+      sinVida: parseFloat(fiscal.danios) || 0,
+      retContable: parseFloat(fiscal.ret_contable) || 0,
+      costoDispersion: parseFloat(fiscal.costo_dispersion) || 0,
+      iva: 0,
+      retIsr: 0,
+      retIva: 0,
+      isrVida: parseFloat(fiscal.isr_vida) || 0,
+      isrDanios: parseFloat(fiscal.isr_danios) || 0,
+      isrTotal: parseFloat(fiscal.isr_total) || 0,
+      totalAPagar: parseFloat(fiscal.total_a_pagar) || 0,
+    };
+
+    console.log('[PDF] ASIMILADOS - Valores calculados desde función de agregación:', desgloseFiscal);
+  } else {
+    // Para HONORARIOS y RESICO, sumar valores individuales
+    const totals = detailsData.reduce((acc, detail) => {
+      acc.vida += detail.tipo_ramo === 'VIDA' ? detail.commission_neta : 0;
+      acc.sinVida += detail.tipo_ramo !== 'VIDA' ? detail.commission_neta : 0;
+      acc.iva += detail.iva || 0;
+      acc.retIsr += detail.ret_isr || 0;
+      acc.retIva += detail.ret_iva || 0;
+      acc.retContable += detail.retencion_contable || 0;
+      acc.costoDispersion += detail.costo_dispersion || 0;
+      acc.totalNeto += detail.total_neto || 0;
+      return acc;
+    }, {
+      vida: 0,
+      sinVida: 0,
+      iva: 0,
+      retIsr: 0,
+      retIva: 0,
+      retContable: 0,
+      costoDispersion: 0,
+      totalNeto: 0
+    });
+
+    desgloseFiscal = {
+      vida: totals.vida,
+      sinVida: totals.sinVida,
+      retContable: totals.retContable,
+      costoDispersion: totals.costoDispersion,
+      iva: totals.iva,
+      retIsr: totals.retIsr,
+      retIva: totals.retIva,
+      isrVida: 0,
+      isrDanios: 0,
+      isrTotal: totals.retIsr,
+      totalAPagar: totals.totalNeto,
+    };
+
+    console.log(`[PDF] ${regimenFiscal} - Totales sumados: ret_isr=${totals.retIsr}, total=${totals.totalNeto}`);
+  }
+
+  console.log('[PDF] Desglose fiscal final:', desgloseFiscal);
 
   // Usar la función de allowlist para generar solo los campos permitidos
   const fiscalRows = getPdfFiscalRows(regimenFiscal, desgloseFiscal);
