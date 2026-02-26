@@ -225,7 +225,8 @@ export async function generateCommissionPDF(
     throw new Error('No hay detalles para generar el PDF');
   }
 
-  const usuario = agentDetails[0].usuario;
+  // Los datos vienen con el campo 'agent' o 'usuario' dependiendo de la query
+  const usuario = (agentDetails[0] as any).agent || (agentDetails[0] as any).usuario;
   if (!usuario) {
     throw new Error('No se encontró la información del agente');
   }
@@ -467,7 +468,8 @@ export async function generateOrdenDePagoPDF(
     throw new Error('No hay detalles para generar el PDF');
   }
 
-  const usuario = agentDetails[0].usuario;
+  // Los datos vienen con el campo 'agent' o 'usuario' dependiendo de la query
+  const usuario = (agentDetails[0] as any).agent || (agentDetails[0] as any).usuario;
   if (!usuario) {
     throw new Error('No se encontró la información del agente');
   }
