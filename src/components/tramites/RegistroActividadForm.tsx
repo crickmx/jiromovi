@@ -59,11 +59,14 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
   }, []);
 
   useEffect(() => {
-    // Autoseleccionar usuario actual en "Quién Atiende" al cargar el formulario
+    // Preseleccionar usuario actual en "Quién Atiende"
     if (usuario && attendingUsers.length > 0 && !attendingUserId) {
-      setAttendingUserId(usuario.id);
+      const currentUser = attendingUsers.find(u => u.id === usuario.id);
+      if (currentUser) {
+        setAttendingUserId(usuario.id);
+      }
     }
-  }, [usuario, attendingUsers, attendingUserId]);
+  }, [usuario, attendingUsers]);
 
   const loadCatalogs = async () => {
     setLoading(true);
@@ -147,15 +150,15 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl my-8">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl my-8">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h2 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               Nuevo Registro de Actividades
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Complete todos los campos obligatorios (Diseño en 2 columnas)
+              Complete todos los campos obligatorios
             </p>
           </div>
           <button
@@ -181,7 +184,6 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
             </div>
           )}
 
-          {/* Grid de 2 columnas para todos los campos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Tipo de Trámite */}
             <div>
@@ -220,6 +222,7 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
                 {officeUsers.map(user => (
                   <option key={user.id} value={user.id}>
                     {user.nombre_completo} - {user.rol}
+                    {user.oficina_nombre && ` (${user.oficina_nombre})`}
                   </option>
                 ))}
               </select>
@@ -248,14 +251,14 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
 
             {/* Quién Atiende */}
             <div>
-              <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <User className="w-4 h-4 inline mr-2" />
-                Quién Atiende * (solo su oficina - autoseleccionado)
+                Quién Atiende *
               </label>
               <select
                 value={attendingUserId}
                 onChange={(e) => setAttendingUserId(e.target.value)}
-                className="w-full px-4 py-2 border-2 border-blue-300 dark:border-blue-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white bg-blue-50 dark:bg-blue-900/20"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 required
               >
                 <option value="">Seleccione...</option>
@@ -265,62 +268,61 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                ✓ Filtrado por oficina • Autoseleccionado al abrir
-              </p>
             </div>
+          </div>
 
-            {/* Aseguradoras (multiselect) - span 2 columns */}
-            <div className="md:col-span-2 relative">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Building2 className="w-4 h-4 inline mr-2" />
-                Aseguradoras * (seleccione una o más)
-              </label>
-              <div
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer dark:bg-gray-700 dark:text-white"
-                onClick={() => setShowInsurerDropdown(!showInsurerDropdown)}
-              >
-                {selectedInsurers.length === 0 ? (
-                  <span className="text-gray-500">Seleccione aseguradoras...</span>
-                ) : (
-                  <span>{selectedInsurersNames}</span>
-                )}
-              </div>
-
-              {showInsurerDropdown && (
-                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
-                  <div className="p-2 border-b border-gray-200 dark:border-gray-600">
-                    <input
-                      type="text"
-                      placeholder="Buscar aseguradora..."
-                      value={insurerSearchTerm}
-                      onChange={(e) => setInsurerSearchTerm(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                  <div className="p-2">
-                    {filteredAseguradoras.map(aseg => (
-                      <label
-                        key={aseg.id}
-                        className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedInsurers.includes(aseg.id)}
-                          onChange={() => handleInsurerToggle(aseg.id)}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          {aseg.nombre}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+          {/* Aseguradoras (multiselect) */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <Building2 className="w-4 h-4 inline mr-2" />
+              Aseguradoras * (seleccione una o más)
+            </label>
+            <div
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer dark:bg-gray-700 dark:text-white"
+              onClick={() => setShowInsurerDropdown(!showInsurerDropdown)}
+            >
+              {selectedInsurers.length === 0 ? (
+                <span className="text-gray-500">Seleccione aseguradoras...</span>
+              ) : (
+                <span>{selectedInsurersNames}</span>
               )}
             </div>
 
+            {showInsurerDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
+                <div className="p-2 border-b border-gray-200 dark:border-gray-600">
+                  <input
+                    type="text"
+                    placeholder="Buscar aseguradora..."
+                    value={insurerSearchTerm}
+                    onChange={(e) => setInsurerSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+                <div className="p-2">
+                  {filteredAseguradoras.map(aseg => (
+                    <label
+                      key={aseg.id}
+                      className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedInsurers.includes(aseg.id)}
+                        onChange={() => handleInsurerToggle(aseg.id)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {aseg.nombre}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Fecha y Hora de Solicitud */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
