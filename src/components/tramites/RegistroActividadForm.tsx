@@ -151,11 +151,11 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h2 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               Nuevo Registro de Actividades
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Complete todos los campos obligatorios
+              Complete todos los campos obligatorios (Diseño en 2 columnas)
             </p>
           </div>
           <button
@@ -248,14 +248,14 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
 
             {/* Quién Atiende */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">
                 <User className="w-4 h-4 inline mr-2" />
-                Quién Atiende * (usuarios de su oficina)
+                Quién Atiende * (solo su oficina - autoseleccionado)
               </label>
               <select
                 value={attendingUserId}
                 onChange={(e) => setAttendingUserId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-4 py-2 border-2 border-blue-300 dark:border-blue-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white bg-blue-50 dark:bg-blue-900/20"
                 required
               >
                 <option value="">Seleccione...</option>
@@ -265,6 +265,9 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                ✓ Filtrado por oficina • Autoseleccionado al abrir
+              </p>
             </div>
 
             {/* Aseguradoras (multiselect) - span 2 columns */}
