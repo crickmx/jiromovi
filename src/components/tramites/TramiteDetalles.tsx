@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { User, Users, AlertCircle, FileText, Calendar, Clock } from 'lucide-react';
+import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp } from 'lucide-react';
+import { getProgressLabel } from '../../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
   id: string;
@@ -16,6 +17,7 @@ interface Usuario {
 interface TramiteData {
   id: string;
   folio: string;
+  tipo_tramite: string;
   prioridad: 'Alta' | 'Media' | 'Baja';
   poliza: string | null;
   instrucciones: string;
@@ -27,6 +29,15 @@ interface TramiteData {
   creado_por_usuario: Usuario | null;
   modificado_por_usuario: Usuario | null;
   cerrado_por_usuario: Usuario | null;
+  // Campos de Registro de Actividades
+  activity_subtype?: { id: string; nombre: string } | null;
+  requester_user?: Usuario | null;
+  insurance_type?: { id: string; nombre: string } | null;
+  attending_user?: Usuario | null;
+  request_datetime?: string | null;
+  completion_datetime?: string | null;
+  progress_percent?: number | null;
+  insurers?: any;
 }
 
 interface Asignacion {
@@ -179,6 +190,117 @@ export function TramiteDetalles({
           {tramite.instrucciones}
         </div>
       </div>
+
+      {/* Sección especial para Registro de Actividades */}
+      {tramite.tipo_tramite === 'registro_actividad' && (
+        <div className="border-t border-neutral-200 pt-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <Briefcase className="w-5 h-5" />
+            Detalles del Registro de Actividad
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                <Briefcase className="w-4 h-4 inline mr-2" />
+                Tipo de Trámite
+              </label>
+              <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl font-medium text-blue-900">
+                {tramite.activity_subtype?.nombre || 'N/A'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                <User className="w-4 h-4 inline mr-2" />
+                Solicitante
+              </label>
+              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                {tramite.requester_user?.nombre_completo || 'N/A'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                <Shield className="w-4 h-4 inline mr-2" />
+                Tipo de Seguro
+              </label>
+              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                {tramite.insurance_type?.nombre || 'N/A'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                <User className="w-4 h-4 inline mr-2" />
+                Quién Atiende
+              </label>
+              <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-xl font-medium text-green-900">
+                {tramite.attending_user?.nombre_completo || 'N/A'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                <Calendar className="w-4 h-4 inline mr-2" />
+                Fecha y Hora de Solicitud
+              </label>
+              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                {tramite.request_datetime
+                  ? new Date(tramite.request_datetime).toLocaleString('es-MX', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : 'N/A'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                <Clock className="w-4 h-4 inline mr-2" />
+                Fecha y Hora de Finalización
+              </label>
+              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                {tramite.completion_datetime
+                  ? new Date(tramite.completion_datetime).toLocaleString('es-MX', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : 'Pendiente'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                <TrendingUp className="w-4 h-4 inline mr-2" />
+                Avance
+              </label>
+              <div className="px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl font-bold text-yellow-900">
+                {tramite.progress_percent !== null && tramite.progress_percent !== undefined
+                  ? getProgressLabel(tramite.progress_percent)
+                  : 'N/A'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                <Building2 className="w-4 h-4 inline mr-2" />
+                Aseguradoras
+              </label>
+              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                {tramite.insurers && Array.isArray(JSON.parse(tramite.insurers))
+                  ? `${JSON.parse(tramite.insurers).length} aseguradoras`
+                  : 'N/A'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="border-t border-neutral-200 pt-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Información del Tramite</h3>

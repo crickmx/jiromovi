@@ -3,6 +3,8 @@ import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2,
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
+import { RegistroActividadForm } from './RegistroActividadForm';
+import { canAccessRegistroActividades } from '../../lib/registroActividadesUtils';
 
 interface TramiteEstatus {
   id: string;
@@ -106,6 +108,8 @@ export function NuevoTramiteModal({
 
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
+  const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
+  const [showRegistroActForm, setShowRegistroActForm] = useState(false);
 
   useEffect(() => {
     if (isOpen && usuario) {
@@ -115,6 +119,7 @@ export function NuevoTramiteModal({
       resetForm();
       loadUsuarios();
       loadLotesDisponibles();
+      checkRegistroAccess();
 
       // Resetear la bandera después de un breve delay para permitir que los efectos se ejecuten
       setTimeout(() => {
@@ -122,6 +127,15 @@ export function NuevoTramiteModal({
       }, 100);
     }
   }, [isOpen, preloadedData]);
+
+  const checkRegistroAccess = async () => {
+    const access = await canAccessRegistroActividades();
+    setCanAccessRegistroAct(access);
+  };
+
+  useEffect(() => {
+    setShowRegistroActForm(tipoTramite === 'registro_actividad');
+  }, [tipoTramite]);
 
   useEffect(() => {
     if (tipoTramite === 'correccion_comisiones' && usuario) {
@@ -617,10 +631,17 @@ export function NuevoTramiteModal({
         return 'Registro de póliza';
       case 'solicitud_comisiones_pendientes':
         return 'Solicitud de comisiones pendientes';
+      case 'registro_actividad':
+        return 'Registro de Actividades - Control de cotizaciones, emisiones y más';
       default:
         return tipo;
     }
   };
+
+  // Si es Registro de Actividades, mostrar formulario personalizado
+  if (showRegistroActForm) {
+    return <RegistroActividadForm onClose={onClose} onSuccess={onSuccess} />;
+  }
 
   return (
     <BaseModal
@@ -651,6 +672,9 @@ export function NuevoTramiteModal({
             <option value="correccion_comisiones">Corrección de comisiones</option>
             <option value="registro_poliza">Registro de póliza</option>
             <option value="solicitud_comisiones_pendientes">Solicitud de comisiones pendientes</option>
+            {canAccessRegistroAct && (
+              <option value="registro_actividad">Registro de Actividades</option>
+            )}
           </select>
           <p className="text-xs text-neutral-500 mt-1">
             {getTipoLabel(tipoTramite)}

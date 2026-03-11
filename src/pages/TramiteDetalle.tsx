@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Edit2, XCircle, RefreshCw, Save } from 'lucide-react';
+import { ArrowLeft, CreditCard as Edit2, XCircle, RefreshCw, Save } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
@@ -95,7 +95,11 @@ export function TramiteDetalle() {
         estatus:estatus_id(*),
         creado_por_usuario:creado_por(id, nombre_completo),
         modificado_por_usuario:modificado_por(id, nombre_completo),
-        cerrado_por_usuario:cerrado_por(id, nombre_completo)
+        cerrado_por_usuario:cerrado_por(id, nombre_completo),
+        activity_subtype:activity_subtype_id(id, nombre),
+        requester_user:requester_user_id(id, nombre_completo),
+        insurance_type:insurance_type_id(id, nombre),
+        attending_user:attending_user_id(id, nombre_completo)
       `)
       .eq('id', id)
       .single();
