@@ -128,55 +128,73 @@ export async function createRegistroActividad(data: {
   instrucciones: string;
   creado_por: string;
 }) {
-  // Obtener el siguiente folio
-  const { data: folioData } = await supabase
-    .rpc('generate_next_folio');
+  try {
+    // Obtener el siguiente folio
+    const { data: folioData, error: folioError } = await supabase
+      .rpc('generate_next_folio');
 
-  const folio = folioData || `RA-${Date.now()}`;
+    if (folioError) {
+      console.error('Error generating folio:', folioError);
+      throw new Error('Error al generar el folio: ' + folioError.message);
+    }
 
-  // Obtener estatus por defecto (primer estatus activo)
-  const { data: estatusData } = await supabase
-    .from('ticket_estatus')
-    .select('id')
-    .eq('activo', true)
-    .order('orden')
-    .limit(1)
-    .single();
+    const folio = folioData || `RA-${Date.now()}`;
 
-  if (!estatusData) {
-    throw new Error('No se encontró un estatus válido');
-  }
+    // Obtener estatus por defecto (primer estatus activo)
+    const { data: estatusData, error: estatusError } = await supabase
+      .from('ticket_estatus')
+      .select('id')
+      .eq('activo', true)
+      .order('orden')
+      .limit(1)
+      .single();
 
-  const ticketData = {
-    folio,
-    tipo_tramite: 'registro_actividad',
-    activity_subtype_id: data.activity_subtype_id,
-    requester_user_id: data.requester_user_id,
-    insurance_type_id: data.insurance_type_id,
-    insurers: data.insurers,
-    attending_user_id: data.attending_user_id,
-    request_datetime: data.request_datetime,
-    completion_datetime: data.completion_datetime || null,
-    progress_percent: data.progress_percent,
-    prioridad: data.prioridad,
-    instrucciones: data.instrucciones,
-    estatus_id: estatusData.id,
-    creado_por: data.creado_por,
-    assigned_to_user_id: data.attending_user_id,
-  };
+    if (estatusError || !estatusData) {
+      console.error('Error getting default status:', estatusError);
+      throw new Error('No se encontró un estatus válido');
+    }
 
-  const { data: ticket, error } = await supabase
-    .from('tickets')
-    .insert(ticketData)
-    .select()
-    .single();
+    const ticketData = {
+      folio,
+      tipo_tramite: 'registro_actividad',
+      activity_subtype_id: data.activity_subtype_id,
+      requester_user_id: data.requester_user_id,
+      insurance_type_id: data.insurance_type_id,
+      insurers: data.insurers,
+      attending_user_id: data.attending_user_id,
+      request_datetime: data.request_datetime,
+      completion_datetime: data.completion_datetime || null,
+      progress_percent: data.progress_percent,
+      prioridad: data.prioridad,
+      instrucciones: data.instrucciones,
+      estatus_id: estatusData.id,
+      creado_por: data.creado_por,
+      assigned_to_user_id: data.attending_user_id,
+    };
 
-  if (error) {
-    console.error('Error creating registro actividad:', error);
+    console.log('Creating ticket with data:', ticketData);
+
+    const { data: ticket, error } = await supabase
+      .from('tickets')
+      .insert(ticketData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating registro actividad:', error);
+      throw new Error('Error al crear el registro: ' + (error.message || 'Error desconocido'));
+    }
+
+    if (!ticket) {
+      throw new Error('No se pudo crear el registro');
+    }
+
+    console.log('Ticket created successfully:', ticket);
+    return ticket;
+  } catch (error: any) {
+    console.error('Exception in createRegistroActividad:', error);
     throw error;
   }
-
-  return ticket;
 }
 
 /**

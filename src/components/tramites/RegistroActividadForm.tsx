@@ -129,15 +129,22 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
 
     setLoading(true);
     try {
-      await createRegistroActividad({
+      const result = await createRegistroActividad({
         ...formData,
         creado_por: usuario!.id
       });
-      onSuccess();
+
+      console.log('Registro creado exitosamente:', result);
+
+      // Llamar a onSuccess primero para recargar datos
+      await onSuccess();
+
+      // Luego cerrar el modal
       onClose();
     } catch (error: any) {
       console.error('Error creating registro actividad:', error);
-      setErrors([error.message || 'Error al crear el registro de actividad']);
+      const errorMessage = error?.message || error?.hint || error?.details || 'Error al crear el registro de actividad';
+      setErrors([errorMessage]);
     } finally {
       setLoading(false);
     }

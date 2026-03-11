@@ -639,8 +639,13 @@ export function NuevoTramiteModal({
   };
 
   // Si es Registro de Actividades, mostrar formulario personalizado
-  if (showRegistroActForm) {
+  if (showRegistroActForm && isOpen) {
     return <RegistroActividadForm onClose={onClose} onSuccess={onSuccess} />;
+  }
+
+  // No renderizar nada si el modal está cerrado
+  if (!isOpen) {
+    return null;
   }
 
   return (
