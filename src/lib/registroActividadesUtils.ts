@@ -153,7 +153,7 @@ export async function createRegistroActividad(data: {
     activity_subtype_id: data.activity_subtype_id,
     requester_user_id: data.requester_user_id,
     insurance_type_id: data.insurance_type_id,
-    insurers: JSON.stringify(data.insurers),
+    insurers: data.insurers,
     attending_user_id: data.attending_user_id,
     request_datetime: data.request_datetime,
     completion_datetime: data.completion_datetime || null,
@@ -201,10 +201,6 @@ export async function updateRegistroActividad(
     ...data,
     ultima_modificacion: new Date().toISOString(),
   };
-
-  if (data.insurers) {
-    updateData.insurers = JSON.stringify(data.insurers);
-  }
 
   if (data.attending_user_id) {
     updateData.assigned_to_user_id = data.attending_user_id;

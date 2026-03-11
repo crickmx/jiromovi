@@ -293,8 +293,8 @@ export function TramiteDetalles({
                 Aseguradoras
               </label>
               <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
-                {tramite.insurers && Array.isArray(JSON.parse(tramite.insurers))
-                  ? `${JSON.parse(tramite.insurers).length} aseguradoras`
+                {tramite.insurers && Array.isArray(tramite.insurers)
+                  ? `${tramite.insurers.length} aseguradoras`
                   : 'N/A'}
               </div>
             </div>
