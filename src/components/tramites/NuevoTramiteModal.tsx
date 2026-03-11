@@ -200,12 +200,26 @@ export function NuevoTramiteModal({
   };
 
   const loadUsuarios = async () => {
+    if (!usuario) return;
+
+    // Obtener solo usuarios de la misma oficina
     const { data } = await supabase
       .from('usuarios')
-      .select('id, nombre_completo, rol')
+      .select('id, nombre_completo, rol, oficina_id')
+      .eq('oficina_id', usuario.oficina_id)
+      .in('rol', ['Empleado', 'Gerente', 'Administrador'])
+      .eq('estado', 'Activo')
+      .is('deleted_at', null)
       .order('nombre_completo');
 
-    if (data) setUsuariosDisponibles(data);
+    if (data) {
+      setUsuariosDisponibles(data);
+
+      // Autoseleccionar al usuario actual si puede asignar a otros
+      if (canAssignOthers && !asignado) {
+        setAsignado(usuario.id);
+      }
+    }
   };
 
   const loadLotesDisponibles = async (forUserId?: string) => {
@@ -647,8 +661,8 @@ export function NuevoTramiteModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Nuevo Trámite"
-      maxWidth="4xl"
+      title="Nuevo Trámite (Diseño en 2 columnas)"
+      maxWidth="5xl"
     >
       <div className="space-y-6">
         {error && (
@@ -658,66 +672,72 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-semibold text-neutral-900 mb-2">
-            Tipo de Trámite
-          </label>
-          <select
-            value={tipoTramite}
-            onChange={(e) => setTipoTramite(e.target.value)}
-            disabled={!!preloadedData?.tipoTramite}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
-          >
-            <option value="correccion_poliza_registrada">Corrección de póliza registrada</option>
-            <option value="correccion_comisiones">Corrección de comisiones</option>
-            <option value="registro_poliza">Registro de póliza</option>
-            <option value="solicitud_comisiones_pendientes">Solicitud de comisiones pendientes</option>
-            {canAccessRegistroAct && (
-              <option value="registro_actividad">Registro de Actividades</option>
-            )}
-          </select>
-          <p className="text-xs text-neutral-500 mt-1">
-            {getTipoLabel(tipoTramite)}
-          </p>
+        {/* Grid de 2 columnas para campos principales */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">
+              Tipo de Trámite
+            </label>
+            <select
+              value={tipoTramite}
+              onChange={(e) => setTipoTramite(e.target.value)}
+              disabled={!!preloadedData?.tipoTramite}
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
+            >
+              <option value="correccion_poliza_registrada">Corrección de póliza registrada</option>
+              <option value="correccion_comisiones">Corrección de comisiones</option>
+              <option value="registro_poliza">Registro de póliza</option>
+              <option value="solicitud_comisiones_pendientes">Solicitud de comisiones pendientes</option>
+              {canAccessRegistroAct && (
+                <option value="registro_actividad">Registro de Actividades</option>
+              )}
+            </select>
+            <p className="text-xs text-neutral-500 mt-1">
+              {getTipoLabel(tipoTramite)}
+            </p>
+          </div>
+
+          {canAssignOthers && (
+            <div>
+              <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">
+                <User className="w-4 h-4 inline mr-2" />
+                Asignar a (solo su oficina - autoseleccionado)
+              </label>
+              <select
+                value={asignado}
+                onChange={(e) => setAsignado(e.target.value)}
+                className="w-full px-4 py-2.5 border-2 border-blue-300 dark:border-blue-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent bg-blue-50 dark:bg-blue-900/20"
+              >
+                <option value="">Selecciona un usuario</option>
+                {usuariosDisponibles.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.nombre_completo} ({u.rol})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                ✓ Filtrado por oficina • Autoseleccionado al abrir
+              </p>
+            </div>
+          )}
+
+          {!isAgent && (
+            <div className={canAssignOthers ? '' : 'md:col-start-2'}>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                Prioridad
+              </label>
+              <select
+                value={prioridad}
+                onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="Baja">Baja</option>
+                <option value="Media">Media</option>
+                <option value="Alta">Alta</option>
+              </select>
+            </div>
+          )}
         </div>
-
-        {canAssignOthers && (
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              <User className="w-4 h-4 inline mr-2" />
-              Asignar a
-            </label>
-            <select
-              value={asignado}
-              onChange={(e) => setAsignado(e.target.value)}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              <option value="">Selecciona un usuario</option>
-              {usuariosDisponibles.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre_completo} ({u.rol})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {!isAgent && (
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              Prioridad
-            </label>
-            <select
-              value={prioridad}
-              onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              <option value="Baja">Baja</option>
-              <option value="Media">Media</option>
-              <option value="Alta">Alta</option>
-            </select>
-          </div>
-        )}
 
         {tipoTramite === 'correccion_poliza_registrada' && (
           <div>
