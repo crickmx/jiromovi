@@ -25,7 +25,9 @@ export async function canAccessRegistroActividades(): Promise<boolean> {
 
   if (!data) return false;
 
-  return ['empleado', 'gerente', 'admin'].includes(data.rol.toLowerCase());
+  // Roles permitidos con mayúscula inicial como están en la BD
+  const rolesPermitidos = ['Empleado', 'Gerente', 'Administrador'];
+  return rolesPermitidos.includes(data.rol);
 }
 
 /**
