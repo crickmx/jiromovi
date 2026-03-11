@@ -25,7 +25,7 @@ export async function canAccessRegistroActividades(): Promise<boolean> {
 
   if (!data) return false;
 
-  return ['empleado', 'gerente', 'admin'].includes(data.rol.toLowerCase());
+  return ['Empleado', 'Gerente', 'Administrador'].includes(data.rol);
 }
 
 /**
