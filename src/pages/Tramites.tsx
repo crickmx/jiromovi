@@ -15,6 +15,7 @@ interface TramiteEstatus {
 interface TramiteItem {
   id: string;
   folio: string;
+  tipo_tramite: string;
   prioridad: 'Alta' | 'Media' | 'Baja';
   poliza: string | null;
   instrucciones: string;
@@ -95,7 +96,8 @@ export function Tramites() {
     const matchSearch = tramite.folio.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.instrucciones.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.poliza?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       tramite.agente?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase());
+                       tramite.agente?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       getTipoTramiteLabel(tramite.tipo_tramite).toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchEstatus = selectedEstatus === 'todos' || tramite.estatus?.id === selectedEstatus;
     const matchPrioridad = selectedPrioridad === 'todas' || tramite.prioridad === selectedPrioridad;
@@ -118,6 +120,23 @@ export function Tramites() {
       case 'Media': return <Clock className="w-4 h-4" />;
       case 'Baja': return <CheckCircle2 className="w-4 h-4" />;
       default: return null;
+    }
+  };
+
+  const getTipoTramiteLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'correccion_poliza_registrada':
+        return 'Corrección de póliza';
+      case 'correccion_comisiones':
+        return 'Corrección de comisiones';
+      case 'registro_poliza':
+        return 'Registro de póliza';
+      case 'solicitud_comisiones_pendientes':
+        return 'Solicitud de comisiones';
+      case 'registro_actividad':
+        return 'Registro de actividades';
+      default:
+        return tipo;
     }
   };
 
@@ -233,6 +252,9 @@ export function Tramites() {
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-3">
                     <span className="text-lg font-bold text-accent">{tramite.folio}</span>
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700 border border-neutral-300">
+                      {getTipoTramiteLabel(tramite.tipo_tramite)}
+                    </span>
                     {tramite.estatus && (
                       <span
                         className="px-3 py-1 rounded-full text-xs font-semibold"
