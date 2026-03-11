@@ -661,10 +661,25 @@ export function NuevoTramiteModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Nuevo Trámite (Diseño en 2 columnas)"
+      title="🔄 NUEVO TRÁMITE (ACTUALIZADO 2 COLUMNAS)"
       maxWidth="5xl"
     >
       <div className="space-y-6">
+        {/* Banner de actualización */}
+        <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <User className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="font-bold text-lg">✅ Actualización Aplicada</p>
+              <p className="text-sm text-blue-100">
+                • Filtrado por oficina • Autoselección • Layout 2 columnas
+              </p>
+            </div>
+          </div>
+        </div>
+
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
@@ -673,7 +688,7 @@ export function NuevoTramiteModal({
         )}
 
         {/* Grid de 2 columnas para campos principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-700">
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               Tipo de Trámite
@@ -698,15 +713,23 @@ export function NuevoTramiteModal({
           </div>
 
           {canAssignOthers && (
-            <div>
-              <label className="block text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">
-                <User className="w-4 h-4 inline mr-2" />
-                Asignar a (solo su oficina - autoseleccionado)
+            <div className="relative">
+              {/* Badge de NUEVO */}
+              <div className="absolute -top-2 -right-2 z-10">
+                <span className="px-3 py-1 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                  ⚡ ACTUALIZADO
+                </span>
+              </div>
+
+              <label className="block text-sm font-bold text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2">
+                <User className="w-5 h-5" />
+                <span className="text-base">🔹 Asignar a (SOLO SU OFICINA - AUTOSELECCIONADO)</span>
               </label>
+
               <select
                 value={asignado}
                 onChange={(e) => setAsignado(e.target.value)}
-                className="w-full px-4 py-2.5 border-2 border-blue-300 dark:border-blue-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent bg-blue-50 dark:bg-blue-900/20"
+                className="w-full px-4 py-3 border-4 border-blue-500 dark:border-blue-600 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-300 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 font-semibold text-base shadow-lg"
               >
                 <option value="">Selecciona un usuario</option>
                 {usuariosDisponibles.map(u => (
@@ -715,9 +738,13 @@ export function NuevoTramiteModal({
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                ✓ Filtrado por oficina • Autoseleccionado al abrir
-              </p>
+
+              <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/30 border-2 border-green-500 rounded-lg">
+                <p className="text-sm font-semibold text-green-800 dark:text-green-300 flex items-center gap-2">
+                  <span className="text-xl">✅</span>
+                  <span>Filtrado por oficina • Autoseleccionado al abrir</span>
+                </p>
+              </div>
             </div>
           )}
 
