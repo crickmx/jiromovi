@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, XCircle, FileText } from 'lucide-react';
+import { ClipboardList, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, XCircle, FileText, Settings } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
+import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 
 interface TramiteEstatus {
   id: string;
@@ -41,10 +42,12 @@ export function Tramites() {
   const [selectedEstatus, setSelectedEstatus] = useState<string>('todos');
   const [selectedPrioridad, setSelectedPrioridad] = useState<string>('todas');
   const [showNuevoModal, setShowNuevoModal] = useState(false);
+  const [showCatalogosModal, setShowCatalogosModal] = useState(false);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const canManageAll = isAdmin || isGerente;
+  const canManageCatalogs = isAdmin || isGerente;
 
   useEffect(() => {
     loadData();
@@ -152,13 +155,24 @@ export function Tramites() {
               Gestiona solicitudes y soporte interno
             </p>
           </div>
-          <button
-            onClick={() => setShowNuevoModal(true)}
-            className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nuevo Trámite</span>
-          </button>
+          <div className="flex items-center gap-3">
+            {canManageCatalogs && (
+              <button
+                onClick={() => setShowCatalogosModal(true)}
+                className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
+              >
+                <Settings className="w-5 h-5" />
+                <span>Gestionar Catálogos</span>
+              </button>
+            )}
+            <button
+              onClick={() => setShowNuevoModal(true)}
+              className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Nuevo Trámite</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex space-x-2 border-b border-neutral-200">
@@ -339,6 +353,22 @@ export function Tramites() {
         }}
         estatusList={estatusList}
       />
+
+      {showCatalogosModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl my-8 max-h-[90vh] overflow-y-auto">
+            <GestionCatalogosRegistro />
+            <div className="flex justify-end p-6 border-t border-neutral-200">
+              <button
+                onClick={() => setShowCatalogosModal(false)}
+                className="px-6 py-2.5 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
