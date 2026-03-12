@@ -303,11 +303,15 @@ export default function TramitesReportes() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_id(id, nombre_completo),
+          agente:assigned_to_user_id(id, nombre_completo),
           estatus:estatus_id(*),
           creado_por_usuario:creado_por(id, nombre_completo),
           modificado_por_usuario:modificado_por(id, nombre_completo),
-          cerrado_por_usuario:cerrado_por(id, nombre_completo)
+          cerrado_por_usuario:cerrado_por(id, nombre_completo),
+          activity_subtype:activity_subtype_id(id, nombre),
+          requester_user:requester_user_id(id, nombre_completo),
+          insurance_type:insurance_type_id(id, nombre),
+          attending_user:attending_user_id(id, nombre_completo)
         `)
         .eq('id', tramiteId)
         .single();

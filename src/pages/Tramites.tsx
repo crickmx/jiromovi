@@ -76,7 +76,7 @@ export function Tramites() {
       .from('tickets')
       .select(`
         *,
-        agente:agente_id(nombre_completo),
+        agente:assigned_to_user_id(nombre_completo),
         estatus:estatus_id(*),
         assigned_to_user:assigned_to_user_id(nombre_completo),
         ticket_asignaciones(

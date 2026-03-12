@@ -457,6 +457,19 @@ export function NuevoTramiteModal({
 
       if (ticketError) throw ticketError;
 
+      // Crear asignación en ticket_asignaciones
+      if (assignedTo) {
+        const { error: assignError } = await supabase
+          .from('ticket_asignaciones')
+          .insert({
+            ticket_id: ticket.id,
+            ejecutivo_id: assignedTo,
+            asignado_por: usuario.id
+          });
+
+        if (assignError) console.error('Error creating assignment:', assignError);
+      }
+
       // Procesar archivos según el tipo de trámite
       if (tipoTramite === 'solicitud_comisiones_pendientes') {
         // Guardar comisiones pendientes
