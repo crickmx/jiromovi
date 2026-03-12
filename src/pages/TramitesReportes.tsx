@@ -3,9 +3,13 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   BarChart3, TrendingUp, Clock, CheckCircle2, AlertCircle, Users, Building2,
-  Calendar, Filter, Download, Search, ChevronDown
+  Calendar, Filter, Download, Search, ChevronDown, Eye, X
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
+import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
+import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
+import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 
 interface KPIs {
   total_tramites: number;
@@ -59,6 +63,32 @@ interface ProductividadOficina {
   usuarios_activos: number;
 }
 
+interface TramiteCompleto {
+  id: string;
+  folio: string;
+  tipo_tramite: string;
+  prioridad: 'Alta' | 'Media' | 'Baja';
+  poliza: string | null;
+  instrucciones: string;
+  fecha_creacion: string;
+  ultima_modificacion: string;
+  cerrado_en: string | null;
+  progress_percent: number | null;
+  estatus_id: string;
+  agente: any;
+  estatus: any;
+  creado_por_usuario: any;
+  modificado_por_usuario: any;
+  cerrado_por_usuario: any;
+}
+
+interface TramitesPorUsuario {
+  usuario_id: string;
+  nombre_completo: string;
+  oficina_nombre: string;
+  tramites: TramiteDetalle[];
+}
+
 export default function TramitesReportes() {
   const { usuario } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -66,6 +96,17 @@ export default function TramitesReportes() {
   const [tramites, setTramites] = useState<TramiteDetalle[]>([]);
   const [productividadUsuarios, setProductividadUsuarios] = useState<ProductividadUsuario[]>([]);
   const [productividadOficinas, setProductividadOficinas] = useState<ProductividadOficina[]>([]);
+  const [tramitesPorUsuario, setTramitesPorUsuario] = useState<TramitesPorUsuario[]>([]);
+
+  // Modal de vista previa
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [selectedTramite, setSelectedTramite] = useState<TramiteCompleto | null>(null);
+  const [previewTab, setPreviewTab] = useState<'detalles' | 'comentarios' | 'archivos' | 'historial'>('detalles');
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
+  // Vista de trámites por usuario
+  const [showTramitesPorUsuario, setShowTramitesPorUsuario] = useState(false);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
 
   // Filtros
   const [fechaInicio, setFechaInicio] = useState('');
@@ -203,11 +244,93 @@ export default function TramitesReportes() {
 
         if (officeProdData) setProductividadOficinas(officeProdData);
       }
+
+      // Cargar trámites agrupados por usuario
+      await loadTramitesPorUsuario();
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadTramitesPorUsuario = async () => {
+    try {
+      let query = supabase
+        .from('tramites_reportes_view')
+        .select('*')
+        .gte('fecha_solicitud', new Date(fechaInicio).toISOString())
+        .lte('fecha_solicitud', new Date(fechaFin + 'T23:59:59').toISOString())
+        .not('asignado_id', 'is', null)
+        .order('asignado_nombre')
+        .order('fecha_solicitud', { ascending: false });
+
+      if (oficinaFiltro) query = query.eq('asignado_oficina_id', oficinaFiltro);
+      if (usuarioFiltro) query = query.eq('asignado_id', usuarioFiltro);
+      if (tipoTramiteFiltro) query = query.eq('tipo_tramite', tipoTramiteFiltro);
+
+      const { data } = await query;
+
+      if (data) {
+        // Agrupar trámites por usuario
+        const grouped = data.reduce((acc: Record<string, TramitesPorUsuario>, tramite: any) => {
+          const userId = tramite.asignado_id;
+          if (!acc[userId]) {
+            acc[userId] = {
+              usuario_id: userId,
+              nombre_completo: tramite.asignado_nombre,
+              oficina_nombre: tramite.oficina_nombre || 'Sin oficina',
+              tramites: []
+            };
+          }
+          acc[userId].tramites.push(tramite);
+          return acc;
+        }, {});
+
+        setTramitesPorUsuario(Object.values(grouped));
+      }
+    } catch (error) {
+      console.error('Error loading tramites por usuario:', error);
+    }
+  };
+
+  const handleVerTramite = async (tramiteId: string) => {
+    setLoadingPreview(true);
+    setShowPreviewModal(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          agente:agente_id(id, nombre_completo),
+          estatus:estatus_id(*),
+          creado_por_usuario:creado_por(id, nombre_completo),
+          modificado_por_usuario:modificado_por(id, nombre_completo),
+          cerrado_por_usuario:cerrado_por(id, nombre_completo)
+        `)
+        .eq('id', tramiteId)
+        .single();
+
+      if (error) throw error;
+      if (data) setSelectedTramite(data as TramiteCompleto);
+    } catch (error) {
+      console.error('Error loading tramite details:', error);
+      alert('Error al cargar los detalles del trámite');
+      setShowPreviewModal(false);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const toggleUserExpanded = (userId: string) => {
+    const newExpanded = new Set(expandedUsers);
+    if (newExpanded.has(userId)) {
+      newExpanded.delete(userId);
+    } else {
+      newExpanded.add(userId);
+    }
+    setExpandedUsers(newExpanded);
   };
 
   const exportarExcel = () => {
@@ -591,6 +714,106 @@ export default function TramitesReportes() {
         </div>
       )}
 
+      {/* Trámites por Usuario Asignado */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-neutral-600" />
+            <h3 className="text-lg font-semibold text-neutral-900">Trámites por Usuario (Asignado a)</h3>
+          </div>
+          <button
+            onClick={() => setShowTramitesPorUsuario(!showTramitesPorUsuario)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <ChevronDown className={`w-4 h-4 transition-transform ${showTramitesPorUsuario ? 'rotate-180' : ''}`} />
+            {showTramitesPorUsuario ? 'Ocultar' : 'Mostrar'}
+          </button>
+        </div>
+
+        {showTramitesPorUsuario && (
+          <div className="space-y-3">
+            {tramitesPorUsuario.map((userGroup) => (
+              <div key={userGroup.usuario_id} className="border border-neutral-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleUserExpanded(userGroup.usuario_id)}
+                  className="w-full px-4 py-3 bg-neutral-50 hover:bg-neutral-100 flex items-center justify-between transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Users className="w-5 h-5 text-neutral-600" />
+                    <div className="text-left">
+                      <div className="font-semibold text-neutral-900">{userGroup.nombre_completo}</div>
+                      <div className="text-sm text-neutral-600">{userGroup.oficina_nombre}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                      {userGroup.tramites.length} trámites
+                    </span>
+                    <ChevronDown className={`w-5 h-5 text-neutral-600 transition-transform ${
+                      expandedUsers.has(userGroup.usuario_id) ? 'rotate-180' : ''
+                    }`} />
+                  </div>
+                </button>
+
+                {expandedUsers.has(userGroup.usuario_id) && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-neutral-100">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Folio</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Tipo</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Solicitante</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-neutral-700">Avance</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Estatus</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Fecha</th>
+                          <th className="text-center py-3 px-4 text-sm font-semibold text-neutral-700">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {userGroup.tramites.map((tramite) => (
+                          <tr key={tramite.id} className="border-t border-neutral-200 hover:bg-neutral-50">
+                            <td className="py-3 px-4 text-sm font-mono text-neutral-900">{tramite.folio}</td>
+                            <td className="py-3 px-4 text-sm text-neutral-600">{tramite.tipo_tramite?.replace(/_/g, ' ')}</td>
+                            <td className="py-3 px-4 text-sm text-neutral-900">{tramite.solicitante_nombre}</td>
+                            <td className="py-3 px-4 text-sm text-neutral-900 text-right">{tramite.avance}%</td>
+                            <td className="py-3 px-4">
+                              <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                                tramite.estatus_calculado === 'Finalizado' ? 'bg-green-100 text-green-700' :
+                                tramite.estatus_calculado === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {tramite.estatus_calculado}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-neutral-600">
+                              {new Date(tramite.fecha_solicitud).toLocaleDateString('es-MX')}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => handleVerTramite(tramite.id)}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                              >
+                                <Eye className="w-3 h-3" />
+                                Ver
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
+            {tramitesPorUsuario.length === 0 && (
+              <div className="text-center py-8 text-neutral-600">
+                No hay trámites asignados en el período seleccionado
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Tabla de Detalle */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
@@ -630,6 +853,7 @@ export default function TramitesReportes() {
                 <th className="text-right py-3 px-4 text-sm font-semibold text-neutral-700">Avance</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Estatus</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Fecha</th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-neutral-700">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -653,6 +877,15 @@ export default function TramitesReportes() {
                   <td className="py-3 px-4 text-sm text-neutral-600">
                     {new Date(tramite.fecha_solicitud).toLocaleDateString('es-MX')}
                   </td>
+                  <td className="py-3 px-4 text-center">
+                    <button
+                      onClick={() => handleVerTramite(tramite.id)}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                    >
+                      <Eye className="w-3 h-3" />
+                      Ver
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -665,6 +898,102 @@ export default function TramitesReportes() {
           </div>
         )}
       </div>
+
+      {/* Modal de Vista Previa */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+              <div>
+                <h2 className="text-2xl font-bold text-neutral-900">
+                  Vista Previa - {selectedTramite?.folio || 'Cargando...'}
+                </h2>
+                {selectedTramite && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span
+                      className="px-3 py-1 rounded-full text-sm font-semibold"
+                      style={{
+                        backgroundColor: selectedTramite.estatus?.color + '20',
+                        color: selectedTramite.estatus?.color,
+                        borderColor: selectedTramite.estatus?.color,
+                        borderWidth: '1px'
+                      }}
+                    >
+                      {selectedTramite.estatus?.nombre}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setShowPreviewModal(false);
+                  setSelectedTramite(null);
+                  setPreviewTab('detalles');
+                }}
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-neutral-600" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            {selectedTramite && (
+              <div className="flex space-x-2 px-6 pt-4 border-b border-neutral-200">
+                {(['detalles', 'comentarios', 'archivos', 'historial'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setPreviewTab(tab)}
+                    className={`px-4 py-2 font-semibold transition-all capitalize ${
+                      previewTab === tab
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-neutral-600 hover:text-neutral-900'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingPreview ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : selectedTramite ? (
+                <>
+                  {previewTab === 'detalles' && (
+                    <TramiteDetalles
+                      tramite={selectedTramite}
+                      editing={false}
+                      estatusList={[]}
+                      selectedEstatus=""
+                      setSelectedEstatus={() => {}}
+                      selectedPrioridad={selectedTramite.prioridad}
+                      setSelectedPrioridad={() => {}}
+                    />
+                  )}
+                  {previewTab === 'comentarios' && (
+                    <TramiteComentarios tramiteId={selectedTramite.id} />
+                  )}
+                  {previewTab === 'archivos' && (
+                    <TramiteArchivos tramiteId={selectedTramite.id} />
+                  )}
+                  {previewTab === 'historial' && (
+                    <TramiteHistorial tramiteId={selectedTramite.id} />
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8 text-neutral-600">
+                  Error al cargar el trámite
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
