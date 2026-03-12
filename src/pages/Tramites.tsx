@@ -72,27 +72,38 @@ export function Tramites() {
   const loadTramites = async () => {
     if (!usuario) return;
 
-    let query = supabase
-      .from('tickets')
-      .select(`
-        *,
-        agente:assigned_to_user_id(nombre_completo),
-        estatus:estatus_id(*),
-        assigned_to_user:assigned_to_user_id(nombre_completo),
-        ticket_asignaciones(
-          ejecutivo:ejecutivo_id(nombre_completo)
-        )
-      `)
-      .order('fecha_creacion', { ascending: false });
+    try {
+      let query = supabase
+        .from('tickets')
+        .select(`
+          *,
+          agente:assigned_to_user_id(nombre_completo),
+          estatus:estatus_id(*),
+          assigned_to_user:assigned_to_user_id(nombre_completo),
+          ticket_asignaciones(
+            ejecutivo:ejecutivo_id(nombre_completo)
+          )
+        `)
+        .order('fecha_creacion', { ascending: false });
 
-    if (activeTab === 'cerrados') {
-      query = query.not('cerrado_en', 'is', null);
-    } else {
-      query = query.is('cerrado_en', null);
+      if (activeTab === 'cerrados') {
+        query = query.not('cerrado_en', 'is', null);
+      } else {
+        query = query.is('cerrado_en', null);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error loading tramites:', error);
+        return;
+      }
+
+      console.log('Tramites loaded:', data?.length, 'tramites');
+      if (data) setTramites(data as TramiteItem[]);
+    } catch (error) {
+      console.error('Exception loading tramites:', error);
     }
-
-    const { data } = await query;
-    if (data) setTramites(data as TramiteItem[]);
   };
 
   const filteredTramites = tramites.filter(tramite => {
