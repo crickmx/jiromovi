@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield } from 'lucide-react';
+import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
@@ -15,20 +15,6 @@ interface Usuario {
   id: string;
   nombre_completo: string;
   rol: string;
-}
-
-interface TipoTramite {
-  id: string;
-  nombre: string;
-  descripcion: string | null;
-  activo: boolean;
-}
-
-interface TipoSeguro {
-  id: string;
-  nombre: string;
-  descripcion: string | null;
-  activo: boolean;
 }
 
 interface CommissionBatch {
@@ -94,9 +80,6 @@ export function NuevoTramiteModal({
   const [error, setError] = useState('');
 
   const [tipoTramite, setTipoTramite] = useState<string>('correccion_poliza_registrada');
-  const [tiposTramite, setTiposTramite] = useState<TipoTramite[]>([]);
-  const [tiposSeguro, setTiposSeguro] = useState<TipoSeguro[]>([]);
-  const [tipoSeguroSeleccionado, setTipoSeguroSeleccionado] = useState<string>('');
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
   const [asignado, setAsignado] = useState<string>('');
   const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Baja');
@@ -136,8 +119,6 @@ export function NuevoTramiteModal({
       resetForm();
       loadUsuarios();
       loadLotesDisponibles();
-      loadTiposTramite();
-      loadTiposSeguro();
       checkRegistroAccess();
 
       // Resetear la bandera después de un breve delay para permitir que los efectos se ejecuten
@@ -204,7 +185,6 @@ export function NuevoTramiteModal({
     setDescripcion('');
     setArchivos([]);
     setPolizaNumero('');
-    setTipoSeguroSeleccionado('');
 
     // Respetar lote precargado si existe
     if (preloadedData?.comisionesLoteId) {
@@ -226,26 +206,6 @@ export function NuevoTramiteModal({
       .order('nombre_completo');
 
     if (data) setUsuariosDisponibles(data);
-  };
-
-  const loadTiposTramite = async () => {
-    const { data } = await supabase
-      .from('tramite_activity_types')
-      .select('*')
-      .eq('activo', true)
-      .order('nombre');
-
-    if (data) setTiposTramite(data);
-  };
-
-  const loadTiposSeguro = async () => {
-    const { data } = await supabase
-      .from('insurance_types')
-      .select('*')
-      .eq('activo', true)
-      .order('nombre');
-
-    if (data) setTiposSeguro(data);
   };
 
   const loadLotesDisponibles = async (forUserId?: string) => {
@@ -468,8 +428,7 @@ export function NuevoTramiteModal({
         creado_por: usuario.id,
         modificado_por: usuario.id,
         assigned_to_user_id: assignedTo,
-        agente_id: isAgent ? usuario.id : null,
-        tipo_seguro_id: tipoSeguroSeleccionado || null
+        agente_id: isAgent ? usuario.id : null
       };
 
       if (tipoTramite === 'correccion_poliza_registrada') {
@@ -704,59 +663,27 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              Tipo de Trámite
-            </label>
-            <select
-              value={tipoTramite}
-              onChange={(e) => setTipoTramite(e.target.value)}
-              disabled={!!preloadedData?.tipoTramite}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
-            >
-              <option value="correccion_poliza_registrada">Corrección de póliza registrada</option>
-              <option value="correccion_comisiones">Corrección de comisiones</option>
-              <option value="registro_poliza">Registro de póliza</option>
-              <option value="solicitud_comisiones_pendientes">Solicitud de comisiones pendientes</option>
-              {canAccessRegistroAct && (
-                <option value="registro_actividad">Registro de Actividades</option>
-              )}
-              {tiposTramite.length > 0 && <option disabled>───────────────</option>}
-              {tiposTramite.map(tipo => (
-                <option key={tipo.id} value={tipo.id}>
-                  {tipo.nombre}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-neutral-500 mt-1">
-              {getTipoLabel(tipoTramite)}
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              <Shield className="w-4 h-4 inline mr-2" />
-              Tipo de Seguro
-            </label>
-            <select
-              value={tipoSeguroSeleccionado}
-              onChange={(e) => setTipoSeguroSeleccionado(e.target.value)}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              <option value="">Selecciona un tipo (opcional)</option>
-              {tiposSeguro.map(tipo => (
-                <option key={tipo.id} value={tipo.id}>
-                  {tipo.nombre}
-                </option>
-              ))}
-            </select>
-            {tipoSeguroSeleccionado && tiposSeguro.find(t => t.id === tipoSeguroSeleccionado)?.descripcion && (
-              <p className="text-xs text-neutral-500 mt-1">
-                {tiposSeguro.find(t => t.id === tipoSeguroSeleccionado)?.descripcion}
-              </p>
+        <div>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            Tipo de Trámite
+          </label>
+          <select
+            value={tipoTramite}
+            onChange={(e) => setTipoTramite(e.target.value)}
+            disabled={!!preloadedData?.tipoTramite}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
+          >
+            <option value="correccion_poliza_registrada">Corrección de póliza registrada</option>
+            <option value="correccion_comisiones">Corrección de comisiones</option>
+            <option value="registro_poliza">Registro de póliza</option>
+            <option value="solicitud_comisiones_pendientes">Solicitud de comisiones pendientes</option>
+            {canAccessRegistroAct && (
+              <option value="registro_actividad">Registro de Actividades</option>
             )}
-          </div>
+          </select>
+          <p className="text-xs text-neutral-500 mt-1">
+            {getTipoLabel(tipoTramite)}
+          </p>
         </div>
 
         {canAssignOthers && (
