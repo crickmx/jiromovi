@@ -30,6 +30,7 @@ import { SegurosEducationAulaDigital } from './pages/SegurosEducationAulaDigital
 import { SegurosEducationAnalytics } from './pages/SegurosEducationAnalytics';
 import { CentroNotificaciones } from './pages/CentroNotificaciones';
 import { Tramites } from './pages/Tramites';
+import TramitesReportes from './pages/TramitesReportes';
 import { TramiteDetalle } from './pages/TramiteDetalle';
 import { ConfiguracionCatalogos } from './pages/ConfiguracionCatalogos';
 import { MeetingRoom } from './pages/MeetingRoom';
@@ -787,6 +788,7 @@ function App() {
               <Route path="/seguros-education/cedula-a/certificado/:certificadoId" element={<ProtectedRoute><Layout><CertificadoCedulaA /></Layout></ProtectedRoute>} />
               <Route path="/centro-notificaciones" element={<ProtectedRoute><CentroNotificaciones /></ProtectedRoute>} />
               <Route path="/tramites" element={<ProtectedRoute><Layout><Tramites /></Layout></ProtectedRoute>} />
+              <Route path="/tramites/reportes" element={<ProtectedRoute><Layout><TramitesReportes /></Layout></ProtectedRoute>} />
               <Route path="/tramites/:id" element={<ProtectedRoute><Layout><TramiteDetalle /></Layout></ProtectedRoute>} />
               <Route path="/configuracion/catalogos" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionCatalogos /></Layout></ProtectedRoute>} />
               <Route path="/mi-crm" element={<ProtectedRoute><Layout><MiCRM /></Layout></ProtectedRoute>} />
