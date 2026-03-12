@@ -71,9 +71,9 @@ export function TramiteDetalles({
 
   const loadAsignaciones = async () => {
     const { data } = await supabase
-      .from('tramite_asignaciones')
+      .from('ticket_asignaciones')
       .select('ejecutivo:ejecutivo_id(id, nombre_completo)')
-      .eq('tramite_id', tramite.id);
+      .eq('ticket_id', tramite.id);
 
     if (data) setAsignaciones(data as Asignacion[]);
   };

@@ -33,22 +33,65 @@ export function TramitesWidget() {
   const loadTramites = async () => {
     if (!usuario) return;
 
-    const { data } = await supabase
-      .from('tickets')
-      .select(`
-        id,
-        folio,
-        prioridad,
-        instrucciones,
-        estatus:estatus_id(nombre, color)
-      `)
-      .is('cerrado_en', null)
-      .or(`agente_id.eq.${usuario.id},creado_por.eq.${usuario.id}`)
-      .order('fecha_creacion', { ascending: false })
-      .limit(5);
+    try {
+      // Opción 1: Trámites donde el usuario está asignado directamente o es creador
+      const { data: directTramites } = await supabase
+        .from('tickets')
+        .select(`
+          id,
+          folio,
+          prioridad,
+          instrucciones,
+          estatus:estatus_id(nombre, color)
+        `)
+        .is('cerrado_en', null)
+        .or(`assigned_to_user_id.eq.${usuario.id},creado_por.eq.${usuario.id}`)
+        .order('fecha_creacion', { ascending: false })
+        .limit(5);
 
-    if (data) setTramites(data as TramiteItem[]);
-    setLoading(false);
+      // Opción 2: Trámites donde el usuario está en ticket_asignaciones
+      const { data: assignedTicketIds } = await supabase
+        .from('ticket_asignaciones')
+        .select('ticket_id')
+        .eq('ejecutivo_id', usuario.id);
+
+      if (assignedTicketIds && assignedTicketIds.length > 0) {
+        const ticketIds = assignedTicketIds.map(a => a.ticket_id);
+
+        const { data: assignedTramites } = await supabase
+          .from('tickets')
+          .select(`
+            id,
+            folio,
+            prioridad,
+            instrucciones,
+            estatus:estatus_id(nombre, color)
+          `)
+          .is('cerrado_en', null)
+          .in('id', ticketIds)
+          .order('fecha_creacion', { ascending: false })
+          .limit(5);
+
+        // Combinar ambos conjuntos de trámites sin duplicados
+        const allTramites = [...(directTramites || [])];
+        if (assignedTramites) {
+          assignedTramites.forEach(t => {
+            if (!allTramites.find(dt => dt.id === t.id)) {
+              allTramites.push(t);
+            }
+          });
+        }
+
+        // Ordenar por fecha y limitar a 5
+        setTramites(allTramites.slice(0, 5) as TramiteItem[]);
+      } else {
+        setTramites((directTramites || []) as TramiteItem[]);
+      }
+    } catch (error) {
+      console.error('Error loading tramites:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getPrioridadColor = (prioridad: string) => {
