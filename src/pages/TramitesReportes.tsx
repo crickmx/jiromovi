@@ -349,8 +349,8 @@ export default function TramitesReportes() {
       'Tipo': t.tipo_tramite,
       'Prioridad': t.prioridad,
       'Estatus': t.estatus_calculado,
-      'Solicitante': t.solicitante_nombre,
-      'Asignado': t.asignado_nombre,
+      'Ejecutivo': t.solicitante_nombre,
+      'Agente': t.asignado_nombre,
       'Oficina': t.oficina_nombre,
       'Fecha Solicitud': new Date(t.fecha_solicitud).toLocaleDateString('es-MX'),
       'Fecha Finalización': t.fecha_finalizacion ? new Date(t.fecha_finalizacion).toLocaleDateString('es-MX') : 'Pendiente',
@@ -731,7 +731,7 @@ export default function TramitesReportes() {
                         <tr>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Folio</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Tipo</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Solicitante</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Ejecutivo</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Estatus</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Fecha</th>
                           <th className="text-center py-3 px-4 text-sm font-semibold text-neutral-700">Acciones</th>
@@ -814,8 +814,8 @@ export default function TramitesReportes() {
               <tr className="border-b border-neutral-200">
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Folio</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Tipo</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Solicitante</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Asignado</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Ejecutivo</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Agente</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Oficina</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Estatus</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Fecha</th>
