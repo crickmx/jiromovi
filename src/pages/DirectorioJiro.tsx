@@ -15,7 +15,6 @@ interface Empleado {
   apellidos: string;
   nombre_completo: string;
   puesto: string;
-  rol: string;
   oficina: string;
   email_laboral: string;
   celular_laboral: string;
@@ -60,7 +59,6 @@ export function DirectorioJiro() {
           apellidos,
           nombre_completo,
           puesto,
-          rol,
           email_laboral,
           celular_laboral,
           imagen_perfil_url,
@@ -90,7 +88,6 @@ export function DirectorioJiro() {
           apellidos: usuario.apellidos || '',
           nombre_completo: nombreCompleto,
           puesto: usuario.puesto && usuario.puesto.trim() !== '' ? usuario.puesto : 'Sin puesto',
-          rol: usuario.rol || '',
           oficina: usuario.oficinas?.nombre || 'Sin oficina',
           email_laboral: usuario.email_laboral || '',
           celular_laboral: usuario.celular_laboral || '',
@@ -231,15 +228,6 @@ export function DirectorioJiro() {
                       {empleado.nombre_completo}
                     </h3>
 
-                    {empleado.rol === 'Gerente' && (
-                      <div className="mb-2">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-primary-100 text-primary-800 rounded-full text-xs font-semibold border border-primary-300">
-                          <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
-                          Gerente
-                        </span>
-                      </div>
-                    )}
-
                     <div className="flex items-center gap-1 text-accent text-sm font-medium mb-2">
                       <Briefcase className="w-4 h-4" />
                       <span>{empleado.puesto}</span>
@@ -302,15 +290,6 @@ export function DirectorioJiro() {
                 <h2 className="text-2xl font-bold text-white mb-2">
                   {selectedEmpleado.nombre_completo}
                 </h2>
-
-                {selectedEmpleado.rol === 'Gerente' && (
-                  <div className="mb-2">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-white text-primary-800 rounded-full text-sm font-semibold border border-primary-200">
-                      <div className="w-2 h-2 bg-accent rounded-full"></div>
-                      Gerente
-                    </span>
-                  </div>
-                )}
 
                 <p className="text-primary-100 text-lg">{selectedEmpleado.puesto}</p>
               </div>
