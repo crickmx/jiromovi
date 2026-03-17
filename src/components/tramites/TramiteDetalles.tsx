@@ -278,9 +278,15 @@ export function TramiteDetalles({
             <div>
               <label className="block text-sm font-semibold text-neutral-700 mb-2">
                 <TrendingUp className="w-4 h-4 inline mr-2" />
-                Avance
+                Estatus
               </label>
-              <div className="px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl font-bold text-yellow-900">
+              <div className={`px-4 py-3 rounded-xl font-bold ${
+                tramite.progress_percent === 100
+                  ? 'bg-green-50 border border-green-200 text-green-900'
+                  : tramite.progress_percent === 50
+                  ? 'bg-yellow-50 border border-yellow-200 text-yellow-900'
+                  : 'bg-blue-50 border border-blue-200 text-blue-900'
+              }`}>
                 {tramite.progress_percent !== null && tramite.progress_percent !== undefined
                   ? getProgressLabel(tramite.progress_percent)
                   : 'N/A'}

@@ -46,7 +46,7 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
   const [attendingUserId, setAttendingUserId] = useState('');
   const [requestDatetime, setRequestDatetime] = useState(formatDateTimeForInput(new Date()));
   const [completionDatetime, setCompletionDatetime] = useState('');
-  const [progressPercent, setProgressPercent] = useState<0 | 25 | 50 | 75 | 100>(0);
+  const [progressPercent, setProgressPercent] = useState<0 | 50 | 100>(0);
   const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
   const [instrucciones, setInstrucciones] = useState('');
 
@@ -366,15 +366,15 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
               />
             </div>
 
-            {/* Avance */}
+            {/* Estatus */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <TrendingUp className="w-4 h-4 inline mr-2" />
-                Avance *
+                Estatus *
               </label>
               <select
                 value={progressPercent}
-                onChange={(e) => setProgressPercent(Number(e.target.value) as 0 | 25 | 50 | 75 | 100)}
+                onChange={(e) => setProgressPercent(Number(e.target.value) as 0 | 50 | 100)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 required
               >

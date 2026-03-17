@@ -38,7 +38,7 @@ export interface RegistroActividadFormData {
   attending_user_id: string;
   request_datetime: string;
   completion_datetime?: string;
-  progress_percent: 0 | 25 | 50 | 75 | 100;
+  progress_percent: 0 | 50 | 100; // Iniciado, En Proceso, Terminado
   prioridad: 'Alta' | 'Media' | 'Baja';
   instrucciones: string;
 }
@@ -52,15 +52,15 @@ export interface UsuarioOficina {
 }
 
 export const PROGRESS_OPTIONS = [
-  { value: 0, label: '0%' },
-  { value: 25, label: '25%' },
-  { value: 50, label: '50%' },
-  { value: 75, label: '75%' },
-  { value: 100, label: '100%' }
+  { value: 0, label: 'Iniciado' },
+  { value: 50, label: 'En Proceso' },
+  { value: 100, label: 'Terminado' }
 ] as const;
 
 export function getProgressLabel(percent: number): string {
-  return `${percent}%`;
+  if (percent === 0) return 'Iniciado';
+  if (percent === 100) return 'Terminado';
+  return 'En Proceso';
 }
 
 export function getStatusFromProgress(percent: number): string {
