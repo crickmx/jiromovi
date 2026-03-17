@@ -78,11 +78,7 @@ export function Tramites() {
         .select(`
           *,
           agente:assigned_to_user_id(nombre_completo),
-          estatus:estatus_id(*),
-          assigned_to_user:assigned_to_user_id(nombre_completo),
-          ticket_asignaciones(
-            ejecutivo:ejecutivo_id(nombre_completo)
-          )
+          estatus:estatus_id(*)
         `)
         .order('fecha_creacion', { ascending: false });
 
@@ -100,7 +96,28 @@ export function Tramites() {
       }
 
       console.log('Tramites loaded:', data?.length, 'tramites');
-      if (data) setTramites(data as TramiteItem[]);
+
+      // Load asignaciones separately to avoid recursion
+      if (data && data.length > 0) {
+        const ticketIds = data.map(t => t.id);
+        const { data: asignaciones } = await supabase
+          .from('ticket_asignaciones')
+          .select('ticket_id, ejecutivo:ejecutivo_id(nombre_completo)')
+          .in('ticket_id', ticketIds);
+
+        // Merge asignaciones into tramites
+        const tramitesWithAsignaciones = data.map(tramite => ({
+          ...tramite,
+          assigned_to_user: tramite.assigned_to_user_id
+            ? { nombre_completo: tramite.agente?.nombre_completo || '' }
+            : null,
+          ticket_asignaciones: asignaciones?.filter(a => a.ticket_id === tramite.id) || []
+        }));
+
+        setTramites(tramitesWithAsignaciones as TramiteItem[]);
+      } else {
+        setTramites([]);
+      }
     } catch (error) {
       console.error('Exception loading tramites:', error);
     }
