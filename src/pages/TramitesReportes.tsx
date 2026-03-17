@@ -348,7 +348,6 @@ export default function TramitesReportes() {
       'Folio': t.folio,
       'Tipo': t.tipo_tramite,
       'Prioridad': t.prioridad,
-      'Avance': `${t.avance}%`,
       'Estatus': t.estatus_calculado,
       'Solicitante': t.solicitante_nombre,
       'Asignado': t.asignado_nombre,
@@ -650,40 +649,6 @@ export default function TramitesReportes() {
         </div>
       </div>
 
-      {/* Productividad por Usuario */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-neutral-600" />
-          <h3 className="text-lg font-semibold text-neutral-900">Top 10 Productividad por Usuario</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-neutral-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Usuario</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Oficina</th>
-                <th className="text-right py-3 px-4 text-sm font-semibold text-neutral-700">Total</th>
-                <th className="text-right py-3 px-4 text-sm font-semibold text-neutral-700">Finalizados</th>
-                <th className="text-right py-3 px-4 text-sm font-semibold text-neutral-700">% Finalización</th>
-                <th className="text-right py-3 px-4 text-sm font-semibold text-neutral-700">Avance Promedio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {productividadUsuarios.map((user, idx) => (
-                <tr key={idx} className="border-b border-neutral-100 hover:bg-neutral-50">
-                  <td className="py-3 px-4 text-sm text-neutral-900">{user.nombre_completo}</td>
-                  <td className="py-3 px-4 text-sm text-neutral-600">{user.oficina_nombre || 'N/A'}</td>
-                  <td className="py-3 px-4 text-sm text-neutral-900 text-right font-semibold">{user.total_tramites}</td>
-                  <td className="py-3 px-4 text-sm text-green-600 text-right font-semibold">{user.tramites_finalizados}</td>
-                  <td className="py-3 px-4 text-sm text-neutral-900 text-right">{user.porcentaje_finalizacion?.toFixed(1) || 0}%</td>
-                  <td className="py-3 px-4 text-sm text-neutral-900 text-right">{user.avance_promedio?.toFixed(1) || 0}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {/* Productividad por Oficina (solo Admin) */}
       {isAdmin && productividadOficinas.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm p-6">
@@ -767,7 +732,6 @@ export default function TramitesReportes() {
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Folio</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Tipo</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Solicitante</th>
-                          <th className="text-right py-3 px-4 text-sm font-semibold text-neutral-700">Avance</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Estatus</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Fecha</th>
                           <th className="text-center py-3 px-4 text-sm font-semibold text-neutral-700">Acciones</th>
@@ -779,7 +743,6 @@ export default function TramitesReportes() {
                             <td className="py-3 px-4 text-sm font-mono text-neutral-900">{tramite.folio}</td>
                             <td className="py-3 px-4 text-sm text-neutral-600">{tramite.tipo_tramite?.replace(/_/g, ' ')}</td>
                             <td className="py-3 px-4 text-sm text-neutral-900">{tramite.solicitante_nombre}</td>
-                            <td className="py-3 px-4 text-sm text-neutral-900 text-right">{tramite.avance}%</td>
                             <td className="py-3 px-4">
                               <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
                                 tramite.estatus_calculado === 'Finalizado' ? 'bg-green-100 text-green-700' :
@@ -854,7 +817,6 @@ export default function TramitesReportes() {
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Solicitante</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Asignado</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Oficina</th>
-                <th className="text-right py-3 px-4 text-sm font-semibold text-neutral-700">Avance</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Estatus</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Fecha</th>
                 <th className="text-center py-3 px-4 text-sm font-semibold text-neutral-700">Acciones</th>
@@ -868,7 +830,6 @@ export default function TramitesReportes() {
                   <td className="py-3 px-4 text-sm text-neutral-900">{tramite.solicitante_nombre}</td>
                   <td className="py-3 px-4 text-sm text-neutral-900">{tramite.asignado_nombre || 'Sin asignar'}</td>
                   <td className="py-3 px-4 text-sm text-neutral-600">{tramite.oficina_nombre || 'N/A'}</td>
-                  <td className="py-3 px-4 text-sm text-neutral-900 text-right">{tramite.avance}%</td>
                   <td className="py-3 px-4">
                     <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
                       tramite.estatus_calculado === 'Finalizado' ? 'bg-green-100 text-green-700' :
