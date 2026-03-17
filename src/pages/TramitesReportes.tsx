@@ -114,7 +114,8 @@ export default function TramitesReportes() {
   const [oficinaFiltro, setOficinaFiltro] = useState('');
   const [usuarioFiltro, setUsuarioFiltro] = useState('');
   const [tipoTramiteFiltro, setTipoTramiteFiltro] = useState('');
-  const [avanceFiltro, setAvanceFiltro] = useState('');
+  const [estatusFiltro, setEstatusFiltro] = useState('');
+  const [prioridadFiltro, setPrioridadFiltro] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Catálogos
@@ -137,7 +138,7 @@ export default function TramitesReportes() {
     if (fechaInicio && fechaFin) {
       loadData();
     }
-  }, [fechaInicio, fechaFin, oficinaFiltro, usuarioFiltro, tipoTramiteFiltro, avanceFiltro]);
+  }, [fechaInicio, fechaFin, oficinaFiltro, usuarioFiltro, tipoTramiteFiltro, estatusFiltro, prioridadFiltro]);
 
   const loadCatalogos = async () => {
     try {
@@ -202,7 +203,7 @@ export default function TramitesReportes() {
         p_oficina_id: oficinaFiltro || null,
         p_usuario_id: usuarioFiltro || null,
         p_tipo_tramite: tipoTramiteFiltro || null,
-        p_avance: avanceFiltro ? parseInt(avanceFiltro) : null
+        p_avance: null
       });
 
       if (kpisData) setKpis(kpisData);
@@ -218,7 +219,8 @@ export default function TramitesReportes() {
       if (oficinaFiltro) query = query.eq('asignado_oficina_id', oficinaFiltro);
       if (usuarioFiltro) query = query.eq('asignado_id', usuarioFiltro);
       if (tipoTramiteFiltro) query = query.eq('tipo_tramite', tipoTramiteFiltro);
-      if (avanceFiltro) query = query.eq('avance', parseInt(avanceFiltro));
+      if (estatusFiltro) query = query.eq('estatus_calculado', estatusFiltro);
+      if (prioridadFiltro) query = query.eq('prioridad', prioridadFiltro);
 
       const { data: tramitesData } = await query;
       if (tramitesData) setTramites(tramitesData);
@@ -380,7 +382,8 @@ export default function TramitesReportes() {
   }
 
   const tiposTramite = ['correccion_poliza_registrada', 'correccion_comisiones', 'registro_poliza', 'solicitud_comisiones_pendientes', 'registro_actividad'];
-  const avances = [0, 25, 50, 75, 100];
+  const estatusOptions = ['Pendiente', 'En Proceso', 'Finalizado'];
+  const prioridadOptions = ['Alta', 'Media', 'Baja'];
 
   // Calcular datos para gráficas
   const tramitesPorTipo = tiposTramite.map(tipo => ({
@@ -441,7 +444,7 @@ export default function TramitesReportes() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               Fecha Inicio
@@ -520,16 +523,32 @@ export default function TramitesReportes() {
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Avance
+              Estatus
             </label>
             <select
-              value={avanceFiltro}
-              onChange={(e) => setAvanceFiltro(e.target.value)}
+              value={estatusFiltro}
+              onChange={(e) => setEstatusFiltro(e.target.value)}
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todos</option>
-              {avances.map(a => (
-                <option key={a} value={a}>{a}%</option>
+              {estatusOptions.map(e => (
+                <option key={e} value={e}>{e}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Prioridad
+            </label>
+            <select
+              value={prioridadFiltro}
+              onChange={(e) => setPrioridadFiltro(e.target.value)}
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todas</option>
+              {prioridadOptions.map(p => (
+                <option key={p} value={p}>{p}</option>
               ))}
             </select>
           </div>
@@ -592,10 +611,14 @@ export default function TramitesReportes() {
 
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-neutral-600">Avance Promedio</span>
+              <span className="text-sm text-neutral-600">Tasa de Éxito</span>
               <TrendingUp className="w-5 h-5 text-blue-500" />
             </div>
-            <div className="text-3xl font-bold text-neutral-900">{kpis.avance_promedio.toFixed(1)}%</div>
+            <div className="text-3xl font-bold text-neutral-900">
+              {kpis.total_tramites > 0
+                ? ((kpis.tramites_finalizados / kpis.total_tramites) * 100).toFixed(1)
+                : 0}%
+            </div>
           </div>
         </div>
       )}
