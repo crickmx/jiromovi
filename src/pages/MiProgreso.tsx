@@ -94,9 +94,12 @@ export default function MiProgreso() {
       <div className="container mx-auto px-4 py-8">
         <Card className="p-8 text-center">
           <Trophy className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <h2 className="text-2xl font-bold mb-2">Sistema de Gamificación</h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            El sistema de gamificación está disponible solo para agentes.
+          <h2 className="text-2xl font-bold mb-2">Bienvenido al Sistema de Gamificación</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Tu perfil de gamificación se creará automáticamente cuando realices tu primera acción.
+          </p>
+          <p className="text-sm text-gray-500">
+            Completa misiones, gana XP y sube de nivel para obtener Jiro Coins.
           </p>
         </Card>
       </div>

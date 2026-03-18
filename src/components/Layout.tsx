@@ -99,7 +99,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/produccion/total', label: 'Producción por Oficina', icon: Building, show: isAdminOrGerente },
     { path: '/produccion/por-vendedor', label: 'Producción por Vendedor', icon: Users, show: isAdminOrGerente },
     { path: '/mi-crm', label: 'Mi CRM', icon: Briefcase, show: true },
-    { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, show: isAgente },
+    { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, show: true },
     { path: '/comunicados', label: 'Comunicados', icon: FileText, show: true },
     { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, show: true },
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
