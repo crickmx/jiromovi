@@ -32,6 +32,7 @@ export default function GamificacionAdmin() {
   const [misiones, setMisiones] = useState<AgentMission[]>([]);
   const [multiplicadores, setMultiplicadores] = useState<AgentXPMultiplier[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Estado para ajuste manual
   const [ajusteUsuario, setAjusteUsuario] = useState('');
@@ -65,8 +66,10 @@ export default function GamificacionAdmin() {
       setEstadisticas(statsData);
       setMisiones(misionesData || []);
       setMultiplicadores(multData || []);
-    } catch (error) {
+      setError(null);
+    } catch (error: any) {
       console.error('Error cargando datos de gamificación:', error);
+      setError(error?.message || 'Error desconocido al cargar datos');
       // Inicializar con valores vacíos en caso de error
       setRanking([]);
       setMisiones([]);
@@ -169,6 +172,25 @@ export default function GamificacionAdmin() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <PageHeader
+          title="Administración de Gamificación"
+          description="Gestiona el sistema de XP, Jiro Coins y misiones"
+          icon={Settings}
+        />
+        <Card className="p-8 mt-6">
+          <div className="text-center">
+            <div className="text-red-600 mb-2">Error al cargar los datos</div>
+            <p className="text-sm text-gray-600 mb-4">{error}</p>
+            <Button onClick={() => cargarDatos()}>Reintentar</Button>
+          </div>
+        </Card>
       </div>
     );
   }
