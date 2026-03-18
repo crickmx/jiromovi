@@ -6,6 +6,10 @@
  * se basan en reglas fiscales vigentes en México para retenciones de ISR e IVA a personas físicas
  * (RESICO y servicios profesionales).
  *
+ * VERSIÓN V7: Corrección Ret IVA = IVA × (2/3)
+ * - HONORARIOS: ISR sobre (Total + IVA), Ret IVA = IVA × 2/3
+ * - RESICO: ISR sobre (Total + IVA), Ret IVA = IVA × 2/3
+ *
  * Estos valores deben considerarse parámetros configurables en una futura pantalla de
  * configuración fiscal, y siempre validarse con el área contable/fiscal de la empresa
  * antes de usarse en producción.
@@ -74,7 +78,7 @@ export function calcularDesgloseFiscal(params: CalculoFiscalParams): DesgloseFis
     ivaRate = 0.16,
     resicoIsrRate = 0.0125,
     honorariosIsrRate = 0.10,
-    retIvaFactor = 10.667 / 100,
+    retIvaFactor = 2.0 / 3.0, // CORREGIDO V7: 2/3 del IVA (66.67%)
     usePrimaTotal = false,
   } = params;
 
@@ -214,13 +218,14 @@ function calcularAsimilados(params: {
 /**
  * Cálculo fiscal para RESICO (Régimen Simplificado de Confianza)
  *
- * FÓRMULAS OFICIALES:
+ * FÓRMULAS OFICIALES V7:
  * - Ret. Contable = 0
  * - Costo Dispersión = 0
- * - IVA = Sin Vida × 0.16
- * - Ret ISR = Comisión Total × 1.25%
- * - Ret IVA = Sin Vida × 0.10667
- * - Total a Pagar = Comisión Base Total + IVA – Ret ISR – Ret IVA
+ * - IVA = Sin Vida × 16%
+ * - Subtotal con IVA = Total + IVA
+ * - Ret ISR = (Total + IVA) × 1.25%
+ * - Ret IVA = IVA × (2/3)
+ * - Total a Pagar = Subtotal con IVA – Ret ISR – Ret IVA
  */
 function calcularResico(params: {
   comisionBaseTotal: number;
@@ -237,46 +242,46 @@ function calcularResico(params: {
   const costoDispersion = 0;
 
   // IVA aplica sobre sin Vida
-  const iva = roundTo2Decimals(sinVida * ivaRate);
+  const iva = sinVida * ivaRate;
 
-  // Ret ISR = Total × 1.25%
-  const retIsr = roundTo2Decimals(comisionBaseTotal * resicoIsrRate);
+  // Subtotal con IVA
+  const subtotalConIva = comisionBaseTotal + iva;
 
-  // Ret IVA = Sin Vida × 10.667%
-  const retIva = roundTo2Decimals(sinVida * retIvaRate);
+  // Ret ISR = (Total + IVA) × 1.25%
+  const retIsr = subtotalConIva * resicoIsrRate;
+
+  // Ret IVA = IVA × (2/3) - retIvaRate debe ser 2/3
+  const retIva = iva * retIvaRate;
 
   // Total neto
-  const totalAPagar = roundTo2Decimals(
-    comisionBaseTotal + iva - retIsr - retIva
-  );
+  const totalAPagar = subtotalConIva - retIsr - retIva;
 
   return {
     vida,
     sinVida,
     retContable,
     costoDispersion,
-    iva,
-    retIsr,
-    retIva,
+    iva: roundTo2Decimals(iva),
+    retIsr: roundTo2Decimals(retIsr),
+    retIva: roundTo2Decimals(retIva),
     isrVida: 0,
     isrDanios: 0,
     isrTotal: 0,
-    totalAPagar,
+    totalAPagar: roundTo2Decimals(totalAPagar),
   };
 }
 
 /**
  * Cálculo fiscal para HONORARIOS (Servicios Profesionales)
  *
- * FÓRMULAS OFICIALES (VERSIÓN CORREGIDA):
- * BASE: Comisión Base (NO Prima Total)
- *
+ * FÓRMULAS OFICIALES V7:
  * - Ret. Contable = 0
  * - Costo Dispersión = 0
- * - IVA = Sin Vida × 0.16
- * - Ret ISR = Comisión Total × 0.10 (10%)
- * - Ret IVA = Sin Vida × 0.10667
- * - Total a Pagar = Comisión Total + IVA – Ret ISR – Ret IVA
+ * - IVA = Sin Vida × 16%
+ * - Subtotal con IVA = Total + IVA
+ * - Ret ISR = (Total + IVA) × 10%
+ * - Ret IVA = IVA × (2/3)
+ * - Total a Pagar = Subtotal con IVA – Ret ISR – Ret IVA
  */
 function calcularHonorarios(params: {
   comisionBaseTotal: number;
@@ -293,31 +298,32 @@ function calcularHonorarios(params: {
   const costoDispersion = 0;
 
   // IVA aplica sobre sin Vida
-  const iva = roundTo2Decimals(sinVida * ivaRate);
+  const iva = sinVida * ivaRate;
 
-  // Ret ISR = Total × 10%
-  const retIsr = roundTo2Decimals(comisionBaseTotal * 0.10);
+  // Subtotal con IVA
+  const subtotalConIva = comisionBaseTotal + iva;
 
-  // Ret IVA = Sin Vida × 10.667%
-  const retIva = roundTo2Decimals(sinVida * retIvaRate);
+  // Ret ISR = (Total + IVA) × 10%
+  const retIsr = subtotalConIva * 0.10;
+
+  // Ret IVA = IVA × (2/3) - retIvaRate debe ser 2/3
+  const retIva = iva * retIvaRate;
 
   // Total neto
-  const totalAPagar = roundTo2Decimals(
-    comisionBaseTotal + iva - retIsr - retIva
-  );
+  const totalAPagar = subtotalConIva - retIsr - retIva;
 
   return {
     vida,
     sinVida,
     retContable,
     costoDispersion,
-    iva,
-    retIsr,
-    retIva,
+    iva: roundTo2Decimals(iva),
+    retIsr: roundTo2Decimals(retIsr),
+    retIva: roundTo2Decimals(retIva),
     isrVida: 0,
     isrDanios: 0,
     isrTotal: 0,
-    totalAPagar,
+    totalAPagar: roundTo2Decimals(totalAPagar),
   };
 }
 
