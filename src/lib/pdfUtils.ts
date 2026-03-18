@@ -700,115 +700,52 @@ export async function generateOrdenDePagoPDF(
   }
 
   // ============================================================================
-  // NUEVO SISTEMA: CALCULAR VALORES FISCALES DESDE commission_details
+  // SISTEMA CORRECTO: USAR VALORES AGREGADOS DE commission_batches
   // ============================================================================
-  // Cada vendedor tiene sus propios valores fiscales calculados en commission_details.
-  // El PDF suma los valores de todos los details del vendedor.
+  // Los valores fiscales (ISR, IVA, retenciones) deben calcularse sobre el TOTAL
+  // del lote, NO sumando valores individuales de cada póliza.
+  // La función calculate_batch_fiscal_aggregates calcula correctamente sobre el total.
 
   const { supabase } = await import('./supabase');
   const usuario_id = agentDetails[0].usuario_id;
 
-  // Obtener todos los details del vendedor con valores fiscales calculados
-  const { data: detailsData, error: detailsError } = await supabase
-    .from('commission_details')
-    .select('regimen_fiscal, commission_neta, tipo_ramo, iva, ret_isr, ret_iva, retencion_contable, costo_dispersion, total_neto, calculated_at')
-    .eq('batch_id', batch.id)
-    .eq('usuario_id', usuario_id);
+  // Obtener los valores fiscales AGREGADOS del lote desde commission_batches
+  const { data: batchData, error: batchError } = await supabase
+    .from('commission_batches')
+    .select('regimen_fiscal, commission_vida, commission_sinvida, commission_total, retencion_contable, costo_dispersion, iva, ret_isr, ret_iva, total_neto, calculated_at')
+    .eq('id', batch.id)
+    .single();
 
-  if (detailsError || !detailsData || detailsData.length === 0) {
-    throw new Error(
-      `No se encontraron datos fiscales para el vendedor en este lote. ` +
-      `El lote debe ser recalculado antes de generar el PDF.`
-    );
+  if (batchError || !batchData) {
+    throw new Error('No se encontraron datos fiscales del lote');
   }
 
-  // Verificar que todos los details tienen valores calculados
-  const uncalculatedDetails = detailsData.filter(d => !d.calculated_at);
-  if (uncalculatedDetails.length > 0) {
-    throw new Error(
-      `Algunos registros no tienen valores fiscales calculados (${uncalculatedDetails.length} de ${detailsData.length}). ` +
-      `El sistema recalculará automáticamente. Por favor recarga la página.`
-    );
+  if (!batchData.calculated_at) {
+    throw new Error('El lote no tiene valores fiscales calculados. Por favor recalcula el lote.');
   }
 
-  // Obtener régimen fiscal del primer detail (todos deben ser iguales para un vendedor)
-  const regimenFiscalName = detailsData[0].regimen_fiscal || 'HONORARIOS';
+  const regimenFiscalName = batchData.regimen_fiscal || 'HONORARIOS';
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
 
   const agentFullName = `${usuario.nombre} ${usuario.apellidos}`.trim();
-  console.log(`[PDF] Generando para ${agentFullName}: Régimen fiscal = ${regimenFiscalName} (normalizado: ${regimenFiscal}), ${detailsData.length} pólizas`);
+  console.log(`[PDF] Generando para ${agentFullName}: Régimen fiscal = ${regimenFiscalName} (normalizado: ${regimenFiscal})`);
 
-  let desgloseFiscal: DesgloseFiscal;
+  // Usar los valores AGREGADOS del lote
+  const desgloseFiscal: DesgloseFiscal = {
+    vida: parseFloat(batchData.commission_vida as any) || 0,
+    sinVida: parseFloat(batchData.commission_sinvida as any) || 0,
+    retContable: parseFloat(batchData.retencion_contable as any) || 0,
+    costoDispersion: parseFloat(batchData.costo_dispersion as any) || 0,
+    iva: parseFloat(batchData.iva as any) || 0,
+    retIsr: parseFloat(batchData.ret_isr as any) || 0,
+    retIva: parseFloat(batchData.ret_iva as any) || 0,
+    isrVida: 0, // No usado en HONORARIOS/RESICO
+    isrDanios: 0, // No usado en HONORARIOS/RESICO
+    isrTotal: parseFloat(batchData.ret_isr as any) || 0,
+    totalAPagar: parseFloat(batchData.total_neto as any) || 0,
+  };
 
-  // Para ASIMILADOS, usar función de agregación para evitar errores de redondeo
-  if (regimenFiscal === 'ASIMILADOS') {
-    const { data: fiscalData, error: fiscalError } = await supabase.rpc(
-      'calculate_batch_asimilados_fiscal',
-      {
-        p_batch_id: batch.id,
-        p_usuario_id: usuario_id
-      }
-    );
-
-    if (fiscalError || !fiscalData || fiscalData.length === 0) {
-      throw new Error('Error al calcular desglose fiscal ASIMILADOS desde la base de datos');
-    }
-
-    const fiscal = fiscalData[0];
-    desgloseFiscal = {
-      vida: parseFloat(fiscal.vida) || 0,
-      sinVida: parseFloat(fiscal.danios) || 0,
-      retContable: parseFloat(fiscal.ret_contable) || 0,
-      costoDispersion: parseFloat(fiscal.costo_dispersion) || 0,
-      iva: 0,
-      retIsr: 0,
-      retIva: 0,
-      isrVida: parseFloat(fiscal.isr_vida) || 0,
-      isrDanios: parseFloat(fiscal.isr_danios) || 0,
-      isrTotal: parseFloat(fiscal.isr_total) || 0,
-      totalAPagar: parseFloat(fiscal.total_a_pagar) || 0,
-    };
-
-    console.log('[PDF] ASIMILADOS - Valores calculados desde función de agregación:', desgloseFiscal);
-  } else {
-    // Para HONORARIOS y RESICO, sumar valores individuales
-    const totals = detailsData.reduce((acc, detail) => {
-      acc.vida += detail.tipo_ramo === 'VIDA' ? detail.commission_neta : 0;
-      acc.sinVida += detail.tipo_ramo !== 'VIDA' ? detail.commission_neta : 0;
-      acc.iva += detail.iva || 0;
-      acc.retIsr += detail.ret_isr || 0;
-      acc.retIva += detail.ret_iva || 0;
-      acc.retContable += detail.retencion_contable || 0;
-      acc.costoDispersion += detail.costo_dispersion || 0;
-      acc.totalNeto += detail.total_neto || 0;
-      return acc;
-    }, {
-      vida: 0,
-      sinVida: 0,
-      iva: 0,
-      retIsr: 0,
-      retIva: 0,
-      retContable: 0,
-      costoDispersion: 0,
-      totalNeto: 0
-    });
-
-    desgloseFiscal = {
-      vida: totals.vida,
-      sinVida: totals.sinVida,
-      retContable: totals.retContable,
-      costoDispersion: totals.costoDispersion,
-      iva: totals.iva,
-      retIsr: totals.retIsr,
-      retIva: totals.retIva,
-      isrVida: 0,
-      isrDanios: 0,
-      isrTotal: totals.retIsr,
-      totalAPagar: totals.totalNeto,
-    };
-
-    console.log(`[PDF] ${regimenFiscal} - Totales sumados: ret_isr=${totals.retIsr}, total=${totals.totalNeto}`);
-  }
+  console.log(`[PDF] ${regimenFiscal} - Valores AGREGADOS del lote:`, desgloseFiscal);
 
   console.log('[PDF] Desglose fiscal final:', desgloseFiscal);
 
