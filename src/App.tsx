@@ -86,6 +86,8 @@ import ModuloViewer from './pages/ModuloViewer';
 import CedulaAExamenes from './pages/CedulaAExamenes';
 import ExamenInterface from './pages/ExamenInterface';
 import CertificadoCedulaA from './pages/CertificadoCedulaA';
+import MiProgreso from './pages/MiProgreso';
+import GamificacionAdmin from './pages/GamificacionAdmin';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -641,6 +643,28 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <MisComisiones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mi-progreso"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MiProgreso />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/gamificacion/admin"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Layout>
+              <GamificacionAdmin />
             </Layout>
           </ProtectedRoute>
         }
