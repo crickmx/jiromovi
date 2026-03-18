@@ -709,6 +709,22 @@ export async function generateOrdenDePagoPDF(
   const { supabase } = await import('./supabase');
   const usuario_id = agentDetails[0].usuario_id;
 
+  // Obtener el régimen fiscal ACTUAL del usuario (no el del batch, que puede estar desactualizado)
+  const { data: usuarioData, error: usuarioError } = await supabase
+    .from('usuarios')
+    .select(`
+      id,
+      regimen_fiscal:commission_fiscal_regimes!regimen_fiscal_id(name)
+    `)
+    .eq('id', usuario_id)
+    .single();
+
+  if (usuarioError || !usuarioData) {
+    throw new Error('No se encontró la información del usuario');
+  }
+
+  const regimenFiscalActual = (usuarioData.regimen_fiscal as any)?.name || 'HONORARIOS';
+
   // Obtener los valores fiscales AGREGADOS del lote desde commission_batches
   const { data: batchData, error: batchError } = await supabase
     .from('commission_batches')
@@ -724,11 +740,21 @@ export async function generateOrdenDePagoPDF(
     throw new Error('El lote no tiene valores fiscales calculados. Por favor recalcula el lote.');
   }
 
-  const regimenFiscalName = batchData.regimen_fiscal || 'HONORARIOS';
+  // IMPORTANTE: Usar el régimen ACTUAL del usuario, no el del batch
+  // Si hay desajuste, mostrar advertencia en el PDF
+  const regimenFiscalName = regimenFiscalActual;
   const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
+  const hayDesajuste = batchData.regimen_fiscal &&
+    regimenFiscalName.toUpperCase() !== batchData.regimen_fiscal.toUpperCase();
 
   const agentFullName = `${usuario.nombre} ${usuario.apellidos}`.trim();
-  console.log(`[PDF] Generando para ${agentFullName}: Régimen fiscal = ${regimenFiscalName} (normalizado: ${regimenFiscal})`);
+  console.log(`[PDF] Generando para ${agentFullName}`);
+  console.log(`[PDF] Régimen ACTUAL del usuario: ${regimenFiscalActual} (normalizado: ${regimenFiscal})`);
+  console.log(`[PDF] Régimen guardado en el batch: ${batchData.regimen_fiscal}`);
+  if (hayDesajuste) {
+    console.warn(`[PDF] ⚠️ DESAJUSTE DETECTADO: Usuario=${regimenFiscalActual}, Batch=${batchData.regimen_fiscal}`);
+    console.warn(`[PDF] Se usará el régimen ACTUAL del usuario (${regimenFiscalActual}) para mostrar en el PDF`);
+  }
 
   // Usar los valores AGREGADOS del lote
   const desgloseFiscal: DesgloseFiscal = {
@@ -746,8 +772,6 @@ export async function generateOrdenDePagoPDF(
   };
 
   console.log(`[PDF] ${regimenFiscal} - Valores AGREGADOS del lote:`, desgloseFiscal);
-
-  console.log('[PDF] Desglose fiscal final:', desgloseFiscal);
 
   // Usar la función de allowlist para generar solo los campos permitidos
   const fiscalRows = getPdfFiscalRows(regimenFiscal, desgloseFiscal);
@@ -809,6 +833,14 @@ export async function generateOrdenDePagoPDF(
   doc.setFont(undefined, 'normal');
   doc.setTextColor(60);
   doc.text(`Régimen fiscal: ${regimenFiscalName}`, marginLeft, yPosition);
+
+  // Si hay desajuste entre el régimen del batch y el régimen actual del usuario, mostrar advertencia
+  if (hayDesajuste) {
+    yPosition += 3;
+    doc.setFontSize(6);
+    doc.setTextColor(255, 0, 0);
+    doc.text(`ADVERTENCIA: Este lote fue calculado con régimen ${batchData.regimen_fiscal}. Recomendamos recalcular.`, marginLeft, yPosition);
+  }
 
   const pdfBlob = doc.output('blob');
   return pdfBlob;
