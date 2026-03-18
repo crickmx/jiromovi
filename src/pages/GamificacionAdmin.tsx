@@ -46,6 +46,7 @@ export default function GamificacionAdmin() {
   const cargarDatos = async () => {
     setLoading(true);
     try {
+      console.log('Cargando datos de gamificación...');
       const [rankingData, statsData, misionesData, multData] = await Promise.all([
         obtenerRankingGlobal(100),
         obtenerEstadisticasGamificacion(),
@@ -53,12 +54,23 @@ export default function GamificacionAdmin() {
         cargarMultiplicadores(),
       ]);
 
-      setRanking(rankingData);
+      console.log('Datos cargados:', {
+        ranking: rankingData?.length || 0,
+        estadisticas: !!statsData,
+        misiones: misionesData?.length || 0,
+        multiplicadores: multData?.length || 0,
+      });
+
+      setRanking(rankingData || []);
       setEstadisticas(statsData);
-      setMisiones(misionesData);
-      setMultiplicadores(multData);
+      setMisiones(misionesData || []);
+      setMultiplicadores(multData || []);
     } catch (error) {
-      console.error('Error cargando datos:', error);
+      console.error('Error cargando datos de gamificación:', error);
+      // Inicializar con valores vacíos en caso de error
+      setRanking([]);
+      setMisiones([]);
+      setMultiplicadores([]);
     } finally {
       setLoading(false);
     }
@@ -170,42 +182,40 @@ export default function GamificacionAdmin() {
       />
 
       {/* Estadísticas Globales */}
-      {estadisticas && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Users className="w-5 h-5 text-blue-600" />
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Agentes</p>
-            </div>
-            <p className="text-3xl font-bold">{estadisticas.total_agentes}</p>
-          </Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Agentes</p>
+          </div>
+          <p className="text-3xl font-bold">{estadisticas?.total_agentes || 0}</p>
+        </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Zap className="w-5 h-5 text-yellow-600" />
-              <p className="text-sm text-gray-600 dark:text-gray-400">XP Total Otorgado</p>
-            </div>
-            <p className="text-3xl font-bold">{estadisticas.total_xp_otorgado.toLocaleString()}</p>
-          </Card>
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Zap className="w-5 h-5 text-yellow-600" />
+            <p className="text-sm text-gray-600 dark:text-gray-400">XP Total Otorgado</p>
+          </div>
+          <p className="text-3xl font-bold">{(estadisticas?.total_xp_otorgado || 0).toLocaleString()}</p>
+        </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Trophy className="w-5 h-5 text-purple-600" />
-              <p className="text-sm text-gray-600 dark:text-gray-400">JC en Circulación</p>
-            </div>
-            <p className="text-3xl font-bold">{estadisticas.total_jc_circulacion.toLocaleString()}</p>
-          </Card>
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Trophy className="w-5 h-5 text-purple-600" />
+            <p className="text-sm text-gray-600 dark:text-gray-400">JC en Circulación</p>
+          </div>
+          <p className="text-3xl font-bold">{(estadisticas?.total_jc_circulacion || 0).toLocaleString()}</p>
+        </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Target className="w-5 h-5 text-green-600" />
-              <p className="text-sm text-gray-600 dark:text-gray-400">Misiones Completadas</p>
-            </div>
-            <p className="text-3xl font-bold">{estadisticas.misiones_completadas_mes}</p>
-            <p className="text-xs text-gray-500">Este mes</p>
-          </Card>
-        </div>
-      )}
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Target className="w-5 h-5 text-green-600" />
+            <p className="text-sm text-gray-600 dark:text-gray-400">Misiones Completadas</p>
+          </div>
+          <p className="text-3xl font-bold">{estadisticas?.misiones_completadas_mes || 0}</p>
+          <p className="text-xs text-gray-500">Este mes</p>
+        </Card>
+      </div>
 
       <Tabs defaultValue="ranking" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
@@ -246,37 +256,45 @@ export default function GamificacionAdmin() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {ranking.map((entry) => (
-                    <tr key={entry.user_id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={cn(
-                            'font-bold',
-                            entry.posicion === 1 && 'text-yellow-500',
-                            entry.posicion === 2 && 'text-gray-400',
-                            entry.posicion === 3 && 'text-orange-600'
-                          )}
-                        >
-                          #{entry.posicion}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="font-medium">{entry.nombre_completo}</p>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {entry.oficina_nombre || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap font-medium">
-                        {entry.xp_total.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant="outline">Nivel {entry.nivel_actual}</Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {entry.jiro_coins_balance.toLocaleString()} JC
+                  {ranking.length > 0 ? (
+                    ranking.map((entry) => (
+                      <tr key={entry.user_id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={cn(
+                              'font-bold',
+                              entry.posicion === 1 && 'text-yellow-500',
+                              entry.posicion === 2 && 'text-gray-400',
+                              entry.posicion === 3 && 'text-orange-600'
+                            )}
+                          >
+                            #{entry.posicion}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <p className="font-medium">{entry.nombre_completo}</p>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {entry.oficina_nombre || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium">
+                          {entry.xp_total.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant="outline">Nivel {entry.nivel_actual}</Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {entry.jiro_coins_balance.toLocaleString()} JC
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                        No hay agentes registrados en el sistema de gamificación
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -285,8 +303,9 @@ export default function GamificacionAdmin() {
 
         {/* Misiones */}
         <TabsContent value="misiones" className="space-y-4">
-          {misiones.map((mision) => (
-            <Card key={mision.id} className="p-6">
+          {misiones.length > 0 ? (
+            misiones.map((mision) => (
+              <Card key={mision.id} className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h4 className="font-semibold text-lg mb-2">{mision.nombre}</h4>
@@ -310,12 +329,18 @@ export default function GamificacionAdmin() {
                 </div>
               </div>
             </Card>
-          ))}
+            ))
+          ) : (
+            <Card className="p-8 text-center text-gray-500">
+              No hay misiones configuradas
+            </Card>
+          )}
         </TabsContent>
 
         {/* Multiplicadores */}
         <TabsContent value="multiplicadores" className="space-y-4">
-          {multiplicadores.map((mult) => (
+          {multiplicadores.length > 0 ? (
+            multiplicadores.map((mult) => (
             <Card key={mult.id} className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -344,7 +369,12 @@ export default function GamificacionAdmin() {
                 </Button>
               </div>
             </Card>
-          ))}
+            ))
+          ) : (
+            <Card className="p-8 text-center text-gray-500">
+              No hay multiplicadores configurados
+            </Card>
+          )}
         </TabsContent>
 
         {/* Ajustes Manuales */}
