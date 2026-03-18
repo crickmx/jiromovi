@@ -42,33 +42,41 @@ export function ProtectedRoute({
     return <Navigate to="/login" replace />;
   }
 
-  if (requireAdmin && usuario.rol !== 'Administrador') {
+  // Normalize rol to handle case differences
+  const normalizedRol = usuario.rol?.toLowerCase();
+  const isAdmin = normalizedRol === 'administrador' || normalizedRol === 'admin';
+  const isGerente = normalizedRol === 'gerente';
+  const isEmpleado = normalizedRol === 'empleado';
+  const isAgente = normalizedRol === 'agente';
+
+  console.log('[ProtectedRoute] Rol normalized:', normalizedRol, { isAdmin, isGerente, isEmpleado, isAgente });
+
+  if (requireAdmin && !isAdmin) {
     console.error('[ProtectedRoute] ❌ ACCESO DENEGADO - Admin requerido');
     console.error('[ProtectedRoute] Rol del usuario:', usuario.rol);
-    console.error('[ProtectedRoute] Rol esperado: Administrador');
-    console.error('[ProtectedRoute] Comparación exacta:', usuario.rol === 'Administrador');
-    console.error('[ProtectedRoute] Usuario completo:', JSON.stringify(usuario, null, 2));
+    console.error('[ProtectedRoute] Rol normalizado:', normalizedRol);
+    console.error('[ProtectedRoute] Es admin?:', isAdmin);
     console.error('[ProtectedRoute] Redirigiendo a /dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requireGerente && usuario.rol !== 'Administrador' && usuario.rol !== 'Gerente') {
+  if (requireGerente && !isAdmin && !isGerente) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requireAdminOrGerente && usuario.rol !== 'Administrador' && usuario.rol !== 'Gerente') {
+  if (requireAdminOrGerente && !isAdmin && !isGerente) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requireAdminOrEmpleado && usuario.rol !== 'Administrador' && usuario.rol !== 'Empleado') {
+  if (requireAdminOrEmpleado && !isAdmin && !isEmpleado) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requireDirectorioAccess && usuario.rol !== 'Administrador' && usuario.rol !== 'Empleado' && usuario.rol !== 'Agente' && usuario.rol !== 'Gerente') {
+  if (requireDirectorioAccess && !isAdmin && !isEmpleado && !isAgente && !isGerente) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (excludeAgente && usuario.rol === 'Agente') {
+  if (excludeAgente && isAgente) {
     return <Navigate to="/dashboard" replace />;
   }
 
