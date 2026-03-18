@@ -94,8 +94,6 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
     { path: isAdmin ? '/comisiones' : '/mis-comisiones', label: 'Comisiones', icon: DollarSign, show: true },
-    { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, show: isAgente },
-    { path: '/gamificacion', label: 'Gamificación', icon: Trophy, show: isAdmin },
     { path: '/mi-produccion', label: 'Mi Producción', icon: TrendingUp, show: isAgente },
     { path: '/mi-produccion-sicas', label: 'Mi Producción SICAS', icon: Database, show: true },
     { path: '/produccion/total', label: 'Producción por Oficina', icon: Building, show: isAdminOrGerente },
@@ -180,8 +178,6 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               const isActive = location.pathname === item.path ||
                 (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones'))) ||
                 (item.label === 'Mi Producción' && location.pathname === '/mi-produccion') ||
-                (item.label === 'Mi Progreso' && location.pathname === '/mi-progreso') ||
-                (item.label === 'Gamificación' && location.pathname === '/gamificacion') ||
                 (item.label.includes('Producción') && location.pathname.startsWith('/produccion') && (
                   (item.path === '/produccion/total' && location.pathname === '/produccion/total') ||
                   (item.path === '/produccion/por-vendedor' && location.pathname === '/produccion/por-vendedor')

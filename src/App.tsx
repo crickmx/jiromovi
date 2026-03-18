@@ -86,8 +86,6 @@ import ModuloViewer from './pages/ModuloViewer';
 import CedulaAExamenes from './pages/CedulaAExamenes';
 import ExamenInterface from './pages/ExamenInterface';
 import CertificadoCedulaA from './pages/CertificadoCedulaA';
-import MiProgreso from './pages/MiProgreso';
-import GamificacionAdmin from './pages/GamificacionAdmin';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -819,8 +817,6 @@ function App() {
               <Route path="/comisiones/importar-documentos" element={<ProtectedRoute requireAdmin><Layout><DocumentosImportar /></Layout></ProtectedRoute>} />
               <Route path="/configuracion/mapeo-vendedores" element={<ProtectedRoute requireAdmin><Layout><MapeoVendedoresAdmin /></Layout></ProtectedRoute>} />
               <Route path="/mis-comisiones" element={<ProtectedRoute><Layout><MisComisiones /></Layout></ProtectedRoute>} />
-              <Route path="/mi-progreso" element={<ProtectedRoute><Layout><MiProgreso /></Layout></ProtectedRoute>} />
-              <Route path="/gamificacion" element={<ProtectedRoute requireAdmin><Layout><GamificacionAdmin /></Layout></ProtectedRoute>} />
               <Route path="/produccion/total" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionTotal /></Layout></ProtectedRoute>} />
               <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion" element={<ProtectedRoute><Layout><MiProduccion /></Layout></ProtectedRoute>} />
