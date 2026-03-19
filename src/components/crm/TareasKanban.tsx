@@ -18,7 +18,7 @@ interface Tarea {
     id: string;
     nombre: string;
     apellidos: string;
-    avatar_url?: string;
+    imagen_perfil_url?: string;
   };
 }
 
@@ -226,9 +226,9 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
                       {tarea.responsable && (
                         <div className="flex items-center space-x-2 mb-3">
                           <div className="flex items-center space-x-1.5">
-                            {tarea.responsable.avatar_url ? (
+                            {tarea.responsable.imagen_perfil_url ? (
                               <img
-                                src={tarea.responsable.avatar_url}
+                                src={tarea.responsable.imagen_perfil_url}
                                 alt={`${tarea.responsable.nombre} ${tarea.responsable.apellidos}`}
                                 className="h-6 w-6 rounded-full object-cover border border-gray-200"
                               />

@@ -91,7 +91,7 @@ export default function CRMTareas() {
         .select(`
           *,
           crm_contactos(nombre_completo),
-          responsable:usuarios!crm_tareas_asignado_a_fkey(id, nombre, apellidos, avatar_url)
+          responsable:usuarios!crm_tareas_asignado_a_fkey(id, nombre, apellidos, imagen_perfil_url)
         `)
         .order('fecha_vencimiento', { ascending: true });
 
