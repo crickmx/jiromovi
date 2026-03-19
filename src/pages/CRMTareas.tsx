@@ -53,6 +53,10 @@ export default function CRMTareas() {
     cargarTareas();
     if (boardId) {
       cargarInfoTablero();
+      // En tableros compartidos, si está en vista calendario, cambiar a kanban
+      if (vista === 'calendario') {
+        setVista('kanban');
+      }
     }
   }, [boardId]);
 
@@ -346,6 +350,13 @@ export default function CRMTareas() {
             </div>
           </div>
 
+          {boardId && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+              <Calendar className="h-4 w-4 text-blue-600" />
+              <span className="text-sm text-blue-800 font-medium">Calendario siempre visible</span>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
             <select
               value={filtroEstatus}
@@ -380,15 +391,17 @@ export default function CRMTareas() {
                 <LayoutGrid className="h-4 w-4" />
                 <span className="hidden sm:inline">Kanban</span>
               </button>
-              <button
-                onClick={() => setVista('calendario')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
-                  vista === 'calendario' ? 'bg-white shadow text-purple-600' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">Calendario</span>
-              </button>
+              {!boardId && (
+                <button
+                  onClick={() => setVista('calendario')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
+                    vista === 'calendario' ? 'bg-white shadow text-purple-600' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span className="hidden sm:inline">Calendario</span>
+                </button>
+              )}
               <button
                 onClick={() => setVista('lista')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
@@ -403,14 +416,57 @@ export default function CRMTareas() {
         </div>
       </div>
 
-      {vista === 'kanban' ? (
+      {/* En tableros compartidos: calendario siempre visible arriba */}
+      {boardId && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-accent" />
+              Calendario de Tareas
+            </h2>
+            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+              Vista permanente en tableros compartidos
+            </span>
+          </div>
+          <CRMBoardCalendarView
+            tareas={tareasFiltradas}
+            boardId={boardId}
+            onRefresh={cargarTareas}
+            loading={loading}
+          />
+        </div>
+      )}
+
+      {/* Separador visual en tableros compartidos */}
+      {boardId && (
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent"></div>
+          <span className="text-sm font-medium text-gray-600 flex items-center gap-2">
+            {vista === 'lista' ? (
+              <>
+                <List className="h-4 w-4" />
+                Vista de Lista
+              </>
+            ) : (
+              <>
+                <LayoutGrid className="h-4 w-4" />
+                Vista Kanban
+              </>
+            )}
+          </span>
+          <div className="flex-1 h-px bg-gradient-to-l from-gray-200 to-transparent"></div>
+        </div>
+      )}
+
+      {/* Vista principal según selección */}
+      {(vista === 'kanban' || (vista === 'calendario' && boardId)) ? (
         <TareasKanban
           tareas={tareasFiltradas}
           onUpdateEstatus={handleUpdateEstatus}
           onVerDetalle={handleVerDetalle}
           loading={loading}
         />
-      ) : vista === 'calendario' ? (
+      ) : vista === 'calendario' && !boardId ? (
         <CRMBoardCalendarView
           tareas={tareasFiltradas}
           boardId={boardId}
