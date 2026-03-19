@@ -385,7 +385,6 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
                       onChange={handleFileUpload}
                       disabled={subiendoAdjunto}
                       className="hidden"
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.txt"
                     />
                     <label
                       htmlFor="file-upload"
@@ -397,11 +396,11 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
                     >
                       <Upload className="h-5 w-5 text-gray-400" />
                       <span className="text-sm text-gray-600">
-                        {subiendoAdjunto ? 'Subiendo archivo...' : 'Subir documento (máx. 10MB)'}
+                        {subiendoAdjunto ? 'Subiendo archivo...' : 'Subir documento (máx. 50MB)'}
                       </span>
                     </label>
                     <p className="text-xs text-gray-500 mt-1">
-                      Formatos: PDF, Word, Excel, imágenes, texto plano
+                      Cualquier formato de archivo permitido
                     </p>
                   </div>
                 )}
@@ -424,7 +423,7 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
                     Adjuntos disponibles después de crear
                   </h4>
                   <p className="text-xs text-blue-700">
-                    Guarda la tarea primero y luego podrás agregar hasta 5 documentos adjuntos (PDF, Word, Excel, imágenes, etc.)
+                    Guarda la tarea primero y luego podrás agregar hasta 5 archivos de cualquier formato (máx. 50MB cada uno)
                   </p>
                 </div>
               </div>

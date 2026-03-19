@@ -238,10 +238,10 @@ export async function subirAdjuntoTarea(
     throw new Error('No se pueden agregar más de 5 adjuntos por tarea');
   }
 
-  // 2. Validar tamaño del archivo (máximo 10MB)
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  // 2. Validar tamaño del archivo (máximo 50MB)
+  const MAX_SIZE = 50 * 1024 * 1024; // 50MB
   if (archivo.size > MAX_SIZE) {
-    throw new Error('El archivo no puede superar los 10MB');
+    throw new Error('El archivo no puede superar los 50MB');
   }
 
   // 3. Subir archivo a storage
