@@ -4,6 +4,7 @@ import type {
   CRMCotizacion,
   CRMPoliza,
   CRMTarea,
+  CRMTareaAdjunto,
   CRMNota,
   CRMCampoPersonalizado,
   CRMEtiqueta,
@@ -209,6 +210,139 @@ export async function eliminarTarea(id: string) {
   const { error } = await supabase.from('crm_tareas').delete().eq('id', id);
 
   if (error) throw error;
+}
+
+// ========================================
+// FUNCIONES DE ADJUNTOS DE TAREAS
+// ========================================
+
+export async function obtenerAdjuntosTarea(tareaId: string) {
+  const { data, error } = await supabase
+    .from('crm_tareas_adjuntos')
+    .select('*')
+    .eq('tarea_id', tareaId)
+    .order('creado_en', { ascending: true });
+
+  if (error) throw error;
+  return data as CRMTareaAdjunto[];
+}
+
+export async function subirAdjuntoTarea(
+  tareaId: string,
+  archivo: File,
+  userId: string
+): Promise<CRMTareaAdjunto> {
+  // 1. Verificar que no se exceda el límite de 5 adjuntos
+  const adjuntosActuales = await obtenerAdjuntosTarea(tareaId);
+  if (adjuntosActuales.length >= 5) {
+    throw new Error('No se pueden agregar más de 5 adjuntos por tarea');
+  }
+
+  // 2. Validar tamaño del archivo (máximo 10MB)
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  if (archivo.size > MAX_SIZE) {
+    throw new Error('El archivo no puede superar los 10MB');
+  }
+
+  // 3. Subir archivo a storage
+  const fileExt = archivo.name.split('.').pop();
+  const fileName = `${userId}/${tareaId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('crm-tareas-adjuntos')
+    .upload(fileName, archivo);
+
+  if (uploadError) throw uploadError;
+
+  // 4. Obtener URL pública del archivo
+  const { data: urlData } = supabase.storage
+    .from('crm-tareas-adjuntos')
+    .getPublicUrl(fileName);
+
+  // 5. Crear registro en la tabla
+  const { data, error } = await supabase
+    .from('crm_tareas_adjuntos')
+    .insert({
+      tarea_id: tareaId,
+      nombre_archivo: archivo.name,
+      archivo_url: urlData.publicUrl,
+      tipo_mime: archivo.type,
+      tamano_bytes: archivo.size,
+      subido_por: userId,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as CRMTareaAdjunto;
+}
+
+export async function eliminarAdjuntoTarea(adjuntoId: string) {
+  // 1. Obtener información del adjunto
+  const { data: adjunto, error: fetchError } = await supabase
+    .from('crm_tareas_adjuntos')
+    .select('archivo_url')
+    .eq('id', adjuntoId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (!adjunto) throw new Error('Adjunto no encontrado');
+
+  // 2. Extraer el path del archivo desde la URL
+  const url = new URL(adjunto.archivo_url);
+  const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/crm-tareas-adjuntos\/(.+)/);
+
+  if (pathMatch && pathMatch[1]) {
+    const filePath = pathMatch[1];
+
+    // 3. Eliminar archivo de storage
+    const { error: deleteFileError } = await supabase.storage
+      .from('crm-tareas-adjuntos')
+      .remove([filePath]);
+
+    if (deleteFileError) {
+      console.error('Error al eliminar archivo de storage:', deleteFileError);
+    }
+  }
+
+  // 4. Eliminar registro de la base de datos
+  const { error: deleteDbError } = await supabase
+    .from('crm_tareas_adjuntos')
+    .delete()
+    .eq('id', adjuntoId);
+
+  if (deleteDbError) throw deleteDbError;
+}
+
+export async function descargarAdjuntoTarea(adjunto: CRMTareaAdjunto) {
+  // Extraer el path del archivo desde la URL
+  const url = new URL(adjunto.archivo_url);
+  const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/crm-tareas-adjuntos\/(.+)/);
+
+  if (!pathMatch || !pathMatch[1]) {
+    throw new Error('No se pudo obtener el path del archivo');
+  }
+
+  const filePath = pathMatch[1];
+
+  // Descargar el archivo
+  const { data, error } = await supabase.storage
+    .from('crm-tareas-adjuntos')
+    .download(filePath);
+
+  if (error) throw error;
+  if (!data) throw new Error('No se pudo descargar el archivo');
+
+  // Crear un objeto URL y descargarlo
+  const blob = new Blob([data], { type: adjunto.tipo_mime || 'application/octet-stream' });
+  const blobUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = adjunto.nombre_archivo;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(blobUrl);
 }
 
 export async function obtenerNotasPorContacto(contactoId: string) {

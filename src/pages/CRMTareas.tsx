@@ -102,7 +102,22 @@ export default function CRMTareas() {
 
       if (error) throw error;
 
-      setTareas(data || []);
+      // Obtener el conteo de adjuntos para cada tarea
+      const tareasConAdjuntos = await Promise.all(
+        (data || []).map(async (tarea) => {
+          const { count } = await supabase
+            .from('crm_tareas_adjuntos')
+            .select('*', { count: 'exact', head: true })
+            .eq('tarea_id', tarea.id);
+
+          return {
+            ...tarea,
+            adjuntos_count: count || 0,
+          };
+        })
+      );
+
+      setTareas(tareasConAdjuntos);
     } catch (error) {
       console.error('Error al cargar tareas:', error);
     } finally {

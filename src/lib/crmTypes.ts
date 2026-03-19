@@ -87,6 +87,17 @@ export interface CRMTarea {
   };
 }
 
+export interface CRMTareaAdjunto {
+  id: string;
+  tarea_id: string;
+  nombre_archivo: string;
+  archivo_url: string;
+  tipo_mime?: string;
+  tamano_bytes?: number;
+  subido_por?: string;
+  creado_en: string;
+}
+
 export interface CRMNota {
   id: string;
   contacto_id: string;

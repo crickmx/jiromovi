@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, AlertCircle, CheckCircle2, Loader, Flag, Calendar, User, X } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle2, Loader, Flag, Calendar, User, X, Paperclip } from 'lucide-react';
 
 interface Tarea {
   id: string;
@@ -9,6 +9,7 @@ interface Tarea {
   estatus: 'Pendiente' | 'En Proceso' | 'Completada';
   prioridad: 'Alta' | 'Media' | 'Baja';
   contacto_id?: string;
+  adjuntos_count?: number;
   crm_contactos?: {
     nombre_completo: string;
   };
@@ -216,14 +217,23 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
                       )}
 
                       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                        <div className="flex items-center space-x-1.5">
-                          <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                          <span className="text-xs text-gray-600">
-                            {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX', {
-                              day: 'numeric',
-                              month: 'short'
-                            })}
-                          </span>
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                            <span className="text-xs text-gray-600">
+                              {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX', {
+                                day: 'numeric',
+                                month: 'short'
+                              })}
+                            </span>
+                          </div>
+
+                          {tarea.adjuntos_count && tarea.adjuntos_count > 0 && (
+                            <div className="flex items-center space-x-1 text-gray-500">
+                              <Paperclip className="h-3.5 w-3.5" />
+                              <span className="text-xs">{tarea.adjuntos_count}</span>
+                            </div>
+                          )}
                         </div>
 
                         {vencida ? (
