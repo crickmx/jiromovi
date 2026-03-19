@@ -12,6 +12,16 @@ import {
 } from '../../lib/crmUtils';
 import { useAuth } from '../../contexts/AuthContext';
 import type { CRMTarea, CRMTareaAdjunto, EstatusTarea, PrioridadTarea, CRMContacto, CRMBoardMemberDetail } from '../../lib/crmTypes';
+import { supabase } from '../../lib/supabase';
+
+interface Usuario {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  email_laboral: string;
+  rol: string;
+  oficina_nombre?: string;
+}
 
 interface Props {
   contactoId?: string;
@@ -27,6 +37,7 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [contactos, setContactos] = useState<CRMContacto[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [busquedaContacto, setBusquedaContacto] = useState('');
   const [mostrarListaContactos, setMostrarListaContactos] = useState(false);
   const [adjuntos, setAdjuntos] = useState<CRMTareaAdjunto[]>([]);
@@ -57,12 +68,14 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
   });
 
   useEffect(() => {
-    cargarContactos();
+    if (formData.board_id) {
+      cargarUsuarios();
+      cargarMiembrosTablero();
+    } else {
+      cargarContactos();
+    }
     if (tarea) {
       cargarAdjuntos();
-    }
-    if (formData.board_id) {
-      cargarMiembrosTablero();
     }
   }, [tarea, formData.board_id]);
 
@@ -72,6 +85,38 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
       setContactos(data);
     } catch (error) {
       console.error('Error al cargar contactos:', error);
+    }
+  };
+
+  const cargarUsuarios = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select(`
+          id,
+          nombre,
+          apellidos,
+          email_laboral,
+          rol,
+          oficinas(nombre)
+        `)
+        .eq('estado', 'activo')
+        .order('nombre');
+
+      if (error) throw error;
+
+      const usuariosFormateados = data.map((u: any) => ({
+        id: u.id,
+        nombre: u.nombre,
+        apellidos: u.apellidos,
+        email_laboral: u.email_laboral,
+        rol: u.rol,
+        oficina_nombre: u.oficinas?.nombre,
+      }));
+
+      setUsuarios(usuariosFormateados);
+    } catch (error) {
+      console.error('Error al cargar usuarios:', error);
     }
   };
 
@@ -95,13 +140,34 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
     }
   };
 
-  const contactoSeleccionado = contactos.find((c) => c.id === formData.contacto_id);
+  // Para tableros compartidos: buscar en usuarios, para CRM personal: buscar en contactos
+  const contactoSeleccionado = formData.board_id
+    ? null
+    : contactos.find((c) => c.id === formData.contacto_id);
 
-  const contactosFiltrados = contactos.filter((contacto) =>
-    contacto.nombre_completo.toLowerCase().includes(busquedaContacto.toLowerCase()) ||
-    contacto.celular?.includes(busquedaContacto) ||
-    contacto.email?.toLowerCase().includes(busquedaContacto.toLowerCase())
-  );
+  const usuarioSeleccionado = formData.board_id
+    ? usuarios.find((u) => u.id === formData.contacto_id)
+    : null;
+
+  const contactosFiltrados = formData.board_id
+    ? [] // No usar contactos en tableros compartidos
+    : contactos.filter((contacto) =>
+        contacto.nombre_completo.toLowerCase().includes(busquedaContacto.toLowerCase()) ||
+        contacto.celular?.includes(busquedaContacto) ||
+        contacto.email?.toLowerCase().includes(busquedaContacto.toLowerCase())
+      );
+
+  const usuariosFiltrados = formData.board_id
+    ? usuarios.filter((usuario) => {
+        const nombreCompleto = `${usuario.nombre} ${usuario.apellidos}`.toLowerCase();
+        const busqueda = busquedaContacto.toLowerCase();
+        return (
+          nombreCompleto.includes(busqueda) ||
+          usuario.email_laboral.toLowerCase().includes(busqueda) ||
+          usuario.rol.toLowerCase().includes(busqueda)
+        );
+      })
+    : [];
 
   const seleccionarContacto = (contactoId: string) => {
     setFormData({ ...formData, contacto_id: contactoId });
@@ -259,8 +325,13 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               <User className="h-4 w-4" />
-              Contacto Relacionado
+              {formData.board_id ? 'Usuario Relacionado' : 'Contacto Relacionado'}
             </label>
+            {formData.board_id && (
+              <p className="text-xs text-gray-500 mb-2">
+                En tableros compartidos puedes vincular a cualquier usuario de la plataforma
+              </p>
+            )}
             {contactoSeleccionado ? (
               <div className="flex items-center justify-between p-3 bg-primary-50 border border-primary-200 rounded-lg">
                 <div className="flex items-center space-x-3">
@@ -284,6 +355,29 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                   </button>
                 )}
               </div>
+            ) : usuarioSeleccionado ? (
+              <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
+                    {usuarioSeleccionado.nombre.charAt(0).toUpperCase()}{usuarioSeleccionado.apellidos.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 text-sm">
+                      {usuarioSeleccionado.nombre} {usuarioSeleccionado.apellidos}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {usuarioSeleccionado.rol} {usuarioSeleccionado.oficina_nombre ? `• ${usuarioSeleccionado.oficina_nombre}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={limpiarContacto}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             ) : (
               <div className="relative">
                 <div className="relative">
@@ -296,36 +390,65 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                       setMostrarListaContactos(true);
                     }}
                     onFocus={() => setMostrarListaContactos(true)}
-                    placeholder="Buscar contacto (opcional)..."
+                    placeholder={formData.board_id ? "Buscar usuario (opcional)..." : "Buscar contacto (opcional)..."}
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
 
                 {mostrarListaContactos && busquedaContacto && (
                   <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {contactosFiltrados.length === 0 ? (
-                      <div className="p-3 text-center text-sm text-gray-500">
-                        No se encontraron contactos
-                      </div>
+                    {formData.board_id ? (
+                      usuariosFiltrados.length === 0 ? (
+                        <div className="p-3 text-center text-sm text-gray-500">
+                          No se encontraron usuarios
+                        </div>
+                      ) : (
+                        usuariosFiltrados.map((usuario) => (
+                          <button
+                            key={usuario.id}
+                            type="button"
+                            onClick={() => seleccionarContacto(usuario.id)}
+                            className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-xs">
+                              {usuario.nombre.charAt(0).toUpperCase()}{usuario.apellidos.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 text-left">
+                              <p className="font-medium text-gray-900 text-sm">
+                                {usuario.nombre} {usuario.apellidos}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                {usuario.rol} {usuario.oficina_nombre ? `• ${usuario.oficina_nombre}` : ''}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      )
                     ) : (
-                      contactosFiltrados.map((contacto) => (
-                        <button
-                          key={contacto.id}
-                          type="button"
-                          onClick={() => seleccionarContacto(contacto.id)}
-                          className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-semibold text-xs">
-                            {contacto.nombre_completo.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 text-left">
-                            <p className="font-medium text-gray-900 text-sm">
-                              {contacto.nombre_completo}
-                            </p>
-                            <p className="text-xs text-gray-600">{contacto.celular}</p>
-                          </div>
-                        </button>
-                      ))
+                      contactosFiltrados.length === 0 ? (
+                        <div className="p-3 text-center text-sm text-gray-500">
+                          No se encontraron contactos
+                        </div>
+                      ) : (
+                        contactosFiltrados.map((contacto) => (
+                          <button
+                            key={contacto.id}
+                            type="button"
+                            onClick={() => seleccionarContacto(contacto.id)}
+                            className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-semibold text-xs">
+                              {contacto.nombre_completo.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 text-left">
+                              <p className="font-medium text-gray-900 text-sm">
+                                {contacto.nombre_completo}
+                              </p>
+                              <p className="text-xs text-gray-600">{contacto.celular}</p>
+                            </div>
+                          </button>
+                        ))
+                      )
                     )}
                   </div>
                 )}
