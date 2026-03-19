@@ -67,16 +67,48 @@ async function obtenerDesgloseFiscalDesdeDB(
 
 /**
  * Genera las filas para el PDF de desglose fiscal.
- * Solo muestra los campos FINALES, SIN valores intermedios como
- * Comisión Base, Vida, Sin Vida, ISR Vida, ISR Daños.
- * Muestra TODAS las filas relevantes, incluso si son $0.00
+ *
+ * REGLA GENERAL:
+ * - La base de cálculo es siempre la Comisión Bruta (commission_neta)
+ * - La Comisión Bruta NO se muestra en el PDF
+ * - Solo se muestran los campos fiscales autorizados por régimen
+ * - Para ASIMILADOS, HONORARIOS y RESICO: NO mostrar Ret. Contable ni Costo Dispersión
+ *
+ * FÓRMULAS POR RÉGIMEN:
+ *
+ * ASIMILADOS:
+ *   - Ret. ISR = ISR calculado sobre Comisión Bruta
+ *   - Total = Comisión Bruta - Ret. ISR
+ *   - NO mostrar: IVA, Ret. IVA, Ret. Contable, Costo Dispersión
+ *
+ * HONORARIOS:
+ *   - IVA = Comisión Bruta × 16%
+ *   - Ret. ISR = Comisión Bruta × 10%
+ *   - Ret. IVA = IVA × 2/3
+ *   - Total = Comisión Bruta + IVA - Ret. ISR - Ret. IVA
+ *   - NO mostrar: Ret. Contable, Costo Dispersión
+ *
+ * RESICO:
+ *   - IVA = Comisión Bruta × 16%
+ *   - Ret. ISR = Comisión Bruta × 1.25%
+ *   - Ret. IVA = IVA × 2/3
+ *   - Total = Comisión Bruta + IVA - Ret. ISR - Ret. IVA
+ *   - NO mostrar: Ret. Contable, Costo Dispersión
  */
 function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal): PdfFiscalRow[] {
   const rows: PdfFiscalRow[] = [];
 
   switch (regimen) {
+    case 'ASIMILADOS':
+      // Solo mostrar: Ret. ISR, Total
+      rows.push({
+        label: 'Ret. ISR',
+        value: `- ${formatCurrency(desgloseFiscal.isrTotal)}`
+      });
+      break;
+
     case 'HONORARIOS':
-      // Siempre mostrar IVA, Retenciones (incluso si son 0)
+      // Solo mostrar: IVA, Ret. ISR, Ret. IVA, Total
       rows.push({
         label: 'IVA',
         value: `+ ${formatCurrency(desgloseFiscal.iva)}`
@@ -91,28 +123,8 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       });
       break;
 
-    case 'ASIMILADOS':
-      // Siempre mostrar Ret. Contable, Costo Dispersión, IVA, ISR Total
-      rows.push({
-        label: 'Ret. Contable',
-        value: `- ${formatCurrency(desgloseFiscal.retContable)}`
-      });
-      rows.push({
-        label: 'Costo Dispersión',
-        value: `- ${formatCurrency(desgloseFiscal.costoDispersion)}`
-      });
-      rows.push({
-        label: 'IVA',
-        value: formatCurrency(desgloseFiscal.iva)
-      });
-      rows.push({
-        label: 'ISR Total',
-        value: `- ${formatCurrency(desgloseFiscal.isrTotal)}`
-      });
-      break;
-
     case 'RESICO':
-      // Siempre mostrar IVA, Retenciones (incluso si son 0)
+      // Solo mostrar: IVA, Ret. ISR, Ret. IVA, Total
       rows.push({
         label: 'IVA',
         value: `+ ${formatCurrency(desgloseFiscal.iva)}`
@@ -130,7 +142,7 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
 
   // Total a Pagar siempre se muestra al final
   rows.push({
-    label: 'Total a Pagar',
+    label: 'Total',
     value: formatCurrency(desgloseFiscal.totalAPagar),
     isBold: true,
     isTotal: true
