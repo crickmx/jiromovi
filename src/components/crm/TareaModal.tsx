@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Flag, User, Search, Paperclip, Upload, Download, Trash2, FileText } from 'lucide-react';
+import { X, Flag, User, Search, Paperclip, Upload, Download, Trash2, FileText, CircleUser as UserCircle } from 'lucide-react';
 import {
   crearTarea,
   actualizarTarea,
@@ -8,9 +8,10 @@ import {
   subirAdjuntoTarea,
   eliminarAdjuntoTarea,
   descargarAdjuntoTarea,
+  obtenerMiembrosTablero,
 } from '../../lib/crmUtils';
 import { useAuth } from '../../contexts/AuthContext';
-import type { CRMTarea, CRMTareaAdjunto, EstatusTarea, PrioridadTarea, CRMContacto } from '../../lib/crmTypes';
+import type { CRMTarea, CRMTareaAdjunto, EstatusTarea, PrioridadTarea, CRMContacto, CRMBoardMemberDetail } from '../../lib/crmTypes';
 
 interface Props {
   contactoId?: string;
@@ -28,6 +29,7 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
   const [mostrarListaContactos, setMostrarListaContactos] = useState(false);
   const [adjuntos, setAdjuntos] = useState<CRMTareaAdjunto[]>([]);
   const [subiendoAdjunto, setSubiendoAdjunto] = useState(false);
+  const [miembrosTablero, setMiembrosTablero] = useState<CRMBoardMemberDetail[]>([]);
 
   const [formData, setFormData] = useState({
     descripcion: tarea?.descripcion || '',
@@ -39,6 +41,7 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
     estatus: (tarea?.estatus || 'Pendiente') as EstatusTarea,
     contacto_id: contactoId || tarea?.contacto_id || '',
     board_id: boardId || tarea?.board_id || null,
+    asignado_a: tarea?.asignado_a || '',
   });
 
   useEffect(() => {
@@ -46,7 +49,10 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
     if (tarea) {
       cargarAdjuntos();
     }
-  }, [tarea]);
+    if (formData.board_id) {
+      cargarMiembrosTablero();
+    }
+  }, [tarea, formData.board_id]);
 
   const cargarContactos = async () => {
     try {
@@ -64,6 +70,16 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
       setAdjuntos(data);
     } catch (error) {
       console.error('Error al cargar adjuntos:', error);
+    }
+  };
+
+  const cargarMiembrosTablero = async () => {
+    if (!formData.board_id) return;
+    try {
+      const miembros = await obtenerMiembrosTablero(formData.board_id);
+      setMiembrosTablero(miembros);
+    } catch (error) {
+      console.error('Error al cargar miembros del tablero:', error);
     }
   };
 
@@ -100,6 +116,7 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
         estatus: formData.estatus,
         contacto_id: formData.contacto_id || null,
         board_id: formData.board_id || null,
+        asignado_a: formData.asignado_a || null,
       };
 
       if (tarea) {
@@ -303,6 +320,30 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
               </div>
             )}
           </div>
+
+          {formData.board_id && miembrosTablero.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                <UserCircle className="h-4 w-4" />
+                Responsable
+              </label>
+              <select
+                value={formData.asignado_a}
+                onChange={(e) => setFormData({ ...formData, asignado_a: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Sin asignar</option>
+                {miembrosTablero.map((miembro) => (
+                  <option key={miembro.user_id} value={miembro.user_id}>
+                    {miembro.user_name} ({miembro.user_office})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Solo los miembros de este tablero compartido pueden ser asignados
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Descripción *</label>

@@ -87,7 +87,11 @@ export default function CRMTareas() {
 
       let query = supabase
         .from('crm_tareas')
-        .select('*, crm_contactos(nombre_completo)')
+        .select(`
+          *,
+          crm_contactos(nombre_completo),
+          responsable:usuarios!asignado_a(id, nombre, apellidos, avatar_url)
+        `)
         .order('fecha_vencimiento', { ascending: true });
 
       // Filtrar por tablero si existe boardId

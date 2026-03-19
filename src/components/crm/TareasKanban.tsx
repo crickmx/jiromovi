@@ -10,8 +10,15 @@ interface Tarea {
   prioridad: 'Alta' | 'Media' | 'Baja';
   contacto_id?: string;
   adjuntos_count?: number;
+  asignado_a?: string;
   crm_contactos?: {
     nombre_completo: string;
+  };
+  responsable?: {
+    id: string;
+    nombre: string;
+    apellidos: string;
+    avatar_url?: string;
   };
 }
 
@@ -213,6 +220,27 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
                         <div className="flex items-center space-x-2 mb-3 text-xs text-gray-600">
                           <User className="h-3.5 w-3.5" />
                           <span className="truncate">{tarea.crm_contactos.nombre_completo}</span>
+                        </div>
+                      )}
+
+                      {tarea.responsable && (
+                        <div className="flex items-center space-x-2 mb-3">
+                          <div className="flex items-center space-x-1.5">
+                            {tarea.responsable.avatar_url ? (
+                              <img
+                                src={tarea.responsable.avatar_url}
+                                alt={`${tarea.responsable.nombre} ${tarea.responsable.apellidos}`}
+                                className="h-6 w-6 rounded-full object-cover border border-gray-200"
+                              />
+                            ) : (
+                              <div className="h-6 w-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-semibold border border-purple-200">
+                                {tarea.responsable.nombre.charAt(0)}{tarea.responsable.apellidos.charAt(0)}
+                              </div>
+                            )}
+                            <span className="text-xs text-gray-700 font-medium">
+                              {tarea.responsable.nombre} {tarea.responsable.apellidos}
+                            </span>
+                          </div>
                         </div>
                       )}
 

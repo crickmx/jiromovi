@@ -79,11 +79,18 @@ export interface CRMTarea {
   prioridad: PrioridadTarea;
   completada: boolean;
   fecha_completado?: string;
+  asignado_a?: string;
   creado_por: string;
   creado_en: string;
   actualizado_en: string;
   crm_contactos?: {
     nombre_completo: string;
+  };
+  responsable?: {
+    id: string;
+    nombre: string;
+    apellidos: string;
+    avatar_url?: string;
   };
 }
 
