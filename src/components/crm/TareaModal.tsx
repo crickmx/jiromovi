@@ -328,90 +328,108 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
             />
           </div>
 
-          {tarea && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Paperclip className="h-4 w-4" />
-                Documentos Adjuntos ({adjuntos.length}/5)
-              </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <Paperclip className="h-4 w-4" />
+              Documentos Adjuntos {tarea ? `(${adjuntos.length}/5)` : ''}
+            </label>
 
-              {adjuntos.length > 0 && (
-                <div className="space-y-2 mb-3">
-                  {adjuntos.map((adjunto) => (
-                    <div
-                      key={adjunto.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {adjunto.nombre_archivo}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatFileSize(adjunto.tamano_bytes)}
-                          </p>
+            {tarea ? (
+              <>
+                {adjuntos.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {adjuntos.map((adjunto) => (
+                      <div
+                        key={adjunto.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {adjunto.nombre_archivo}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatFileSize(adjunto.tamano_bytes)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDescargarAdjunto(adjunto)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                            title="Descargar"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEliminarAdjunto(adjunto.id)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleDescargarAdjunto(adjunto)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                          title="Descargar"
-                        >
-                          <Download className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleEliminarAdjunto(adjunto.id)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
 
-              {adjuntos.length < 5 && (
-                <div>
-                  <input
-                    type="file"
-                    id="file-upload"
-                    onChange={handleFileUpload}
-                    disabled={subiendoAdjunto}
-                    className="hidden"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.txt"
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className={`flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                      subiendoAdjunto
-                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                        : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
-                    }`}
-                  >
-                    <Upload className="h-5 w-5 text-gray-400" />
-                    <span className="text-sm text-gray-600">
-                      {subiendoAdjunto ? 'Subiendo archivo...' : 'Subir documento (máx. 10MB)'}
-                    </span>
-                  </label>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Formatos: PDF, Word, Excel, imágenes, texto plano
+                {adjuntos.length < 5 && (
+                  <div>
+                    <input
+                      type="file"
+                      id="file-upload"
+                      onChange={handleFileUpload}
+                      disabled={subiendoAdjunto}
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.txt"
+                    />
+                    <label
+                      htmlFor="file-upload"
+                      className={`flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                        subiendoAdjunto
+                          ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                          : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                      }`}
+                    >
+                      <Upload className="h-5 w-5 text-gray-400" />
+                      <span className="text-sm text-gray-600">
+                        {subiendoAdjunto ? 'Subiendo archivo...' : 'Subir documento (máx. 10MB)'}
+                      </span>
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Formatos: PDF, Word, Excel, imágenes, texto plano
+                    </p>
+                  </div>
+                )}
+
+                {adjuntos.length >= 5 && (
+                  <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    Límite alcanzado. Elimina un adjunto para subir otro.
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-blue-900 mb-1">
+                    Adjuntos disponibles después de crear
+                  </h4>
+                  <p className="text-xs text-blue-700">
+                    Guarda la tarea primero y luego podrás agregar hasta 5 documentos adjuntos (PDF, Word, Excel, imágenes, etc.)
                   </p>
                 </div>
-              )}
-
-              {adjuntos.length >= 5 && (
-                <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                  Límite alcanzado. Elimina un adjunto para subir otro.
-                </p>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button
