@@ -18,10 +18,11 @@ import {
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import TareasKanban from '../components/crm/TareasKanban';
+import CRMBoardCalendarView from '../components/crm/CRMBoardCalendarView';
 import TareaModal from '../components/crm/TareaModal';
 import type { CRMTarea, EstatusTarea } from '../lib/crmTypes';
 
-type Vista = 'lista' | 'kanban';
+type Vista = 'lista' | 'kanban' | 'calendario';
 type FiltroEstatus = 'todas' | 'Pendiente' | 'En Proceso' | 'Completada' | 'vencidas';
 
 interface BoardInfo {
@@ -380,6 +381,15 @@ export default function CRMTareas() {
                 <span className="hidden sm:inline">Kanban</span>
               </button>
               <button
+                onClick={() => setVista('calendario')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
+                  vista === 'calendario' ? 'bg-white shadow text-purple-600' : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Calendar className="h-4 w-4" />
+                <span className="hidden sm:inline">Calendario</span>
+              </button>
+              <button
                 onClick={() => setVista('lista')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
                   vista === 'lista' ? 'bg-white shadow text-purple-600' : 'text-gray-600 hover:text-gray-900'
@@ -398,6 +408,13 @@ export default function CRMTareas() {
           tareas={tareasFiltradas}
           onUpdateEstatus={handleUpdateEstatus}
           onVerDetalle={handleVerDetalle}
+          loading={loading}
+        />
+      ) : vista === 'calendario' ? (
+        <CRMBoardCalendarView
+          tareas={tareasFiltradas}
+          boardId={boardId}
+          onRefresh={cargarTareas}
           loading={loading}
         />
       ) : (

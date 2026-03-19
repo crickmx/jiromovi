@@ -17,11 +17,13 @@ interface Props {
   contactoId?: string;
   tarea?: CRMTarea;
   boardId?: string | null;
+  initialFechaVencimiento?: string;
   onClose: () => void;
   onSave: () => void;
+  onDelete?: () => void;
 }
 
-export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave }: Props) {
+export default function TareaModal({ contactoId, tarea, boardId, initialFechaVencimiento, onClose, onSave, onDelete }: Props) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [contactos, setContactos] = useState<CRMContacto[]>([]);
@@ -31,12 +33,22 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
   const [subiendoAdjunto, setSubiendoAdjunto] = useState(false);
   const [miembrosTablero, setMiembrosTablero] = useState<CRMBoardMemberDetail[]>([]);
 
+  const getFechaVencimientoInicial = () => {
+    if (tarea?.fecha_vencimiento) {
+      return new Date(tarea.fecha_vencimiento).toISOString().slice(0, 16);
+    }
+    if (initialFechaVencimiento) {
+      const date = new Date(initialFechaVencimiento);
+      date.setHours(12, 0, 0, 0);
+      return date.toISOString().slice(0, 16);
+    }
+    return '';
+  };
+
   const [formData, setFormData] = useState({
     descripcion: tarea?.descripcion || '',
     tipo_actividad: tarea?.tipo_actividad || 'Llamada',
-    fecha_vencimiento: tarea?.fecha_vencimiento
-      ? new Date(tarea.fecha_vencimiento).toISOString().slice(0, 16)
-      : '',
+    fecha_vencimiento: getFechaVencimientoInicial(),
     prioridad: (tarea?.prioridad || 'Media') as PrioridadTarea,
     estatus: (tarea?.estatus || 'Pendiente') as EstatusTarea,
     contacto_id: contactoId || tarea?.contacto_id || '',
@@ -472,22 +484,37 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              disabled={loading}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              disabled={loading}
-            >
-              {loading ? 'Guardando...' : 'Guardar Tarea'}
-            </button>
+          <div className="flex justify-between gap-3 pt-4 border-t">
+            <div>
+              {tarea && onDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="px-4 py-2 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  disabled={loading}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar
+                </button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? 'Guardando...' : 'Guardar Tarea'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
