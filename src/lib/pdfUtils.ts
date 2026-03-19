@@ -11,6 +11,11 @@ import {
   type RegimenFiscal
 } from './commissionFiscalCalculations';
 import { getOfficeLogo } from './logoUtils';
+import {
+  calcularPdfFiscalComisiones,
+  type PdfFiscalInput,
+  type PdfFiscalResult
+} from './pdfFiscalCalculation';
 
 interface PdfFiscalRow {
   label: string;
@@ -66,41 +71,15 @@ async function obtenerDesgloseFiscalDesdeDB(
 }
 
 /**
- * Genera las filas para el PDF de desglose fiscal.
- *
- * REGLA GENERAL:
- * - La base de cálculo es siempre la Comisión Bruta (commission_neta)
- * - La Comisión Bruta NO se muestra en el PDF
- * - Solo se muestran los campos fiscales autorizados por régimen
- * - Para ASIMILADOS, HONORARIOS y RESICO: NO mostrar Ret. Contable ni Costo Dispersión
- *
- * FÓRMULAS POR RÉGIMEN:
- *
- * ASIMILADOS:
- *   - Ret. ISR = ISR calculado sobre Comisión Bruta
- *   - Total = Comisión Bruta - Ret. ISR
- *   - NO mostrar: IVA, Ret. IVA, Ret. Contable, Costo Dispersión
- *
- * HONORARIOS:
- *   - IVA = Comisión Bruta × 16%
- *   - Ret. ISR = Comisión Bruta × 10%
- *   - Ret. IVA = IVA × 2/3
- *   - Total = Comisión Bruta + IVA - Ret. ISR - Ret. IVA
- *   - NO mostrar: Ret. Contable, Costo Dispersión
- *
- * RESICO:
- *   - IVA = Comisión Bruta × 16%
- *   - Ret. ISR = Comisión Bruta × 1.25%
- *   - Ret. IVA = IVA × 2/3
- *   - Total = Comisión Bruta + IVA - Ret. ISR - Ret. IVA
- *   - NO mostrar: Ret. Contable, Costo Dispersión
+ * DEPRECADA: Esta función fue reemplazada por calcularPdfFiscalComisiones
+ * que garantiza cálculos puros sin reutilizar valores cacheados.
+ * Se mantiene temporalmente para compatibilidad con código existente.
  */
 function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal): PdfFiscalRow[] {
   const rows: PdfFiscalRow[] = [];
 
   switch (regimen) {
     case 'ASIMILADOS':
-      // Solo mostrar: Ret. ISR, Total
       rows.push({
         label: 'Ret. ISR',
         value: `- ${formatCurrency(desgloseFiscal.isrTotal)}`
@@ -108,7 +87,6 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       break;
 
     case 'HONORARIOS':
-      // Solo mostrar: IVA, Ret. ISR, Ret. IVA, Total
       rows.push({
         label: 'IVA',
         value: `+ ${formatCurrency(desgloseFiscal.iva)}`
@@ -124,7 +102,6 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       break;
 
     case 'RESICO':
-      // Solo mostrar: IVA, Ret. ISR, Ret. IVA, Total
       rows.push({
         label: 'IVA',
         value: `+ ${formatCurrency(desgloseFiscal.iva)}`
@@ -140,7 +117,6 @@ function getPdfFiscalRows(regimen: RegimenFiscal, desgloseFiscal: DesgloseFiscal
       break;
   }
 
-  // Total a Pagar siempre se muestra al final
   rows.push({
     label: 'Total',
     value: formatCurrency(desgloseFiscal.totalAPagar),
@@ -712,16 +688,19 @@ export async function generateOrdenDePagoPDF(
   }
 
   // ============================================================================
-  // SISTEMA CORRECTO: USAR VALORES AGREGADOS DE commission_batches
+  // NUEVO SISTEMA: CÁLCULO FISCAL PURO Y AISLADO POR DOCUMENTO
   // ============================================================================
-  // Los valores fiscales (ISR, IVA, retenciones) deben calcularse sobre el TOTAL
-  // del lote, NO sumando valores individuales de cada póliza.
-  // La función calculate_batch_fiscal_aggregates calcula correctamente sobre el total.
+  // CRÍTICO: Cada PDF recalcula sus valores fiscales desde cero basándose en:
+  // 1. La comisión bruta real del agente (totalComisionNeta calculada arriba)
+  // 2. El régimen fiscal ACTUAL del usuario
+  // 3. El ISR de asimilados si aplica (consultado desde la BD)
+  //
+  // NO se reutilizan valores de otros PDFs, lotes o estados globales.
 
   const { supabase } = await import('./supabase');
   const usuario_id = agentDetails[0].usuario_id;
 
-  // Obtener el régimen fiscal ACTUAL del usuario (no el del batch, que puede estar desactualizado)
+  // Obtener el régimen fiscal ACTUAL del usuario
   const { data: usuarioData, error: usuarioError } = await supabase
     .from('usuarios')
     .select(`
@@ -735,59 +714,49 @@ export async function generateOrdenDePagoPDF(
     throw new Error('No se encontró la información del usuario');
   }
 
-  const regimenFiscalActual = (usuarioData.regimen_fiscal as any)?.name || 'HONORARIOS';
-
-  // Obtener los valores fiscales AGREGADOS del lote desde commission_batches
-  const { data: batchData, error: batchError } = await supabase
-    .from('commission_batches')
-    .select('regimen_fiscal, commission_vida, commission_sinvida, commission_total, retencion_contable, costo_dispersion, iva, ret_isr, ret_iva, total_neto, calculated_at')
-    .eq('id', batch.id)
-    .single();
-
-  if (batchError || !batchData) {
-    throw new Error('No se encontraron datos fiscales del lote');
-  }
-
-  if (!batchData.calculated_at) {
-    throw new Error('El lote no tiene valores fiscales calculados. Por favor recalcula el lote.');
-  }
-
-  // IMPORTANTE: Usar el régimen ACTUAL del usuario, no el del batch
-  // Si hay desajuste, mostrar advertencia en el PDF
-  const regimenFiscalName = regimenFiscalActual;
-  const regimenFiscal = normalizarRegimenFiscal(regimenFiscalName);
-  const hayDesajuste = batchData.regimen_fiscal &&
-    regimenFiscalName.toUpperCase() !== batchData.regimen_fiscal.toUpperCase();
+  const regimenFiscalName = (usuarioData.regimen_fiscal as any)?.name || 'HONORARIOS';
+  const regimenFiscalNormalizado = regimenFiscalName.toUpperCase() as 'ASIMILADOS' | 'HONORARIOS' | 'RESICO';
 
   const agentFullName = `${usuario.nombre} ${usuario.apellidos}`.trim();
-  console.log(`[PDF] Generando para ${agentFullName}`);
-  console.log(`[PDF] Régimen ACTUAL del usuario: ${regimenFiscalActual} (normalizado: ${regimenFiscal})`);
-  console.log(`[PDF] Régimen guardado en el batch: ${batchData.regimen_fiscal}`);
-  if (hayDesajuste) {
-    console.warn(`[PDF] ⚠️ DESAJUSTE DETECTADO: Usuario=${regimenFiscalActual}, Batch=${batchData.regimen_fiscal}`);
-    console.warn(`[PDF] Se usará el régimen ACTUAL del usuario (${regimenFiscalActual}) para mostrar en el PDF`);
-  }
+  console.log(`[PDF] ========================================`);
+  console.log(`[PDF] Generando PDF Fiscal para: ${agentFullName}`);
+  console.log(`[PDF] Régimen Fiscal: ${regimenFiscalNormalizado}`);
+  console.log(`[PDF] Comisión Bruta: ${formatCurrency(totalComisionNeta)}`);
 
-  // Usar los valores AGREGADOS del lote
-  const desgloseFiscal: DesgloseFiscal = {
-    vida: parseFloat(batchData.commission_vida as any) || 0,
-    sinVida: parseFloat(batchData.commission_sinvida as any) || 0,
-    retContable: parseFloat(batchData.retencion_contable as any) || 0,
-    costoDispersion: parseFloat(batchData.costo_dispersion as any) || 0,
-    iva: parseFloat(batchData.iva as any) || 0,
-    retIsr: parseFloat(batchData.ret_isr as any) || 0,
-    retIva: parseFloat(batchData.ret_iva as any) || 0,
-    isrVida: 0, // No usado en HONORARIOS/RESICO
-    isrDanios: 0, // No usado en HONORARIOS/RESICO
-    isrTotal: parseFloat(batchData.ret_isr as any) || 0,
-    totalAPagar: parseFloat(batchData.total_neto as any) || 0,
+  // Preparar el input para el cálculo fiscal
+  const fiscalInput: PdfFiscalInput = {
+    regimenFiscal: regimenFiscalNormalizado,
+    comisionBruta: totalComisionNeta,
   };
 
-  console.log(`[PDF] ${regimenFiscal} - Valores AGREGADOS del lote:`, desgloseFiscal);
+  // Si es ASIMILADOS, obtener el ISR calculado desde la BD
+  if (regimenFiscalNormalizado === 'ASIMILADOS') {
+    // Obtener ISR de asimilados desde commission_batches
+    const { data: batchData, error: batchError } = await supabase
+      .from('commission_batches')
+      .select('ret_isr')
+      .eq('id', batch.id)
+      .single();
 
-  // Usar la función de allowlist para generar solo los campos permitidos
-  const fiscalRows = getPdfFiscalRows(regimenFiscal, desgloseFiscal);
-  console.log(`[PDF] Filas fiscales generadas: ${fiscalRows.length}`, fiscalRows);
+    if (!batchError && batchData && batchData.ret_isr) {
+      fiscalInput.retIsrAsimilados = parseFloat(batchData.ret_isr as any);
+      console.log(`[PDF] ISR Asimilados (desde BD): ${formatCurrency(fiscalInput.retIsrAsimilados)}`);
+    } else {
+      console.warn('[PDF] ⚠️ No se pudo obtener ISR de Asimilados, se usará 0');
+      fiscalInput.retIsrAsimilados = 0;
+    }
+  }
+
+  // RECALCULAR el desglose fiscal desde cero (función pura)
+  const resultadoFiscal: PdfFiscalResult = calcularPdfFiscalComisiones(fiscalInput);
+
+  console.log(`[PDF] Resultado Fiscal Calculado:`);
+  console.log(`[PDF]   - IVA: ${formatCurrency(resultadoFiscal.calculos.iva)}`);
+  console.log(`[PDF]   - Ret. ISR: ${formatCurrency(resultadoFiscal.calculos.retIsr)}`);
+  console.log(`[PDF]   - Ret. IVA: ${formatCurrency(resultadoFiscal.calculos.retIva)}`);
+  console.log(`[PDF]   - Total: ${formatCurrency(resultadoFiscal.calculos.total)}`);
+  console.log(`[PDF] Campos visibles: ${resultadoFiscal.visibleFields.length}`);
+  console.log(`[PDF] ========================================`);
 
   // Si no hay espacio en la página actual, crear una nueva
   const availableSpace = pageHeight - yPosition - 8;
@@ -801,27 +770,32 @@ export async function generateOrdenDePagoPDF(
   doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
-  doc.text('Cálculo Fiscal (Resumen)', marginLeft, yPosition);
+  doc.text('Cálculo Fiscal', marginLeft, yPosition);
 
   yPosition += 4;
 
-  // Convertir a formato de tabla con estilos
-  const desgloseFiscalRows: any[] = fiscalRows.map(row => {
-    if (row.isTotal) {
+  // Convertir visibleFields a formato de tabla con estilos
+  const desgloseFiscalRows: any[] = resultadoFiscal.visibleFields.map(field => {
+    // El último campo (Total) debe destacarse
+    const isTotal = field.key === 'total';
+
+    // Formatear el valor con signo si aplica
+    let valorDisplay = field.displayValue;
+    if (field.isAddition) {
+      valorDisplay = `+ ${field.displayValue}`;
+    } else if (field.isSubtraction) {
+      valorDisplay = `- ${field.displayValue}`;
+    }
+
+    if (isTotal) {
       // Fila de Total con estilo destacado
       return [
-        { content: row.label, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } },
-        { content: row.value, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } }
-      ];
-    } else if (row.isBold) {
-      // Fila en negrita
-      return [
-        { content: row.label, styles: { fontStyle: 'bold' } },
-        { content: row.value, styles: { fontStyle: 'bold' } }
+        { content: field.label, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } },
+        { content: valorDisplay, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } }
       ];
     } else {
       // Fila normal
-      return [row.label, row.value];
+      return [field.label, valorDisplay];
     }
   });
 
@@ -846,13 +820,8 @@ export async function generateOrdenDePagoPDF(
   doc.setTextColor(60);
   doc.text(`Régimen fiscal: ${regimenFiscalName}`, marginLeft, yPosition);
 
-  // Si hay desajuste entre el régimen del batch y el régimen actual del usuario, mostrar advertencia
-  if (hayDesajuste) {
-    yPosition += 3;
-    doc.setFontSize(6);
-    doc.setTextColor(255, 0, 0);
-    doc.text(`ADVERTENCIA: Este lote fue calculado con régimen ${batchData.regimen_fiscal}. Recomendamos recalcular.`, marginLeft, yPosition);
-  }
+  yPosition += 3;
+  doc.text(`Base de cálculo: ${formatCurrency(totalComisionNeta)}`, marginLeft, yPosition);
 
   const pdfBlob = doc.output('blob');
   return pdfBlob;
