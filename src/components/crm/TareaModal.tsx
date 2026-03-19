@@ -109,9 +109,10 @@ export default function TareaModal({ contactoId, tarea, boardId, onClose, onSave
       }
 
       onSave();
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al guardar tarea');
+    } catch (error: any) {
+      console.error('Error completo:', error);
+      const errorMessage = error?.message || error?.error_description || 'Error al guardar tarea';
+      alert(`Error al guardar tarea: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
