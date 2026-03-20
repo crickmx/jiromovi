@@ -97,7 +97,7 @@ export function TramiteDetalle() {
       .from('tickets')
       .select(`
         *,
-        agente:agente_solicitante_id(id, nombre_completo),
+        agente:agente_id(id, nombre_completo),
         responsable:assigned_to_user_id(id, nombre_completo),
         estatus:estatus_id(*),
         creado_por_usuario:creado_por(id, nombre_completo),

@@ -169,7 +169,7 @@ export async function createRegistroActividad(data: {
       instrucciones: data.instrucciones,
       estatus_id: estatusData.id,
       creado_por: data.creado_por,
-      agente_solicitante_id: data.creado_por,
+      agente_id: data.creado_por,
       assigned_to_user_id: data.attending_user_id,
     };
 

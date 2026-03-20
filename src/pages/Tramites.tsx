@@ -78,10 +78,10 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_solicitante_id(nombre_completo),
+          agente:agente_id(nombre_completo),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
-          solicitante:agente_solicitante_id(nombre_completo, oficina:oficina_id(nombre))
+          solicitante:agente_id(nombre_completo, oficina:oficina_id(nombre))
         `)
         .order('fecha_creacion', { ascending: false });
 
