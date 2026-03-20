@@ -78,11 +78,9 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente_legacy:agente_id(nombre_completo),
-          assigned_to_user:assigned_to_user_id(nombre_completo),
+          agente:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
-          solicitante:agente_solicitante_id(nombre_completo, oficina:oficina_id(nombre)),
-          creado_por_usuario:creado_por(nombre_completo)
+          solicitante:agente_solicitante_id(nombre_completo, oficina:oficina_id(nombre))
         `)
         .order('fecha_creacion', { ascending: false });
 
@@ -112,7 +110,9 @@ export function Tramites() {
         // Merge asignaciones into tramites
         const tramitesWithAsignaciones = data.map(tramite => ({
           ...tramite,
-          agente: tramite.assigned_to_user || tramite.agente_legacy || null,
+          assigned_to_user: tramite.assigned_to_user_id
+            ? { nombre_completo: tramite.agente?.nombre_completo || '' }
+            : null,
           ticket_asignaciones: asignaciones?.filter(a => a.ticket_id === tramite.id) || []
         }));
 
