@@ -78,7 +78,7 @@ export function Tramites() {
         .select(`
           *,
           solicitante:creado_por(nombre_completo, oficina:oficina_id(nombre)),
-          responsable:assigned_to_user_id(nombre_completo),
+          responsable:agente_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo))
         `)
