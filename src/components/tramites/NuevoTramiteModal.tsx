@@ -427,7 +427,7 @@ export function NuevoTramiteModal({
         instrucciones: descripcion.trim() || 'Sin descripción',
         creado_por: usuario.id,
         modificado_por: usuario.id,
-        agente_id: usuario.id,
+        agente_id: tipoTramite === 'registro_poliza' && isAgent ? usuario.id : (assignedTo || null),
         assigned_to_user_id: assignedTo
       };
 

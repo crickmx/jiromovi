@@ -98,6 +98,15 @@ export function Tramites() {
       }
 
       console.log('Tramites loaded:', data?.length, 'tramites');
+      if (data && data.length > 0) {
+        console.log('First tramite:', {
+          folio: data[0].folio,
+          creado_por: data[0].creado_por,
+          agente_id: data[0].agente_id,
+          solicitante: data[0].solicitante,
+          responsable: data[0].responsable
+        });
+      }
 
       // Load asignaciones separately to avoid recursion
       if (data && data.length > 0) {
