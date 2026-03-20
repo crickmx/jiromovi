@@ -427,8 +427,8 @@ export function NuevoTramiteModal({
         instrucciones: descripcion.trim() || 'Sin descripción',
         creado_por: usuario.id,
         modificado_por: usuario.id,
-        assigned_to_user_id: assignedTo,
-        agente_id: isAgent ? usuario.id : null
+        agente_solicitante_id: usuario.id,
+        assigned_to_user_id: assignedTo
       };
 
       if (tipoTramite === 'correccion_poliza_registrada') {
