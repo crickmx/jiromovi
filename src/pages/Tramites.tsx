@@ -99,13 +99,15 @@ export function Tramites() {
 
       console.log('Tramites loaded:', data?.length, 'tramites');
       if (data && data.length > 0) {
-        console.log('First tramite:', {
+        console.log('First tramite raw data:', {
           folio: data[0].folio,
           creado_por: data[0].creado_por,
           agente_id: data[0].agente_id,
           solicitante: data[0].solicitante,
-          responsable: data[0].responsable
+          responsable: data[0].responsable,
+          all_keys: Object.keys(data[0])
         });
+        console.log('Full first tramite:', JSON.stringify(data[0], null, 2));
       }
 
       // Load asignaciones separately to avoid recursion
@@ -354,12 +356,10 @@ export function Tramites() {
 
                 {/* Cuarta línea: Información adicional */}
                 <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
-                  {tramite.solicitante && (
-                    <span className="flex items-center space-x-1">
-                      <span className="font-medium">Agente:</span>
-                      <span>{tramite.solicitante.nombre_completo}</span>
-                    </span>
-                  )}
+                  <span className="flex items-center space-x-1">
+                    <span className="font-medium">Agente:</span>
+                    <span>{tramite.solicitante?.nombre_completo || 'Sin asignar'}</span>
+                  </span>
                   {tramite.poliza && (
                     <span className="flex items-center space-x-1">
                       <FileText className="w-4 h-4" />
@@ -367,12 +367,10 @@ export function Tramites() {
                       <span>{tramite.poliza}</span>
                     </span>
                   )}
-                  {tramite.responsable && (
-                    <span className="flex items-center space-x-1">
-                      <span className="font-medium">Responsable:</span>
-                      <span>{tramite.responsable.nombre_completo}</span>
-                    </span>
-                  )}
+                  <span className="flex items-center space-x-1">
+                    <span className="font-medium">Responsable:</span>
+                    <span>{tramite.responsable?.nombre_completo || 'Sin asignar'}</span>
+                  </span>
                 </div>
               </div>
             </div>
