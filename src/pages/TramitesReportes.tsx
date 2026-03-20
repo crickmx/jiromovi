@@ -339,7 +339,15 @@ export default function TramitesReportes() {
           return acc;
         }, {});
 
-        setTramitesPorUsuario(Object.values(grouped));
+        // Ordenar los trámites dentro de cada usuario por fecha descendente (más reciente primero)
+        const groupedArray = Object.values(grouped);
+        groupedArray.forEach(userGroup => {
+          userGroup.tramites.sort((a, b) => {
+            return new Date(b.fecha_solicitud).getTime() - new Date(a.fecha_solicitud).getTime();
+          });
+        });
+
+        setTramitesPorUsuario(groupedArray);
       }
     } catch (error) {
       console.error('Error loading tramites por usuario:', error);
