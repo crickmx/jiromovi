@@ -25,6 +25,7 @@ interface TramiteData {
   ultima_modificacion: string;
   cerrado_en: string | null;
   agente: Usuario | null;
+  responsable: Usuario | null;
   estatus: TramiteEstatus | null;
   creado_por_usuario: Usuario | null;
   modificado_por_usuario: Usuario | null;
@@ -102,6 +103,18 @@ export function TramiteDetalles({
 
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
+            <User className="w-4 h-4 inline mr-2" />
+            Responsable
+          </label>
+          <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+            {tramite.responsable?.nombre_completo || 'Sin responsable asignado'}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-semibold text-neutral-700 mb-2">
             <AlertCircle className="w-4 h-4 inline mr-2" />
             Prioridad
           </label>
@@ -121,9 +134,7 @@ export function TramiteDetalles({
             </div>
           )}
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
             Estatus
@@ -151,7 +162,9 @@ export function TramiteDetalles({
             </div>
           )}
         </div>
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
             <FileText className="w-4 h-4 inline mr-2" />

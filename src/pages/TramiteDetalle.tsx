@@ -34,6 +34,7 @@ interface TramiteData {
   assigned_to_user_id: string | null;
   estatus_id: string;
   agente: Usuario | null;
+  responsable: Usuario | null;
   estatus: TramiteEstatus | null;
   creado_por_usuario: Usuario | null;
   modificado_por_usuario: Usuario | null;
@@ -96,7 +97,8 @@ export function TramiteDetalle() {
       .from('tickets')
       .select(`
         *,
-        agente:assigned_to_user_id(id, nombre_completo),
+        agente:agente_solicitante_id(id, nombre_completo),
+        responsable:assigned_to_user_id(id, nombre_completo),
         estatus:estatus_id(*),
         creado_por_usuario:creado_por(id, nombre_completo),
         modificado_por_usuario:modificado_por(id, nombre_completo),
