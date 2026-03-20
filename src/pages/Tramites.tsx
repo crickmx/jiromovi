@@ -26,6 +26,7 @@ interface TramiteItem {
   agente: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
   assigned_to_user: { nombre_completo: string } | null;
+  solicitante: { nombre_completo: string; oficina: { nombre: string } | null } | null;
   ticket_asignaciones: Array<{
     ejecutivo: { nombre_completo: string } | null;
   }>;
@@ -78,7 +79,8 @@ export function Tramites() {
         .select(`
           *,
           agente:assigned_to_user_id(nombre_completo),
-          estatus:estatus_id(*)
+          estatus:estatus_id(*),
+          solicitante:creado_por(nombre_completo, oficina:oficina_id(nombre))
         `)
         .order('fecha_creacion', { ascending: false });
 
@@ -293,7 +295,21 @@ export function Tramites() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-3">
-                    <span className="text-lg font-bold text-accent">{tramite.folio}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg font-bold text-accent">{tramite.folio}</span>
+                      {tramite.solicitante && (
+                        <div className="flex items-center space-x-1.5 text-sm text-neutral-600">
+                          <span>•</span>
+                          <span className="font-medium">{tramite.solicitante.nombre_completo}</span>
+                          {tramite.solicitante.oficina && (
+                            <>
+                              <span className="text-neutral-400">|</span>
+                              <span>{tramite.solicitante.oficina.nombre}</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <span className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700 border border-neutral-300">
                       {getTipoTramiteLabel(tramite.tipo_tramite)}
                     </span>
