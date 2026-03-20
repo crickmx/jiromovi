@@ -293,13 +293,11 @@ export function Tramites() {
               className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5 hover:shadow-medium transition-all duration-200 cursor-pointer"
             >
               <div className="space-y-3">
-                {/* Primera línea: Folio + Solicitante + Oficina alineados a la derecha junto a la fecha */}
+                {/* Primera línea: Solicitante + Oficina + Folio (derecha) + Fecha (extrema derecha) */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 flex-1">
-                    <span className="text-lg font-bold text-accent">{tramite.folio}</span>
+                  <div className="flex items-center space-x-3 flex-1">
                     {tramite.solicitante && (
                       <div className="flex items-center space-x-1.5 text-sm text-neutral-600">
-                        <span>•</span>
                         <span className="font-medium">{tramite.solicitante.nombre_completo}</span>
                         {tramite.solicitante.oficina && (
                           <>
@@ -309,6 +307,7 @@ export function Tramites() {
                         )}
                       </div>
                     )}
+                    <span className="text-lg font-bold text-accent">{tramite.folio}</span>
                   </div>
 
                   <div className="text-right text-sm text-neutral-500 ml-4 flex-shrink-0">
