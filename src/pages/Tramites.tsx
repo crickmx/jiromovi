@@ -23,7 +23,7 @@ interface TramiteItem {
   fecha_creacion: string;
   ultima_modificacion: string;
   cerrado_en: string | null;
-  solicitante: { nombre_completo: string; oficina: { nombre: string } | null } | null;
+  agente: { nombre_completo: string; oficina: { nombre: string } | null } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
   ticket_asignaciones: Array<{
@@ -77,8 +77,8 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          solicitante:creado_por(nombre_completo, oficina:oficina_id(nombre)),
-          responsable:agente_id(nombre_completo),
+          agente:agente_id(nombre_completo, oficina:oficina_id(nombre)),
+          responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo))
         `)
@@ -103,11 +103,10 @@ export function Tramites() {
           folio: data[0].folio,
           creado_por: data[0].creado_por,
           agente_id: data[0].agente_id,
-          solicitante: data[0].solicitante,
-          responsable: data[0].responsable,
-          all_keys: Object.keys(data[0])
+          assigned_to_user_id: data[0].assigned_to_user_id,
+          agente: data[0].agente,
+          responsable: data[0].responsable
         });
-        console.log('Full first tramite:', JSON.stringify(data[0], null, 2));
       }
 
       // Load asignaciones separately to avoid recursion
@@ -137,7 +136,7 @@ export function Tramites() {
     const matchSearch = tramite.folio.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.instrucciones.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.poliza?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       tramite.solicitante?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       tramite.agente?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.responsable?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        getTipoTramiteLabel(tramite.tipo_tramite).toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -358,7 +357,7 @@ export function Tramites() {
                 <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
                   <span className="flex items-center space-x-1">
                     <span className="font-medium">Agente:</span>
-                    <span>{tramite.solicitante?.nombre_completo || 'Sin asignar'}</span>
+                    <span>{tramite.agente?.nombre_completo || 'Sin asignar'}</span>
                   </span>
                   {tramite.poliza && (
                     <span className="flex items-center space-x-1">
