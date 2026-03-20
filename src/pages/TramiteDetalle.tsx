@@ -30,6 +30,9 @@ interface TramiteData {
   fecha_creacion: string;
   ultima_modificacion: string;
   cerrado_en: string | null;
+  creado_por: string;
+  assigned_to_user_id: string | null;
+  estatus_id: string;
   agente: Usuario | null;
   estatus: TramiteEstatus | null;
   creado_por_usuario: Usuario | null;
@@ -54,7 +57,9 @@ export function TramiteDetalle() {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
-  const canEdit = isAdmin || isGerente;
+  const isOwner = tramite?.creado_por === usuario?.id;
+  const isAssigned = tramite?.assigned_to_user_id === usuario?.id;
+  const canEdit = isAdmin || isGerente || isOwner || isAssigned;
   const isCerrado = tramite?.cerrado_en !== null;
 
   useEffect(() => {
