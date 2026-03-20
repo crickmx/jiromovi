@@ -24,8 +24,8 @@ interface TramiteItem {
   ultima_modificacion: string;
   cerrado_en: string | null;
   agente: { nombre_completo: string } | null;
+  responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
-  assigned_to_user: { nombre_completo: string } | null;
   solicitante: { nombre_completo: string; oficina: { nombre: string } | null } | null;
   ticket_asignaciones: Array<{
     ejecutivo: { nombre_completo: string } | null;
@@ -78,7 +78,8 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:assigned_to_user_id(nombre_completo),
+          agente:agente_solicitante_id(nombre_completo),
+          responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           solicitante:agente_solicitante_id(nombre_completo, oficina:oficina_id(nombre))
         `)
@@ -358,8 +359,14 @@ export function Tramites() {
                 <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
                   {tramite.agente && (
                     <span className="flex items-center space-x-1">
-                      <span className="font-medium">Responsable:</span>
+                      <span className="font-medium">Agente:</span>
                       <span>{tramite.agente.nombre_completo}</span>
+                    </span>
+                  )}
+                  {tramite.responsable && (
+                    <span className="flex items-center space-x-1">
+                      <span className="font-medium">Responsable:</span>
+                      <span>{tramite.responsable.nombre_completo}</span>
                     </span>
                   )}
                   {tramite.poliza && (
