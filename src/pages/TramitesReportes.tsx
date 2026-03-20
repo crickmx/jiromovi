@@ -3,13 +3,14 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   BarChart3, TrendingUp, Clock, CheckCircle2, AlertCircle, Users, Building2,
-  Calendar, Filter, Download, Search, ChevronDown, Eye, X
+  Calendar, Filter, Download, Search, ChevronDown, Eye, X, Settings
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
+import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
 
 interface KPIs {
   total_tramites: number;
@@ -108,11 +109,15 @@ export default function TramitesReportes() {
   const [showTramitesPorUsuario, setShowTramitesPorUsuario] = useState(false);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
 
+  // Modal de gestión de grupos
+  const [showGruposModal, setShowGruposModal] = useState(false);
+
   // Filtros
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [oficinaFiltro, setOficinaFiltro] = useState('');
   const [usuarioFiltro, setUsuarioFiltro] = useState('');
+  const [grupoFiltro, setGrupoFiltro] = useState('');
   const [tipoTramiteFiltro, setTipoTramiteFiltro] = useState('');
   const [estatusFiltro, setEstatusFiltro] = useState('');
   const [prioridadFiltro, setPrioridadFiltro] = useState('');
@@ -121,6 +126,8 @@ export default function TramitesReportes() {
   // Catálogos
   const [oficinas, setOficinas] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [grupos, setGrupos] = useState<any[]>([]);
+  const [usuariosDelGrupo, setUsuariosDelGrupo] = useState<string[]>([]);
 
   // Permisos
   const isAdmin = usuario?.rol === 'Administrador';
@@ -138,7 +145,15 @@ export default function TramitesReportes() {
     if (fechaInicio && fechaFin) {
       loadData();
     }
-  }, [fechaInicio, fechaFin, oficinaFiltro, usuarioFiltro, tipoTramiteFiltro, estatusFiltro, prioridadFiltro]);
+  }, [fechaInicio, fechaFin, oficinaFiltro, usuarioFiltro, grupoFiltro, tipoTramiteFiltro, estatusFiltro, prioridadFiltro]);
+
+  useEffect(() => {
+    if (grupoFiltro) {
+      loadUsuariosDelGrupo(grupoFiltro);
+    } else {
+      setUsuariosDelGrupo([]);
+    }
+  }, [grupoFiltro]);
 
   const loadCatalogos = async () => {
     try {
@@ -165,8 +180,34 @@ export default function TramitesReportes() {
         .order('nombre_completo');
 
       if (usuariosData) setUsuarios(usuariosData);
+
+      // Cargar grupos
+      const { data: gruposData } = await supabase
+        .from('tramites_grupos_visualizacion')
+        .select('id, nombre, color')
+        .eq('activo', true)
+        .order('nombre');
+
+      if (gruposData) setGrupos(gruposData);
     } catch (error) {
       console.error('Error loading catalogos:', error);
+    }
+  };
+
+  const loadUsuariosDelGrupo = async (grupoId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tramites_grupos_miembros')
+        .select('usuario_id')
+        .eq('grupo_id', grupoId);
+
+      if (error) throw error;
+
+      const ids = data?.map(m => m.usuario_id) || [];
+      setUsuariosDelGrupo(ids);
+    } catch (error) {
+      console.error('Error loading usuarios del grupo:', error);
+      setUsuariosDelGrupo([]);
     }
   };
 
@@ -218,6 +259,9 @@ export default function TramitesReportes() {
 
       if (oficinaFiltro) query = query.eq('asignado_oficina_id', oficinaFiltro);
       if (usuarioFiltro) query = query.eq('asignado_id', usuarioFiltro);
+      if (grupoFiltro && usuariosDelGrupo.length > 0) {
+        query = query.in('asignado_id', usuariosDelGrupo);
+      }
       if (tipoTramiteFiltro) query = query.eq('tipo_tramite', tipoTramiteFiltro);
       if (estatusFiltro) query = query.eq('estatus_calculado', estatusFiltro);
       if (prioridadFiltro) query = query.eq('prioridad', prioridadFiltro);
@@ -233,6 +277,9 @@ export default function TramitesReportes() {
         .limit(10);
 
       if (oficinaFiltro) userQuery = userQuery.eq('oficina_id', oficinaFiltro);
+      if (grupoFiltro && usuariosDelGrupo.length > 0) {
+        userQuery = userQuery.in('usuario_id', usuariosDelGrupo);
+      }
 
       const { data: userProdData } = await userQuery;
       if (userProdData) setProductividadUsuarios(userProdData);
@@ -269,6 +316,9 @@ export default function TramitesReportes() {
 
       if (oficinaFiltro) query = query.eq('asignado_oficina_id', oficinaFiltro);
       if (usuarioFiltro) query = query.eq('asignado_id', usuarioFiltro);
+      if (grupoFiltro && usuariosDelGrupo.length > 0) {
+        query = query.in('asignado_id', usuariosDelGrupo);
+      }
       if (tipoTramiteFiltro) query = query.eq('tipo_tramite', tipoTramiteFiltro);
 
       const { data } = await query;
@@ -411,14 +461,23 @@ export default function TramitesReportes() {
           <h1 className="text-3xl font-bold text-neutral-900">Dashboard de Trámites</h1>
           <p className="text-neutral-600 mt-1">Análisis y métricas de productividad</p>
         </div>
-        <button
-          onClick={loadData}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-        >
-          <TrendingUp className="w-5 h-5" />
-          Actualizar
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowGruposModal(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+          >
+            <Users className="w-5 h-5" />
+            Gestionar Grupos
+          </button>
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            <TrendingUp className="w-5 h-5" />
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -489,12 +548,46 @@ export default function TramitesReportes() {
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Usuario
+              Grupo
+            </label>
+            <select
+              value={grupoFiltro}
+              onChange={(e) => {
+                setGrupoFiltro(e.target.value);
+                if (e.target.value) {
+                  setUsuarioFiltro(''); // Limpiar filtro individual si se selecciona grupo
+                }
+              }}
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Sin filtro de grupo</option>
+              {grupos.map(g => (
+                <option key={g.id} value={g.id}>
+                  <span style={{ color: g.color }}>●</span> {g.nombre}
+                </option>
+              ))}
+            </select>
+            {grupoFiltro && usuariosDelGrupo.length > 0 && (
+              <p className="text-xs text-neutral-500 mt-1">
+                {usuariosDelGrupo.length} usuario{usuariosDelGrupo.length !== 1 ? 's' : ''} en el grupo
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Usuario Individual
             </label>
             <select
               value={usuarioFiltro}
-              onChange={(e) => setUsuarioFiltro(e.target.value)}
+              onChange={(e) => {
+                setUsuarioFiltro(e.target.value);
+                if (e.target.value) {
+                  setGrupoFiltro(''); // Limpiar filtro de grupo si se selecciona usuario individual
+                }
+              }}
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!!grupoFiltro}
             >
               <option value="">Todos</option>
               {usuarios
@@ -978,6 +1071,29 @@ export default function TramitesReportes() {
                   Error al cargar el trámite
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Gestión de Grupos */}
+      {showGruposModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-900">Gestión de Grupos de Visualización</h2>
+              <button
+                onClick={() => {
+                  setShowGruposModal(false);
+                  loadCatalogos(); // Recargar grupos después de cerrar
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+              <GestionGruposVisualizacion />
             </div>
           </div>
         </div>
