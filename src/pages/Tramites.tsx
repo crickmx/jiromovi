@@ -77,8 +77,8 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_id(nombre_completo, oficina:oficina_id(nombre)),
-          responsable:assigned_to_user_id(nombre_completo),
+          agente:assigned_to_user_id(nombre_completo, oficina:oficina_id(nombre)),
+          responsable:creado_por(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo))
         `)
@@ -99,13 +99,12 @@ export function Tramites() {
 
       console.log('Tramites loaded:', data?.length, 'tramites');
       if (data && data.length > 0) {
-        console.log('First tramite raw data:', {
+        console.log('First tramite:', {
           folio: data[0].folio,
+          assigned_to: data[0].assigned_to_user_id,
           creado_por: data[0].creado_por,
-          agente_id: data[0].agente_id,
-          assigned_to_user_id: data[0].assigned_to_user_id,
-          agente: data[0].agente,
-          responsable: data[0].responsable
+          agente_nombre: data[0].agente?.nombre_completo,
+          responsable_nombre: data[0].responsable?.nombre_completo
         });
       }
 
