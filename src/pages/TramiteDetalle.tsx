@@ -273,7 +273,11 @@ export function TramiteDetalle() {
               <>
                 {!editing ? (
                   <button
-                    onClick={() => setEditing(true)}
+                    onClick={() => {
+                      setEditing(true);
+                      setSelectedEstatus(tramite.estatus?.id || '');
+                      setSelectedPrioridad(tramite.prioridad);
+                    }}
                     className="flex items-center space-x-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl transition-all font-semibold"
                   >
                     <Edit2 className="w-4 h-4" />
