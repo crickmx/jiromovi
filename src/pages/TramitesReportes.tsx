@@ -845,9 +845,8 @@ export default function TramitesReportes() {
                     <table className="w-full">
                       <thead className="bg-neutral-100">
                         <tr>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Folio</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Solicitante / Folio</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Tipo</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Ejecutivo</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Estatus</th>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Fecha</th>
                           <th className="text-center py-3 px-4 text-sm font-semibold text-neutral-700">Acciones</th>
@@ -856,9 +855,13 @@ export default function TramitesReportes() {
                       <tbody>
                         {userGroup.tramites.map((tramite) => (
                           <tr key={tramite.id} className="border-t border-neutral-200 hover:bg-neutral-50">
-                            <td className="py-3 px-4 text-sm font-mono text-neutral-900">{tramite.folio}</td>
+                            <td className="py-3 px-4">
+                              <div className="flex flex-col">
+                                <span className="text-sm text-neutral-900 font-medium">{tramite.solicitante_nombre}</span>
+                                <span className="text-sm font-mono text-accent font-semibold">{tramite.folio}</span>
+                              </div>
+                            </td>
                             <td className="py-3 px-4 text-sm text-neutral-600">{tramite.tipo_tramite?.replace(/_/g, ' ')}</td>
-                            <td className="py-3 px-4 text-sm text-neutral-900">{tramite.solicitante_nombre}</td>
                             <td className="py-3 px-4">
                               <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
                                 tramite.estatus_calculado === 'Finalizado' ? 'bg-green-100 text-green-700' :
@@ -928,9 +931,8 @@ export default function TramitesReportes() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-neutral-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Folio</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Solicitante / Folio</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Tipo</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Ejecutivo</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Agente</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Oficina</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Estatus</th>
@@ -941,9 +943,13 @@ export default function TramitesReportes() {
             <tbody>
               {tramitesFiltrados.slice(0, 50).map((tramite, idx) => (
                 <tr key={idx} className="border-b border-neutral-100 hover:bg-neutral-50">
-                  <td className="py-3 px-4 text-sm font-mono text-neutral-900">{tramite.folio}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm text-neutral-900 font-medium">{tramite.solicitante_nombre}</span>
+                      <span className="text-sm font-mono text-accent font-semibold">{tramite.folio}</span>
+                    </div>
+                  </td>
                   <td className="py-3 px-4 text-sm text-neutral-600">{tramite.tipo_tramite?.replace(/_/g, ' ')}</td>
-                  <td className="py-3 px-4 text-sm text-neutral-900">{tramite.solicitante_nombre}</td>
                   <td className="py-3 px-4 text-sm text-neutral-900">{tramite.asignado_nombre || 'Sin asignar'}</td>
                   <td className="py-3 px-4 text-sm text-neutral-600">{tramite.oficina_nombre || 'N/A'}</td>
                   <td className="py-3 px-4">

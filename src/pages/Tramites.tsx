@@ -80,7 +80,7 @@ export function Tramites() {
           *,
           agente:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
-          solicitante:creado_por(nombre_completo, oficina:oficina_id(nombre))
+          solicitante:agente_solicitante_id(nombre_completo, oficina:oficina_id(nombre))
         `)
         .order('fecha_creacion', { ascending: false });
 
@@ -130,6 +130,7 @@ export function Tramites() {
                        tramite.instrucciones.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.poliza?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.agente?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       tramite.solicitante?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        getTipoTramiteLabel(tramite.tipo_tramite).toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchEstatus = selectedEstatus === 'todos' || tramite.estatus?.id === selectedEstatus;
