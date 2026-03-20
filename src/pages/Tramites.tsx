@@ -345,10 +345,10 @@ export function Tramites() {
 
                 {/* Cuarta línea: Información adicional */}
                 <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
-                  {tramite.solicitante && (
+                  {tramite.responsable && (
                     <span className="flex items-center space-x-1">
                       <span className="font-medium">Agente:</span>
-                      <span>{tramite.solicitante.nombre_completo}</span>
+                      <span>{tramite.responsable.nombre_completo}</span>
                     </span>
                   )}
                   {tramite.poliza && (
@@ -358,10 +358,10 @@ export function Tramites() {
                       <span>{tramite.poliza}</span>
                     </span>
                   )}
-                  {tramite.responsable && (
+                  {tramite.solicitante && (
                     <span className="flex items-center space-x-1">
                       <span className="font-medium">Responsable:</span>
-                      <span>{tramite.responsable.nombre_completo}</span>
+                      <span>{tramite.solicitante.nombre_completo}</span>
                     </span>
                   )}
                 </div>
