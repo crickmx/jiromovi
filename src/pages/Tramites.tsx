@@ -292,95 +292,100 @@ export function Tramites() {
               onClick={() => navigate(`/tramites/${tramite.id}`)}
               className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5 hover:shadow-medium transition-all duration-200 cursor-pointer"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg font-bold text-accent">{tramite.folio}</span>
-                      {tramite.solicitante && (
-                        <div className="flex items-center space-x-1.5 text-sm text-neutral-600">
-                          <span>•</span>
-                          <span className="font-medium">{tramite.solicitante.nombre_completo}</span>
-                          {tramite.solicitante.oficina && (
-                            <>
-                              <span className="text-neutral-400">|</span>
-                              <span>{tramite.solicitante.oficina.nombre}</span>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700 border border-neutral-300">
-                      {getTipoTramiteLabel(tramite.tipo_tramite)}
-                    </span>
-                    {tramite.estatus && (
-                      <span
-                        className="px-3 py-1 rounded-full text-xs font-semibold"
-                        style={{
-                          backgroundColor: tramite.estatus.color + '20',
-                          color: tramite.estatus.color,
-                          borderColor: tramite.estatus.color,
-                          borderWidth: '1px'
-                        }}
-                      >
-                        {tramite.estatus.nombre}
-                      </span>
+              <div className="space-y-3">
+                {/* Primera línea: Folio + Solicitante + Oficina alineados a la derecha junto a la fecha */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 flex-1">
+                    <span className="text-lg font-bold text-accent">{tramite.folio}</span>
+                    {tramite.solicitante && (
+                      <div className="flex items-center space-x-1.5 text-sm text-neutral-600">
+                        <span>•</span>
+                        <span className="font-medium">{tramite.solicitante.nombre_completo}</span>
+                        {tramite.solicitante.oficina && (
+                          <>
+                            <span className="text-neutral-400">|</span>
+                            <span>{tramite.solicitante.oficina.nombre}</span>
+                          </>
+                        )}
+                      </div>
                     )}
-                    <span className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-semibold border ${getPrioridadColor(tramite.prioridad)}`}>
-                      {getPrioridadIcon(tramite.prioridad)}
-                      <span>{tramite.prioridad}</span>
-                    </span>
                   </div>
 
-                  <p className="text-neutral-900 font-medium mb-2 line-clamp-2">
-                    {tramite.instrucciones}
-                  </p>
-
-                  <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
-                    {tramite.agente && (
-                      <span className="flex items-center space-x-1">
-                        <span className="font-medium">Agente:</span>
-                        <span>{tramite.agente.nombre_completo}</span>
-                      </span>
-                    )}
-                    {tramite.poliza && (
-                      <span className="flex items-center space-x-1">
-                        <FileText className="w-4 h-4" />
-                        <span className="font-medium">Póliza:</span>
-                        <span>{tramite.poliza}</span>
-                      </span>
-                    )}
-                    {tramite.assigned_to_user && (
-                      <span className="flex items-center space-x-1">
-                        <span className="font-medium">Responsable:</span>
-                        <span>{tramite.assigned_to_user.nombre_completo}</span>
-                      </span>
-                    )}
-                    {tramite.ticket_asignaciones.length > 0 && (
-                      <span className="flex items-center space-x-1">
-                        <span className="font-medium">Asignado a:</span>
-                        <span>
-                          {tramite.ticket_asignaciones.map(a => a.ejecutivo?.nombre_completo).join(', ')}
-                        </span>
-                      </span>
-                    )}
+                  <div className="text-right text-sm text-neutral-500 ml-4 flex-shrink-0">
+                    <div>
+                      {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </div>
+                    <div className="text-xs mt-1">
+                      {new Date(tramite.fecha_creacion).toLocaleTimeString('es-MX', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
                   </div>
                 </div>
 
-                <div className="text-right text-sm text-neutral-500 ml-4">
-                  <div>
-                    {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
-                  </div>
-                  <div className="text-xs mt-1">
-                    {new Date(tramite.fecha_creacion).toLocaleTimeString('es-MX', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
+                {/* Segunda línea: Badges y etiquetas */}
+                <div className="flex items-center space-x-3">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700 border border-neutral-300">
+                    {getTipoTramiteLabel(tramite.tipo_tramite)}
+                  </span>
+                  {tramite.estatus && (
+                    <span
+                      className="px-3 py-1 rounded-full text-xs font-semibold"
+                      style={{
+                        backgroundColor: tramite.estatus.color + '20',
+                        color: tramite.estatus.color,
+                        borderColor: tramite.estatus.color,
+                        borderWidth: '1px'
+                      }}
+                    >
+                      {tramite.estatus.nombre}
+                    </span>
+                  )}
+                  <span className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-semibold border ${getPrioridadColor(tramite.prioridad)}`}>
+                    {getPrioridadIcon(tramite.prioridad)}
+                    <span>{tramite.prioridad}</span>
+                  </span>
+                </div>
+
+                {/* Tercera línea: Descripción */}
+                <p className="text-neutral-900 font-medium line-clamp-2">
+                  {tramite.instrucciones}
+                </p>
+
+                {/* Cuarta línea: Información adicional */}
+                <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
+                  {tramite.agente && (
+                    <span className="flex items-center space-x-1">
+                      <span className="font-medium">Agente:</span>
+                      <span>{tramite.agente.nombre_completo}</span>
+                    </span>
+                  )}
+                  {tramite.poliza && (
+                    <span className="flex items-center space-x-1">
+                      <FileText className="w-4 h-4" />
+                      <span className="font-medium">Póliza:</span>
+                      <span>{tramite.poliza}</span>
+                    </span>
+                  )}
+                  {tramite.assigned_to_user && (
+                    <span className="flex items-center space-x-1">
+                      <span className="font-medium">Responsable:</span>
+                      <span>{tramite.assigned_to_user.nombre_completo}</span>
+                    </span>
+                  )}
+                  {tramite.ticket_asignaciones.length > 0 && (
+                    <span className="flex items-center space-x-1">
+                      <span className="font-medium">Asignado a:</span>
+                      <span>
+                        {tramite.ticket_asignaciones.map(a => a.ejecutivo?.nombre_completo).join(', ')}
+                      </span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
