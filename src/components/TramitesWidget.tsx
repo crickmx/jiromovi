@@ -18,6 +18,12 @@ interface TramiteItem {
     nombre: string;
     color: string;
   } | null;
+  solicitante: {
+    nombre_completo: string;
+    oficina: {
+      nombre: string;
+    } | null;
+  } | null;
 }
 
 export function TramitesWidget() {
@@ -42,7 +48,11 @@ export function TramitesWidget() {
           folio,
           prioridad,
           instrucciones,
-          estatus:estatus_id(nombre, color)
+          estatus:estatus_id(nombre, color),
+          solicitante:agente_solicitante_id(
+            nombre_completo,
+            oficina:oficina_id(nombre)
+          )
         `)
         .is('cerrado_en', null)
         .or(`assigned_to_user_id.eq.${usuario.id},creado_por.eq.${usuario.id}`)
@@ -65,7 +75,11 @@ export function TramitesWidget() {
             folio,
             prioridad,
             instrucciones,
-            estatus:estatus_id(nombre, color)
+            estatus:estatus_id(nombre, color),
+            solicitante:agente_solicitante_id(
+              nombre_completo,
+              oficina:oficina_id(nombre)
+            )
           `)
           .is('cerrado_en', null)
           .in('id', ticketIds)
@@ -155,10 +169,23 @@ export function TramitesWidget() {
                 className="p-4 border border-neutral-200 rounded-xl hover:shadow-ios-md hover:border-primary-200 transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-2">
-                  <span className="text-sm font-bold text-accent">
-                    {tramite.folio}
-                  </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {tramite.solicitante && (
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-600 mr-2">
+                        <span className="font-medium truncate">{tramite.solicitante.nombre_completo}</span>
+                        {tramite.solicitante.oficina && (
+                          <>
+                            <span className="text-neutral-400">|</span>
+                            <span className="truncate">{tramite.solicitante.oficina.nombre}</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    <span className="text-sm font-bold text-accent flex-shrink-0">
+                      {tramite.folio}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                     {tramite.estatus && (
                       <Badge
                         variant="outline"
