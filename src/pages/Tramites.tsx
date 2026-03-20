@@ -23,10 +23,9 @@ interface TramiteItem {
   fecha_creacion: string;
   ultima_modificacion: string;
   cerrado_en: string | null;
-  agente: { nombre_completo: string } | null;
+  agente: { nombre_completo: string; oficina: { nombre: string } | null } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
-  solicitante: { nombre_completo: string; oficina: { nombre: string } | null } | null;
   ticket_asignaciones: Array<{
     ejecutivo: { nombre_completo: string } | null;
   }>;
@@ -78,10 +77,10 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_id(nombre_completo),
+          agente:agente_id(nombre_completo, oficina:oficina_id(nombre)),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
-          solicitante:agente_id(nombre_completo, oficina:oficina_id(nombre))
+          ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo))
         `)
         .order('fecha_creacion', { ascending: false });
 
@@ -292,16 +291,16 @@ export function Tramites() {
               className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5 hover:shadow-medium transition-all duration-200 cursor-pointer"
             >
               <div className="space-y-3">
-                {/* Primera línea: Solicitante + Oficina + Folio (derecha) + Fecha (extrema derecha) */}
+                {/* Primera línea: Agente + Oficina + Folio (derecha) + Fecha (extrema derecha) */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3 flex-1">
-                    {tramite.solicitante && (
+                    {tramite.agente && (
                       <div className="flex items-center space-x-1.5 text-sm text-neutral-600">
-                        <span className="font-medium">{tramite.solicitante.nombre_completo}</span>
-                        {tramite.solicitante.oficina && (
+                        <span className="font-medium">{tramite.agente.nombre_completo}</span>
+                        {tramite.agente.oficina && (
                           <>
                             <span className="text-neutral-400">|</span>
-                            <span>{tramite.solicitante.oficina.nombre}</span>
+                            <span>{tramite.agente.oficina.nombre}</span>
                           </>
                         )}
                       </div>
@@ -357,12 +356,6 @@ export function Tramites() {
 
                 {/* Cuarta línea: Información adicional */}
                 <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
-                  {tramite.agente && (
-                    <span className="flex items-center space-x-1">
-                      <span className="font-medium">Agente:</span>
-                      <span>{tramite.agente.nombre_completo}</span>
-                    </span>
-                  )}
                   {tramite.responsable && (
                     <span className="flex items-center space-x-1">
                       <span className="font-medium">Responsable:</span>
@@ -376,11 +369,11 @@ export function Tramites() {
                       <span>{tramite.poliza}</span>
                     </span>
                   )}
-                  {tramite.ticket_asignaciones.length > 0 && (
+                  {tramite.ticket_asignaciones && tramite.ticket_asignaciones.length > 0 && (
                     <span className="flex items-center space-x-1">
                       <span className="font-medium">Asignado a:</span>
                       <span>
-                        {tramite.ticket_asignaciones.map(a => a.ejecutivo?.nombre_completo).join(', ')}
+                        {tramite.ticket_asignaciones.map(a => a.ejecutivo?.nombre_completo).filter(Boolean).join(', ')}
                       </span>
                     </span>
                   )}
