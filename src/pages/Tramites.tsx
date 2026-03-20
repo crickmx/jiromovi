@@ -23,7 +23,7 @@ interface TramiteItem {
   fecha_creacion: string;
   ultima_modificacion: string;
   cerrado_en: string | null;
-  agente: { nombre_completo: string; oficina: { nombre: string } | null } | null;
+  solicitante: { nombre_completo: string; oficina: { nombre: string } | null } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
   ticket_asignaciones: Array<{
@@ -77,7 +77,7 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_id(nombre_completo, oficina:oficina_id(nombre)),
+          solicitante:creado_por(nombre_completo, oficina:oficina_id(nombre)),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo))
@@ -291,16 +291,16 @@ export function Tramites() {
               className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5 hover:shadow-medium transition-all duration-200 cursor-pointer"
             >
               <div className="space-y-3">
-                {/* Primera línea: Agente + Oficina + Folio (derecha) + Fecha (extrema derecha) */}
+                {/* Primera línea: Solicitante + Oficina + Folio (derecha) + Fecha (extrema derecha) */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3 flex-1">
-                    {tramite.agente && (
+                    {tramite.solicitante && (
                       <div className="flex items-center space-x-1.5 text-sm text-neutral-600">
-                        <span className="font-medium">{tramite.agente.nombre_completo}</span>
-                        {tramite.agente.oficina && (
+                        <span className="font-medium">{tramite.solicitante.nombre_completo}</span>
+                        {tramite.solicitante.oficina && (
                           <>
                             <span className="text-neutral-400">|</span>
-                            <span>{tramite.agente.oficina.nombre}</span>
+                            <span>{tramite.solicitante.oficina.nombre}</span>
                           </>
                         )}
                       </div>
