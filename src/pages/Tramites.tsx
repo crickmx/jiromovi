@@ -126,8 +126,8 @@ export function Tramites() {
     const matchSearch = tramite.folio.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.instrucciones.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.poliza?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       tramite.agente?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        tramite.solicitante?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       tramite.responsable?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        getTipoTramiteLabel(tramite.tipo_tramite).toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchEstatus = selectedEstatus === 'todos' || tramite.estatus?.id === selectedEstatus;
