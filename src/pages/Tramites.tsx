@@ -110,9 +110,6 @@ export function Tramites() {
         // Merge asignaciones into tramites
         const tramitesWithAsignaciones = data.map(tramite => ({
           ...tramite,
-          assigned_to_user: tramite.assigned_to_user_id
-            ? { nombre_completo: tramite.agente?.nombre_completo || '' }
-            : null,
           ticket_asignaciones: asignaciones?.filter(a => a.ticket_id === tramite.id) || []
         }));
 
@@ -361,7 +358,7 @@ export function Tramites() {
                 <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
                   {tramite.agente && (
                     <span className="flex items-center space-x-1">
-                      <span className="font-medium">Agente:</span>
+                      <span className="font-medium">Responsable:</span>
                       <span>{tramite.agente.nombre_completo}</span>
                     </span>
                   )}
@@ -370,12 +367,6 @@ export function Tramites() {
                       <FileText className="w-4 h-4" />
                       <span className="font-medium">Póliza:</span>
                       <span>{tramite.poliza}</span>
-                    </span>
-                  )}
-                  {tramite.assigned_to_user && (
-                    <span className="flex items-center space-x-1">
-                      <span className="font-medium">Responsable:</span>
-                      <span>{tramite.assigned_to_user.nombre_completo}</span>
                     </span>
                   )}
                   {tramite.ticket_asignaciones.length > 0 && (
