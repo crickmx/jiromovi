@@ -97,14 +97,12 @@ export function Tramites() {
         return;
       }
 
-      console.log('Tramites loaded:', data?.length, 'tramites');
+      console.log('✅ CÓDIGO ACTUALIZADO - Tramites loaded:', data?.length, 'tramites');
       if (data && data.length > 0) {
-        console.log('First tramite:', {
+        console.log('🔍 Primer trámite:', {
           folio: data[0].folio,
-          assigned_to: data[0].assigned_to_user_id,
-          creado_por: data[0].creado_por,
-          agente_nombre: data[0].agente?.nombre_completo,
-          responsable_nombre: data[0].responsable?.nombre_completo
+          '👤 Agente (assigned_to)': data[0].agente?.nombre_completo,
+          '📝 Responsable (creador)': data[0].responsable?.nombre_completo
         });
       }
 
