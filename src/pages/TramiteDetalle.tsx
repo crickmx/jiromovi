@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -55,12 +55,14 @@ export function TramiteDetalle() {
   const [selectedEstatus, setSelectedEstatus] = useState('');
   const [selectedPrioridad, setSelectedPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
   const [saving, setSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const isOwner = tramite?.creado_por === usuario?.id;
   const isAssigned = tramite?.assigned_to_user_id === usuario?.id;
   const canEdit = isAdmin || isGerente || isOwner || isAssigned;
+  const canEditQuick = (isAdmin || isOwner) && !editing;
   const isCerrado = tramite?.cerrado_en !== null;
 
   useEffect(() => {
@@ -168,6 +170,48 @@ export function TramiteDetalle() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleQuickSave = async () => {
+    if (!tramite || !usuario) return;
+
+    // Clear any pending save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Debounce the save by 500ms
+    saveTimeoutRef.current = setTimeout(async () => {
+      setSaving(true);
+
+      const newEstatus = estatusList.find(e => e.id === selectedEstatus);
+      setTramite(prev => prev ? {
+        ...prev,
+        prioridad: selectedPrioridad,
+        estatus: newEstatus || prev.estatus
+      } : null);
+
+      try {
+        const { error } = await supabase
+          .from('tickets')
+          .update({
+            estatus_id: selectedEstatus,
+            prioridad: selectedPrioridad,
+            modificado_por: usuario.id
+          })
+          .eq('id', tramite.id);
+
+        if (error) throw error;
+
+        await loadTramite();
+      } catch (err: any) {
+        console.error('Error updating tramite:', err);
+        alert('Error al actualizar el tramite');
+        await loadTramite();
+      } finally {
+        setSaving(false);
+      }
+    }, 500);
   };
 
   const handleCerrar = async () => {
@@ -400,6 +444,8 @@ export function TramiteDetalle() {
             setSelectedEstatus={setSelectedEstatus}
             selectedPrioridad={selectedPrioridad}
             setSelectedPrioridad={setSelectedPrioridad}
+            canEditQuick={canEditQuick}
+            onQuickSave={handleQuickSave}
           />
         )}
         {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} />}

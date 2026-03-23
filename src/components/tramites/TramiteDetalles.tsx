@@ -53,6 +53,8 @@ interface TramiteDetallesProps {
   setSelectedEstatus: (value: string) => void;
   selectedPrioridad: 'Alta' | 'Media' | 'Baja';
   setSelectedPrioridad: (value: 'Alta' | 'Media' | 'Baja') => void;
+  canEditQuick?: boolean;
+  onQuickSave?: () => void;
 }
 
 export function TramiteDetalles({
@@ -62,7 +64,9 @@ export function TramiteDetalles({
   selectedEstatus,
   setSelectedEstatus,
   selectedPrioridad,
-  setSelectedPrioridad
+  setSelectedPrioridad,
+  canEditQuick = false,
+  onQuickSave
 }: TramiteDetallesProps) {
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
 
@@ -117,12 +121,20 @@ export function TramiteDetalles({
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
             <AlertCircle className="w-4 h-4 inline mr-2" />
             Prioridad
+            {canEditQuick && !editing && (
+              <span className="ml-2 text-xs text-accent font-normal">(editable)</span>
+            )}
           </label>
-          {editing ? (
+          {(editing || canEditQuick) ? (
             <select
               value={selectedPrioridad}
-              onChange={(e) => setSelectedPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+              onChange={(e) => {
+                setSelectedPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja');
+                if (canEditQuick && onQuickSave) {
+                  onQuickSave();
+                }
+              }}
+              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
             >
               <option value="Baja">Baja</option>
               <option value="Media">Media</option>
@@ -138,12 +150,20 @@ export function TramiteDetalles({
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
             Estatus
+            {canEditQuick && !editing && (
+              <span className="ml-2 text-xs text-accent font-normal">(editable)</span>
+            )}
           </label>
-          {editing ? (
+          {(editing || canEditQuick) ? (
             <select
               value={selectedEstatus}
-              onChange={(e) => setSelectedEstatus(e.target.value)}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+              onChange={(e) => {
+                setSelectedEstatus(e.target.value);
+                if (canEditQuick && onQuickSave) {
+                  onQuickSave();
+                }
+              }}
+              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
             >
               {estatusList.map(estatus => (
                 <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>
