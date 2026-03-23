@@ -363,7 +363,7 @@ export default function TramitesReportes() {
         .from('tickets')
         .select(`
           *,
-          agente:assigned_to_user_id(id, nombre_completo),
+          agente:agente_id(id, nombre_completo),
           estatus:estatus_id(*),
           creado_por_usuario:creado_por(id, nombre_completo),
           modificado_por_usuario:modificado_por(id, nombre_completo),
