@@ -95,36 +95,61 @@ export function TramiteDetalle() {
   const loadTramite = async () => {
     if (!id) return;
 
-    const { data, error } = await supabase
+    // Primero obtener el ticket base
+    const { data: ticketData, error: ticketError } = await supabase
       .from('tickets')
-      .select(`
-        *,
-        agente:usuarios!tickets_agente_id_fkey(id, nombre_completo),
-        responsable:usuarios!tickets_assigned_to_user_id_fkey(id, nombre_completo),
-        estatus:ticket_estatus!tickets_estatus_id_fkey(*),
-        creado_por_usuario:usuarios!tickets_creado_por_fkey(id, nombre_completo),
-        modificado_por_usuario:usuarios!tickets_modificado_por_fkey(id, nombre_completo),
-        cerrado_por_usuario:usuarios!tickets_cerrado_por_fkey(id, nombre_completo),
-        activity_subtype:registro_actividades_tipos_tramite!tickets_activity_subtype_id_fkey(id, nombre),
-        requester_user:usuarios!tickets_requester_user_id_fkey(id, nombre_completo),
-        insurance_type:registro_actividades_tipos_seguro!tickets_insurance_type_id_fkey(id, nombre),
-        attending_user:usuarios!tickets_attending_user_id_fkey(id, nombre_completo)
-      `)
+      .select('*')
       .eq('id', id)
       .single();
 
-    if (error) {
-      console.error('Error loading tramite:', error);
+    if (ticketError) {
+      console.error('Error loading tramite:', ticketError);
       navigate('/tramites');
       return;
     }
 
-    if (data) {
-      setTramite(data as TramiteData);
-      setSelectedEstatus(data.estatus_id);
-      setSelectedPrioridad(data.prioridad);
-      setLoading(false);
+    if (!ticketData) return;
+
+    // Ahora hacer queries separadas para cada relación
+    const [agenteRes, responsableRes, estatusRes, creadoPorRes, modificadoPorRes, cerradoPorRes] = await Promise.all([
+      ticketData.agente_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.agente_id).maybeSingle() : Promise.resolve({ data: null }),
+      ticketData.assigned_to_user_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.assigned_to_user_id).maybeSingle() : Promise.resolve({ data: null }),
+      ticketData.estatus_id ? supabase.from('ticket_estatus').select('*').eq('id', ticketData.estatus_id).maybeSingle() : Promise.resolve({ data: null }),
+      ticketData.creado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.creado_por).maybeSingle() : Promise.resolve({ data: null }),
+      ticketData.modificado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.modificado_por).maybeSingle() : Promise.resolve({ data: null }),
+      ticketData.cerrado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.cerrado_por).maybeSingle() : Promise.resolve({ data: null })
+    ]);
+
+    // Construir el objeto final
+    const tramiteCompleto = {
+      ...ticketData,
+      agente: agenteRes.data,
+      responsable: responsableRes.data,
+      estatus: estatusRes.data,
+      creado_por_usuario: creadoPorRes.data,
+      modificado_por_usuario: modificadoPorRes.data,
+      cerrado_por_usuario: cerradoPorRes.data
+    };
+
+    // Si es un registro de actividad, obtener datos adicionales
+    if (ticketData.tipo_tramite === 'registro_actividad') {
+      const [subtypeRes, requesterRes, insuranceRes, attendingRes] = await Promise.all([
+        ticketData.activity_subtype_id ? supabase.from('registro_actividades_tipos_tramite').select('id, nombre').eq('id', ticketData.activity_subtype_id).maybeSingle() : Promise.resolve({ data: null }),
+        ticketData.requester_user_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.requester_user_id).maybeSingle() : Promise.resolve({ data: null }),
+        ticketData.insurance_type_id ? supabase.from('registro_actividades_tipos_seguro').select('id, nombre').eq('id', ticketData.insurance_type_id).maybeSingle() : Promise.resolve({ data: null }),
+        ticketData.attending_user_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.attending_user_id).maybeSingle() : Promise.resolve({ data: null })
+      ]);
+
+      tramiteCompleto.activity_subtype = subtypeRes.data;
+      tramiteCompleto.requester_user = requesterRes.data;
+      tramiteCompleto.insurance_type = insuranceRes.data;
+      tramiteCompleto.attending_user = attendingRes.data;
     }
+
+    setTramite(tramiteCompleto as TramiteData);
+    setSelectedEstatus(ticketData.estatus_id);
+    setSelectedPrioridad(ticketData.prioridad);
+    setLoading(false);
   };
 
   const loadEstatus = async () => {
