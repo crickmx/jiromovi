@@ -99,16 +99,16 @@ export function TramiteDetalle() {
       .from('tickets')
       .select(`
         *,
-        agente:agente_id(id, nombre_completo),
-        responsable:assigned_to_user_id(id, nombre_completo),
-        estatus:estatus_id(*),
-        creado_por_usuario:creado_por(id, nombre_completo),
-        modificado_por_usuario:modificado_por(id, nombre_completo),
-        cerrado_por_usuario:cerrado_por(id, nombre_completo),
-        activity_subtype:activity_subtype_id(id, nombre),
-        requester_user:requester_user_id(id, nombre_completo),
-        insurance_type:insurance_type_id(id, nombre),
-        attending_user:attending_user_id(id, nombre_completo)
+        agente:usuarios!tickets_agente_id_fkey(id, nombre_completo),
+        responsable:usuarios!tickets_assigned_to_user_id_fkey(id, nombre_completo),
+        estatus:ticket_estatus!tickets_estatus_id_fkey(*),
+        creado_por_usuario:usuarios!tickets_creado_por_fkey(id, nombre_completo),
+        modificado_por_usuario:usuarios!tickets_modificado_por_fkey(id, nombre_completo),
+        cerrado_por_usuario:usuarios!tickets_cerrado_por_fkey(id, nombre_completo),
+        activity_subtype:registro_actividades_tipos_tramite!tickets_activity_subtype_id_fkey(id, nombre),
+        requester_user:usuarios!tickets_requester_user_id_fkey(id, nombre_completo),
+        insurance_type:registro_actividades_tipos_seguro!tickets_insurance_type_id_fkey(id, nombre),
+        attending_user:usuarios!tickets_attending_user_id_fkey(id, nombre_completo)
       `)
       .eq('id', id)
       .single();
