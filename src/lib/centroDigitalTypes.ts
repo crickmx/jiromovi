@@ -34,6 +34,8 @@ export interface CentroDigitalArchivo {
   cargado_por: string | null;
   eliminado_por: string | null;
   fecha_eliminacion: string | null;
+  visible_para_todos: boolean;
+  visible_para_oficina: string | null;
   created_at: string;
   updated_at: string;
 
@@ -46,6 +48,7 @@ export interface CentroDigitalArchivo {
   carpeta?: {
     nombre: string;
   };
+  usuarios_con_permiso?: { usuario_id: string }[];
 }
 
 export interface CentroDigitalAuditoria {
@@ -81,6 +84,9 @@ export interface ArchivoUpload {
   file: File;
   nombre: string;
   carpeta_id: string;
+  visible_para_todos?: boolean;
+  visible_para_oficina?: string | null;
+  usuarios_con_permiso?: string[];
 }
 
 export const ROLES_DISPONIBLES = [

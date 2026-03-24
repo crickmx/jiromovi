@@ -1,9 +1,12 @@
-import { useState } from 'react';
-import { X, Upload, File, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Upload, File, AlertCircle, Users, Building2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
 import { subirArchivo } from '../../lib/centroDigitalUtils';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SubirArchivoModalProps {
   carpetaId: string;
@@ -12,17 +15,73 @@ interface SubirArchivoModalProps {
   onSuccess: () => void;
 }
 
+interface Usuario {
+  id: string;
+  nombre_completo: string;
+  oficina_id: string | null;
+}
+
+interface Oficina {
+  id: string;
+  nombre: string;
+}
+
 export function SubirArchivoModal({
   carpetaId,
   carpetaNombre,
   onClose,
   onSuccess
 }: SubirArchivoModalProps) {
+  const { usuario } = useAuth();
   const [archivo, setArchivo] = useState<File | null>(null);
   const [nombre, setNombre] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [progreso, setProgreso] = useState(0);
+
+  const [visibleParaTodos, setVisibleParaTodos] = useState(false);
+  const [oficinas, setOficinas] = useState<Oficina[]>([]);
+  const [oficinaSeleccionada, setOficinaSeleccionada] = useState<string>('');
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [usuariosSeleccionados, setUsuariosSeleccionados] = useState<string[]>([]);
+  const [mostrarPermisos, setMostrarPermisos] = useState(false);
+
+  const esAdmin = usuario?.rol === 'Administrador';
+  const esGerente = usuario?.rol === 'Gerente';
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  async function cargarDatos() {
+    const { data: oficinasData } = await supabase
+      .from('oficinas')
+      .select('id, nombre')
+      .eq('activa', true)
+      .order('nombre');
+
+    if (oficinasData) {
+      setOficinas(oficinasData);
+
+      if (esGerente && usuario?.oficina_id) {
+        setOficinaSeleccionada(usuario.oficina_id);
+      }
+    }
+
+    let query = supabase
+      .from('usuarios')
+      .select('id, nombre_completo, oficina_id')
+      .order('nombre_completo');
+
+    if (esGerente && usuario?.oficina_id) {
+      query = query.eq('oficina_id', usuario.oficina_id);
+    }
+
+    const { data: usuariosData } = await query;
+    if (usuariosData) {
+      setUsuarios(usuariosData);
+    }
+  }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -32,11 +91,24 @@ export function SubirArchivoModal({
     }
   }
 
+  function toggleUsuario(usuarioId: string) {
+    setUsuariosSeleccionados(prev =>
+      prev.includes(usuarioId)
+        ? prev.filter(id => id !== usuarioId)
+        : [...prev, usuarioId]
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!archivo || !nombre.trim()) {
       setError('Selecciona un archivo y proporciona un nombre');
+      return;
+    }
+
+    if (esGerente && oficinaSeleccionada !== usuario?.oficina_id) {
+      setError('Solo puedes asignar archivos a tu oficina');
       return;
     }
 
@@ -58,7 +130,10 @@ export function SubirArchivoModal({
       await subirArchivo({
         file: archivo,
         nombre: nombre.trim(),
-        carpeta_id: carpetaId
+        carpeta_id: carpetaId,
+        visible_para_todos: visibleParaTodos,
+        visible_para_oficina: oficinaSeleccionada || null,
+        usuarios_con_permiso: usuariosSeleccionados
       });
 
       clearInterval(progressInterval);
@@ -147,20 +222,113 @@ export function SubirArchivoModal({
           </div>
 
           {archivo && (
-            <div>
-              <Label htmlFor="nombre">Nombre del archivo *</Label>
-              <Input
-                id="nombre"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Nombre descriptivo"
-                required
-                disabled={loading}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Este nombre aparecerá en el Centro Digital
-              </p>
-            </div>
+            <>
+              <div>
+                <Label htmlFor="nombre">Nombre del archivo *</Label>
+                <Input
+                  id="nombre"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Nombre descriptivo"
+                  required
+                  disabled={loading}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Este nombre aparecerá en el Centro Digital
+                </p>
+              </div>
+
+              <div className="border-t pt-4">
+                <button
+                  type="button"
+                  onClick={() => setMostrarPermisos(!mostrarPermisos)}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 mb-3"
+                >
+                  <Users className="w-4 h-4" />
+                  Configurar permisos de visibilidad
+                  <span className="text-xs text-gray-500">
+                    ({mostrarPermisos ? 'ocultar' : 'mostrar'})
+                  </span>
+                </button>
+
+                {mostrarPermisos && (
+                  <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Visible para todos</Label>
+                        <p className="text-xs text-gray-500">
+                          Todos los usuarios podrán ver este archivo
+                        </p>
+                      </div>
+                      <Switch
+                        checked={visibleParaTodos}
+                        onCheckedChange={setVisibleParaTodos}
+                        disabled={loading}
+                      />
+                    </div>
+
+                    {!visibleParaTodos && (
+                      <>
+                        <div>
+                          <Label htmlFor="oficina">
+                            <Building2 className="w-4 h-4 inline mr-2" />
+                            Visible para oficina específica
+                          </Label>
+                          <select
+                            id="oficina"
+                            value={oficinaSeleccionada}
+                            onChange={(e) => setOficinaSeleccionada(e.target.value)}
+                            disabled={loading || (esGerente && !!usuario?.oficina_id)}
+                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          >
+                            <option value="">Ninguna (hereda de carpeta)</option>
+                            {oficinas.map((oficina) => (
+                              <option key={oficina.id} value={oficina.id}>
+                                {oficina.nombre}
+                              </option>
+                            ))}
+                          </select>
+                          {esGerente && (
+                            <p className="text-xs text-amber-600 mt-1">
+                              Solo puedes asignar a tu oficina
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label>
+                            <Users className="w-4 h-4 inline mr-2" />
+                            Usuarios con permiso individual
+                          </Label>
+                          <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md">
+                            {usuarios.map((u) => (
+                              <label
+                                key={u.id}
+                                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={usuariosSeleccionados.includes(u.id)}
+                                  onChange={() => toggleUsuario(u.id)}
+                                  disabled={loading}
+                                  className="rounded"
+                                />
+                                <span className="text-sm text-gray-700">
+                                  {u.nombre_completo}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {usuariosSeleccionados.length} usuario(s) seleccionado(s)
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {loading && progreso > 0 && (

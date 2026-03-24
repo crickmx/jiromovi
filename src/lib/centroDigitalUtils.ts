@@ -221,7 +221,7 @@ export async function subirArchivo(upload: ArchivoUpload): Promise<void> {
 
   if (storageError) throw storageError;
 
-  const { error: dbError } = await supabase
+  const { data: archivo, error: dbError } = await supabase
     .from('centro_digital_archivos')
     .insert({
       carpeta_id: upload.carpeta_id,
@@ -231,12 +231,31 @@ export async function subirArchivo(upload: ArchivoUpload): Promise<void> {
       tipo_mime: upload.file.type,
       tamano_bytes: upload.file.size,
       cargado_por: user.id,
-      estado: 'activo'
-    });
+      estado: 'activo',
+      visible_para_todos: upload.visible_para_todos || false,
+      visible_para_oficina: upload.visible_para_oficina || null
+    })
+    .select()
+    .single();
 
   if (dbError) {
     await supabase.storage.from('centro-digital-files').remove([rutaStorage]);
     throw dbError;
+  }
+
+  if (upload.usuarios_con_permiso && upload.usuarios_con_permiso.length > 0) {
+    const permisos = upload.usuarios_con_permiso.map(usuario_id => ({
+      archivo_id: archivo.id,
+      usuario_id
+    }));
+
+    const { error: permisosError } = await supabase
+      .from('centro_digital_archivos_usuarios')
+      .insert(permisos);
+
+    if (permisosError) {
+      console.error('Error al asignar permisos:', permisosError);
+    }
   }
 }
 
