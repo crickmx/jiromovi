@@ -5,7 +5,7 @@ import {
   getTramiteActivityTypes,
   getInsuranceTypes,
   getAseguradoras,
-  getOfficeUsersForRequester,
+  getUsersByOffice,
   getUsersWhoCanAttend,
   createRegistroActividad,
   formatDateTimeForInput,
@@ -35,12 +35,12 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
   const [tramiteTypes, setTramiteTypes] = useState<TramiteActivityType[]>([]);
   const [insuranceTypes, setInsuranceTypes] = useState<InsuranceType[]>([]);
   const [aseguradoras, setAseguradoras] = useState<Aseguradora[]>([]);
-  const [officeUsers, setOfficeUsers] = useState<UsuarioOficina[]>([]);
+  const [agenteUsers, setAgenteUsers] = useState<UsuarioOficina[]>([]);
   const [attendingUsers, setAttendingUsers] = useState<UsuarioOficina[]>([]);
 
   // Form data
   const [activitySubtypeId, setActivitySubtypeId] = useState('');
-  const [requesterUserId, setRequesterUserId] = useState('');
+  const [agenteUserId, setAgenteUserId] = useState('');
   const [insuranceTypeId, setInsuranceTypeId] = useState('');
   const [selectedInsurers, setSelectedInsurers] = useState<string[]>([]);
   const [attendingUserId, setAttendingUserId] = useState('');
@@ -68,21 +68,41 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
     }
   }, [usuario, attendingUsers]);
 
+  // Cargar usuarios de la oficina cuando cambia "Quién Atiende"
+  useEffect(() => {
+    const loadAgenteUsers = async () => {
+      if (!attendingUserId) {
+        setAgenteUsers([]);
+        return;
+      }
+
+      // Buscar la oficina del usuario que atiende
+      const attendingUser = attendingUsers.find(u => u.id === attendingUserId);
+      if (!attendingUser?.oficina_id) {
+        setAgenteUsers([]);
+        return;
+      }
+
+      const users = await getUsersByOffice(attendingUser.oficina_id);
+      setAgenteUsers(users);
+    };
+
+    loadAgenteUsers();
+  }, [attendingUserId, attendingUsers]);
+
   const loadCatalogs = async () => {
     setLoading(true);
     try {
-      const [types, insurance, insurers, office, attending] = await Promise.all([
+      const [types, insurance, insurers, attending] = await Promise.all([
         getTramiteActivityTypes(),
         getInsuranceTypes(),
         getAseguradoras(),
-        getOfficeUsersForRequester(),
         getUsersWhoCanAttend()
       ]);
 
       setTramiteTypes(types);
       setInsuranceTypes(insurance);
       setAseguradoras(insurers);
-      setOfficeUsers(office);
       setAttendingUsers(attending);
     } catch (error) {
       console.error('Error loading catalogs:', error);
@@ -110,7 +130,7 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
 
     const formData: RegistroActividadFormData = {
       activity_subtype_id: activitySubtypeId,
-      requester_user_id: requesterUserId,
+      agente_usuario_id: agenteUserId,
       insurance_type_id: insuranceTypeId,
       insurers: selectedInsurers,
       attending_user_id: attendingUserId,
@@ -220,23 +240,25 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
               </select>
             </div>
 
-            {/* Solicitante */}
+            {/* Quién Atiende */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <User className="w-4 h-4 inline mr-2" />
-                Solicitante *
+                Quién Atiende *
               </label>
               <select
-                value={requesterUserId}
-                onChange={(e) => setRequesterUserId(e.target.value)}
+                value={attendingUserId}
+                onChange={(e) => {
+                  setAttendingUserId(e.target.value);
+                  setAgenteUserId(''); // Limpiar agente cuando cambia quien atiende
+                }}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 required
               >
                 <option value="">Seleccione...</option>
-                {officeUsers.map(user => (
+                {attendingUsers.map(user => (
                   <option key={user.id} value={user.id}>
                     {user.nombre_completo} - {user.rol}
-                    {user.oficina_nombre && ` (${user.oficina_nombre})`}
                   </option>
                 ))}
               </select>
@@ -263,25 +285,34 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
               </select>
             </div>
 
-            {/* Quién Atiende */}
+            {/* Agente */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <User className="w-4 h-4 inline mr-2" />
-                Quién Atiende *
+                Agente *
               </label>
               <select
-                value={attendingUserId}
-                onChange={(e) => setAttendingUserId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                value={agenteUserId}
+                onChange={(e) => setAgenteUserId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
                 required
+                disabled={!attendingUserId}
               >
-                <option value="">Seleccione...</option>
-                {attendingUsers.map(user => (
+                <option value="">
+                  {attendingUserId ? 'Seleccione...' : 'Primero seleccione Quién Atiende'}
+                </option>
+                {agenteUsers.map(user => (
                   <option key={user.id} value={user.id}>
                     {user.nombre_completo} - {user.rol}
+                    {user.oficina_nombre && ` (${user.oficina_nombre})`}
                   </option>
                 ))}
               </select>
+              {attendingUserId && agenteUsers.length === 0 && (
+                <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                  No hay usuarios disponibles en la oficina seleccionada
+                </p>
+              )}
             </div>
           </div>
 

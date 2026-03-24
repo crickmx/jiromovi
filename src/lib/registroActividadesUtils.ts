@@ -83,18 +83,42 @@ export async function getAseguradoras(): Promise<Aseguradora[]> {
 }
 
 /**
- * Obtiene usuarios de la oficina que pueden ser solicitantes
+ * Obtiene usuarios de una oficina específica (para el campo Agente)
+ * Si no se proporciona oficinaId, retorna todos los usuarios activos
  */
-export async function getOfficeUsersForRequester(): Promise<UsuarioOficina[]> {
-  const { data, error } = await supabase
-    .rpc('get_office_users_for_requester');
+export async function getUsersByOffice(oficinaId?: string): Promise<UsuarioOficina[]> {
+  let query = supabase
+    .from('usuarios')
+    .select(`
+      id,
+      nombre_completo,
+      rol,
+      oficina_id,
+      oficinas:oficina_id (
+        nombre
+      )
+    `)
+    .eq('estado', 'activo')
+    .order('nombre_completo');
+
+  if (oficinaId) {
+    query = query.eq('oficina_id', oficinaId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
-    console.error('Error loading office users:', error);
+    console.error('Error loading users by office:', error);
     return [];
   }
 
-  return data || [];
+  return (data || []).map((u: any) => ({
+    id: u.id,
+    nombre_completo: u.nombre_completo,
+    rol: u.rol,
+    oficina_id: u.oficina_id,
+    oficina_nombre: u.oficinas?.nombre || null
+  }));
 }
 
 /**
@@ -117,7 +141,7 @@ export async function getUsersWhoCanAttend(): Promise<UsuarioOficina[]> {
  */
 export async function createRegistroActividad(data: {
   activity_subtype_id: string;
-  requester_user_id: string;
+  agente_usuario_id: string;
   insurance_type_id: string;
   insurers: string[];
   attending_user_id: string;
@@ -158,7 +182,7 @@ export async function createRegistroActividad(data: {
       folio,
       tipo_tramite: 'registro_actividad',
       activity_subtype_id: data.activity_subtype_id,
-      requester_user_id: data.requester_user_id,
+      agente_usuario_id: data.agente_usuario_id,
       insurance_type_id: data.insurance_type_id,
       insurers: data.insurers,
       attending_user_id: data.attending_user_id,

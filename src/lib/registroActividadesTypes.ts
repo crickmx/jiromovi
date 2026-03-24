@@ -32,7 +32,7 @@ export interface Aseguradora {
 
 export interface RegistroActividadFormData {
   activity_subtype_id: string;
-  requester_user_id: string;
+  agente_usuario_id: string; // Campo unificado: antes era requester_user_id
   insurance_type_id: string;
   insurers: string[]; // Array de UUIDs de aseguradoras
   attending_user_id: string;
@@ -78,8 +78,8 @@ export function validateRegistroActividadForm(
     errors.push('El tipo de trámite es obligatorio');
   }
 
-  if (!data.requester_user_id) {
-    errors.push('El solicitante es obligatorio');
+  if (!data.agente_usuario_id) {
+    errors.push('El agente es obligatorio');
   }
 
   if (!data.insurance_type_id) {
