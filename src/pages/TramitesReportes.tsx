@@ -11,6 +11,7 @@ import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
+import { ConversionDashboard } from '../components/tramites/ConversionDashboard';
 
 interface KPIs {
   total_tramites: number;
@@ -654,6 +655,30 @@ export default function TramitesReportes() {
             </select>
           </div>
         </div>
+      </div>
+
+      {/* Dashboard de Conversión de Cotizaciones/Emisiones */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm p-6 border-2 border-blue-200 dark:border-blue-800">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <TrendingUp className="w-7 h-7 text-blue-600" />
+              Dashboard de Conversión: Cotizaciones y Emisiones
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Análisis específico de trámites tipo Cotización/Emisión con métricas de conversión
+            </p>
+          </div>
+        </div>
+        <ConversionDashboard />
+      </div>
+
+      {/* Sección de Métricas Generales de Productividad */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+          <BarChart3 className="w-7 h-7 text-purple-600" />
+          Métricas Generales de Productividad (Todos los Trámites)
+        </h2>
       </div>
 
       {/* KPIs */}

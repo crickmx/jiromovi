@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, XCircle, FileText, Settings, BarChart3 } from 'lucide-react';
+import { ClipboardList, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, XCircle, FileText, Settings } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
-import { ConversionDashboard } from '../components/tramites/ConversionDashboard';
 
 interface TramiteEstatus {
   id: string;
@@ -35,7 +34,7 @@ interface TramiteItem {
 export function Tramites() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'activos' | 'cerrados'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'activos' | 'cerrados'>('activos');
   const [tramites, setTramites] = useState<TramiteItem[]>([]);
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,19 +212,6 @@ export function Tramites() {
 
         <div className="flex space-x-2 border-b border-neutral-200">
           <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`px-6 py-3 font-semibold transition-all ${
-              activeTab === 'dashboard'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-neutral-600 hover:text-neutral-900'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5" />
-              <span>Dashboard KPIs</span>
-            </div>
-          </button>
-          <button
             onClick={() => setActiveTab('activos')}
             className={`px-6 py-3 font-semibold transition-all ${
               activeTab === 'activos'
@@ -254,11 +240,7 @@ export function Tramites() {
         </div>
       </div>
 
-      {activeTab === 'dashboard' ? (
-        <ConversionDashboard />
-      ) : (
-        <>
-          <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-4">
+      <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-4">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
@@ -390,8 +372,6 @@ export function Tramites() {
             </div>
           ))}
         </div>
-      )}
-        </>
       )}
 
       <NuevoTramiteModal
