@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, Plus, Edit, Trash2, Eye, EyeOff, Upload, X, FolderOpen, ArrowLeft } from 'lucide-react';
+import { Package, Plus, CreditCard as Edit, Trash2, Eye, EyeOff, Upload, X, FolderOpen, ArrowLeft } from 'lucide-react';
 import {
   obtenerTodosProductos,
   obtenerTodasCategorias,
@@ -30,6 +30,16 @@ export default function StoreAdmin() {
   const [productoEditando, setProductoEditando] = useState<StoreProducto | null>(null);
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<StoreCategoria | null>(null);
+
+  const getImageUrl = (imagenUrl: string) => {
+    if (!imagenUrl) return '/placeholder-product.png';
+
+    if (imagenUrl.startsWith('http://') || imagenUrl.startsWith('https://')) {
+      return imagenUrl;
+    }
+
+    return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/store-productos/${imagenUrl}`;
+  };
 
   useEffect(() => {
     if (!tienePermisoAdminEnModulo(usuario, MODULOS.STORE)) {
@@ -203,9 +213,13 @@ export default function StoreAdmin() {
                       <tr key={producto.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <img
-                            src={producto.imagen_url}
+                            src={getImageUrl(producto.imagen_url)}
                             alt={producto.titulo}
                             className="w-16 h-16 object-cover rounded-lg"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/placeholder-product.png';
+                            }}
                           />
                         </td>
                         <td className="px-6 py-4">

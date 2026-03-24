@@ -11,6 +11,16 @@ interface Props {
 export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const [cantidad, setCantidad] = useState(1);
 
+  const getImageUrl = (imagenUrl: string) => {
+    if (!imagenUrl) return '/placeholder-product.png';
+
+    if (imagenUrl.startsWith('http://') || imagenUrl.startsWith('https://')) {
+      return imagenUrl;
+    }
+
+    return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/store-productos/${imagenUrl}`;
+  };
+
   const handleAgregar = () => {
     onAgregar(producto, cantidad);
     onClose();
@@ -33,9 +43,13 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="aspect-square w-full bg-gray-100 rounded-lg overflow-hidden">
               <img
-                src={producto.imagen_url}
+                src={getImageUrl(producto.imagen_url)}
                 alt={producto.titulo}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder-product.png';
+                }}
               />
             </div>
 

@@ -8,6 +8,16 @@ interface Props {
 }
 
 export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
+  const getImageUrl = (imagenUrl: string) => {
+    if (!imagenUrl) return '/placeholder-product.png';
+
+    if (imagenUrl.startsWith('http://') || imagenUrl.startsWith('https://')) {
+      return imagenUrl;
+    }
+
+    return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/store-productos/${imagenUrl}`;
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div
@@ -15,9 +25,13 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         onClick={() => onVerDetalle(producto)}
       >
         <img
-          src={producto.imagen_url}
+          src={getImageUrl(producto.imagen_url)}
           alt={producto.titulo}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = '/placeholder-product.png';
+          }}
         />
       </div>
 
