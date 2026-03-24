@@ -297,7 +297,7 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Tipo de Trámite */}
+            {/* 1. Tipo de Trámite */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <Briefcase className="w-4 h-4 inline mr-2" />
@@ -323,52 +323,7 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
               </select>
             </div>
 
-            {/* Quién Atiende */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <User className="w-4 h-4 inline mr-2" />
-                Quién Atiende *
-              </label>
-              <select
-                value={attendingUserId}
-                onChange={(e) => {
-                  setAttendingUserId(e.target.value);
-                  setAgenteUserId(''); // Limpiar agente cuando cambia quien atiende
-                }}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                required
-              >
-                <option value="">Seleccione...</option>
-                {attendingUsers.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.nombre_completo} - {user.rol}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Tipo de Seguro */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Shield className="w-4 h-4 inline mr-2" />
-                Tipo de Seguro *
-              </label>
-              <select
-                value={insuranceTypeId}
-                onChange={(e) => setInsuranceTypeId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                required
-              >
-                <option value="">Seleccione...</option>
-                {insuranceTypes.map(type => (
-                  <option key={type.id} value={type.id}>
-                    {type.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Agente */}
+            {/* 2. Agente */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <User className="w-4 h-4 inline mr-2" />
@@ -407,9 +362,30 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
                 </p>
               )}
             </div>
+
+            {/* 3. Tipo de Seguro */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Shield className="w-4 h-4 inline mr-2" />
+                Tipo de Seguro *
+              </label>
+              <select
+                value={insuranceTypeId}
+                onChange={(e) => setInsuranceTypeId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                required
+              >
+                <option value="">Seleccione...</option>
+                {insuranceTypes.map(type => (
+                  <option key={type.id} value={type.id}>
+                    {type.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Aseguradoras (multiselect) */}
+          {/* 4. Aseguradoras (multiselect) - Campo completo ancho */}
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <Building2 className="w-4 h-4 inline mr-2" />
@@ -461,36 +437,31 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Fecha y Hora de Solicitud */}
+            {/* 5. Quién Atiende */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Calendar className="w-4 h-4 inline mr-2" />
-                Fecha y Hora de Solicitud *
+                <User className="w-4 h-4 inline mr-2" />
+                Quién Atiende *
               </label>
-              <input
-                type="datetime-local"
-                value={requestDatetime}
-                onChange={(e) => setRequestDatetime(e.target.value)}
+              <select
+                value={attendingUserId}
+                onChange={(e) => {
+                  setAttendingUserId(e.target.value);
+                  setAgenteUserId(''); // Limpiar agente cuando cambia quien atiende
+                }}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 required
-              />
+              >
+                <option value="">Seleccione...</option>
+                {attendingUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.nombre_completo} - {user.rol}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Fecha y Hora de Finalización */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Clock className="w-4 h-4 inline mr-2" />
-                Fecha y Hora de Finalización
-              </label>
-              <input
-                type="datetime-local"
-                value={completionDatetime}
-                onChange={(e) => setCompletionDatetime(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-
-            {/* Estatus - Condicional según tipo de trámite */}
+            {/* 6. Estatus - Condicional según tipo de trámite */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <TrendingUp className="w-4 h-4 inline mr-2" />
@@ -525,6 +496,51 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
                   ))}
                 </select>
               )}
+            </div>
+
+            {/* 7. Fecha */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Calendar className="w-4 h-4 inline mr-2" />
+                Fecha *
+              </label>
+              <input
+                type="datetime-local"
+                value={requestDatetime}
+                onChange={(e) => setRequestDatetime(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                required
+              />
+            </div>
+
+            {/* 8. Avance % */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <TrendingUp className="w-4 h-4 inline mr-2" />
+                Avance % *
+              </label>
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="10"
+                  value={progressPercent}
+                  onChange={(e) => setProgressPercent(Number(e.target.value) as 0 | 50 | 100)}
+                  className="w-full"
+                  disabled={isCotizacionEmision}
+                />
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">0%</span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">{progressPercent}%</span>
+                  <span className="text-gray-600 dark:text-gray-400">100%</span>
+                </div>
+                {isCotizacionEmision && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    El avance se calcula automáticamente según el estatus de Cotización/Emisión
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Prioridad */}
