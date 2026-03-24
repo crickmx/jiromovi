@@ -50,7 +50,9 @@ export default function CentroDigital() {
   const esAdmin = usuario?.rol === 'Administrador';
   const esGerente = usuario?.rol === 'Gerente';
   const esEmpleado = usuario?.rol === 'Empleado';
-  const puedeGestionar = esAdmin || esGerente || esEmpleado;
+  const esAgente = usuario?.rol === 'Agente';
+  const puedeSubirArchivos = esAdmin || esGerente;
+  const puedeCrearCarpetas = esAdmin || esGerente;
 
   const obtenerIconoPorTipo = (tipoMime: string | null) => {
     if (!tipoMime) return <File className="w-8 h-8 text-gray-400" />;
@@ -372,7 +374,7 @@ export default function CentroDigital() {
             >
               Volver a carpetas
             </Button>
-            {puedeGestionar && (
+            {puedeSubirArchivos && (
               <Button onClick={() => setShowSubirModal(true)}>
                 <Upload className="w-4 h-4 mr-2" />
                 Subir archivo
@@ -389,7 +391,7 @@ export default function CentroDigital() {
                 title="Sin archivos"
                 description="Esta carpeta aún no tiene archivos"
                 action={
-                  puedeGestionar ? (
+                  puedeSubirArchivos ? (
                     <Button onClick={() => setShowSubirModal(true)}>
                       <Upload className="w-4 h-4 mr-2" />
                       Subir primer archivo
@@ -435,7 +437,7 @@ export default function CentroDigital() {
                       >
                         <Download className="w-4 h-4 text-gray-700" />
                       </button>
-                      {puedeGestionar && (
+                      {puedeSubirArchivos && (
                         <button
                           onClick={() => handleEliminarArchivo(archivo.id)}
                           className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
@@ -521,7 +523,7 @@ export default function CentroDigital() {
                             >
                               <Download className="w-5 h-5" />
                             </button>
-                            {puedeGestionar && (
+                            {puedeSubirArchivos && (
                               <button
                                 onClick={() => handleEliminarArchivo(archivo.id)}
                                 className="text-red-600 hover:text-red-700"
@@ -638,7 +640,7 @@ export default function CentroDigital() {
               Papelera
             </Button>
           )}
-          {(esAdmin || esGerente) && (
+          {puedeCrearCarpetas && (
             <Button onClick={() => setShowCarpetaModal(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Nueva carpeta
