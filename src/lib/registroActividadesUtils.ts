@@ -242,8 +242,8 @@ export async function createRegistroActividad(data: {
       instrucciones: data.instrucciones,
       estatus_id: estatusId,
       creado_por: data.creado_por,
-      agente_id: data.creado_por,
-      assigned_to_user_id: data.attending_user_id,
+      agente_id: data.agente_usuario_id, // Agente seleccionado manualmente
+      assigned_to_user_id: data.attending_user_id, // Responsable/Quien Atiende
     };
 
     console.log('Creating ticket with data:', ticketData);
@@ -278,7 +278,7 @@ export async function updateRegistroActividad(
   ticketId: string,
   data: {
     activity_subtype_id?: string;
-    requester_user_id?: string;
+    agente_usuario_id?: string;
     insurance_type_id?: string;
     insurers?: string[];
     attending_user_id?: string;
@@ -294,8 +294,13 @@ export async function updateRegistroActividad(
     ultima_modificacion: new Date().toISOString(),
   };
 
+  // Sincronizar campos relacionados
   if (data.attending_user_id) {
     updateData.assigned_to_user_id = data.attending_user_id;
+  }
+
+  if (data.agente_usuario_id) {
+    updateData.agente_id = data.agente_usuario_id;
   }
 
   const { data: ticket, error } = await supabase
