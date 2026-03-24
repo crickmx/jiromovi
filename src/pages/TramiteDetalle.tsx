@@ -40,6 +40,21 @@ interface TramiteData {
   creado_por_usuario: Usuario | null;
   modificado_por_usuario: Usuario | null;
   cerrado_por_usuario: Usuario | null;
+  // Campos de Registro de Actividades
+  activity_subtype_id?: string;
+  agente_usuario_id?: string;
+  insurance_type_id?: string;
+  attending_user_id?: string;
+  request_datetime?: string;
+  completion_datetime?: string;
+  progress_percent?: number;
+  resultado?: string;
+  insurers?: string[];
+  activity_subtype?: { id: string; nombre: string } | null;
+  agente_usuario?: Usuario | null;
+  insurance_type?: { id: string; nombre: string } | null;
+  attending_user?: Usuario | null;
+  insurers_nombres?: string[];
 }
 
 export function TramiteDetalle() {
@@ -135,17 +150,29 @@ export function TramiteDetalle() {
 
     // Si es un registro de actividad, obtener datos adicionales
     if (ticketData.tipo_tramite === 'registro_actividad') {
-      const [subtypeRes, requesterRes, insuranceRes, attendingRes] = await Promise.all([
-        ticketData.activity_subtype_id ? supabase.from('registro_actividades_tipos_tramite').select('id, nombre').eq('id', ticketData.activity_subtype_id).maybeSingle() : Promise.resolve({ data: null }),
-        ticketData.requester_user_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.requester_user_id).maybeSingle() : Promise.resolve({ data: null }),
-        ticketData.insurance_type_id ? supabase.from('registro_actividades_tipos_seguro').select('id, nombre').eq('id', ticketData.insurance_type_id).maybeSingle() : Promise.resolve({ data: null }),
+      const [subtypeRes, agenteUsuarioRes, insuranceRes, attendingRes] = await Promise.all([
+        ticketData.activity_subtype_id ? supabase.from('tramite_activity_types').select('id, nombre').eq('id', ticketData.activity_subtype_id).maybeSingle() : Promise.resolve({ data: null }),
+        ticketData.agente_usuario_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.agente_usuario_id).maybeSingle() : Promise.resolve({ data: null }),
+        ticketData.insurance_type_id ? supabase.from('insurance_types').select('id, nombre').eq('id', ticketData.insurance_type_id).maybeSingle() : Promise.resolve({ data: null }),
         ticketData.attending_user_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.attending_user_id).maybeSingle() : Promise.resolve({ data: null })
       ]);
 
       tramiteCompleto.activity_subtype = subtypeRes.data;
-      tramiteCompleto.requester_user = requesterRes.data;
+      tramiteCompleto.agente_usuario = agenteUsuarioRes.data;
       tramiteCompleto.insurance_type = insuranceRes.data;
       tramiteCompleto.attending_user = attendingRes.data;
+
+      // Cargar nombres de aseguradoras si existen
+      if (ticketData.insurers && Array.isArray(ticketData.insurers) && ticketData.insurers.length > 0) {
+        const { data: aseguradorasData } = await supabase
+          .from('aseguradoras')
+          .select('id, nombre')
+          .in('id', ticketData.insurers);
+
+        tramiteCompleto.insurers_nombres = aseguradorasData?.map(a => a.nombre) || [];
+      } else {
+        tramiteCompleto.insurers_nombres = [];
+      }
     }
 
     setTramite(tramiteCompleto as TramiteData);
@@ -496,9 +523,9 @@ export function TramiteDetalle() {
           tramiteId={tramite.id}
           initialData={{
             activity_subtype_id: tramite.activity_subtype_id || undefined,
-            agente_usuario_id: tramite.agente_id || undefined,
+            agente_usuario_id: tramite.agente_usuario_id || undefined,
             insurance_type_id: tramite.insurance_type_id || undefined,
-            insurers: tramite.insurers ? (Array.isArray(tramite.insurers) ? tramite.insurers : [tramite.insurers]) : undefined,
+            insurers: tramite.insurers && Array.isArray(tramite.insurers) ? tramite.insurers : undefined,
             attending_user_id: tramite.attending_user_id || undefined,
             request_datetime: tramite.request_datetime || undefined,
             completion_datetime: tramite.completion_datetime || undefined,
@@ -510,6 +537,7 @@ export function TramiteDetalle() {
           onClose={() => setShowEditForm(false)}
           onSuccess={async () => {
             await loadTramite();
+            setShowEditForm(false);
           }}
         />
       )}

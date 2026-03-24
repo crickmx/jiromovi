@@ -498,11 +498,11 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
               )}
             </div>
 
-            {/* 7. Fecha */}
+            {/* 7. Fecha de Inicio */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <Calendar className="w-4 h-4 inline mr-2" />
-                Fecha *
+                Fecha de Inicio *
               </label>
               <input
                 type="datetime-local"
@@ -513,7 +513,21 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
               />
             </div>
 
-            {/* 8. Avance % */}
+            {/* 8. Fecha de Finalización */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Clock className="w-4 h-4 inline mr-2" />
+                Fecha de Finalización
+              </label>
+              <input
+                type="datetime-local"
+                value={completionDatetime}
+                onChange={(e) => setCompletionDatetime(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+
+            {/* 9. Avance % */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <TrendingUp className="w-4 h-4 inline mr-2" />

@@ -32,13 +32,15 @@ interface TramiteData {
   cerrado_por_usuario: Usuario | null;
   // Campos de Registro de Actividades
   activity_subtype?: { id: string; nombre: string } | null;
-  requester_user?: Usuario | null;
+  agente_usuario?: Usuario | null;
   insurance_type?: { id: string; nombre: string } | null;
   attending_user?: Usuario | null;
   request_datetime?: string | null;
   completion_datetime?: string | null;
   progress_percent?: number | null;
-  insurers?: any;
+  resultado?: string | null;
+  insurers?: string[];
+  insurers_nombres?: string[];
 }
 
 interface Asignacion {
@@ -245,10 +247,10 @@ export function TramiteDetalles({
             <div>
               <label className="block text-sm font-semibold text-neutral-700 mb-2">
                 <User className="w-4 h-4 inline mr-2" />
-                Solicitante
+                Agente
               </label>
               <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
-                {tramite.requester_user?.nombre_completo || 'N/A'}
+                {tramite.agente_usuario?.nombre_completo || 'N/A'}
               </div>
             </div>
 
@@ -275,7 +277,7 @@ export function TramiteDetalles({
             <div>
               <label className="block text-sm font-semibold text-neutral-700 mb-2">
                 <Calendar className="w-4 h-4 inline mr-2" />
-                Fecha y Hora de Solicitud
+                Fecha de Inicio
               </label>
               <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
                 {tramite.request_datetime
@@ -293,7 +295,7 @@ export function TramiteDetalles({
             <div>
               <label className="block text-sm font-semibold text-neutral-700 mb-2">
                 <Clock className="w-4 h-4 inline mr-2" />
-                Fecha y Hora de Finalización
+                Fecha de Finalización
               </label>
               <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
                 {tramite.completion_datetime
@@ -332,8 +334,8 @@ export function TramiteDetalles({
                 Aseguradoras
               </label>
               <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
-                {tramite.insurers && Array.isArray(tramite.insurers)
-                  ? `${tramite.insurers.length} aseguradoras`
+                {tramite.insurers_nombres && tramite.insurers_nombres.length > 0
+                  ? tramite.insurers_nombres.join(', ')
                   : 'N/A'}
               </div>
             </div>
