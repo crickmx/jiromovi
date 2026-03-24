@@ -177,6 +177,7 @@ export async function createRegistroActividad(data: {
   prioridad: string;
   instrucciones: string;
   creado_por: string;
+  estatus_nombre?: string; // Nombre del estatus (para Cotización/Emisión)
 }) {
   try {
     // Obtener el siguiente folio
@@ -190,18 +191,40 @@ export async function createRegistroActividad(data: {
 
     const folio = folioData || `RA-${Date.now()}`;
 
-    // Obtener estatus por defecto (primer estatus activo)
-    const { data: estatusData, error: estatusError } = await supabase
-      .from('ticket_estatus')
-      .select('id')
-      .eq('activo', true)
-      .order('orden')
-      .limit(1)
-      .single();
+    // Obtener el ID del estatus
+    let estatusId: string;
 
-    if (estatusError || !estatusData) {
-      console.error('Error getting default status:', estatusError);
-      throw new Error('No se encontró un estatus válido');
+    if (data.estatus_nombre) {
+      // Si se proporciona el nombre del estatus, buscarlo
+      const { data: estatusData, error: estatusError } = await supabase
+        .from('ticket_estatus')
+        .select('id')
+        .eq('nombre', data.estatus_nombre)
+        .eq('activo', true)
+        .single();
+
+      if (estatusError || !estatusData) {
+        console.error('Error getting status by name:', estatusError);
+        throw new Error(`No se encontró el estatus "${data.estatus_nombre}"`);
+      }
+
+      estatusId = estatusData.id;
+    } else {
+      // Obtener estatus por defecto (primer estatus activo)
+      const { data: estatusData, error: estatusError } = await supabase
+        .from('ticket_estatus')
+        .select('id')
+        .eq('activo', true)
+        .order('orden')
+        .limit(1)
+        .single();
+
+      if (estatusError || !estatusData) {
+        console.error('Error getting default status:', estatusError);
+        throw new Error('No se encontró un estatus válido');
+      }
+
+      estatusId = estatusData.id;
     }
 
     const ticketData = {
@@ -217,7 +240,7 @@ export async function createRegistroActividad(data: {
       progress_percent: data.progress_percent,
       prioridad: data.prioridad,
       instrucciones: data.instrucciones,
-      estatus_id: estatusData.id,
+      estatus_id: estatusId,
       creado_por: data.creado_por,
       agente_id: data.creado_por,
       assigned_to_user_id: data.attending_user_id,

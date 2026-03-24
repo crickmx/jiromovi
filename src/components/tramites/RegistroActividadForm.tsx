@@ -14,6 +14,8 @@ import {
 import {
   validateRegistroActividadForm,
   PROGRESS_OPTIONS,
+  COTIZACION_EMISION_STATUS_OPTIONS,
+  isCotizacionEmisionType,
   type RegistroActividadFormData,
   type TramiteActivityType,
   type InsuranceType,
@@ -50,6 +52,12 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
   const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
   const [instrucciones, setInstrucciones] = useState('');
 
+  // Para Cotización/Emisión: usar estatus como string en vez de progressPercent
+  const [estatusNombre, setEstatusNombre] = useState('Iniciado');
+
+  // Estado derivado: es Cotización/Emisión?
+  const [isCotizacionEmision, setIsCotizacionEmision] = useState(false);
+
   // Multiselect state
   const [showInsurerDropdown, setShowInsurerDropdown] = useState(false);
   const [insurerSearchTerm, setInsurerSearchTerm] = useState('');
@@ -57,6 +65,21 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
   useEffect(() => {
     loadCatalogs();
   }, []);
+
+  // Detectar si el tipo seleccionado es "Cotización / Emisión"
+  useEffect(() => {
+    if (activitySubtypeId && tramiteTypes.length > 0) {
+      const selectedType = tramiteTypes.find(t => t.id === activitySubtypeId);
+      if (selectedType) {
+        setIsCotizacionEmision(isCotizacionEmisionType(selectedType.nombre));
+        // Reset estatus al cambiar el tipo
+        setEstatusNombre('Iniciado');
+        setProgressPercent(0);
+      }
+    } else {
+      setIsCotizacionEmision(false);
+    }
+  }, [activitySubtypeId, tramiteTypes]);
 
   useEffect(() => {
     // Preseleccionar usuario actual en "Quién Atiende"
@@ -158,7 +181,9 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
     try {
       const result = await createRegistroActividad({
         ...formData,
-        creado_por: usuario!.id
+        creado_por: usuario!.id,
+        // Si es Cotización/Emisión, enviar el nombre del estatus
+        estatus_nombre: isCotizacionEmision ? estatusNombre : undefined
       });
 
       console.log('Registro creado exitosamente:', result);
@@ -239,11 +264,16 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
                 required
               >
                 <option value="">Seleccione...</option>
-                {tramiteTypes.map(type => (
-                  <option key={type.id} value={type.id}>
-                    {type.nombre}
-                  </option>
-                ))}
+                {tramiteTypes
+                  .filter(type => {
+                    const nombre = type.nombre.toLowerCase();
+                    return nombre.includes('cotizaci') || nombre.includes('emisi') || nombre.includes('otro');
+                  })
+                  .map(type => (
+                    <option key={type.id} value={type.id}>
+                      {type.nombre}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -414,24 +444,41 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
               />
             </div>
 
-            {/* Estatus */}
+            {/* Estatus - Condicional según tipo de trámite */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <TrendingUp className="w-4 h-4 inline mr-2" />
                 Estatus *
               </label>
-              <select
-                value={progressPercent}
-                onChange={(e) => setProgressPercent(Number(e.target.value) as 0 | 50 | 100)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                required
-              >
-                {PROGRESS_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              {isCotizacionEmision ? (
+                // Para Cotización/Emisión: mostrar estatus específicos
+                <select
+                  value={estatusNombre}
+                  onChange={(e) => setEstatusNombre(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  required
+                >
+                  {COTIZACION_EMISION_STATUS_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                // Para Otro: mostrar progreso genérico
+                <select
+                  value={progressPercent}
+                  onChange={(e) => setProgressPercent(Number(e.target.value) as 0 | 50 | 100)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  required
+                >
+                  {PROGRESS_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Prioridad */}

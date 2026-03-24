@@ -51,6 +51,15 @@ export interface UsuarioOficina {
   oficina_nombre: string | null;
 }
 
+// Opciones de estatus para tipo "Cotización / Emisión"
+export const COTIZACION_EMISION_STATUS_OPTIONS = [
+  { value: 'Iniciado', label: 'Iniciado', color: '#6b7280', resultado: 'en_progreso' },
+  { value: 'En Proceso', label: 'En Proceso', color: '#f59e0b', resultado: 'en_progreso' },
+  { value: 'Emitido', label: 'Emitido', color: '#10b981', resultado: 'ganado' },
+  { value: 'No Emitido', label: 'No Emitido', color: '#ef4444', resultado: 'perdido' }
+] as const;
+
+// Opciones de estatus genéricas para tipo "Otro"
 export const PROGRESS_OPTIONS = [
   { value: 0, label: 'Iniciado' },
   { value: 50, label: 'En Proceso' },
@@ -67,6 +76,40 @@ export function getStatusFromProgress(percent: number): string {
   if (percent === 0) return 'Pendiente';
   if (percent === 100) return 'Finalizado';
   return 'En proceso';
+}
+
+// Helper para determinar si un tipo de trámite es "Cotización / Emisión"
+export function isCotizacionEmisionType(activityTypeName: string): boolean {
+  const normalized = activityTypeName.toLowerCase();
+  return normalized.includes('cotizaci') || normalized.includes('emisi');
+}
+
+// Helper para obtener el color según el resultado
+export function getResultadoColor(resultado: string | null): string {
+  switch (resultado) {
+    case 'ganado':
+      return '#10b981'; // Verde
+    case 'perdido':
+      return '#ef4444'; // Rojo
+    case 'en_progreso':
+      return '#f59e0b'; // Naranja
+    default:
+      return '#6b7280'; // Gris
+  }
+}
+
+// Helper para obtener el label según el resultado
+export function getResultadoLabel(resultado: string | null): string {
+  switch (resultado) {
+    case 'ganado':
+      return 'Emitido';
+    case 'perdido':
+      return 'No Emitido';
+    case 'en_progreso':
+      return 'En Proceso';
+    default:
+      return 'Sin clasificar';
+  }
 }
 
 export function validateRegistroActividadForm(
