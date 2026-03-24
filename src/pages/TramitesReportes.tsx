@@ -370,7 +370,7 @@ export default function TramitesReportes() {
           modificado_por_usuario:modificado_por(id, nombre_completo),
           cerrado_por_usuario:cerrado_por(id, nombre_completo),
           activity_subtype:activity_subtype_id(id, nombre),
-          requester_user:requester_user_id(id, nombre_completo),
+          agente_usuario:agente_usuario_id(id, nombre_completo),
           insurance_type:insurance_type_id(id, nombre),
           attending_user:attending_user_id(id, nombre_completo)
         `)
