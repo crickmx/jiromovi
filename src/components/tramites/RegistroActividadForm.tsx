@@ -8,6 +8,7 @@ import {
   getUsersByOffice,
   getUsersWhoCanAttend,
   createRegistroActividad,
+  updateRegistroActividad,
   formatDateTimeForInput,
   formatDateTimeFromInput
 } from '../../lib/registroActividadesUtils';
@@ -26,12 +27,27 @@ import {
 interface RegistroActividadFormProps {
   onClose: () => void;
   onSuccess: () => void;
+  tramiteId?: string; // Si se proporciona, estamos en modo edición
+  initialData?: {
+    activity_subtype_id?: string;
+    agente_usuario_id?: string;
+    insurance_type_id?: string;
+    insurers?: string[];
+    attending_user_id?: string;
+    request_datetime?: string;
+    completion_datetime?: string;
+    progress_percent?: number;
+    resultado?: string;
+    prioridad?: 'Alta' | 'Media' | 'Baja';
+    instrucciones?: string;
+  };
 }
 
-export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadFormProps) {
+export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialData }: RegistroActividadFormProps) {
   const { usuario } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const isEditMode = !!tramiteId;
 
   // Catálogos
   const [tramiteTypes, setTramiteTypes] = useState<TramiteActivityType[]>([]);
@@ -64,7 +80,29 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
 
   useEffect(() => {
     loadCatalogs();
-  }, []);
+
+    // Si estamos en modo edición, cargar datos iniciales
+    if (isEditMode && initialData) {
+      if (initialData.activity_subtype_id) setActivitySubtypeId(initialData.activity_subtype_id);
+      if (initialData.agente_usuario_id) setAgenteUserId(initialData.agente_usuario_id);
+      if (initialData.insurance_type_id) setInsuranceTypeId(initialData.insurance_type_id);
+      if (initialData.insurers) setSelectedInsurers(initialData.insurers);
+      if (initialData.attending_user_id) setAttendingUserId(initialData.attending_user_id);
+      if (initialData.request_datetime) setRequestDatetime(formatDateTimeForInput(new Date(initialData.request_datetime)));
+      if (initialData.completion_datetime) setCompletionDatetime(formatDateTimeForInput(new Date(initialData.completion_datetime)));
+      if (initialData.progress_percent !== undefined) setProgressPercent(initialData.progress_percent as 0 | 50 | 100);
+      if (initialData.prioridad) setPrioridad(initialData.prioridad);
+      if (initialData.instrucciones) setInstrucciones(initialData.instrucciones);
+
+      // Si hay resultado, inferir el estatus de cotización/emisión
+      if (initialData.resultado) {
+        const statusOption = COTIZACION_EMISION_STATUS_OPTIONS.find(opt => opt.resultado === initialData.resultado);
+        if (statusOption) {
+          setEstatusNombre(statusOption.value);
+        }
+      }
+    }
+  }, [isEditMode, initialData]);
 
   // Detectar si el tipo seleccionado es "Cotización / Emisión"
   useEffect(() => {
@@ -179,14 +217,22 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
 
     setLoading(true);
     try {
-      const result = await createRegistroActividad({
-        ...formData,
-        creado_por: usuario!.id,
-        // Si es Cotización/Emisión, enviar el nombre del estatus
-        estatus_nombre: isCotizacionEmision ? estatusNombre : undefined
-      });
-
-      console.log('Registro creado exitosamente:', result);
+      if (isEditMode && tramiteId) {
+        // Modo edición
+        await updateRegistroActividad(tramiteId, {
+          ...formData,
+          estatus_nombre: isCotizacionEmision ? estatusNombre : undefined
+        });
+        console.log('Registro actualizado exitosamente');
+      } else {
+        // Modo creación
+        await createRegistroActividad({
+          ...formData,
+          creado_por: usuario!.id,
+          estatus_nombre: isCotizacionEmision ? estatusNombre : undefined
+        });
+        console.log('Registro creado exitosamente');
+      }
 
       // Llamar a onSuccess primero para recargar datos
       await onSuccess();
@@ -194,8 +240,8 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
       // Luego cerrar el modal
       onClose();
     } catch (error: any) {
-      console.error('Error creating registro actividad:', error);
-      const errorMessage = error?.message || error?.hint || error?.details || 'Error al crear el registro de actividad';
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} registro actividad:`, error);
+      const errorMessage = error?.message || error?.hint || error?.details || `Error al ${isEditMode ? 'actualizar' : 'crear'} el registro de actividad`;
       setErrors([errorMessage]);
     } finally {
       setLoading(false);
@@ -221,7 +267,7 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Nuevo Registro de Actividades
+              {isEditMode ? 'Editar Registro de Actividades' : 'Nuevo Registro de Actividades'}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Complete todos los campos obligatorios
@@ -528,7 +574,7 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
             >
-              {loading ? 'Guardando...' : 'Crear Registro'}
+              {loading ? 'Guardando...' : (isEditMode ? 'Actualizar Registro' : 'Crear Registro')}
             </button>
           </div>
         </form>

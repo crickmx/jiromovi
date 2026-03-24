@@ -8,6 +8,7 @@ import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 import { ComisionesPendientes } from '../components/tramites/ComisionesPendientes';
+import { RegistroActividadForm } from '../components/tramites/RegistroActividadForm';
 
 interface TramiteEstatus {
   id: string;
@@ -56,6 +57,7 @@ export function TramiteDetalle() {
   const [selectedPrioridad, setSelectedPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -381,6 +383,15 @@ export function TramiteDetalle() {
                     </button>
                   </>
                 )}
+                {tramite.tipo_tramite === 'registro_actividad' && (
+                  <button
+                    onClick={() => setShowEditForm(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-semibold"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span>Editar Formulario Completo</span>
+                  </button>
+                )}
                 <button
                   onClick={handleCerrar}
                   disabled={saving}
@@ -478,6 +489,30 @@ export function TramiteDetalle() {
         {activeTab === 'historial' && <TramiteHistorial tramiteId={tramite.id} />}
         {activeTab === 'comisiones' && <ComisionesPendientes tramiteId={tramite.id} />}
       </div>
+
+      {/* Formulario de edición para Registro de Actividades */}
+      {showEditForm && tramite.tipo_tramite === 'registro_actividad' && (
+        <RegistroActividadForm
+          tramiteId={tramite.id}
+          initialData={{
+            activity_subtype_id: tramite.activity_subtype_id || undefined,
+            agente_usuario_id: tramite.agente_id || undefined,
+            insurance_type_id: tramite.insurance_type_id || undefined,
+            insurers: tramite.insurers ? (Array.isArray(tramite.insurers) ? tramite.insurers : [tramite.insurers]) : undefined,
+            attending_user_id: tramite.attending_user_id || undefined,
+            request_datetime: tramite.request_datetime || undefined,
+            completion_datetime: tramite.completion_datetime || undefined,
+            progress_percent: tramite.progress_percent || undefined,
+            resultado: tramite.resultado || undefined,
+            prioridad: tramite.prioridad,
+            instrucciones: tramite.instrucciones || ''
+          }}
+          onClose={() => setShowEditForm(false)}
+          onSuccess={async () => {
+            await loadTramite();
+          }}
+        />
+      )}
     </div>
   );
 }
