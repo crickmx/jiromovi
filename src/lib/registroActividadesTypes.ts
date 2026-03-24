@@ -51,6 +51,10 @@ export interface UsuarioOficina {
   oficina_nombre: string | null;
 }
 
+// DEPRECADO: Los estatus ahora se obtienen dinámicamente de la base de datos
+// usando getTicketEstatus() en registroActividadesUtils.ts
+// Se mantienen estas constantes solo para compatibilidad con código existente
+
 // Opciones de estatus para tipo "Cotización / Emisión"
 export const COTIZACION_EMISION_STATUS_OPTIONS = [
   { value: 'Iniciado', label: 'Iniciado', color: '#6b7280', resultado: 'en_progreso' },

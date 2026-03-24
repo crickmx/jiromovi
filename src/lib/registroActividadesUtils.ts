@@ -163,6 +163,43 @@ export async function getUsersWhoCanAttend(): Promise<UsuarioOficina[]> {
 }
 
 /**
+ * Obtiene todos los estatus de tickets disponibles
+ * Opcionalmente filtra por tipo de trámite
+ */
+export async function getTicketEstatus(tipoTramite?: string): Promise<Array<{
+  id: string;
+  nombre: string;
+  color: string;
+  orden: number;
+}>> {
+  let query = supabase
+    .from('ticket_estatus')
+    .select('id, nombre, color, orden, tipo_aplicable')
+    .eq('activo', true)
+    .order('orden');
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error loading ticket estatus:', error);
+    return [];
+  }
+
+  if (!data) return [];
+
+  // Si se proporciona tipo de trámite, filtrar por tipo_aplicable
+  if (tipoTramite) {
+    return data.filter((e: any) =>
+      !e.tipo_aplicable ||
+      e.tipo_aplicable.includes('general') ||
+      e.tipo_aplicable.includes(tipoTramite)
+    );
+  }
+
+  return data;
+}
+
+/**
  * Crea un nuevo registro de actividad
  */
 export async function createRegistroActividad(data: {

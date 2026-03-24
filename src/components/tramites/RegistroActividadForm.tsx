@@ -7,6 +7,7 @@ import {
   getAseguradoras,
   getUsersByOffice,
   getUsersWhoCanAttend,
+  getTicketEstatus,
   createRegistroActividad,
   updateRegistroActividad,
   formatDateTimeForInput,
@@ -55,6 +56,12 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
   const [aseguradoras, setAseguradoras] = useState<Aseguradora[]>([]);
   const [agenteUsers, setAgenteUsers] = useState<UsuarioOficina[]>([]);
   const [attendingUsers, setAttendingUsers] = useState<UsuarioOficina[]>([]);
+  const [estatusList, setEstatusList] = useState<Array<{
+    id: string;
+    nombre: string;
+    color: string;
+    orden: number;
+  }>>([]);
 
   // Form data
   const [activitySubtypeId, setActivitySubtypeId] = useState('');
@@ -110,14 +117,16 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
       const selectedType = tramiteTypes.find(t => t.id === activitySubtypeId);
       if (selectedType) {
         setIsCotizacionEmision(isCotizacionEmisionType(selectedType.nombre));
-        // Reset estatus al cambiar el tipo
-        setEstatusNombre('Iniciado');
+        // Reset estatus al cambiar el tipo (usar el primer estatus disponible)
+        if (estatusList.length > 0) {
+          setEstatusNombre(estatusList[0].nombre);
+        }
         setProgressPercent(0);
       }
     } else {
       setIsCotizacionEmision(false);
     }
-  }, [activitySubtypeId, tramiteTypes]);
+  }, [activitySubtypeId, tramiteTypes, estatusList]);
 
   useEffect(() => {
     // Preseleccionar usuario actual en "Quién Atiende"
@@ -161,17 +170,24 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
   const loadCatalogs = async () => {
     setLoading(true);
     try {
-      const [types, insurance, insurers, attending] = await Promise.all([
+      const [types, insurance, insurers, attending, estatus] = await Promise.all([
         getTramiteActivityTypes(),
         getInsuranceTypes(),
         getAseguradoras(),
-        getUsersWhoCanAttend()
+        getUsersWhoCanAttend(),
+        getTicketEstatus('registro_actividad')
       ]);
 
       setTramiteTypes(types);
       setInsuranceTypes(insurance);
       setAseguradoras(insurers);
       setAttendingUsers(attending);
+      setEstatusList(estatus);
+
+      // Establecer el primer estatus como default si no hay uno seleccionado
+      if (estatus.length > 0 && !estatusNombre) {
+        setEstatusNombre(estatus[0].nombre);
+      }
     } catch (error) {
       console.error('Error loading catalogs:', error);
       setErrors(['Error al cargar los catálogos']);
@@ -221,7 +237,7 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
         // Modo edición
         await updateRegistroActividad(tramiteId, {
           ...formData,
-          estatus_nombre: isCotizacionEmision ? estatusNombre : undefined
+          estatus_nombre: estatusNombre // Siempre enviar el estatus seleccionado
         });
         console.log('Registro actualizado exitosamente');
       } else {
@@ -229,7 +245,7 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
         await createRegistroActividad({
           ...formData,
           creado_por: usuario!.id,
-          estatus_nombre: isCotizacionEmision ? estatusNombre : undefined
+          estatus_nombre: estatusNombre // Siempre enviar el estatus seleccionado
         });
         console.log('Registro creado exitosamente');
       }
@@ -455,39 +471,24 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
               </select>
             </div>
 
-            {/* 6. Estatus - Condicional según tipo de trámite */}
+            {/* 6. Estatus - Unificado desde BD */}
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 <TrendingUp className="w-3.5 h-3.5 inline mr-1.5" />
                 Estatus *
               </label>
-              {isCotizacionEmision ? (
-                <select
-                  value={estatusNombre}
-                  onChange={(e) => setEstatusNombre(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  required
-                >
-                  {COTIZACION_EMISION_STATUS_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <select
-                  value={progressPercent}
-                  onChange={(e) => setProgressPercent(Number(e.target.value) as 0 | 50 | 100)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  required
-                >
-                  {PROGRESS_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <select
+                value={estatusNombre}
+                onChange={(e) => setEstatusNombre(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                required
+              >
+                {estatusList.map(estatus => (
+                  <option key={estatus.id} value={estatus.nombre}>
+                    {estatus.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* 7. Fecha de Inicio */}
