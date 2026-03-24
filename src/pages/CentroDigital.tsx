@@ -1,21 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Folder,
-  Plus,
-  Search,
-  Filter,
-  File,
-  Download,
-  Edit,
-  Trash2,
-  RotateCcw,
-  Eye,
-  Upload,
-  Building2,
-  Users,
-  MoreVertical,
-  Archive
-} from 'lucide-react';
+import { Folder, Plus, Search, Filter, File, Download, CreditCard as Edit, Trash2, RotateCcw, Eye, Upload, Building2, Users, MoreVertical, Archive, FileText, FileSpreadsheet, FileImage, FileVideo, FileAudio, Grid2x2 as Grid, List } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { Button } from '../components/ui/button';
@@ -60,11 +44,49 @@ export default function CentroDigital() {
   const [carpetaEditar, setCarpetaEditar] = useState<CentroDigitalCarpeta | null>(
     null
   );
+  const [vistaArchivos, setVistaArchivos] = useState<'grid' | 'list'>('grid');
 
   const esAdmin = usuario?.rol === 'Administrador';
   const esGerente = usuario?.rol === 'Gerente';
   const esEmpleado = usuario?.rol === 'Empleado';
   const puedeGestionar = esAdmin || esGerente || esEmpleado;
+
+  const obtenerIconoPorTipo = (tipoMime: string | null) => {
+    if (!tipoMime) return <File className="w-8 h-8 text-gray-400" />;
+
+    if (tipoMime.startsWith('image/')) {
+      return <FileImage className="w-8 h-8 text-blue-500" />;
+    }
+    if (tipoMime.startsWith('video/')) {
+      return <FileVideo className="w-8 h-8 text-purple-500" />;
+    }
+    if (tipoMime.startsWith('audio/')) {
+      return <FileAudio className="w-8 h-8 text-green-500" />;
+    }
+    if (tipoMime.includes('pdf')) {
+      return <FileText className="w-8 h-8 text-red-500" />;
+    }
+    if (
+      tipoMime.includes('sheet') ||
+      tipoMime.includes('excel') ||
+      tipoMime.includes('csv')
+    ) {
+      return <FileSpreadsheet className="w-8 h-8 text-green-600" />;
+    }
+    if (
+      tipoMime.includes('document') ||
+      tipoMime.includes('word') ||
+      tipoMime.includes('text')
+    ) {
+      return <FileText className="w-8 h-8 text-blue-600" />;
+    }
+
+    return <File className="w-8 h-8 text-gray-400" />;
+  };
+
+  const esImagen = (tipoMime: string | null) => {
+    return tipoMime?.startsWith('image/') || false;
+  };
 
   useEffect(() => {
     cargarCarpetas();
@@ -305,6 +327,30 @@ export default function CentroDigital() {
           description={carpetaSeleccionada.descripcion || 'Archivos de la carpeta'}
         >
           <div className="flex gap-2">
+            <div className="flex border rounded-lg overflow-hidden">
+              <button
+                onClick={() => setVistaArchivos('grid')}
+                className={`px-3 py-2 ${
+                  vistaArchivos === 'grid'
+                    ? 'bg-accent text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+                title="Vista de cuadrícula"
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setVistaArchivos('list')}
+                className={`px-3 py-2 ${
+                  vistaArchivos === 'list'
+                    ? 'bg-accent text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+                title="Vista de lista"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
             <Button
               variant="outline"
               onClick={() => setCarpetaSeleccionada(null)}
@@ -321,8 +367,8 @@ export default function CentroDigital() {
         </PageHeader>
 
         <div className="p-6">
-          <div className="bg-white rounded-lg border">
-            {archivos.length === 0 ? (
+          {archivos.length === 0 ? (
+            <div className="bg-white rounded-lg border">
               <EmptyState
                 icon={File}
                 title="Sin archivos"
@@ -336,7 +382,62 @@ export default function CentroDigital() {
                   ) : undefined
                 }
               />
-            ) : (
+            </div>
+          ) : vistaArchivos === 'grid' ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {archivosFiltrados.map((archivo) => (
+                <div
+                  key={archivo.id}
+                  className="bg-white rounded-lg border hover:shadow-lg transition-shadow duration-200 overflow-hidden group"
+                >
+                  <div className="aspect-square bg-gray-50 flex items-center justify-center relative overflow-hidden">
+                    {esImagen(archivo.tipo_mime) ? (
+                      <img
+                        src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital/${archivo.ruta_storage}`}
+                        alt={archivo.nombre}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-4">
+                        {obtenerIconoPorTipo(archivo.tipo_mime)}
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={() => handleDescargar(archivo)}
+                        className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                        title="Descargar"
+                      >
+                        <Download className="w-4 h-4 text-gray-700" />
+                      </button>
+                      {puedeGestionar && (
+                        <button
+                          onClick={() => handleEliminarArchivo(archivo.id)}
+                          className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <p className="font-medium text-sm text-gray-900 truncate" title={archivo.nombre}>
+                      {archivo.nombre}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatearTamano(archivo.tamano_bytes)}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(archivo.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b">
@@ -363,7 +464,7 @@ export default function CentroDigital() {
                       <tr key={archivo.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <File className="w-5 h-5 text-accent" />
+                            {obtenerIconoPorTipo(archivo.tipo_mime)}
                             <span className="font-medium text-gray-900">
                               {archivo.nombre}
                             </span>
@@ -403,8 +504,8 @@ export default function CentroDigital() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {showSubirModal && (
