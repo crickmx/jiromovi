@@ -9,12 +9,16 @@ interface Props {
 
 export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
   const getImageUrl = (imagenUrl: string) => {
-    if (!imagenUrl) return '/placeholder-product.png';
+    if (!imagenUrl) {
+      return '/placeholder-product.png';
+    }
 
+    // Si ya es una URL completa, usarla directamente
     if (imagenUrl.startsWith('http://') || imagenUrl.startsWith('https://')) {
       return imagenUrl;
     }
 
+    // Si es una ruta relativa, construir URL completa
     return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/store-productos/${imagenUrl}`;
   };
 
