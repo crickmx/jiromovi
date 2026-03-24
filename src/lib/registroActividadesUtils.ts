@@ -87,6 +87,8 @@ export async function getAseguradoras(): Promise<Aseguradora[]> {
  * Si no se proporciona oficinaId, retorna todos los usuarios activos
  */
 export async function getUsersByOffice(oficinaId?: string): Promise<UsuarioOficina[]> {
+  console.log('getUsersByOffice - Buscando usuarios para oficina ID:', oficinaId);
+
   let query = supabase
     .from('usuarios')
     .select(`
@@ -112,13 +114,19 @@ export async function getUsersByOffice(oficinaId?: string): Promise<UsuarioOfici
     return [];
   }
 
-  return (data || []).map((u: any) => ({
+  console.log('getUsersByOffice - Datos crudos:', data);
+
+  const mappedData = (data || []).map((u: any) => ({
     id: u.id,
     nombre_completo: u.nombre_completo,
     rol: u.rol,
     oficina_id: u.oficina_id,
     oficina_nombre: u.oficinas?.nombre || null
   }));
+
+  console.log('getUsersByOffice - Usuarios mapeados:', mappedData);
+
+  return mappedData;
 }
 
 /**
@@ -126,14 +134,32 @@ export async function getUsersByOffice(oficinaId?: string): Promise<UsuarioOfici
  */
 export async function getUsersWhoCanAttend(): Promise<UsuarioOficina[]> {
   const { data, error } = await supabase
-    .rpc('get_users_who_can_attend');
+    .from('usuarios')
+    .select(`
+      id,
+      nombre_completo,
+      rol,
+      oficina_id,
+      oficinas:oficina_id (
+        nombre
+      )
+    `)
+    .eq('estado', 'activo')
+    .in('rol', ['Empleado', 'Gerente', 'Administrador'])
+    .order('nombre_completo');
 
   if (error) {
     console.error('Error loading users who can attend:', error);
     return [];
   }
 
-  return data || [];
+  return (data || []).map((u: any) => ({
+    id: u.id,
+    nombre_completo: u.nombre_completo,
+    rol: u.rol,
+    oficina_id: u.oficina_id,
+    oficina_nombre: u.oficinas?.nombre || null
+  }));
 }
 
 /**

@@ -78,12 +78,19 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
 
       // Buscar la oficina del usuario que atiende
       const attendingUser = attendingUsers.find(u => u.id === attendingUserId);
+
+      console.log('=== DEBUG: Cargando usuarios de oficina ===');
+      console.log('Usuario que atiende seleccionado:', attendingUser);
+      console.log('Oficina ID:', attendingUser?.oficina_id);
+
       if (!attendingUser?.oficina_id) {
+        console.log('ADVERTENCIA: Usuario que atiende no tiene oficina asignada');
         setAgenteUsers([]);
         return;
       }
 
       const users = await getUsersByOffice(attendingUser.oficina_id);
+      console.log('Usuarios encontrados en oficina:', users);
       setAgenteUsers(users);
     };
 
@@ -308,9 +315,19 @@ export function RegistroActividadForm({ onClose, onSuccess }: RegistroActividadF
                   </option>
                 ))}
               </select>
+              {!attendingUserId && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Seleccione "Quién Atiende" para ver los agentes disponibles de esa oficina
+                </p>
+              )}
               {attendingUserId && agenteUsers.length === 0 && (
                 <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
-                  No hay usuarios disponibles en la oficina seleccionada
+                  No hay usuarios activos en la oficina del usuario seleccionado
+                </p>
+              )}
+              {attendingUserId && agenteUsers.length > 0 && (
+                <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                  {agenteUsers.length} usuario{agenteUsers.length !== 1 ? 's' : ''} disponible{agenteUsers.length !== 1 ? 's' : ''} en esta oficina
                 </p>
               )}
             </div>
