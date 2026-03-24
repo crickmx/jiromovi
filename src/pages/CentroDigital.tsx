@@ -45,6 +45,7 @@ export default function CentroDigital() {
     null
   );
   const [vistaArchivos, setVistaArchivos] = useState<'grid' | 'list'>('grid');
+  const [archivoPrevisualizar, setArchivoPrevisualizar] = useState<CentroDigitalArchivo | null>(null);
 
   const esAdmin = usuario?.rol === 'Administrador';
   const esGerente = usuario?.rol === 'Gerente';
@@ -86,6 +87,20 @@ export default function CentroDigital() {
 
   const esImagen = (tipoMime: string | null) => {
     return tipoMime?.startsWith('image/') || false;
+  };
+
+  const esPDF = (tipoMime: string | null) => {
+    return tipoMime?.includes('pdf') || false;
+  };
+
+  const esPrevisualizable = (tipoMime: string | null) => {
+    return esImagen(tipoMime) || esPDF(tipoMime);
+  };
+
+  const handlePrevisualizar = (archivo: CentroDigitalArchivo) => {
+    if (esPrevisualizable(archivo.tipo_mime)) {
+      setArchivoPrevisualizar(archivo);
+    }
   };
 
   useEffect(() => {
@@ -404,6 +419,15 @@ export default function CentroDigital() {
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                      {esPrevisualizable(archivo.tipo_mime) && (
+                        <button
+                          onClick={() => handlePrevisualizar(archivo)}
+                          className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                          title="Vista previa"
+                        >
+                          <Eye className="w-4 h-4 text-gray-700" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDescargar(archivo)}
                         className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
@@ -481,6 +505,15 @@ export default function CentroDigital() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
+                            {esPrevisualizable(archivo.tipo_mime) && (
+                              <button
+                                onClick={() => handlePrevisualizar(archivo)}
+                                className="text-gray-600 hover:text-gray-800"
+                                title="Vista previa"
+                              >
+                                <Eye className="w-5 h-5" />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDescargar(archivo)}
                               className="text-accent hover:text-blue-700"
@@ -518,6 +551,75 @@ export default function CentroDigital() {
               await cargarArchivos(carpetaSeleccionada.id);
             }}
           />
+        )}
+
+        {archivoPrevisualizar && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+            onClick={() => setArchivoPrevisualizar(null)}
+          >
+            <div
+              className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 truncate">
+                    {archivoPrevisualizar.nombre}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {formatearTamano(archivoPrevisualizar.tamano_bytes)} •{' '}
+                    {new Date(archivoPrevisualizar.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex gap-2 ml-4">
+                  <button
+                    onClick={() => handleDescargar(archivoPrevisualizar)}
+                    className="p-2 text-accent hover:bg-gray-100 rounded-lg"
+                    title="Descargar"
+                  >
+                    <Download className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setArchivoPrevisualizar(null)}
+                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                    title="Cerrar"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4 bg-gray-50">
+                {esImagen(archivoPrevisualizar.tipo_mime) ? (
+                  <div className="flex items-center justify-center h-full">
+                    <img
+                      src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital/${archivoPrevisualizar.ruta_storage}`}
+                      alt={archivoPrevisualizar.nombre}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                ) : esPDF(archivoPrevisualizar.tipo_mime) ? (
+                  <iframe
+                    src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital/${archivoPrevisualizar.ruta_storage}`}
+                    className="w-full h-full min-h-[600px] rounded-lg"
+                    title={archivoPrevisualizar.nombre}
+                  />
+                ) : null}
+              </div>
+            </div>
+          </div>
         )}
       </Layout>
     );
