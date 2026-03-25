@@ -154,6 +154,40 @@ Deno.serve(async (req) => {
         const attemptCount = job.attempt_count + 1;
         const maxAttempts = job.max_attempts || 3;
 
+        // Obtener datos del usuario para el registro
+        let user: UserData | null = null;
+        try {
+          const { data } = await supabase
+            .from('usuarios')
+            .select('id, nombre, apellidos, nombre_completo, email_laboral, email_personal, celular_laboral, celular_personal')
+            .eq('id', job.user_id)
+            .maybeSingle();
+          user = data;
+        } catch (e) {
+          console.error('Error obteniendo usuario para log:', e);
+        }
+
+        // Registrar el error en historial
+        if (user) {
+          try {
+            const canalEnvio = job.channel === 'in_app' ? 'notificacion' : job.channel;
+            await supabase.rpc('registrar_envio_notificacion', {
+              p_tipo_notificacion_codigo: job.event_code,
+              p_canal_envio: canalEnvio,
+              p_usuario_id: user.id,
+              p_destinatario_email: user.email_laboral || user.email_personal || 'sin-email@sistema.local',
+              p_destinatario_nombre: user.nombre_completo || `${user.nombre} ${user.apellidos}`,
+              p_numero_destino: job.channel === 'whatsapp' ? (user.celular_laboral || user.celular_personal) : null,
+              p_asunto: `Error: ${job.event_code}`,
+              p_cuerpo_html: error.message,
+              p_estado: 'fallido',
+              p_error_mensaje: error.message
+            });
+          } catch (logErr) {
+            console.error('Error logging failed notification:', logErr);
+          }
+        }
+
         await supabase
           .from('notification_delivery_attempts')
           .insert({
@@ -265,6 +299,19 @@ async function processInAppNotification(
   if (error) throw error;
 
   console.log(`  ✓ Notificación in-app creada: ${data.id}`);
+
+  // Registrar en historial
+  await supabase.rpc('registrar_envio_notificacion', {
+    p_tipo_notificacion_codigo: job.event_code,
+    p_canal_envio: 'notificacion',
+    p_usuario_id: user.id,
+    p_destinatario_email: user.email_laboral || user.email_personal || 'sin-email@sistema.local',
+    p_destinatario_nombre: user.nombre_completo || `${user.nombre} ${user.apellidos}`,
+    p_asunto: titulo,
+    p_cuerpo_html: mensaje,
+    p_estado: 'enviado'
+  });
+
   return data.id;
 }
 
@@ -344,6 +391,20 @@ async function processEmailNotification(
   }
 
   console.log(`  ✓ Email enviado a ${email}`);
+
+  // Registrar en historial
+  await supabase.rpc('registrar_envio_notificacion', {
+    p_tipo_notificacion_codigo: job.event_code,
+    p_canal_envio: 'correo',
+    p_usuario_id: user.id,
+    p_destinatario_email: email,
+    p_destinatario_nombre: user.nombre_completo || `${user.nombre} ${user.apellidos}`,
+    p_asunto: asunto,
+    p_cuerpo_html: cuerpoHtml,
+    p_estado: 'enviado',
+    p_provider_response: { resend_id: result.resend_id, response_time_ms: responseTime }
+  });
+
   return result.resend_id || result.id || '';
 }
 
@@ -433,5 +494,20 @@ async function processWhatsAppNotification(
   }
 
   console.log(`  ✓ WhatsApp enviado a ${normalizedPhone}`);
+
+  // Registrar en historial
+  await supabase.rpc('registrar_envio_notificacion', {
+    p_tipo_notificacion_codigo: job.event_code,
+    p_canal_envio: 'whatsapp',
+    p_usuario_id: user.id,
+    p_destinatario_email: user.email_laboral || user.email_personal || 'sin-email@sistema.local',
+    p_destinatario_nombre: user.nombre_completo || `${user.nombre} ${user.apellidos}`,
+    p_numero_destino: normalizedPhone,
+    p_asunto: 'Mensaje WhatsApp',
+    p_cuerpo_html: mensaje,
+    p_estado: 'enviado',
+    p_provider_response: { messageId: result.messageId, response_time_ms: responseTime }
+  });
+
   return result.messageId || '';
 }
