@@ -49,7 +49,7 @@ export type ModuloCodigo = typeof MODULOS[keyof typeof MODULOS];
  */
 export interface UsuarioConPermisos {
   id: string;
-  rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente';
+  rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo';
   permisosAdicionales?: string[]; // Lista de códigos de módulos con permisos admin
 }
 
@@ -82,6 +82,7 @@ export function tienePermisoAdminEnModulo(
   }
 
   // Si NO es Gerente, no tiene permisos adicionales
+  // NOTA: Ejecutivo es tratado como Empleado (sin permisos admin)
   if (usuario.rol !== 'Gerente') {
     console.log('[tienePermisoAdminEnModulo] No es Administrador ni Gerente - NO TIENE PERMISO');
     return false;
