@@ -69,6 +69,33 @@ interface UserWelcomeContext {
   // Comisiones
   comisiones_mes_actual?: number;           // Comisiones del mes actual
   comisiones_mes_anterior?: number;         // Comisiones del mes anterior
+
+  // 🎮 Gamificación (Sistema Mi Progreso)
+  nivel_actual?: number;                    // Nivel del agente (1-50)
+  xp_actual?: number;                       // Puntos de experiencia actuales
+  xp_para_siguiente_nivel?: number;         // XP que falta para subir de nivel
+  jiro_coins?: number;                      // Moneda virtual del sistema
+  posicion_ranking?: number;                // Posición en ranking nacional
+  logros_recientes?: number;                // Logros obtenidos últimos 7 días
+  dias_racha?: number;                      // Días consecutivos activo
+
+  // 📚 Seguros Education
+  cursos_en_progreso?: number;              // Cursos iniciados pero no terminados
+  cursos_completados?: number;              // Cursos completados totales
+  horas_capacitacion_mes?: number;          // Horas estudiadas este mes
+  proximas_sesiones_live?: number;          // Sesiones live próximos 7 días
+  cursos_nuevos_disponibles?: number;       // Cursos nuevos últimos 30 días
+  ultimo_curso_completado?: string;         // Título del último curso completado
+
+  // 📢 Comunicados
+  comunicados_sin_leer?: number;            // Comunicados publicados sin leer
+  ultimo_comunicado_titulo?: string;        // Título del último comunicado
+  ultimo_comunicado_fecha?: string;         // Fecha del último comunicado
+
+  // 📋 Sistema general
+  tramites_pendientes_atencion?: number;    // Trámites asignados abiertos/en proceso
+  documentos_por_revisar?: number;          // Docs del Centro Digital (admin/gerente)
+  reservas_proximas?: number;               // Reservas de espacios próximos 7 días
 }
 ```
 
@@ -99,6 +126,30 @@ interface UserWelcomeContext {
 6. **Comisiones** (desde `commission_batches` y `commission_details`)
    - Suma comisiones del mes actual y anterior
    - Filtra por rangos de fechas
+
+7. **Gamificación** (desde `agent_gamification_profile` y `agent_gamification_events`)
+   - Perfil completo: nivel, XP, Jiro Coins, racha de días
+   - Posición en ranking nacional (top 100)
+   - Logros recientes (últimos 7 días)
+
+8. **Seguros Education** (desde `seguros_lessons`, `seguros_progress`, `seguros_sessions`)
+   - Cursos en progreso y completados
+   - Horas de capacitación del mes actual
+   - Sesiones live programadas (próximos 7 días)
+   - Cursos nuevos disponibles (últimos 30 días no vistos)
+   - Último curso completado
+
+9. **Comunicados** (desde `comunicados`, `comunicados_visibilidad`, `comunicados_lecturas`)
+   - Comunicados publicados relevantes para el usuario
+   - Comunicados sin leer (filtra por lectura)
+   - Último comunicado con título y fecha
+
+10. **Trámites** (desde `tickets` y `centro_digital_archivos`)
+    - Trámites asignados pendientes o en proceso
+    - Documentos recientes por revisar (solo admin/gerente, últimos 7 días)
+
+11. **Reservas** (desde `reservas_espacio`)
+    - Reservas confirmadas o pendientes (próximos 7 días)
 
 **Manejo de errores:**
 - Usa `Promise.allSettled()` para ejecutar consultas en paralelo
@@ -277,74 +328,155 @@ const loadWelcomeMessage = async (userId: string) => {
 
 ## Ejemplos de Mensajes Generados
 
-### Ejemplo 1: Agente con buen desempeño
+### Ejemplo 1: Agente con comunicados sin leer
 
 **Contexto:**
 ```json
 {
   "nombre": "María González",
   "rol": "Agente",
+  "comunicados_sin_leer": 3,
+  "ultimo_comunicado_titulo": "Nuevas tarifas GMM 2026",
   "produccion_mes_actual": 156000,
-  "produccion_mes_anterior": 120000,
-  "tareas_pendientes": 3,
   "cotizaciones_activas": 5
 }
 ```
 
 **Mensaje generado:**
-> "Hola María, llevas un mes fuerte con $156,000 en producción, subiendo desde $120,000. Revisar esas 5 cotizaciones activas podría darte un cierre todavía mejor."
+> "Hola María, tienes 3 comunicados sin leer, incluyendo 'Nuevas tarifas GMM 2026'. Vale la pena revisarlos antes de atender tus 5 cotizaciones activas."
 
 ---
 
-### Ejemplo 2: Agente con tareas vencidas
+### Ejemplo 2: Agente con progreso en gamificación
 
 **Contexto:**
 ```json
 {
   "nombre": "Carlos Ramírez",
   "rol": "Agente",
-  "tareas_pendientes": 8,
-  "tareas_vencidas": 4,
-  "produccion_mes_actual": 85000
+  "nivel_actual": 8,
+  "xp_actual": 4200,
+  "xp_para_siguiente_nivel": 300,
+  "dias_racha": 12,
+  "posicion_ranking": 5,
+  "cursos_nuevos_disponibles": 2
 }
 ```
 
 **Mensaje generado:**
-> "Hola Carlos, tienes 4 tareas vencidas entre tus 8 pendientes. Vale la pena ponerte al corriente hoy para mantener el ritmo y no perder momentum."
+> "Hola Carlos, estás en nivel 8 con racha de 12 días y en el puesto 5 del ranking. Tienes 2 cursos nuevos que podrían darte el XP que necesitas para subir de nivel."
 
 ---
 
-### Ejemplo 3: Gerente con visión general
+### Ejemplo 3: Agente con cursos completados
 
 **Contexto:**
 ```json
 {
   "nombre": "Laura Martínez",
-  "rol": "Gerente",
-  "oficina": "Monterrey Norte",
-  "produccion_mes_actual": 450000,
-  "tareas_pendientes": 2,
-  "eventos_proximos": 3
+  "rol": "Agente",
+  "cursos_completados": 12,
+  "horas_capacitacion_mes": 8.5,
+  "ultimo_curso_completado": "Vida y GMM Intermedio",
+  "proximas_sesiones_live": 1
 }
 ```
 
 **Mensaje generado:**
-> "Hola Laura, tu oficina lleva $450,000 este mes. Tienes 3 eventos próximos y solo 2 tareas pendientes, lo cual muestra buena organización."
+> "Hola Laura, completaste 'Vida y GMM Intermedio' y llevas 8.5 horas de capacitación este mes. Tienes una sesión live mañana que complementaría bien tu aprendizaje."
 
 ---
 
-### Ejemplo 4: Usuario nuevo sin datos
+### Ejemplo 4: Agente con sesiones live próximas
 
 **Contexto:**
 ```json
 {
   "nombre": "Roberto Silva",
+  "rol": "Agente",
+  "proximas_sesiones_live": 2,
+  "cursos_nuevos_disponibles": 5,
+  "nivel_actual": 3,
+  "tareas_pendientes": 2
+}
+```
+
+**Mensaje generado:**
+> "Hola Roberto, hay 2 sesiones live esta semana y 5 cursos nuevos disponibles. Participar en ellas te dará XP para subir de nivel y conocimientos prácticos."
+
+---
+
+### Ejemplo 5: Gerente con visión general
+
+**Contexto:**
+```json
+{
+  "nombre": "Ana Pérez",
+  "rol": "Gerente",
+  "oficina": "Monterrey Norte",
+  "produccion_mes_actual": 450000,
+  "documentos_por_revisar": 8,
+  "tramites_pendientes_atencion": 3,
+  "comunicados_sin_leer": 1
+}
+```
+
+**Mensaje generado:**
+> "Hola Ana, tu oficina lleva $450,000 este mes. Hay 8 documentos recientes por revisar y 3 trámites pendientes que necesitan tu atención."
+
+---
+
+### Ejemplo 6: Usuario con logros recientes
+
+**Contexto:**
+```json
+{
+  "nombre": "Diego Torres",
+  "rol": "Agente",
+  "nivel_actual": 10,
+  "jiro_coins": 2500,
+  "logros_recientes": 5,
+  "produccion_mes_actual": 185000,
+  "produccion_mes_anterior": 145000
+}
+```
+
+**Mensaje generado:**
+> "Hola Diego, subiste a nivel 10 con 5 logros esta semana. Tu producción de $185,000 creció 27% vs mes pasado, ese momentum vale oro."
+
+---
+
+### Ejemplo 7: Usuario con trámites y reservas
+
+**Contexto:**
+```json
+{
+  "nombre": "Sofía Hernández",
+  "rol": "Agente",
+  "tramites_pendientes_atencion": 4,
+  "reservas_proximas": 2,
+  "tareas_vencidas": 2,
+  "cursos_en_progreso": 1
+}
+```
+
+**Mensaje generado:**
+> "Hola Sofía, tienes 4 trámites pendientes y 2 tareas vencidas. Cerrarlos antes de tus 2 reservas de esta semana te dejaría con buen ritmo."
+
+---
+
+### Ejemplo 8: Usuario nuevo sin datos
+
+**Contexto:**
+```json
+{
+  "nombre": "Miguel López",
   "rol": "Agente"
 }
 ```
 
 **Mensaje generado:**
-> "Hola Roberto, bienvenido. Tu plataforma está lista para empezar a construir tu producción y seguimiento de clientes."
+> "Hola Miguel, bienvenido. Tu plataforma está lista para empezar a construir tu producción, seguimiento de clientes y desarrollo profesional."
 
 ---
 
@@ -493,6 +625,71 @@ El sistema consulta estas tablas:
 
 ---
 
+## Prioridades de Información en los Mensajes
+
+ChatGPT utiliza estas prioridades al generar mensajes (de mayor a menor importancia):
+
+### 1. Comunicados sin leer (MÁXIMA PRIORIDAD)
+- Si hay comunicados sin leer, siempre se mencionan
+- Se incluye el título del último comunicado
+- Motivar al usuario a revisarlos
+
+**Ejemplo:**
+> "Hola María, tienes 3 comunicados sin leer, incluyendo 'Nuevas tarifas GMM 2026'."
+
+---
+
+### 2. Cursos nuevos y sesiones live próximas
+- Cursos publicados en los últimos 30 días
+- Sesiones live en los próximos 7 días
+- Motivar la participación y aprendizaje continuo
+
+**Ejemplo:**
+> "Hola Carlos, hay 2 sesiones live esta semana y 5 cursos nuevos disponibles."
+
+---
+
+### 3. Gamificación (logros y progreso)
+- Niveles recientes alcanzados
+- Posición destacada en ranking (top 10)
+- Racha de días activos (>7 días)
+- Reconocimiento de logros
+
+**Ejemplo:**
+> "Hola Laura, subiste a nivel 10 y estás en racha de 15 días. Vas en el puesto 5 del ranking."
+
+---
+
+### 4. Tareas vencidas y trámites urgentes
+- Tareas con fecha de vencimiento pasada
+- Trámites abiertos o en proceso
+- Recordatorio amable para atenderlos
+
+**Ejemplo:**
+> "Hola Roberto, tienes 4 trámites pendientes y 2 tareas vencidas que vale la pena atender."
+
+---
+
+### 5. Producción y comisiones destacables
+- Crecimientos significativos (>15%)
+- Metas alcanzadas o cerca de alcanzarse
+- Comparaciones mes actual vs anterior
+
+**Ejemplo:**
+> "Hola Ana, tu producción de $185,000 creció 27% vs mes pasado."
+
+---
+
+### 6. Progreso en capacitación
+- Cursos completados recientemente
+- Horas de capacitación acumuladas
+- Felicitación por compromiso con el desarrollo
+
+**Ejemplo:**
+> "Hola Diego, completaste 'GMM Intermedio' y llevas 8.5 horas de capacitación este mes."
+
+---
+
 ## Mejoras Futuras Sugeridas
 
 - [ ] Caché de mensajes generados (evitar regenerar cada vez)
@@ -502,6 +699,7 @@ El sistema consulta estas tablas:
 - [ ] Mensajes contextuales según hora del día
 - [ ] Integración con notificaciones importantes del sistema
 - [ ] Sugerencias de acciones basadas en datos
+- [ ] Detección de patrones (ej: productividad baja, falta de capacitación)
 
 ---
 

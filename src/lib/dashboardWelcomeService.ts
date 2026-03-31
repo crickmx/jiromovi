@@ -16,6 +16,33 @@ export interface UserWelcomeContext {
   ultimo_acceso?: string;
   comisiones_mes_actual?: number;
   comisiones_mes_anterior?: number;
+
+  // Gamificación
+  nivel_actual?: number;
+  xp_actual?: number;
+  xp_para_siguiente_nivel?: number;
+  jiro_coins?: number;
+  posicion_ranking?: number;
+  logros_recientes?: number;
+  dias_racha?: number;
+
+  // Seguros Education
+  cursos_en_progreso?: number;
+  cursos_completados?: number;
+  horas_capacitacion_mes?: number;
+  proximas_sesiones_live?: number;
+  cursos_nuevos_disponibles?: number;
+  ultimo_curso_completado?: string;
+
+  // Comunicados
+  comunicados_sin_leer?: number;
+  ultimo_comunicado_titulo?: string;
+  ultimo_comunicado_fecha?: string;
+
+  // Sistema general
+  tramites_pendientes_atencion?: number;
+  documentos_por_revisar?: number;
+  reservas_proximas?: number;
 }
 
 /**
@@ -64,12 +91,22 @@ export async function getUserWelcomeContext(userId: string): Promise<UserWelcome
       cotizacionesData,
       eventosData,
       comisionesData,
+      gamificacionData,
+      educationData,
+      comunicadosData,
+      tramitesData,
+      reservasData,
     ] = await Promise.allSettled([
       getProduccionData(userId),
       getTareasData(userId),
       getCotizacionesData(userId),
       getEventosProximos(userId),
       getComisionesData(userId),
+      getGamificacionData(userId),
+      getSegurosEducationData(userId),
+      getComunicadosData(userId),
+      getTramitesData(userId),
+      getReservasData(userId),
     ]);
 
     // Agregar datos de producción si están disponibles
@@ -97,6 +134,31 @@ export async function getUserWelcomeContext(userId: string): Promise<UserWelcome
       Object.assign(context, comisionesData.value);
     }
 
+    // Agregar datos de gamificación si están disponibles
+    if (gamificacionData.status === 'fulfilled' && gamificacionData.value) {
+      Object.assign(context, gamificacionData.value);
+    }
+
+    // Agregar datos de educación si están disponibles
+    if (educationData.status === 'fulfilled' && educationData.value) {
+      Object.assign(context, educationData.value);
+    }
+
+    // Agregar datos de comunicados si están disponibles
+    if (comunicadosData.status === 'fulfilled' && comunicadosData.value) {
+      Object.assign(context, comunicadosData.value);
+    }
+
+    // Agregar datos de trámites si están disponibles
+    if (tramitesData.status === 'fulfilled' && tramitesData.value) {
+      Object.assign(context, tramitesData.value);
+    }
+
+    // Agregar datos de reservas si están disponibles
+    if (reservasData.status === 'fulfilled' && reservasData.value) {
+      Object.assign(context, reservasData.value);
+    }
+
     console.log('✅ Contexto recopilado:', {
       nombre: context.nombre,
       rol: context.rol,
@@ -105,6 +167,9 @@ export async function getUserWelcomeContext(userId: string): Promise<UserWelcome
       cotizaciones_activas: context.cotizaciones_activas,
       produccion_mes_actual: context.produccion_mes_actual,
       comisiones_mes_actual: context.comisiones_mes_actual,
+      nivel_actual: context.nivel_actual,
+      cursos_en_progreso: context.cursos_en_progreso,
+      comunicados_sin_leer: context.comunicados_sin_leer,
       keys: Object.keys(context).length,
     });
 
@@ -461,4 +526,296 @@ function getFallbackMessage(context: UserWelcomeContext): string {
 
   // Mensaje aleatorio de respaldo
   return messages[Math.floor(Math.random() * messages.length)];
+}
+
+/**
+ * Obtiene datos de gamificación del usuario
+ */
+async function getGamificacionData(userId: string) {
+  try {
+    // Obtener perfil de gamificación
+    const { data: profile } = await supabase
+      .from('agent_gamification_profile')
+      .select('nivel_actual, xp_actual, xp_proximo_nivel, jiro_coins, dias_racha')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!profile) {
+      return null;
+    }
+
+    // Obtener posición en ranking (solo si está activo)
+    const { data: ranking } = await supabase
+      .rpc('fn_obtener_ranking_nacional', {
+        p_limit: 100,
+      });
+
+    const posicion = ranking?.findIndex((entry: any) => entry.user_id === userId) ?? -1;
+
+    // Obtener logros recientes (últimos 7 días)
+    const hace7Dias = new Date();
+    hace7Dias.setDate(hace7Dias.getDate() - 7);
+
+    const { count: logrosRecientes } = await supabase
+      .from('agent_gamification_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', hace7Dias.toISOString())
+      .gt('xp_delta', 0);
+
+    return {
+      nivel_actual: profile.nivel_actual,
+      xp_actual: profile.xp_actual,
+      xp_para_siguiente_nivel: profile.xp_proximo_nivel - profile.xp_actual,
+      jiro_coins: profile.jiro_coins,
+      posicion_ranking: posicion >= 0 ? posicion + 1 : undefined,
+      logros_recientes: logrosRecientes || 0,
+      dias_racha: profile.dias_racha || 0,
+    };
+  } catch (error) {
+    console.error('Error obteniendo gamificación:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene datos de Seguros Education del usuario
+ */
+async function getSegurosEducationData(userId: string) {
+  try {
+    // Obtener información del usuario para filtrar por oficina
+    const { data: userData } = await supabase
+      .from('usuarios')
+      .select('oficina_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!userData) return null;
+
+    // Cursos en progreso (iniciados pero no completados)
+    const { count: enProgreso } = await supabase
+      .from('seguros_progress')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('completado', false)
+      .gt('progreso', 0);
+
+    // Cursos completados
+    const { count: completados } = await supabase
+      .from('seguros_progress')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('completado', true);
+
+    // Horas de capacitación este mes
+    const primerDiaMes = new Date();
+    primerDiaMes.setDate(1);
+    primerDiaMes.setHours(0, 0, 0, 0);
+
+    const { data: progresoMes } = await supabase
+      .from('seguros_progress')
+      .select(`
+        seguros_lessons(duracion)
+      `)
+      .eq('user_id', userId)
+      .eq('completado', true)
+      .gte('updated_at', primerDiaMes.toISOString());
+
+    const horasTotales = progresoMes?.reduce((sum: number, p: any) => {
+      return sum + ((p.seguros_lessons?.duracion || 0) / 3600);
+    }, 0) || 0;
+
+    // Próximas sesiones live (próximos 7 días)
+    const hoy = new Date().toISOString().split('T')[0];
+    const en7Dias = new Date();
+    en7Dias.setDate(en7Dias.getDate() + 7);
+    const fechaEn7Dias = en7Dias.toISOString().split('T')[0];
+
+    const { count: sesionesProximas } = await supabase
+      .from('seguros_sessions')
+      .select('*', { count: 'exact', head: true })
+      .gte('fecha', hoy)
+      .lte('fecha', fechaEn7Dias);
+
+    // Cursos nuevos disponibles (últimos 30 días que no ha visto)
+    const hace30Dias = new Date();
+    hace30Dias.setDate(hace30Dias.getDate() - 30);
+
+    const { data: cursosNuevos } = await supabase
+      .from('seguros_lessons')
+      .select('id')
+      .gte('created_at', hace30Dias.toISOString());
+
+    const cursosNuevosIds = cursosNuevos?.map(c => c.id) || [];
+
+    let cursosNuevosNoVistos = 0;
+    if (cursosNuevosIds.length > 0) {
+      const { data: vistos } = await supabase
+        .from('seguros_progress')
+        .select('lesson_id')
+        .eq('user_id', userId)
+        .in('lesson_id', cursosNuevosIds);
+
+      const vistosIds = vistos?.map(v => v.lesson_id) || [];
+      cursosNuevosNoVistos = cursosNuevosIds.filter(id => !vistosIds.includes(id)).length;
+    }
+
+    // Último curso completado
+    const { data: ultimoCurso } = await supabase
+      .from('seguros_progress')
+      .select(`
+        seguros_lessons(titulo)
+      `)
+      .eq('user_id', userId)
+      .eq('completado', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return {
+      cursos_en_progreso: enProgreso || 0,
+      cursos_completados: completados || 0,
+      horas_capacitacion_mes: Math.round(horasTotales * 10) / 10,
+      proximas_sesiones_live: sesionesProximas || 0,
+      cursos_nuevos_disponibles: cursosNuevosNoVistos,
+      ultimo_curso_completado: ultimoCurso?.seguros_lessons?.titulo,
+    };
+  } catch (error) {
+    console.error('Error obteniendo datos de educación:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene datos de comunicados del usuario
+ */
+async function getComunicadosData(userId: string) {
+  try {
+    // Obtener información del usuario
+    const { data: userData } = await supabase
+      .from('usuarios')
+      .select('oficina_id, rol')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!userData) return null;
+
+    // Comunicados sin leer
+    const { data: comunicados } = await supabase
+      .from('comunicados')
+      .select(`
+        id,
+        titulo,
+        fecha_publicacion,
+        comunicados_visibilidad(usuario_id, area_id, oficina_id, para_todos)
+      `)
+      .eq('publicado', true)
+      .order('fecha_publicacion', { ascending: false });
+
+    if (!comunicados) return null;
+
+    // Filtrar comunicados relevantes para el usuario
+    const comunicadosRelevantes = comunicados.filter((c: any) => {
+      const visibilidad = c.comunicados_visibilidad;
+      if (!visibilidad || visibilidad.length === 0) return false;
+
+      return visibilidad.some((v: any) =>
+        v.para_todos ||
+        v.usuario_id === userId ||
+        v.oficina_id === userData.oficina_id
+      );
+    });
+
+    // Verificar cuáles no ha leído
+    const { data: lecturas } = await supabase
+      .from('comunicados_lecturas')
+      .select('comunicado_id')
+      .eq('usuario_id', userId);
+
+    const leidos = new Set(lecturas?.map(l => l.comunicado_id) || []);
+    const sinLeer = comunicadosRelevantes.filter(c => !leidos.has(c.id));
+
+    // Último comunicado relevante
+    const ultimoComunicado = comunicadosRelevantes[0];
+
+    return {
+      comunicados_sin_leer: sinLeer.length,
+      ultimo_comunicado_titulo: ultimoComunicado?.titulo,
+      ultimo_comunicado_fecha: ultimoComunicado?.fecha_publicacion,
+    };
+  } catch (error) {
+    console.error('Error obteniendo comunicados:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene datos de trámites del usuario
+ */
+async function getTramitesData(userId: string) {
+  try {
+    // Trámites asignados al usuario que están pendientes o en proceso
+    const { count: pendientes } = await supabase
+      .from('tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('agente_id', userId)
+      .in('estatus', ['abierto', 'en_proceso']);
+
+    // Documentos del Centro Digital que necesitan revisión (si es admin/gerente)
+    const { data: userData } = await supabase
+      .from('usuarios')
+      .select('rol')
+      .eq('id', userId)
+      .maybeSingle();
+
+    let documentosPorRevisar = 0;
+    if (userData?.rol === 'Administrador' || userData?.rol === 'Gerente') {
+      // Documentos subidos recientemente (últimos 7 días)
+      const hace7Dias = new Date();
+      hace7Dias.setDate(hace7Dias.getDate() - 7);
+
+      const { count } = await supabase
+        .from('centro_digital_archivos')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', hace7Dias.toISOString());
+
+      documentosPorRevisar = count || 0;
+    }
+
+    return {
+      tramites_pendientes_atencion: pendientes || 0,
+      documentos_por_revisar: documentosPorRevisar,
+    };
+  } catch (error) {
+    console.error('Error obteniendo trámites:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene datos de reservas del usuario
+ */
+async function getReservasData(userId: string) {
+  try {
+    // Reservas próximas (próximos 7 días)
+    const hoy = new Date().toISOString().split('T')[0];
+    const en7Dias = new Date();
+    en7Dias.setDate(en7Dias.getDate() + 7);
+    const fechaEn7Dias = en7Dias.toISOString().split('T')[0];
+
+    const { count } = await supabase
+      .from('reservas_espacio')
+      .select('*', { count: 'exact', head: true })
+      .eq('reservado_por', userId)
+      .gte('fecha', hoy)
+      .lte('fecha', fechaEn7Dias)
+      .in('estado', ['confirmada', 'pendiente']);
+
+    return {
+      reservas_proximas: count || 0,
+    };
+  } catch (error) {
+    console.error('Error obteniendo reservas:', error);
+    return null;
+  }
 }
