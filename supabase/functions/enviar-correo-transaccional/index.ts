@@ -42,11 +42,13 @@ Deno.serve(async (req) => {
         .from('correo_configuracion')
         .select('*')
         .eq('activo', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (configError || !config) {
         console.error('Error configuración:', configError);
-        throw new Error('No hay configuración de correo activa');
+        throw new Error(`No hay configuración de correo activa: ${configError?.message || 'Config no encontrada'}`);
       }
 
       const resendApiKey = Deno.env.get('RESEND_API_KEY') || config.resend_api_key;

@@ -39,22 +39,28 @@ Deno.serve(async (req) => {
       .from('correo_configuracion')
       .select('remitente_email, remitente_nombre, resend_api_key')
       .eq('activo', true)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
     if (configError) {
       console.error('Error loading email config:', configError);
-      throw new Error('Error loading email configuration');
+      throw new Error(`Error loading email configuration: ${configError.message}`);
     }
 
     if (!config) {
       throw new Error('No active email configuration found');
     }
 
+    if (!config.resend_api_key && !Deno.env.get('RESEND_API_KEY')) {
+      throw new Error('No Resend API key found in database or environment');
+    }
+
     console.log('Email config loaded:');
     console.log('  From Name:', config.remitente_nombre);
     console.log('  From Email:', config.remitente_email);
 
-    const resendApiKey = config.resend_api_key || Deno.env.get('RESEND_API_KEY') || 're_hdUhQ6MB_BEiDto4R5NKZDwsaxvWMLeeW';
+    const resendApiKey = config.resend_api_key || Deno.env.get('RESEND_API_KEY');
     const resend = new Resend(resendApiKey);
 
     const fromAddress = config.remitente_email;
