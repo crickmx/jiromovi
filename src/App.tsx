@@ -88,6 +88,7 @@ import ExamenInterface from './pages/ExamenInterface';
 import CertificadoCedulaA from './pages/CertificadoCedulaA';
 import MiProgreso from './pages/MiProgreso';
 import GamificacionAdmin from './pages/GamificacionAdmin';
+import CargaMasivaUsuarios from './pages/CargaMasivaUsuarios';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -861,6 +862,7 @@ function App() {
               <Route path="/sicas/vigentes-test" element={<ProtectedRoute requireAdmin><Layout><SicasVigentesTest /></Layout></ProtectedRoute>} />
               <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
+              <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><Layout><CargaMasivaUsuarios /></Layout></ProtectedRoute>} />
 
               {/* Redirect raíz */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
