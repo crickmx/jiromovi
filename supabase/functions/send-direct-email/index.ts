@@ -8,10 +8,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+interface EmailAttachment {
+  filename: string;
+  content_type?: string;
+  storage_path?: string;
+  url?: string;
+  content?: string;
+}
+
 interface EmailRequest {
   to: string;
   subject: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
 Deno.serve(async (req) => {
@@ -20,11 +29,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { to, subject, html } = await req.json() as EmailRequest;
+    const { to, subject, html, attachments } = await req.json() as EmailRequest;
 
     console.log('=== SEND DIRECT EMAIL ===');
     console.log('To:', to);
     console.log('Subject:', subject);
+    console.log('Attachments:', attachments?.length || 0);
 
     if (!to || !subject || !html) {
       throw new Error('Missing required fields: to, subject, html');
@@ -69,12 +79,73 @@ Deno.serve(async (req) => {
     console.log('Sending email via Resend...');
     console.log('From:', `${fromName} <${fromAddress}>`);
 
-    const { data, error } = await resend.emails.send({
+    // Procesar adjuntos
+    const resendAttachments = [];
+    if (attachments && attachments.length > 0) {
+      console.log(`Processing ${attachments.length} attachments...`);
+
+      for (const attachment of attachments) {
+        try {
+          let fileContent: string;
+
+          // Si tiene URL de Supabase Storage, descargar el archivo
+          if (attachment.url) {
+            console.log(`  Downloading: ${attachment.filename} from ${attachment.url}`);
+            const response = await fetch(attachment.url);
+            if (!response.ok) {
+              console.error(`Failed to download ${attachment.filename}: ${response.statusText}`);
+              continue;
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            fileContent = btoa(String.fromCharCode(...bytes));
+          }
+          // Si tiene content directo en base64
+          else if (attachment.content) {
+            fileContent = attachment.content;
+          }
+          // Si tiene storage_path, construir URL y descargar
+          else if (attachment.storage_path) {
+            const publicUrl = `${supabaseUrl}/storage/v1/object/public/${attachment.storage_path}`;
+            console.log(`  Downloading: ${attachment.filename} from storage path`);
+            const response = await fetch(publicUrl);
+            if (!response.ok) {
+              console.error(`Failed to download ${attachment.filename}: ${response.statusText}`);
+              continue;
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            fileContent = btoa(String.fromCharCode(...bytes));
+          } else {
+            console.error(`Attachment ${attachment.filename} has no content, url, or storage_path`);
+            continue;
+          }
+
+          resendAttachments.push({
+            filename: attachment.filename,
+            content: fileContent,
+          });
+
+          console.log(`  ✓ Attached: ${attachment.filename}`);
+        } catch (err: any) {
+          console.error(`Error processing attachment ${attachment.filename}:`, err.message);
+        }
+      }
+    }
+
+    const emailPayload: any = {
       from: `${fromName} <${fromAddress}>`,
       to: [to],
       subject: subject,
       html: html,
-    });
+    };
+
+    if (resendAttachments.length > 0) {
+      emailPayload.attachments = resendAttachments;
+      console.log(`Sending with ${resendAttachments.length} attachments`);
+    }
+
+    const { data, error } = await resend.emails.send(emailPayload);
 
     if (error) {
       console.error('Resend error:', error);

@@ -7,6 +7,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+interface EmailAttachment {
+  filename: string;
+  content_type?: string;
+  storage_path?: string;
+  url?: string;
+  content?: string;
+}
+
 interface EmailRequest {
   tipo?: string;
   destinatario?: string;
@@ -17,6 +25,7 @@ interface EmailRequest {
   to_name?: string;
   subject?: string;
   html_body?: string;
+  attachments?: EmailAttachment[];
 }
 
 Deno.serve(async (req) => {
@@ -63,12 +72,73 @@ Deno.serve(async (req) => {
 
       console.log('Enviando correo con Resend desde:', `${fromName} <${fromEmail}>`);
 
-      const { data, error } = await resend.emails.send({
+      // Procesar adjuntos si existen
+      const resendAttachments = [];
+      if (requestBody.attachments && requestBody.attachments.length > 0) {
+        console.log(`Procesando ${requestBody.attachments.length} adjuntos...`);
+
+        for (const attachment of requestBody.attachments) {
+          try {
+            let fileContent: string;
+
+            // Si tiene URL de Supabase Storage, descargar el archivo
+            if (attachment.url) {
+              console.log(`  Descargando: ${attachment.filename} desde ${attachment.url}`);
+              const response = await fetch(attachment.url);
+              if (!response.ok) {
+                console.error(`Error descargando ${attachment.filename}: ${response.statusText}`);
+                continue;
+              }
+              const arrayBuffer = await response.arrayBuffer();
+              const bytes = new Uint8Array(arrayBuffer);
+              fileContent = btoa(String.fromCharCode(...bytes));
+            }
+            // Si tiene content directo en base64
+            else if (attachment.content) {
+              fileContent = attachment.content;
+            }
+            // Si tiene storage_path, construir URL y descargar
+            else if (attachment.storage_path) {
+              const publicUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${attachment.storage_path}`;
+              console.log(`  Descargando: ${attachment.filename} desde storage`);
+              const response = await fetch(publicUrl);
+              if (!response.ok) {
+                console.error(`Error descargando ${attachment.filename}: ${response.statusText}`);
+                continue;
+              }
+              const arrayBuffer = await response.arrayBuffer();
+              const bytes = new Uint8Array(arrayBuffer);
+              fileContent = btoa(String.fromCharCode(...bytes));
+            } else {
+              console.error(`Adjunto ${attachment.filename} no tiene content, url, o storage_path`);
+              continue;
+            }
+
+            resendAttachments.push({
+              filename: attachment.filename,
+              content: fileContent,
+            });
+
+            console.log(`  ✓ Adjunto: ${attachment.filename}`);
+          } catch (err: any) {
+            console.error(`Error procesando adjunto ${attachment.filename}:`, err.message);
+          }
+        }
+      }
+
+      const emailPayload: any = {
         from: `${fromName} <${fromEmail}>`,
         to: [requestBody.to_email],
         subject: requestBody.subject,
         html: requestBody.html_body,
-      });
+      };
+
+      if (resendAttachments.length > 0) {
+        emailPayload.attachments = resendAttachments;
+        console.log(`Enviando con ${resendAttachments.length} adjuntos`);
+      }
+
+      const { data, error } = await resend.emails.send(emailPayload);
 
       if (error) {
         throw error;

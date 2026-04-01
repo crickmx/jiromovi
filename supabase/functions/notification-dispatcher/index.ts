@@ -353,6 +353,18 @@ async function processEmailNotification(
 
   const startTime = Date.now();
 
+  // Preparar adjuntos si existen
+  const emailPayload: any = {
+    to: email,
+    subject: asunto,
+    html: cuerpoHtml
+  };
+
+  if (job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0) {
+    emailPayload.attachments = job.attachments;
+    console.log(`  📎 Including ${job.attachments.length} attachments`);
+  }
+
   const response = await fetch(
     `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-direct-email`,
     {
@@ -361,11 +373,7 @@ async function processEmailNotification(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
       },
-      body: JSON.stringify({
-        to: email,
-        subject: asunto,
-        html: cuerpoHtml
-      })
+      body: JSON.stringify(emailPayload)
     }
   );
 
