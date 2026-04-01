@@ -10,7 +10,7 @@ interface Archivo {
   tipo: string | null;
   tamano: number | null;
   fecha_subida: string;
-  usuario: {
+  usuarios: {
     nombre_completo: string;
   } | null;
 }
@@ -41,7 +41,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
         async (payload) => {
           const { data } = await supabase
             .from('ticket_archivos')
-            .select('*, usuario:usuario_id(nombre_completo)')
+            .select('*, usuarios!usuario_id(nombre_completo)')
             .eq('id', payload.new.id)
             .single();
 
@@ -64,7 +64,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
   const loadArchivos = async () => {
     const { data } = await supabase
       .from('ticket_archivos')
-      .select('*, usuario:usuario_id(nombre_completo)')
+      .select('*, usuarios!usuario_id(nombre_completo)')
       .eq('ticket_id', tramiteId)
       .order('fecha_subida', { ascending: false });
 
@@ -89,7 +89,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
           tipo: file.type,
           tamano: file.size,
           fecha_subida: new Date().toISOString(),
-          usuario: {
+          usuarios: {
             nombre_completo: usuario.nombre_completo
           }
         };
@@ -120,7 +120,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
             tipo: file.type,
             tamano: file.size
           })
-          .select('*, usuario:usuario_id(nombre_completo)')
+          .select('*, usuarios!usuario_id(nombre_completo)')
           .single();
 
         if (dbError) throw dbError;
@@ -228,9 +228,9 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
                       year: 'numeric'
                     })}
                   </p>
-                  {archivo.usuario && (
+                  {archivo.usuarios && (
                     <p className="text-xs text-neutral-500 mt-1">
-                      por {archivo.usuario.nombre_completo}
+                      por {archivo.usuarios.nombre_completo}
                     </p>
                   )}
                 </div>
