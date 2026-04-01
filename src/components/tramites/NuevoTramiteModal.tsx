@@ -413,9 +413,9 @@ export function NuevoTramiteModal({
     setError('');
 
     try {
-      const estatusNuevo = estatusList.find(e => e.nombre === 'Nuevo');
+      const estatusNuevo = estatusList.find(e => e.nombre === 'Iniciado');
       if (!estatusNuevo) {
-        throw new Error('No se encontró el estatus "Nuevo"');
+        throw new Error('No se encontró el estatus "Iniciado"');
       }
 
       const assignedTo = isAgent ? usuario.id : asignado;
