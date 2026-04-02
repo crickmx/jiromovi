@@ -55,6 +55,15 @@ Deno.serve(async (req) => {
 
       console.log('Número normalizado:', numeroNormalizado);
 
+      // IMPORTANTE: Validar longitud del mensaje
+      let mensaje = requestBody.message;
+      const MAX_WHATSAPP_LENGTH = 550;
+      if (mensaje.length > MAX_WHATSAPP_LENGTH) {
+        console.warn(`⚠️ Mensaje excede ${MAX_WHATSAPP_LENGTH} caracteres (${mensaje.length}). Truncando...`);
+        mensaje = mensaje.substring(0, MAX_WHATSAPP_LENGTH - 20) + '... [Continúa]';
+      }
+      console.log(`Longitud mensaje: ${mensaje.length} caracteres`);
+
       if (!config.channel_id_uuid) {
         throw new Error('El Channel ID (UUID) no está configurado');
       }
@@ -63,7 +72,7 @@ Deno.serve(async (req) => {
         channelId: config.channel_id_uuid,
         chatId: numeroNormalizado,
         chatType: 'whatsapp',
-        text: requestBody.message
+        text: mensaje
       };
 
       console.log('Enviando a Wazzup24:', wazzupPayload);
@@ -99,7 +108,7 @@ Deno.serve(async (req) => {
           p_destinatario_nombre: null,
           p_numero_destino: numeroNormalizado,
           p_asunto: 'Mensaje WhatsApp',
-          p_cuerpo_html: requestBody.message,
+          p_cuerpo_html: mensaje,
           p_estado: success ? 'enviado' : 'fallido',
           p_error_mensaje: success ? null : JSON.stringify(wazzupData),
           p_enviado_por: null,
@@ -194,7 +203,15 @@ Deno.serve(async (req) => {
       texto = texto.replace(regex, datos[key] || '');
     });
 
+    // IMPORTANTE: Validar longitud del mensaje
+    const MAX_WHATSAPP_LENGTH = 550;
+    if (texto.length > MAX_WHATSAPP_LENGTH) {
+      console.warn(`⚠️ Mensaje excede ${MAX_WHATSAPP_LENGTH} caracteres (${texto.length}). Truncando...`);
+      texto = texto.substring(0, MAX_WHATSAPP_LENGTH - 20) + '... [Continúa]';
+    }
+
     console.log('Texto procesado:', texto);
+    console.log('Longitud:', texto.length, 'caracteres');
 
     if (!config.channel_id_uuid) {
       throw new Error('El Channel ID (UUID) no está configurado');

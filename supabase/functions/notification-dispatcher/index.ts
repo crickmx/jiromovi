@@ -447,6 +447,13 @@ async function processWhatsAppNotification(
 
   mensaje = mensaje.replace(/{{nombre}}/g, user.nombre || '');
 
+  // IMPORTANTE: Validar longitud del mensaje
+  const MAX_WHATSAPP_LENGTH = 550;
+  if (mensaje.length > MAX_WHATSAPP_LENGTH) {
+    console.warn(`⚠️ Mensaje excede ${MAX_WHATSAPP_LENGTH} caracteres (${mensaje.length}). Truncando...`);
+    mensaje = mensaje.substring(0, MAX_WHATSAPP_LENGTH - 20) + '... [Continúa]';
+  }
+
   const { data: whatsappConfig } = await supabase
     .from('whatsapp_configuracion')
     .select('api_key, channel_id_uuid')
@@ -462,7 +469,7 @@ async function processWhatsAppNotification(
     normalizedPhone = '521' + normalizedPhone;
   }
 
-  console.log(`  📱 Enviando a: ${normalizedPhone}`);
+  console.log(`  📱 Enviando a: ${normalizedPhone} (${mensaje.length} chars)`);
 
   const startTime = Date.now();
 
