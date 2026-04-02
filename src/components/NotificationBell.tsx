@@ -58,7 +58,19 @@ export function NotificationBell() {
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
     if (notification.accion_url) {
-      navigate(notification.accion_url);
+      let url = notification.accion_url;
+
+      // Si la URL es absoluta, extraer solo la ruta
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        try {
+          const urlObj = new URL(url);
+          url = urlObj.pathname + urlObj.search + urlObj.hash;
+        } catch (e) {
+          console.error('Error parsing notification URL:', e);
+        }
+      }
+
+      navigate(url);
       setIsOpen(false);
     }
   };
