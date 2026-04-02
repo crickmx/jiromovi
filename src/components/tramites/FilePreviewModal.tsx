@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Download, ZoomIn, ZoomOut, RotateCw, FileText, AlertCircle } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface FilePreviewModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function FilePreviewModal({
   const [rotation, setRotation] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [signedUrl, setSignedUrl] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
@@ -29,19 +31,74 @@ export function FilePreviewModal({
       setRotation(0);
       setLoading(true);
       setError(false);
+      generateSignedUrl();
     }
   }, [isOpen, fileUrl]);
 
+  const generateSignedUrl = async () => {
+    try {
+      // Extraer el path del archivo de la URL pública
+      const urlObj = new URL(fileUrl);
+      const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
+
+      if (pathParts.length > 1) {
+        const filePath = pathParts[1];
+
+        // Generar URL firmada válida por 1 hora
+        const { data, error: signError } = await supabase.storage
+          .from('ticket-archivos')
+          .createSignedUrl(filePath, 3600);
+
+        if (signError) {
+          console.error('Error generating signed URL:', signError);
+          setSignedUrl(fileUrl); // Fallback a URL pública
+        } else if (data) {
+          setSignedUrl(data.signedUrl);
+        }
+      } else {
+        setSignedUrl(fileUrl); // Fallback si no puede parsear
+      }
+    } catch (err) {
+      console.error('Error parsing URL:', err);
+      setSignedUrl(fileUrl); // Fallback en caso de error
+    }
+  };
+
   if (!isOpen) return null;
 
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = fileName;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async () => {
+    try {
+      let downloadUrl = signedUrl || fileUrl;
+
+      // Si no hay URL firmada aún, generarla
+      if (!signedUrl) {
+        const urlObj = new URL(fileUrl);
+        const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
+
+        if (pathParts.length > 1) {
+          const filePath = pathParts[1];
+          const { data } = await supabase.storage
+            .from('ticket-archivos')
+            .createSignedUrl(filePath, 3600);
+
+          if (data) {
+            downloadUrl = data.signedUrl;
+          }
+        }
+      }
+
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error downloading file:', err);
+      // Fallback: abrir en nueva pestaña
+      window.open(fileUrl, '_blank');
+    }
   };
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 25, 300));
@@ -56,6 +113,18 @@ export function FilePreviewModal({
   };
 
   const renderContent = () => {
+    // Mostrar loading mientras se genera la URL firmada
+    if (!signedUrl) {
+      return (
+        <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl">
+          <div className="text-center space-y-4">
+            <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-sm text-neutral-600">Preparando vista previa...</p>
+          </div>
+        </div>
+      );
+    }
+
     if (error) {
       return (
         <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl">
@@ -88,7 +157,7 @@ export function FilePreviewModal({
             }}
           >
             <img
-              src={fileUrl}
+              src={signedUrl}
               alt={fileName}
               className="max-w-full max-h-[70vh] object-contain"
               onLoad={() => setLoading(false)}
@@ -107,7 +176,7 @@ export function FilePreviewModal({
       return (
         <div className="flex-1 bg-neutral-50 rounded-xl overflow-hidden">
           <iframe
-            src={`${fileUrl}#view=FitH`}
+            src={`${signedUrl}#view=FitH`}
             className="w-full h-full min-h-[70vh]"
             title={fileName}
             onLoad={() => setLoading(false)}
@@ -129,7 +198,7 @@ export function FilePreviewModal({
       return (
         <div className="flex-1 bg-neutral-50 rounded-xl overflow-hidden">
           <iframe
-            src={fileUrl}
+            src={signedUrl}
             className="w-full h-full min-h-[70vh]"
             title={fileName}
             onLoad={() => setLoading(false)}
@@ -147,7 +216,7 @@ export function FilePreviewModal({
       return (
         <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl p-4">
           <video
-            src={fileUrl}
+            src={signedUrl}
             controls
             className="max-w-full max-h-[70vh]"
             onLoadedData={() => setLoading(false)}
@@ -173,7 +242,7 @@ export function FilePreviewModal({
               <p className="text-sm text-neutral-500 mt-1">{formatFileSize(fileSize)}</p>
             </div>
             <audio
-              src={fileUrl}
+              src={signedUrl}
               controls
               className="w-full max-w-md"
               onLoadedData={() => setLoading(false)}

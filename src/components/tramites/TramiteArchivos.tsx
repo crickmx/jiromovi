@@ -245,16 +245,41 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
                   <Eye className="w-4 h-4" />
                   <span>Ver</span>
                 </button>
-                <a
-                  href={archivo.url}
-                  download={archivo.nombre}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={async () => {
+                    try {
+                      const urlObj = new URL(archivo.url);
+                      const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
+
+                      let downloadUrl = archivo.url;
+                      if (pathParts.length > 1) {
+                        const filePath = pathParts[1];
+                        const { data } = await supabase.storage
+                          .from('ticket-archivos')
+                          .createSignedUrl(filePath, 3600);
+
+                        if (data) {
+                          downloadUrl = data.signedUrl;
+                        }
+                      }
+
+                      const link = document.createElement('a');
+                      link.href = downloadUrl;
+                      link.download = archivo.nombre;
+                      link.target = '_blank';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    } catch (err) {
+                      console.error('Error downloading file:', err);
+                      window.open(archivo.url, '_blank');
+                    }
+                  }}
                   className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded-lg transition-all font-semibold text-sm"
                 >
                   <Download className="w-4 h-4" />
                   <span>Descargar</span>
-                </a>
+                </button>
               </div>
             </div>
           ))}
