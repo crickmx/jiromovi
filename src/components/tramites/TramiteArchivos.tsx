@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FileText, Download, Upload, X } from 'lucide-react';
+import { FileText, Download, Upload, Eye } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { FilePreviewModal } from './FilePreviewModal';
 
 interface Archivo {
   id: string;
@@ -24,6 +25,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
   const [archivos, setArchivos] = useState<Archivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<Archivo | null>(null);
 
   useEffect(() => {
     loadArchivos();
@@ -235,18 +237,39 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
                   )}
                 </div>
               </div>
-              <a
-                href={archivo.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 flex items-center justify-center space-x-2 w-full px-3 py-2 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded-lg transition-all font-semibold text-sm"
-              >
-                <Download className="w-4 h-4" />
-                <span>Descargar</span>
-              </a>
+              <div className="mt-3 flex items-center space-x-2">
+                <button
+                  onClick={() => setPreviewFile(archivo)}
+                  className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold text-sm"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>Ver</span>
+                </button>
+                <a
+                  href={archivo.url}
+                  download={archivo.nombre}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded-lg transition-all font-semibold text-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Descargar</span>
+                </a>
+              </div>
             </div>
           ))}
         </div>
+      )}
+
+      {previewFile && (
+        <FilePreviewModal
+          isOpen={!!previewFile}
+          onClose={() => setPreviewFile(null)}
+          fileName={previewFile.nombre}
+          fileUrl={previewFile.url}
+          fileType={previewFile.tipo}
+          fileSize={previewFile.tamano}
+        />
       )}
     </div>
   );
