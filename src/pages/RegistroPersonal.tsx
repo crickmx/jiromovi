@@ -230,7 +230,7 @@ export default function RegistroPersonal() {
             />
             <div className="h-12 w-px bg-slate-300"></div>
             <img
-              src="/logo-bx.png"
+              src="/movirecurso_1.png"
               alt="MOVI Digital"
               className="h-16 object-contain"
             />
