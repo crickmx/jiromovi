@@ -20,11 +20,6 @@ interface RegisterEmployeeRequest {
     celular_laboral: string;
     extension_telefonica?: string;
     imagen_perfil_url?: string;
-    equipo_computo_marca: string;
-    equipo_computo_modelo: string;
-    equipo_celular_marca: string;
-    equipo_celular_modelo: string;
-    created_by?: string;
   };
 }
 
@@ -47,35 +42,15 @@ Deno.serve(async (req: Request) => {
       },
     });
 
+    let currentUserId: string | null = null;
+
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Authorization required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user: currentUser } } = await supabaseAdmin.auth.getUser(token);
-
-    if (!currentUser) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { data: currentUserData } = await supabaseAdmin
-      .from('usuarios')
-      .select('rol')
-      .eq('id', currentUser.id)
-      .single();
-
-    if (currentUserData?.rol !== 'Administrador') {
-      return new Response(
-        JSON.stringify({ error: 'Solo los administradores pueden registrar empleados' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user: currentUser } } = await supabaseAdmin.auth.getUser(token);
+      if (currentUser) {
+        currentUserId = currentUser.id;
+      }
     }
 
     const body = await req.json();
@@ -173,11 +148,7 @@ Deno.serve(async (req: Request) => {
       celular_laboral: userData.celular_laboral,
       extension_telefonica: userData.extension_telefonica || '',
       imagen_perfil_url: userData.imagen_perfil_url || '/display-avatar.png',
-      equipo_computo_marca: userData.equipo_computo_marca,
-      equipo_computo_modelo: userData.equipo_computo_modelo,
-      equipo_celular_marca: userData.equipo_celular_marca,
-      equipo_celular_modelo: userData.equipo_celular_modelo,
-      created_by: userData.created_by || currentUser.id,
+      created_by: currentUserId,
       password_generated_at: new Date().toISOString(),
       status: 'pendiente_activacion',
       activo: false,
@@ -209,28 +180,31 @@ Deno.serve(async (req: Request) => {
 
     console.log('[register-employee] User inserted successfully:', insertedData);
 
-    try {
-      const { error: auditError } = await supabaseAdmin
-        .from('auditoria_usuarios')
-        .insert({
-          usuario_id: authData.user.id,
-          accion: 'crear',
-          realizado_por: currentUser.id,
-          detalles: {
-            nombre: userData.nombre,
-            apellidos: userData.apellidos,
-            email_laboral: userData.email_laboral,
-            puesto: userData.puesto,
-            status: 'pendiente_activacion',
-            oficina_id: userData.oficina_id,
-          }
-        });
+    if (currentUserId) {
+      try {
+        const { error: auditError } = await supabaseAdmin
+          .from('auditoria_usuarios')
+          .insert({
+            usuario_id: authData.user.id,
+            accion: 'crear',
+            realizado_por: currentUserId,
+            detalles: {
+              nombre: userData.nombre,
+              apellidos: userData.apellidos,
+              email_laboral: userData.email_laboral,
+              puesto: userData.puesto,
+              status: 'pendiente_activacion',
+              oficina_id: userData.oficina_id,
+              origen: 'registro_publico'
+            }
+          });
 
-      if (auditError) {
+        if (auditError) {
+          console.error('[register-employee] Error al guardar auditoría:', auditError);
+        }
+      } catch (auditError) {
         console.error('[register-employee] Error al guardar auditoría:', auditError);
       }
-    } catch (auditError) {
-      console.error('[register-employee] Error al guardar auditoría:', auditError);
     }
 
     console.log('[register-employee] Notificando a administradores...');

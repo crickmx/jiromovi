@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { UserPlus, Upload, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -16,8 +14,6 @@ interface Oficina {
 }
 
 export default function RegistroPersonal() {
-  const navigate = useNavigate();
-  const { usuario } = useAuth();
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,22 +31,14 @@ export default function RegistroPersonal() {
     celular_laboral: '',
     email_laboral: '',
     extension_telefonica: '',
-    equipo_computo_marca: '',
-    equipo_computo_modelo: '',
-    equipo_celular_marca: '',
-    equipo_celular_modelo: '',
     imagen_perfil_url: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (usuario?.rol !== 'Administrador') {
-      navigate('/dashboard');
-      return;
-    }
     cargarOficinas();
-  }, [usuario, navigate]);
+  }, []);
 
   const cargarOficinas = async () => {
     const { data, error } = await supabase
@@ -127,10 +115,6 @@ export default function RegistroPersonal() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_laboral)) {
       newErrors.email_laboral = 'El email no es válido';
     }
-    if (!formData.equipo_computo_marca.trim()) newErrors.equipo_computo_marca = 'La marca de equipo de cómputo es obligatoria';
-    if (!formData.equipo_computo_modelo.trim()) newErrors.equipo_computo_modelo = 'El modelo de equipo de cómputo es obligatorio';
-    if (!formData.equipo_celular_marca.trim()) newErrors.equipo_celular_marca = 'La marca de equipo celular es obligatoria';
-    if (!formData.equipo_celular_modelo.trim()) newErrors.equipo_celular_modelo = 'El modelo de equipo celular es obligatorio';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -170,18 +154,13 @@ export default function RegistroPersonal() {
     try {
       const contraseñaAleatoria = generarContraseñaSegura();
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No hay sesión activa');
-      }
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-employee`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
             password: contraseñaAleatoria,
@@ -197,11 +176,6 @@ export default function RegistroPersonal() {
               celular_laboral: formData.celular_laboral.trim(),
               extension_telefonica: formData.extension_telefonica.trim(),
               imagen_perfil_url: formData.imagen_perfil_url || '/display-avatar.png',
-              equipo_computo_marca: formData.equipo_computo_marca.trim(),
-              equipo_computo_modelo: formData.equipo_computo_modelo.trim(),
-              equipo_celular_marca: formData.equipo_celular_marca.trim(),
-              equipo_celular_modelo: formData.equipo_celular_modelo.trim(),
-              created_by: usuario?.id,
             }
           })
         }
@@ -214,9 +188,6 @@ export default function RegistroPersonal() {
       }
 
       setSuccess(true);
-      setTimeout(() => {
-        navigate('/directorio');
-      }, 3000);
 
     } catch (err: any) {
       console.error('Error al registrar empleado:', err);
@@ -226,10 +197,6 @@ export default function RegistroPersonal() {
     }
   };
 
-  if (usuario?.rol !== 'Administrador') {
-    return null;
-  }
-
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
@@ -238,13 +205,13 @@ export default function RegistroPersonal() {
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Empleado registrado correctamente
+            Registro enviado correctamente
           </h2>
           <p className="text-slate-600 mb-4">
-            El usuario fue creado con estatus <strong>pendiente de activación</strong> y deberá ser activado por un administrador antes de poder ingresar a la plataforma.
+            Tu solicitud de registro fue enviada exitosamente. Un administrador revisará tu información y activará tu cuenta en breve.
           </p>
           <p className="text-sm text-slate-500">
-            Redirigiendo al directorio...
+            Recibirás un correo electrónico con tus credenciales de acceso una vez que tu cuenta sea activada.
           </p>
         </Card>
       </div>
@@ -254,21 +221,27 @@ export default function RegistroPersonal() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/directorio')}
-            className="mb-4"
-          >
-            ← Volver al directorio
-          </Button>
-          <div className="flex items-center gap-3 mb-2">
+        <div className="mb-8 text-center">
+          <div className="flex items-center justify-center gap-6 mb-6">
+            <img
+              src="/logojiro.png"
+              alt="JIRO y Asociados"
+              className="h-16 object-contain"
+            />
+            <div className="h-12 w-px bg-slate-300"></div>
+            <img
+              src="/logo-bx.png"
+              alt="MOVI Digital"
+              className="h-16 object-contain"
+            />
+          </div>
+          <div className="flex items-center justify-center gap-3 mb-2">
             <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center">
               <UserPlus className="w-6 h-6 text-accent" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Registro de Personal</h1>
-              <p className="text-slate-600">Alta de empleados internos de JIRO</p>
+              <p className="text-slate-600">Pre-registro para empleados de JIRO</p>
             </div>
           </div>
         </div>
@@ -400,64 +373,10 @@ export default function RegistroPersonal() {
                 <Label htmlFor="extension_telefonica">Extensión Telefónica</Label>
                 <Input
                   id="extension_telefonica"
+                  placeholder="Ej: 123"
                   value={formData.extension_telefonica}
                   onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
                 />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              Equipo Asignado
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="equipo_computo_marca">Marca de Equipo de Cómputo *</Label>
-                <Input
-                  id="equipo_computo_marca"
-                  placeholder="HP, Dell, Lenovo, etc."
-                  value={formData.equipo_computo_marca}
-                  onChange={(e) => setFormData({ ...formData, equipo_computo_marca: e.target.value })}
-                  className={errors.equipo_computo_marca ? 'border-red-500' : ''}
-                />
-                {errors.equipo_computo_marca && <p className="text-sm text-red-500 mt-1">{errors.equipo_computo_marca}</p>}
-              </div>
-
-              <div>
-                <Label htmlFor="equipo_computo_modelo">Modelo de Equipo de Cómputo *</Label>
-                <Input
-                  id="equipo_computo_modelo"
-                  placeholder="Modelo del equipo"
-                  value={formData.equipo_computo_modelo}
-                  onChange={(e) => setFormData({ ...formData, equipo_computo_modelo: e.target.value })}
-                  className={errors.equipo_computo_modelo ? 'border-red-500' : ''}
-                />
-                {errors.equipo_computo_modelo && <p className="text-sm text-red-500 mt-1">{errors.equipo_computo_modelo}</p>}
-              </div>
-
-              <div>
-                <Label htmlFor="equipo_celular_marca">Marca de Equipo Celular *</Label>
-                <Input
-                  id="equipo_celular_marca"
-                  placeholder="iPhone, Samsung, etc."
-                  value={formData.equipo_celular_marca}
-                  onChange={(e) => setFormData({ ...formData, equipo_celular_marca: e.target.value })}
-                  className={errors.equipo_celular_marca ? 'border-red-500' : ''}
-                />
-                {errors.equipo_celular_marca && <p className="text-sm text-red-500 mt-1">{errors.equipo_celular_marca}</p>}
-              </div>
-
-              <div>
-                <Label htmlFor="equipo_celular_modelo">Modelo de Equipo Celular *</Label>
-                <Input
-                  id="equipo_celular_modelo"
-                  placeholder="Modelo del celular"
-                  value={formData.equipo_celular_modelo}
-                  onChange={(e) => setFormData({ ...formData, equipo_celular_modelo: e.target.value })}
-                  className={errors.equipo_celular_modelo ? 'border-red-500' : ''}
-                />
-                {errors.equipo_celular_modelo && <p className="text-sm text-red-500 mt-1">{errors.equipo_celular_modelo}</p>}
               </div>
             </div>
           </Card>
@@ -507,33 +426,30 @@ export default function RegistroPersonal() {
             </div>
           </Card>
 
-          <div className="flex items-center justify-end gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/directorio')}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
+          <div className="flex items-center justify-center">
             <Button
               type="submit"
               disabled={loading || uploadingImage}
-              className="min-w-[200px]"
+              className="min-w-[300px]"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Registrando...
+                  Enviando registro...
                 </>
               ) : (
                 <>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Registrar Empleado
+                  Enviar Registro
                 </>
               )}
             </Button>
           </div>
+
+          <p className="text-center text-sm text-slate-500 mt-4">
+            Al enviar este formulario, tu información será revisada por un administrador. <br />
+            Recibirás un correo electrónico cuando tu cuenta sea activada.
+          </p>
         </form>
       </div>
     </div>

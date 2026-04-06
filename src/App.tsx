@@ -864,10 +864,12 @@ function App() {
               <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
               <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><Layout><CargaMasivaUsuarios /></Layout></ProtectedRoute>} />
-              <Route path="/registro-personal" element={<ProtectedRoute requireAdmin><RegistroPersonal /></ProtectedRoute>} />
 
               {/* Redirect raíz */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+              {/* Ruta pública - Registro de Personal */}
+              <Route path="/registro-personal" element={<RegistroPersonal />} />
 
               {/* Ruta pública - catch-all para slugs */}
               <Route path="/:slug" element={<PaginaPublicaAsesor />} />
