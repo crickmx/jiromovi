@@ -16,10 +16,12 @@ interface RegisterEmployeeRequest {
     puesto: string;
     oficina_id: string;
     fecha_nacimiento: string;
-    fecha_ingreso_jiro: string;
+    fecha_ingreso: string;
     celular_laboral: string;
     extension_telefonica?: string;
     imagen_perfil_url?: string;
+    equipo_computo?: string;
+    equipo_celular?: string;
   };
 }
 
@@ -142,11 +144,13 @@ Deno.serve(async (req: Request) => {
       puesto: userData.puesto,
       oficina_id: userData.oficina_id,
       fecha_nacimiento: userData.fecha_nacimiento,
-      fecha_ingreso_jiro: userData.fecha_ingreso_jiro,
+      fecha_ingreso: userData.fecha_ingreso,
       celular_personal: '',
       email_personal: '',
       celular_laboral: userData.celular_laboral,
       extension_telefonica: userData.extension_telefonica || '',
+      equipo_computo: userData.equipo_computo || '',
+      equipo_celular: userData.equipo_celular || '',
       imagen_perfil_url: userData.imagen_perfil_url || '/display-avatar.png',
       created_by: currentUserId,
       password_generated_at: new Date().toISOString(),
