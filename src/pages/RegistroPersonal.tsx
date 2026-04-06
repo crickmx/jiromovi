@@ -27,11 +27,13 @@ export default function RegistroPersonal() {
     puesto: '',
     oficina_id: '',
     fecha_nacimiento: '',
-    fecha_ingreso_jiro: '',
+    fecha_ingreso: '',
     celular_laboral: '',
     email_laboral: '',
     extension_telefonica: '',
     imagen_perfil_url: '',
+    equipo_computo: '',
+    equipo_celular: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -108,7 +110,7 @@ export default function RegistroPersonal() {
     if (!formData.puesto.trim()) newErrors.puesto = 'El puesto es obligatorio';
     if (!formData.oficina_id) newErrors.oficina_id = 'La oficina es obligatoria';
     if (!formData.fecha_nacimiento) newErrors.fecha_nacimiento = 'La fecha de nacimiento es obligatoria';
-    if (!formData.fecha_ingreso_jiro) newErrors.fecha_ingreso_jiro = 'La fecha de ingreso es obligatoria';
+    if (!formData.fecha_ingreso) newErrors.fecha_ingreso = 'La fecha de ingreso es obligatoria';
     if (!formData.celular_laboral.trim()) newErrors.celular_laboral = 'El celular laboral es obligatorio';
     if (!formData.email_laboral.trim()) {
       newErrors.email_laboral = 'El email laboral es obligatorio';
@@ -172,10 +174,12 @@ export default function RegistroPersonal() {
               puesto: formData.puesto.trim(),
               oficina_id: formData.oficina_id,
               fecha_nacimiento: formData.fecha_nacimiento,
-              fecha_ingreso_jiro: formData.fecha_ingreso_jiro,
+              fecha_ingreso: formData.fecha_ingreso,
               celular_laboral: formData.celular_laboral.trim(),
               extension_telefonica: formData.extension_telefonica.trim(),
               imagen_perfil_url: formData.imagen_perfil_url || '/display-avatar.png',
+              equipo_computo: formData.equipo_computo.trim(),
+              equipo_celular: formData.equipo_celular.trim(),
             }
           })
         }
@@ -294,15 +298,15 @@ export default function RegistroPersonal() {
               </div>
 
               <div>
-                <Label htmlFor="fecha_ingreso_jiro">Fecha de Ingreso a JIRO *</Label>
+                <Label htmlFor="fecha_ingreso">Fecha de Ingreso *</Label>
                 <Input
-                  id="fecha_ingreso_jiro"
+                  id="fecha_ingreso"
                   type="date"
-                  value={formData.fecha_ingreso_jiro}
-                  onChange={(e) => setFormData({ ...formData, fecha_ingreso_jiro: e.target.value })}
-                  className={errors.fecha_ingreso_jiro ? 'border-red-500' : ''}
+                  value={formData.fecha_ingreso}
+                  onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
+                  className={errors.fecha_ingreso ? 'border-red-500' : ''}
                 />
-                {errors.fecha_ingreso_jiro && <p className="text-sm text-red-500 mt-1">{errors.fecha_ingreso_jiro}</p>}
+                {errors.fecha_ingreso && <p className="text-sm text-red-500 mt-1">{errors.fecha_ingreso}</p>}
               </div>
             </div>
           </Card>
@@ -377,6 +381,39 @@ export default function RegistroPersonal() {
                   value={formData.extension_telefonica}
                   onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
                 />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              Equipos Asignados
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="equipo_computo">Equipo de Cómputo</Label>
+                <Input
+                  id="equipo_computo"
+                  placeholder="Ej: Dell Latitude 5420"
+                  value={formData.equipo_computo}
+                  onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
+                />
+                <p className="text-sm text-slate-500 mt-1">
+                  Modelo y detalles del equipo de cómputo asignado
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="equipo_celular">Equipo Celular</Label>
+                <Input
+                  id="equipo_celular"
+                  placeholder="Ej: iPhone 13 Pro"
+                  value={formData.equipo_celular}
+                  onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
+                />
+                <p className="text-sm text-slate-500 mt-1">
+                  Modelo y detalles del equipo celular asignado
+                </p>
               </div>
             </div>
           </Card>

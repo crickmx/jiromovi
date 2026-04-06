@@ -253,6 +253,8 @@ export function Perfil() {
     { key: 'celular_laboral', label: 'Celular Laboral', type: 'tel' },
     { key: 'email_laboral', label: 'Email Laboral', type: 'email' },
     { key: 'extension_telefonica', label: 'Extensión Telefónica', type: 'text' },
+    { key: 'equipo_computo', label: 'Equipo de Cómputo', type: 'text' },
+    { key: 'equipo_celular', label: 'Equipo Celular', type: 'text' },
     { key: 'web_slug', label: 'Slug', type: 'text' },
   ];
 

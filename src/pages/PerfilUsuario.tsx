@@ -102,6 +102,8 @@ export function PerfilUsuario() {
       celular_laboral: formData.celular_laboral,
       email_laboral: formData.email_laboral,
       extension_telefonica: formData.extension_telefonica,
+      equipo_computo: formData.equipo_computo || null,
+      equipo_celular: formData.equipo_celular || null,
       url_web_jiro: formData.url_web_jiro,
       url_web_multicotizador: formData.url_web_multicotizador,
       web_slug: formData.web_slug || null,
@@ -317,6 +319,18 @@ export function PerfilUsuario() {
                       year: 'numeric'
                     })}
                   </p>
+                </div>
+              )}
+              {usuario.equipo_computo && (
+                <div>
+                  <span className="text-slate-500">Equipo de Cómputo:</span>
+                  <p className="text-slate-900 font-medium">{usuario.equipo_computo}</p>
+                </div>
+              )}
+              {usuario.equipo_celular && (
+                <div>
+                  <span className="text-slate-500">Equipo Celular:</span>
+                  <p className="text-slate-900 font-medium">{usuario.equipo_celular}</p>
                 </div>
               )}
             </div>
@@ -543,6 +557,32 @@ export function PerfilUsuario() {
                         onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Equipo de Cómputo
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej: Dell Latitude 5420"
+                        value={formData.equipo_computo || ''}
+                        onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Modelo y detalles del equipo de cómputo asignado</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Equipo Celular
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej: iPhone 13 Pro"
+                        value={formData.equipo_celular || ''}
+                        onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Modelo y detalles del equipo celular asignado</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
