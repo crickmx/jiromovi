@@ -1,73 +1,214 @@
-# React + TypeScript + Vite
+# MOVI Digital - Plataforma Integral de Gestión
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema completo de gestión empresarial con control de acceso basado en roles, desarrollado completamente en español.
 
-Currently, two official plugins are available:
+**Plataforma:** Bolt.new + Supabase
+**Arquitectura:** React SPA + PostgreSQL + Edge Functions
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📚 Documentación Principal
 
-## React Compiler
+- 📖 **[CONFIGURACION_BOLT_SUPABASE.md](CONFIGURACION_BOLT_SUPABASE.md)** - Arquitectura y configuración completa
+- 🔐 **[CREDENCIALES_LOGIN.md](CREDENCIALES_LOGIN.md)** - Usuarios de prueba
+- 🏗️ **[AUDITORIA_CONFIGURACION_BOLT_SUPABASE.md](AUDITORIA_CONFIGURACION_BOLT_SUPABASE.md)** - Última auditoría de configuración
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Inicio Rápido
 
-## Expanding the ESLint configuration
+```bash
+# Instalar dependencias
+npm install
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# Iniciar en desarrollo
+npm run dev
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Build para producción
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+La aplicación estará disponible en `http://localhost:5173`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🎯 Funcionalidades Principales
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Gestión de Usuarios y Permisos
+- Sistema de roles: Administrador, Gerente, Empleado, Agente
+- Gestión completa de usuarios con soft delete
+- Directorio de usuarios con filtros avanzados
+- Perfiles personalizados con logotipos
+- Gestión de oficinas
+
+### Sistema de Comisiones
+- Carga masiva de archivos Excel
+- Cálculos fiscales automáticos (ISR, IVA, retenciones)
+- Soporte para Asimilados, Honorarios y RESICO
+- Mapeo inteligente de vendedores
+- Generación de PDFs con desglose fiscal
+- Notificaciones automáticas por email y WhatsApp
+
+### CRM Completo
+- Gestión de contactos con campos personalizados
+- Sistema de tareas con tablero Kanban
+- Gestión de cotizaciones y pólizas
+- Recordatorios automáticos de cumpleaños
+- Historial completo de interacciones
+
+### Producción y Reportes
+- Sincronización con Google Sheets
+- Reportes por vendedor y oficina
+- Gráficas dinámicas y estadísticas
+- Ranking de vendedores
+- Filtros avanzados por período
+
+### Cotizador GMM (Gastos Médicos Mayores)
+- Cotización multi-plan BX+
+- Comparativas de coberturas
+- Cálculo dinámico de primas
+- Generación de PDFs comparativos
+- Historial de cotizaciones
+
+### Comunicación
+- Centro de notificaciones en tiempo real
+- Chat interno con archivos adjuntos
+- Videollamadas (MoviMeet)
+- Sistema de comunicados con categorías
+- Emails transaccionales con Resend
+- WhatsApp con Wazzup
+
+### Otros Módulos
+- Seguros Education (videos y cursos)
+- Aula Virtual para capacitaciones
+- Calendario de eventos
+- Gestión de vacaciones
+- Store interno
+- Páginas web públicas personalizadas
+
+## 🛠️ Stack Tecnológico
+
+### Frontend
+- React 18 + TypeScript
+- Vite (build tool)
+- React Router v7
+- Tailwind CSS
+- Radix UI + shadcn/ui
+- Lucide Icons
+
+### Backend (Supabase)
+- PostgreSQL con Row Level Security (RLS)
+- 80+ tablas con políticas de seguridad
+- 40+ Edge Functions (Deno runtime)
+- Storage buckets para archivos
+
+### Integraciones
+- **Resend** - Emails transaccionales
+- **Wazzup** - WhatsApp API
+- **Google Sheets** - Sincronización de producción
+- **jsPDF** - Generación de PDFs
+
+## ⚙️ Configuración
+
+### Variables de Entorno
+
+El archivo `.env` contiene:
+```env
+VITE_SUPABASE_URL=https://qhwvuuyjhcennqccgvse.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGci...
 ```
+
+Estas variables son leídas automáticamente por Vite en Bolt.new.
+
+### Base de Datos
+
+La base de datos incluye:
+- 80+ tablas con RLS habilitado
+- Migraciones en `/supabase/migrations`
+- Tipos TypeScript generados en `/src/lib/database.types.ts`
+
+### Edge Functions
+
+40+ funciones serverless para:
+- Gestión de usuarios
+- Procesamiento de comisiones
+- Notificaciones (email + WhatsApp)
+- Sincronización de producción
+- Y más...
+
+## 👥 Usuarios de Prueba
+
+Ver archivo `CREDENCIALES_LOGIN.md` para usuarios de prueba disponibles.
+
+## 🔒 Seguridad
+
+- ✅ Row Level Security (RLS) en todas las tablas
+- ✅ Políticas restrictivas por rol
+- ✅ Autenticación JWT con Supabase Auth
+- ✅ Soft delete en tablas críticas
+- ✅ Auditoría de acciones de usuarios
+- ✅ Variables de entorno seguras
+
+## 📁 Estructura del Proyecto
+
+```
+/
+├── src/
+│   ├── components/         # Componentes React
+│   │   ├── ui/            # Componentes de UI (shadcn)
+│   │   ├── chat/          # Componentes de chat
+│   │   ├── comisiones/    # Sistema de comisiones
+│   │   └── ...
+│   ├── contexts/          # Context API
+│   │   ├── AuthContext.tsx
+│   │   └── NotificationContext.tsx
+│   ├── lib/              # Utilidades y helpers
+│   │   ├── supabase.ts
+│   │   ├── database.types.ts
+│   │   └── ...
+│   ├── pages/            # Páginas/rutas
+│   │   ├── Login.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── Comisiones.tsx
+│   │   ├── GMMCotizador.tsx
+│   │   └── ...
+│   └── main.tsx          # Entry point
+├── supabase/
+│   ├── functions/        # Edge Functions (Deno)
+│   └── migrations/       # Migraciones SQL
+├── public/               # Assets estáticos
+├── .env                  # Variables de entorno
+└── vite.config.ts        # Configuración Vite
+```
+
+## 📊 Arquitectura
+
+```
+┌─────────────────────────────────────────┐
+│         Frontend (React + Vite)          │
+│         Bolt.new                         │
+└─────────────┬───────────────────────────┘
+              │
+              │ HTTPS
+              ▼
+┌─────────────────────────────────────────┐
+│         Backend (Supabase)               │
+├─────────────────────────────────────────┤
+│  • PostgreSQL (80+ tablas)              │
+│  • Storage (9 buckets)                  │
+│  • Auth (JWT)                            │
+│  • Edge Functions (40+)                 │
+└─────────────┬───────────────────────────┘
+              │
+              │ Integraciones
+              ▼
+┌─────────────────────────────────────────┐
+│  • Resend (emails)                      │
+│  • Wazzup (WhatsApp)                    │
+│  • Google Sheets (producción)           │
+└─────────────────────────────────────────┘
+```
+
+## 🚀 Deployment
+
+Esta aplicación está configurada para **Bolt.new** con todas las variables pre-configuradas.
+
+Si deseas desplegar en otra plataforma, consulta `CONFIGURACION_BOLT_SUPABASE.md`.
+
+## 📝 Licencia
+
+Sistema propietario para uso interno.
