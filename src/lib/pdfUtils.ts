@@ -23,6 +23,11 @@ import {
   type FiscalCalculationInput,
   type RegimenFiscal as RegimenFiscalV2
 } from './commissionFiscalCalculationV2';
+import {
+  calcularDesgloseFiscalV3,
+  type FiscalBreakdownInput,
+  type RegimenFiscal as RegimenFiscalV3
+} from './commissionFiscalCalculationV3';
 
 interface PdfFiscalRow {
   label: string;
@@ -695,15 +700,19 @@ export async function generateOrdenDePagoPDF(
   }
 
   // ============================================================================
-  // SISTEMA V2: CÁLCULO FISCAL CON FÓRMULAS EXACTAS
+  // SISTEMA V3: MOTOR FISCAL BLINDADO CON VALIDACIÓN COMPLETA
   // ============================================================================
-  // Este sistema implementa las fórmulas exactas de los documentos de referencia
-  // para ASIMILADOS, HONORARIOS y RESICO.
+  // Este sistema implementa un motor fiscal completamente blindado con:
+  // - Validación estricta de inputs y outputs
+  // - Auditoría con versionado de fórmulas
+  // - Manejo de errores que previene fallos silenciosos
+  // - Cálculos puros sin efectos secundarios ni cachés
   //
-  // CRÍTICO: Cada PDF calcula desde cero basándose en:
-  // 1. Comisiones clasificadas por ramo (VIDA = exenta, NO VIDA = gravada)
-  // 2. Régimen fiscal actual del usuario
-  // 3. Fórmulas matemáticas puras sin dependencias externas
+  // GARANTÍAS:
+  // 1. Cada PDF calcula desde cero (sin reutilizar valores de otros PDFs)
+  // 2. Validaciones internas aseguran correctitud de fórmulas
+  // 3. Cualquier inconsistencia lanza error antes de generar PDF
+  // 4. Trazabilidad completa con versión de fórmulas y timestamp
 
   const { supabase } = await import('./supabase');
   const usuario_id = agentDetails[0].usuario_id;
@@ -723,7 +732,7 @@ export async function generateOrdenDePagoPDF(
   }
 
   const regimenFiscalName = (usuarioData.regimen_fiscal as any)?.name || 'HONORARIOS';
-  const regimenFiscalNormalizado = regimenFiscalName.toUpperCase() as RegimenFiscalV2;
+  const regimenFiscalNormalizado = regimenFiscalName.toUpperCase() as RegimenFiscalV3;
 
   // Clasificar comisiones por ramo (VIDA vs NO VIDA)
   // Convertir ramoMap a Map<string, number> para la función
@@ -734,34 +743,42 @@ export async function generateOrdenDePagoPDF(
   const { comisionGravada, comisionExenta } = clasificarComisionesPorRamo(ramoComisionMap);
 
   const agentFullName = `${usuario.nombre} ${usuario.apellidos}`.trim();
-  console.log(`[PDF V2] ========================================`);
-  console.log(`[PDF V2] Generando PDF para: ${agentFullName}`);
-  console.log(`[PDF V2] Régimen Fiscal: ${regimenFiscalNormalizado}`);
-  console.log(`[PDF V2] Comisión Gravada (NO VIDA): ${formatCurrency(comisionGravada)}`);
-  console.log(`[PDF V2] Comisión Exenta (VIDA): ${formatCurrency(comisionExenta)}`);
-  console.log(`[PDF V2] Comisión Total: ${formatCurrency(comisionGravada + comisionExenta)}`);
+  console.log(`[PDF V3] ========================================`);
+  console.log(`[PDF V3] Generando PDF Blindado para: ${agentFullName}`);
+  console.log(`[PDF V3] Régimen Fiscal: ${regimenFiscalNormalizado}`);
+  console.log(`[PDF V3] Comisión Gravada (NO VIDA): ${formatCurrency(comisionGravada)}`);
+  console.log(`[PDF V3] Comisión Exenta (VIDA): ${formatCurrency(comisionExenta)}`);
+  console.log(`[PDF V3] Comisión Total: ${formatCurrency(comisionGravada + comisionExenta)}`);
 
-  // Preparar el input para el cálculo fiscal V2
-  const fiscalInputV2: FiscalCalculationInput = {
+  // Preparar el input para el motor fiscal V3 con contexto de auditoría
+  const fiscalInputV3: FiscalBreakdownInput = {
     regimenFiscal: regimenFiscalNormalizado,
     comisionGravada,
-    comisionExenta
+    comisionExenta,
+    context: {
+      agentId: usuario_id,
+      periodo: `${batch.semana_anio || ''}-${batch.semana_numero || ''}`,
+    }
   };
 
-  // CALCULAR el desglose fiscal usando fórmulas exactas
-  const resultadoFiscalV2 = calcularDesgloseFiscalV2(fiscalInputV2);
+  // CALCULAR el desglose fiscal usando motor blindado V3
+  // Esta función lanza error si hay inconsistencias en las validaciones
+  const resultadoFiscalV3 = calcularDesgloseFiscalV3(fiscalInputV3);
 
-  // Convertir a campos de display para el PDF
-  const displayFields = convertirADisplayFields(resultadoFiscalV2);
+  // Los pdfRows ya vienen formateados del motor V3
+  const displayFields = resultadoFiscalV3.pdfRows;
 
-  console.log(`[PDF V2] Resultado:`);
-  console.log(`[PDF V2]   Total a Pagar: ${formatCurrency(resultadoFiscalV2.total)}`);
-  console.log(`[PDF V2] ========================================`);
+  console.log(`[PDF V3] Resultado:`);
+  console.log(`[PDF V3]   Total a Pagar: ${formatCurrency(resultadoFiscalV3.calculations.total)}`);
+  console.log(`[PDF V3]   Versión: ${resultadoFiscalV3.audit.formulaVersion}`);
+  console.log(`[PDF V3]   Validaciones Pasadas: ${resultadoFiscalV3.audit.validationsPassed ? 'SÍ' : 'NO'}`);
+  console.log(`[PDF V3]   Warnings: ${resultadoFiscalV3.audit.warnings.length}`);
+  console.log(`[PDF V3] ========================================`);
 
   // Si no hay espacio en la página actual, crear una nueva
   const availableSpace = pageHeight - yPosition - 8;
   if (availableSpace < 60) {
-    console.log('[PDF V2] Espacio insuficiente, creando nueva página');
+    console.log('[PDF V3] Espacio insuficiente, creando nueva página');
     doc.addPage();
     yPosition = 20;
   }
@@ -774,18 +791,18 @@ export async function generateOrdenDePagoPDF(
 
   yPosition += 4;
 
-  // Convertir displayFields a formato de tabla
+  // Convertir displayFields (pdfRows de V3) a formato de tabla
   const desgloseFiscalRows: any[] = displayFields.map(field => {
     // Formatear el valor con signo si aplica
     let valorDisplay = field.formattedValue;
-    if (field.isNegative && field.value !== 0) {
+    if (field.sign === 'negative' && field.value !== 0) {
       valorDisplay = `- ${field.formattedValue}`;
-    } else if (!field.isNegative && !field.isTotal && field.value > 0) {
+    } else if (field.sign === 'positive' && field.value > 0 && field.key !== 'comision_gravada' && field.key !== 'comision_exenta') {
       // No agregar + para comisiones base, solo para conceptos que se suman
       valorDisplay = field.formattedValue;
     }
 
-    if (field.isTotal) {
+    if (field.key === 'total') {
       // Fila de TOTAL con estilo destacado
       return [
         { content: field.label, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } },
@@ -816,7 +833,7 @@ export async function generateOrdenDePagoPDF(
   doc.setFontSize(6);
   doc.setFont(undefined, 'italic');
   doc.setTextColor(100);
-  doc.text(`* Cálculo basado en comisión gravada (NO VIDA) y comisión exenta (VIDA)`, marginLeft, yPosition);
+  doc.text(`* Cálculo basado en comisión gravada (NO VIDA) y comisión exenta (VIDA) - Versión ${resultadoFiscalV3.audit.formulaVersion}`, marginLeft, yPosition);
 
   const pdfBlob = doc.output('blob');
   return pdfBlob;
