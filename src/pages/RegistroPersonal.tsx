@@ -78,16 +78,16 @@ export default function RegistroPersonal() {
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `avatares/${fileName}`;
+      const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('avatares')
+        .from('avatars')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('avatares')
+        .from('avatars')
         .getPublicUrl(filePath);
 
       setFormData(prev => ({ ...prev, imagen_perfil_url: publicUrl }));
