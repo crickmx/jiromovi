@@ -7,7 +7,7 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Select } from '../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Alert } from '../components/ui/alert';
 
 interface Oficina {
@@ -353,17 +353,19 @@ export default function RegistroPersonal() {
               <div>
                 <Label htmlFor="oficina_id">Oficina *</Label>
                 <Select
-                  id="oficina_id"
                   value={formData.oficina_id}
                   onValueChange={(value) => setFormData({ ...formData, oficina_id: value })}
-                  className={errors.oficina_id ? 'border-red-500' : ''}
                 >
-                  <option value="">Selecciona una oficina</option>
-                  {oficinas.map((oficina) => (
-                    <option key={oficina.id} value={oficina.id}>
-                      {oficina.nombre}
-                    </option>
-                  ))}
+                  <SelectTrigger className={errors.oficina_id ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Selecciona una oficina" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {oficinas.map((oficina) => (
+                      <SelectItem key={oficina.id} value={oficina.id}>
+                        {oficina.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
                 {errors.oficina_id && <p className="text-sm text-red-500 mt-1">{errors.oficina_id}</p>}
               </div>
