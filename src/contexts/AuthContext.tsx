@@ -127,6 +127,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUsuario = async () => {
     if (user) {
       console.log('[AuthContext] 🔄 Forzando refresh del usuario');
+
+      // Forzar refresh del token JWT de Supabase
+      // Esto es necesario cuando el rol/permisos cambian en la BD
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error('[AuthContext] Error refreshing session:', error);
+      } else {
+        console.log('[AuthContext] ✅ Session JWT refreshed successfully');
+      }
+
       lastFetchedUserIdRef.current = null; // Resetear para forzar el fetch
       await fetchUsuario(user.id, true);
     }
