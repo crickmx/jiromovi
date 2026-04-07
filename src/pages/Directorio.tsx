@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Filter, UserPlus, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Filter, UserPlus, CreditCard as Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import type { Database } from '../lib/database.types';
 
@@ -129,12 +129,19 @@ export function Directorio() {
   };
 
   const handleToggleActive = async (usuario: Usuario) => {
+    // Determinar el nuevo estado basado en el estado actual
+    const nuevoEstado = usuario.estado === 'activo' ? 'inactivo' : 'activo';
+
     const { error } = await supabase
       .from('usuarios')
-      .update({ activo: !usuario.activo, updated_at: new Date().toISOString() })
+      .update({
+        estado: nuevoEstado,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', usuario.id);
 
     if (error) {
+      console.error('Error al actualizar estado:', error);
       alert('Error al actualizar estado');
     } else {
       loadData();
@@ -318,7 +325,7 @@ export function Directorio() {
                         onClick={() => handleToggleActive(usuario)}
                         className="flex items-center space-x-2"
                       >
-                        {usuario.activo ? (
+                        {usuario.estado === 'activo' ? (
                           <>
                             <ToggleRight className="w-6 h-6 text-green-600" />
                             <span className="text-sm text-green-600 font-medium">Activo</span>
@@ -332,7 +339,7 @@ export function Directorio() {
                       </button>
                     ) : (
                       <div className="flex items-center space-x-2">
-                        {usuario.activo ? (
+                        {usuario.estado === 'activo' ? (
                           <>
                             <ToggleRight className="w-6 h-6 text-green-600" />
                             <span className="text-sm text-green-600 font-medium">Activo</span>
