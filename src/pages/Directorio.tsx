@@ -147,44 +147,50 @@ export function Directorio() {
   };
 
   const handleToggleActive = async (usuario: Usuario) => {
-    // Verificar que el usuario actual es Admin
+    // Verificar que el usuario actual es Admin (verificación adicional frontend)
     if (!isAdmin) {
       alert('Solo los Administradores pueden cambiar el estado de usuarios');
       return;
     }
 
-    // Determinar el nuevo estado basado en el estado actual
-    const nuevoEstado = usuario.estado === 'activo' ? 'inactivo' : 'activo';
+    // Determinar el nuevo estado basado en el campo activo
+    const nuevoActivo = !usuario.activo;
 
-    console.log('[TOGGLE] Usuario actual:', currentUser?.email_laboral, 'Rol:', currentUser?.rol);
-    console.log('[TOGGLE] Cambiando estado de:', usuario.email_laboral, 'a:', nuevoEstado);
+    try {
+      // Call secure RPC function instead of direct update
+      const { data, error } = await supabase
+        .rpc('toggle_user_active_status', {
+          p_user_id: usuario.id,
+          p_activo: nuevoActivo
+        });
 
-    // Debug: Verificar sesión actual
-    const { data: sessionData } = await supabase.auth.getSession();
-    console.log('[TOGGLE] Session user:', sessionData.session?.user?.id);
-    console.log('[TOGGLE] Session user_metadata:', sessionData.session?.user?.user_metadata);
+      if (error) {
+        console.error('Error al cambiar estado:', error);
+        alert('Error: ' + error.message);
+        return;
+      }
 
-    // Forzar refresh de la sesión para obtener el JWT más reciente
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError) {
-      console.error('[TOGGLE] Error al refrescar sesión:', refreshError);
-    } else {
-      console.log('[TOGGLE] Sesión refrescada correctamente');
-    }
+      // Check response from function
+      const result = data as { success: boolean; error?: string; message?: string; changed?: boolean };
 
-    const { error } = await supabase
-      .from('usuarios')
-      .update({
-        estado: nuevoEstado
-      })
-      .eq('id', usuario.id);
+      if (!result.success) {
+        alert(result.error || 'Error desconocido');
+        return;
+      }
 
-    if (error) {
-      console.error('[TOGGLE] Error al actualizar estado:', error);
-      alert('Error al actualizar estado: ' + error.message);
-    } else {
-      console.log('[TOGGLE] Estado actualizado exitosamente');
+      // Show success message
+      if (result.changed) {
+        alert(result.message || 'Estado actualizado exitosamente');
+      } else {
+        alert(result.message || 'Sin cambios');
+      }
+
+      // Refresh data
       loadData();
+
+    } catch (err) {
+      console.error('Error inesperado:', err);
+      alert('Error inesperado al cambiar estado del usuario');
     }
   };
 
@@ -383,7 +389,7 @@ export function Directorio() {
                         onClick={() => handleToggleActive(usuario)}
                         className="flex items-center space-x-2"
                       >
-                        {usuario.estado === 'activo' ? (
+                        {usuario.activo ? (
                           <>
                             <ToggleRight className="w-6 h-6 text-green-600" />
                             <span className="text-sm text-green-600 font-medium">Activo</span>
@@ -397,7 +403,7 @@ export function Directorio() {
                       </button>
                     ) : (
                       <div className="flex items-center space-x-2">
-                        {usuario.estado === 'activo' ? (
+                        {usuario.activo ? (
                           <>
                             <ToggleRight className="w-6 h-6 text-green-600" />
                             <span className="text-sm text-green-600 font-medium">Activo</span>
