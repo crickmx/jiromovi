@@ -15,6 +15,7 @@ interface NotificationJob {
   channel: 'in_app' | 'email' | 'whatsapp';
   status: string;
   payload: Record<string, any>;
+  attachments?: any[];
   attempt_count: number;
   max_attempts: number;
 }
@@ -361,8 +362,13 @@ async function processEmailNotification(
   };
 
   if (job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0) {
-    emailPayload.attachments = job.attachments;
-    console.log(`  📎 Including ${job.attachments.length} attachments`);
+    // Transformar adjuntos al formato esperado por send-direct-email
+    emailPayload.attachments = job.attachments.map((att: any) => ({
+      filename: att.filename || 'archivo',
+      url: att.path || att.url, // 'path' viene de ticket_archivos.url
+      content_type: att.content_type || 'application/octet-stream'
+    }));
+    console.log(`  📎 Including ${emailPayload.attachments.length} attachments`);
   }
 
   const response = await fetch(
