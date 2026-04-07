@@ -159,11 +159,23 @@ export function Directorio() {
     console.log('[TOGGLE] Usuario actual:', currentUser?.email_laboral, 'Rol:', currentUser?.rol);
     console.log('[TOGGLE] Cambiando estado de:', usuario.email_laboral, 'a:', nuevoEstado);
 
+    // Debug: Verificar sesión actual
+    const { data: sessionData } = await supabase.auth.getSession();
+    console.log('[TOGGLE] Session user:', sessionData.session?.user?.id);
+    console.log('[TOGGLE] Session user_metadata:', sessionData.session?.user?.user_metadata);
+
+    // Forzar refresh de la sesión para obtener el JWT más reciente
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) {
+      console.error('[TOGGLE] Error al refrescar sesión:', refreshError);
+    } else {
+      console.log('[TOGGLE] Sesión refrescada correctamente');
+    }
+
     const { error } = await supabase
       .from('usuarios')
       .update({
-        estado: nuevoEstado,
-        updated_at: new Date().toISOString()
+        estado: nuevoEstado
       })
       .eq('id', usuario.id);
 
