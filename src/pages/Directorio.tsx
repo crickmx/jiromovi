@@ -129,8 +129,17 @@ export function Directorio() {
   };
 
   const handleToggleActive = async (usuario: Usuario) => {
+    // Verificar que el usuario actual es Admin
+    if (!isAdmin) {
+      alert('Solo los Administradores pueden cambiar el estado de usuarios');
+      return;
+    }
+
     // Determinar el nuevo estado basado en el estado actual
     const nuevoEstado = usuario.estado === 'activo' ? 'inactivo' : 'activo';
+
+    console.log('[TOGGLE] Usuario actual:', currentUser?.email_laboral, 'Rol:', currentUser?.rol);
+    console.log('[TOGGLE] Cambiando estado de:', usuario.email_laboral, 'a:', nuevoEstado);
 
     const { error } = await supabase
       .from('usuarios')
@@ -141,9 +150,10 @@ export function Directorio() {
       .eq('id', usuario.id);
 
     if (error) {
-      console.error('Error al actualizar estado:', error);
-      alert('Error al actualizar estado');
+      console.error('[TOGGLE] Error al actualizar estado:', error);
+      alert('Error al actualizar estado: ' + error.message);
     } else {
+      console.log('[TOGGLE] Estado actualizado exitosamente');
       loadData();
     }
   };
