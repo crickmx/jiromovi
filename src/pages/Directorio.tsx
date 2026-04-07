@@ -28,6 +28,20 @@ export function Directorio() {
   const isGerente = currentUser?.rol === 'Gerente';
   const isReadOnly = !isAdmin && !isGerente;
 
+  // Debug: mostrar info del usuario actual
+  useEffect(() => {
+    if (currentUser) {
+      console.log('[DIRECTORIO] Usuario actual cargado:', {
+        id: currentUser.id,
+        email: currentUser.email_laboral,
+        rol: currentUser.rol,
+        isAdmin,
+        isGerente,
+        isReadOnly
+      });
+    }
+  }, [currentUser, isAdmin, isGerente, isReadOnly]);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -254,6 +268,10 @@ export function Directorio() {
             <p className="text-sm text-slate-600">
               Mostrando {filteredUsuarios.length} de {usuarios.length} usuarios
             </p>
+            {/* Debug info */}
+            <div className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+              Usuario: {currentUser?.email_laboral} | Rol: {currentUser?.rol} | isAdmin: {isAdmin ? 'Sí' : 'No'}
+            </div>
           </div>
         </div>
 
