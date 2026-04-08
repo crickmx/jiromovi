@@ -732,11 +732,18 @@ export async function generateOrdenDePagoPDF(
   });
   const { comisionGravada, comisionExenta } = clasificarComisionesPorRamo(ramoComisionMap);
 
+  // Para ASIMILADOS se requiere tasa ISR configurable
+  // Obtener del lote si está disponible, o usar la del batch
+  const asimiladosIsrRate = (batch as any).asimilados_isr_rate ?? 0.10;
+  const resicoIsrRate = (batch as any).resico_isr_rate ?? undefined;
+
   // Preparar el input con contexto de auditoria
   const fiscalInputV3: FiscalBreakdownInput = {
     regimenFiscal: regimenFiscalNormalizado,
     comisionGravada,
     comisionExenta,
+    ...(regimenFiscalNormalizado === 'ASIMILADOS' && { asimiladosIsrRate }),
+    ...(regimenFiscalNormalizado === 'RESICO' && resicoIsrRate !== undefined && { resicoIsrRate }),
     context: {
       agentId: usuario_id,
       loteId: batch.id,
@@ -753,17 +760,17 @@ export async function generateOrdenDePagoPDF(
     throw new Error('No fue posible generar el cálculo fiscal del PDF. Revisar datos base.');
   }
 
-  // pdfRows siempre tiene 8 filas en orden exacto del motor
-  const displayFields = resultadoFiscalV3.pdfRows;
-
   // Si no hay espacio en la página actual, crear una nueva
   const availableSpace = pageHeight - yPosition - 8;
-  if (availableSpace < 65) {
+  if (availableSpace < 80) {
     doc.addPage();
     yPosition = 20;
   }
 
-  // Titulo del bloque fiscal — "DESGLOSE FISCAL" (sin typo "DESGLOCE")
+  // ==========================================================================
+  // SECCION 3: DESGLOSE FISCAL (6 filas: COMISION_GRAVADA, COMISION_EXENTA,
+  //            IVA, RET_ISR, RET_IVA, TOTAL_FISCAL)
+  // ==========================================================================
   doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
@@ -771,18 +778,15 @@ export async function generateOrdenDePagoPDF(
 
   yPosition += 4;
 
-  // Construir filas de tabla: 8 filas exactas, signos visuales correctos
-  const desgloseFiscalRows: any[] = displayFields.map(field => {
+  const pdfFiscalRows = resultadoFiscalV3.pdfFiscalRows;
+  const desgloseFiscalRows: any[] = pdfFiscalRows.map(field => {
     let valorDisplay = field.formattedValue;
 
-    // Retenciones y costos se muestran con signo negativo visual
     if (field.sign === 'negative' && field.value !== 0) {
       valorDisplay = `- ${field.formattedValue}`;
     }
-    // IVA se muestra positivo (suma a la base)
-    // Comisiones base se muestran positivas sin prefijo
 
-    if (field.key === 'TOTAL') {
+    if (field.key === 'TOTAL_FISCAL') {
       return [
         { content: field.label, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } },
         { content: valorDisplay, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } }
@@ -806,14 +810,75 @@ export async function generateOrdenDePagoPDF(
     }
   });
 
+  yPosition = (doc as any).lastAutoTable.finalY + 4;
+
+  // ==========================================================================
+  // SECCION 4: AJUSTES OPERATIVOS (solo ASIMILADOS — 2 filas)
+  // ==========================================================================
+  const pdfOperativoRows = resultadoFiscalV3.pdfOperativoRows;
+
+  if (pdfOperativoRows.length > 0) {
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 51, 102);
+    doc.text('AJUSTES OPERATIVOS', marginLeft, yPosition);
+
+    yPosition += 4;
+
+    const desgloseOperativoRows: any[] = pdfOperativoRows.map(field => {
+      let valorDisplay = field.formattedValue;
+      if (field.sign === 'negative' && field.value !== 0) {
+        valorDisplay = `- ${field.formattedValue}`;
+      }
+      return [field.label, valorDisplay];
+    });
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Concepto', 'Importe']],
+      body: desgloseOperativoRows,
+      theme: 'grid',
+      headStyles: { fillColor: [80, 80, 80], textColor: 255, fontSize: 7 },
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      margin: { left: marginLeft, right: marginRight },
+      columnStyles: {
+        0: { cellWidth: contentWidth * 0.6 },
+        1: { cellWidth: contentWidth * 0.4, halign: 'right' }
+      }
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 4;
+  }
+
+  // ==========================================================================
+  // SECCION 5: TOTAL FINAL
+  // ==========================================================================
+  const totalFinalFormatted = formatCurrency(resultadoFiscalV3.totalFinal);
+
+  autoTable(doc, {
+    startY: yPosition,
+    head: [],
+    body: [[
+      { content: 'TOTAL FINAL A PAGAR', styles: { fontStyle: 'bold', fillColor: [0, 51, 102], textColor: [255, 255, 255] } },
+      { content: totalFinalFormatted, styles: { fontStyle: 'bold', fillColor: [0, 51, 102], textColor: [255, 255, 255], halign: 'right' } }
+    ]],
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2 },
+    margin: { left: marginLeft, right: marginRight },
+    columnStyles: {
+      0: { cellWidth: contentWidth * 0.6 },
+      1: { cellWidth: contentWidth * 0.4 }
+    }
+  });
+
   yPosition = (doc as any).lastAutoTable.finalY + 3;
 
-  // Nota tecnica obligatoria
+  // Nota tecnica obligatoria — version fiscal_v3_audit
   doc.setFontSize(6);
   doc.setFont(undefined, 'italic');
   doc.setTextColor(100);
   doc.text(
-    `* Cálculo basado en comisión gravada (NO VIDA) y comisión exenta (VIDA) - v${resultadoFiscalV3.audit.formulaVersion}`,
+    `* Calculo fiscal ${resultadoFiscalV3.audit.formulaVersion} | Base: gravada (NO VIDA) y exenta (VIDA) | ${resultadoFiscalV3.audit.baseCalculo}`,
     marginLeft,
     yPosition
   );
