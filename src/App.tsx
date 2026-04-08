@@ -90,6 +90,8 @@ import MiProgreso from './pages/MiProgreso';
 import GamificacionAdmin from './pages/GamificacionAdmin';
 import CargaMasivaUsuarios from './pages/CargaMasivaUsuarios';
 import RegistroPersonal from './pages/RegistroPersonal';
+import RegimenFiscalAdmin from './pages/RegimenFiscalAdmin';
+import RegimenFiscalEditor from './pages/RegimenFiscalEditor';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -864,6 +866,8 @@ function App() {
               <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
               <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><Layout><CargaMasivaUsuarios /></Layout></ProtectedRoute>} />
+              <Route path="/comisiones/regimen-fiscal" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalAdmin /></Layout></ProtectedRoute>} />
+              <Route path="/comisiones/regimen-fiscal/:id" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalEditor /></Layout></ProtectedRoute>} />
 
               {/* Redirect raíz */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
