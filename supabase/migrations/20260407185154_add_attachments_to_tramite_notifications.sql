@@ -47,13 +47,22 @@ BEGIN
   END IF;
   
   -- Obtener plantilla y canales configurados
-  SELECT 
+  SELECT
     t.codigo,
     t.nombre as tipo_nombre,
     p.asunto,
     p.html_cuerpo,
-    p.whatsapp_template,
-    p.canales_activos
+    p.whatsapp_plantilla,
+    CASE
+      WHEN p.enviar_correo OR p.enviar_whatsapp OR p.enviar_notificacion THEN
+        ARRAY(
+          SELECT unnest(ARRAY['email', 'whatsapp', 'in_app'])
+          WHERE (unnest(ARRAY['email', 'whatsapp', 'in_app']) = 'email' AND p.enviar_correo)
+             OR (unnest(ARRAY['email', 'whatsapp', 'in_app']) = 'whatsapp' AND p.enviar_whatsapp)
+             OR (unnest(ARRAY['email', 'whatsapp', 'in_app']) = 'in_app' AND p.enviar_notificacion)
+        )
+      ELSE ARRAY['email', 'whatsapp', 'in_app']
+    END as canales_activos
   INTO v_template
   FROM correo_tipos_notificacion t
   LEFT JOIN correo_plantillas p ON p.tipo_notificacion_id = t.id AND p.es_plantilla_default = true
@@ -64,8 +73,8 @@ BEGIN
     RAISE WARNING '[NOTIF TRANSACCIONAL] Tipo de notificación no encontrado o inactivo: %', p_codigo_tipo;
     RETURN;
   END IF;
-  
-  -- Obtener canales activos (por defecto todos)
+
+  -- Obtener canales activos
   v_channels := COALESCE(v_template.canales_activos, ARRAY['email', 'whatsapp', 'in_app']);
   
   -- Crear jobs de notificación para cada canal activo
