@@ -1,48 +1,40 @@
 /**
  * Pruebas de Validación para Desglose Fiscal en PDF
  *
- * Este archivo contiene pruebas para asegurar que el PDF de Cálculo Fiscal
- * NUNCA muestre campos intermedios o técnicos, solo los campos permitidos.
+ * Este archivo valida que el PDF de Cálculo Fiscal muestre
+ * exactamente las 8 filas requeridas, en el orden correcto,
+ * con los labels exactos del motor V3 (FISCAL_FORMULA_VERSION = "v2.0.0").
  *
- * Campos PERMITIDOS:
- * - Ret. Contable
- * - Costo Dispersión
- * - IVA
- * - Ret. ISR
- * - Ret. IVA
- * - Total
+ * Filas OBLIGATORIAS (exactamente en este orden):
+ * 1. COMISION GRAVADA  (positive)
+ * 2. COMISION EXENTA   (positive)
+ * 3. RET CONTABLE      (negative)
+ * 4. COSTO DISPERSION  (negative)
+ * 5. IVA               (positive)
+ * 6. RET ISR           (negative)
+ * 7. RET IVA           (negative)
+ * 8. TOTAL             (neutral)
  *
- * Campos PROHIBIDOS (nunca deben aparecer):
- * - Comisión Base Total
- * - Prima
- * - Vida
- * - Sin Vida
- * - Comisión Vida
- * - Comisión Sin Vida
- * - Comisión Daños
- * - ISR Vida
- * - ISR Daños
- * - ISR Total (excepto que se muestre como "Ret. ISR" en ASIMILADOS)
- * - Base
- * - Prima Total
- * - Prima Gravada
- * - Prima No Gravada
+ * Palabras PROHIBIDAS en cualquier label del PDF:
+ * - prima, base total, isr vida, isr daños, comision base
+ * - porcentajes intermedios directos: 16% vida, 10% sin vida, etc.
  */
 
-import type { DesgloseFiscal, RegimenFiscal } from './commissionFiscalCalculations';
+import {
+  calcularDesgloseFiscalV3,
+  FISCAL_FORMULA_VERSION,
+  MONEY_TOLERANCE,
+  type FiscalBreakdownInput,
+  type FiscalBreakdownResult,
+} from './commissionFiscalCalculationV3';
 
-// Palabras clave PROHIBIDAS que NO deben aparecer en el PDF
+// Palabras clave PROHIBIDAS — no pueden aparecer en ningún label del PDF
 const FORBIDDEN_KEYWORDS = [
   'base total',
   'prima',
-  'vida', // excepto en contexto interno
-  'sin vida',
-  'daños',
-  'gravada',
-  'no gravada',
   'isr vida',
   'isr daños',
-  'isr total', // solo permitido si se muestra como "Ret. ISR"
+  'isr total',
   'comision vida',
   'comision daños',
   'comision sin vida',
@@ -54,18 +46,34 @@ const FORBIDDEN_KEYWORDS = [
   '10.667%',
 ];
 
-// Labels PERMITIDOS que SÍ pueden aparecer en el PDF
+// Labels PERMITIDOS (los 8 del nuevo estándar V3 + metadatos del encabezado)
 const ALLOWED_LABELS = [
-  'ret. contable',
-  'costo dispersión',
+  'comision gravada',
+  'comision exenta',
+  'ret contable',
+  'costo dispersion',
   'iva',
-  'ret. isr',
-  'ret. iva',
+  'ret isr',
+  'ret iva',
   'total',
   'régimen fiscal',
   'concepto',
   'importe',
 ];
+
+// Orden esperado de las 8 filas
+const EXPECTED_ROW_ORDER = [
+  'COMISION_GRAVADA',
+  'COMISION_EXENTA',
+  'RET_CONTABLE',
+  'COSTO_DISPERSION',
+  'IVA',
+  'RET_ISR',
+  'RET_IVA',
+  'TOTAL',
+] as const;
+
+type ExpectedRowKey = typeof EXPECTED_ROW_ORDER[number];
 
 /**
  * Valida que un label del PDF no contenga palabras prohibidas
@@ -73,7 +81,6 @@ const ALLOWED_LABELS = [
 export function validatePdfLabel(label: string): { valid: boolean; error?: string } {
   const labelLower = label.toLowerCase();
 
-  // Verificar que no contenga palabras prohibidas
   for (const forbidden of FORBIDDEN_KEYWORDS) {
     if (labelLower.includes(forbidden)) {
       return {
@@ -83,7 +90,6 @@ export function validatePdfLabel(label: string): { valid: boolean; error?: strin
     }
   }
 
-  // Verificar que sea un label permitido (opcional, para validación estricta)
   const isAllowed = ALLOWED_LABELS.some(allowed => labelLower.includes(allowed));
   if (!isAllowed && !labelLower.includes('$') && !labelLower.includes('-') && !labelLower.includes('+')) {
     return {
@@ -101,7 +107,7 @@ export function validatePdfLabel(label: string): { valid: boolean; error?: strin
 export function validateTotalConsistency(
   pdfTotal: number,
   calculatedTotal: number,
-  tolerance: number = 0.01
+  tolerance: number = MONEY_TOLERANCE
 ): { valid: boolean; error?: string } {
   const diff = Math.abs(pdfTotal - calculatedTotal);
 
@@ -116,86 +122,38 @@ export function validateTotalConsistency(
 }
 
 /**
- * Mock de DesgloseFiscal para pruebas
- */
-export function createMockDesgloseFiscal(): DesgloseFiscal {
-  return {
-    vida: 5000,
-    sinVida: 3000,
-    retContable: 800,
-    costoDispersion: 300,
-    iva: 480,
-    retIsr: 800,
-    retIva: 320,
-    isrVida: 420,
-    isrDanios: 270,
-    isrTotal: 690,
-    totalAPagar: 6370,
-  };
-}
-
-/**
- * Simula la generación de filas del PDF para un régimen
- * Esta es una copia simplificada de getPdfFiscalRows para testing
+ * Simula la generación de las 8 filas del PDF a partir de un FiscalBreakdownResult.
+ * Refleja exactamente la estructura del motor V3 (FISCAL_FORMULA_VERSION = "v2.0.0").
  */
 export function simulatePdfRowGeneration(
-  regimen: RegimenFiscal,
-  desgloseFiscal: DesgloseFiscal
-): Array<{ label: string; value: string }> {
-  const rows: Array<{ label: string; value: string }> = [];
-
-  switch (regimen) {
-    case 'HONORARIOS':
-      if (desgloseFiscal.iva > 0) {
-        rows.push({ label: 'IVA', value: `+ $${desgloseFiscal.iva.toFixed(2)}` });
-      }
-      if (desgloseFiscal.retIsr > 0) {
-        rows.push({ label: 'Ret. ISR', value: `- $${desgloseFiscal.retIsr.toFixed(2)}` });
-      }
-      if (desgloseFiscal.retIva > 0) {
-        rows.push({ label: 'Ret. IVA', value: `- $${desgloseFiscal.retIva.toFixed(2)}` });
-      }
-      break;
-
-    case 'ASIMILADOS':
-      if (desgloseFiscal.retContable > 0) {
-        rows.push({ label: 'Ret. Contable', value: `- $${desgloseFiscal.retContable.toFixed(2)}` });
-      }
-      if (desgloseFiscal.costoDispersion > 0) {
-        rows.push({ label: 'Costo Dispersión', value: `- $${desgloseFiscal.costoDispersion.toFixed(2)}` });
-      }
-      if (desgloseFiscal.isrTotal > 0) {
-        rows.push({ label: 'Ret. ISR', value: `- $${desgloseFiscal.isrTotal.toFixed(2)}` });
-      }
-      if (desgloseFiscal.iva > 0) {
-        rows.push({ label: 'IVA', value: `+ $${desgloseFiscal.iva.toFixed(2)}` });
-      }
-      if (desgloseFiscal.retIva > 0) {
-        rows.push({ label: 'Ret. IVA', value: `- $${desgloseFiscal.retIva.toFixed(2)}` });
-      }
-      break;
-
-    case 'RESICO':
-      if (desgloseFiscal.iva > 0) {
-        rows.push({ label: 'IVA', value: `+ $${desgloseFiscal.iva.toFixed(2)}` });
-      }
-      if (desgloseFiscal.retIsr > 0) {
-        rows.push({ label: 'Ret. ISR', value: `- $${desgloseFiscal.retIsr.toFixed(2)}` });
-      }
-      if (desgloseFiscal.retIva > 0) {
-        rows.push({ label: 'Ret. IVA', value: `- $${desgloseFiscal.retIva.toFixed(2)}` });
-      }
-      break;
-  }
-
-  // Total siempre se muestra
-  rows.push({ label: 'Total', value: `$${desgloseFiscal.totalAPagar.toFixed(2)}` });
-
-  return rows;
+  resultado: FiscalBreakdownResult
+): Array<{ key: ExpectedRowKey; label: string; value: string; sign: string }> {
+  return resultado.pdfRows.map(row => ({
+    key: row.key as ExpectedRowKey,
+    label: row.label,
+    value: row.formattedValue,
+    sign: row.sign,
+  }));
 }
 
 /**
- * Test Suite: Validación de campos permitidos
+ * Genera un FiscalBreakdownResult de prueba para un régimen dado
+ */
+function buildTestResult(
+  regimenFiscal: FiscalBreakdownInput['regimenFiscal'],
+  comisionGravada: number,
+  comisionExenta: number
+): FiscalBreakdownResult {
+  return calcularDesgloseFiscalV3({
+    regimenFiscal,
+    comisionGravada,
+    comisionExenta,
+    context: { agentId: 'test-agent', batchId: 'test-batch' },
+  });
+}
+
+/**
+ * Test Suite: Validación de campos del PDF — motor V3
  */
 export function runValidationTests(): {
   passed: number;
@@ -203,17 +161,59 @@ export function runValidationTests(): {
   tests: Array<{ name: string; passed: boolean; error?: string }>;
 } {
   const results: Array<{ name: string; passed: boolean; error?: string }> = [];
-  const mockData = createMockDesgloseFiscal();
 
-  // Test 1: HONORARIOS no debe mostrar campos prohibidos
+  const asimiladosResult = buildTestResult('ASIMILADOS', 3000, 5000);
+  const honorariosResult = buildTestResult('HONORARIOS', 814.95, 1119.05);
+  const resicoResult    = buildTestResult('RESICO', 2862.84, 4983.19);
+
+  // Test 1: Siempre se generan exactamente 8 filas
   {
-    const rows = simulatePdfRowGeneration('HONORARIOS', mockData);
-    const labels = rows.map(r => r.label);
+    const regs: Array<[string, FiscalBreakdownResult]> = [
+      ['ASIMILADOS', asimiladosResult],
+      ['HONORARIOS', honorariosResult],
+      ['RESICO', resicoResult],
+    ];
     let testPassed = true;
     let testError = '';
 
-    for (const label of labels) {
-      const validation = validatePdfLabel(label);
+    for (const [name, res] of regs) {
+      const rows = simulatePdfRowGeneration(res);
+      if (rows.length !== 8) {
+        testPassed = false;
+        testError = `${name} generó ${rows.length} filas, se esperaban 8`;
+        break;
+      }
+    }
+
+    results.push({ name: 'Todos los regímenes generan exactamente 8 filas', passed: testPassed, error: testError });
+  }
+
+  // Test 2: Las 8 filas están en el orden correcto (por key)
+  {
+    const rows = simulatePdfRowGeneration(asimiladosResult);
+    const keys = rows.map(r => r.key);
+    let testPassed = true;
+    let testError = '';
+
+    for (let i = 0; i < EXPECTED_ROW_ORDER.length; i++) {
+      if (keys[i] !== EXPECTED_ROW_ORDER[i]) {
+        testPassed = false;
+        testError = `Posición ${i}: se esperaba "${EXPECTED_ROW_ORDER[i]}", se obtuvo "${keys[i]}"`;
+        break;
+      }
+    }
+
+    results.push({ name: 'Orden correcto de las 8 filas (keys)', passed: testPassed, error: testError });
+  }
+
+  // Test 3: HONORARIOS — no contiene labels prohibidos
+  {
+    const rows = simulatePdfRowGeneration(honorariosResult);
+    let testPassed = true;
+    let testError = '';
+
+    for (const row of rows) {
+      const validation = validatePdfLabel(row.label);
       if (!validation.valid) {
         testPassed = false;
         testError = validation.error || '';
@@ -221,22 +221,17 @@ export function runValidationTests(): {
       }
     }
 
-    results.push({
-      name: 'HONORARIOS - No contiene campos prohibidos',
-      passed: testPassed,
-      error: testError
-    });
+    results.push({ name: 'HONORARIOS - No contiene labels prohibidos', passed: testPassed, error: testError });
   }
 
-  // Test 2: ASIMILADOS no debe mostrar campos prohibidos
+  // Test 4: ASIMILADOS — no contiene labels prohibidos
   {
-    const rows = simulatePdfRowGeneration('ASIMILADOS', mockData);
-    const labels = rows.map(r => r.label);
+    const rows = simulatePdfRowGeneration(asimiladosResult);
     let testPassed = true;
     let testError = '';
 
-    for (const label of labels) {
-      const validation = validatePdfLabel(label);
+    for (const row of rows) {
+      const validation = validatePdfLabel(row.label);
       if (!validation.valid) {
         testPassed = false;
         testError = validation.error || '';
@@ -244,22 +239,17 @@ export function runValidationTests(): {
       }
     }
 
-    results.push({
-      name: 'ASIMILADOS - No contiene campos prohibidos',
-      passed: testPassed,
-      error: testError
-    });
+    results.push({ name: 'ASIMILADOS - No contiene labels prohibidos', passed: testPassed, error: testError });
   }
 
-  // Test 3: RESICO no debe mostrar campos prohibidos
+  // Test 5: RESICO — no contiene labels prohibidos
   {
-    const rows = simulatePdfRowGeneration('RESICO', mockData);
-    const labels = rows.map(r => r.label);
+    const rows = simulatePdfRowGeneration(resicoResult);
     let testPassed = true;
     let testError = '';
 
-    for (const label of labels) {
-      const validation = validatePdfLabel(label);
+    for (const row of rows) {
+      const validation = validatePdfLabel(row.label);
       if (!validation.valid) {
         testPassed = false;
         testError = validation.error || '';
@@ -267,48 +257,92 @@ export function runValidationTests(): {
       }
     }
 
-    results.push({
-      name: 'RESICO - No contiene campos prohibidos',
-      passed: testPassed,
-      error: testError
-    });
+    results.push({ name: 'RESICO - No contiene labels prohibidos', passed: testPassed, error: testError });
   }
 
-  // Test 4: Total siempre debe estar presente
+  // Test 6: La fila TOTAL siempre tiene sign = "neutral"
   {
-    const regimes: RegimenFiscal[] = ['HONORARIOS', 'ASIMILADOS', 'RESICO'];
-    let allHaveTotal = true;
-    let missingRegime = '';
+    const regs: Array<[string, FiscalBreakdownResult]> = [
+      ['ASIMILADOS', asimiladosResult],
+      ['HONORARIOS', honorariosResult],
+      ['RESICO', resicoResult],
+    ];
+    let testPassed = true;
+    let testError = '';
 
-    for (const regime of regimes) {
-      const rows = simulatePdfRowGeneration(regime, mockData);
-      const hasTotal = rows.some(r => r.label.toLowerCase() === 'total');
-      if (!hasTotal) {
-        allHaveTotal = false;
-        missingRegime = regime;
+    for (const [name, res] of regs) {
+      const rows = simulatePdfRowGeneration(res);
+      const totalRow = rows.find(r => r.key === 'TOTAL');
+      if (!totalRow || totalRow.sign !== 'neutral') {
+        testPassed = false;
+        testError = `${name}: TOTAL sign es "${totalRow?.sign}", se esperaba "neutral"`;
         break;
       }
     }
 
-    results.push({
-      name: 'Todos los regímenes muestran Total',
-      passed: allHaveTotal,
-      error: missingRegime ? `Régimen ${missingRegime} no muestra Total` : undefined
-    });
+    results.push({ name: 'Fila TOTAL siempre tiene sign = neutral', passed: testPassed, error: testError });
   }
 
-  // Test 5: Validar consistencia de Total
+  // Test 7: ASIMILADOS — IVA = 0, RET_IVA = 0
   {
-    const rows = simulatePdfRowGeneration('HONORARIOS', mockData);
-    const totalRow = rows.find(r => r.label === 'Total');
-    const pdfTotal = totalRow ? parseFloat(totalRow.value.replace(/[^0-9.]/g, '')) : 0;
+    const rows = simulatePdfRowGeneration(asimiladosResult);
+    const ivaRow = rows.find(r => r.key === 'IVA');
+    const retIvaRow = rows.find(r => r.key === 'RET_IVA');
+    const ivaValue = asimiladosResult.pdfRows.find(r => r.key === 'IVA')?.value ?? -1;
+    const retIvaValue = asimiladosResult.pdfRows.find(r => r.key === 'RET_IVA')?.value ?? -1;
 
-    const validation = validateTotalConsistency(pdfTotal, mockData.totalAPagar);
+    const testPassed = ivaRow !== undefined && retIvaRow !== undefined && ivaValue === 0 && retIvaValue === 0;
+    const testError = testPassed
+      ? undefined
+      : `IVA=${ivaValue}, RET_IVA=${retIvaValue} — ambos deben ser 0 en ASIMILADOS`;
+
+    results.push({ name: 'ASIMILADOS: IVA y RET_IVA son 0', passed: testPassed, error: testError });
+  }
+
+  // Test 8: HONORARIOS/RESICO — RET_CONTABLE = 0, COSTO_DISPERSION = 0
+  {
+    const regs: Array<[string, FiscalBreakdownResult]> = [
+      ['HONORARIOS', honorariosResult],
+      ['RESICO', resicoResult],
+    ];
+    let testPassed = true;
+    let testError = '';
+
+    for (const [name, res] of regs) {
+      const rcValue = res.pdfRows.find(r => r.key === 'RET_CONTABLE')?.value ?? -1;
+      const cdValue = res.pdfRows.find(r => r.key === 'COSTO_DISPERSION')?.value ?? -1;
+      if (rcValue !== 0 || cdValue !== 0) {
+        testPassed = false;
+        testError = `${name}: RET_CONTABLE=${rcValue}, COSTO_DISPERSION=${cdValue} — ambos deben ser 0`;
+        break;
+      }
+    }
+
+    results.push({ name: 'HONORARIOS/RESICO: RET_CONTABLE y COSTO_DISPERSION son 0', passed: testPassed, error: testError });
+  }
+
+  // Test 9: Consistencia del Total — HONORARIOS
+  {
+    const totalRow = honorariosResult.pdfRows.find(r => r.key === 'TOTAL');
+    const pdfTotal = totalRow?.value ?? 0;
+    const calcTotal = honorariosResult.calculos.total;
+
+    const validation = validateTotalConsistency(pdfTotal, calcTotal);
 
     results.push({
-      name: 'Total del PDF coincide con cálculo',
+      name: 'Total del PDF (HONORARIOS) coincide con cálculo interno',
       passed: validation.valid,
-      error: validation.error
+      error: validation.error,
+    });
+  }
+
+  // Test 10: FISCAL_FORMULA_VERSION es "v2.0.0"
+  {
+    const testPassed = FISCAL_FORMULA_VERSION === 'v2.0.0';
+    results.push({
+      name: `FISCAL_FORMULA_VERSION es "v2.0.0"`,
+      passed: testPassed,
+      error: testPassed ? undefined : `Se obtuvo "${FISCAL_FORMULA_VERSION}"`,
     });
   }
 
@@ -321,15 +355,17 @@ export function runValidationTests(): {
 // Ejecutar pruebas si se ejecuta este archivo directamente
 if (typeof window === 'undefined') {
   const testResults = runValidationTests();
-  console.log('\n=== Resultados de Validación de PDF Fiscal ===\n');
+  console.log('\n=== Resultados de Validación de PDF Fiscal (V3) ===\n');
+  console.log(`Motor: FISCAL_FORMULA_VERSION = "${FISCAL_FORMULA_VERSION}"`);
+  console.log(`MONEY_TOLERANCE = ${MONEY_TOLERANCE}\n`);
   console.log(`Tests ejecutados: ${testResults.tests.length}`);
   console.log(`Pasados: ${testResults.passed}`);
   console.log(`Fallados: ${testResults.failed}`);
   console.log('\nDetalle de tests:\n');
 
   testResults.tests.forEach((test, index) => {
-    const status = test.passed ? '✅ PASS' : '❌ FAIL';
-    console.log(`${index + 1}. ${status} - ${test.name}`);
+    const status = test.passed ? 'PASS' : 'FAIL';
+    console.log(`${index + 1}. [${status}] ${test.name}`);
     if (!test.passed && test.error) {
       console.log(`   Error: ${test.error}`);
     }

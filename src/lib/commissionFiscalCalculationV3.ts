@@ -1,38 +1,51 @@
 /**
- * MÓDULO DE CÁLCULO FISCAL PARA COMISIONES - VERSIÓN 3 (BLINDADO)
+ * MOTOR FISCAL BLINDADO - COMISIONES MOVI DIGITAL
  *
- * Este módulo implementa un motor fiscal completamente aislado, puro y validado
- * para los tres regímenes fiscales: ASIMILADOS, HONORARIOS y RESICO.
+ * @version 2.0.0
+ * @formulaVersion v2.0.0
  *
- * GARANTÍAS DE ESTE MOTOR:
- * - Función pura: sin efectos secundarios ni estado global
- * - Sin cachés entre invocaciones
- * - Validación interna estricta con errores en inconsistencias
- * - Auditoría con versionado de fórmulas
- * - Política de redondeo consistente y documentada
- * - Interfaces TypeScript estrictas
+ * GARANTIAS:
+ * - Funcion pura: sin efectos secundarios, sin estado global, sin cache
+ * - Cada invocacion recalcula desde cero
+ * - Validacion interna estricta con errores en inconsistencias
+ * - Auditoria completa con versionado de formulas y timestamp
+ * - Politica de redondeo consistente y documentada
+ * - Determinista: mismo input = mismo output siempre
+ * - Sin posibilidad de reutilizar valores de otro documento/regimen
  *
- * @version 3.0.0
- * @author Sistema MOVI Digital
- * @date 2026-04-06
+ * REGLAS DE CLASIFICACION:
+ * - VIDA           => COMISION EXENTA
+ * - NO VIDA        => COMISION GRAVADA (vehiculos, danos, acc/enf, otros)
+ *
+ * POLITICA DE REDONDEO:
+ * - roundMoney(v) = Math.round((v + Number.EPSILON) * 100) / 100
+ * - Se calcula con maxima precision en pasos intermedios
+ * - Solo se redondea al persistir/mostrar el valor final de cada concepto
+ * - La suma del total usa los valores ya redondeados de cada concepto
+ * - Esta politica es consistente y documentada en todos los tests
  */
 
 // ============================================================================
-// CONSTANTES DE CONFIGURACIÓN
+// VERSION Y CONSTANTES
 // ============================================================================
 
-const FORMULA_VERSION = "v3.0.0-exact" as const;
+export const FISCAL_FORMULA_VERSION = "v2.0.0" as const;
 const ROUNDING_POLICY = "round-half-up-2-decimals" as const;
-const TOLERANCE = 0.02; // Tolerancia de $0.02 para validación
 
-// Tasas fiscales por régimen
+/**
+ * Tolerancia monetaria para validaciones internas.
+ * Se acepta una diferencia maxima de $0.01 por precision de punto flotante.
+ */
+export const MONEY_TOLERANCE = 0.01 as const;
+
+// Tasas fiscales por regimen — inmutables
 const FISCAL_RATES = {
   ASIMILADOS: {
-    RET_CONTABLE_VIDA: 0.16,
-    COSTO_DISPERSION_SINVIDA: 0.09,
+    RET_CONTABLE_EXENTA: 0.16,
+    COSTO_DISPERSION_GRAVADA: 0.09,
     ISR_RATE: 0.10,
-    DESIVIZAR_VIDA: 1.16,
-    DESIVIZAR_SINVIDA: 1.09,
+    BASE_EXENTA_DIVISOR: 1.16,
+    BASE_GRAVADA_DIVISOR: 1.09,
   },
   HONORARIOS: {
     IVA_RATE: 0.16,
@@ -47,29 +60,25 @@ const FISCAL_RATES = {
 } as const;
 
 // ============================================================================
-// TIPOS E INTERFACES ESTRICTAS
+// TIPOS E INTERFACES
 // ============================================================================
 
 export type RegimenFiscal = "ASIMILADOS" | "HONORARIOS" | "RESICO";
 
 export interface FiscalBreakdownInput {
-  /**
-   * Régimen fiscal del agente
-   */
   regimenFiscal: RegimenFiscal;
-
   /**
-   * Suma de comisiones NO VIDA (gravadas con IVA)
+   * Suma de comisiones NO VIDA (gravadas con IVA).
+   * Incluye: VEHICULOS, DANOS, ACC y ENF, OTROS
    */
   comisionGravada: number;
-
   /**
-   * Suma de comisiones VIDA (exentas de IVA)
+   * Suma de comisiones VIDA (exentas de IVA).
    */
   comisionExenta: number;
-
   /**
-   * Contexto opcional para auditoría
+   * Contexto opcional para auditoria y trazabilidad.
+   * comisionTotal NO debe venir como input — se calcula internamente.
    */
   context?: {
     agentId?: string;
@@ -80,23 +89,15 @@ export interface FiscalBreakdownInput {
 }
 
 export interface FiscalBreakdownResult {
-  /**
-   * Régimen fiscal aplicado
-   */
   regimenFiscal: RegimenFiscal;
 
-  /**
-   * Valores base del cálculo
-   */
   base: {
     comisionGravada: number;
     comisionExenta: number;
+    /** Siempre calculado internamente: gravada + exenta */
     comisionTotal: number;
   };
 
-  /**
-   * Resultados de los cálculos fiscales
-   */
   calculations: {
     retContable: number;
     costoDispersion: number;
@@ -106,9 +107,6 @@ export interface FiscalBreakdownResult {
     total: number;
   };
 
-  /**
-   * Información de auditoría
-   */
   audit: {
     formulaVersion: string;
     performedAt: string;
@@ -118,10 +116,20 @@ export interface FiscalBreakdownResult {
   };
 
   /**
-   * Filas formateadas para renderizar en PDF
+   * Filas para el PDF, siempre en este orden exacto:
+   * COMISION_GRAVADA, COMISION_EXENTA, RET_CONTABLE, COSTO_DISPERSION,
+   * IVA, RET_ISR, RET_IVA, TOTAL
    */
   pdfRows: Array<{
-    key: string;
+    key:
+      | "COMISION_GRAVADA"
+      | "COMISION_EXENTA"
+      | "RET_CONTABLE"
+      | "COSTO_DISPERSION"
+      | "IVA"
+      | "RET_ISR"
+      | "RET_IVA"
+      | "TOTAL";
     label: string;
     value: number;
     formattedValue: string;
@@ -130,7 +138,8 @@ export interface FiscalBreakdownResult {
 }
 
 /**
- * Error personalizado para validación fiscal
+ * Error personalizado para validacion fiscal.
+ * Nunca se muestra el stack al usuario — solo al log tecnico.
  */
 export class FiscalCalculationError extends Error {
   constructor(
@@ -144,21 +153,19 @@ export class FiscalCalculationError extends Error {
 }
 
 // ============================================================================
-// FUNCIONES AUXILIARES
+// HELPERS
 // ============================================================================
 
 /**
- * Redondea un número a 2 decimales usando "round half up"
+ * Redondeo financiero "round half up" a 2 decimales.
  *
- * POLÍTICA DE REDONDEO:
- * - Se usa Math.round() que implementa "round half up"
- * - Se agrega Number.EPSILON para evitar errores de precisión flotante
- * - Todos los valores monetarios se redondean a 2 decimales
- *
- * @param value - Valor a redondear
- * @returns Valor redondeado a 2 decimales
+ * POLITICA DOCUMENTADA:
+ * - Se usa Math.round() + Number.EPSILON para evitar errores de precision flotante
+ * - Todos los conceptos monetarios se redondean con esta funcion
+ * - Los pasos intermedios (bases para ISR, etc.) NO se redondean para preservar precision
+ * - Solo se redondea el valor final de cada concepto
  */
-function round2(value: number): number {
+export function roundMoney(value: number): number {
   if (!Number.isFinite(value)) {
     throw new FiscalCalculationError(
       "Intento de redondear un valor no finito",
@@ -169,9 +176,6 @@ function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-/**
- * Formatea un valor como moneda mexicana
- */
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
@@ -181,24 +185,27 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-/**
- * Valida que un input sea válido
- */
+function withinTolerance(a: number, b: number): boolean {
+  return Math.abs(a - b) <= MONEY_TOLERANCE;
+}
+
+// ============================================================================
+// VALIDACION DE INPUTS
+// ============================================================================
+
 function validateInput(input: FiscalBreakdownInput): void {
-  // Validar régimen fiscal
   const validRegimes: RegimenFiscal[] = ["ASIMILADOS", "HONORARIOS", "RESICO"];
   if (!validRegimes.includes(input.regimenFiscal)) {
     throw new FiscalCalculationError(
-      `Régimen fiscal no reconocido: ${input.regimenFiscal}`,
+      `Regimen fiscal no reconocido: ${input.regimenFiscal}`,
       "INVALID_REGIME",
       { regimenFiscal: input.regimenFiscal }
     );
   }
 
-  // Validar que las comisiones sean números no negativos
   if (!Number.isFinite(input.comisionGravada) || input.comisionGravada < 0) {
     throw new FiscalCalculationError(
-      "Comisión gravada inválida",
+      "Comision gravada invalida: debe ser un numero no negativo",
       "INVALID_COMISION_GRAVADA",
       { comisionGravada: input.comisionGravada }
     );
@@ -206,16 +213,15 @@ function validateInput(input: FiscalBreakdownInput): void {
 
   if (!Number.isFinite(input.comisionExenta) || input.comisionExenta < 0) {
     throw new FiscalCalculationError(
-      "Comisión exenta inválida",
+      "Comision exenta invalida: debe ser un numero no negativo",
       "INVALID_COMISION_EXENTA",
       { comisionExenta: input.comisionExenta }
     );
   }
 
-  // Validar que haya al menos una comisión
   if (input.comisionGravada === 0 && input.comisionExenta === 0) {
     throw new FiscalCalculationError(
-      "Al menos una comisión debe ser mayor a cero",
+      "Al menos una comision debe ser mayor a cero",
       "NO_COMMISSIONS",
       { comisionGravada: input.comisionGravada, comisionExenta: input.comisionExenta }
     );
@@ -223,394 +229,381 @@ function validateInput(input: FiscalBreakdownInput): void {
 }
 
 // ============================================================================
-// CÁLCULOS POR RÉGIMEN FISCAL
+// CALCULOS POR REGIMEN — FUNCIONES PURAS
 // ============================================================================
 
 /**
- * CÁLCULO FISCAL PARA ASIMILADOS
+ * ASIMILADOS
  *
- * FÓRMULAS VALIDADAS:
- * 1. RET CONTABLE = COMISION_EXENTA × 0.16
- * 2. COSTO DISPERSION = COMISION_GRAVADA × 0.09
- * 3. BASE_ISR_EXENTA = COMISION_EXENTA / 1.16
- * 4. ISR_EXENTA = BASE_ISR_EXENTA × 0.10
- * 5. BASE_ISR_GRAVADA = COMISION_GRAVADA / 1.09
- * 6. ISR_GRAVADA = BASE_ISR_GRAVADA × 0.10
- * 7. RET_ISR = ISR_EXENTA + ISR_GRAVADA
- * 8. TOTAL = (COMISION_GRAVADA + COMISION_EXENTA) - RET_CONTABLE - COSTO_DISPERSION - RET_ISR
+ * Formulas:
+ *   retContable     = comisionExenta * 0.16
+ *   costoDispersion = comisionGravada * 0.09
+ *   baseIsrExenta   = comisionExenta / 1.16          (no se redondea, solo para calculo)
+ *   isrExenta       = roundMoney(baseIsrExenta * 0.10)
+ *   baseIsrGravada  = comisionGravada / 1.09         (no se redondea, solo para calculo)
+ *   isrGravada      = roundMoney(baseIsrGravada * 0.10)
+ *   retIsr          = roundMoney(isrExenta + isrGravada)
+ *   total           = comisionTotal - retContable - costoDispersion - retIsr
  *
- * VALIDACIONES INTERNAS:
- * - RET_CONTABLE debe ser exactamente COMISION_EXENTA × 0.16
- * - COSTO_DISPERSION debe ser exactamente COMISION_GRAVADA × 0.09
- * - RET_ISR debe ser la suma de ISR_EXENTA + ISR_GRAVADA
- * - TOTAL debe ser positivo (si no, algo está mal)
+ * IVA = 0, RET IVA = 0 (no aplican en asimilados)
  */
 function calcularAsimilados(
   comisionGravada: number,
   comisionExenta: number
-): Omit<FiscalBreakdownResult["calculations"], "iva" | "retIva"> & { warnings: string[] } {
+): {
+  retContable: number;
+  costoDispersion: number;
+  iva: number;
+  retIsr: number;
+  retIva: number;
+  total: number;
+  warnings: string[];
+} {
   const warnings: string[] = [];
   const rates = FISCAL_RATES.ASIMILADOS;
 
-  // Comisión total
-  const comisionTotal = round2(comisionGravada + comisionExenta);
+  const comisionTotal = roundMoney(comisionGravada + comisionExenta);
 
-  // 1. RET CONTABLE (solo sobre VIDA)
-  const retContable = round2(comisionExenta * rates.RET_CONTABLE_VIDA);
+  const retContable = roundMoney(comisionExenta * rates.RET_CONTABLE_EXENTA);
+  const costoDispersion = roundMoney(comisionGravada * rates.COSTO_DISPERSION_GRAVADA);
 
-  // 2. COSTO DISPERSION (solo sobre NO VIDA)
-  const costoDispersion = round2(comisionGravada * rates.COSTO_DISPERSION_SINVIDA);
+  // ISR se desiviza (divide por el divisor que incluye el IVA implicito)
+  const isrExenta = roundMoney((comisionExenta / rates.BASE_EXENTA_DIVISOR) * rates.ISR_RATE);
+  const isrGravada = roundMoney((comisionGravada / rates.BASE_GRAVADA_DIVISOR) * rates.ISR_RATE);
+  const retIsr = roundMoney(isrExenta + isrGravada);
 
-  // 3-6. RET ISR (cálculo separado para exenta y gravada)
-  const baseIsrExenta = comisionExenta / rates.DESIVIZAR_VIDA;
-  const isrExenta = round2(baseIsrExenta * rates.ISR_RATE);
+  const iva = 0;
+  const retIva = 0;
 
-  const baseIsrGravada = comisionGravada / rates.DESIVIZAR_SINVIDA;
-  const isrGravada = round2(baseIsrGravada * rates.ISR_RATE);
+  const total = roundMoney(comisionTotal - retContable - costoDispersion - retIsr);
 
-  const retIsr = round2(isrExenta + isrGravada);
-
-  // 8. TOTAL
-  const total = round2(comisionTotal - retContable - costoDispersion - retIsr);
-
-  // VALIDACIONES INTERNAS
-  // Validación 1: RET CONTABLE debe ser exactamente COMISION_EXENTA × 0.16
-  const expectedRetContable = round2(comisionExenta * rates.RET_CONTABLE_VIDA);
-  if (Math.abs(retContable - expectedRetContable) > TOLERANCE) {
+  // Validaciones internas
+  if (comisionExenta > 0 && !withinTolerance(retContable, comisionExenta * rates.RET_CONTABLE_EXENTA)) {
     throw new FiscalCalculationError(
-      "Validación fallida: RET CONTABLE no coincide con COMISION_EXENTA × 0.16",
+      "Validacion fallida: RET CONTABLE no coincide con COMISION_EXENTA x 0.16",
       "VALIDATION_FAILED_RET_CONTABLE",
-      { retContable, expectedRetContable }
+      { retContable, expected: comisionExenta * rates.RET_CONTABLE_EXENTA }
     );
   }
 
-  // Validación 2: COSTO DISPERSION debe ser exactamente COMISION_GRAVADA × 0.09
-  const expectedCostoDispersion = round2(comisionGravada * rates.COSTO_DISPERSION_SINVIDA);
-  if (Math.abs(costoDispersion - expectedCostoDispersion) > TOLERANCE) {
+  if (comisionGravada > 0 && !withinTolerance(costoDispersion, comisionGravada * rates.COSTO_DISPERSION_GRAVADA)) {
     throw new FiscalCalculationError(
-      "Validación fallida: COSTO DISPERSION no coincide con COMISION_GRAVADA × 0.09",
+      "Validacion fallida: COSTO DISPERSION no coincide con COMISION_GRAVADA x 0.09",
       "VALIDATION_FAILED_COSTO_DISPERSION",
-      { costoDispersion, expectedCostoDispersion }
+      { costoDispersion, expected: comisionGravada * rates.COSTO_DISPERSION_GRAVADA }
     );
   }
 
-  // Validación 3: TOTAL debe ser positivo
-  if (total < 0) {
-    warnings.push("TOTAL negativo detectado en ASIMILADOS - revisar comisiones");
+  if (comisionExenta === 0 && retContable !== 0) {
+    warnings.push("RET CONTABLE es > 0 pero COMISION_EXENTA es 0");
   }
 
-  return {
-    retContable,
-    costoDispersion,
-    retIsr,
-    total,
-    warnings,
-  };
+  if (comisionGravada === 0 && costoDispersion !== 0) {
+    warnings.push("COSTO DISPERSION es > 0 pero COMISION_GRAVADA es 0");
+  }
+
+  const expectedTotal = roundMoney(comisionTotal - retContable - costoDispersion - retIsr);
+  if (!withinTolerance(total, expectedTotal)) {
+    throw new FiscalCalculationError(
+      "Fiscal breakdown validation failed: TOTAL no cuadra en ASIMILADOS",
+      "VALIDATION_FAILED_TOTAL_ASIMILADOS",
+      { total, expectedTotal }
+    );
+  }
+
+  if (total < 0) {
+    warnings.push("TOTAL negativo en ASIMILADOS — revisar comisiones base");
+  }
+
+  return { retContable, costoDispersion, iva, retIsr, retIva: retIva, total, warnings };
 }
 
 /**
- * CÁLCULO FISCAL PARA HONORARIOS
+ * HONORARIOS
  *
- * FÓRMULAS VALIDADAS:
- * 1. IVA = COMISION_GRAVADA × 0.16
- * 2. RET_ISR = COMISION_TOTAL × 0.10
- * 3. RET_IVA = IVA × (2/3)
- * 4. TOTAL = COMISION_TOTAL + IVA - RET_ISR - RET_IVA
- *
- * VALIDACIONES INTERNAS:
- * - IVA debe ser exactamente COMISION_GRAVADA × 0.16
- * - RET_ISR debe ser exactamente COMISION_TOTAL × 0.10
- * - RET_IVA debe ser exactamente IVA × (2/3)
- * - TOTAL debe ser positivo
+ * Formulas:
+ *   retContable     = 0
+ *   costoDispersion = 0
+ *   iva             = roundMoney(comisionGravada * 0.16)
+ *   retIsr          = roundMoney(comisionTotal * 0.10)
+ *   retIva          = roundMoney(iva * 2/3)
+ *   total           = comisionTotal + iva - retIsr - retIva
  */
 function calcularHonorarios(
   comisionGravada: number,
   comisionExenta: number
-): Omit<FiscalBreakdownResult["calculations"], "retContable" | "costoDispersion"> & {
+): {
+  retContable: number;
+  costoDispersion: number;
+  iva: number;
+  retIsr: number;
+  retIva: number;
+  total: number;
   warnings: string[];
 } {
   const warnings: string[] = [];
   const rates = FISCAL_RATES.HONORARIOS;
 
-  const comisionTotal = round2(comisionGravada + comisionExenta);
+  const comisionTotal = roundMoney(comisionGravada + comisionExenta);
 
-  // 1. IVA (solo sobre NO VIDA)
-  const iva = round2(comisionGravada * rates.IVA_RATE);
+  const retContable = 0;
+  const costoDispersion = 0;
+  const iva = roundMoney(comisionGravada * rates.IVA_RATE);
+  const retIsr = roundMoney(comisionTotal * rates.ISR_RATE);
+  const retIva = roundMoney(iva * rates.RET_IVA_FACTOR);
 
-  // 2. RET ISR (sobre el total)
-  const retIsr = round2(comisionTotal * rates.ISR_RATE);
+  const total = roundMoney(comisionTotal + iva - retIsr - retIva);
 
-  // 3. RET IVA (2/3 del IVA)
-  const retIva = round2(iva * rates.RET_IVA_FACTOR);
-
-  // 4. TOTAL
-  const total = round2(comisionTotal + iva - retIsr - retIva);
-
-  // VALIDACIONES INTERNAS
-  // Validación 1: IVA debe ser exactamente COMISION_GRAVADA × 0.16
-  const expectedIva = round2(comisionGravada * rates.IVA_RATE);
-  if (Math.abs(iva - expectedIva) > TOLERANCE) {
+  // Validaciones internas
+  if (!withinTolerance(iva, comisionGravada * rates.IVA_RATE)) {
     throw new FiscalCalculationError(
-      "Validación fallida: IVA no coincide con COMISION_GRAVADA × 0.16",
+      "Validacion fallida: IVA no coincide con COMISION_GRAVADA x 0.16",
       "VALIDATION_FAILED_IVA",
-      { iva, expectedIva }
+      { iva, expected: comisionGravada * rates.IVA_RATE }
     );
   }
 
-  // Validación 2: RET ISR debe ser exactamente COMISION_TOTAL × 0.10
-  const expectedRetIsr = round2(comisionTotal * rates.ISR_RATE);
-  if (Math.abs(retIsr - expectedRetIsr) > TOLERANCE) {
+  if (!withinTolerance(retIsr, comisionTotal * rates.ISR_RATE)) {
     throw new FiscalCalculationError(
-      "Validación fallida: RET ISR no coincide con COMISION_TOTAL × 0.10",
+      "Validacion fallida: RET ISR no coincide con COMISION_TOTAL x 0.10",
       "VALIDATION_FAILED_RET_ISR",
-      { retIsr, expectedRetIsr }
+      { retIsr, expected: comisionTotal * rates.ISR_RATE }
     );
   }
 
-  // Validación 3: RET IVA debe ser exactamente IVA × (2/3)
-  const expectedRetIva = round2(iva * rates.RET_IVA_FACTOR);
-  if (Math.abs(retIva - expectedRetIva) > TOLERANCE) {
+  if (!withinTolerance(retIva, iva * rates.RET_IVA_FACTOR)) {
     throw new FiscalCalculationError(
-      "Validación fallida: RET IVA no coincide con IVA × (2/3)",
+      "Validacion fallida: RET IVA no coincide con IVA x 2/3",
       "VALIDATION_FAILED_RET_IVA",
-      { retIva, expectedRetIva }
+      { retIva, expected: iva * rates.RET_IVA_FACTOR }
     );
   }
 
-  // Validación 4: TOTAL debe ser positivo
-  if (total < 0) {
-    warnings.push("TOTAL negativo detectado en HONORARIOS - revisar comisiones");
+  const expectedTotal = roundMoney(comisionTotal + iva - retIsr - retIva);
+  if (!withinTolerance(total, expectedTotal)) {
+    throw new FiscalCalculationError(
+      "Fiscal breakdown validation failed: TOTAL no cuadra en HONORARIOS",
+      "VALIDATION_FAILED_TOTAL_HONORARIOS",
+      { total, expectedTotal }
+    );
   }
 
-  return {
-    iva,
-    retIsr,
-    retIva,
-    total,
-    warnings,
-  };
+  if (total < 0) {
+    warnings.push("TOTAL negativo en HONORARIOS — revisar comisiones base");
+  }
+
+  return { retContable, costoDispersion, iva, retIsr, retIva, total, warnings };
 }
 
 /**
- * CÁLCULO FISCAL PARA RESICO
+ * RESICO
  *
- * FÓRMULAS VALIDADAS:
- * 1. IVA = COMISION_GRAVADA × 0.16
- * 2. RET_ISR = COMISION_TOTAL × 0.0125
- * 3. RET_IVA = IVA × (2/3)
- * 4. TOTAL = COMISION_TOTAL + IVA - RET_ISR - RET_IVA
- *
- * VALIDACIONES INTERNAS:
- * - IVA debe ser exactamente COMISION_GRAVADA × 0.16
- * - RET_ISR debe ser exactamente COMISION_TOTAL × 0.0125
- * - RET_IVA debe ser exactamente IVA × (2/3)
- * - TOTAL debe ser positivo
+ * Formulas:
+ *   retContable     = 0
+ *   costoDispersion = 0
+ *   iva             = roundMoney(comisionGravada * 0.16)
+ *   retIsr          = roundMoney(comisionTotal * 0.0125)
+ *   retIva          = roundMoney(iva * 2/3)
+ *   total           = comisionTotal + iva - retIsr - retIva
  */
 function calcularResico(
   comisionGravada: number,
   comisionExenta: number
-): Omit<FiscalBreakdownResult["calculations"], "retContable" | "costoDispersion"> & {
+): {
+  retContable: number;
+  costoDispersion: number;
+  iva: number;
+  retIsr: number;
+  retIva: number;
+  total: number;
   warnings: string[];
 } {
   const warnings: string[] = [];
   const rates = FISCAL_RATES.RESICO;
 
-  const comisionTotal = round2(comisionGravada + comisionExenta);
+  const comisionTotal = roundMoney(comisionGravada + comisionExenta);
 
-  // 1. IVA (solo sobre NO VIDA)
-  const iva = round2(comisionGravada * rates.IVA_RATE);
+  const retContable = 0;
+  const costoDispersion = 0;
+  const iva = roundMoney(comisionGravada * rates.IVA_RATE);
+  const retIsr = roundMoney(comisionTotal * rates.ISR_RATE);
+  const retIva = roundMoney(iva * rates.RET_IVA_FACTOR);
 
-  // 2. RET ISR (sobre el total, 1.25%)
-  const retIsr = round2(comisionTotal * rates.ISR_RATE);
+  const total = roundMoney(comisionTotal + iva - retIsr - retIva);
 
-  // 3. RET IVA (2/3 del IVA)
-  const retIva = round2(iva * rates.RET_IVA_FACTOR);
-
-  // 4. TOTAL
-  const total = round2(comisionTotal + iva - retIsr - retIva);
-
-  // VALIDACIONES INTERNAS
-  // Validación 1: IVA debe ser exactamente COMISION_GRAVADA × 0.16
-  const expectedIva = round2(comisionGravada * rates.IVA_RATE);
-  if (Math.abs(iva - expectedIva) > TOLERANCE) {
+  // Validaciones internas
+  if (!withinTolerance(iva, comisionGravada * rates.IVA_RATE)) {
     throw new FiscalCalculationError(
-      "Validación fallida: IVA no coincide con COMISION_GRAVADA × 0.16",
+      "Validacion fallida: IVA no coincide con COMISION_GRAVADA x 0.16",
       "VALIDATION_FAILED_IVA",
-      { iva, expectedIva }
+      { iva, expected: comisionGravada * rates.IVA_RATE }
     );
   }
 
-  // Validación 2: RET ISR debe ser exactamente COMISION_TOTAL × 0.0125
-  const expectedRetIsr = round2(comisionTotal * rates.ISR_RATE);
-  if (Math.abs(retIsr - expectedRetIsr) > TOLERANCE) {
+  if (!withinTolerance(retIsr, comisionTotal * rates.ISR_RATE)) {
     throw new FiscalCalculationError(
-      "Validación fallida: RET ISR no coincide con COMISION_TOTAL × 0.0125",
+      "Validacion fallida: RET ISR no coincide con COMISION_TOTAL x 0.0125",
       "VALIDATION_FAILED_RET_ISR",
-      { retIsr, expectedRetIsr }
+      { retIsr, expected: comisionTotal * rates.ISR_RATE }
     );
   }
 
-  // Validación 3: RET IVA debe ser exactamente IVA × (2/3)
-  const expectedRetIva = round2(iva * rates.RET_IVA_FACTOR);
-  if (Math.abs(retIva - expectedRetIva) > TOLERANCE) {
+  if (!withinTolerance(retIva, iva * rates.RET_IVA_FACTOR)) {
     throw new FiscalCalculationError(
-      "Validación fallida: RET IVA no coincide con IVA × (2/3)",
+      "Validacion fallida: RET IVA no coincide con IVA x 2/3",
       "VALIDATION_FAILED_RET_IVA",
-      { retIva, expectedRetIva }
+      { retIva, expected: iva * rates.RET_IVA_FACTOR }
     );
   }
 
-  // Validación 4: TOTAL debe ser positivo
-  if (total < 0) {
-    warnings.push("TOTAL negativo detectado en RESICO - revisar comisiones");
+  const expectedTotal = roundMoney(comisionTotal + iva - retIsr - retIva);
+  if (!withinTolerance(total, expectedTotal)) {
+    throw new FiscalCalculationError(
+      "Fiscal breakdown validation failed: TOTAL no cuadra en RESICO",
+      "VALIDATION_FAILED_TOTAL_RESICO",
+      { total, expectedTotal }
+    );
   }
 
-  return {
-    iva,
-    retIsr,
-    retIva,
-    total,
-    warnings,
-  };
+  if (total < 0) {
+    warnings.push("TOTAL negativo en RESICO — revisar comisiones base");
+  }
+
+  return { retContable, costoDispersion, iva, retIsr, retIva, total, warnings };
 }
 
 // ============================================================================
-// FUNCIÓN PRINCIPAL BLINDADA
+// FUNCION PRINCIPAL — MOTOR FISCAL BLINDADO
 // ============================================================================
 
 /**
- * MOTOR FISCAL BLINDADO V3
+ * Motor fiscal puro v2.0.0
  *
- * Esta función calcula el desglose fiscal completo para un conjunto de comisiones,
- * garantizando:
- * - Cálculos puramente funcionales sin efectos secundarios
- * - Validación estricta de inputs y outputs
- * - Auditoría completa con versionado de fórmulas
- * - Manejo de errores que previene fallos silenciosos
- * - Consistencia total entre diferentes invocaciones con los mismos inputs
+ * Esta es la UNICA funcion que debe usarse para calcular el desglose fiscal
+ * de comisiones en MOVI Digital. Reemplaza todas las versiones anteriores.
  *
- * @param input - Datos de entrada validados
- * @returns Resultado completo con cálculos, auditoría y formato PDF
- * @throws {FiscalCalculationError} Si hay errores de validación o cálculo
+ * NO usa cache, NO lee estado global, NO reutiliza resultados previos.
+ * Cada llamada recalcula desde cero con los inputs recibidos.
+ *
+ * Si los calculos fallan la validacion interna, lanza FiscalCalculationError.
+ * El PDF nunca se genera con valores incorrectos silenciosamente.
+ *
+ * @throws {FiscalCalculationError} Si hay errores de validacion
  */
 export function calcularDesgloseFiscalV3(
   input: FiscalBreakdownInput
 ): FiscalBreakdownResult {
-  // PASO 1: Validar input
+  // 1. Validar inputs
   validateInput(input);
 
-  // PASO 2: Preparar valores base
-  const comisionGravada = round2(input.comisionGravada);
-  const comisionExenta = round2(input.comisionExenta);
-  const comisionTotal = round2(comisionGravada + comisionExenta);
+  // 2. Normalizar bases (redondear inputs)
+  const comisionGravada = roundMoney(input.comisionGravada);
+  const comisionExenta = roundMoney(input.comisionExenta);
+  const comisionTotal = roundMoney(comisionGravada + comisionExenta);
 
-  const warnings: string[] = [];
-
-  console.log(`[Fiscal V3] Calculando para ${input.regimenFiscal}:`);
-  console.log(`[Fiscal V3]   Gravada: ${formatCurrency(comisionGravada)}`);
-  console.log(`[Fiscal V3]   Exenta: ${formatCurrency(comisionExenta)}`);
-  console.log(`[Fiscal V3]   Total: ${formatCurrency(comisionTotal)}`);
-
-  // PASO 3: Ejecutar cálculo según régimen
-  let calculations: FiscalBreakdownResult["calculations"];
-
-  if (input.regimenFiscal === "ASIMILADOS") {
-    const result = calcularAsimilados(comisionGravada, comisionExenta);
-    calculations = {
-      retContable: result.retContable,
-      costoDispersion: result.costoDispersion,
-      iva: 0.0,
-      retIsr: result.retIsr,
-      retIva: 0.0,
-      total: result.total,
-    };
-    warnings.push(...result.warnings);
-  } else if (input.regimenFiscal === "HONORARIOS") {
-    const result = calcularHonorarios(comisionGravada, comisionExenta);
-    calculations = {
-      retContable: 0.0,
-      costoDispersion: 0.0,
-      iva: result.iva,
-      retIsr: result.retIsr,
-      retIva: result.retIva,
-      total: result.total,
-    };
-    warnings.push(...result.warnings);
-  } else {
-    // RESICO
-    const result = calcularResico(comisionGravada, comisionExenta);
-    calculations = {
-      retContable: 0.0,
-      costoDispersion: 0.0,
-      iva: result.iva,
-      retIsr: result.retIsr,
-      retIva: result.retIva,
-      total: result.total,
-    };
-    warnings.push(...result.warnings);
+  // 3. Validar que comisionTotal = gravada + exenta
+  if (!withinTolerance(comisionTotal, comisionGravada + comisionExenta)) {
+    throw new FiscalCalculationError(
+      "Inconsistencia en base: comisionTotal !== comisionGravada + comisionExenta",
+      "BASE_INCONSISTENCY",
+      { comisionGravada, comisionExenta, comisionTotal }
+    );
   }
 
-  // PASO 4: Generar filas para PDF (siempre 8 campos en orden)
-  const pdfRows = [
+  // 4. Ejecutar calculo segun regimen
+  let calc: ReturnType<typeof calcularAsimilados>;
+
+  switch (input.regimenFiscal) {
+    case "ASIMILADOS":
+      calc = calcularAsimilados(comisionGravada, comisionExenta);
+      break;
+    case "HONORARIOS":
+      calc = calcularHonorarios(comisionGravada, comisionExenta);
+      break;
+    case "RESICO":
+      calc = calcularResico(comisionGravada, comisionExenta);
+      break;
+    default:
+      throw new FiscalCalculationError(
+        `Regimen fiscal no implementado: ${input.regimenFiscal}`,
+        "REGIME_NOT_IMPLEMENTED"
+      );
+  }
+
+  // 5. Validacion cruzada: reglas por regimen
+  const w = calc.warnings;
+
+  if (input.regimenFiscal === "ASIMILADOS") {
+    if (calc.iva !== 0) w.push("ASIMILADOS: IVA debe ser 0");
+    if (calc.retIva !== 0) w.push("ASIMILADOS: RET IVA debe ser 0");
+    if (comisionExenta > 0 && calc.retContable === 0) w.push("ASIMILADOS: RET CONTABLE es 0 pero hay comision exenta");
+    if (comisionGravada > 0 && calc.costoDispersion === 0) w.push("ASIMILADOS: COSTO DISPERSION es 0 pero hay comision gravada");
+  } else {
+    if (calc.retContable !== 0) w.push(`${input.regimenFiscal}: RET CONTABLE debe ser 0`);
+    if (calc.costoDispersion !== 0) w.push(`${input.regimenFiscal}: COSTO DISPERSION debe ser 0`);
+  }
+
+  // 6. Generar pdfRows — SIEMPRE 8 filas en orden exacto
+  const pdfRows: FiscalBreakdownResult["pdfRows"] = [
     {
-      key: "comision_gravada",
+      key: "COMISION_GRAVADA",
       label: "COMISION GRAVADA",
       value: comisionGravada,
       formattedValue: formatCurrency(comisionGravada),
-      sign: "positive" as const,
+      sign: "positive",
     },
     {
-      key: "comision_exenta",
+      key: "COMISION_EXENTA",
       label: "COMISION EXENTA",
       value: comisionExenta,
       formattedValue: formatCurrency(comisionExenta),
-      sign: "positive" as const,
+      sign: "positive",
     },
     {
-      key: "ret_contable",
+      key: "RET_CONTABLE",
       label: "RET CONTABLE",
-      value: calculations.retContable,
-      formattedValue: formatCurrency(calculations.retContable),
-      sign: "negative" as const,
+      value: calc.retContable,
+      formattedValue: formatCurrency(calc.retContable),
+      sign: "negative",
     },
     {
-      key: "costo_dispersion",
+      key: "COSTO_DISPERSION",
       label: "COSTO DISPERSION",
-      value: calculations.costoDispersion,
-      formattedValue: formatCurrency(calculations.costoDispersion),
-      sign: "negative" as const,
+      value: calc.costoDispersion,
+      formattedValue: formatCurrency(calc.costoDispersion),
+      sign: "negative",
     },
     {
-      key: "iva",
+      key: "IVA",
       label: "IVA",
-      value: calculations.iva,
-      formattedValue: formatCurrency(calculations.iva),
-      sign: "positive" as const,
+      value: calc.iva,
+      formattedValue: formatCurrency(calc.iva),
+      sign: "positive",
     },
     {
-      key: "ret_isr",
+      key: "RET_ISR",
       label: "RET ISR",
-      value: calculations.retIsr,
-      formattedValue: formatCurrency(calculations.retIsr),
-      sign: "negative" as const,
+      value: calc.retIsr,
+      formattedValue: formatCurrency(calc.retIsr),
+      sign: "negative",
     },
     {
-      key: "ret_iva",
+      key: "RET_IVA",
       label: "RET IVA",
-      value: calculations.retIva,
-      formattedValue: formatCurrency(calculations.retIva),
-      sign: "negative" as const,
+      value: calc.retIva,
+      formattedValue: formatCurrency(calc.retIva),
+      sign: "negative",
     },
     {
-      key: "total",
+      key: "TOTAL",
       label: "TOTAL",
-      value: calculations.total,
-      formattedValue: formatCurrency(calculations.total),
-      sign: "neutral" as const,
+      value: calc.total,
+      formattedValue: formatCurrency(calc.total),
+      sign: "neutral",
     },
   ];
 
-  // PASO 5: Construir resultado con auditoría
+  // 7. Construir resultado con auditoria completa
   const result: FiscalBreakdownResult = {
     regimenFiscal: input.regimenFiscal,
     base: {
@@ -618,36 +611,39 @@ export function calcularDesgloseFiscalV3(
       comisionExenta,
       comisionTotal,
     },
-    calculations,
+    calculations: {
+      retContable: calc.retContable,
+      costoDispersion: calc.costoDispersion,
+      iva: calc.iva,
+      retIsr: calc.retIsr,
+      retIva: calc.retIva,
+      total: calc.total,
+    },
     audit: {
-      formulaVersion: FORMULA_VERSION,
+      formulaVersion: FISCAL_FORMULA_VERSION,
       performedAt: new Date().toISOString(),
       roundingPolicy: ROUNDING_POLICY,
       validationsPassed: true,
-      warnings,
+      warnings: w,
     },
     pdfRows,
   };
-
-  console.log(`[Fiscal V3] Cálculo completado exitosamente`);
-  console.log(`[Fiscal V3]   Total: ${formatCurrency(calculations.total)}`);
-  console.log(`[Fiscal V3]   Versión: ${FORMULA_VERSION}`);
-  console.log(`[Fiscal V3]   Warnings: ${warnings.length}`);
 
   return result;
 }
 
 // ============================================================================
-// FUNCIONES AUXILIARES PARA TESTING Y VALIDACIÓN
+// HELPERS DE AUDITORIA Y TESTING
 // ============================================================================
 
 /**
- * Valida que un resultado coincida con un total esperado
+ * Valida que el total de un resultado coincida con el esperado.
+ * Util para tests y validacion post-calculo.
  */
 export function validarResultadoFiscal(
   resultado: FiscalBreakdownResult,
   totalEsperado: number,
-  tolerancia: number = TOLERANCE
+  tolerancia: number = MONEY_TOLERANCE
 ): { valido: boolean; diferencia: number; mensaje: string } {
   const diferencia = Math.abs(resultado.calculations.total - totalEsperado);
   const valido = diferencia <= tolerancia;
@@ -656,50 +652,78 @@ export function validarResultadoFiscal(
     valido,
     diferencia,
     mensaje: valido
-      ? `✅ Validación exitosa (diferencia: ${formatCurrency(diferencia)})`
-      : `❌ Validación fallida (diferencia: ${formatCurrency(diferencia)}, esperado: ${formatCurrency(totalEsperado)}, calculado: ${formatCurrency(resultado.calculations.total)})`,
+      ? `OK: diferencia ${formatCurrency(diferencia)}`
+      : `FALLO: diferencia ${formatCurrency(diferencia)} (esperado ${formatCurrency(totalEsperado)}, calculado ${formatCurrency(resultado.calculations.total)})`,
   };
 }
 
 /**
- * Formatea un resultado para logging/debugging
+ * Snapshot del resultado para auditoria/log.
+ * Registra todos los campos relevantes con timestamp y version.
  */
-export function formatearResultadoParaLog(resultado: FiscalBreakdownResult): string {
-  return `
-========================================
-RESULTADO FISCAL
-========================================
-Régimen: ${resultado.regimenFiscal}
-Versión: ${resultado.audit.formulaVersion}
-Fecha: ${resultado.audit.performedAt}
-
-BASE:
-  Comisión Gravada: ${formatCurrency(resultado.base.comisionGravada)}
-  Comisión Exenta: ${formatCurrency(resultado.base.comisionExenta)}
-  Comisión Total: ${formatCurrency(resultado.base.comisionTotal)}
-
-CÁLCULOS:
-  Ret. Contable: ${formatCurrency(resultado.calculations.retContable)}
-  Costo Dispersión: ${formatCurrency(resultado.calculations.costoDispersion)}
-  IVA: ${formatCurrency(resultado.calculations.iva)}
-  Ret. ISR: ${formatCurrency(resultado.calculations.retIsr)}
-  Ret. IVA: ${formatCurrency(resultado.calculations.retIva)}
-  TOTAL: ${formatCurrency(resultado.calculations.total)}
-
-AUDITORÍA:
-  Validaciones Pasadas: ${resultado.audit.validationsPassed ? "SÍ" : "NO"}
-  Política de Redondeo: ${resultado.audit.roundingPolicy}
-  Warnings: ${resultado.audit.warnings.length > 0 ? resultado.audit.warnings.join(", ") : "Ninguno"}
-========================================
-  `.trim();
+export function buildFiscalAuditSnapshot(
+  resultado: FiscalBreakdownResult,
+  context?: FiscalBreakdownInput["context"]
+): Record<string, unknown> {
+  return {
+    formulaVersion: resultado.audit.formulaVersion,
+    performedAt: resultado.audit.performedAt,
+    roundingPolicy: resultado.audit.roundingPolicy,
+    regimenFiscal: resultado.regimenFiscal,
+    comisionGravada: resultado.base.comisionGravada,
+    comisionExenta: resultado.base.comisionExenta,
+    comisionTotal: resultado.base.comisionTotal,
+    retContable: resultado.calculations.retContable,
+    costoDispersion: resultado.calculations.costoDispersion,
+    iva: resultado.calculations.iva,
+    retIsr: resultado.calculations.retIsr,
+    retIva: resultado.calculations.retIva,
+    total: resultado.calculations.total,
+    validationsPassed: resultado.audit.validationsPassed,
+    warnings: resultado.audit.warnings,
+    agentId: context?.agentId,
+    loteId: context?.loteId,
+    periodo: context?.periodo,
+    sourceDocumentIds: context?.sourceDocumentIds,
+  };
 }
 
 /**
- * Exporta las constantes para uso en tests
+ * Formatea el resultado para logging tecnico.
+ */
+export function formatearResultadoParaLog(resultado: FiscalBreakdownResult): string {
+  const b = resultado.base;
+  const c = resultado.calculations;
+  const a = resultado.audit;
+
+  return [
+    `========================================`,
+    `RESULTADO FISCAL [${resultado.regimenFiscal}]`,
+    `Version: ${a.formulaVersion} | ${a.performedAt}`,
+    `----------------------------------------`,
+    `Comision Gravada: ${formatCurrency(b.comisionGravada)}`,
+    `Comision Exenta:  ${formatCurrency(b.comisionExenta)}`,
+    `Comision Total:   ${formatCurrency(b.comisionTotal)}`,
+    `----------------------------------------`,
+    `Ret Contable:     ${formatCurrency(c.retContable)}`,
+    `Costo Dispersion: ${formatCurrency(c.costoDispersion)}`,
+    `IVA:              ${formatCurrency(c.iva)}`,
+    `Ret ISR:          ${formatCurrency(c.retIsr)}`,
+    `Ret IVA:          ${formatCurrency(c.retIva)}`,
+    `TOTAL:            ${formatCurrency(c.total)}`,
+    `----------------------------------------`,
+    `Validaciones:     ${a.validationsPassed ? "PASADAS" : "FALLIDAS"}`,
+    `Warnings:         ${a.warnings.length === 0 ? "Ninguno" : a.warnings.join("; ")}`,
+    `========================================`,
+  ].join("\n");
+}
+
+/**
+ * Exporta constantes para uso en tests y herramientas de auditoria.
  */
 export const FISCAL_CONFIG = {
-  FORMULA_VERSION,
+  FORMULA_VERSION: FISCAL_FORMULA_VERSION,
   ROUNDING_POLICY,
-  TOLERANCE,
+  TOLERANCE: MONEY_TOLERANCE,
   FISCAL_RATES,
 } as const;

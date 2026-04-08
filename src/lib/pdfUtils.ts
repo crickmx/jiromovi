@@ -700,19 +700,10 @@ export async function generateOrdenDePagoPDF(
   }
 
   // ============================================================================
-  // SISTEMA V3: MOTOR FISCAL BLINDADO CON VALIDACIÓN COMPLETA
+  // MOTOR FISCAL BLINDADO V3 — CALCULO DESDE CERO, SIN CACHE, SIN SIDE EFFECTS
+  // Cada PDF recalcula independientemente. Nunca reutiliza valores de otro PDF.
+  // Si falla la validacion, lanza error y NO genera PDF con valores incorrectos.
   // ============================================================================
-  // Este sistema implementa un motor fiscal completamente blindado con:
-  // - Validación estricta de inputs y outputs
-  // - Auditoría con versionado de fórmulas
-  // - Manejo de errores que previene fallos silenciosos
-  // - Cálculos puros sin efectos secundarios ni cachés
-  //
-  // GARANTÍAS:
-  // 1. Cada PDF calcula desde cero (sin reutilizar valores de otros PDFs)
-  // 2. Validaciones internas aseguran correctitud de fórmulas
-  // 3. Cualquier inconsistencia lanza error antes de generar PDF
-  // 4. Trazabilidad completa con versión de fórmulas y timestamp
 
   const { supabase } = await import('./supabase');
   const usuario_id = agentDetails[0].usuario_id;
@@ -728,62 +719,51 @@ export async function generateOrdenDePagoPDF(
     .single();
 
   if (usuarioError || !usuarioData) {
-    throw new Error('No se encontró la información del usuario');
+    throw new Error('No fue posible generar el cálculo fiscal del PDF. Revisar datos base.');
   }
 
   const regimenFiscalName = (usuarioData.regimen_fiscal as any)?.name || 'HONORARIOS';
   const regimenFiscalNormalizado = regimenFiscalName.toUpperCase() as RegimenFiscalV3;
 
-  // Clasificar comisiones por ramo (VIDA vs NO VIDA)
-  // Convertir ramoMap a Map<string, number> para la función
+  // Clasificar comisiones por ramo: VIDA = exenta, NO VIDA = gravada
   const ramoComisionMap = new Map<string, number>();
   ramoMap.forEach((data, ramo) => {
     ramoComisionMap.set(ramo, data.comisionNeta);
   });
   const { comisionGravada, comisionExenta } = clasificarComisionesPorRamo(ramoComisionMap);
 
-  const agentFullName = `${usuario.nombre} ${usuario.apellidos}`.trim();
-  console.log(`[PDF V3] ========================================`);
-  console.log(`[PDF V3] Generando PDF Blindado para: ${agentFullName}`);
-  console.log(`[PDF V3] Régimen Fiscal: ${regimenFiscalNormalizado}`);
-  console.log(`[PDF V3] Comisión Gravada (NO VIDA): ${formatCurrency(comisionGravada)}`);
-  console.log(`[PDF V3] Comisión Exenta (VIDA): ${formatCurrency(comisionExenta)}`);
-  console.log(`[PDF V3] Comisión Total: ${formatCurrency(comisionGravada + comisionExenta)}`);
-
-  // Preparar el input para el motor fiscal V3 con contexto de auditoría
+  // Preparar el input con contexto de auditoria
   const fiscalInputV3: FiscalBreakdownInput = {
     regimenFiscal: regimenFiscalNormalizado,
     comisionGravada,
     comisionExenta,
     context: {
       agentId: usuario_id,
+      loteId: batch.id,
       periodo: `${batch.semana_anio || ''}-${batch.semana_numero || ''}`,
     }
   };
 
-  // CALCULAR el desglose fiscal usando motor blindado V3
-  // Esta función lanza error si hay inconsistencias en las validaciones
-  const resultadoFiscalV3 = calcularDesgloseFiscalV3(fiscalInputV3);
+  // Ejecutar motor fiscal — lanza FiscalCalculationError si hay inconsistencias
+  let resultadoFiscalV3;
+  try {
+    resultadoFiscalV3 = calcularDesgloseFiscalV3(fiscalInputV3);
+  } catch (err) {
+    console.error('[PDF V3] Error en calculo fiscal:', err);
+    throw new Error('No fue posible generar el cálculo fiscal del PDF. Revisar datos base.');
+  }
 
-  // Los pdfRows ya vienen formateados del motor V3
+  // pdfRows siempre tiene 8 filas en orden exacto del motor
   const displayFields = resultadoFiscalV3.pdfRows;
-
-  console.log(`[PDF V3] Resultado:`);
-  console.log(`[PDF V3]   Total a Pagar: ${formatCurrency(resultadoFiscalV3.calculations.total)}`);
-  console.log(`[PDF V3]   Versión: ${resultadoFiscalV3.audit.formulaVersion}`);
-  console.log(`[PDF V3]   Validaciones Pasadas: ${resultadoFiscalV3.audit.validationsPassed ? 'SÍ' : 'NO'}`);
-  console.log(`[PDF V3]   Warnings: ${resultadoFiscalV3.audit.warnings.length}`);
-  console.log(`[PDF V3] ========================================`);
 
   // Si no hay espacio en la página actual, crear una nueva
   const availableSpace = pageHeight - yPosition - 8;
-  if (availableSpace < 60) {
-    console.log('[PDF V3] Espacio insuficiente, creando nueva página');
+  if (availableSpace < 65) {
     doc.addPage();
     yPosition = 20;
   }
 
-  // Título del bloque fiscal
+  // Titulo del bloque fiscal — "DESGLOSE FISCAL" (sin typo "DESGLOCE")
   doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0, 51, 102);
@@ -791,27 +771,25 @@ export async function generateOrdenDePagoPDF(
 
   yPosition += 4;
 
-  // Convertir displayFields (pdfRows de V3) a formato de tabla
+  // Construir filas de tabla: 8 filas exactas, signos visuales correctos
   const desgloseFiscalRows: any[] = displayFields.map(field => {
-    // Formatear el valor con signo si aplica
     let valorDisplay = field.formattedValue;
+
+    // Retenciones y costos se muestran con signo negativo visual
     if (field.sign === 'negative' && field.value !== 0) {
       valorDisplay = `- ${field.formattedValue}`;
-    } else if (field.sign === 'positive' && field.value > 0 && field.key !== 'comision_gravada' && field.key !== 'comision_exenta') {
-      // No agregar + para comisiones base, solo para conceptos que se suman
-      valorDisplay = field.formattedValue;
     }
+    // IVA se muestra positivo (suma a la base)
+    // Comisiones base se muestran positivas sin prefijo
 
-    if (field.key === 'total') {
-      // Fila de TOTAL con estilo destacado
+    if (field.key === 'TOTAL') {
       return [
         { content: field.label, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } },
         { content: valorDisplay, styles: { fontStyle: 'bold', fillColor: [0, 102, 51], textColor: [255, 255, 255] } }
       ];
-    } else {
-      // Fila normal
-      return [field.label, valorDisplay];
     }
+
+    return [field.label, valorDisplay];
   });
 
   autoTable(doc, {
@@ -830,10 +808,15 @@ export async function generateOrdenDePagoPDF(
 
   yPosition = (doc as any).lastAutoTable.finalY + 3;
 
+  // Nota tecnica obligatoria
   doc.setFontSize(6);
   doc.setFont(undefined, 'italic');
   doc.setTextColor(100);
-  doc.text(`* Cálculo basado en comisión gravada (NO VIDA) y comisión exenta (VIDA) - Versión ${resultadoFiscalV3.audit.formulaVersion}`, marginLeft, yPosition);
+  doc.text(
+    `* Cálculo basado en comisión gravada (NO VIDA) y comisión exenta (VIDA) - v${resultadoFiscalV3.audit.formulaVersion}`,
+    marginLeft,
+    yPosition
+  );
 
   const pdfBlob = doc.output('blob');
   return pdfBlob;
