@@ -112,7 +112,8 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
           .from('ticket-archivos')
           .getPublicUrl(fileName);
 
-        const { data, error: dbError } = await supabase
+        // Insertar el archivo sin JOIN para evitar errores de GROUP BY
+        const { data: insertData, error: dbError } = await supabase
           .from('ticket_archivos')
           .insert({
             ticket_id: tramiteId,
@@ -122,10 +123,19 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
             tipo: file.type,
             tamano: file.size
           })
-          .select('*, usuarios!usuario_id(nombre_completo)')
+          .select()
           .single();
 
         if (dbError) throw dbError;
+
+        // Luego obtener el archivo con el JOIN
+        const { data, error: fetchError } = await supabase
+          .from('ticket_archivos')
+          .select('*, usuarios!usuario_id(nombre_completo)')
+          .eq('id', insertData.id)
+          .single();
+
+        if (fetchError) throw fetchError;
 
         setArchivos(prev =>
           prev.map(a => a.id === tempId ? data as Archivo : a)
