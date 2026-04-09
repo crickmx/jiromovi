@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle, Upload } from 'lucide-react';
+import { DollarSign, Plus, Calendar, FileSpreadsheet, CheckCircle, Clock, AlertCircle, Upload, Percent } from 'lucide-react';
 import type { CommissionBatch } from '../lib/commissionTypes';
 import { formatCurrency, formatDate } from '../lib/commissionUtils';
 
@@ -103,13 +103,22 @@ export default function Comisiones() {
               Gestiona lotes de comisiones y pagos a agentes
             </p>
           </div>
-          <button
-            onClick={() => navigate('/comisiones/upload-nuevo')}
-            className="flex items-center justify-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 sm:px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px] w-full sm:w-auto"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Cargar Archivo</span>
-          </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <button
+              onClick={() => navigate('/comisiones/regimen-fiscal')}
+              className="flex items-center justify-center space-x-2 border border-neutral-300 text-neutral-700 bg-white px-4 sm:px-5 py-3 rounded-xl hover:bg-neutral-50 hover:border-neutral-400 transition-all duration-200 font-semibold min-h-[44px] w-full sm:w-auto"
+            >
+              <Percent className="w-4 h-4" />
+              <span>Régimen Fiscal</span>
+            </button>
+            <button
+              onClick={() => navigate('/comisiones/upload-nuevo')}
+              className="flex items-center justify-center space-x-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 sm:px-5 py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold min-h-[44px] w-full sm:w-auto"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Cargar Archivo</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
