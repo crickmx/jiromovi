@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Power, AlertTriangle, CheckCircle2,
   Clock, XCircle, Info, ChevronDown, ChevronUp,
-  Eye, EyeOff, FileText, Calculator,
+  Eye, EyeOff, FileText, Calculator, Pencil,
 } from 'lucide-react';
 import {
   fetchFiscalRuleWithLines,
@@ -30,20 +30,6 @@ import {
   type RegimenCodigo,
 } from '../lib/fiscalRegimenTypes';
 import { Button } from '../components/ui/button';
-import { useAuth } from '../contexts/AuthContext';
-
-const CONCEPTO_ORDER: ConceptoCodigo[] = [
-  'comision_gravada',
-  'comision_exenta',
-  'comision_total',
-  'iva',
-  'ret_isr',
-  'ret_iva',
-  'ret_contable',
-  'costo_dispersion',
-  'total_fiscal',
-  'total_final',
-];
 
 const SIGNO_LABELS: Record<SignoResultado, { label: string; color: string }> = {
   positivo: { label: '+', color: 'text-emerald-600' },
@@ -61,11 +47,15 @@ interface LineEdit extends FiscalRegimenRuleLine {
   dirty?: boolean;
 }
 
+function numVal(v: number | string | null | undefined): number {
+  if (v === null || v === undefined || v === '') return 0;
+  const n = typeof v === 'string' ? parseFloat(v) : v;
+  return isNaN(n) ? 0 : n;
+}
+
 export default function RegimenFiscalEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { usuario } = useAuth();
-  const isAdmin = usuario?.rol === 'Administrador';
 
   const [rule, setRule] = useState<FiscalRegimenRuleWithLines | null>(null);
   const [lines, setLines] = useState<LineEdit[]>([]);
@@ -75,8 +65,7 @@ export default function RegimenFiscalEditor() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [editingLine, setEditingLine] = useState<string | null>(null);
-  const [notasEdit, setNotasEdit] = useState('');
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewGravada, setPreviewGravada] = useState(1000);
   const [previewExenta, setPreviewExenta] = useState(500);
@@ -87,6 +76,7 @@ export default function RegimenFiscalEditor() {
     if (!id) return;
     setLoading(true);
     setError(null);
+    setEditingLineId(null);
     try {
       const data = await fetchFiscalRuleWithLines(id);
       setRule(data);
@@ -113,9 +103,18 @@ export default function RegimenFiscalEditor() {
     ));
   }
 
+  function startEditing(line: LineEdit) {
+    setEditingLineId(line.id);
+  }
+
+  function cancelEditing() {
+    setEditingLineId(null);
+    load();
+  }
+
   async function saveLine(lineId: string) {
     const line = lines.find(l => l.id === lineId);
-    if (!line || !line.dirty) return;
+    if (!line) return;
     setSaving(lineId);
     setError(null);
     try {
@@ -131,7 +130,7 @@ export default function RegimenFiscalEditor() {
         notas: line.notas,
       });
       setLines(prev => prev.map(l => l.id === lineId ? { ...l, dirty: false } : l));
-      setEditingLine(null);
+      setEditingLineId(null);
       showSuccess('Línea guardada correctamente');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error al guardar la línea');
@@ -157,8 +156,7 @@ export default function RegimenFiscalEditor() {
 
   async function handleActivate() {
     if (!rule) return;
-    const activeLines = lines.filter(l => l.activo);
-    const validation = validarLineasRegimen(rule.regimen_codigo as RegimenCodigo, activeLines);
+    const validation = validarLineasRegimen(rule.regimen_codigo as RegimenCodigo, lines);
     if (!validation.valid) {
       setValidationErrors(validation.errors);
       return;
@@ -227,8 +225,6 @@ export default function RegimenFiscalEditor() {
   const dirtyCount = lines.filter(l => l.dirty).length;
   const preview = previewOpen ? getPreviewResult() : null;
 
-  const activeLine = editingLine ? lines.find(l => l.id === editingLine) : null;
-
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -258,7 +254,7 @@ export default function RegimenFiscalEditor() {
                 {rule.vigente_hasta ? ` hasta ${rule.vigente_hasta}` : ' (sin fecha de vencimiento)'}
               </p>
             </div>
-            {isAdmin && rule.estado !== 'activo' && (
+            {rule.estado !== 'activo' && (
               <Button
                 onClick={handleActivate}
                 disabled={activating}
@@ -305,12 +301,10 @@ export default function RegimenFiscalEditor() {
           </div>
         )}
 
-        {/* Unsaved changes warning */}
         {dirtyCount > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-3 text-blue-700 text-sm">
             <Info className="h-4 w-4 flex-shrink-0" />
             {dirtyCount} línea{dirtyCount > 1 ? 's' : ''} con cambios sin guardar.
-            Usa el botón Guardar en cada fila para confirmar.
           </div>
         )}
 
@@ -321,7 +315,7 @@ export default function RegimenFiscalEditor() {
             <div>
               <p className="font-semibold text-sm">Versión activa en producción</p>
               <p className="text-xs text-emerald-600">
-                Los cálculos de comisiones usan actualmente estas reglas. Los cambios aquí afectarán cálculos futuros.
+                Los cálculos de comisiones usan actualmente estas reglas. Los cambios afectarán cálculos futuros.
               </p>
             </div>
           </div>
@@ -330,9 +324,9 @@ export default function RegimenFiscalEditor() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3 text-amber-700">
             <Clock className="h-5 w-5" />
             <div>
-              <p className="font-semibold text-sm">Borrador — no afecta calculos actuales</p>
+              <p className="font-semibold text-sm">Borrador — no afecta cálculos actuales</p>
               <p className="text-xs text-amber-600">
-                Edita las líneas y luego activa esta version cuando este lista.
+                Edita las líneas y luego activa esta versión cuando esté lista.
               </p>
             </div>
           </div>
@@ -341,8 +335,8 @@ export default function RegimenFiscalEditor() {
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3 text-slate-600">
             <XCircle className="h-5 w-5" />
             <div>
-              <p className="font-semibold text-sm">Version inactiva</p>
-              <p className="text-xs">Registro historico. No se puede activar directamente una version inactiva.</p>
+              <p className="font-semibold text-sm">Versión inactiva</p>
+              <p className="text-xs">Registro histórico. Puedes editarla y luego activarla.</p>
             </div>
           </div>
         )}
@@ -351,11 +345,12 @@ export default function RegimenFiscalEditor() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-slate-700">Notas de la versión</h2>
-            {isAdmin && !editingRuleNotas && (
+            {!editingRuleNotas && (
               <button
                 onClick={() => setEditingRuleNotas(true)}
-                className="text-xs text-blue-600 hover:underline"
+                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
               >
+                <Pencil className="h-3 w-3" />
                 Editar
               </button>
             )}
@@ -387,48 +382,51 @@ export default function RegimenFiscalEditor() {
 
         {/* Lines table */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-                <Calculator className="h-4 w-4 text-slate-500" />
-                Líneas de cálculo
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Las líneas se aplican en el orden indicado. Los conceptos marcados con {'"'}Derivado{'"'} se obtienen de los datos del lote.
-              </p>
-            </div>
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-800 flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-slate-500" />
+              Líneas de cálculo
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Haz clic en <strong>Editar</strong> en cualquier fila para modificar sus valores. Las líneas tipo "Derivado" se obtienen automáticamente del lote.
+            </p>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-12">Ord.</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-10">Ord.</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Concepto</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Base</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">Base</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-28">Tipo</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-20">%</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Fórmula</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-12">Signo</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">PDF</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">UI</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-12">PDF</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-12">UI</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">Activo</th>
-                  {isAdmin && (
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-24">Acciones</th>
-                  )}
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-28">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {CONCEPTO_ORDER.map(concepto => {
-                  const line = lines.find(l => l.concepto_codigo === concepto);
-                  if (!line) return null;
-                  const isEditing = editingLine === line.id;
-                  const signoInfo = SIGNO_LABELS[line.signo_resultado];
+                {lines.map(line => {
+                  const isEditing = editingLineId === line.id;
+                  const signoInfo = SIGNO_LABELS[line.signo_resultado] ?? SIGNO_LABELS.neutro;
+                  const concepto = line.concepto_codigo;
 
                   return (
                     <tr
                       key={line.id}
-                      className={`transition-colors ${line.dirty ? 'bg-blue-50/50' : ''} ${!line.activo ? 'opacity-50' : ''} ${isEditing ? 'bg-amber-50/60' : 'hover:bg-slate-50'}`}
+                      className={`transition-colors ${
+                        isEditing
+                          ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-300'
+                          : line.dirty
+                          ? 'bg-blue-50/30'
+                          : !line.activo
+                          ? 'opacity-50 bg-slate-50/50'
+                          : 'hover:bg-slate-50'
+                      }`}
                     >
                       {/* Orden */}
                       <td className="px-4 py-3 text-slate-400 text-xs font-mono">
@@ -437,18 +435,32 @@ export default function RegimenFiscalEditor() {
 
                       {/* Concepto */}
                       <td className="px-4 py-3">
-                        <span className={`font-medium ${
-                          concepto === 'total_fiscal' || concepto === 'total_final'
-                            ? 'text-slate-800 font-semibold'
-                            : 'text-slate-700'
-                        }`}>
-                          {CONCEPTO_LABELS[concepto]}
-                        </span>
-                        {line.dirty && (
-                          <span className="ml-2 text-xs text-blue-500 font-medium">*</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`font-medium ${
+                            concepto === 'total_fiscal' || concepto === 'total_final'
+                              ? 'text-slate-900 font-semibold'
+                              : 'text-slate-700'
+                          }`}>
+                            {CONCEPTO_LABELS[concepto] ?? concepto}
+                          </span>
+                          {line.dirty && (
+                            <span className="text-xs text-blue-500 font-bold">*</span>
+                          )}
+                        </div>
+                        {isEditing && (
+                          <div className="mt-2">
+                            <label className="text-xs text-slate-500 block mb-1">Notas:</label>
+                            <input
+                              type="text"
+                              value={line.notas ?? ''}
+                              onChange={e => updateLineLocal(line.id, { notas: e.target.value || null })}
+                              placeholder="Comentario opcional..."
+                              className="w-full border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-amber-400 outline-none"
+                            />
+                          </div>
                         )}
-                        {line.notas && !isEditing && (
-                          <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[180px]" title={line.notas}>
+                        {!isEditing && line.notas && (
+                          <p className="text-xs text-slate-400 mt-0.5 italic truncate max-w-[200px]" title={line.notas}>
                             {line.notas}
                           </p>
                         )}
@@ -460,8 +472,8 @@ export default function RegimenFiscalEditor() {
                           <select
                             value={line.base_codigo}
                             onChange={e => updateLineLocal(line.id, { base_codigo: e.target.value as BaseCodigo })}
-                            className="border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 outline-none bg-white"
-                            disabled={line.tipo_regla === 'derivado' || !isAdmin}
+                            disabled={line.tipo_regla === 'derivado'}
+                            className="border border-slate-300 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-amber-400 outline-none bg-white w-full disabled:bg-slate-100 disabled:text-slate-400"
                           >
                             {(Object.entries(BASE_LABELS) as [BaseCodigo, string][]).map(([k, v]) => (
                               <option key={k} value={k}>{v}</option>
@@ -479,9 +491,12 @@ export default function RegimenFiscalEditor() {
                         {isEditing ? (
                           <select
                             value={line.tipo_regla}
-                            onChange={e => updateLineLocal(line.id, { tipo_regla: e.target.value as TipoRegla })}
-                            className="border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 outline-none bg-white"
-                            disabled={!isAdmin}
+                            onChange={e => updateLineLocal(line.id, {
+                              tipo_regla: e.target.value as TipoRegla,
+                              valor_porcentaje: null,
+                              formula_texto: null,
+                            })}
+                            className="border border-slate-300 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-amber-400 outline-none bg-white w-full"
                           >
                             {(Object.entries(TIPO_REGLA_LABELS) as [TipoRegla, string][]).map(([k, v]) => (
                               <option key={k} value={k}>{v}</option>
@@ -505,15 +520,16 @@ export default function RegimenFiscalEditor() {
                           <input
                             type="number"
                             step="0.001"
-                            value={line.valor_porcentaje ?? ''}
-                            onChange={e => updateLineLocal(line.id, { valor_porcentaje: e.target.value ? parseFloat(e.target.value) : null })}
-                            className="border border-slate-300 rounded px-2 py-1 text-xs w-20 text-right focus:ring-1 focus:ring-blue-500 outline-none"
-                            disabled={!isAdmin}
+                            value={line.valor_porcentaje !== null && line.valor_porcentaje !== undefined ? numVal(line.valor_porcentaje) : ''}
+                            onChange={e => updateLineLocal(line.id, {
+                              valor_porcentaje: e.target.value !== '' ? parseFloat(e.target.value) : null
+                            })}
+                            className="border border-slate-300 rounded px-2 py-1 text-xs w-20 text-right focus:ring-1 focus:ring-amber-400 outline-none"
                           />
                         ) : (
                           <span className="text-slate-700 font-mono text-xs">
-                            {line.tipo_regla === 'porcentaje' && line.valor_porcentaje !== null
-                              ? `${line.valor_porcentaje}%`
+                            {line.tipo_regla === 'porcentaje' && line.valor_porcentaje !== null && line.valor_porcentaje !== undefined
+                              ? `${numVal(line.valor_porcentaje)}%`
                               : '—'}
                           </span>
                         )}
@@ -526,14 +542,13 @@ export default function RegimenFiscalEditor() {
                             <input
                               type="text"
                               value={line.formula_texto ?? ''}
-                              onChange={e => updateLineLocal(line.id, { formula_texto: e.target.value })}
+                              onChange={e => updateLineLocal(line.id, { formula_texto: e.target.value || null })}
                               placeholder="ej: comision_gravada + iva - ret_isr"
                               className={`border rounded px-2 py-1 text-xs w-64 focus:ring-1 outline-none font-mono ${
                                 line.formula_texto && !validateFormula(line.formula_texto)
                                   ? 'border-red-300 focus:ring-red-400 bg-red-50'
-                                  : 'border-slate-300 focus:ring-blue-500'
+                                  : 'border-slate-300 focus:ring-amber-400'
                               }`}
-                              disabled={!isAdmin}
                             />
                             {line.formula_texto && !validateFormula(line.formula_texto) && (
                               <p className="text-xs text-red-500 mt-0.5">Fórmula inválida</p>
@@ -541,7 +556,7 @@ export default function RegimenFiscalEditor() {
                           </div>
                         ) : (
                           <span className={`font-mono text-xs ${line.formula_texto ? 'text-slate-700' : 'text-slate-300'}`}>
-                            {line.formula_texto || '—'}
+                            {line.formula_texto || (line.tipo_regla === 'formula' ? <span className="text-amber-500 italic">sin fórmula</span> : '—')}
                           </span>
                         )}
                       </td>
@@ -552,15 +567,14 @@ export default function RegimenFiscalEditor() {
                           <select
                             value={line.signo_resultado}
                             onChange={e => updateLineLocal(line.id, { signo_resultado: e.target.value as SignoResultado })}
-                            className="border border-slate-300 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-blue-500 outline-none bg-white"
-                            disabled={!isAdmin}
+                            className="border border-slate-300 rounded px-1 py-1.5 text-xs focus:ring-1 focus:ring-amber-400 outline-none bg-white"
                           >
-                            <option value="positivo">+</option>
-                            <option value="negativo">-</option>
-                            <option value="neutro">=</option>
+                            <option value="positivo">+ Positivo</option>
+                            <option value="negativo">- Negativo</option>
+                            <option value="neutro">= Neutro</option>
                           </select>
                         ) : (
-                          <span className={`font-bold text-lg ${signoInfo.color}`}>
+                          <span className={`font-bold text-base ${signoInfo.color}`}>
                             {signoInfo.label}
                           </span>
                         )}
@@ -573,8 +587,7 @@ export default function RegimenFiscalEditor() {
                             type="checkbox"
                             checked={line.mostrar_en_pdf}
                             onChange={e => updateLineLocal(line.id, { mostrar_en_pdf: e.target.checked })}
-                            className="rounded"
-                            disabled={!isAdmin}
+                            className="rounded w-4 h-4 cursor-pointer"
                           />
                         ) : (
                           line.mostrar_en_pdf
@@ -590,8 +603,7 @@ export default function RegimenFiscalEditor() {
                             type="checkbox"
                             checked={line.mostrar_en_ui}
                             onChange={e => updateLineLocal(line.id, { mostrar_en_ui: e.target.checked })}
-                            className="rounded"
-                            disabled={!isAdmin}
+                            className="rounded w-4 h-4 cursor-pointer"
                           />
                         ) : (
                           line.mostrar_en_ui
@@ -607,69 +619,48 @@ export default function RegimenFiscalEditor() {
                             type="checkbox"
                             checked={line.activo}
                             onChange={e => updateLineLocal(line.id, { activo: e.target.checked })}
-                            className="rounded"
-                            disabled={!isAdmin}
+                            className="rounded w-4 h-4 cursor-pointer"
                           />
                         ) : (
-                          <span className={`inline-block w-2 h-2 rounded-full ${line.activo ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                          <span className={`inline-block w-2.5 h-2.5 rounded-full ${line.activo ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                         )}
                       </td>
 
                       {/* Actions */}
-                      {isAdmin && (
-                        <td className="px-4 py-3 text-center">
-                          {isEditing ? (
-                            <div className="flex items-center gap-1 justify-center">
-                              <button
-                                onClick={() => saveLine(line.id)}
-                                disabled={saving === line.id}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded px-2 py-1 text-xs font-medium flex items-center gap-1 transition-colors"
-                              >
-                                <Save className="h-3 w-3" />
-                                {saving === line.id ? '...' : 'OK'}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setEditingLine(null);
-                                  load();
-                                }}
-                                className="text-slate-500 hover:text-slate-700 rounded px-2 py-1 text-xs border border-slate-200 transition-colors"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
+                      <td className="px-4 py-3 text-center">
+                        {isEditing ? (
+                          <div className="flex items-center gap-1 justify-center">
                             <button
-                              onClick={() => { setEditingLine(line.id); setNotasEdit(line.notas ?? ''); }}
-                              className="text-blue-600 hover:text-blue-700 rounded px-2 py-1 text-xs border border-blue-200 hover:border-blue-400 transition-colors"
+                              onClick={() => saveLine(line.id)}
+                              disabled={saving === line.id}
+                              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1 transition-colors"
                             >
-                              Editar
+                              <Save className="h-3 w-3" />
+                              {saving === line.id ? 'Guardando...' : 'Guardar'}
                             </button>
-                          )}
-                        </td>
-                      )}
+                            <button
+                              onClick={cancelEditing}
+                              className="text-slate-500 hover:text-slate-700 rounded-lg px-2 py-1.5 text-xs border border-slate-200 hover:border-slate-300 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEditing(line)}
+                            className="text-blue-600 hover:text-blue-800 rounded-lg px-3 py-1.5 text-xs font-medium border border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center gap-1.5 mx-auto"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Editar
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-
-          {/* Notas inline edit for active line */}
-          {editingLine && activeLine && isAdmin && (
-            <div className="border-t border-amber-200 bg-amber-50/50 px-5 py-3">
-              <label className="text-xs text-slate-600 font-medium mb-1 block">
-                Notas para {CONCEPTO_LABELS[activeLine.concepto_codigo]}:
-              </label>
-              <input
-                type="text"
-                value={notasEdit}
-                onChange={e => { setNotasEdit(e.target.value); updateLineLocal(editingLine, { notas: e.target.value || null }); }}
-                placeholder="Descripción o comentario opcional..."
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-              />
-            </div>
-          )}
         </div>
 
         {/* Formula variables reference */}
@@ -678,15 +669,15 @@ export default function RegimenFiscalEditor() {
             <Info className="h-4 w-4 text-slate-400" />
             Variables disponibles en fórmulas
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+          <div className="flex flex-wrap gap-2">
             {FORMULA_VARIABLES.map(v => (
-              <div key={v} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-                <code className="text-xs font-mono text-slate-700">{v}</code>
-              </div>
+              <code key={v} className="bg-slate-100 border border-slate-200 rounded-md px-2.5 py-1 text-xs font-mono text-slate-700">
+                {v}
+              </code>
             ))}
           </div>
           <p className="text-xs text-slate-400 mt-3">
-            Las variables se procesan en orden visual. Una variable definida en la línea N puede ser usada en fórmulas de líneas posteriores.
+            Las variables se calculan en orden visual. Una variable calculada en la línea N puede usarse en fórmulas de líneas posteriores.
           </p>
         </div>
 
@@ -706,14 +697,14 @@ export default function RegimenFiscalEditor() {
 
           {previewOpen && (
             <div className="border-t border-slate-100 p-5">
-              <div className="flex items-center gap-4 mb-5">
+              <div className="flex items-end gap-4 mb-5">
                 <div>
                   <label className="text-xs text-slate-500 font-medium block mb-1">Comisión Gravada (NO VIDA)</label>
                   <input
                     type="number"
                     value={previewGravada}
                     onChange={e => setPreviewGravada(parseFloat(e.target.value) || 0)}
-                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm w-36 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm w-40 focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
                 <div>
@@ -722,21 +713,22 @@ export default function RegimenFiscalEditor() {
                     type="number"
                     value={previewExenta}
                     onChange={e => setPreviewExenta(parseFloat(e.target.value) || 0)}
-                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm w-36 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm w-40 focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
               </div>
 
               {preview ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {(Object.entries(preview.lineResults) as [ConceptoCodigo, number][])
-                    .filter(([k]) => lines.find(l => l.concepto_codigo === k)?.mostrar_en_ui)
-                    .map(([k, v]) => {
-                      const isTotal = k === 'total_fiscal' || k === 'total_final';
+                  {lines
+                    .filter(l => l.mostrar_en_ui && l.activo)
+                    .map(l => {
+                      const v = (preview.lineResults as Record<string, number>)[l.concepto_codigo] ?? 0;
+                      const isTotal = l.concepto_codigo === 'total_fiscal' || l.concepto_codigo === 'total_final';
                       return (
-                        <div key={k} className={`rounded-lg border p-3 ${isTotal ? 'border-emerald-200 bg-emerald-50' : 'border-slate-100 bg-slate-50'}`}>
-                          <p className="text-xs text-slate-500 mb-0.5">{CONCEPTO_LABELS[k]}</p>
-                          <p className={`font-mono font-semibold ${isTotal ? 'text-emerald-700' : 'text-slate-800'}`}>
+                        <div key={l.id} className={`rounded-lg border p-3 ${isTotal ? 'border-emerald-200 bg-emerald-50' : 'border-slate-100 bg-slate-50'}`}>
+                          <p className="text-xs text-slate-500 mb-0.5">{CONCEPTO_LABELS[l.concepto_codigo] ?? l.concepto_codigo}</p>
+                          <p className={`font-mono font-semibold text-sm ${isTotal ? 'text-emerald-700' : 'text-slate-800'}`}>
                             ${v.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
                         </div>
