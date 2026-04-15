@@ -3,6 +3,7 @@
  */
 
 import { supabase } from './supabase';
+import { isEstatusFinal } from './registroActividadesTypes';
 import type {
   TramiteActivityType,
   InsuranceType,
@@ -10,9 +11,6 @@ import type {
   UsuarioOficina
 } from './registroActividadesTypes';
 
-/**
- * Verifica si el usuario actual puede acceder a Registro de Actividades
- */
 export async function canAccessRegistroActividades(): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
@@ -21,16 +19,12 @@ export async function canAccessRegistroActividades(): Promise<boolean> {
     .from('usuarios')
     .select('rol')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   if (!data) return false;
-
   return ['Empleado', 'Gerente', 'Administrador'].includes(data.rol);
 }
 
-/**
- * Obtiene todos los tipos de trámite activos
- */
 export async function getTramiteActivityTypes(): Promise<TramiteActivityType[]> {
   const { data, error } = await supabase
     .from('tramite_activity_types')
@@ -42,13 +36,9 @@ export async function getTramiteActivityTypes(): Promise<TramiteActivityType[]> 
     console.error('Error loading activity types:', error);
     return [];
   }
-
   return data || [];
 }
 
-/**
- * Obtiene todos los tipos de seguro activos
- */
 export async function getInsuranceTypes(): Promise<InsuranceType[]> {
   const { data, error } = await supabase
     .from('insurance_types')
@@ -60,13 +50,9 @@ export async function getInsuranceTypes(): Promise<InsuranceType[]> {
     console.error('Error loading insurance types:', error);
     return [];
   }
-
   return data || [];
 }
 
-/**
- * Obtiene todas las aseguradoras activas
- */
 export async function getAseguradoras(): Promise<Aseguradora[]> {
   const { data, error } = await supabase
     .from('aseguradoras')
@@ -78,17 +64,10 @@ export async function getAseguradoras(): Promise<Aseguradora[]> {
     console.error('Error loading aseguradoras:', error);
     return [];
   }
-
   return data || [];
 }
 
-/**
- * Obtiene usuarios de una oficina específica (para el campo Agente)
- * Si no se proporciona oficinaId, retorna todos los usuarios activos
- */
 export async function getUsersByOffice(oficinaId?: string): Promise<UsuarioOficina[]> {
-  console.log('getUsersByOffice - Buscando usuarios para oficina ID:', oficinaId);
-
   let query = supabase
     .from('usuarios')
     .select(`
@@ -96,9 +75,7 @@ export async function getUsersByOffice(oficinaId?: string): Promise<UsuarioOfici
       nombre_completo,
       rol,
       oficina_id,
-      oficinas:oficina_id (
-        nombre
-      )
+      oficinas:oficina_id (nombre)
     `)
     .eq('estado', 'activo')
     .order('nombre_completo');
@@ -114,24 +91,15 @@ export async function getUsersByOffice(oficinaId?: string): Promise<UsuarioOfici
     return [];
   }
 
-  console.log('getUsersByOffice - Datos crudos:', data);
-
-  const mappedData = (data || []).map((u: any) => ({
+  return (data || []).map((u: any) => ({
     id: u.id,
     nombre_completo: u.nombre_completo,
     rol: u.rol,
     oficina_id: u.oficina_id,
     oficina_nombre: u.oficinas?.nombre || null
   }));
-
-  console.log('getUsersByOffice - Usuarios mapeados:', mappedData);
-
-  return mappedData;
 }
 
-/**
- * Obtiene usuarios que pueden atender (Empleado, Gerente, Admin)
- */
 export async function getUsersWhoCanAttend(): Promise<UsuarioOficina[]> {
   const { data, error } = await supabase
     .from('usuarios')
@@ -140,9 +108,7 @@ export async function getUsersWhoCanAttend(): Promise<UsuarioOficina[]> {
       nombre_completo,
       rol,
       oficina_id,
-      oficinas:oficina_id (
-        nombre
-      )
+      oficinas:oficina_id (nombre)
     `)
     .eq('estado', 'activo')
     .in('rol', ['Empleado', 'Gerente', 'Administrador'])
@@ -163,22 +129,20 @@ export async function getUsersWhoCanAttend(): Promise<UsuarioOficina[]> {
 }
 
 /**
- * Obtiene todos los estatus de tickets disponibles
- * Opcionalmente filtra por tipo de trámite
+ * Obtiene los estatus de registro de actividad desde la base de datos.
+ * Solo devuelve los estatus aplicables a 'registro_actividad'.
  */
-export async function getTicketEstatus(tipoTramite?: string): Promise<Array<{
+export async function getTicketEstatusRegistroActividad(): Promise<Array<{
   id: string;
   nombre: string;
   color: string;
   orden: number;
 }>> {
-  let query = supabase
+  const { data, error } = await supabase
     .from('ticket_estatus')
     .select('id, nombre, color, orden, tipo_aplicable')
     .eq('activo', true)
     .order('orden');
-
-  const { data, error } = await query;
 
   if (error) {
     console.error('Error loading ticket estatus:', error);
@@ -187,21 +151,24 @@ export async function getTicketEstatus(tipoTramite?: string): Promise<Array<{
 
   if (!data) return [];
 
-  // Si se proporciona tipo de trámite, filtrar por tipo_aplicable
-  if (tipoTramite) {
-    return data.filter((e: any) =>
-      !e.tipo_aplicable ||
-      e.tipo_aplicable.includes('general') ||
-      e.tipo_aplicable.includes(tipoTramite)
-    );
-  }
-
-  return data;
+  return data.filter((e: any) =>
+    !e.tipo_aplicable ||
+    e.tipo_aplicable.includes('registro_actividad')
+  );
 }
 
 /**
- * Crea un nuevo registro de actividad
+ * Backward-compatible alias used in old call sites
  */
+export async function getTicketEstatus(tipoTramite?: string): Promise<Array<{
+  id: string;
+  nombre: string;
+  color: string;
+  orden: number;
+}>> {
+  return getTicketEstatusRegistroActividad();
+}
+
 export async function createRegistroActividad(data: {
   activity_subtype_id: string;
   agente_usuario_id: string;
@@ -210,61 +177,46 @@ export async function createRegistroActividad(data: {
   attending_user_id: string;
   request_datetime: string;
   completion_datetime?: string;
-  progress_percent: number;
+  estatus_nombre: string;
   prioridad: string;
   instrucciones: string;
   creado_por: string;
-  estatus_nombre?: string; // Nombre del estatus (para Cotización/Emisión)
 }) {
   try {
-    // Obtener el siguiente folio
     const { data: folioData, error: folioError } = await supabase
       .rpc('generate_next_folio');
 
-    if (folioError) {
-      console.error('Error generating folio:', folioError);
-      throw new Error('Error al generar el folio: ' + folioError.message);
-    }
+    if (folioError) throw new Error('Error al generar el folio: ' + folioError.message);
 
     const folio = folioData || `RA-${Date.now()}`;
 
-    // Obtener el ID del estatus
+    const { data: estatusData, error: estatusError } = await supabase
+      .from('ticket_estatus')
+      .select('id')
+      .eq('nombre', data.estatus_nombre)
+      .eq('activo', true)
+      .maybeSingle();
+
     let estatusId: string;
 
-    if (data.estatus_nombre) {
-      // Si se proporciona el nombre del estatus, buscarlo
-      const { data: estatusData, error: estatusError } = await supabase
-        .from('ticket_estatus')
-        .select('id')
-        .eq('nombre', data.estatus_nombre)
-        .eq('activo', true)
-        .single();
-
-      if (estatusError || !estatusData) {
-        console.error('Error getting status by name:', estatusError);
-        throw new Error(`No se encontró el estatus "${data.estatus_nombre}"`);
-      }
-
-      estatusId = estatusData.id;
-    } else {
-      // Obtener estatus por defecto (primer estatus activo)
-      const { data: estatusData, error: estatusError } = await supabase
+    if (estatusError || !estatusData) {
+      const { data: defaultEstatus } = await supabase
         .from('ticket_estatus')
         .select('id')
         .eq('activo', true)
         .order('orden')
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (estatusError || !estatusData) {
-        console.error('Error getting default status:', estatusError);
-        throw new Error('No se encontró un estatus válido');
-      }
-
+      if (!defaultEstatus) throw new Error('No se encontró un estatus válido');
+      estatusId = defaultEstatus.id;
+    } else {
       estatusId = estatusData.id;
     }
 
-    const ticketData = {
+    const esFinal = isEstatusFinal(data.estatus_nombre);
+
+    const ticketData: any = {
       folio,
       tipo_tramite: 'registro_actividad',
       activity_subtype_id: data.activity_subtype_id,
@@ -274,16 +226,18 @@ export async function createRegistroActividad(data: {
       attending_user_id: data.attending_user_id,
       request_datetime: data.request_datetime,
       completion_datetime: data.completion_datetime || null,
-      progress_percent: data.progress_percent,
       prioridad: data.prioridad,
       instrucciones: data.instrucciones,
       estatus_id: estatusId,
       creado_por: data.creado_por,
-      agente_id: data.agente_usuario_id, // Agente seleccionado manualmente
-      assigned_to_user_id: data.attending_user_id, // Responsable/Quien Atiende
+      agente_id: data.agente_usuario_id,
+      assigned_to_user_id: data.attending_user_id,
+      cerrado: esFinal,
     };
 
-    console.log('Creating ticket with data:', ticketData);
+    if (esFinal) {
+      ticketData.fecha_cierre = data.completion_datetime || new Date().toISOString();
+    }
 
     const { data: ticket, error } = await supabase
       .from('tickets')
@@ -291,16 +245,9 @@ export async function createRegistroActividad(data: {
       .select()
       .single();
 
-    if (error) {
-      console.error('Error creating registro actividad:', error);
-      throw new Error('Error al crear el registro: ' + (error.message || 'Error desconocido'));
-    }
+    if (error) throw new Error('Error al crear el registro: ' + (error.message || 'Error desconocido'));
+    if (!ticket) throw new Error('No se pudo crear el registro');
 
-    if (!ticket) {
-      throw new Error('No se pudo crear el registro');
-    }
-
-    console.log('Ticket created successfully:', ticket);
     return ticket;
   } catch (error: any) {
     console.error('Exception in createRegistroActividad:', error);
@@ -308,9 +255,6 @@ export async function createRegistroActividad(data: {
   }
 }
 
-/**
- * Actualiza un registro de actividad existente
- */
 export async function updateRegistroActividad(
   ticketId: string,
   data: {
@@ -321,23 +265,48 @@ export async function updateRegistroActividad(
     attending_user_id?: string;
     request_datetime?: string;
     completion_datetime?: string;
-    progress_percent?: number;
+    estatus_nombre?: string;
     prioridad?: string;
     instrucciones?: string;
   }
 ) {
   const updateData: any = {
-    ...data,
     ultima_modificacion: new Date().toISOString(),
   };
 
-  // Sincronizar campos relacionados
-  if (data.attending_user_id) {
+  if (data.activity_subtype_id !== undefined) updateData.activity_subtype_id = data.activity_subtype_id;
+  if (data.agente_usuario_id !== undefined) {
+    updateData.agente_usuario_id = data.agente_usuario_id;
+    updateData.agente_id = data.agente_usuario_id;
+  }
+  if (data.insurance_type_id !== undefined) updateData.insurance_type_id = data.insurance_type_id;
+  if (data.insurers !== undefined) updateData.insurers = data.insurers;
+  if (data.attending_user_id !== undefined) {
+    updateData.attending_user_id = data.attending_user_id;
     updateData.assigned_to_user_id = data.attending_user_id;
   }
+  if (data.request_datetime !== undefined) updateData.request_datetime = data.request_datetime;
+  if (data.completion_datetime !== undefined) updateData.completion_datetime = data.completion_datetime;
+  if (data.prioridad !== undefined) updateData.prioridad = data.prioridad;
+  if (data.instrucciones !== undefined) updateData.instrucciones = data.instrucciones;
 
-  if (data.agente_usuario_id) {
-    updateData.agente_id = data.agente_usuario_id;
+  // Resolve estatus_id from nombre
+  if (data.estatus_nombre) {
+    const { data: estatusData } = await supabase
+      .from('ticket_estatus')
+      .select('id')
+      .eq('nombre', data.estatus_nombre)
+      .eq('activo', true)
+      .maybeSingle();
+
+    if (estatusData) {
+      updateData.estatus_id = estatusData.id;
+    }
+
+    if (isEstatusFinal(data.estatus_nombre)) {
+      updateData.cerrado = true;
+      updateData.fecha_cierre = data.completion_datetime || new Date().toISOString();
+    }
   }
 
   const { data: ticket, error } = await supabase
@@ -355,9 +324,6 @@ export async function updateRegistroActividad(
   return ticket;
 }
 
-/**
- * Formatea una fecha para input datetime-local
- */
 export function formatDateTimeForInput(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   const year = d.getFullYear();
@@ -368,9 +334,6 @@ export function formatDateTimeForInput(date: Date | string): string {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-/**
- * Formatea una fecha desde input datetime-local a ISO string
- */
 export function formatDateTimeFromInput(dateTimeLocal: string): string {
   return new Date(dateTimeLocal).toISOString();
 }

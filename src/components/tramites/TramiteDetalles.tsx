@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp } from 'lucide-react';
-import { getProgressLabel } from '../../lib/registroActividadesTypes';
+import { getEstatusColor } from '../../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
   id: string;
@@ -37,7 +37,7 @@ interface TramiteData {
   attending_user?: Usuario | null;
   request_datetime?: string | null;
   completion_datetime?: string | null;
-  progress_percent?: number | null;
+  cerrado?: boolean;
   resultado?: string | null;
   insurers?: string[];
   insurers_nombres?: string[];
@@ -313,19 +313,27 @@ export function TramiteDetalles({
             <div>
               <label className="block text-sm font-semibold text-neutral-700 mb-2">
                 <TrendingUp className="w-4 h-4 inline mr-2" />
-                Estatus
+                Estatus de Actividad
               </label>
-              <div className={`px-4 py-3 rounded-xl font-bold ${
-                tramite.progress_percent === 100
-                  ? 'bg-green-50 border border-green-200 text-green-900'
-                  : tramite.progress_percent === 50
-                  ? 'bg-yellow-50 border border-yellow-200 text-yellow-900'
-                  : 'bg-blue-50 border border-blue-200 text-blue-900'
-              }`}>
-                {tramite.progress_percent !== null && tramite.progress_percent !== undefined
-                  ? getProgressLabel(tramite.progress_percent)
-                  : 'N/A'}
-              </div>
+              {tramite.estatus ? (
+                <div
+                  className="px-4 py-3 rounded-xl font-bold border"
+                  style={{
+                    backgroundColor: (tramite.estatus.color || getEstatusColor(tramite.estatus.nombre)) + '20',
+                    color: tramite.estatus.color || getEstatusColor(tramite.estatus.nombre),
+                    borderColor: tramite.estatus.color || getEstatusColor(tramite.estatus.nombre),
+                  }}
+                >
+                  {tramite.estatus.nombre}
+                  {tramite.cerrado && (
+                    <span className="ml-2 text-xs font-normal opacity-70">(Cerrado)</span>
+                  )}
+                </div>
+              ) : (
+                <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-500">
+                  N/A
+                </div>
+              )}
             </div>
 
             <div>

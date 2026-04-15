@@ -47,7 +47,7 @@ interface TramiteData {
   attending_user_id?: string;
   request_datetime?: string;
   completion_datetime?: string;
-  progress_percent?: number;
+  cerrado?: boolean;
   resultado?: string;
   insurers?: string[];
   activity_subtype?: { id: string; nombre: string } | null;
@@ -529,8 +529,8 @@ export function TramiteDetalle() {
             attending_user_id: tramite.attending_user_id || undefined,
             request_datetime: tramite.request_datetime || undefined,
             completion_datetime: tramite.completion_datetime || undefined,
-            progress_percent: tramite.progress_percent || undefined,
-            resultado: tramite.resultado || undefined,
+            estatus_nombre: tramite.estatus?.nombre || undefined,
+            cerrado: tramite.cerrado || false,
             prioridad: tramite.prioridad,
             instrucciones: tramite.instrucciones || ''
           }}

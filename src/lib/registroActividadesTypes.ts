@@ -32,13 +32,13 @@ export interface Aseguradora {
 
 export interface RegistroActividadFormData {
   activity_subtype_id: string;
-  agente_usuario_id: string; // Campo unificado: antes era requester_user_id
+  agente_usuario_id: string;
   insurance_type_id: string;
-  insurers: string[]; // Array de UUIDs de aseguradoras
+  insurers: string[];
   attending_user_id: string;
   request_datetime: string;
   completion_datetime?: string;
-  progress_percent: 0 | 50 | 100; // Iniciado, En Proceso, Terminado
+  estatus_nombre: string;
   prioridad: 'Alta' | 'Media' | 'Baja';
   instrucciones: string;
 }
@@ -51,68 +51,57 @@ export interface UsuarioOficina {
   oficina_nombre: string | null;
 }
 
-// DEPRECADO: Los estatus ahora se obtienen dinámicamente de la base de datos
-// usando getTicketEstatus() en registroActividadesUtils.ts
-// Se mantienen estas constantes solo para compatibilidad con código existente
-
-// Opciones de estatus para tipo "Cotización / Emisión"
-export const COTIZACION_EMISION_STATUS_OPTIONS = [
-  { value: 'Iniciado', label: 'Iniciado', color: '#6b7280', resultado: 'en_progreso' },
-  { value: 'En Proceso', label: 'En Proceso', color: '#f59e0b', resultado: 'en_progreso' },
-  { value: 'Emitido', label: 'Emitido', color: '#10b981', resultado: 'ganado' },
-  { value: 'No Emitido', label: 'No Emitido', color: '#ef4444', resultado: 'perdido' }
+// Estatus del flujo de negocio para Cotización/Emisión
+export const REGISTRO_ACTIVIDAD_ESTATUS = [
+  { nombre: 'Iniciado',              color: '#6b7280', resultado: 'en_progreso', esFinal: false },
+  { nombre: 'Cotizado',              color: '#3b82f6', resultado: 'en_progreso', esFinal: false },
+  { nombre: 'Espera Aseguradora',    color: '#f97316', resultado: 'en_progreso', esFinal: false },
+  { nombre: 'Espera Agente',         color: '#eab308', resultado: 'en_progreso', esFinal: false },
+  { nombre: 'Emitido (Ganado)',      color: '#10b981', resultado: 'ganado',      esFinal: true  },
+  { nombre: 'No Emitido (Perdido)',  color: '#ef4444', resultado: 'perdido',     esFinal: true  },
 ] as const;
 
-// Opciones de estatus genéricas para tipo "Otro"
-export const PROGRESS_OPTIONS = [
-  { value: 0, label: 'Iniciado' },
-  { value: 50, label: 'En Proceso' },
-  { value: 100, label: 'Terminado' }
-] as const;
+export type EstatusRegistroActividad = typeof REGISTRO_ACTIVIDAD_ESTATUS[number]['nombre'];
 
-export function getProgressLabel(percent: number): string {
-  if (percent === 0) return 'Iniciado';
-  if (percent === 100) return 'Terminado';
-  return 'En Proceso';
+export const ESTATUS_FINALES: readonly string[] = ['Emitido (Ganado)', 'No Emitido (Perdido)'];
+
+export function getEstatusConfig(nombre: string) {
+  return REGISTRO_ACTIVIDAD_ESTATUS.find(e => e.nombre === nombre) ?? {
+    nombre,
+    color: '#6b7280',
+    resultado: 'en_progreso' as const,
+    esFinal: false,
+  };
 }
 
-export function getStatusFromProgress(percent: number): string {
-  if (percent === 0) return 'Pendiente';
-  if (percent === 100) return 'Finalizado';
-  return 'En proceso';
+export function getEstatusColor(nombre: string): string {
+  return getEstatusConfig(nombre).color;
 }
 
-// Helper para determinar si un tipo de trámite es "Cotización / Emisión"
+export function isEstatusFinal(nombre: string): boolean {
+  return ESTATUS_FINALES.includes(nombre);
+}
+
 export function isCotizacionEmisionType(activityTypeName: string): boolean {
   const normalized = activityTypeName.toLowerCase();
   return normalized.includes('cotizaci') || normalized.includes('emisi');
 }
 
-// Helper para obtener el color según el resultado
 export function getResultadoColor(resultado: string | null): string {
   switch (resultado) {
-    case 'ganado':
-      return '#10b981'; // Verde
-    case 'perdido':
-      return '#ef4444'; // Rojo
-    case 'en_progreso':
-      return '#f59e0b'; // Naranja
-    default:
-      return '#6b7280'; // Gris
+    case 'ganado':      return '#10b981';
+    case 'perdido':     return '#ef4444';
+    case 'en_progreso': return '#f59e0b';
+    default:            return '#6b7280';
   }
 }
 
-// Helper para obtener el label según el resultado
 export function getResultadoLabel(resultado: string | null): string {
   switch (resultado) {
-    case 'ganado':
-      return 'Emitido';
-    case 'perdido':
-      return 'No Emitido';
-    case 'en_progreso':
-      return 'En Proceso';
-    default:
-      return 'Sin clasificar';
+    case 'ganado':      return 'Emitido (Ganado)';
+    case 'perdido':     return 'No Emitido (Perdido)';
+    case 'en_progreso': return 'En Proceso';
+    default:            return 'Sin clasificar';
   }
 }
 
@@ -145,15 +134,15 @@ export function validateRegistroActividadForm(
     errors.push('La fecha y hora de solicitud es obligatoria');
   }
 
-  if (data.progress_percent === undefined || data.progress_percent === null) {
-    errors.push('El avance es obligatorio');
+  if (!data.estatus_nombre) {
+    errors.push('El estatus es obligatorio');
   }
 
   if (
-    data.progress_percent === 100 &&
+    isEstatusFinal(data.estatus_nombre ?? '') &&
     !data.completion_datetime
   ) {
-    errors.push('Cuando el avance es 100%, debe especificar la fecha de finalización');
+    errors.push('Cuando el trámite es final (Emitido/No Emitido) debe especificar la fecha de finalización');
   }
 
   if (

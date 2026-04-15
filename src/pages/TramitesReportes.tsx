@@ -75,7 +75,7 @@ interface TramiteCompleto {
   fecha_creacion: string;
   ultima_modificacion: string;
   cerrado_en: string | null;
-  progress_percent: number | null;
+  cerrado: boolean | null;
   estatus_id: string;
   agente: any;
   estatus: any;
