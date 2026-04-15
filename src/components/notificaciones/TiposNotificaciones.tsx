@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Mail, Power, MessageCircle, AlertCircle, Edit, Bell, Save, X, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image, ChevronDown, ChevronUp, Users, Check, UserCheck, Building2 } from 'lucide-react';
+import { Mail, Power, MessageCircle, AlertCircle, CreditCard as Edit, Bell, Save, X, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image, ChevronDown, ChevronUp, Users, Check, UserCheck, Building2 } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
 import type { TransactionalNotificationTemplate } from '../../lib/transactionalNotificationTypes';
 import { AVAILABLE_PLACEHOLDERS } from '../../lib/transactionalNotificationTypes';
@@ -18,6 +18,9 @@ interface TipoNotificacion {
   enviar_whatsapp: boolean;
   enviar_notificacion: boolean;
   permite_destinatarios_custom: boolean;
+  modulo?: string;
+  nombre_estandar?: string;
+  es_obsoleto?: boolean;
 }
 
 interface Usuario {
@@ -72,9 +75,9 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
 
       if (error) throw error;
 
-      // Filtrar notificaciones obsoletas (marcadas con ❌ en descripción)
+      // Filtrar notificaciones obsoletas
       const tiposValidos = (data || []).filter(tipo =>
-        !tipo.descripcion?.includes('❌ NO USAR')
+        !tipo.descripcion?.includes('❌ NO USAR') && !tipo.es_obsoleto
       );
 
       setTipos(tiposValidos);
@@ -725,6 +728,11 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                       </h4>
                       {tipo.activo && (
                         <span className="flex-shrink-0 w-2 h-2 bg-emerald-500 rounded-full"></span>
+                      )}
+                      {tipo.modulo && (
+                        <span className="flex-shrink-0 px-2 py-0.5 bg-neutral-100 text-neutral-600 text-xs font-medium rounded-full">
+                          {tipo.modulo}
+                        </span>
                       )}
                       {activeCategory === 'generales' && (
                         <span className="flex-shrink-0 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full flex items-center gap-1">
