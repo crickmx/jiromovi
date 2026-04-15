@@ -20,12 +20,106 @@ interface EmailRequest {
   destinatario?: string;
   datos?: Record<string, any>;
   evento_id?: string;
-  // Formato directo para notificaciones transaccionales
   to_email?: string;
   to_name?: string;
   subject?: string;
   html_body?: string;
   attachments?: EmailAttachment[];
+  skip_global_layout?: boolean;
+}
+
+async function getGlobalLayout(supabaseClient: any): Promise<{ header: string; footer: string }> {
+  try {
+    const { data, error } = await supabaseClient
+      .from('email_global_settings')
+      .select('header_html, footer_html')
+      .eq('activo', true)
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.warn('No se encontró configuración global de correo, usando layout vacío:', error?.message);
+      return { header: '', footer: '' };
+    }
+
+    return { header: data.header_html || '', footer: data.footer_html || '' };
+  } catch (err) {
+    console.error('Error obteniendo layout global:', err);
+    return { header: '', footer: '' };
+  }
+}
+
+function wrapWithLayout(body: string, header: string, footer: string): string {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>MOVI Digital</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4; padding:20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+          ${header ? `<tr><td>${header}</td></tr>` : ''}
+          <tr>
+            <td style="padding:32px;">
+              ${body}
+            </td>
+          </tr>
+          ${footer ? `<tr><td>${footer}</td></tr>` : ''}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+async function processAttachments(attachments: EmailAttachment[], supabaseUrl: string): Promise<any[]> {
+  const resendAttachments = [];
+
+  for (const attachment of attachments) {
+    try {
+      let fileContent: string;
+
+      if (attachment.url) {
+        const response = await fetch(attachment.url);
+        if (!response.ok) {
+          console.error(`Error descargando ${attachment.filename}: ${response.statusText}`);
+          continue;
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        fileContent = btoa(String.fromCharCode(...bytes));
+      } else if (attachment.content) {
+        fileContent = attachment.content;
+      } else if (attachment.storage_path) {
+        const publicUrl = `${supabaseUrl}/storage/v1/object/public/${attachment.storage_path}`;
+        const response = await fetch(publicUrl);
+        if (!response.ok) {
+          console.error(`Error descargando ${attachment.filename}: ${response.statusText}`);
+          continue;
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        fileContent = btoa(String.fromCharCode(...bytes));
+      } else {
+        console.error(`Adjunto ${attachment.filename} no tiene content, url, o storage_path`);
+        continue;
+      }
+
+      resendAttachments.push({ filename: attachment.filename, content: fileContent });
+      console.log(`  Adjunto procesado: ${attachment.filename}`);
+    } catch (err: any) {
+      console.error(`Error procesando adjunto ${attachment.filename}:`, err.message);
+    }
+  }
+
+  return resendAttachments;
 }
 
 Deno.serve(async (req) => {
@@ -43,7 +137,10 @@ Deno.serve(async (req) => {
 
     const requestBody = await req.json() as EmailRequest;
 
-    // Soporte para formato directo (usado por notificaciones transaccionales)
+    // Obtener layout global (header + footer) para TODOS los correos
+    const { header, footer } = await getGlobalLayout(supabaseClient);
+
+    // ── Formato directo (usado por notificaciones transaccionales) ──
     if (requestBody.to_email && requestBody.subject && requestBody.html_body) {
       console.log('Procesando correo transaccional directo:', { to: requestBody.to_email, subject: requestBody.subject });
 
@@ -56,97 +153,41 @@ Deno.serve(async (req) => {
         .single();
 
       if (configError || !config) {
-        console.error('Error configuración:', configError);
         throw new Error(`No hay configuración de correo activa: ${configError?.message || 'Config no encontrada'}`);
       }
 
       const resendApiKey = Deno.env.get('RESEND_API_KEY') || config.resend_api_key;
-
-      if (!resendApiKey) {
-        throw new Error('RESEND_API_KEY no está configurada');
-      }
+      if (!resendApiKey) throw new Error('RESEND_API_KEY no está configurada');
 
       const resend = new Resend(resendApiKey);
       const fromEmail = config.remitente_email;
       const fromName = config.remitente_nombre || 'MOVI Digital';
 
-      console.log('Enviando correo con Resend desde:', `${fromName} <${fromEmail}>`);
+      // Inyectar layout global (a menos que se indique explícitamente que no)
+      const finalHtml = requestBody.skip_global_layout
+        ? requestBody.html_body
+        : wrapWithLayout(requestBody.html_body, header, footer);
 
-      // Procesar adjuntos si existen
-      const resendAttachments = [];
-      if (requestBody.attachments && requestBody.attachments.length > 0) {
-        console.log(`Procesando ${requestBody.attachments.length} adjuntos...`);
-
-        for (const attachment of requestBody.attachments) {
-          try {
-            let fileContent: string;
-
-            // Si tiene URL de Supabase Storage, descargar el archivo
-            if (attachment.url) {
-              console.log(`  Descargando: ${attachment.filename} desde ${attachment.url}`);
-              const response = await fetch(attachment.url);
-              if (!response.ok) {
-                console.error(`Error descargando ${attachment.filename}: ${response.statusText}`);
-                continue;
-              }
-              const arrayBuffer = await response.arrayBuffer();
-              const bytes = new Uint8Array(arrayBuffer);
-              fileContent = btoa(String.fromCharCode(...bytes));
-            }
-            // Si tiene content directo en base64
-            else if (attachment.content) {
-              fileContent = attachment.content;
-            }
-            // Si tiene storage_path, construir URL y descargar
-            else if (attachment.storage_path) {
-              const publicUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${attachment.storage_path}`;
-              console.log(`  Descargando: ${attachment.filename} desde storage`);
-              const response = await fetch(publicUrl);
-              if (!response.ok) {
-                console.error(`Error descargando ${attachment.filename}: ${response.statusText}`);
-                continue;
-              }
-              const arrayBuffer = await response.arrayBuffer();
-              const bytes = new Uint8Array(arrayBuffer);
-              fileContent = btoa(String.fromCharCode(...bytes));
-            } else {
-              console.error(`Adjunto ${attachment.filename} no tiene content, url, o storage_path`);
-              continue;
-            }
-
-            resendAttachments.push({
-              filename: attachment.filename,
-              content: fileContent,
-            });
-
-            console.log(`  ✓ Adjunto: ${attachment.filename}`);
-          } catch (err: any) {
-            console.error(`Error procesando adjunto ${attachment.filename}:`, err.message);
-          }
-        }
-      }
+      const resendAttachments = requestBody.attachments?.length
+        ? await processAttachments(requestBody.attachments, Deno.env.get('SUPABASE_URL') ?? '')
+        : [];
 
       const emailPayload: any = {
         from: `${fromName} <${fromEmail}>`,
         to: [requestBody.to_email],
         subject: requestBody.subject,
-        html: requestBody.html_body,
+        html: finalHtml,
       };
 
       if (resendAttachments.length > 0) {
         emailPayload.attachments = resendAttachments;
-        console.log(`Enviando con ${resendAttachments.length} adjuntos`);
       }
 
       const { data, error } = await resend.emails.send(emailPayload);
+      if (error) throw error;
 
-      if (error) {
-        throw error;
-      }
+      console.log('Correo transaccional enviado:', data.id);
 
-      console.log('Correo transaccional enviado exitosamente:', data.id);
-
-      // IMPORTANTE: Registrar envío en historial
       try {
         await supabaseClient.rpc('registrar_envio_notificacion', {
           p_tipo_notificacion_codigo: 'correo_transaccional',
@@ -156,7 +197,7 @@ Deno.serve(async (req) => {
           p_destinatario_nombre: requestBody.to_name || null,
           p_numero_destino: null,
           p_asunto: requestBody.subject,
-          p_cuerpo_html: requestBody.html_body,
+          p_cuerpo_html: finalHtml,
           p_estado: 'enviado',
           p_error_mensaje: null,
           p_enviado_por: null,
@@ -168,22 +209,13 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Correo enviado exitosamente',
-          resend_id: data.id,
-          destinatario: requestBody.to_email
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ success: true, message: 'Correo enviado exitosamente', resend_id: data.id, destinatario: requestBody.to_email }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Formato legacy (con plantillas)
+    // ── Formato legacy (con plantillas) ──
     const { tipo, destinatario, datos, evento_id } = requestBody;
-
     console.log('Procesando solicitud de correo:', { tipo, destinatario });
 
     const { data: config, error: configError } = await supabaseClient
@@ -193,14 +225,8 @@ Deno.serve(async (req) => {
       .single();
 
     if (configError || !config) {
-      console.error('Error configuración:', configError);
       throw new Error('No hay configuración de correo activa');
     }
-
-    console.log('Configuración encontrada:', {
-      tipo: config.tipo_integracion,
-      remitente: config.remitente_email
-    });
 
     const { data: tipoNotif, error: tipoError } = await supabaseClient
       .from('correo_tipos_notificacion')
@@ -209,7 +235,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (tipoError || !tipoNotif || !tipoNotif.activo) {
-      console.error('Error tipo notificación:', tipoError);
       throw new Error(`Tipo de notificación '${tipo}' no encontrado o inactivo`);
     }
 
@@ -220,41 +245,31 @@ Deno.serve(async (req) => {
       .single();
 
     if (plantillaError || !plantilla) {
-      console.error('Error plantilla:', plantillaError);
       throw new Error('No se encontró plantilla para este tipo de notificación');
     }
 
-    // Verificar si la plantilla tiene configurado el envío por correo
-    // Si está definido en la plantilla, usar ese valor; sino, usar el del tipo
     const enviarCorreo = plantilla.enviar_correo ?? tipoNotif.enviar_correo ?? true;
-
     if (!enviarCorreo) {
-      console.log(`Envío por correo desactivado para plantilla del tipo '${tipo}'`);
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Envío por correo desactivado para este tipo de notificación'
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ success: false, error: 'Envío por correo desactivado para este tipo de notificación' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     let asunto = plantilla.asunto;
     let cuerpo = plantilla.html_cuerpo;
 
-    datos['nombre_plataforma'] = 'MOVI Digital';
-    datos['fecha'] = new Date().toLocaleDateString('es-MX');
-
-    Object.keys(datos).forEach((key) => {
+    const datosConMeta = { ...datos, nombre_plataforma: 'MOVI Digital', fecha: new Date().toLocaleDateString('es-MX') };
+    Object.keys(datosConMeta).forEach((key) => {
       const regex = new RegExp(`{{${key}}}`, 'g');
-      asunto = asunto.replace(regex, datos[key] || '');
-      cuerpo = cuerpo.replace(regex, datos[key] || '');
+      asunto = asunto.replace(regex, datosConMeta[key] || '');
+      cuerpo = cuerpo.replace(regex, datosConMeta[key] || '');
     });
 
-    console.log('Plantilla procesada:', { asunto });
+    // Inyectar layout global
+    const finalHtml = wrapWithLayout(cuerpo, header, footer);
+
+    console.log('Plantilla procesada con layout global:', { asunto });
 
     let estadoEnvio = 'enviado';
     let errorMensaje = null;
@@ -262,52 +277,39 @@ Deno.serve(async (req) => {
 
     try {
       const resendApiKey = Deno.env.get('RESEND_API_KEY') || config.resend_api_key;
-
-      if (!resendApiKey) {
-        throw new Error('RESEND_API_KEY no está configurada');
-      }
+      if (!resendApiKey) throw new Error('RESEND_API_KEY no está configurada');
 
       const resend = new Resend(resendApiKey);
-
-      console.log('Enviando correo con Resend...');
-
       const fromEmail = config.remitente_email;
       const fromName = config.remitente_nombre || 'MOVI Digital';
-
-      console.log('Usando remitente configurado:', `${fromName} <${fromEmail}>`);
 
       const { data, error } = await resend.emails.send({
         from: `${fromName} <${fromEmail}>`,
         to: [destinatario],
         subject: asunto,
-        html: cuerpo,
+        html: finalHtml,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       console.log('Correo enviado exitosamente:', data.id);
       resendId = data.id;
-      estadoEnvio = 'enviado';
-
     } catch (emailError: any) {
       console.error('Error al enviar correo:', emailError);
       estadoEnvio = 'fallido';
       errorMensaje = emailError.message || 'Error al enviar correo';
     }
 
-    // IMPORTANTE: Registrar envío usando función centralizada
     try {
       await supabaseClient.rpc('registrar_envio_notificacion', {
         p_tipo_notificacion_codigo: tipo,
         p_canal_envio: 'correo',
         p_usuario_id: null,
         p_destinatario_email: destinatario,
-        p_destinatario_nombre: datos.nombre || null,
+        p_destinatario_nombre: datos?.nombre || null,
         p_numero_destino: null,
         p_asunto: asunto,
-        p_cuerpo_html: cuerpo,
+        p_cuerpo_html: finalHtml,
         p_estado: estadoEnvio,
         p_error_mensaje: errorMensaje,
         p_enviado_por: null,
@@ -321,9 +323,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: estadoEnvio === 'enviado',
-        message: estadoEnvio === 'enviado'
-          ? 'Correo enviado exitosamente'
-          : 'Error al enviar correo',
+        message: estadoEnvio === 'enviado' ? 'Correo enviado exitosamente' : 'Error al enviar correo',
         resend_id: resendId,
         asunto,
         destinatario
@@ -333,19 +333,12 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
+
   } catch (error: any) {
     console.error('Error general:', error);
-
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        stack: error.stack
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      JSON.stringify({ success: false, error: error.message, stack: error.stack }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

@@ -1,24 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  Mail,
-  Settings,
-  FileText,
-  Send,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  AlertCircle,
-  RefreshCw,
-  MessageCircle
-} from 'lucide-react';
+import { Mail, Settings, FileText, Send, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw, MessageCircle, LayoutGrid as Layout } from 'lucide-react';
 import { ConfiguracionSMTP } from '../components/notificaciones/ConfiguracionSMTP';
 import { ConfiguracionWhatsApp } from '../components/notificaciones/ConfiguracionWhatsApp';
 import { TiposNotificaciones } from '../components/notificaciones/TiposNotificaciones';
 import { HistorialEnvios } from '../components/notificaciones/HistorialEnvios';
+import { EmailGlobalLayout } from '../components/notificaciones/EmailGlobalLayout';
 
-type Tab = 'configuracion' | 'whatsapp' | 'notificaciones' | 'historial';
+type Tab = 'configuracion' | 'whatsapp' | 'notificaciones' | 'layout' | 'historial';
 
 interface Config {
   id: string;
@@ -263,6 +253,17 @@ export function NotificacionesTransaccionales() {
               Plantillas y Notificaciones
             </button>
             <button
+              onClick={() => setActiveTab('layout')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'layout'
+                  ? 'text-accent border-b-2 border-accent'
+                  : 'text-neutral-600 hover:text-neutral-800'
+              }`}
+            >
+              <Layout className="w-5 h-5" />
+              Header y Footer
+            </button>
+            <button
               onClick={() => setActiveTab('historial')}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'historial'
@@ -291,6 +292,9 @@ export function NotificacionesTransaccionales() {
           )}
           {activeTab === 'notificaciones' && (
             <TiposNotificaciones onUpdate={fetchData} />
+          )}
+          {activeTab === 'layout' && (
+            <EmailGlobalLayout />
           )}
           {activeTab === 'historial' && (
             <HistorialEnvios />
