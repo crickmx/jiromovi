@@ -328,19 +328,20 @@ async function processEmailNotification(
   }
 
   const template = event.template_email || {};
-  let asunto = template.asunto || 'Notificación MOVI Digital';
+
+  const { data: tipoNotif } = await supabase
+    .from('correo_tipos_notificacion')
+    .select('id')
+    .eq('codigo', job.event_code)
+    .maybeSingle();
 
   const { data: plantilla } = await supabase
     .from('correo_plantillas')
-    .select('html_cuerpo')
-    .eq('tipo_notificacion_id', (await supabase
-      .from('correo_tipos_notificacion')
-      .select('id')
-      .eq('codigo', job.event_code)
-      .maybeSingle()
-    )?.data?.id)
+    .select('asunto, html_cuerpo')
+    .eq('tipo_notificacion_id', tipoNotif?.id)
     .maybeSingle();
 
+  let asunto = plantilla?.asunto || template.asunto || 'Notificación MOVI Digital';
   let cuerpoHtml = plantilla?.html_cuerpo || '<p>{{mensaje}}</p>';
 
   Object.keys(job.payload).forEach(key => {
