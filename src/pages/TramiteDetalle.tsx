@@ -85,7 +85,6 @@ export function TramiteDetalle() {
   useEffect(() => {
     if (id) {
       loadTramite();
-      loadEstatus();
 
       const subscription = supabase
         .channel(`tramite_${id}`)
@@ -179,16 +178,24 @@ export function TramiteDetalle() {
     setSelectedEstatus(ticketData.estatus_id);
     setSelectedPrioridad(ticketData.prioridad);
     setLoading(false);
+    await loadEstatus(ticketData.tipo_tramite);
   };
 
-  const loadEstatus = async () => {
+  const loadEstatus = async (tipoTramite?: string) => {
     const { data } = await supabase
       .from('ticket_estatus')
       .select('*')
       .eq('activo', true)
       .order('orden');
 
-    if (data) setEstatusList(data);
+    if (data) {
+      const filtered = tipoTramite
+        ? data.filter((e: any) =>
+            !e.tipo_aplicable || e.tipo_aplicable.includes(tipoTramite)
+          )
+        : data;
+      setEstatusList(filtered);
+    }
   };
 
   const handleSave = async () => {
