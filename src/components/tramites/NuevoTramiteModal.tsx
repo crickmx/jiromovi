@@ -136,7 +136,7 @@ export function NuevoTramiteModal({
   const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
 
   useEffect(() => {
-    setShowRegistroActForm(tipoTramite === 'registro_actividad' || tipoTramite === 'cotizacion_emision');
+    setShowRegistroActForm(tipoTramite === 'registro_actividad');
   }, [tipoTramite]);
 
   useEffect(() => {
