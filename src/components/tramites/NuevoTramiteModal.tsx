@@ -1,10 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar } from 'lucide-react';
+import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Briefcase, Shield, Clock, CheckCircle2, ChevronRight, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import { RegistroActividadForm } from './RegistroActividadForm';
-import { canAccessRegistroActividades } from '../../lib/registroActividadesUtils';
+import {
+  canAccessRegistroActividades,
+  getTramiteActivityTypes,
+  getInsuranceTypes,
+  getAseguradoras as getAseguradorasRA,
+  getUsersByOffice,
+  getUsersWhoCanAttend,
+  createRegistroActividad,
+  formatDateTimeForInput,
+  formatDateTimeFromInput
+} from '../../lib/registroActividadesUtils';
+import {
+  REGISTRO_ACTIVIDAD_ESTATUS,
+  isEstatusFinal,
+  validateRegistroActividadForm,
+  type TramiteActivityType,
+  type InsuranceType,
+  type Aseguradora as AseguradoraRA,
+  type UsuarioOficina
+} from '../../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
   id: string;
@@ -103,6 +122,24 @@ export function NuevoTramiteModal({
     { id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }
   ]);
 
+  // --- Estado para Cotización / Emisión ---
+  const [ceActivitySubtypeId, setCeActivitySubtypeId] = useState('');
+  const [ceAttendingUserId, setCeAttendingUserId] = useState('');
+  const [ceAgenteUserId, setCeAgenteUserId] = useState('');
+  const [ceInsuranceTypeId, setCeInsuranceTypeId] = useState('');
+  const [ceSelectedInsurers, setCeSelectedInsurers] = useState<string[]>([]);
+  const [ceRequestDatetime, setCeRequestDatetime] = useState(formatDateTimeForInput(new Date()));
+  const [ceCompletionDatetime, setCeCompletionDatetime] = useState('');
+  const [ceEstatusNombre, setCeEstatusNombre] = useState('Iniciado');
+  const [ceShowInsurerDropdown, setCeShowInsurerDropdown] = useState(false);
+  const [ceInsurerSearchTerm, setCeInsurerSearchTerm] = useState('');
+
+  const [ceTramiteTypes, setCeTramiteTypes] = useState<TramiteActivityType[]>([]);
+  const [ceInsuranceTypes, setCeInsuranceTypes] = useState<InsuranceType[]>([]);
+  const [ceAseguradorasRA, setCeAseguradorasRA] = useState<AseguradoraRA[]>([]);
+  const [ceAttendingUsers, setCeAttendingUsers] = useState<UsuarioOficina[]>([]);
+  const [ceAgenteUsers, setCeAgenteUsers] = useState<UsuarioOficina[]>([]);
+
   // Ref para rastrear si estamos inicializando con datos precargados
   const isInitializingWithPreloadedData = useRef(false);
 
@@ -168,7 +205,44 @@ export function NuevoTramiteModal({
     if (tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes') {
       loadAseguradoras();
     }
+    if (tipoTramite === 'cotizacion_emision') {
+      loadCeCatalogs();
+    }
   }, [tipoTramite]);
+
+  useEffect(() => {
+    const loadCeAgenteUsers = async () => {
+      if (!ceAttendingUserId) { setCeAgenteUsers([]); return; }
+      const attendingUser = ceAttendingUsers.find(u => u.id === ceAttendingUserId);
+      if (!attendingUser?.oficina_id) { setCeAgenteUsers([]); return; }
+      const users = await getUsersByOffice(attendingUser.oficina_id);
+      setCeAgenteUsers(users);
+    };
+    loadCeAgenteUsers();
+  }, [ceAttendingUserId, ceAttendingUsers]);
+
+  useEffect(() => {
+    if (isEstatusFinal(ceEstatusNombre) && !ceCompletionDatetime) {
+      setCeCompletionDatetime(formatDateTimeForInput(new Date()));
+    }
+  }, [ceEstatusNombre]);
+
+  const loadCeCatalogs = async () => {
+    try {
+      const [types, insurance, insurers, attending] = await Promise.all([
+        getTramiteActivityTypes(),
+        getInsuranceTypes(),
+        getAseguradorasRA(),
+        getUsersWhoCanAttend()
+      ]);
+      setCeTramiteTypes(types);
+      setCeInsuranceTypes(insurance);
+      setCeAseguradorasRA(insurers);
+      setCeAttendingUsers(attending);
+    } catch (err) {
+      console.error('Error loading CE catalogs:', err);
+    }
+  };
 
   const resetForm = () => {
     if (preloadedData?.tipoTramite) {
@@ -199,6 +273,18 @@ export function NuevoTramiteModal({
     setPolizaFiles([{ id: '1', file: null, aseguradora: '', claveAgente: '' }]);
     setComisionesPendientes([{ id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }]);
     setError('');
+
+    // Reset CE fields
+    setCeActivitySubtypeId('');
+    setCeAttendingUserId('');
+    setCeAgenteUserId('');
+    setCeInsuranceTypeId('');
+    setCeSelectedInsurers([]);
+    setCeRequestDatetime(formatDateTimeForInput(new Date()));
+    setCeCompletionDatetime('');
+    setCeEstatusNombre('Iniciado');
+    setCeShowInsurerDropdown(false);
+    setCeInsurerSearchTerm('');
   };
 
   const loadUsuarios = async () => {
@@ -408,7 +494,47 @@ export function NuevoTramiteModal({
     return true;
   };
 
+  const handleSubmitCotizacionEmision = async () => {
+    if (!usuario) return;
+
+    const formData = {
+      activity_subtype_id: ceActivitySubtypeId,
+      agente_usuario_id: ceAgenteUserId,
+      insurance_type_id: ceInsuranceTypeId,
+      insurers: ceSelectedInsurers,
+      attending_user_id: ceAttendingUserId,
+      request_datetime: formatDateTimeFromInput(ceRequestDatetime),
+      completion_datetime: ceCompletionDatetime ? formatDateTimeFromInput(ceCompletionDatetime) : undefined,
+      estatus_nombre: ceEstatusNombre,
+      prioridad,
+      instrucciones: descripcion
+    };
+
+    const validationErrors = validateRegistroActividadForm(formData);
+    if (validationErrors.length > 0) {
+      setError(validationErrors[0]);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      await createRegistroActividad({ ...formData, creado_por: usuario.id });
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Error al crear el trámite');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
+    if (tipoTramite === 'cotizacion_emision') {
+      await handleSubmitCotizacionEmision();
+      return;
+    }
+
     if (!validateForm() || !usuario) return;
 
     setLoading(true);
@@ -709,7 +835,230 @@ export function NuevoTramiteModal({
           </p>
         </div>
 
-        {canAssignOthers && (
+        {/* ===== SECCIÓN COTIZACIÓN / EMISIÓN ===== */}
+        {tipoTramite === 'cotizacion_emision' && (
+          <div className="space-y-4">
+            {/* Pipeline de estatus */}
+            <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
+              <label className="block text-xs font-semibold text-neutral-700 mb-3 uppercase tracking-wide">
+                Estatus del Trámite
+              </label>
+              <div className="flex flex-wrap items-center gap-1">
+                {REGISTRO_ACTIVIDAD_ESTATUS.map((est, idx) => {
+                  const isActive = ceEstatusNombre === est.nombre;
+                  const isPassed = REGISTRO_ACTIVIDAD_ESTATUS.findIndex(e => e.nombre === ceEstatusNombre) > idx;
+                  const isLast = idx === REGISTRO_ACTIVIDAD_ESTATUS.length - 1;
+                  return (
+                    <div key={est.nombre} className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setCeEstatusNombre(est.nombre)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-200 ${
+                          isActive
+                            ? 'text-white border-transparent shadow-md scale-105'
+                            : isPassed
+                            ? 'text-white border-transparent opacity-60'
+                            : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-400'
+                        }`}
+                        style={{
+                          backgroundColor: (isActive || isPassed) ? est.color : undefined,
+                          borderColor: isActive ? est.color : undefined,
+                        }}
+                      >
+                        {(isActive || isPassed) && <CheckCircle2 className="w-3 h-3" />}
+                        {est.nombre}
+                      </button>
+                      {!isLast && <ChevronRight className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />}
+                    </div>
+                  );
+                })}
+              </div>
+              {isEstatusFinal(ceEstatusNombre) && (
+                <div className="mt-3 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-neutral-100 text-neutral-600">
+                  <Lock className="w-3.5 h-3.5" />
+                  Este es un estatus final. El trámite quedará cerrado.
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Tipo de Trámite (subtipo) */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <Briefcase className="w-4 h-4 inline mr-1.5" />
+                  Subtipo de Trámite *
+                </label>
+                <select
+                  value={ceActivitySubtypeId}
+                  onChange={(e) => setCeActivitySubtypeId(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                >
+                  <option value="">Seleccione...</option>
+                  {ceTramiteTypes
+                    .filter(type => {
+                      const n = type.nombre.toLowerCase();
+                      return (n.includes('cotizaci') && n.includes('emisi')) || n === 'otro';
+                    })
+                    .map(type => (
+                      <option key={type.id} value={type.id}>{type.nombre}</option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Quién Atiende */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <User className="w-4 h-4 inline mr-1.5" />
+                  Quién Atiende *
+                </label>
+                <select
+                  value={ceAttendingUserId}
+                  onChange={(e) => { setCeAttendingUserId(e.target.value); setCeAgenteUserId(''); }}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                >
+                  <option value="">Seleccione...</option>
+                  {ceAttendingUsers.map(user => (
+                    <option key={user.id} value={user.id}>{user.nombre_completo}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Agente */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <User className="w-4 h-4 inline mr-1.5" />
+                  Agente *
+                </label>
+                <select
+                  value={ceAgenteUserId}
+                  onChange={(e) => setCeAgenteUserId(e.target.value)}
+                  disabled={!ceAttendingUserId}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm disabled:bg-neutral-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">{ceAttendingUserId ? 'Seleccione...' : 'Primero seleccione Quién Atiende'}</option>
+                  {ceAgenteUsers.map(user => (
+                    <option key={user.id} value={user.id}>{user.nombre_completo}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Tipo de Seguro */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <Shield className="w-4 h-4 inline mr-1.5" />
+                  Tipo de Seguro *
+                </label>
+                <select
+                  value={ceInsuranceTypeId}
+                  onChange={(e) => setCeInsuranceTypeId(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                >
+                  <option value="">Seleccione...</option>
+                  {ceInsuranceTypes.map(type => (
+                    <option key={type.id} value={type.id}>{type.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Aseguradoras multiselect */}
+            <div className="relative">
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                <Building2 className="w-4 h-4 inline mr-1.5" />
+                Aseguradoras * (seleccione una o más)
+              </label>
+              <div
+                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer"
+                onClick={() => setCeShowInsurerDropdown(!ceShowInsurerDropdown)}
+              >
+                {ceSelectedInsurers.length === 0
+                  ? <span className="text-neutral-400">Seleccione aseguradoras...</span>
+                  : <span className="text-neutral-900">{ceAseguradorasRA.filter(a => ceSelectedInsurers.includes(a.id)).map(a => a.nombre).join(', ')}</span>
+                }
+              </div>
+              {ceShowInsurerDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-300 rounded-xl shadow-lg max-h-48 overflow-auto">
+                  <div className="p-2 border-b border-neutral-200">
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      value={ceInsurerSearchTerm}
+                      onChange={(e) => setCeInsurerSearchTerm(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                  </div>
+                  <div className="p-1">
+                    {ceAseguradorasRA
+                      .filter(a => a.nombre.toLowerCase().includes(ceInsurerSearchTerm.toLowerCase()))
+                      .map(aseg => (
+                        <label key={aseg.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={ceSelectedInsurers.includes(aseg.id)}
+                            onChange={() => setCeSelectedInsurers(prev =>
+                              prev.includes(aseg.id) ? prev.filter(x => x !== aseg.id) : [...prev, aseg.id]
+                            )}
+                            className="w-3.5 h-3.5 rounded border-neutral-300"
+                          />
+                          <span className="text-xs text-neutral-700">{aseg.nombre}</span>
+                        </label>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Fecha de Inicio */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <Calendar className="w-4 h-4 inline mr-1.5" />
+                  Fecha de Inicio *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={ceRequestDatetime}
+                  onChange={(e) => setCeRequestDatetime(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                />
+              </div>
+
+              {/* Fecha de Finalización */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <Clock className="w-4 h-4 inline mr-1.5" />
+                  Fecha de Finalización
+                  {isEstatusFinal(ceEstatusNombre) && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                <input
+                  type="datetime-local"
+                  value={ceCompletionDatetime}
+                  onChange={(e) => setCeCompletionDatetime(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Prioridad dentro del bloque CE */}
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                Prioridad
+              </label>
+              <select
+                value={prioridad}
+                onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="Baja">Baja</option>
+                <option value="Media">Media</option>
+                <option value="Alta">Alta</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {canAssignOthers && tipoTramite !== 'cotizacion_emision' && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <User className="w-4 h-4 inline mr-2" />
@@ -730,7 +1079,7 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        {!isAgent && (
+        {!isAgent && tipoTramite !== 'cotizacion_emision' && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               Prioridad
@@ -1040,7 +1389,7 @@ export function NuevoTramiteModal({
           />
         </div>
 
-        {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && (
+        {tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes' && tipoTramite !== 'cotizacion_emision' && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <Upload className="w-4 h-4 inline mr-2" />
