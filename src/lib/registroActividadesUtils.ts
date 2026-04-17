@@ -235,6 +235,7 @@ export async function createRegistroActividad(data: {
       agente_id: toUuid(data.agente_usuario_id),
       assigned_to_user_id: toUuid(data.attending_user_id),
       cerrado: esFinal,
+      progress_percent: esFinal ? 100 : 0,
     };
 
     if (esFinal) {

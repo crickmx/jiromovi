@@ -477,7 +477,7 @@ export function NuevoTramiteModal({
     if (!usuario) return;
 
     const formData = {
-      activity_subtype_id: '',
+      activity_subtype_id: COTIZACION_EMISION_SUBTYPE_ID,
       agente_usuario_id: ceAgenteUserId,
       insurance_type_id: ceInsuranceTypeId,
       insurers: ceSelectedInsurers,
