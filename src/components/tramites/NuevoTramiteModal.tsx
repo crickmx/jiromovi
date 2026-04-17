@@ -1,16 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Briefcase, Shield, Clock, CheckCircle2, ChevronRight, Lock } from 'lucide-react';
+import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CheckCircle2, ChevronRight, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import { RegistroActividadForm } from './RegistroActividadForm';
 import {
   canAccessRegistroActividades,
-  getTramiteActivityTypes,
   getInsuranceTypes,
   getAseguradoras as getAseguradorasRA,
   getUsersByOffice,
-  getUsersWhoCanAttend,
   createRegistroActividad,
   formatDateTimeForInput,
   formatDateTimeFromInput
@@ -18,8 +16,6 @@ import {
 import {
   REGISTRO_ACTIVIDAD_ESTATUS,
   isEstatusFinal,
-  validateRegistroActividadForm,
-  type TramiteActivityType,
   type InsuranceType,
   type Aseguradora as AseguradoraRA,
   type UsuarioOficina
@@ -123,8 +119,6 @@ export function NuevoTramiteModal({
   ]);
 
   // --- Estado para Cotización / Emisión ---
-  const [ceActivitySubtypeId, setCeActivitySubtypeId] = useState('');
-  const [ceAttendingUserId, setCeAttendingUserId] = useState('');
   const [ceAgenteUserId, setCeAgenteUserId] = useState('');
   const [ceInsuranceTypeId, setCeInsuranceTypeId] = useState('');
   const [ceSelectedInsurers, setCeSelectedInsurers] = useState<string[]>([]);
@@ -134,10 +128,8 @@ export function NuevoTramiteModal({
   const [ceShowInsurerDropdown, setCeShowInsurerDropdown] = useState(false);
   const [ceInsurerSearchTerm, setCeInsurerSearchTerm] = useState('');
 
-  const [ceTramiteTypes, setCeTramiteTypes] = useState<TramiteActivityType[]>([]);
   const [ceInsuranceTypes, setCeInsuranceTypes] = useState<InsuranceType[]>([]);
   const [ceAseguradorasRA, setCeAseguradorasRA] = useState<AseguradoraRA[]>([]);
-  const [ceAttendingUsers, setCeAttendingUsers] = useState<UsuarioOficina[]>([]);
   const [ceAgenteUsers, setCeAgenteUsers] = useState<UsuarioOficina[]>([]);
 
   // Ref para rastrear si estamos inicializando con datos precargados
@@ -210,16 +202,6 @@ export function NuevoTramiteModal({
     }
   }, [tipoTramite]);
 
-  useEffect(() => {
-    const loadCeAgenteUsers = async () => {
-      if (!ceAttendingUserId) { setCeAgenteUsers([]); return; }
-      const attendingUser = ceAttendingUsers.find(u => u.id === ceAttendingUserId);
-      if (!attendingUser?.oficina_id) { setCeAgenteUsers([]); return; }
-      const users = await getUsersByOffice(attendingUser.oficina_id);
-      setCeAgenteUsers(users);
-    };
-    loadCeAgenteUsers();
-  }, [ceAttendingUserId, ceAttendingUsers]);
 
   useEffect(() => {
     if (isEstatusFinal(ceEstatusNombre) && !ceCompletionDatetime) {
@@ -228,17 +210,16 @@ export function NuevoTramiteModal({
   }, [ceEstatusNombre]);
 
   const loadCeCatalogs = async () => {
+    if (!usuario) return;
     try {
-      const [types, insurance, insurers, attending] = await Promise.all([
-        getTramiteActivityTypes(),
+      const [insurance, insurers, agentes] = await Promise.all([
         getInsuranceTypes(),
         getAseguradorasRA(),
-        getUsersWhoCanAttend()
+        usuario.oficina_id ? getUsersByOffice(usuario.oficina_id) : Promise.resolve([])
       ]);
-      setCeTramiteTypes(types);
       setCeInsuranceTypes(insurance);
       setCeAseguradorasRA(insurers);
-      setCeAttendingUsers(attending);
+      setCeAgenteUsers(agentes);
     } catch (err) {
       console.error('Error loading CE catalogs:', err);
     }
@@ -275,8 +256,6 @@ export function NuevoTramiteModal({
     setError('');
 
     // Reset CE fields
-    setCeActivitySubtypeId('');
-    setCeAttendingUserId('');
     setCeAgenteUserId('');
     setCeInsuranceTypeId('');
     setCeSelectedInsurers([]);
@@ -498,11 +477,11 @@ export function NuevoTramiteModal({
     if (!usuario) return;
 
     const formData = {
-      activity_subtype_id: ceActivitySubtypeId,
+      activity_subtype_id: '',
       agente_usuario_id: ceAgenteUserId,
       insurance_type_id: ceInsuranceTypeId,
       insurers: ceSelectedInsurers,
-      attending_user_id: ceAttendingUserId,
+      attending_user_id: usuario.id,
       request_datetime: formatDateTimeFromInput(ceRequestDatetime),
       completion_datetime: ceCompletionDatetime ? formatDateTimeFromInput(ceCompletionDatetime) : undefined,
       estatus_nombre: ceEstatusNombre,
@@ -510,11 +489,10 @@ export function NuevoTramiteModal({
       instrucciones: descripcion
     };
 
-    const validationErrors = validateRegistroActividadForm(formData);
-    if (validationErrors.length > 0) {
-      setError(validationErrors[0]);
-      return;
-    }
+    if (!ceAgenteUserId) { setError('El agente es obligatorio'); return; }
+    if (!ceInsuranceTypeId) { setError('El tipo de seguro es obligatorio'); return; }
+    if (ceSelectedInsurers.length === 0) { setError('Debe seleccionar al menos una aseguradora'); return; }
+    if (!ceRequestDatetime) { setError('La fecha de inicio es obligatoria'); return; }
 
     setLoading(true);
     setError('');
@@ -882,47 +860,6 @@ export function NuevoTramiteModal({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Tipo de Trámite (subtipo) */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  <Briefcase className="w-4 h-4 inline mr-1.5" />
-                  Subtipo de Trámite *
-                </label>
-                <select
-                  value={ceActivitySubtypeId}
-                  onChange={(e) => setCeActivitySubtypeId(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                >
-                  <option value="">Seleccione...</option>
-                  {ceTramiteTypes
-                    .filter(type => {
-                      const n = type.nombre.toLowerCase();
-                      return (n.includes('cotizaci') && n.includes('emisi')) || n === 'otro';
-                    })
-                    .map(type => (
-                      <option key={type.id} value={type.id}>{type.nombre}</option>
-                    ))}
-                </select>
-              </div>
-
-              {/* Quién Atiende */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  <User className="w-4 h-4 inline mr-1.5" />
-                  Quién Atiende *
-                </label>
-                <select
-                  value={ceAttendingUserId}
-                  onChange={(e) => { setCeAttendingUserId(e.target.value); setCeAgenteUserId(''); }}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                >
-                  <option value="">Seleccione...</option>
-                  {ceAttendingUsers.map(user => (
-                    <option key={user.id} value={user.id}>{user.nombre_completo}</option>
-                  ))}
-                </select>
-              </div>
-
               {/* Agente */}
               <div>
                 <label className="block text-sm font-semibold text-neutral-900 mb-2">
@@ -932,10 +869,9 @@ export function NuevoTramiteModal({
                 <select
                   value={ceAgenteUserId}
                   onChange={(e) => setCeAgenteUserId(e.target.value)}
-                  disabled={!ceAttendingUserId}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm disabled:bg-neutral-100 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                 >
-                  <option value="">{ceAttendingUserId ? 'Seleccione...' : 'Primero seleccione Quién Atiende'}</option>
+                  <option value="">Seleccione...</option>
                   {ceAgenteUsers.map(user => (
                     <option key={user.id} value={user.id}>{user.nombre_completo}</option>
                   ))}
