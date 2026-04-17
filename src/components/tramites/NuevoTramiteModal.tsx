@@ -703,9 +703,6 @@ export function NuevoTramiteModal({
             <option value="correccion_comisiones">Corrección de comisiones</option>
             <option value="registro_poliza">Registro de póliza</option>
             <option value="solicitud_comisiones_pendientes">Solicitud de comisiones pendientes</option>
-            {canAccessRegistroAct && (
-              <option value="registro_actividad">Registro de Actividades</option>
-            )}
           </select>
           <p className="text-xs text-neutral-500 mt-1">
             {getTipoLabel(tipoTramite)}
