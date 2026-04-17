@@ -216,22 +216,24 @@ export async function createRegistroActividad(data: {
 
     const esFinal = isEstatusFinal(data.estatus_nombre);
 
+    const toUuid = (v: string | undefined | null) => (v && v.trim() !== '' ? v : null);
+
     const ticketData: any = {
       folio,
       tipo_tramite: 'registro_actividad',
-      activity_subtype_id: data.activity_subtype_id,
-      agente_usuario_id: data.agente_usuario_id,
-      insurance_type_id: data.insurance_type_id,
+      activity_subtype_id: toUuid(data.activity_subtype_id),
+      agente_usuario_id: toUuid(data.agente_usuario_id),
+      insurance_type_id: toUuid(data.insurance_type_id),
       insurers: data.insurers,
-      attending_user_id: data.attending_user_id,
+      attending_user_id: toUuid(data.attending_user_id),
       request_datetime: data.request_datetime,
       completion_datetime: data.completion_datetime || null,
       prioridad: data.prioridad,
       instrucciones: data.instrucciones,
       estatus_id: estatusId,
-      creado_por: data.creado_por,
-      agente_id: data.agente_usuario_id,
-      assigned_to_user_id: data.attending_user_id,
+      creado_por: toUuid(data.creado_por),
+      agente_id: toUuid(data.agente_usuario_id),
+      assigned_to_user_id: toUuid(data.attending_user_id),
       cerrado: esFinal,
     };
 
@@ -274,16 +276,18 @@ export async function updateRegistroActividad(
     ultima_modificacion: new Date().toISOString(),
   };
 
-  if (data.activity_subtype_id !== undefined) updateData.activity_subtype_id = data.activity_subtype_id;
+  const toUuid = (v: string | undefined | null) => (v && v.trim() !== '' ? v : null);
+
+  if (data.activity_subtype_id !== undefined) updateData.activity_subtype_id = toUuid(data.activity_subtype_id);
   if (data.agente_usuario_id !== undefined) {
-    updateData.agente_usuario_id = data.agente_usuario_id;
-    updateData.agente_id = data.agente_usuario_id;
+    updateData.agente_usuario_id = toUuid(data.agente_usuario_id);
+    updateData.agente_id = toUuid(data.agente_usuario_id);
   }
-  if (data.insurance_type_id !== undefined) updateData.insurance_type_id = data.insurance_type_id;
+  if (data.insurance_type_id !== undefined) updateData.insurance_type_id = toUuid(data.insurance_type_id);
   if (data.insurers !== undefined) updateData.insurers = data.insurers;
   if (data.attending_user_id !== undefined) {
-    updateData.attending_user_id = data.attending_user_id;
-    updateData.assigned_to_user_id = data.attending_user_id;
+    updateData.attending_user_id = toUuid(data.attending_user_id);
+    updateData.assigned_to_user_id = toUuid(data.attending_user_id);
   }
   if (data.request_datetime !== undefined) updateData.request_datetime = data.request_datetime;
   if (data.completion_datetime !== undefined) updateData.completion_datetime = data.completion_datetime;
