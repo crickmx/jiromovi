@@ -163,6 +163,8 @@ export function Tramites() {
 
   const getTipoTramiteLabel = (tipo: string) => {
     switch (tipo) {
+      case 'cotizacion_emision':
+        return 'Cotización / Emisión';
       case 'correccion_poliza_registrada':
         return 'Corrección de póliza';
       case 'correccion_comisiones':

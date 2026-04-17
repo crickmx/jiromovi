@@ -79,6 +79,10 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
   useEffect(() => {
     loadCatalogs();
 
+    if (initialData?.activity_subtype_id && !isEditMode) {
+      setActivitySubtypeId(initialData.activity_subtype_id);
+    }
+
     if (isEditMode && initialData) {
       if (initialData.activity_subtype_id) setActivitySubtypeId(initialData.activity_subtype_id);
       if (initialData.agente_usuario_id) setAgenteUserId(initialData.agente_usuario_id);

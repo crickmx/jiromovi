@@ -440,7 +440,19 @@ export default function TramitesReportes() {
     );
   }
 
-  const tiposTramite = ['correccion_poliza_registrada', 'correccion_comisiones', 'registro_poliza', 'solicitud_comisiones_pendientes', 'registro_actividad'];
+  const getTipoTramiteLabel = (tipo: string) => {
+    const labels: Record<string, string> = {
+      cotizacion_emision: 'Cotización / Emisión',
+      correccion_poliza_registrada: 'Corrección de póliza',
+      correccion_comisiones: 'Corrección de comisiones',
+      registro_poliza: 'Registro de póliza',
+      solicitud_comisiones_pendientes: 'Solicitud de comisiones',
+      registro_actividad: 'Registro de actividades',
+    };
+    return labels[tipo] || tipo.replace(/_/g, ' ');
+  };
+
+  const tiposTramite = ['cotizacion_emision', 'correccion_poliza_registrada', 'correccion_comisiones', 'registro_poliza', 'solicitud_comisiones_pendientes', 'registro_actividad'];
   const estatusOptions = ['Pendiente', 'En Proceso', 'Finalizado'];
   const prioridadOptions = ['Alta', 'Media', 'Baja'];
 
@@ -618,7 +630,7 @@ export default function TramitesReportes() {
             >
               <option value="">Todos</option>
               {tiposTramite.map(t => (
-                <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                <option key={t} value={t}>{getTipoTramiteLabel(t)}</option>
               ))}
             </select>
           </div>

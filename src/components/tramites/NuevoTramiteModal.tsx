@@ -133,8 +133,10 @@ export function NuevoTramiteModal({
     setCanAccessRegistroAct(access);
   };
 
+  const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
+
   useEffect(() => {
-    setShowRegistroActForm(tipoTramite === 'registro_actividad');
+    setShowRegistroActForm(tipoTramite === 'registro_actividad' || tipoTramite === 'cotizacion_emision');
   }, [tipoTramite]);
 
   useEffect(() => {
@@ -636,6 +638,8 @@ export function NuevoTramiteModal({
 
   const getTipoLabel = (tipo: string) => {
     switch (tipo) {
+      case 'cotizacion_emision':
+        return 'Cotización / Emisión - Proceso completo de cotización y emisión de pólizas';
       case 'correccion_poliza_registrada':
         return 'Corrección de póliza registrada';
       case 'correccion_comisiones':
@@ -651,9 +655,15 @@ export function NuevoTramiteModal({
     }
   };
 
-  // Si es Registro de Actividades, mostrar formulario personalizado
+  // Si es Registro de Actividades o Cotizacion/Emision, mostrar formulario personalizado
   if (showRegistroActForm && isOpen) {
-    return <RegistroActividadForm onClose={onClose} onSuccess={onSuccess} />;
+    return (
+      <RegistroActividadForm
+        onClose={onClose}
+        onSuccess={onSuccess}
+        initialData={tipoTramite === 'cotizacion_emision' ? { activity_subtype_id: COTIZACION_EMISION_SUBTYPE_ID } : undefined}
+      />
+    );
   }
 
   // No renderizar nada si el modal está cerrado
@@ -686,6 +696,9 @@ export function NuevoTramiteModal({
             disabled={!!preloadedData?.tipoTramite}
             className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
           >
+            {canAccessRegistroAct && (
+              <option value="cotizacion_emision">Cotización / Emisión</option>
+            )}
             <option value="correccion_poliza_registrada">Corrección de póliza registrada</option>
             <option value="correccion_comisiones">Corrección de comisiones</option>
             <option value="registro_poliza">Registro de póliza</option>
