@@ -38,9 +38,7 @@ const TIPO_TRAMITE_OPTIONS = [
   { value: 'correccion_comisiones', label: 'Corrección de comisiones', tipoAplicable: 'general' },
   { value: 'registro_poliza', label: 'Registro de póliza', tipoAplicable: 'general' },
   { value: 'solicitud_comisiones_pendientes', label: 'Solicitud de comisiones', tipoAplicable: 'solicitud_comisiones' },
-  { value: 'registro_actividad', label: 'Registro de actividades', tipoAplicable: 'registro_actividad' },
   { value: 'lead_registro_movi', label: 'Lead / Registro Movi', tipoAplicable: 'general' },
-  { value: 'cambio_bancario', label: 'Cambio bancario', tipoAplicable: 'cambio_bancario' },
 ];
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
