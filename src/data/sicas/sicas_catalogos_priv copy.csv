@@ -1,4 +1,4 @@
-﻿,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
 Contactos,,,,,Clientes,,,,,Documentos,,,,,Siniestros,,
 Campo,Descripcion,Comentarios,,,Campo,Descripcion,Comentarios,,,Campo,Descripcion,Comentarios,,,Campo,Descripción,Comentarios
 CatContactos.IDCont,Contacto,-1 Para Nuevo,,,CatClientes.IDCli,IDCliente,-1 Para Nuevo,,,DatDocumentos.IDDocto,Documento,-1 Para Nuevo  / Obligatorio,,,IDSiniestro,Siniestro,-1 Para Nuevo  / Obligatorio
