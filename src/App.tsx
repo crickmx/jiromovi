@@ -18,7 +18,6 @@ import { CentroCorreos } from './pages/CentroCorreos';
 import { Vacaciones } from './pages/Vacaciones';
 import { EspacioJiro } from './pages/EspacioJiro';
 import MulticotizadorDigital from './pages/MulticotizadorDigital';
-import { Publicidad } from './pages/Publicidad';
 import { GestorEmails } from './pages/GestorEmails';
 import { Chat } from './pages/Chat';
 import { AccesosNacional } from './pages/AccesosNacional';
@@ -72,7 +71,7 @@ import MisPolizas from './pages/MisPolizas';
 import GMMTarifasAdmin from './pages/GMMTarifasAdmin';
 import GMMCotizador from './pages/GMMCotizador';
 import CatalogosWeb from './pages/CatalogosWeb';
-import MiPaginaWeb from './pages/MiPaginaWeb';
+import Mercadotecnia from './pages/Mercadotecnia';
 import PaginaPublicaAsesor from './pages/PaginaPublicaAsesor';
 import ChatGPTTest from './pages/ChatGPTTest';
 import SicasAdmin from './pages/SicasAdmin';
@@ -243,16 +242,7 @@ function AppRoutes() {
         }
       />
 
-      <Route
-        path="/publicidad"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Publicidad />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/publicidad" element={<Navigate to="/mercadotecnia/publicidad" replace />} />
 
       <Route
         path="/gestor-emails"
@@ -758,12 +748,35 @@ function AppRoutes() {
         }
       />
 
+      <Route path="/mi-pagina-web" element={<Navigate to="/mercadotecnia/mi-pagina-web" replace />} />
+
+      <Route path="/mercadotecnia" element={<Navigate to="/mercadotecnia/mi-marca" replace />} />
       <Route
-        path="/mi-pagina-web"
+        path="/mercadotecnia/mi-marca"
         element={
           <ProtectedRoute>
             <Layout>
-              <MiPaginaWeb />
+              <Mercadotecnia section="mi-marca" />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mercadotecnia/mi-pagina-web"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Mercadotecnia section="mi-pagina-web" />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mercadotecnia/publicidad"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Mercadotecnia section="publicidad" />
             </Layout>
           </ProtectedRoute>
         }
@@ -798,7 +811,11 @@ function App() {
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
               <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
-              <Route path="/publicidad" element={<ProtectedRoute><Layout><Publicidad /></Layout></ProtectedRoute>} />
+              <Route path="/publicidad" element={<Navigate to="/mercadotecnia/publicidad" replace />} />
+              <Route path="/mercadotecnia" element={<Navigate to="/mercadotecnia/mi-marca" replace />} />
+              <Route path="/mercadotecnia/mi-marca" element={<ProtectedRoute><Layout><Mercadotecnia section="mi-marca" /></Layout></ProtectedRoute>} />
+              <Route path="/mercadotecnia/mi-pagina-web" element={<ProtectedRoute><Layout><Mercadotecnia section="mi-pagina-web" /></Layout></ProtectedRoute>} />
+              <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Layout><Mercadotecnia section="publicidad" /></Layout></ProtectedRoute>} />
               <Route path="/gestor-emails" element={<ProtectedRoute><Layout><GestorEmails /></Layout></ProtectedRoute>} />
               <Route path="/centro-digital" element={<ProtectedRoute><CentroDigital /></ProtectedRoute>} />
               <Route path="/chat" element={<ProtectedRoute><Layout><Chat /></Layout></ProtectedRoute>} />
@@ -863,7 +880,7 @@ function App() {
               <Route path="/sicas/diagnostico" element={<ProtectedRoute requireAdmin><SicasDiagnostico /></ProtectedRoute>} />
               <Route path="/sicas/rest-test" element={<ProtectedRoute requireAdminOrGerente><Layout><SicasRestTest /></Layout></ProtectedRoute>} />
               <Route path="/sicas/vigentes-test" element={<ProtectedRoute requireAdmin><Layout><SicasVigentesTest /></Layout></ProtectedRoute>} />
-              <Route path="/mi-pagina-web" element={<ProtectedRoute><Layout><MiPaginaWeb /></Layout></ProtectedRoute>} />
+              <Route path="/mi-pagina-web" element={<Navigate to="/mercadotecnia/mi-pagina-web" replace />} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
               <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><Layout><CargaMasivaUsuarios /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/regimen-fiscal" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalAdmin /></Layout></ProtectedRoute>} />

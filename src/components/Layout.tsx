@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Globe as Globe2, Database, Link as LinkIcon, FolderOpen, BarChart3, Trophy } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Database, Link as LinkIcon, FolderOpen, BarChart3, Trophy } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
@@ -104,11 +104,10 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/comunicados', label: 'Comunicados', icon: FileText, show: true },
     { path: '/centro-digital', label: 'Centro Digital', icon: FolderOpen, show: true },
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
-    { path: '/publicidad', label: 'Publicidad', icon: Palette, show: true },
+    { path: '/mercadotecnia/mi-marca', label: 'Mercadotecnia', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador Digital', icon: Car, show: true },
     { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, show: isAdmin },
     { path: '/gmm/tarifas', label: 'GMM Tarifas Admin', icon: Settings, show: isAdmin },
-    { path: '/mi-pagina-web', label: 'Mi Página Web', icon: Globe2, show: true },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/store', label: 'MOVI Store', icon: ShoppingBag, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
@@ -180,6 +179,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
               const isActive = location.pathname === item.path ||
                 (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones'))) ||
                 (item.label === 'Mi Producción' && location.pathname === '/mi-produccion') ||
+                (item.label === 'Mercadotecnia' && location.pathname.startsWith('/mercadotecnia')) ||
                 (item.label.includes('Producción') && location.pathname.startsWith('/produccion') && (
                   (item.path === '/produccion/total' && location.pathname === '/produccion/total') ||
                   (item.path === '/produccion/por-vendedor' && location.pathname === '/produccion/por-vendedor')
