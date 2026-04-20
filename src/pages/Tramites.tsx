@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, Filter, AlertCircle, Clock, CheckCircle2, XCircle, FileText, Settings } from 'lucide-react';
+import { ClipboardList, Plus, Search, AlertCircle, Clock, CheckCircle2, FileText, Settings } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 
@@ -11,6 +11,7 @@ interface TramiteEstatus {
   nombre: string;
   color: string;
   orden: number;
+  tipo_aplicable: string[] | null;
 }
 
 interface TramiteItem {
@@ -31,6 +32,19 @@ interface TramiteItem {
   }>;
 }
 
+const TIPO_TRAMITE_OPTIONS = [
+  { value: 'cotizacion_emision', label: 'Cotización / Emisión', tipoAplicable: 'general' },
+  { value: 'correccion_poliza_registrada', label: 'Corrección de póliza', tipoAplicable: 'general' },
+  { value: 'correccion_comisiones', label: 'Corrección de comisiones', tipoAplicable: 'general' },
+  { value: 'registro_poliza', label: 'Registro de póliza', tipoAplicable: 'general' },
+  { value: 'solicitud_comisiones_pendientes', label: 'Solicitud de comisiones', tipoAplicable: 'solicitud_comisiones' },
+  { value: 'registro_actividad', label: 'Registro de actividades', tipoAplicable: 'registro_actividad' },
+  { value: 'lead_registro_movi', label: 'Lead / Registro Movi', tipoAplicable: 'general' },
+  { value: 'cambio_bancario', label: 'Cambio bancario', tipoAplicable: 'cambio_bancario' },
+];
+
+const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
+
 export function Tramites() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
@@ -39,6 +53,7 @@ export function Tramites() {
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTipo, setSelectedTipo] = useState<string>('todos');
   const [selectedEstatus, setSelectedEstatus] = useState<string>('todos');
   const [selectedPrioridad, setSelectedPrioridad] = useState<string>('todas');
   const [showNuevoModal, setShowNuevoModal] = useState(false);
@@ -46,12 +61,31 @@ export function Tramites() {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
-  const canManageAll = isAdmin || isGerente;
   const canManageCatalogs = isAdmin || isGerente;
+
+  // Estatus filtered by selected tipo_tramite
+  const filteredEstatusList = (() => {
+    if (selectedTipo === 'todos') return estatusList;
+    const tipoOpt = TIPO_TRAMITE_OPTIONS.find(t => t.value === selectedTipo);
+    if (!tipoOpt) return estatusList;
+    return estatusList.filter(e =>
+      e.tipo_aplicable === null || e.tipo_aplicable.includes(tipoOpt.tipoAplicable)
+    );
+  })();
+
+  // Prioridades available: for registro_actividad only Baja/Media/Alta are valid but same applies; no restriction needed
+  // We keep all 3 always, just show them filtered to what makes sense
+  const availablePrioridades = PRIORIDADES;
 
   useEffect(() => {
     loadData();
   }, [activeTab]);
+
+  // Reset estatus/prioridad when tipo changes
+  useEffect(() => {
+    setSelectedEstatus('todos');
+    setSelectedPrioridad('todas');
+  }, [selectedTipo]);
 
   const loadData = async () => {
     setLoading(true);
@@ -97,16 +131,6 @@ export function Tramites() {
         return;
       }
 
-      console.log('✅ CÓDIGO ACTUALIZADO - Tramites loaded:', data?.length, 'tramites');
-      if (data && data.length > 0) {
-        console.log('🔍 Primer trámite:', {
-          folio: data[0].folio,
-          '👤 Agente (assigned_to)': data[0].agente?.nombre_completo,
-          '📝 Responsable (creador)': data[0].responsable?.nombre_completo
-        });
-      }
-
-      // Load asignaciones separately to avoid recursion
       if (data && data.length > 0) {
         const ticketIds = data.map(t => t.id);
         const { data: asignaciones } = await supabase
@@ -114,7 +138,6 @@ export function Tramites() {
           .select('ticket_id, ejecutivo:ejecutivo_id(nombre_completo)')
           .in('ticket_id', ticketIds);
 
-        // Merge asignaciones into tramites
         const tramitesWithAsignaciones = data.map(tramite => ({
           ...tramite,
           ticket_asignaciones: asignaciones?.filter(a => a.ticket_id === tramite.id) || []
@@ -130,17 +153,19 @@ export function Tramites() {
   };
 
   const filteredTramites = tramites.filter(tramite => {
-    const matchSearch = tramite.folio.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       tramite.instrucciones.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       tramite.poliza?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       tramite.agente?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       tramite.responsable?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       getTipoTramiteLabel(tramite.tipo_tramite).toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch =
+      tramite.folio.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tramite.instrucciones.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tramite.poliza?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tramite.agente?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tramite.responsable?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getTipoTramiteLabel(tramite.tipo_tramite).toLowerCase().includes(searchTerm.toLowerCase());
 
+    const matchTipo = selectedTipo === 'todos' || tramite.tipo_tramite === selectedTipo;
     const matchEstatus = selectedEstatus === 'todos' || tramite.estatus?.id === selectedEstatus;
     const matchPrioridad = selectedPrioridad === 'todas' || tramite.prioridad === selectedPrioridad;
 
-    return matchSearch && matchEstatus && matchPrioridad;
+    return matchSearch && matchTipo && matchEstatus && matchPrioridad;
   });
 
   const getPrioridadColor = (prioridad: string) => {
@@ -162,22 +187,16 @@ export function Tramites() {
   };
 
   const getTipoTramiteLabel = (tipo: string) => {
-    switch (tipo) {
-      case 'cotizacion_emision':
-        return 'Cotización / Emisión';
-      case 'correccion_poliza_registrada':
-        return 'Corrección de póliza';
-      case 'correccion_comisiones':
-        return 'Corrección de comisiones';
-      case 'registro_poliza':
-        return 'Registro de póliza';
-      case 'solicitud_comisiones_pendientes':
-        return 'Solicitud de comisiones';
-      case 'registro_actividad':
-        return 'Registro de actividades';
-      default:
-        return tipo;
-    }
+    return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.label ?? tipo;
+  };
+
+  const hasActiveFilters = selectedTipo !== 'todos' || selectedEstatus !== 'todos' || selectedPrioridad !== 'todas' || searchTerm !== '';
+
+  const clearFilters = () => {
+    setSelectedTipo('todos');
+    setSelectedEstatus('todos');
+    setSelectedPrioridad('todas');
+    setSearchTerm('');
   };
 
   return (
@@ -242,42 +261,109 @@ export function Tramites() {
         </div>
       </div>
 
+      {/* Filters */}
       <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Buscar por folio, descripción, póliza o agente..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
-                />
-              </div>
+        <div className="flex flex-col gap-3">
+          {/* Search row */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Buscar por folio, descripción, póliza o agente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+            />
+          </div>
+
+          {/* Filter row */}
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Tipo de trámite */}
+            <div className="flex flex-col gap-1 min-w-[200px] flex-1">
+              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide px-1">
+                Tipo de trámite
+              </label>
+              <select
+                value={selectedTipo}
+                onChange={(e) => setSelectedTipo(e.target.value)}
+                className="px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-sm bg-white"
+              >
+                <option value="todos">Todos los tipos</option>
+                {TIPO_TRAMITE_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Estatus — filtered by tipo */}
+            <div className="flex flex-col gap-1 min-w-[180px] flex-1">
+              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide px-1">
+                Estatus
+                {selectedTipo !== 'todos' && (
+                  <span className="ml-1 text-accent normal-case font-normal">
+                    ({filteredEstatusList.length} disponibles)
+                  </span>
+                )}
+              </label>
               <select
                 value={selectedEstatus}
                 onChange={(e) => setSelectedEstatus(e.target.value)}
-                className="px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                className="px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-sm bg-white"
               >
                 <option value="todos">Todos los estatus</option>
-                {estatusList.map(estatus => (
+                {filteredEstatusList.map(estatus => (
                   <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Prioridad */}
+            <div className="flex flex-col gap-1 min-w-[150px]">
+              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide px-1">
+                Prioridad
+              </label>
               <select
                 value={selectedPrioridad}
                 onChange={(e) => setSelectedPrioridad(e.target.value)}
-                className="px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                className="px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-sm bg-white"
               >
                 <option value="todas">Todas las prioridades</option>
-                <option value="Alta">Alta</option>
-                <option value="Media">Media</option>
-                <option value="Baja">Baja</option>
+                {availablePrioridades.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
               </select>
             </div>
+
+            {/* Clear filters */}
+            {hasActiveFilters && (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-transparent select-none">.</label>
+                <button
+                  onClick={clearFilters}
+                  className="px-3 py-2 text-sm text-neutral-500 hover:text-neutral-700 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all whitespace-nowrap"
+                >
+                  Limpiar filtros
+                </button>
+              </div>
+            )}
           </div>
 
-          {loading ? (
+          {/* Active filter summary */}
+          {selectedTipo !== 'todos' && (
+            <div className="flex items-center gap-2 text-xs text-neutral-500 pt-1 border-t border-neutral-100">
+              <span className="font-medium">Filtrando por tipo:</span>
+              <span className="px-2 py-0.5 bg-accent/10 text-accent rounded-full font-semibold">
+                {getTipoTramiteLabel(selectedTipo)}
+              </span>
+              <span className="text-neutral-400">
+                — Mostrando {filteredEstatusList.length} estatus aplicables
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
         <div className="flex justify-center py-12">
           <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -285,14 +371,32 @@ export function Tramites() {
         <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-12 text-center">
           <ClipboardList className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-neutral-700 mb-2">
-            No hay trámites {activeTab === 'cerrados' ? 'concluidos' : 'activos'}
+            {hasActiveFilters ? 'Sin resultados para los filtros aplicados' : `No hay trámites ${activeTab === 'cerrados' ? 'concluidos' : 'activos'}`}
           </h3>
           <p className="text-neutral-500">
-            {activeTab === 'activos' ? 'Crea tu primer trámite para comenzar' : 'No tienes trámites concluidos'}
+            {hasActiveFilters
+              ? 'Intenta ajustar o limpiar los filtros de búsqueda'
+              : activeTab === 'activos' ? 'Crea tu primer trámite para comenzar' : 'No tienes trámites concluidos'}
           </p>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="mt-4 px-4 py-2 text-sm text-accent border border-accent rounded-lg hover:bg-accent/5 transition-colors"
+            >
+              Limpiar filtros
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Results count */}
+          <div className="flex items-center justify-between px-1">
+            <p className="text-sm text-neutral-500">
+              {filteredTramites.length} {filteredTramites.length === 1 ? 'trámite' : 'trámites'}
+              {hasActiveFilters && ' encontrados'}
+            </p>
+          </div>
+
           {filteredTramites.map(tramite => (
             <div
               key={tramite.id}
@@ -305,7 +409,6 @@ export function Tramites() {
                   <div className="flex items-center space-x-3 flex-1">
                     <span className="text-lg font-bold text-accent">{tramite.folio}</span>
                   </div>
-
                   <div className="text-right text-sm text-neutral-500 ml-4 flex-shrink-0">
                     <div>
                       {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', {
@@ -324,18 +427,17 @@ export function Tramites() {
                 </div>
 
                 {/* Segunda línea: Badges y etiquetas */}
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center flex-wrap gap-2">
                   <span className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700 border border-neutral-300">
                     {getTipoTramiteLabel(tramite.tipo_tramite)}
                   </span>
                   {tramite.estatus && (
                     <span
-                      className="px-3 py-1 rounded-full text-xs font-semibold"
+                      className="px-3 py-1 rounded-full text-xs font-semibold border"
                       style={{
                         backgroundColor: tramite.estatus.color + '20',
                         color: tramite.estatus.color,
                         borderColor: tramite.estatus.color,
-                        borderWidth: '1px'
                       }}
                     >
                       {tramite.estatus.nombre}
