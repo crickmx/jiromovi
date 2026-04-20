@@ -201,13 +201,38 @@ export function TramiteDetalle() {
 
     if (data) {
       const categoria = tipoTramite ? (TIPO_TRAMITE_CATEGORIA[tipoTramite] ?? tipoTramite) : null;
-      const filtered = categoria
+      let filtered = categoria
         ? data.filter((e: any) =>
             !e.tipo_aplicable || e.tipo_aplicable.includes(categoria)
           )
         : data;
+
+      // Para cotizacion_emision, "Cerrado" no es seleccionable manualmente
+      // el cierre ocurre al elegir Emitido (Ganado) o No Emitido (Perdido)
+      if (tipoTramite === 'cotizacion_emision') {
+        filtered = filtered.filter((e: any) => e.nombre !== 'Cerrado');
+      }
+
       setEstatusList(filtered);
     }
+  };
+
+  const ESTATUS_FINALES_COTIZACION = ['Emitido (Ganado)', 'No Emitido (Perdido)'];
+
+  const buildUpdatePayload = (estatusId: string) => {
+    const estatus = estatusList.find(e => e.id === estatusId);
+    const esFinalCotizacion =
+      tramite?.tipo_tramite === 'cotizacion_emision' &&
+      estatus && ESTATUS_FINALES_COTIZACION.includes(estatus.nombre);
+
+    return {
+      estatus_id: estatusId,
+      prioridad: selectedPrioridad,
+      modificado_por: usuario!.id,
+      ...(esFinalCotizacion && !tramite?.cerrado_en
+        ? { cerrado_en: new Date().toISOString(), cerrado_por: usuario!.id }
+        : {}),
+    };
   };
 
   const handleSave = async () => {
@@ -226,11 +251,7 @@ export function TramiteDetalle() {
     try {
       const { error } = await supabase
         .from('tickets')
-        .update({
-          estatus_id: selectedEstatus,
-          prioridad: selectedPrioridad,
-          modificado_por: usuario.id
-        })
+        .update(buildUpdatePayload(selectedEstatus))
         .eq('id', tramite.id);
 
       if (error) throw error;
@@ -248,12 +269,10 @@ export function TramiteDetalle() {
   const handleQuickSave = async () => {
     if (!tramite || !usuario) return;
 
-    // Clear any pending save
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Debounce the save by 500ms
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
 
@@ -267,11 +286,7 @@ export function TramiteDetalle() {
       try {
         const { error } = await supabase
           .from('tickets')
-          .update({
-            estatus_id: selectedEstatus,
-            prioridad: selectedPrioridad,
-            modificado_por: usuario.id
-          })
+          .update(buildUpdatePayload(selectedEstatus))
           .eq('id', tramite.id);
 
         if (error) throw error;
