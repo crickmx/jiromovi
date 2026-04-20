@@ -43,15 +43,37 @@ export default function RegistroPersonal() {
   }, []);
 
   const cargarOficinas = async () => {
-    const { data, error } = await supabase
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-active-oficinas`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        if (Array.isArray(result.oficinas)) {
+          setOficinas(result.oficinas);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando oficinas vía edge function:', err);
+    }
+
+    const { data } = await supabase
       .from('oficinas')
       .select('id, nombre')
       .eq('activa', true)
       .order('nombre');
 
-    if (!error && data) {
-      setOficinas(data);
-    }
+    if (data) setOficinas(data);
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
