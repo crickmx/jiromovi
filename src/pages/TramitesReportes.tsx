@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   BarChart3, TrendingUp, Clock, CheckCircle2, AlertCircle, Users, Building2,
-  Calendar, Filter, Download, Search, ChevronDown, Eye, X, Settings
+  Calendar, Filter, Download, Search, ChevronDown, Eye, X, Settings,
+  AlertTriangle, Flame, Timer, Inbox, Activity
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
@@ -474,6 +475,81 @@ export default function TramitesReportes() {
     t.asignado_nombre?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // SLA en días para considerar un trámite como vencido
+  const SLA_DIAS = 7;
+  const ahora = new Date();
+  const diasDesde = (iso: string) =>
+    (ahora.getTime() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24);
+
+  const tramitesAbiertos = tramites.filter(t => t.estatus_calculado !== 'Finalizado');
+  const tramitesVencidos = tramitesAbiertos.filter(t => diasDesde(t.fecha_solicitud) > SLA_DIAS);
+  const altaPrioridadAbierta = tramitesAbiertos.filter(t => t.prioridad === 'Alta');
+  const altaPrioridadVencida = altaPrioridadAbierta.filter(t => diasDesde(t.fecha_solicitud) > SLA_DIAS);
+  const antiguedadMaxDias = tramitesAbiertos.reduce(
+    (max, t) => Math.max(max, diasDesde(t.fecha_solicitud)),
+    0
+  );
+  const backlog = tramitesAbiertos.length;
+
+  // Tiempo promedio de resolución por tipo
+  const tiempoResolucionPorTipo = tiposTramite
+    .map(tipo => {
+      const cerradosTipo = tramites.filter(
+        t => t.tipo_tramite === tipo && t.tiempo_resolucion_dias !== null
+      );
+      if (cerradosTipo.length === 0) return null;
+      const promedio =
+        cerradosTipo.reduce((s, t) => s + (t.tiempo_resolucion_dias || 0), 0) /
+        cerradosTipo.length;
+      return { tipo, promedio, cantidad: cerradosTipo.length };
+    })
+    .filter((x): x is { tipo: string; promedio: number; cantidad: number } => x !== null)
+    .sort((a, b) => b.promedio - a.promedio);
+
+  // Distribución por prioridad
+  const porPrioridad = prioridadOptions.map(p => ({
+    prioridad: p,
+    cantidad: tramites.filter(t => t.prioridad === p).length,
+    abiertos: tramitesAbiertos.filter(t => t.prioridad === p).length,
+  }));
+
+  // Tendencia últimas 8 semanas: creados vs finalizados
+  const semanasTendencia = (() => {
+    const buckets: Array<{ label: string; inicio: Date; fin: Date; creados: number; finalizados: number }> = [];
+    const hoy = new Date();
+    hoy.setHours(23, 59, 59, 999);
+    for (let i = 7; i >= 0; i--) {
+      const fin = new Date(hoy);
+      fin.setDate(hoy.getDate() - i * 7);
+      const inicio = new Date(fin);
+      inicio.setDate(fin.getDate() - 6);
+      inicio.setHours(0, 0, 0, 0);
+      buckets.push({
+        label: `${inicio.getDate()}/${inicio.getMonth() + 1}`,
+        inicio,
+        fin,
+        creados: 0,
+        finalizados: 0,
+      });
+    }
+    tramites.forEach(t => {
+      const creada = new Date(t.fecha_solicitud);
+      const b1 = buckets.find(b => creada >= b.inicio && creada <= b.fin);
+      if (b1) b1.creados += 1;
+      if (t.fecha_finalizacion) {
+        const fin = new Date(t.fecha_finalizacion);
+        const b2 = buckets.find(b => fin >= b.inicio && fin <= b.fin);
+        if (b2) b2.finalizados += 1;
+      }
+    });
+    return buckets;
+  })();
+  const maxSemana = Math.max(
+    1,
+    ...semanasTendencia.map(b => Math.max(b.creados, b.finalizados))
+  );
+  const maxTiempoResolucion = Math.max(1, ...tiempoResolucionPorTipo.map(t => t.promedio));
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -757,6 +833,186 @@ export default function TramitesReportes() {
                 ? ((kpis.tramites_finalizados / kpis.total_tramites) * 100).toFixed(1)
                 : 0}%
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alerta crítica */}
+      {altaPrioridadVencida.length > 0 && (
+        <div className="flex items-start gap-3 bg-red-50 border-l-4 border-red-500 rounded-xl p-5 shadow-sm">
+          <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="text-base font-semibold text-red-900">
+              Atención: {altaPrioridadVencida.length} trámite{altaPrioridadVencida.length !== 1 ? 's' : ''} de alta prioridad vencido{altaPrioridadVencida.length !== 1 ? 's' : ''}
+            </h4>
+            <p className="text-sm text-red-700 mt-1">
+              Superan el SLA de {SLA_DIAS} días sin finalizarse. Requieren atención inmediata.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Salud Operativa */}
+      <div>
+        <h2 className="text-xl font-bold text-neutral-900 mb-4 flex items-center gap-2">
+          <Activity className="w-6 h-6 text-accent" />
+          Salud Operativa
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-neutral-600">Backlog abierto</span>
+              <Inbox className="w-5 h-5 text-blue-500" />
+            </div>
+            <div className="text-3xl font-bold text-neutral-900">{backlog}</div>
+            <p className="text-xs text-neutral-500 mt-1">Pendientes + En Proceso</p>
+          </div>
+
+          <div className={`bg-white rounded-xl shadow-sm p-6 border-l-4 ${tramitesVencidos.length > 0 ? 'border-red-500' : 'border-neutral-200'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-neutral-600">Vencidos (&gt;{SLA_DIAS}d)</span>
+              <AlertTriangle className={`w-5 h-5 ${tramitesVencidos.length > 0 ? 'text-red-500' : 'text-neutral-400'}`} />
+            </div>
+            <div className={`text-3xl font-bold ${tramitesVencidos.length > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
+              {tramitesVencidos.length}
+            </div>
+            <p className="text-xs text-neutral-500 mt-1">
+              {backlog > 0 ? `${((tramitesVencidos.length / backlog) * 100).toFixed(0)}% del backlog` : 'Sin abiertos'}
+            </p>
+          </div>
+
+          <div className={`bg-white rounded-xl shadow-sm p-6 border-l-4 ${altaPrioridadAbierta.length > 0 ? 'border-orange-500' : 'border-neutral-200'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-neutral-600">Alta prioridad abierta</span>
+              <Flame className={`w-5 h-5 ${altaPrioridadAbierta.length > 0 ? 'text-orange-500' : 'text-neutral-400'}`} />
+            </div>
+            <div className="text-3xl font-bold text-neutral-900">{altaPrioridadAbierta.length}</div>
+            <p className="text-xs text-neutral-500 mt-1">
+              {altaPrioridadVencida.length > 0
+                ? `${altaPrioridadVencida.length} vencido${altaPrioridadVencida.length !== 1 ? 's' : ''}`
+                : 'Dentro del SLA'}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-amber-500">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-neutral-600">Más antiguo abierto</span>
+              <Timer className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="text-3xl font-bold text-neutral-900">
+              {antiguedadMaxDias.toFixed(0)}
+              <span className="text-base text-neutral-500 ml-1">días</span>
+            </div>
+            <p className="text-xs text-neutral-500 mt-1">Trámite abierto más viejo</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tendencia y prioridad */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+            Tendencia de carga (últimas 8 semanas)
+          </h3>
+          <div className="space-y-2">
+            {semanasTendencia.map((b, idx) => (
+              <div key={idx} className="flex items-center gap-3 text-xs">
+                <span className="w-12 text-neutral-500 font-mono">{b.label}</span>
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-neutral-100 rounded h-3 relative overflow-hidden">
+                      <div
+                        className="bg-blue-500 h-full rounded"
+                        style={{ width: `${(b.creados / maxSemana) * 100}%` }}
+                      />
+                    </div>
+                    <span className="w-10 text-right text-neutral-700 font-semibold">{b.creados}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-neutral-100 rounded h-3 relative overflow-hidden">
+                      <div
+                        className="bg-green-500 h-full rounded"
+                        style={{ width: `${(b.finalizados / maxSemana) * 100}%` }}
+                      />
+                    </div>
+                    <span className="w-10 text-right text-neutral-700 font-semibold">{b.finalizados}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-4 mt-4 text-xs text-neutral-600">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 bg-blue-500 rounded-sm inline-block" /> Creados
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 bg-green-500 rounded-sm inline-block" /> Finalizados
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">Distribución por prioridad</h3>
+          <div className="space-y-4">
+            {porPrioridad.map((item, idx) => {
+              const color =
+                item.prioridad === 'Alta' ? 'bg-red-500' :
+                item.prioridad === 'Media' ? 'bg-amber-500' : 'bg-green-500';
+              const total = tramites.length || 1;
+              return (
+                <div key={idx}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-neutral-700 font-medium">{item.prioridad}</span>
+                    <span className="text-neutral-600">
+                      <span className="font-semibold text-neutral-900">{item.cantidad}</span>
+                      {' · '}
+                      <span className="text-xs">{item.abiertos} abiertos</span>
+                    </span>
+                  </div>
+                  <div className="w-full bg-neutral-200 rounded-full h-2">
+                    <div
+                      className={`${color} h-2 rounded-full`}
+                      style={{ width: `${(item.cantidad / total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Tiempo promedio de resolución por tipo */}
+      {tiempoResolucionPorTipo.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5 text-neutral-600" />
+            <h3 className="text-lg font-semibold text-neutral-900">
+              Tiempo promedio de resolución por tipo
+            </h3>
+          </div>
+          <p className="text-sm text-neutral-500 mb-4">
+            Identifica los tipos de trámite que tardan más en cerrarse
+          </p>
+          <div className="space-y-3">
+            {tiempoResolucionPorTipo.map(item => (
+              <div key={item.tipo}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-neutral-700">{getTipoTramiteLabel(item.tipo)}</span>
+                  <span className="text-neutral-900">
+                    <span className="font-semibold">{item.promedio.toFixed(1)}</span>
+                    <span className="text-neutral-500 ml-1">días</span>
+                    <span className="text-xs text-neutral-400 ml-2">({item.cantidad} cerrados)</span>
+                  </span>
+                </div>
+                <div className="w-full bg-neutral-200 rounded-full h-2">
+                  <div
+                    className="bg-accent h-2 rounded-full"
+                    style={{ width: `${(item.promedio / maxTiempoResolucion) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
