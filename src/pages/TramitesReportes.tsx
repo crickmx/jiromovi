@@ -1146,6 +1146,96 @@ export default function TramitesReportes() {
                         No hay trámites de este tipo en el período seleccionado
                       </div>
                     )}
+
+                    {item.total > 0 && (() => {
+                      const listaTipo = tramites
+                        .filter(t => t.tipo_tramite === item.tipo)
+                        .sort((a, b) => new Date(b.fecha_solicitud).getTime() - new Date(a.fecha_solicitud).getTime());
+                      const MAX_INLINE = 20;
+                      const visibles = listaTipo.slice(0, MAX_INLINE);
+                      return (
+                        <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+                          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 bg-neutral-50">
+                            <h4 className="text-sm font-semibold text-neutral-900">
+                              Trámites de este tipo
+                              <span className="ml-2 text-xs font-normal text-neutral-500">
+                                {visibles.length} de {listaTipo.length}
+                              </span>
+                            </h4>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-neutral-50">
+                                <tr>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-700">Folio / Solicitante</th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-700">Agente</th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-700">Oficina</th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-700">Prioridad</th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-700">Estatus</th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-700">Fecha</th>
+                                  <th className="text-center py-2 px-3 text-xs font-semibold text-neutral-700">Tiempo</th>
+                                  <th className="text-center py-2 px-3 text-xs font-semibold text-neutral-700">Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {visibles.map((tramite) => (
+                                  <tr key={tramite.id} className="border-t border-neutral-100 hover:bg-neutral-50">
+                                    <td className="py-2 px-3">
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-mono text-blue-700 font-semibold">{tramite.folio}</span>
+                                        <span className="text-xs text-neutral-600">{tramite.solicitante_nombre}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2 px-3 text-sm text-neutral-700">{tramite.asignado_nombre || 'Sin asignar'}</td>
+                                    <td className="py-2 px-3 text-sm text-neutral-600">{tramite.oficina_nombre || 'N/A'}</td>
+                                    <td className="py-2 px-3">
+                                      <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
+                                        tramite.prioridad === 'Alta' ? 'bg-red-100 text-red-700' :
+                                        tramite.prioridad === 'Media' ? 'bg-amber-100 text-amber-700' :
+                                        'bg-neutral-100 text-neutral-700'
+                                      }`}>
+                                        {tramite.prioridad}
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-3">
+                                      <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
+                                        tramite.estatus_calculado === 'Finalizado' ? 'bg-green-100 text-green-700' :
+                                        tramite.estatus_calculado === 'En Proceso' ? 'bg-orange-100 text-orange-700' :
+                                        'bg-yellow-100 text-yellow-700'
+                                      }`}>
+                                        {tramite.estatus_calculado}
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-3 text-xs text-neutral-600">
+                                      {new Date(tramite.fecha_solicitud).toLocaleDateString('es-MX')}
+                                    </td>
+                                    <td className="py-2 px-3 text-center text-xs text-neutral-700">
+                                      {tramite.tiempo_resolucion_dias != null
+                                        ? `${tramite.tiempo_resolucion_dias.toFixed(1)} d`
+                                        : '—'}
+                                    </td>
+                                    <td className="py-2 px-3 text-center">
+                                      <button
+                                        onClick={() => handleVerTramite(tramite.id)}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                        Ver detalles
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          {listaTipo.length > MAX_INLINE && (
+                            <div className="px-4 py-2 text-xs text-neutral-500 bg-neutral-50 border-t border-neutral-200">
+                              Mostrando los {MAX_INLINE} más recientes. Usa la tabla "Detalle de Trámites" para ver el listado completo.
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
