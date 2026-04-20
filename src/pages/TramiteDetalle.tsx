@@ -147,8 +147,8 @@ export function TramiteDetalle() {
       cerrado_por_usuario: cerradoPorRes.data
     };
 
-    // Si es un registro de actividad, obtener datos adicionales
-    if (ticketData.tipo_tramite === 'registro_actividad') {
+    // Si es un registro de actividad o cotizacion_emision, obtener datos adicionales
+    if (ticketData.tipo_tramite === 'registro_actividad' || ticketData.tipo_tramite === 'cotizacion_emision') {
       const [subtypeRes, agenteUsuarioRes, insuranceRes, attendingRes] = await Promise.all([
         ticketData.activity_subtype_id ? supabase.from('tramite_activity_types').select('id, nombre').eq('id', ticketData.activity_subtype_id).maybeSingle() : Promise.resolve({ data: null }),
         ticketData.agente_usuario_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.agente_usuario_id).maybeSingle() : Promise.resolve({ data: null }),
@@ -181,6 +181,17 @@ export function TramiteDetalle() {
     await loadEstatus(ticketData.tipo_tramite);
   };
 
+  const TIPO_TRAMITE_CATEGORIA: Record<string, string> = {
+    cotizacion_emision: 'cotizacion_emision',
+    correccion_poliza_registrada: 'general',
+    correccion_comisiones: 'general',
+    registro_poliza: 'general',
+    lead_registro_movi: 'general',
+    solicitud_comisiones_pendientes: 'solicitud_comisiones',
+    cambio_bancario: 'cambio_bancario',
+    registro_actividad: 'registro_actividad',
+  };
+
   const loadEstatus = async (tipoTramite?: string) => {
     const { data } = await supabase
       .from('ticket_estatus')
@@ -189,9 +200,10 @@ export function TramiteDetalle() {
       .order('orden');
 
     if (data) {
-      const filtered = tipoTramite
+      const categoria = tipoTramite ? (TIPO_TRAMITE_CATEGORIA[tipoTramite] ?? tipoTramite) : null;
+      const filtered = categoria
         ? data.filter((e: any) =>
-            !e.tipo_aplicable || e.tipo_aplicable.includes(tipoTramite)
+            !e.tipo_aplicable || e.tipo_aplicable.includes(categoria)
           )
         : data;
       setEstatusList(filtered);
