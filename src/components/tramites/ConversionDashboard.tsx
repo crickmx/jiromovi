@@ -117,6 +117,22 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
     );
   }
 
+  const total = kpis.total_tramites;
+  const pctOf = (v: number): number =>
+    total > 0 ? Math.round((v / total) * 1000) / 10 : 0;
+  const fmtPct = (v: number): string => `${pctOf(v).toFixed(1)}%`;
+
+  if (total === 0) {
+    return (
+      <div className="text-center py-10 bg-neutral-50 rounded-lg">
+        <Target className="w-10 h-10 text-neutral-300 mx-auto mb-2" />
+        <p className="text-sm text-neutral-600">
+          No hay cotizaciones/emisiones registradas en el período seleccionado.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -124,8 +140,9 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
           <div className="flex items-center justify-between mb-1">
             <TrendingUp className="w-5 h-5 text-blue-600" />
           </div>
-          <p className="text-2xl font-bold text-neutral-900">{kpis.total_tramites}</p>
+          <p className="text-2xl font-bold text-neutral-900">{total}</p>
           <p className="text-xs text-neutral-600 mt-0.5">Total cotizaciones</p>
+          <p className="text-[11px] text-neutral-400 mt-0.5">100%</p>
         </div>
 
         <div className="bg-neutral-50 rounded-lg p-4">
@@ -134,6 +151,9 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
           </div>
           <p className="text-2xl font-bold text-green-600">{kpis.total_emitidos}</p>
           <p className="text-xs text-neutral-600 mt-0.5">Emitidos</p>
+          <p className="text-[11px] text-neutral-500 mt-0.5">
+            {fmtPct(kpis.total_emitidos)} del total
+          </p>
         </div>
 
         <div className="bg-neutral-50 rounded-lg p-4">
@@ -142,6 +162,9 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
           </div>
           <p className="text-2xl font-bold text-red-600">{kpis.total_no_emitidos}</p>
           <p className="text-xs text-neutral-600 mt-0.5">No emitidos</p>
+          <p className="text-[11px] text-neutral-500 mt-0.5">
+            {fmtPct(kpis.total_no_emitidos)} del total
+          </p>
         </div>
 
         <div className="bg-neutral-50 rounded-lg p-4">
@@ -150,6 +173,9 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
           </div>
           <p className="text-2xl font-bold text-amber-600">{kpis.total_en_proceso}</p>
           <p className="text-xs text-neutral-600 mt-0.5">En proceso</p>
+          <p className="text-[11px] text-neutral-500 mt-0.5">
+            {fmtPct(kpis.total_en_proceso)} del total
+          </p>
         </div>
 
         <div className="bg-neutral-50 rounded-lg p-4">
@@ -157,29 +183,45 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
             <Target className="w-5 h-5 text-blue-600" />
           </div>
           <p className={`text-2xl font-bold ${getTasaColor(kpis.tasa_conversion)}`}>
-            {kpis.tasa_conversion ? `${kpis.tasa_conversion}%` : '0%'}
+            {kpis.tasa_conversion != null ? `${Number(kpis.tasa_conversion).toFixed(1)}%` : '0.0%'}
           </p>
           <p className="text-xs text-neutral-600 mt-0.5">Tasa de conversión</p>
+          <p className="text-[11px] text-neutral-500 mt-0.5">
+            {kpis.total_emitidos} de {total}
+          </p>
         </div>
       </div>
 
       <div>
-        <h4 className="text-sm font-semibold text-neutral-900 mb-3">Distribución de resultados</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-neutral-900">Distribución de resultados</h4>
+          <span className="text-xs text-neutral-500">
+            Total: <span className="font-semibold text-neutral-900">{total}</span> trámites
+          </span>
+        </div>
         <div className="space-y-3">
           {[
             { label: 'Emitidos', value: kpis.total_emitidos, color: 'bg-green-600', text: 'text-green-600' },
             { label: 'No emitidos', value: kpis.total_no_emitidos, color: 'bg-red-600', text: 'text-red-600' },
             { label: 'En proceso', value: kpis.total_en_proceso, color: 'bg-amber-500', text: 'text-amber-600' },
           ].map((row) => {
-            const pct = kpis.total_tramites > 0 ? Math.round((row.value / kpis.total_tramites) * 100) : 0;
+            const pct = pctOf(row.value);
             return (
               <div key={row.label}>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm text-neutral-700">{row.label}</span>
-                  <span className={`text-sm font-semibold ${row.text}`}>{row.value} ({pct}%)</span>
+                  <span className="text-sm text-neutral-600">
+                    <span className={`font-semibold ${row.text}`}>{row.value}</span>
+                    <span className="text-neutral-400 mx-1">/</span>
+                    <span>{total}</span>
+                    <span className={`ml-2 font-semibold ${row.text}`}>{pct.toFixed(1)}%</span>
+                  </span>
                 </div>
                 <div className="w-full bg-neutral-200 rounded-full h-2.5">
-                  <div className={`${row.color} h-2.5 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                  <div
+                    className={`${row.color} h-2.5 rounded-full transition-all`}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
               </div>
             );
