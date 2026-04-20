@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   BarChart3, TrendingUp, Clock, CheckCircle2, AlertCircle, Users, Building2,
-  Calendar, Filter, Download, Search, ChevronDown, Eye, X, Settings,
-  AlertTriangle, Flame, Timer, Inbox, Activity
+  Filter, Download, Search, ChevronDown, Eye, X,
+  AlertTriangle, Flame, Timer, Inbox, Activity, Target
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
@@ -110,6 +110,7 @@ export default function TramitesReportes() {
   // Vista de trámites por usuario
   const [showTramitesPorUsuario, setShowTramitesPorUsuario] = useState(false);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
+  const [expandedTipo, setExpandedTipo] = useState<string | null>('cotizacion_emision');
 
   // Modal de gestión de grupos
   const [showGruposModal, setShowGruposModal] = useState(false);
@@ -449,11 +450,22 @@ export default function TramitesReportes() {
       registro_poliza: 'Registro de póliza',
       solicitud_comisiones_pendientes: 'Solicitud de comisiones',
       registro_actividad: 'Registro de actividades',
+      lead_registro_movi: 'Lead / Registro MOVI',
+      cambio_bancario: 'Cambio bancario',
     };
     return labels[tipo] || tipo.replace(/_/g, ' ');
   };
 
-  const tiposTramite = ['cotizacion_emision', 'correccion_poliza_registrada', 'correccion_comisiones', 'registro_poliza', 'solicitud_comisiones_pendientes', 'registro_actividad'];
+  const tiposTramite = [
+    'cotizacion_emision',
+    'correccion_poliza_registrada',
+    'correccion_comisiones',
+    'registro_poliza',
+    'solicitud_comisiones_pendientes',
+    'registro_actividad',
+    'lead_registro_movi',
+    'cambio_bancario',
+  ];
   const estatusOptions = ['Pendiente', 'En Proceso', 'Finalizado'];
   const prioridadOptions = ['Alta', 'Media', 'Baja'];
 
@@ -549,6 +561,30 @@ export default function TramitesReportes() {
     ...semanasTendencia.map(b => Math.max(b.creados, b.finalizados))
   );
   const maxTiempoResolucion = Math.max(1, ...tiempoResolucionPorTipo.map(t => t.promedio));
+
+  // KPIs por tipo de trámite
+  const kpisPorTipo = tiposTramite.map(tipo => {
+    const delTipo = tramites.filter(t => t.tipo_tramite === tipo);
+    const abiertos = delTipo.filter(t => t.estatus_calculado !== 'Finalizado');
+    const cerrados = delTipo.filter(t => t.estatus_calculado === 'Finalizado');
+    const vencidos = abiertos.filter(t => diasDesde(t.fecha_solicitud) > SLA_DIAS);
+    const conTiempo = delTipo.filter(t => t.tiempo_resolucion_dias !== null);
+    const tiempoPromedio = conTiempo.length > 0
+      ? conTiempo.reduce((s, t) => s + (t.tiempo_resolucion_dias || 0), 0) / conTiempo.length
+      : 0;
+    const porcentajeFinalizacion = delTipo.length > 0
+      ? (cerrados.length / delTipo.length) * 100
+      : 0;
+    return {
+      tipo,
+      total: delTipo.length,
+      abiertos: abiertos.length,
+      cerrados: cerrados.length,
+      vencidos: vencidos.length,
+      tiempoPromedio,
+      porcentajeFinalizacion,
+    };
+  });
 
   return (
     <div className="p-6 space-y-6">
@@ -743,30 +779,6 @@ export default function TramitesReportes() {
             </select>
           </div>
         </div>
-      </div>
-
-      {/* Dashboard de Conversión de Cotizaciones/Emisiones */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm p-6 border-2 border-blue-200 dark:border-blue-800">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <TrendingUp className="w-7 h-7 text-blue-600" />
-              Dashboard de Conversión: Cotizaciones y Emisiones
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Análisis específico de trámites tipo Cotización/Emisión con métricas de conversión
-            </p>
-          </div>
-        </div>
-        <ConversionDashboard />
-      </div>
-
-      {/* Sección de Métricas Generales de Productividad */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-          <BarChart3 className="w-7 h-7 text-purple-600" />
-          Métricas Generales de Productividad (Todos los Trámites)
-        </h2>
       </div>
 
       {/* KPIs */}
@@ -1016,6 +1028,131 @@ export default function TramitesReportes() {
           </div>
         </div>
       )}
+
+      {/* Análisis por Tipo de Trámite */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-2">
+          <BarChart3 className="w-6 h-6 text-blue-600" />
+          <h2 className="text-xl font-bold text-neutral-900">Análisis por Tipo de Trámite</h2>
+        </div>
+        <p className="text-sm text-neutral-500 mb-5">
+          KPIs individuales por cada tipo de trámite. Haz clic en una tarjeta para ver el desglose.
+        </p>
+
+        <div className="space-y-3">
+          {kpisPorTipo.map(item => {
+            const isExpanded = expandedTipo === item.tipo;
+            const isCotizacion = item.tipo === 'cotizacion_emision';
+            const porcentajeColor =
+              item.porcentajeFinalizacion >= 70 ? 'text-green-600' :
+              item.porcentajeFinalizacion >= 40 ? 'text-amber-600' : 'text-red-600';
+            return (
+              <div
+                key={item.tipo}
+                className={`border rounded-xl overflow-hidden transition-all ${
+                  isExpanded ? 'border-blue-400 shadow-md' : 'border-neutral-200'
+                }`}
+              >
+                <button
+                  onClick={() => setExpandedTipo(isExpanded ? null : item.tipo)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-neutral-50 transition-colors"
+                >
+                  <div className="flex items-center gap-4 text-left">
+                    <div className={`p-2 rounded-lg ${isCotizacion ? 'bg-blue-100' : 'bg-neutral-100'}`}>
+                      {isCotizacion
+                        ? <TrendingUp className="w-5 h-5 text-blue-600" />
+                        : <BarChart3 className="w-5 h-5 text-neutral-600" />}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-neutral-900">{getTipoTramiteLabel(item.tipo)}</div>
+                      <div className="text-xs text-neutral-500">
+                        {item.total} totales · {item.abiertos} abiertos · {item.cerrados} cerrados
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-5">
+                    <div className="hidden md:flex items-center gap-5 text-sm">
+                      {item.vencidos > 0 && (
+                        <span className="inline-flex items-center gap-1 text-red-600 font-semibold">
+                          <AlertTriangle className="w-4 h-4" />
+                          {item.vencidos} vencidos
+                        </span>
+                      )}
+                      <span className="text-neutral-600">
+                        <span className="font-semibold text-neutral-900">{item.tiempoPromedio.toFixed(1)}</span>
+                        <span className="text-xs ml-1">días prom.</span>
+                      </span>
+                      <span className={`font-bold ${porcentajeColor}`}>
+                        {item.porcentajeFinalizacion.toFixed(0)}%
+                      </span>
+                    </div>
+                    <ChevronDown className={`w-5 h-5 text-neutral-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="border-t border-neutral-200 p-5 bg-neutral-50/50 space-y-5">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                        <div className="text-xs text-neutral-600">Total</div>
+                        <div className="text-2xl font-bold text-neutral-900">{item.total}</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                        <div className="text-xs text-neutral-600">Abiertos</div>
+                        <div className="text-2xl font-bold text-blue-600">{item.abiertos}</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                        <div className="text-xs text-neutral-600">Cerrados</div>
+                        <div className="text-2xl font-bold text-green-600">{item.cerrados}</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                        <div className="text-xs text-neutral-600">Vencidos</div>
+                        <div className={`text-2xl font-bold ${item.vencidos > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
+                          {item.vencidos}
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                        <div className="text-xs text-neutral-600">Tiempo prom.</div>
+                        <div className="text-2xl font-bold text-neutral-900">
+                          {item.tiempoPromedio.toFixed(1)}
+                          <span className="text-sm text-neutral-500 ml-1">d</span>
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                        <div className="text-xs text-neutral-600">% Finalización</div>
+                        <div className={`text-2xl font-bold ${porcentajeColor}`}>
+                          {item.porcentajeFinalizacion.toFixed(0)}%
+                        </div>
+                      </div>
+                    </div>
+
+                    {isCotizacion && fechaInicio && fechaFin && (
+                      <div className="bg-white rounded-lg p-5 border border-blue-200">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Target className="w-5 h-5 text-blue-600" />
+                          <h3 className="font-semibold text-neutral-900">Conversión: Cotizaciones y Emisiones</h3>
+                        </div>
+                        <ConversionDashboard
+                          fechaInicio={fechaInicio}
+                          fechaFin={fechaFin}
+                          oficinaId={oficinaFiltro || undefined}
+                          usuarioId={usuarioFiltro || undefined}
+                        />
+                      </div>
+                    )}
+
+                    {item.total === 0 && !isCotizacion && (
+                      <div className="text-center text-sm text-neutral-500 py-4">
+                        No hay trámites de este tipo en el período seleccionado
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Gráficas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
