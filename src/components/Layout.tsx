@@ -97,6 +97,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: isAdmin ? '/comisiones' : '/mis-comisiones', label: 'Comisiones', icon: DollarSign, show: !isEmpleado && !isAgente },
     { path: '/mi-produccion', label: 'Mi Producción', icon: TrendingUp, show: false },
     { path: '/mi-produccion-sicas', label: 'Mi Producción SICAS', icon: Database, show: !isEmpleado && !isAgente },
+    { path: '/mi-produccion-sicas-live', label: 'Producción SICAS Live', icon: Activity, show: !isEmpleado && !isAgente },
     { path: '/produccion/total', label: 'Producción por Oficina', icon: Building, show: isAdminOrGerente },
     { path: '/produccion/por-vendedor', label: 'Producción por Vendedor', icon: Users, show: isAdminOrGerente },
     { path: '/mi-crm', label: 'Mi CRM', icon: Briefcase, show: true },

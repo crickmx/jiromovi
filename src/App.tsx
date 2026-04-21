@@ -91,6 +91,7 @@ import CargaMasivaUsuarios from './pages/CargaMasivaUsuarios';
 import RegistroPersonal from './pages/RegistroPersonal';
 import RegimenFiscalAdmin from './pages/RegimenFiscalAdmin';
 import RegimenFiscalEditor from './pages/RegimenFiscalEditor';
+import ProduccionSICASLive from './pages/ProduccionSICASLive';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -868,6 +869,7 @@ function App() {
               <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion" element={<ProtectedRoute><Layout><MiProduccion /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion-sicas" element={<ProtectedRoute><Layout><MiProduccionSICAS /></Layout></ProtectedRoute>} />
+              <Route path="/mi-produccion-sicas-live" element={<ProtectedRoute><Layout><ProduccionSICASLive /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion-sicas-soap" element={<ProtectedRoute><Layout><MiProduccionSICASMirror /></Layout></ProtectedRoute>} />
               <Route path="/mis-polizas" element={<ProtectedRoute><Layout><MisPolizas /></Layout></ProtectedRoute>} />
               <Route path="/produccion/por-vendedor" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionPorVendedor /></Layout></ProtectedRoute>} />
