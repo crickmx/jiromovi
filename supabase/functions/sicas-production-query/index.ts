@@ -169,9 +169,7 @@ function buildConditions(
   const parts: string[] = [];
 
   // Vendor filter: skip when "ALL" (admin all-production mode)
-  const conditionsDirect = mapping.sicas_vendor_id === "ALL"
-    ? ""
-    : `${config.report_filter_field} IN (${mapping.sicas_vendor_id})`;
+  const conditionsDirect = buildVendorConditionsDirect(config, mapping);
 
   if (params.status) {
     const statusMap: Record<string, string> = {
@@ -212,6 +210,20 @@ function buildConditions(
     conditions: parts.join(" AND "),
     conditionsDirect,
   };
+}
+
+function buildVendorConditionsDirect(
+  config: ProductionConfig,
+  mapping: UserMapping
+): string {
+  if (mapping.sicas_vendor_id === "ALL") return "";
+  const vid = mapping.sicas_vendor_id;
+  // For multiple vendor IDs (gerente multi-vendor mode), use IN syntax
+  if (vid.includes(",")) {
+    return `${config.report_filter_field} IN (${vid})`;
+  }
+  // For single vendor ID, use = for better compatibility
+  return `${config.report_filter_field}=${vid}`;
 }
 
 function selectKeyCode(
@@ -311,18 +323,19 @@ async function handleDocuments(
   const startTime = Date.now();
   const pageSize = Math.min(
     params.pageSize || config.default_page_size,
-    100
+    500
   );
   const page = params.page || 1;
   const keyCode = selectKeyCode(config, params.type || "all");
   const { conditions, conditionsDirect } = buildConditions(config, mapping, params);
   const isAllMode = mapping.sicas_vendor_id === "ALL";
+  const vendorIdStr = String(mapping.sicas_vendor_id);
 
   const sortField = params.sortField || "DatDocumentos.FDesde";
   const sortDir = (params.sortDirection || "desc").toUpperCase();
 
   console.log(
-    `[SICASProd] documents keyCode=${keyCode} page=${page} pageSize=${pageSize} allMode=${isAllMode}`
+    `[SICASProd] documents keyCode=${keyCode} page=${page} pageSize=${pageSize} allMode=${isAllMode} vendorId=${vendorIdStr}`
   );
   console.log(`[SICASProd] conditions: ${conditions}`);
   console.log(`[SICASProd] conditionsDirect: ${conditionsDirect || "(none - all vendors)"}`);
@@ -339,6 +352,7 @@ async function handleDocuments(
 
   const records = response.Response?.[0]?.TableInfo || [];
   const control = response.Response?.[0]?.TableControl?.[0];
+  console.log(`[SICASProd] documents SICAS returned ${records.length} records, MaxRecords=${control?.MaxRecords || "?"}, Pages=${control?.Pages || "?"}`);
   const allItems = records.map(normalizeRecord);
 
   // Client-side vendor filter safety net (skip in ALL mode)
@@ -346,23 +360,22 @@ async function handleDocuments(
   if (isAllMode) {
     items = allItems;
   } else {
-    const vendorId = String(mapping.sicas_vendor_id);
     items = allItems.filter(d => {
       const docVendId = String(d.vendedorId || "");
-      if (vendorId.includes(",")) {
-        const vendorIds = vendorId.split(",").map(v => v.trim());
+      if (vendorIdStr.includes(",")) {
+        const vendorIds = vendorIdStr.split(",").map(v => v.trim());
         return !docVendId || vendorIds.includes(docVendId);
       }
-      return !docVendId || docVendId === vendorId;
+      return !docVendId || docVendId === vendorIdStr;
     });
     if (items.length < allItems.length) {
-      console.log(`[SICASProd] documents: client-side vendor filter removed ${allItems.length - items.length} records not belonging to vendorId=${vendorId}`);
+      console.log(`[SICASProd] documents: client-side vendor filter removed ${allItems.length - items.length} records not belonging to vendorId=${vendorIdStr}`);
     }
   }
 
   const duration = Date.now() - startTime;
   console.log(
-    `[SICASProd] documents returned ${items.length} records (vendorId=${mapping.sicas_vendor_id}) in ${duration}ms`
+    `[SICASProd] documents returned ${items.length} records (vendorId=${vendorIdStr}) in ${duration}ms`
   );
 
   return jsonResponse(200, {
@@ -378,7 +391,7 @@ async function handleDocuments(
       keyCode,
       duration,
       filtersApplied: conditions,
-      vendorId,
+      vendorId: vendorIdStr,
     },
   });
 }
@@ -392,9 +405,7 @@ async function handleSummary(
 ): Promise<Response> {
   const startTime = Date.now();
   const isAllMode = mapping.sicas_vendor_id === "ALL";
-  const conditionsDirect = isAllMode
-    ? ""
-    : `${config.report_filter_field} IN (${mapping.sicas_vendor_id})`;
+  const conditionsDirect = buildVendorConditionsDirect(config, mapping);
 
   console.log(`[SICASProd] summary for vendorId=${mapping.sicas_vendor_id} (allMode=${isAllMode})`);
   console.log(`[SICASProd] summary conditionsDirect: ${conditionsDirect || "(none - all vendors)"}`);
@@ -497,7 +508,8 @@ async function handleDetail(
   );
 
   // Ownership validation: query user's documents with this ID
-  const ownershipConditionsDirect = `${config.report_filter_field} IN (${mapping.sicas_vendor_id})`;
+  const ownershipCd = buildVendorConditionsDirect(config, mapping);
+  const ownershipConditionsDirect = ownershipCd || undefined;
   const ownershipConditions = `DatDocumentos.IDDocto=${idDocto}`;
 
   const checkResponse = await client.readReport({
@@ -660,9 +672,7 @@ async function handleDashboard(
 ): Promise<Response> {
   const startTime = Date.now();
   const isAllMode = mapping.sicas_vendor_id === "ALL";
-  const conditionsDirect = isAllMode
-    ? ""
-    : `${config.report_filter_field} IN (${mapping.sicas_vendor_id})`;
+  const conditionsDirect = buildVendorConditionsDirect(config, mapping);
 
   // Determine date range
   const now = new Date();
@@ -706,36 +716,56 @@ async function handleDashboard(
   if (filters.ramo) condParts.push(`DatDocumentos.Ramo LIKE '%${filters.ramo.replace(/'/g, "")}%'`);
   if (filters.aseguradora) condParts.push(`DatDocumentos.Abreviacion LIKE '%${filters.aseguradora.replace(/'/g, "")}%'`);
 
+  // For dashboard: only send date filters to SICAS API when NOT in ALL mode to avoid
+  // fetching the entire database. In ALL mode, use date filters. For single/multi vendor,
+  // fetch all records to get proper renewals, vigentes, variations, etc.
+  const apiCondParts: string[] = [];
+  if (isAllMode) {
+    // ALL mode: always send date filters to SICAS to limit result set
+    if (filters.fechaDesde) apiCondParts.push(`DatDocumentos.FDesde>=${filters.fechaDesde}`);
+    if (filters.fechaHasta) apiCondParts.push(`DatDocumentos.FDesde<=${filters.fechaHasta}`);
+  }
+  // Add non-date filter conditions (these apply to all modes)
+  for (const cp of condParts) {
+    if (!cp.startsWith("DatDocumentos.FDesde")) apiCondParts.push(cp);
+  }
+
   console.log(`[SICASProd] dashboard for vendorId=${mapping.sicas_vendor_id} (${mapping.sicas_vendor_name}) periodo=${periodoLabel} allMode=${isAllMode}`);
   console.log(`[SICASProd] dashboard conditionsDirect: ${conditionsDirect || "(none - all vendors)"}`);
-  if (condParts.length > 0) console.log(`[SICASProd] dashboard conditions: ${condParts.join(" AND ")}`);
+  if (apiCondParts.length > 0) console.log(`[SICASProd] dashboard API conditions: ${apiCondParts.join(" AND ")}`);
 
-  // Fetch large batch - up to 1000 records for full analysis
+  // Fetch records with pagination - increase limits for thorough analysis
   const allRecords: Record<string, unknown>[] = [];
   let page = 1;
-  const maxPages = 5;
+  const maxPages = isAllMode ? 5 : 20;
+  const pageSize = isAllMode ? 200 : 500;
   let totalInSicas = 0;
 
   while (page <= maxPages) {
     const response = await client.readReport({
       keyCode: config.report_keycode_all,
       pageRequested: page,
-      itemsForPage: 200,
+      itemsForPage: pageSize,
       conditionsDirect: conditionsDirect || undefined,
-      conditions: condParts.length > 0 ? condParts.join(" AND ") : undefined,
+      conditions: apiCondParts.length > 0 ? apiCondParts.join(" AND ") : undefined,
       sortFields: "DatDocumentos.FDesde DESC",
     });
 
     const records = response.Response?.[0]?.TableInfo || [];
     const control = response.Response?.[0]?.TableControl?.[0];
-    if (page === 1) totalInSicas = control?.MaxRecords || records.length;
+    if (page === 1) {
+      totalInSicas = control?.MaxRecords || records.length;
+      console.log(`[SICASProd] dashboard SICAS reports MaxRecords=${totalInSicas} Pages=${control?.Pages || "?"} ItemForPage=${control?.ItemForPage || "?"}`);
+    }
 
     allRecords.push(...records);
 
-    if (!control || page >= (control.Pages || 1) || records.length === 0) break;
+    const totalPages = control?.Pages || 1;
+    if (records.length === 0 || page >= totalPages) break;
     page++;
   }
 
+  console.log(`[SICASProd] dashboard fetched ${allRecords.length} raw records across ${page} pages (totalInSicas=${totalInSicas})`);
   const docs = allRecords.map(normalizeRecord);
 
   // Client-side vendor filter: skip in ALL mode (admin viewing all production)
