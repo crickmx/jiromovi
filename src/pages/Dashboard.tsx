@@ -385,7 +385,7 @@ export function Dashboard() {
           >
             <div className="flex items-center justify-between mb-2">
               <img
-                src="/logojiro.png"
+                src="/movirecurso_11.png"
                 alt="Seguros Education"
                 className="w-8 h-8 object-contain group-hover:scale-110 transition-transform"
               />
@@ -570,7 +570,7 @@ export function Dashboard() {
         >
           <div className="flex items-center justify-between mb-2">
             <img
-              src="/logojiro.png"
+              src="/movirecurso_11.png"
               alt="Seguros Education"
               className="w-8 h-8 object-contain group-hover:scale-110 transition-transform"
             />
