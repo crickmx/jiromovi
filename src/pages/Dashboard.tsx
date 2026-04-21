@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Users, Building2, Cake, Award, ExternalLink, Sparkles, TrendingUp,
-  Settings, DollarSign, Receipt, ClipboardList, Image, UserPlus,
-  MessageSquare, FileText, Package, Clock, RefreshCw
+  Users, Building2, Cake, Award, ExternalLink, Sparkles,
+  Settings, ClipboardList, UserPlus,
+  MessageSquare, Package, RefreshCw, Megaphone
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
@@ -347,36 +347,14 @@ export function Dashboard() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div
-            onClick={() => navigate('/mis-comisiones')}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <DollarSign className="w-8 h-8 text-green-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <p className="text-sm font-semibold text-gray-900">Mis Comisiones</p>
-            <p className="text-xs text-gray-600 mt-1">Ver historial</p>
-          </div>
-
-          <div
             onClick={() => navigate('/tramites')}
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between mb-2">
               <ClipboardList className="w-8 h-8 text-accent group-hover:scale-110 transition-transform" />
             </div>
-            <p className="text-sm font-semibold text-gray-900">Trámites</p>
+            <p className="text-sm font-semibold text-gray-900">Tramites</p>
             <p className="text-xs text-gray-600 mt-1">Ver todos</p>
-          </div>
-
-          <div
-            onClick={() => navigate('/publicidad')}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <Image className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <p className="text-sm font-semibold text-gray-900">Publicidad</p>
-            <p className="text-xs text-gray-600 mt-1">Ver materiales</p>
           </div>
 
           <div
@@ -388,6 +366,32 @@ export function Dashboard() {
             </div>
             <p className="text-sm font-semibold text-gray-900">Mi CRM</p>
             <p className="text-xs text-gray-600 mt-1">Gestionar contactos</p>
+          </div>
+
+          <div
+            onClick={() => navigate('/mercadotecnia')}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <Megaphone className="w-8 h-8 text-teal-600 group-hover:scale-110 transition-transform" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">Mercadotecnia</p>
+            <p className="text-xs text-gray-600 mt-1">Mi marca y web</p>
+          </div>
+
+          <div
+            onClick={() => navigate('/seguros-education')}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <img
+                src="/logojiro.png"
+                alt="Seguros Education"
+                className="w-8 h-8 object-contain group-hover:scale-110 transition-transform"
+              />
+            </div>
+            <p className="text-sm font-semibold text-gray-900">Seguros Education</p>
+            <p className="text-xs text-gray-600 mt-1">Capacitacion</p>
           </div>
         </div>
 
@@ -528,47 +532,51 @@ export function Dashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div
-          onClick={() => navigate('/comisiones')}
-          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <Receipt className="w-8 h-8 text-green-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <p className="text-sm font-semibold text-gray-900">Comisiones</p>
-          <p className="text-xs text-gray-600 mt-1">Gestionar lotes</p>
-        </div>
-
-        <div
-          onClick={() => navigate('/produccion/total')}
-          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="w-8 h-8 text-accent group-hover:scale-110 transition-transform" />
-          </div>
-          <p className="text-sm font-semibold text-gray-900">Producción</p>
-          <p className="text-xs text-gray-600 mt-1">Ver reportes</p>
-        </div>
-
-        <div
           onClick={() => navigate('/tramites')}
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
-            <FileText className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
+            <ClipboardList className="w-8 h-8 text-accent group-hover:scale-110 transition-transform" />
           </div>
-          <p className="text-sm font-semibold text-gray-900">Trámites</p>
+          <p className="text-sm font-semibold text-gray-900">Tramites</p>
           <p className="text-xs text-gray-600 mt-1">Ver todos</p>
         </div>
 
         <div
-          onClick={() => navigate('/comunicados')}
+          onClick={() => navigate('/mi-crm')}
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
-            <MessageSquare className="w-8 h-8 text-orange-500 group-hover:scale-110 transition-transform" />
+            <UserPlus className="w-8 h-8 text-orange-500 group-hover:scale-110 transition-transform" />
           </div>
-          <p className="text-sm font-semibold text-gray-900">Comunicados</p>
-          <p className="text-xs text-gray-600 mt-1">Publicar nuevo</p>
+          <p className="text-sm font-semibold text-gray-900">Mi CRM</p>
+          <p className="text-xs text-gray-600 mt-1">Gestionar contactos</p>
+        </div>
+
+        <div
+          onClick={() => navigate('/mercadotecnia')}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <Megaphone className="w-8 h-8 text-teal-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <p className="text-sm font-semibold text-gray-900">Mercadotecnia</p>
+          <p className="text-xs text-gray-600 mt-1">Mi marca y web</p>
+        </div>
+
+        <div
+          onClick={() => navigate('/seguros-education')}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <img
+              src="/logojiro.png"
+              alt="Seguros Education"
+              className="w-8 h-8 object-contain group-hover:scale-110 transition-transform"
+            />
+          </div>
+          <p className="text-sm font-semibold text-gray-900">Seguros Education</p>
+          <p className="text-xs text-gray-600 mt-1">Capacitacion</p>
         </div>
       </div>
 
