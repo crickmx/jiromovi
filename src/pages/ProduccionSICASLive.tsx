@@ -10,7 +10,7 @@ import {
 import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
 import SicasDashboardKPIs from '../components/produccion/SicasDashboardKPIs';
 import SicasDashboardCharts from '../components/produccion/SicasDashboardCharts';
-import SicasDashboardFilters, { type DashboardFilterState } from '../components/produccion/SicasDashboardFilters';
+import SicasDashboardFilters, { type DashboardFilterState, getCurrentMonthRange } from '../components/produccion/SicasDashboardFilters';
 import SicasRenovacionesPanel from '../components/produccion/SicasRenovacionesPanel';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -117,11 +117,6 @@ function statusColor(status: string): string {
   return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
 }
 
-function getCurrentPeriodo(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
 // ─── Export Utils ────────────────────────────────────────────────────────────
 
 function exportToCSV(documents: SicasDocument[], filename: string) {
@@ -180,17 +175,21 @@ export default function ProduccionSICASLive() {
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Filters
-  const [filters, setFilters] = useState<DashboardFilterState>({
-    periodo: getCurrentPeriodo(),
-    type: 'all',
-    status: '',
-    ramo: '',
-    subramo: '',
-    aseguradora: '',
-    cliente: '',
-    moneda: '',
-    agente: '',
-    search: '',
+  const [filters, setFilters] = useState<DashboardFilterState>(() => {
+    const { fechaDesde, fechaHasta } = getCurrentMonthRange();
+    return {
+      fechaDesde,
+      fechaHasta,
+      type: 'all',
+      status: '',
+      ramo: '',
+      subramo: '',
+      aseguradora: '',
+      cliente: '',
+      moneda: '',
+      agente: '',
+      search: '',
+    };
   });
 
   // Table-specific state
@@ -236,7 +235,8 @@ export default function ProduccionSICASLive() {
     try {
       const body: Record<string, unknown> = {
         action: 'dashboard',
-        periodo: filters.periodo,
+        fechaDesde: filters.fechaDesde,
+        fechaHasta: filters.fechaHasta,
         type: filters.type,
         status: filters.status || undefined,
         ramo: filters.ramo || undefined,
@@ -277,6 +277,8 @@ export default function ProduccionSICASLive() {
         type: filters.type,
         sortField,
         sortDirection: sortDir,
+        fechaDesde: filters.fechaDesde,
+        fechaHasta: filters.fechaHasta,
       };
       if (canSelectVendor && selectedVendorId) body.vendorId = selectedVendorId;
       if (filters.search) body.search = filters.search;
@@ -336,7 +338,7 @@ export default function ProduccionSICASLive() {
   };
 
   const handleExport = (format: 'csv' | 'excel') => {
-    const filename = `produccion-sicas-${filters.periodo}`;
+    const filename = `produccion-sicas-${filters.fechaDesde}_${filters.fechaHasta}`;
     if (format === 'csv') exportToCSV(documents, filename);
     else exportToExcel(documents, filename);
   };
@@ -394,7 +396,7 @@ export default function ProduccionSICASLive() {
   const charts = dashboardData?.charts as Record<string, unknown> | undefined;
   const renewals = (dashboardData?.renewals || []) as SicasDocument[];
   const availableFilters = dashboardData?.availableFilters as { ramos: string[]; subramos: string[]; aseguradoras: string[]; monedas: string[] } | undefined;
-  const periodo = (dashboardData?.periodo || filters.periodo) as string;
+  const periodo = (dashboardData?.periodo || `${filters.fechaDesde} - ${filters.fechaHasta}`) as string;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 md:p-6">

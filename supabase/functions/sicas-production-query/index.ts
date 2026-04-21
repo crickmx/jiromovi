@@ -612,9 +612,8 @@ function normalizeDetailValues(
 // ─── Action: dashboard (full KPIs + chart series + top lists) ───────────────
 
 interface DashboardFilters {
-  periodo?: string; // "2026-04" format
-  periodoDesde?: string;
-  periodoHasta?: string;
+  fechaDesde?: string; // "2026-04-01" format (YYYY-MM-DD)
+  fechaHasta?: string; // "2026-04-30" format (YYYY-MM-DD)
   type?: "all" | "policies" | "bonds";
   status?: string;
   ramo?: string;
@@ -633,9 +632,6 @@ function parseDate(s: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function sameMonth(d: Date, year: number, month: number): boolean {
-  return d.getFullYear() === year && d.getMonth() === month;
-}
 
 function daysBetween(a: Date, b: Date): number {
   return Math.ceil((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
@@ -650,19 +646,36 @@ async function handleDashboard(
   const startTime = Date.now();
   const conditionsDirect = `${config.report_filter_field} IN (${mapping.sicas_vendor_id})`;
 
-  // Determine period
+  // Determine date range
   const now = new Date();
-  let periodoYear = now.getFullYear();
-  let periodoMonth = now.getMonth(); // 0-indexed
-  if (filters.periodo) {
-    const [y, m] = filters.periodo.split("-").map(Number);
-    if (y && m) { periodoYear = y; periodoMonth = m - 1; }
+  let rangeStart: Date;
+  let rangeEnd: Date;
+
+  if (filters.fechaDesde && filters.fechaHasta) {
+    rangeStart = new Date(filters.fechaDesde + "T00:00:00");
+    rangeEnd = new Date(filters.fechaHasta + "T23:59:59");
+    if (isNaN(rangeStart.getTime()) || isNaN(rangeEnd.getTime())) {
+      rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    }
+  } else {
+    rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
   }
 
-  const periodoLabel = `${periodoYear}-${String(periodoMonth + 1).padStart(2, "0")}`;
+  const periodoLabel = `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, "0")}-${String(rangeStart.getDate()).padStart(2, "0")} a ${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, "0")}-${String(rangeEnd.getDate()).padStart(2, "0")}`;
 
   // Build conditions for SICAS query
   const condParts: string[] = [];
+
+  // Date range conditions for SICAS API
+  if (filters.fechaDesde) {
+    condParts.push(`DatDocumentos.FDesde>=${filters.fechaDesde}`);
+  }
+  if (filters.fechaHasta) {
+    condParts.push(`DatDocumentos.FDesde<=${filters.fechaHasta}`);
+  }
+
   if (filters.status) {
     const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
     const val = statusMap[filters.status.toLowerCase()] || filters.status;
@@ -756,11 +769,16 @@ async function handleDashboard(
   const clientesSet = new Set<string>();
   const clientesMesSet = new Set<string>();
 
-  // For month comparisons
-  const prevMonth = periodoMonth === 0 ? 11 : periodoMonth - 1;
-  const prevYear = periodoMonth === 0 ? periodoYear - 1 : periodoYear;
-  let prevMonthPrima = 0;
-  let sameMonthLastYearPrima = 0;
+  // For variation comparisons: compute range duration and shift backward
+  const rangeDurationMs = rangeEnd.getTime() - rangeStart.getTime();
+  const prevRangeEnd = new Date(rangeStart.getTime() - 1);
+  const prevRangeStart = new Date(prevRangeEnd.getTime() - rangeDurationMs);
+  const yoyRangeStart = new Date(rangeStart);
+  yoyRangeStart.setFullYear(yoyRangeStart.getFullYear() - 1);
+  const yoyRangeEnd = new Date(rangeEnd);
+  yoyRangeEnd.setFullYear(yoyRangeEnd.getFullYear() - 1);
+  let prevRangePrima = 0;
+  let yoyRangePrima = 0;
 
   // Aggregation maps
   const porRamo: Record<string, { count: number; prima: number; vigentes: number }> = {};
@@ -798,21 +816,21 @@ async function handleDashboard(
     if (isCancelada) cancelaciones++;
     if (cliente) clientesSet.add(cliente);
 
-    // Period (current month) analysis
-    if (fDesde && sameMonth(fDesde, periodoYear, periodoMonth)) {
+    // Period (date range) analysis
+    if (fDesde && fDesde >= rangeStart && fDesde <= rangeEnd) {
       mesPrimaNeta += pn;
       mesPrimaTotal += pt;
       mesEmisiones++;
       if (cliente) clientesMesSet.add(cliente);
     }
 
-    // Previous month for variation
-    if (fDesde && sameMonth(fDesde, prevYear, prevMonth)) {
-      prevMonthPrima += pt;
+    // Previous range for variation
+    if (fDesde && fDesde >= prevRangeStart && fDesde <= prevRangeEnd) {
+      prevRangePrima += pt;
     }
-    // Same month last year for YoY variation
-    if (fDesde && sameMonth(fDesde, periodoYear - 1, periodoMonth)) {
-      sameMonthLastYearPrima += pt;
+    // Same range last year for YoY variation
+    if (fDesde && fDesde >= yoyRangeStart && fDesde <= yoyRangeEnd) {
+      yoyRangePrima += pt;
     }
 
     // Renewal analysis (documents expiring soon)
@@ -824,8 +842,8 @@ async function handleDashboard(
         if (daysToExpiry <= 15) renew15++;
         if (daysToExpiry <= 7) renew7++;
 
-        // Monthly renewal
-        if (sameMonth(fHasta, periodoYear, periodoMonth)) renewMes++;
+        // Renewal within selected range
+        if (fHasta >= rangeStart && fHasta <= rangeEnd) renewMes++;
 
         // Weekly bucket for chart
         const weekLabel = daysToExpiry <= 7 ? "0-7 dias" : daysToExpiry <= 15 ? "8-15 dias" : "16-30 dias";
@@ -881,11 +899,11 @@ async function handleDashboard(
   const ticketPromedio = filtered.length > 0 ? totalPrimaTotal / filtered.length : 0;
 
   // Variation calculations
-  const variacionMesAnterior = prevMonthPrima > 0
-    ? ((mesPrimaTotal - prevMonthPrima) / prevMonthPrima) * 100
+  const variacionMesAnterior = prevRangePrima > 0
+    ? ((mesPrimaTotal - prevRangePrima) / prevRangePrima) * 100
     : mesPrimaTotal > 0 ? 100 : 0;
-  const variacionInteranual = sameMonthLastYearPrima > 0
-    ? ((mesPrimaTotal - sameMonthLastYearPrima) / sameMonthLastYearPrima) * 100
+  const variacionInteranual = yoyRangePrima > 0
+    ? ((mesPrimaTotal - yoyRangePrima) / yoyRangePrima) * 100
     : mesPrimaTotal > 0 ? 100 : 0;
 
   // Chart series: prima por mes (sorted by date)
@@ -1534,7 +1552,8 @@ Deno.serve(async (req: Request) => {
     switch (action) {
       case "dashboard":
         return await handleDashboard(client, config, mapping, {
-          periodo: body.periodo,
+          fechaDesde: body.fechaDesde,
+          fechaHasta: body.fechaHasta,
           type: body.type,
           status: body.status,
           ramo: body.ramo,
