@@ -571,6 +571,189 @@ function normalizeDetailValues(
   };
 }
 
+// ─── Admin Actions ──────────────────────────────────────────────────────────
+
+async function handleListUsers(
+  supabase: ReturnType<typeof createClient>
+): Promise<Response> {
+  const { data: usuarios, error } = await supabase
+    .from("usuarios")
+    .select("id, nombre, apellidos, email_laboral, rol, oficina_id, id_sicas, nombre_sicas, activo")
+    .eq("activo", true)
+    .order("nombre");
+
+  if (error) {
+    return jsonResponse(500, { ok: false, error: error.message, code: "DB_ERROR" });
+  }
+
+  const { data: oficinas } = await supabase
+    .from("oficinas")
+    .select("id, nombre")
+    .eq("activa", true);
+
+  const oficinasMap: Record<string, string> = {};
+  for (const o of oficinas || []) {
+    oficinasMap[o.id] = o.nombre;
+  }
+
+  const mapped = (usuarios || []).map((u: Record<string, unknown>) => ({
+    id: u.id,
+    nombre: u.nombre,
+    apellidos: u.apellidos,
+    email: u.email_laboral,
+    rol: u.rol,
+    oficina: u.oficina_id ? oficinasMap[u.oficina_id as string] || null : null,
+    oficina_id: u.oficina_id,
+    id_sicas: u.id_sicas || null,
+    nombre_sicas: u.nombre_sicas || null,
+    has_mapping: !!u.id_sicas,
+  }));
+
+  return jsonResponse(200, { ok: true, users: mapped });
+}
+
+async function handleListVendors(
+  supabase: ReturnType<typeof createClient>,
+  search?: string
+): Promise<Response> {
+  let query = supabase
+    .from("sicas_catalogos")
+    .select("id_sicas, nombre")
+    .eq("catalog_type_id", 32)
+    .order("nombre");
+
+  if (search) {
+    query = query.or(`nombre.ilike.%${search}%,id_sicas.ilike.%${search}%`);
+  }
+
+  query = query.limit(50);
+
+  const { data, error } = await query;
+
+  if (error) {
+    return jsonResponse(500, { ok: false, error: error.message, code: "DB_ERROR" });
+  }
+
+  return jsonResponse(200, { ok: true, vendors: data || [] });
+}
+
+async function handleMapUser(
+  supabase: ReturnType<typeof createClient>,
+  adminUserId: string,
+  targetUserId: string,
+  sicasVendorId: string
+): Promise<Response> {
+  const { data: vendorExists } = await supabase
+    .from("sicas_catalogos")
+    .select("id_sicas, nombre")
+    .eq("catalog_type_id", 32)
+    .eq("id_sicas", sicasVendorId)
+    .maybeSingle();
+
+  if (!vendorExists) {
+    return jsonResponse(400, { ok: false, error: "Vendedor SICAS no encontrado.", code: "VENDOR_NOT_FOUND" });
+  }
+
+  const { data: userExists } = await supabase
+    .from("usuarios")
+    .select("id")
+    .eq("id", targetUserId)
+    .maybeSingle();
+
+  if (!userExists) {
+    return jsonResponse(400, { ok: false, error: "Usuario no encontrado.", code: "USER_NOT_FOUND" });
+  }
+
+  const { error: mapError } = await supabase
+    .from("sicas_mapeo_vendedor_usuario")
+    .upsert({
+      id_sicas_vendedor: sicasVendorId,
+      movi_user_id: targetUserId,
+      catalog_type_id: 32,
+      mapped_by: adminUserId,
+      mapped_at: new Date().toISOString(),
+    }, { onConflict: "id_sicas_vendedor" });
+
+  if (mapError) {
+    if (mapError.code === "23505") {
+      const { error: mapError2 } = await supabase
+        .from("sicas_mapeo_vendedor_usuario")
+        .upsert({
+          id_sicas_vendedor: sicasVendorId,
+          movi_user_id: targetUserId,
+          catalog_type_id: 32,
+          mapped_by: adminUserId,
+          mapped_at: new Date().toISOString(),
+        }, { onConflict: "movi_user_id" });
+
+      if (mapError2) {
+        return jsonResponse(500, { ok: false, error: mapError2.message, code: "MAP_ERROR" });
+      }
+    } else {
+      return jsonResponse(500, { ok: false, error: mapError.message, code: "MAP_ERROR" });
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from("usuarios")
+    .update({
+      id_sicas: sicasVendorId,
+      nombre_sicas: vendorExists.nombre,
+    })
+    .eq("id", targetUserId);
+
+  if (updateError) {
+    console.warn(`[SICASProd] map-user: failed to update usuarios.id_sicas: ${updateError.message}`);
+  }
+
+  console.log(`[SICASProd] map-user: ${targetUserId} -> vendor ${sicasVendorId} (${vendorExists.nombre})`);
+
+  return jsonResponse(200, {
+    ok: true,
+    message: `Usuario vinculado a ${vendorExists.nombre} (ID: ${sicasVendorId})`,
+  });
+}
+
+async function handleUnmapUser(
+  supabase: ReturnType<typeof createClient>,
+  targetUserId: string
+): Promise<Response> {
+  const { data: usuario } = await supabase
+    .from("usuarios")
+    .select("id, id_sicas")
+    .eq("id", targetUserId)
+    .maybeSingle();
+
+  if (!usuario) {
+    return jsonResponse(400, { ok: false, error: "Usuario no encontrado.", code: "USER_NOT_FOUND" });
+  }
+
+  if (usuario.id_sicas) {
+    await supabase
+      .from("sicas_mapeo_vendedor_usuario")
+      .delete()
+      .eq("id_sicas_vendedor", usuario.id_sicas);
+  }
+
+  await supabase
+    .from("sicas_mapeo_vendedor_usuario")
+    .delete()
+    .eq("movi_user_id", targetUserId);
+
+  const { error: updateError } = await supabase
+    .from("usuarios")
+    .update({ id_sicas: null, nombre_sicas: null })
+    .eq("id", targetUserId);
+
+  if (updateError) {
+    console.warn(`[SICASProd] unmap-user: failed to clear usuarios.id_sicas: ${updateError.message}`);
+  }
+
+  console.log(`[SICASProd] unmap-user: ${targetUserId} unlinked`);
+
+  return jsonResponse(200, { ok: true, message: "Vinculo eliminado." });
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -578,6 +761,18 @@ function jsonResponse(status: number, body: unknown): Response {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function requireAdmin(
+  supabase: ReturnType<typeof createClient>,
+  userId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("usuarios")
+    .select("rol")
+    .eq("id", userId)
+    .maybeSingle();
+  return data?.rol === "Administrador";
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -621,6 +816,31 @@ Deno.serve(async (req: Request) => {
     console.log(
       `[SICASProd] action=${action} userId=${user.id}`
     );
+
+    // Admin-only actions (no SICAS mapping needed)
+    if (action === "list-users" || action === "list-vendors" || action === "map-user" || action === "unmap-user") {
+      const isAdmin = await requireAdmin(supabase, user.id);
+      if (!isAdmin) {
+        return jsonResponse(403, { ok: false, error: "Solo administradores pueden gestionar mapeos.", code: "FORBIDDEN" });
+      }
+
+      switch (action) {
+        case "list-users":
+          return await handleListUsers(supabase);
+        case "list-vendors":
+          return await handleListVendors(supabase, body.search);
+        case "map-user":
+          if (!body.targetUserId || !body.sicasVendorId) {
+            return jsonResponse(400, { ok: false, error: "Se requiere targetUserId y sicasVendorId.", code: "MISSING_PARAMS" });
+          }
+          return await handleMapUser(supabase, user.id, body.targetUserId, body.sicasVendorId);
+        case "unmap-user":
+          if (!body.targetUserId) {
+            return jsonResponse(400, { ok: false, error: "Se requiere targetUserId.", code: "MISSING_PARAMS" });
+          }
+          return await handleUnmapUser(supabase, body.targetUserId);
+      }
+    }
 
     // Resolve user's SICAS mapping
     const mapping = await resolveUserMapping(supabase, user.id);

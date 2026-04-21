@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabaseUrl, supabaseAnonKey } from '../lib/supabase';
-import { FileText, Search, Filter, ChevronDown, ChevronUp, RefreshCw, TrendingUp, Shield, AlertTriangle, X, ArrowUpDown, ChevronLeft, ChevronRight, Eye, Briefcase, DollarSign, Clock, CheckCircle, XCircle, ArrowLeft, Building2, User, Calendar, CreditCard, Hash, Loader2, WifiOff, Link as LinkIcon } from 'lucide-react';
+import { FileText, Search, Filter, ChevronDown, ChevronUp, RefreshCw, TrendingUp, Shield, AlertTriangle, X, ArrowUpDown, ChevronLeft, ChevronRight, Eye, Briefcase, DollarSign, Clock, CheckCircle, XCircle, ArrowLeft, Building2, User, Calendar, CreditCard, Hash, Loader2, WifiOff, Link as LinkIcon, Users } from 'lucide-react';
+import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -282,10 +283,11 @@ export default function ProduccionSICASLive() {
   const activeFilterCount = [searchApplied, statusFilter, ramoFilter, aseguradoraFilter, fechaDesde, fechaHasta].filter(Boolean).length + (docType !== 'all' ? 1 : 0);
 
   const isAdmin = usuario?.rol === 'Administrador';
+  const [activeTab, setActiveTab] = useState<'produccion' | 'mapeo'>('produccion');
 
-  // ─── No mapping state ────────────────────────────────────────────────────
+  // ─── No mapping state (only block production tab, not mapeo) ─────────────
 
-  if (error?.noMapping) {
+  if (error?.noMapping && activeTab === 'produccion' && !isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 md:p-6">
         <div className="max-w-2xl mx-auto mt-20">
@@ -360,15 +362,57 @@ export default function ProduccionSICASLive() {
               Consulta en tiempo real de tus documentos en SICAS Online
             </p>
           </div>
-          <button
-            onClick={() => { loadSummary(); loadDocuments(); }}
-            disabled={loadingSummary || loadingDocs}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
-          >
-            <RefreshCw className={`w-4 h-4 ${(loadingSummary || loadingDocs) ? 'animate-spin' : ''}`} />
-            Actualizar
-          </button>
+          {activeTab === 'produccion' && (
+            <button
+              onClick={() => { loadSummary(); loadDocuments(); }}
+              disabled={loadingSummary || loadingDocs}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
+            >
+              <RefreshCw className={`w-4 h-4 ${(loadingSummary || loadingDocs) ? 'animate-spin' : ''}`} />
+              Actualizar
+            </button>
+          )}
         </div>
+
+        {/* Admin tabs */}
+        {isAdmin && (
+          <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setActiveTab('produccion')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all flex-1 justify-center ${activeTab === 'produccion' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+            >
+              <TrendingUp className="w-4 h-4" /> Produccion
+            </button>
+            <button
+              onClick={() => setActiveTab('mapeo')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all flex-1 justify-center ${activeTab === 'mapeo' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+            >
+              <Users className="w-4 h-4" /> Mapeo de Usuarios
+            </button>
+          </div>
+        )}
+
+        {/* Mapeo tab (admin only) */}
+        {activeTab === 'mapeo' && isAdmin && (
+          <MapeoUsuariosSICAS callApi={(body) => callSicasProduction(body, getToken())} />
+        )}
+
+        {/* Production tab content */}
+        {activeTab === 'produccion' && <>
+
+        {/* No mapping banner for admins */}
+        {error?.noMapping && isAdmin && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
+            <LinkIcon className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Tu cuenta no tiene un vinculo con SICAS</p>
+              <p className="text-amber-700 dark:text-amber-400 text-xs mt-1">Vincula tu cuenta en la pestana "Mapeo de Usuarios" para ver tu produccion.</p>
+            </div>
+            <button onClick={() => setActiveTab('mapeo')} className="text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100 text-sm font-medium whitespace-nowrap">
+              Ir a Mapeo
+            </button>
+          </div>
+        )}
 
         {/* Error banner */}
         {error && !error.noMapping && (
@@ -385,10 +429,10 @@ export default function ProduccionSICASLive() {
         )}
 
         {/* Summary cards */}
-        <SummaryCards summary={summary} loading={loadingSummary} />
+        {!error?.noMapping && <SummaryCards summary={summary} loading={loadingSummary} />}
 
         {/* Filters bar */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+        {!error?.noMapping && <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
           {/* Top bar */}
           <div className="p-4 flex flex-col sm:flex-row gap-3">
             {/* Type tabs */}
@@ -624,7 +668,9 @@ export default function ProduccionSICASLive() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
+
+        </>}
       </div>
     </div>
   );
