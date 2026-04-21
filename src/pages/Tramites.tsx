@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ClipboardList, Plus, Search, AlertCircle, Clock, CheckCircle2, FileText, Settings } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
+import { AgenteDashboard } from '../components/tramites/AgenteDashboard';
 
 interface TramiteEstatus {
   id: string;
@@ -59,6 +60,7 @@ export function Tramites() {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
+  const isAgente = usuario?.rol === 'Agente';
   const canManageCatalogs = isAdmin || isGerente;
 
   // Estatus filtered by selected tipo_tramite
@@ -261,6 +263,8 @@ export function Tramites() {
           </button>
         </div>
       </div>
+
+      {isAgente && <AgenteDashboard />}
 
       {/* Filters */}
       <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-4">
