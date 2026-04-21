@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabaseUrl, supabaseAnonKey } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { FileText, Search, Filter, ChevronDown, ChevronUp, RefreshCw, TrendingUp, Shield, AlertTriangle, X, ArrowUpDown, ChevronLeft, ChevronRight, Eye, Briefcase, DollarSign, Clock, CheckCircle, XCircle, ArrowLeft, Building2, User, Calendar, CreditCard, Hash, Loader2, WifiOff, Link as LinkIcon, Users } from 'lucide-react';
 import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
 
@@ -79,7 +79,9 @@ type DocType = 'all' | 'policies' | 'bonds';
 
 // ─── API Helper ──────────────────────────────────────────────────────────────
 
-async function callSicasProduction(body: Record<string, unknown>, token: string) {
+async function callSicasProduction(body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
   const res = await fetch(`${supabaseUrl}/functions/v1/sicas-production-query`, {
     method: 'POST',
     headers: {
@@ -120,7 +122,7 @@ function statusColor(status: string): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ProduccionSICASLive() {
-  const { usuario, session } = useAuth();
+  const { usuario } = useAuth();
 
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -158,15 +160,13 @@ export default function ProduccionSICASLive() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const getToken = useCallback(() => session?.access_token || '', [session]);
-
   // ─── Load Summary ────────────────────────────────────────────────────────
 
   const loadSummary = useCallback(async () => {
-    if (!usuario || !session) return;
+    if (!usuario) return;
     setLoadingSummary(true);
     try {
-      const data = await callSicasProduction({ action: 'summary' }, getToken());
+      const data = await callSicasProduction({ action: 'summary' });
       if (data.ok) {
         setSummary(data.summary);
         setError(null);
@@ -179,12 +179,12 @@ export default function ProduccionSICASLive() {
     } finally {
       setLoadingSummary(false);
     }
-  }, [usuario, session, getToken]);
+  }, [usuario]);
 
   // ─── Load Documents ──────────────────────────────────────────────────────
 
   const loadDocuments = useCallback(async () => {
-    if (!usuario || !session) return;
+    if (!usuario) return;
     setLoadingDocs(true);
     try {
       const body: Record<string, unknown> = {
@@ -202,7 +202,7 @@ export default function ProduccionSICASLive() {
       if (fechaDesde) body.fechaDesde = fechaDesde;
       if (fechaHasta) body.fechaHasta = fechaHasta;
 
-      const data = await callSicasProduction(body, getToken());
+      const data = await callSicasProduction(body);
       if (data.ok) {
         setDocuments(data.items || []);
         setPagination(data.pagination || { page: 1, pageSize: 25, pages: 1, maxRecords: 0 });
@@ -216,7 +216,7 @@ export default function ProduccionSICASLive() {
     } finally {
       setLoadingDocs(false);
     }
-  }, [usuario, session, getToken, currentPage, pageSize, docType, searchApplied, statusFilter, ramoFilter, aseguradoraFilter, fechaDesde, fechaHasta, sortField, sortDir]);
+  }, [usuario, currentPage, pageSize, docType, searchApplied, statusFilter, ramoFilter, aseguradoraFilter, fechaDesde, fechaHasta, sortField, sortDir]);
 
   // ─── Load Detail ─────────────────────────────────────────────────────────
 
@@ -224,7 +224,7 @@ export default function ProduccionSICASLive() {
     setLoadingDetail(true);
     setViewMode('detail');
     try {
-      const data = await callSicasProduction({ action: 'detail', idDocto }, getToken());
+      const data = await callSicasProduction({ action: 'detail', idDocto });
       if (data.ok) {
         setSelectedDoc(data.document);
       } else {
@@ -394,7 +394,7 @@ export default function ProduccionSICASLive() {
 
         {/* Mapeo tab (admin only) */}
         {activeTab === 'mapeo' && isAdmin && (
-          <MapeoUsuariosSICAS callApi={(body) => callSicasProduction(body, getToken())} />
+          <MapeoUsuariosSICAS callApi={(body) => callSicasProduction(body)} />
         )}
 
         {/* Production tab content */}
