@@ -49,26 +49,22 @@ interface Asignacion {
 
 interface TramiteDetallesProps {
   tramite: TramiteData;
-  editing: boolean;
   estatusList: TramiteEstatus[];
   selectedEstatus: string;
   setSelectedEstatus: (value: string) => void;
   selectedPrioridad: 'Alta' | 'Media' | 'Baja';
   setSelectedPrioridad: (value: 'Alta' | 'Media' | 'Baja') => void;
-  canEditQuick?: boolean;
-  onQuickSave?: () => void;
+  canEdit?: boolean;
 }
 
 export function TramiteDetalles({
   tramite,
-  editing,
   estatusList,
   selectedEstatus,
   setSelectedEstatus,
   selectedPrioridad,
   setSelectedPrioridad,
-  canEditQuick = false,
-  onQuickSave
+  canEdit = false
 }: TramiteDetallesProps) {
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
 
@@ -123,19 +119,11 @@ export function TramiteDetalles({
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
             <AlertCircle className="w-4 h-4 inline mr-2" />
             Prioridad
-            {canEditQuick && !editing && (
-              <span className="ml-2 text-xs text-accent font-normal">(editable)</span>
-            )}
           </label>
-          {(editing || canEditQuick) ? (
+          {canEdit ? (
             <select
               value={selectedPrioridad}
-              onChange={(e) => {
-                setSelectedPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja');
-                if (canEditQuick && onQuickSave) {
-                  onQuickSave();
-                }
-              }}
+              onChange={(e) => setSelectedPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
               className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
             >
               <option value="Baja">Baja</option>
@@ -152,19 +140,11 @@ export function TramiteDetalles({
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
             Estatus
-            {canEditQuick && !editing && (
-              <span className="ml-2 text-xs text-accent font-normal">(editable)</span>
-            )}
           </label>
-          {(editing || canEditQuick) ? (
+          {canEdit ? (
             <select
               value={selectedEstatus}
-              onChange={(e) => {
-                setSelectedEstatus(e.target.value);
-                if (canEditQuick && onQuickSave) {
-                  onQuickSave();
-                }
-              }}
+              onChange={(e) => setSelectedEstatus(e.target.value)}
               className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
             >
               {estatusList.map(estatus => (

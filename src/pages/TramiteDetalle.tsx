@@ -1,14 +1,13 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, CreditCard as Edit2, XCircle, RefreshCw, Save } from 'lucide-react';
+import { ArrowLeft, XCircle, RefreshCw, Save, ChevronDown } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 import { ComisionesPendientes } from '../components/tramites/ComisionesPendientes';
-import { RegistroActividadForm } from '../components/tramites/RegistroActividadForm';
 
 interface TramiteEstatus {
   id: string;
@@ -66,21 +65,35 @@ export function TramiteDetalle() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'detalles' | 'comentarios' | 'archivos' | 'historial' | 'comisiones'>('detalles');
 
-  const [editing, setEditing] = useState(false);
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [selectedEstatus, setSelectedEstatus] = useState('');
   const [selectedPrioridad, setSelectedPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
   const [saving, setSaving] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [showEditForm, setShowEditForm] = useState(false);
+  const [showCerrarMenu, setShowCerrarMenu] = useState(false);
+  const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const isOwner = tramite?.creado_por === usuario?.id;
   const isAssigned = tramite?.assigned_to_user_id === usuario?.id;
   const canEdit = isAdmin || isGerente || isOwner || isAssigned;
-  const canEditQuick = (isAdmin || isOwner) && !editing;
   const isCerrado = tramite?.cerrado_en !== null;
+
+  const isDirty = !!tramite && (
+    selectedEstatus !== (tramite.estatus?.id ?? tramite.estatus_id) ||
+    selectedPrioridad !== tramite.prioridad
+  );
+
+  useEffect(() => {
+    if (!showCerrarMenu) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cerrarMenuRef.current && !cerrarMenuRef.current.contains(event.target as Node)) {
+        setShowCerrarMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCerrarMenu]);
 
   useEffect(() => {
     if (id) {
@@ -236,7 +249,7 @@ export function TramiteDetalle() {
   };
 
   const handleSave = async () => {
-    if (!tramite || !usuario) return;
+    if (!tramite || !usuario || !isDirty) return;
 
     setSaving(true);
 
@@ -246,7 +259,6 @@ export function TramiteDetalle() {
       prioridad: selectedPrioridad,
       estatus: newEstatus || prev.estatus
     } : null);
-    setEditing(false);
 
     try {
       const { error } = await supabase
@@ -266,59 +278,37 @@ export function TramiteDetalle() {
     }
   };
 
-  const handleQuickSave = async () => {
+  const closingStatusOptions = estatusList.filter(e => {
+    const nombre = (e.nombre ?? '').toLowerCase();
+    return (
+      nombre.includes('cerrad') ||
+      nombre.includes('emitid') ||
+      nombre.includes('perdid') ||
+      nombre.includes('ganad') ||
+      nombre.includes('no emitido') ||
+      nombre.includes('concluid') ||
+      nombre.includes('finaliz') ||
+      nombre.includes('resuelto') ||
+      nombre.includes('rechazad') ||
+      nombre.includes('cancelad')
+    );
+  });
+
+  const cerrarOptions = closingStatusOptions.length > 0 ? closingStatusOptions : estatusList;
+
+  const handleCerrarCon = async (estatusId: string) => {
     if (!tramite || !usuario) return;
+    const estatus = estatusList.find(e => e.id === estatusId);
+    if (!estatus) return;
+    if (!confirm(`¿Cerrar este trámite con el estatus "${estatus.nombre}"?`)) return;
 
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(async () => {
-      setSaving(true);
-
-      const newEstatus = estatusList.find(e => e.id === selectedEstatus);
-      setTramite(prev => prev ? {
-        ...prev,
-        prioridad: selectedPrioridad,
-        estatus: newEstatus || prev.estatus
-      } : null);
-
-      try {
-        const { error } = await supabase
-          .from('tickets')
-          .update(buildUpdatePayload(selectedEstatus))
-          .eq('id', tramite.id);
-
-        if (error) throw error;
-
-        await loadTramite();
-      } catch (err: any) {
-        console.error('Error updating tramite:', err);
-        alert('Error al actualizar el tramite');
-        await loadTramite();
-      } finally {
-        setSaving(false);
-      }
-    }, 500);
-  };
-
-  const handleCerrar = async () => {
-    if (!tramite || !usuario) return;
-    if (!confirm('¿Estás seguro de cerrar este tramite?')) return;
-
+    setShowCerrarMenu(false);
     setSaving(true);
     try {
-      const estatusCerrado = estatusList.find(e => e.nombre === 'Cerrado');
-      if (!estatusCerrado) {
-        alert('No se encontró el estatus "Cerrado". Verifica la configuración.');
-        setSaving(false);
-        return;
-      }
-
       const { error } = await supabase
         .from('tickets')
         .update({
-          estatus_id: estatusCerrado.id,
+          estatus_id: estatusId,
           cerrado_en: new Date().toISOString(),
           cerrado_por: usuario.id,
           modificado_por: usuario.id
@@ -331,11 +321,11 @@ export function TramiteDetalle() {
       }
 
       await loadTramite();
-      alert('Tramite cerrado exitosamente');
+      alert('Trámite cerrado exitosamente');
       navigate('/tramites');
     } catch (err: any) {
       console.error('Error closing tramite:', err);
-      alert(`Error al cerrar el tramite: ${err.message}`);
+      alert(`Error al cerrar el trámite: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -410,57 +400,45 @@ export function TramiteDetalle() {
           <div className="flex items-center space-x-2">
             {canEdit && !isCerrado && (
               <>
-                {!editing ? (
-                  <button
-                    onClick={() => {
-                      setEditing(true);
-                      setSelectedEstatus(tramite.estatus?.id || '');
-                      setSelectedPrioridad(tramite.prioridad);
-                    }}
-                    className="flex items-center space-x-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl transition-all font-semibold"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    <span>Editar</span>
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        setEditing(false);
-                        setSelectedEstatus(tramite.estatus?.id || '');
-                        setSelectedPrioridad(tramite.prioridad);
-                      }}
-                      className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl transition-all font-semibold"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold disabled:opacity-50"
-                    >
-                      <Save className="w-4 h-4" />
-                      <span>{saving ? 'Guardando...' : 'Guardar'}</span>
-                    </button>
-                  </>
-                )}
-                {tramite.tipo_tramite === 'registro_actividad' && (
-                  <button
-                    onClick={() => setShowEditForm(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-semibold"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    <span>Editar Formulario Completo</span>
-                  </button>
-                )}
                 <button
-                  onClick={handleCerrar}
-                  disabled={saving}
-                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                  onClick={handleSave}
+                  disabled={saving || !isDirty}
+                  className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <XCircle className="w-4 h-4" />
-                  <span>Cerrar Tramite</span>
+                  <Save className="w-4 h-4" />
+                  <span>{saving ? 'Guardando...' : 'Guardar'}</span>
                 </button>
+                <div className="relative" ref={cerrarMenuRef}>
+                  <button
+                    onClick={() => setShowCerrarMenu(v => !v)}
+                    disabled={saving}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Cerrar Trámite</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  {showCerrarMenu && cerrarOptions.length > 0 && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white border border-neutral-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                      <div className="px-4 py-2 text-xs font-semibold text-neutral-500 bg-neutral-50 border-b border-neutral-200">
+                        Cerrar con estatus:
+                      </div>
+                      {cerrarOptions.map(estatus => (
+                        <button
+                          key={estatus.id}
+                          onClick={() => handleCerrarCon(estatus.id)}
+                          className="w-full text-left px-4 py-3 hover:bg-neutral-50 transition-all flex items-center space-x-2"
+                        >
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: estatus.color }}
+                          />
+                          <span className="text-sm font-medium text-neutral-900">{estatus.nombre}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
             {canEdit && isCerrado && (
@@ -535,14 +513,12 @@ export function TramiteDetalle() {
         {activeTab === 'detalles' && (
           <TramiteDetalles
             tramite={tramite}
-            editing={editing}
             estatusList={estatusList}
             selectedEstatus={selectedEstatus}
             setSelectedEstatus={setSelectedEstatus}
             selectedPrioridad={selectedPrioridad}
             setSelectedPrioridad={setSelectedPrioridad}
-            canEditQuick={canEditQuick}
-            onQuickSave={handleQuickSave}
+            canEdit={canEdit && !isCerrado}
           />
         )}
         {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} />}
@@ -551,30 +527,6 @@ export function TramiteDetalle() {
         {activeTab === 'comisiones' && <ComisionesPendientes tramiteId={tramite.id} />}
       </div>
 
-      {/* Formulario de edición para Registro de Actividades */}
-      {showEditForm && tramite.tipo_tramite === 'registro_actividad' && (
-        <RegistroActividadForm
-          tramiteId={tramite.id}
-          initialData={{
-            activity_subtype_id: tramite.activity_subtype_id || undefined,
-            agente_usuario_id: tramite.agente_usuario_id || undefined,
-            insurance_type_id: tramite.insurance_type_id || undefined,
-            insurers: tramite.insurers && Array.isArray(tramite.insurers) ? tramite.insurers : undefined,
-            attending_user_id: tramite.attending_user_id || undefined,
-            request_datetime: tramite.request_datetime || undefined,
-            completion_datetime: tramite.completion_datetime || undefined,
-            estatus_nombre: tramite.estatus?.nombre || undefined,
-            cerrado: tramite.cerrado || false,
-            prioridad: tramite.prioridad,
-            instrucciones: tramite.instrucciones || ''
-          }}
-          onClose={() => setShowEditForm(false)}
-          onSuccess={async () => {
-            await loadTramite();
-            setShowEditForm(false);
-          }}
-        />
-      )}
     </div>
   );
 }
