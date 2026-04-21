@@ -151,13 +151,16 @@ export function Tramites() {
   };
 
   const filteredTramites = tramites.filter(tramite => {
+    const term = searchTerm.toLowerCase();
+    const matches = (value: string | null | undefined) =>
+      (value ?? '').toLowerCase().includes(term);
     const matchSearch =
-      tramite.folio.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tramite.instrucciones.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tramite.poliza?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tramite.agente?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tramite.responsable?.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getTipoTramiteLabel(tramite.tipo_tramite).toLowerCase().includes(searchTerm.toLowerCase());
+      matches(tramite.folio) ||
+      matches(tramite.instrucciones) ||
+      matches(tramite.poliza) ||
+      matches(tramite.agente?.nombre_completo) ||
+      matches(tramite.responsable?.nombre_completo) ||
+      matches(getTipoTramiteLabel(tramite.tipo_tramite));
 
     const matchTipo = selectedTipo === 'todos' || tramite.tipo_tramite === selectedTipo;
     const matchEstatus = selectedEstatus === 'todos' || tramite.estatus?.id === selectedEstatus;
