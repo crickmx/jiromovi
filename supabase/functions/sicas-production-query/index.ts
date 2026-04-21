@@ -653,14 +653,21 @@ async function handleListUsers(
 }
 
 async function handleListMappedVendors(
-  supabase: ReturnType<typeof createClient>
+  supabase: ReturnType<typeof createClient>,
+  filterOficinaId?: string | null
 ): Promise<Response> {
-  const { data: usuarios, error } = await supabase
+  let query = supabase
     .from("usuarios")
     .select("id, nombre, apellidos, id_sicas, nombre_sicas, oficina_id")
     .eq("activo", true)
     .not("id_sicas", "is", null)
     .order("nombre");
+
+  if (filterOficinaId) {
+    query = query.eq("oficina_id", filterOficinaId);
+  }
+
+  const { data: usuarios, error } = await query;
 
   if (error) {
     return jsonResponse(500, { ok: false, error: error.message, code: "DB_ERROR" });
@@ -851,16 +858,24 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
+async function getUserRole(
+  supabase: ReturnType<typeof createClient>,
+  userId: string
+): Promise<{ rol: string; oficina_id: string | null }> {
+  const { data } = await supabase
+    .from("usuarios")
+    .select("rol, oficina_id")
+    .eq("id", userId)
+    .maybeSingle();
+  return { rol: data?.rol || "", oficina_id: data?.oficina_id || null };
+}
+
 async function requireAdmin(
   supabase: ReturnType<typeof createClient>,
   userId: string
 ): Promise<boolean> {
-  const { data } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", userId)
-    .maybeSingle();
-  return data?.rol === "Administrador";
+  const { rol } = await getUserRole(supabase, userId);
+  return rol === "Administrador";
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -905,21 +920,23 @@ Deno.serve(async (req: Request) => {
       `[SICASProd] action=${action} userId=${user.id}`
     );
 
-    // Admin-only actions (no SICAS mapping needed)
-    const adminActions = ["list-users", "list-vendors", "map-user", "unmap-user", "list-mapped-vendors"];
-    if (adminActions.includes(action)) {
-      const isAdmin = await requireAdmin(supabase, user.id);
+    // Resolve caller's role and office
+    const { rol: callerRol, oficina_id: callerOficinaId } = await getUserRole(supabase, user.id);
+    const isAdmin = callerRol === "Administrador";
+    const isGerente = callerRol === "Gerente";
+    const canManageVendors = isAdmin || isGerente;
+
+    // Admin-only management actions
+    const adminOnlyActions = ["list-users", "list-vendors", "map-user", "unmap-user"];
+    if (adminOnlyActions.includes(action)) {
       if (!isAdmin) {
         return jsonResponse(403, { ok: false, error: "Solo administradores pueden gestionar mapeos.", code: "FORBIDDEN" });
       }
-
       switch (action) {
         case "list-users":
           return await handleListUsers(supabase);
         case "list-vendors":
           return await handleListVendors(supabase, body.search);
-        case "list-mapped-vendors":
-          return await handleListMappedVendors(supabase);
         case "map-user":
           if (!body.targetUserId || !body.sicasVendorId) {
             return jsonResponse(400, { ok: false, error: "Se requiere targetUserId y sicasVendorId.", code: "MISSING_PARAMS" });
@@ -933,11 +950,39 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Check if admin is using vendorId override
-    const isAdmin = await requireAdmin(supabase, user.id);
+    // list-mapped-vendors: admin sees all, gerente sees only their office
+    if (action === "list-mapped-vendors") {
+      if (!canManageVendors) {
+        return jsonResponse(403, { ok: false, error: "No tienes permisos para ver vendedores.", code: "FORBIDDEN" });
+      }
+      const filterOffice = isGerente ? callerOficinaId : null;
+      return await handleListMappedVendors(supabase, filterOffice);
+    }
+
+    // Resolve vendor mapping for data actions
     let mapping: UserMapping | null = null;
 
-    if (isAdmin && body.vendorId) {
+    if (canManageVendors && body.vendorId) {
+      // Admin/Gerente using vendorId override
+      // For gerente: validate the target vendor belongs to their office
+      if (isGerente && callerOficinaId) {
+        const { data: targetUser } = await supabase
+          .from("usuarios")
+          .select("id, oficina_id, id_sicas, nombre_sicas")
+          .eq("id_sicas", body.vendorId)
+          .eq("activo", true)
+          .maybeSingle();
+
+        if (targetUser && targetUser.oficina_id !== callerOficinaId) {
+          console.log(`[SICASProd] gerente office mismatch: target office=${targetUser.oficina_id} caller office=${callerOficinaId}`);
+          return jsonResponse(403, {
+            ok: false,
+            error: "Solo puedes consultar la produccion de usuarios de tu oficina.",
+            code: "OFFICE_MISMATCH",
+          });
+        }
+      }
+
       const { data: vendorData } = await supabase
         .from("sicas_catalogos")
         .select("id_sicas, nombre")
@@ -950,10 +995,10 @@ Deno.serve(async (req: Request) => {
           sicas_vendor_id: vendorData.id_sicas,
           sicas_vendor_name: vendorData.nombre,
           usuario_id: user.id,
-          rol: "Administrador",
-          oficina_id: null,
+          rol: callerRol,
+          oficina_id: callerOficinaId,
         };
-        console.log(`[SICASProd] admin override: vendorId=${body.vendorId} (${vendorData.nombre})`);
+        console.log(`[SICASProd] ${callerRol} override: vendorId=${body.vendorId} (${vendorData.nombre})`);
       }
     }
 
@@ -968,6 +1013,8 @@ Deno.serve(async (req: Request) => {
         code: "NO_MAPPING",
         noMapping: true,
         isAdmin,
+        isGerente,
+        canSelectVendor: canManageVendors,
       });
     }
 
