@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Upload, X, Image as ImageIcon, CheckCircle2, AlertCircle, Sparkles, User, Save, RotateCcw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
+import { getDisplayName } from '../lib/utils';
 
 export default function MiMarca() {
   const { usuario, refreshUsuario } = useAuth();
@@ -10,7 +11,61 @@ export default function MiMarca() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  const defaultDisplayName = getDisplayName({ ...usuario, nombre_publico: null });
+  const [nombrePublico, setNombrePublico] = useState<string>(
+    usuario?.nombre_publico ?? defaultDisplayName
+  );
+  const [savingName, setSavingName] = useState(false);
+
+  useEffect(() => {
+    if (!usuario) return;
+    setNombrePublico(usuario.nombre_publico ?? getDisplayName({ ...usuario, nombre_publico: null }));
+  }, [usuario?.id, usuario?.nombre_publico, usuario?.nombre_completo, usuario?.nombre, usuario?.apellidos]);
+
   if (!usuario) return null;
+
+  const isUsingDefault = !usuario.nombre_publico || usuario.nombre_publico.trim() === '';
+  const hasChanges = (nombrePublico ?? '').trim() !== (usuario.nombre_publico ?? defaultDisplayName).trim();
+
+  const handleSaveName = async () => {
+    const value = nombrePublico.trim();
+    setSavingName(true);
+    setMessage(null);
+
+    const valueToStore = value === '' || value === defaultDisplayName ? null : value;
+
+    const { error } = await supabase
+      .from('usuarios')
+      .update({ nombre_publico: valueToStore, updated_at: new Date().toISOString() })
+      .eq('id', usuario.id);
+
+    if (error) {
+      setMessage({ type: 'error', text: 'No se pudo guardar el nombre' });
+    } else {
+      setMessage({ type: 'success', text: 'Nombre actualizado correctamente' });
+      await refreshUsuario();
+    }
+    setSavingName(false);
+  };
+
+  const handleResetName = async () => {
+    setSavingName(true);
+    setMessage(null);
+
+    const { error } = await supabase
+      .from('usuarios')
+      .update({ nombre_publico: null, updated_at: new Date().toISOString() })
+      .eq('id', usuario.id);
+
+    if (error) {
+      setMessage({ type: 'error', text: 'No se pudo restaurar el nombre' });
+    } else {
+      setNombrePublico(defaultDisplayName);
+      setMessage({ type: 'success', text: 'Nombre restaurado al predeterminado' });
+      await refreshUsuario();
+    }
+    setSavingName(false);
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -118,6 +173,67 @@ export default function MiMarca() {
           <span className="text-sm">{message.text}</span>
         </div>
       )}
+
+      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="p-2 bg-neutral-100 rounded-lg">
+            <User className="w-5 h-5 text-neutral-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-neutral-900">Nombre</h3>
+            <p className="text-sm text-neutral-500 mt-0.5">
+              Se muestra en Mi Página Web, Publicidad y documentos que tú generas. Por defecto se
+              arma con tu nombre y apellidos; puedes editarlo sin cambiar tu nombre real del sistema.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+              Nombre para mostrar
+            </label>
+            <input
+              type="text"
+              value={nombrePublico}
+              onChange={(e) => setNombrePublico(e.target.value)}
+              placeholder={defaultDisplayName}
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              maxLength={120}
+            />
+            <p className="text-xs text-neutral-500 mt-1.5">
+              {isUsingDefault ? (
+                <>Actualmente se usa el nombre predeterminado: <strong>{defaultDisplayName || '—'}</strong></>
+              ) : (
+                <>Nombre personalizado activo. Predeterminado: <strong>{defaultDisplayName || '—'}</strong></>
+              )}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleSaveName}
+              disabled={savingName || !hasChanges}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              Guardar nombre
+            </button>
+            {!isUsingDefault && (
+              <button
+                type="button"
+                onClick={handleResetName}
+                disabled={savingName}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-50 disabled:opacity-60 text-neutral-700 text-sm font-medium rounded-lg border border-neutral-300 transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Usar predeterminado
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
         <div className="flex items-start justify-between mb-4">

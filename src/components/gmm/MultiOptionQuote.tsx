@@ -8,6 +8,7 @@ import { getCoverageHelpText, getCoverageLabel } from '../../lib/gmmCoverageHelp
 import { generateUnifiedQuotePDF } from '../../lib/gmmPdfUnified';
 import { supabase } from '../../lib/supabase';
 import { getEffectiveUserLogo } from '../../lib/logoUtils';
+import { getDisplayName } from '../../lib/utils';
 import type {
   QuoteInputMultiOption,
   QuoteOption,
@@ -184,12 +185,12 @@ export function MultiOptionQuote({
 
       const { data: usuario } = await supabase
         .from('usuarios')
-        .select('nombre_completo, celular_laboral, web_slug')
+        .select('nombre_publico, nombre_completo, nombre, apellidos, celular_laboral, web_slug')
         .eq('id', user.id)
         .maybeSingle();
 
       const asesorInfo = {
-        nombre: usuario?.nombre_completo || 'Asesor JIRO',
+        nombre: getDisplayName(usuario) || 'Asesor JIRO',
         celular: usuario?.celular_laboral || '',
         web_slug: usuario?.web_slug || '',
       };

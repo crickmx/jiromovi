@@ -22,6 +22,7 @@ import {
   type UserWebPageConfig
 } from '../lib/webPagesTypes';
 import PublicWebPagePreview from '../components/webPages/PublicWebPagePreview';
+import { getDisplayName } from '../lib/utils';
 
 export default function MiPaginaWeb() {
   const { user, usuario } = useAuth();
@@ -323,7 +324,7 @@ export default function MiPaginaWeb() {
                   insurers={insurers.filter(i => config.selected_insurer_ids.includes(i.id))}
                   categories={categories.filter(c => config.selected_category_ids.includes(c.id))}
                   userData={{
-                    name: usuario?.nombre_completo || '',
+                    name: getDisplayName(usuario),
                     email: usuario?.email_laboral || '',
                     phone: usuario?.celular_laboral || '',
                     photo_url: usuario?.imagen_perfil_url || null,

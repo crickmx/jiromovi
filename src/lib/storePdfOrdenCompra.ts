@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { StorePedidoCompleto } from './storeTypes';
 import { supabase } from './supabase';
+import { getDisplayName } from './utils';
 
 /**
  * Genera un folio único alfanumérico de 8 caracteres para una Orden de Compra
@@ -82,7 +83,7 @@ export async function generarPDFOrdenCompra(pedido: StorePedidoCompleto): Promis
   doc.setFont('helvetica', 'bold');
   doc.text('Nombre Completo:', 14, yPos);
   doc.setFont('helvetica', 'normal');
-  const nombreCompleto = pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A';
+  const nombreCompleto = getDisplayName(pedido.usuario) || 'N/A';
   doc.text(nombreCompleto, 60, yPos);
 
   yPos += 6;

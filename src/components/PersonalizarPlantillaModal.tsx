@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
 import { getMiPaginaWeb } from '../lib/webUrlUtils';
+import { getDisplayName } from '../lib/utils';
 
 interface Plantilla {
   id: string;
@@ -106,7 +107,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
       resetForm();
     } else {
       if (usuario) {
-        setNombreCompleto(usuario.nombre_completo || '');
+        setNombreCompleto(getDisplayName(usuario));
 
         // Auto-rellenar Mi Página Web desde el slug
         const miPaginaWeb = getMiPaginaWeb(usuario.web_slug);
@@ -175,7 +176,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
   const handleReset = () => {
     if (confirm('¿Deseas restablecer todos los valores a sus defaults?')) {
       if (usuario) {
-        setNombreCompleto(usuario.nombre_completo || '');
+        setNombreCompleto(getDisplayName(usuario));
         const miPaginaWeb = getMiPaginaWeb(usuario.web_slug);
         setUrlJiro(miPaginaWeb || DEFAULT_URLS.miPaginaWeb);
         setUrlMulticotizador(usuario.celular_laboral || DEFAULT_URLS.telefono);

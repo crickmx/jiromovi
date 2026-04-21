@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, Edit, ArrowLeftRight } from 'lucide-react';
+import { Calculator, Save, FileText, Plus, Trash2, Calendar, DollarSign, Users, ChevronDown, ChevronRight, Download, Search, CreditCard as Edit, ArrowLeftRight } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { Card } from '../components/ui/card';
@@ -19,6 +19,7 @@ import {
 import { generateUnifiedQuotePDF } from '../lib/gmmPdfUnified';
 import { getCoverageHelpText, COVERAGE_LABELS } from '../lib/gmmCoverageHelp';
 import { formatMoneySafe } from '../lib/gmmParsingUtils';
+import { getDisplayName } from '../lib/utils';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
 import type {
   QuoteInput,
@@ -317,12 +318,12 @@ export default function GMMCotizador() {
 
       const { data: usuario } = await supabase
         .from('usuarios')
-        .select('nombre_completo, celular_laboral, web_slug')
+        .select('nombre_publico, nombre_completo, nombre, apellidos, celular_laboral, web_slug')
         .eq('id', user.id)
         .maybeSingle();
 
       const asesorInfo = {
-        nombre: usuario?.nombre_completo || 'Asesor JIRO',
+        nombre: getDisplayName(usuario) || 'Asesor JIRO',
         celular: usuario?.celular_laboral || '',
         web_slug: usuario?.web_slug || '',
       };
