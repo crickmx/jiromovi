@@ -150,8 +150,12 @@ export function Tramites() {
     }
   };
 
+  const getTipoTramiteLabel = (tipo: string) => {
+    return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.label ?? tipo;
+  };
+
   const filteredTramites = tramites.filter(tramite => {
-    const term = searchTerm.toLowerCase();
+    const term = (searchTerm ?? '').toLowerCase();
     const matches = (value: string | null | undefined) =>
       (value ?? '').toLowerCase().includes(term);
     const matchSearch =
@@ -185,10 +189,6 @@ export function Tramites() {
       case 'Baja': return <CheckCircle2 className="w-4 h-4" />;
       default: return null;
     }
-  };
-
-  const getTipoTramiteLabel = (tipo: string) => {
-    return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.label ?? tipo;
   };
 
   const hasActiveFilters = selectedTipo !== 'todos' || selectedEstatus !== 'todos' || selectedPrioridad !== 'todas' || searchTerm !== '';
