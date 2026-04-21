@@ -9,14 +9,34 @@ import {
   Timer,
   TrendingUp,
   FileText,
-  BarChart3
+  BarChart3,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Calendar,
+  X
 } from 'lucide-react';
 
-interface EstatusCount {
+interface TicketRecord {
+  id: string;
+  folio: string;
+  tipo_tramite: string;
+  prioridad: 'Alta' | 'Media' | 'Baja';
+  poliza: string | null;
+  instrucciones: string;
+  fecha_creacion: string;
+  cerrado_en: string | null;
+  estatus_id: string;
+  estatus: { id: string; nombre: string; color: string } | null;
+  responsable: { nombre_completo: string } | null;
+}
+
+interface EstatusGroup {
   id: string;
   nombre: string;
   color: string;
   count: number;
+  tickets: TicketRecord[];
 }
 
 interface PriorityCount {
@@ -29,19 +49,30 @@ interface DashboardData {
   totalActivos: number;
   totalCerrados: number;
   totalTramites: number;
-  estatusCounts: EstatusCount[];
+  estatusGroups: EstatusGroup[];
+  cerradosGroup: EstatusGroup | null;
   prioridades: PriorityCount;
   avgDaysToClose: number | null;
   tramitesEsteMes: number;
   cerradosEsteMes: number;
-  ultimoTramite: { folio: string; id: string; fecha: string; estatus: string; color: string } | null;
 }
+
+const TIPO_LABELS: Record<string, string> = {
+  cotizacion_emision: 'Cotizacion / Emision',
+  correccion_poliza_registrada: 'Correccion de poliza',
+  correccion_comisiones: 'Correccion de comisiones',
+  registro_poliza: 'Registro de poliza',
+  solicitud_comisiones_pendientes: 'Solicitud de comisiones',
+  lead_registro_movi: 'Lead / Registro Movi',
+  registro_actividad: 'Registro de actividad',
+};
 
 export function AgenteDashboard() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedStatus, setExpandedStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (usuario) loadDashboard();
@@ -53,8 +84,9 @@ export function AgenteDashboard() {
     const [ticketsRes, estatusRes] = await Promise.all([
       supabase
         .from('tickets')
-        .select('id, folio, fecha_creacion, cerrado_en, prioridad, estatus_id, estatus:estatus_id(id, nombre, color)')
-        .eq('agente_id', usuario.id),
+        .select('id, folio, tipo_tramite, prioridad, poliza, instrucciones, fecha_creacion, cerrado_en, estatus_id, estatus:estatus_id(id, nombre, color), responsable:assigned_to_user_id(nombre_completo)')
+        .eq('agente_id', usuario.id)
+        .order('fecha_creacion', { ascending: false }),
       supabase
         .from('ticket_estatus')
         .select('id, nombre, color')
@@ -62,7 +94,7 @@ export function AgenteDashboard() {
         .order('orden')
     ]);
 
-    const tickets = ticketsRes.data || [];
+    const tickets = (ticketsRes.data || []) as TicketRecord[];
     const allEstatus = estatusRes.data || [];
 
     const activos = tickets.filter(t => !t.cerrado_en);
@@ -80,14 +112,26 @@ export function AgenteDashboard() {
       }
     }
 
-    const countMap = new Map<string, number>();
+    const ticketsByStatus = new Map<string, TicketRecord[]>();
     for (const t of activos) {
-      countMap.set(t.estatus_id, (countMap.get(t.estatus_id) || 0) + 1);
+      const list = ticketsByStatus.get(t.estatus_id) || [];
+      list.push(t);
+      ticketsByStatus.set(t.estatus_id, list);
     }
 
-    const estatusCounts: EstatusCount[] = allEstatus
-      .map(e => ({ id: e.id, nombre: e.nombre, color: e.color, count: countMap.get(e.id) || 0 }))
-      .filter(e => e.count > 0);
+    const estatusGroups: EstatusGroup[] = allEstatus
+      .map(e => ({
+        id: e.id,
+        nombre: e.nombre,
+        color: e.color,
+        count: ticketsByStatus.get(e.id)?.length || 0,
+        tickets: ticketsByStatus.get(e.id) || []
+      }))
+      .filter(g => g.count > 0);
+
+    const cerradosGroup: EstatusGroup | null = cerrados.length > 0
+      ? { id: '__cerrados__', nombre: 'Concluidos', color: '#16a34a', count: cerrados.length, tickets: cerrados }
+      : null;
 
     let avgDaysToClose: number | null = null;
     if (cerrados.length > 0) {
@@ -99,32 +143,22 @@ export function AgenteDashboard() {
       avgDaysToClose = Math.round((totalDays / cerrados.length) * 10) / 10;
     }
 
-    const sorted = [...tickets].sort((a, b) =>
-      new Date(b.fecha_creacion).getTime() - new Date(a.fecha_creacion).getTime()
-    );
-    const last = sorted[0];
-    const ultimoTramite = last
-      ? {
-          id: last.id,
-          folio: last.folio,
-          fecha: last.fecha_creacion,
-          estatus: (last.estatus as any)?.nombre || 'Sin estatus',
-          color: (last.estatus as any)?.color || '#6b7280'
-        }
-      : null;
-
     setData({
       totalActivos: activos.length,
       totalCerrados: cerrados.length,
       totalTramites: tickets.length,
-      estatusCounts,
+      estatusGroups,
+      cerradosGroup,
       prioridades,
       avgDaysToClose,
       tramitesEsteMes,
-      cerradosEsteMes,
-      ultimoTramite
+      cerradosEsteMes
     });
     setLoading(false);
+  };
+
+  const toggleStatus = (statusId: string) => {
+    setExpandedStatus(prev => prev === statusId ? null : statusId);
   };
 
   if (loading) {
@@ -142,6 +176,8 @@ export function AgenteDashboard() {
   const completionRate = data.totalTramites > 0
     ? Math.round((data.totalCerrados / data.totalTramites) * 100)
     : 0;
+
+  const allGroups = [...data.estatusGroups, ...(data.cerradosGroup ? [data.cerradosGroup] : [])];
 
   return (
     <div className="space-y-4">
@@ -178,55 +214,92 @@ export function AgenteDashboard() {
         />
       </div>
 
-      {/* Status breakdown + Priority & recent */}
+      {/* Interactive status groups */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Status breakdown */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-soft border border-neutral-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-neutral-400" />
-              Desglose por estatus
-            </h3>
-            <span className="text-xs text-neutral-500">{data.totalActivos} activos</span>
-          </div>
-
-          {data.estatusCounts.length === 0 ? (
-            <p className="text-sm text-neutral-500 py-4 text-center">Sin tramites activos</p>
-          ) : (
-            <div className="space-y-3">
-              {data.estatusCounts.map(es => {
-                const pct = data.totalActivos > 0 ? (es.count / data.totalActivos) * 100 : 0;
-                return (
-                  <div key={es.id}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: es.color }}
-                        />
-                        <span className="text-sm font-medium text-neutral-800">{es.nombre}</span>
-                      </div>
-                      <span className="text-sm font-bold text-neutral-900">{es.count}</span>
-                    </div>
-                    <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${pct}%`, backgroundColor: es.color }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+        <div className="lg:col-span-2 space-y-3">
+          <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-neutral-400" />
+                Mis tramites por estatus
+              </h3>
+              <span className="text-xs text-neutral-500">
+                Haz clic para ver detalles
+              </span>
             </div>
-          )}
+
+            {data.estatusGroups.length === 0 && !data.cerradosGroup ? (
+              <p className="text-sm text-neutral-500 py-4 text-center">Sin tramites</p>
+            ) : (
+              <div className="space-y-2">
+                {allGroups.map(group => {
+                  const isExpanded = expandedStatus === group.id;
+                  const pct = data.totalTramites > 0 ? (group.count / data.totalTramites) * 100 : 0;
+
+                  return (
+                    <div key={group.id} className="rounded-xl border border-neutral-200 overflow-hidden transition-all duration-200">
+                      {/* Status header - clickable */}
+                      <button
+                        onClick={() => toggleStatus(group.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors text-left group"
+                      >
+                        <span className="text-neutral-400 transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
+                          <ChevronDown className="w-4 h-4" />
+                        </span>
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: group.color }}
+                        />
+                        <span className="text-sm font-semibold text-neutral-800 flex-1">{group.nombre}</span>
+                        <span
+                          className="text-xs font-bold px-2.5 py-1 rounded-full border"
+                          style={{
+                            backgroundColor: group.color + '15',
+                            color: group.color,
+                            borderColor: group.color + '40'
+                          }}
+                        >
+                          {group.count}
+                        </span>
+                        <div className="w-24 h-1.5 bg-neutral-100 rounded-full overflow-hidden hidden sm:block">
+                          <div
+                            className="h-full rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${pct}%`, backgroundColor: group.color }}
+                          />
+                        </div>
+                      </button>
+
+                      {/* Expanded ticket list */}
+                      {isExpanded && (
+                        <div className="border-t border-neutral-100 bg-neutral-50/50">
+                          <div className="divide-y divide-neutral-100">
+                            {group.tickets.slice(0, 20).map(ticket => (
+                              <TicketRow key={ticket.id} ticket={ticket} onNavigate={() => navigate(`/tramites/${ticket.id}`)} />
+                            ))}
+                          </div>
+                          {group.tickets.length > 20 && (
+                            <div className="px-4 py-2 text-center">
+                              <span className="text-xs text-neutral-500">
+                                Mostrando 20 de {group.tickets.length} tramites
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Priority & last ticket */}
-        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5 space-y-5">
-          <div>
+        {/* Priority & quick stats */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5">
             <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide mb-3 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-neutral-400" />
-              Prioridad
+              Prioridad (Activos)
             </h3>
             <div className="space-y-2.5">
               <PriorityRow label="Alta" count={data.prioridades.Alta} dotColor="bg-red-500" textColor="text-red-700" />
@@ -235,39 +308,88 @@ export function AgenteDashboard() {
             </div>
           </div>
 
-          {data.ultimoTramite && (
-            <div className="pt-4 border-t border-neutral-100">
-              <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-neutral-400" />
-                Ultimo tramite
-              </h3>
-              <div
-                onClick={() => navigate(`/tramites/${data.ultimoTramite!.id}`)}
-                className="p-3 rounded-xl bg-neutral-50 border border-neutral-200 hover:bg-neutral-100 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-accent">{data.ultimoTramite.folio}</span>
-                  <span
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full border"
-                    style={{
-                      backgroundColor: data.ultimoTramite.color + '20',
-                      color: data.ultimoTramite.color,
-                      borderColor: data.ultimoTramite.color
-                    }}
-                  >
-                    {data.ultimoTramite.estatus}
-                  </span>
+          {/* Summary grid */}
+          <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5">
+            <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-neutral-400" />
+              Resumen
+            </h3>
+            <div className="space-y-3">
+              {data.estatusGroups.map(g => (
+                <div key={g.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
+                    <span className="text-sm text-neutral-700">{g.nombre}</span>
+                  </div>
+                  <span className="text-sm font-bold text-neutral-900">{g.count}</span>
                 </div>
-                <p className="text-xs text-neutral-500 mt-1">
-                  {new Date(data.ultimoTramite.fecha).toLocaleDateString('es-MX', {
-                    day: 'numeric', month: 'short', year: 'numeric'
-                  })}
-                </p>
+              ))}
+              {data.cerradosGroup && (
+                <div className="flex items-center justify-between pt-2 border-t border-neutral-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0 bg-green-500" />
+                    <span className="text-sm text-neutral-700">Concluidos</span>
+                  </div>
+                  <span className="text-sm font-bold text-neutral-900">{data.cerradosGroup.count}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-neutral-200">
+                <span className="text-sm font-semibold text-neutral-800">Total</span>
+                <span className="text-sm font-bold text-accent">{data.totalTramites}</span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TicketRow({ ticket, onNavigate }: { ticket: TicketRecord; onNavigate: () => void }) {
+  const getPrioridadStyle = (p: string) => {
+    switch (p) {
+      case 'Alta': return 'bg-red-100 text-red-700';
+      case 'Media': return 'bg-amber-100 text-amber-700';
+      case 'Baja': return 'bg-green-100 text-green-700';
+      default: return 'bg-neutral-100 text-neutral-600';
+    }
+  };
+
+  return (
+    <div
+      onClick={onNavigate}
+      className="flex items-center gap-3 px-4 py-3 hover:bg-white cursor-pointer transition-colors group"
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-sm font-bold text-accent">{ticket.folio}</span>
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${getPrioridadStyle(ticket.prioridad)}`}>
+            {ticket.prioridad}
+          </span>
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">
+            {TIPO_LABELS[ticket.tipo_tramite] || ticket.tipo_tramite}
+          </span>
+        </div>
+        <p className="text-sm text-neutral-700 truncate">{ticket.instrucciones}</p>
+        <div className="flex items-center gap-3 mt-1 text-xs text-neutral-500">
+          <span className="flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            {new Date(ticket.fecha_creacion).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+          {ticket.poliza && (
+            <span className="flex items-center gap-1">
+              <FileText className="w-3 h-3" />
+              {ticket.poliza}
+            </span>
+          )}
+          {ticket.responsable?.nombre_completo && (
+            <span className="hidden sm:inline">
+              Resp: {ticket.responsable.nombre_completo}
+            </span>
           )}
         </div>
       </div>
+      <ExternalLink className="w-4 h-4 text-neutral-300 group-hover:text-accent transition-colors flex-shrink-0" />
     </div>
   );
 }
