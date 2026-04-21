@@ -229,7 +229,6 @@ export default function ProduccionSICASLive() {
 
   const loadDashboard = useCallback(async () => {
     if (!usuario) return;
-    if (canSelectVendor && !selectedVendorId) return;
     setLoadingDashboard(true);
     setError(null);
     try {
@@ -247,7 +246,7 @@ export default function ProduccionSICASLive() {
         agente: filters.agente || undefined,
         search: filters.search || undefined,
       };
-      if (canSelectVendor && selectedVendorId) body.vendorId = selectedVendorId;
+      if (selectedVendorId) body.vendorId = selectedVendorId;
       const data = await callSicasProduction(body);
       if (data.ok) {
         setDashboardData(data);
@@ -261,13 +260,12 @@ export default function ProduccionSICASLive() {
     } finally {
       setLoadingDashboard(false);
     }
-  }, [usuario, canSelectVendor, selectedVendorId, filters]);
+  }, [usuario, selectedVendorId, filters]);
 
   // ─── Load Documents (table view) ──────────────────────────────────────
 
   const loadDocuments = useCallback(async () => {
     if (!usuario) return;
-    if (canSelectVendor && !selectedVendorId) return;
     setLoadingDocs(true);
     try {
       const body: Record<string, unknown> = {
@@ -280,7 +278,7 @@ export default function ProduccionSICASLive() {
         fechaDesde: filters.fechaDesde,
         fechaHasta: filters.fechaHasta,
       };
-      if (canSelectVendor && selectedVendorId) body.vendorId = selectedVendorId;
+      if (selectedVendorId) body.vendorId = selectedVendorId;
       if (filters.search) body.search = filters.search;
       if (filters.status) body.status = filters.status;
       if (filters.ramo) body.ramo = filters.ramo;
@@ -298,7 +296,7 @@ export default function ProduccionSICASLive() {
     } finally {
       setLoadingDocs(false);
     }
-  }, [usuario, canSelectVendor, selectedVendorId, currentPage, pageSize, filters, sortField, sortDir]);
+  }, [usuario, selectedVendorId, currentPage, pageSize, filters, sortField, sortDir]);
 
   // ─── Load Detail ─────────────────────────────────────────────────────
 
@@ -307,7 +305,7 @@ export default function ProduccionSICASLive() {
     setViewMode('detail');
     try {
       const body: Record<string, unknown> = { action: 'detail', idDocto };
-      if (canSelectVendor && selectedVendorId) body.vendorId = selectedVendorId;
+      if (selectedVendorId) body.vendorId = selectedVendorId;
       const data = await callSicasProduction(body);
       if (data.ok) setSelectedDoc(data.document);
       else { setSelectedDoc(null); setError({ message: data.error, code: data.code }); }
@@ -358,7 +356,7 @@ export default function ProduccionSICASLive() {
     setCurrentPage(1);
   };
 
-  const showContent = canSelectVendor ? !!selectedVendorId : !error?.noMapping;
+  const showContent = !error?.noMapping;
 
   // ─── Detail View ─────────────────────────────────────────────────────
 
@@ -485,7 +483,7 @@ export default function ProduccionSICASLive() {
                 disabled={loadingVendors}
                 className="flex-1 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               >
-                <option value="">-- Selecciona un vendedor --</option>
+                <option value="">Todos los vendedores</option>
                 {mappedVendors.map(v => (
                   <option key={v.id_sicas} value={v.id_sicas}>
                     {v.nombre} - {v.nombre_sicas} (ID: {v.id_sicas}){v.oficina ? ` | ${v.oficina}` : ''}
@@ -494,14 +492,6 @@ export default function ProduccionSICASLive() {
               </select>
               {loadingVendors && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />}
             </div>
-            {!selectedVendorId && !loadingVendors && mappedVendors.length === 0 && (
-              <div className="mt-1.5 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                {isAdmin
-                  ? 'No hay vendedores vinculados a SICAS. Ve a la pestana "Mapeo de Usuarios" para configurarlos.'
-                  : 'No hay vendedores vinculados a SICAS en tu oficina. Contacta a un administrador.'}
-              </div>
-            )}
           </div>
         )}
 
