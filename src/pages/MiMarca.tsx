@@ -92,8 +92,12 @@ export default function MiMarca() {
           <h2 className="text-lg font-bold text-neutral-900">Fuente única de tu marca</h2>
           <p className="text-sm text-neutral-600 mt-1">
             Tu <strong>foto de perfil</strong> y tu <strong>logotipo</strong> se aplican automáticamente
-            en tu perfil, Mi Página Web, Publicidad, firmas de correo, PDFs y comunicados.
-            Cambia una sola vez aquí y se reflejará en todos los módulos.
+            en Mi Página Web, Publicidad, cotizaciones, firmas de correo y comunicados.
+            Cambia una sola vez aquí y se reflejará en todos esos módulos.
+          </p>
+          <p className="text-xs text-neutral-500 mt-2">
+            <strong>Nota:</strong> el encabezado del sistema y los PDFs de comisiones siempre
+            usan el logotipo de tu oficina, no tu logotipo personal.
           </p>
         </div>
       </div>
@@ -204,7 +208,7 @@ export default function MiMarca() {
           </li>
           <li className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-            PDFs (cotizaciones, órdenes, fiscales)
+            PDFs de cotizaciones (GMM, multicotizador)
           </li>
           <li className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
