@@ -586,28 +586,41 @@ async function handleListUsers(
     return jsonResponse(500, { ok: false, error: error.message, code: "DB_ERROR" });
   }
 
-  const { data: oficinas } = await supabase
-    .from("oficinas")
-    .select("id, nombre")
-    .eq("activa", true);
+  const [{ data: oficinas }, { data: vendorMappings }] = await Promise.all([
+    supabase.from("oficinas").select("id, nombre").eq("activa", true),
+    supabase.from("vendor_mappings").select("id, source_type, source_value, movi_user_id, status").eq("status", "active"),
+  ]);
 
   const oficinasMap: Record<string, string> = {};
   for (const o of oficinas || []) {
     oficinasMap[o.id] = o.nombre;
   }
 
-  const mapped = (usuarios || []).map((u: Record<string, unknown>) => ({
-    id: u.id,
-    nombre: u.nombre,
-    apellidos: u.apellidos,
-    email: u.email_laboral,
-    rol: u.rol,
-    oficina: u.oficina_id ? oficinasMap[u.oficina_id as string] || null : null,
-    oficina_id: u.oficina_id,
-    id_sicas: u.id_sicas || null,
-    nombre_sicas: u.nombre_sicas || null,
-    has_mapping: !!u.id_sicas,
-  }));
+  const vmByUser: Record<string, Array<{ source_type: string; source_value: string }>> = {};
+  for (const vm of vendorMappings || []) {
+    if (!vmByUser[vm.movi_user_id]) vmByUser[vm.movi_user_id] = [];
+    vmByUser[vm.movi_user_id].push({ source_type: vm.source_type, source_value: vm.source_value });
+  }
+
+  const mapped = (usuarios || []).map((u: Record<string, unknown>) => {
+    const uid = u.id as string;
+    const userVms = vmByUser[uid] || [];
+    return {
+      id: uid,
+      nombre: u.nombre,
+      apellidos: u.apellidos,
+      email: u.email_laboral,
+      rol: u.rol,
+      oficina: u.oficina_id ? oficinasMap[u.oficina_id as string] || null : null,
+      oficina_id: u.oficina_id,
+      id_sicas: u.id_sicas || null,
+      nombre_sicas: u.nombre_sicas || null,
+      has_sicas_mapping: !!u.id_sicas,
+      vendor_mappings: userVms,
+      has_vendor_mapping: userVms.length > 0,
+      has_mapping: !!u.id_sicas || userVms.length > 0,
+    };
+  });
 
   return jsonResponse(200, { ok: true, users: mapped });
 }
@@ -716,7 +729,8 @@ async function handleMapUser(
 
 async function handleUnmapUser(
   supabase: ReturnType<typeof createClient>,
-  targetUserId: string
+  targetUserId: string,
+  removeVendorMappings: boolean = false
 ): Promise<Response> {
   const { data: usuario } = await supabase
     .from("usuarios")
@@ -749,7 +763,19 @@ async function handleUnmapUser(
     console.warn(`[SICASProd] unmap-user: failed to clear usuarios.id_sicas: ${updateError.message}`);
   }
 
-  console.log(`[SICASProd] unmap-user: ${targetUserId} unlinked`);
+  if (removeVendorMappings) {
+    const { error: vmError } = await supabase
+      .from("vendor_mappings")
+      .delete()
+      .eq("movi_user_id", targetUserId);
+
+    if (vmError) {
+      console.warn(`[SICASProd] unmap-user: failed to clear vendor_mappings: ${vmError.message}`);
+    }
+    console.log(`[SICASProd] unmap-user: ${targetUserId} fully unlinked (SICAS + vendor_mappings)`);
+  } else {
+    console.log(`[SICASProd] unmap-user: ${targetUserId} SICAS unlinked (vendor_mappings preserved)`);
+  }
 
   return jsonResponse(200, { ok: true, message: "Vinculo eliminado." });
 }
@@ -838,7 +864,7 @@ Deno.serve(async (req: Request) => {
           if (!body.targetUserId) {
             return jsonResponse(400, { ok: false, error: "Se requiere targetUserId.", code: "MISSING_PARAMS" });
           }
-          return await handleUnmapUser(supabase, body.targetUserId);
+          return await handleUnmapUser(supabase, body.targetUserId, body.removeVendorMappings === true);
       }
     }
 
