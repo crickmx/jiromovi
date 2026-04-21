@@ -173,12 +173,14 @@ function buildConditions(
 
   if (params.status) {
     const statusMap: Record<string, string> = {
-      vigente: "V",
-      cancelada: "C",
-      vencida: "X",
+      vigente: "1",
+      renovada: "2",
+      cancelada: "3",
+      "no vigente": "4",
+      pendiente: "5",
     };
     const val = statusMap[params.status.toLowerCase()] || params.status;
-    parts.push(`DatDocumentos.Estatus=${val}`);
+    parts.push(`DatDocumentos.Status=${val}`);
   }
 
   if (params.search) {
@@ -243,23 +245,37 @@ function normalizeRecord(raw: Record<string, unknown>): Record<string, unknown> 
     return v !== null ? String(v) : "";
   };
 
-  const statusRaw = str(["Estatus", "Status", "StatusDoc"]);
-  const statusMap: Record<string, string> = {
+  const statusTxt = str(["Status_TXT", "Estatus_TXT"]);
+  const statusRaw = str(["Status", "Estatus", "StatusDoc"]);
+  const statusLetterMap: Record<string, string> = {
     V: "Vigente",
     C: "Cancelada",
     X: "Vencida",
     N: "No Vigente",
     P: "Pendiente",
   };
+  const statusNumMap: Record<string, string> = {
+    "1": "Vigente",
+    "2": "Renovada",
+    "3": "Cancelada",
+    "4": "No Vigente",
+    "5": "Pendiente",
+  };
+
+  const resolvedStatus = statusTxt
+    || statusLetterMap[statusRaw]
+    || statusNumMap[statusRaw]
+    || statusRaw
+    || "Desconocido";
 
   return {
     idDocto: get(["IDDocto", "IdDocto", "Id_Docto", "iddocto"]),
-    documento: str(["Documento", "NoDocumento", "No_Documento"]),
+    documento: str(["Documento", "NoDocumento", "No_Documento", "DAnterior", "DPosterior"]),
     tipo: str(["TipoDocto_TXT", "TipoDocto", "Tipo"]),
     subtipo: str(["SubTipoDocto_TXT", "SubTipoDocto"]),
-    ramo: str(["Ramo", "Ramo_TXT", "NombreRamo"]),
-    subramo: str(["SubRamo", "SubRamo_TXT", "NombreSubRamo"]),
-    aseguradora: str(["Abreviacion", "Cia", "Aseguradora", "Compania"]),
+    ramo: str(["RamosNombre", "Ramo", "Ramo_TXT", "NombreRamo", "RamosAbreviacion"]),
+    subramo: str(["SRamoNombre", "SubRamo", "SubRamo_TXT", "NombreSubRamo", "SRamoAbreviacion"]),
+    aseguradora: str(["CiaAbreviacion", "CiaNombre", "Abreviacion", "Cia", "Aseguradora", "Compania"]),
     cliente: str([
       "NombreCompleto",
       "Nombre_Completo",
@@ -271,13 +287,13 @@ function normalizeRecord(raw: Record<string, unknown>): Record<string, unknown> 
     primaNeta: num(["PrimaNeta", "Prima_Neta", "Primaneta"]),
     primaTotal: num(["PrimaTotal", "Prima_Total", "Primatotal", "ImporteTotal"]),
     moneda: str(["Moneda", "MonedaTXT", "Moneda_TXT"]) || "MXN",
-    status: statusMap[statusRaw] || statusRaw || "Desconocido",
+    status: resolvedStatus,
     statusRaw,
     statusCobro: str(["StatusCobro", "Status_Cobro", "EstatusCobro"]),
-    vendedor: str(["Vendedor", "VendNombre", "Vend_Nombre"]),
+    vendedor: str(["VendNombre", "Vendedor", "Vend_Nombre", "VendAbreviacion"]),
     vendedorId: str(["IDVend", "VendId", "Vend_Id"]),
-    agente: str(["Agente", "AgenteNombre", "NombreAgente"]),
-    agenteId: str(["IDAgente", "AgenteId"]),
+    agente: str(["AgenteNombre", "Agente", "NombreAgente"]),
+    agenteId: str(["IDAgente", "AgenteId", "CAgente"]),
     raw,
   };
 }
@@ -391,9 +407,11 @@ async function handleSummary(
     else polizas++;
 
     const st = String(doc.statusRaw || "");
-    if (st === "V") vigentes++;
-    else if (st === "X" || st === "N") vencidas++;
-    else if (st === "C") canceladas++;
+    const statusText = String(doc.status || "").toLowerCase();
+    if (st === "V" || st === "1" || statusText === "vigente") vigentes++;
+    else if (st === "X" || st === "N" || st === "4" || statusText.includes("no vigente") || statusText.includes("vencida")) vencidas++;
+    else if (st === "C" || st === "3" || statusText === "cancelada") canceladas++;
+    else if (st === "2" || statusText === "renovada") vigentes++;
 
     const ramo = String(doc.ramo || "Otros");
     if (!porRamo[ramo]) porRamo[ramo] = { count: 0, prima: 0 };
@@ -970,6 +988,118 @@ Deno.serve(async (req: Request) => {
         error: "SICAS no esta configurado en el servidor.",
         code: "SICAS_NOT_CONFIGURED",
       });
+    }
+
+    // Diagnostic action to test different query approaches
+    if (action === "diagnose") {
+      const vendorId = mapping.sicas_vendor_id;
+      const results: Record<string, unknown> = {
+        vendorId,
+        config: {
+          report_filter_field: config.report_filter_field,
+          report_keycode_all: config.report_keycode_all,
+        },
+      };
+
+      // Test 1: conditionsDirect with VendId IN (id)
+      try {
+        const r1 = await client.readReport({
+          keyCode: config.report_keycode_all,
+          pageRequested: 1,
+          itemsForPage: 5,
+          conditionsDirect: `DatDocumentos.VendId IN (${vendorId})`,
+        });
+        const recs1 = r1.Response?.[0]?.TableInfo || [];
+        const ctrl1 = r1.Response?.[0]?.TableControl?.[0];
+        results.test1_conditionsDirect_VendId_IN = {
+          records: recs1.length,
+          maxRecords: ctrl1?.MaxRecords || 0,
+          error: r1.Error || null,
+          sample: recs1[0] ? Object.keys(recs1[0]).slice(0, 15) : [],
+          sampleData: recs1[0] || null,
+        };
+      } catch (e) {
+        results.test1_conditionsDirect_VendId_IN = { error: String(e) };
+      }
+
+      // Test 2: conditions with VendId=id
+      try {
+        const r2 = await client.readReport({
+          keyCode: config.report_keycode_all,
+          pageRequested: 1,
+          itemsForPage: 5,
+          conditions: `DatDocumentos.VendId=${vendorId}`,
+        });
+        const recs2 = r2.Response?.[0]?.TableInfo || [];
+        const ctrl2 = r2.Response?.[0]?.TableControl?.[0];
+        results.test2_conditions_VendId_eq = {
+          records: recs2.length,
+          maxRecords: ctrl2?.MaxRecords || 0,
+          error: r2.Error || null,
+        };
+      } catch (e) {
+        results.test2_conditions_VendId_eq = { error: String(e) };
+      }
+
+      // Test 3: conditions with IDVend=id
+      try {
+        const r3 = await client.readReport({
+          keyCode: config.report_keycode_all,
+          pageRequested: 1,
+          itemsForPage: 5,
+          conditions: `DatDocumentos.IDVend=${vendorId}`,
+        });
+        const recs3 = r3.Response?.[0]?.TableInfo || [];
+        const ctrl3 = r3.Response?.[0]?.TableControl?.[0];
+        results.test3_conditions_IDVend_eq = {
+          records: recs3.length,
+          maxRecords: ctrl3?.MaxRecords || 0,
+          error: r3.Error || null,
+        };
+      } catch (e) {
+        results.test3_conditions_IDVend_eq = { error: String(e) };
+      }
+
+      // Test 4: No filter at all (just get some records to see field names)
+      try {
+        const r4 = await client.readReport({
+          keyCode: config.report_keycode_all,
+          pageRequested: 1,
+          itemsForPage: 3,
+        });
+        const recs4 = r4.Response?.[0]?.TableInfo || [];
+        const ctrl4 = r4.Response?.[0]?.TableControl?.[0];
+        results.test4_no_filter = {
+          records: recs4.length,
+          maxRecords: ctrl4?.MaxRecords || 0,
+          error: r4.Error || null,
+          fieldNames: recs4[0] ? Object.keys(recs4[0]) : [],
+          sampleRecord: recs4[0] || null,
+        };
+      } catch (e) {
+        results.test4_no_filter = { error: String(e) };
+      }
+
+      // Test 5: conditionsDirect with IDVend IN (id)
+      try {
+        const r5 = await client.readReport({
+          keyCode: config.report_keycode_all,
+          pageRequested: 1,
+          itemsForPage: 5,
+          conditionsDirect: `DatDocumentos.IDVend IN (${vendorId})`,
+        });
+        const recs5 = r5.Response?.[0]?.TableInfo || [];
+        const ctrl5 = r5.Response?.[0]?.TableControl?.[0];
+        results.test5_conditionsDirect_IDVend_IN = {
+          records: recs5.length,
+          maxRecords: ctrl5?.MaxRecords || 0,
+          error: r5.Error || null,
+        };
+      } catch (e) {
+        results.test5_conditionsDirect_IDVend_IN = { error: String(e) };
+      }
+
+      return jsonResponse(200, { ok: true, diagnostics: results });
     }
 
     switch (action) {

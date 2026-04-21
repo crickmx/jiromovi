@@ -52,6 +52,45 @@ interface SicasReportResponse {
   Error?: string;
 }
 
+function parseXmlToTableInfo(xmlString: string): {
+  tableInfo: Record<string, string>[];
+  tableControl: { MaxRecords: number; Pages: number; Page: number; ItemForPage: number } | null;
+} {
+  const records: Record<string, string>[] = [];
+  // Match any row element: Table_WS_Documentos, Table_WS_xxx, etc.
+  const rowRegex = /<(Table_WS_\w+)>([\s\S]*?)<\/\1>/g;
+  let rowMatch;
+  while ((rowMatch = rowRegex.exec(xmlString)) !== null) {
+    const rowXml = rowMatch[2];
+    const record: Record<string, string> = {};
+    const fieldRegex = /<(\w+)>([\s\S]*?)<\/\1>/g;
+    let fieldMatch;
+    while ((fieldMatch = fieldRegex.exec(rowXml)) !== null) {
+      record[fieldMatch[1]] = fieldMatch[2].trim();
+    }
+    records.push(record);
+  }
+
+  // Parse pagination control
+  let tableControl = null;
+  const controlMatch = xmlString.match(/<Table_Paginacion>([\s\S]*?)<\/Table_Paginacion>/);
+  if (controlMatch) {
+    const xml = controlMatch[1];
+    const getVal = (tag: string): number => {
+      const m = xml.match(new RegExp(`<${tag}>(\\d+)</${tag}>`));
+      return m ? parseInt(m[1], 10) : 0;
+    };
+    tableControl = {
+      MaxRecords: getVal("MaxRecords") || getVal("TotalRegistros"),
+      Pages: getVal("Pages") || getVal("TotalPaginas"),
+      Page: getVal("Page") || getVal("PaginaActual"),
+      ItemForPage: getVal("ItemForPage") || getVal("ItemsPorPagina"),
+    };
+  }
+
+  return { tableInfo: records, tableControl };
+}
+
 interface SicasDigitalFile {
   FileName: string;
   FileExtension: string;
@@ -338,7 +377,7 @@ export class SicasRestClient {
     console.log('[SICAS REST] readReport - Body:', JSON.stringify(body, null, 2));
 
     try {
-      const response = await this.request<SicasReportResponse>(
+      const response = await this.request<any>(
         '/Report/ReadData',
         {
           method: 'POST',
@@ -360,8 +399,26 @@ export class SicasRestClient {
         throw new Error(response.Error);
       }
 
-      console.log('[SICAS REST] readReport - Success. Records:', response.Response?.[0]?.TableInfo?.length || 0);
-      return response;
+      // Handle XML string response format: { Response: "<DATAINFO>...</DATAINFO>", Sucess: true }
+      if (typeof response.Response === 'string' && response.Response.includes('<')) {
+        console.log('[SICAS REST] readReport - Response is XML string, parsing...');
+        const { tableInfo, tableControl } = parseXmlToTableInfo(response.Response);
+        const normalized: SicasReportResponse = {
+          Response: [{
+            TableInfo: tableInfo,
+            TableControl: tableControl ? [tableControl] : undefined,
+          }],
+          Sucess: response.Sucess,
+          Error: response.Error,
+        };
+        console.log('[SICAS REST] readReport - Parsed XML. Records:', tableInfo.length, 'Control:', tableControl);
+        return normalized;
+      }
+
+      // Handle already-structured JSON array response
+      const reportResponse = response as SicasReportResponse;
+      console.log('[SICAS REST] readReport - Success. Records:', reportResponse.Response?.[0]?.TableInfo?.length || 0);
+      return reportResponse;
     } catch (error: any) {
       console.error('[SICAS REST] readReport - Error:', error.message);
       // Mejorar el mensaje de error para códigos de reporte
