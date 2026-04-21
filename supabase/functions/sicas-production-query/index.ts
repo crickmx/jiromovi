@@ -625,6 +625,41 @@ async function handleListUsers(
   return jsonResponse(200, { ok: true, users: mapped });
 }
 
+async function handleListMappedVendors(
+  supabase: ReturnType<typeof createClient>
+): Promise<Response> {
+  const { data: usuarios, error } = await supabase
+    .from("usuarios")
+    .select("id, nombre, apellidos, id_sicas, nombre_sicas, oficina_id")
+    .eq("activo", true)
+    .not("id_sicas", "is", null)
+    .order("nombre");
+
+  if (error) {
+    return jsonResponse(500, { ok: false, error: error.message, code: "DB_ERROR" });
+  }
+
+  const { data: oficinas } = await supabase
+    .from("oficinas")
+    .select("id, nombre")
+    .eq("activa", true);
+
+  const oficinasMap: Record<string, string> = {};
+  for (const o of oficinas || []) {
+    oficinasMap[o.id] = o.nombre;
+  }
+
+  const vendors = (usuarios || []).map((u: Record<string, unknown>) => ({
+    usuario_id: u.id,
+    nombre: `${u.nombre} ${u.apellidos}`,
+    id_sicas: u.id_sicas,
+    nombre_sicas: u.nombre_sicas,
+    oficina: u.oficina_id ? oficinasMap[u.oficina_id as string] || null : null,
+  }));
+
+  return jsonResponse(200, { ok: true, vendors });
+}
+
 async function handleListVendors(
   supabase: ReturnType<typeof createClient>,
   search?: string
@@ -844,7 +879,8 @@ Deno.serve(async (req: Request) => {
     );
 
     // Admin-only actions (no SICAS mapping needed)
-    if (action === "list-users" || action === "list-vendors" || action === "map-user" || action === "unmap-user") {
+    const adminActions = ["list-users", "list-vendors", "map-user", "unmap-user", "list-mapped-vendors"];
+    if (adminActions.includes(action)) {
       const isAdmin = await requireAdmin(supabase, user.id);
       if (!isAdmin) {
         return jsonResponse(403, { ok: false, error: "Solo administradores pueden gestionar mapeos.", code: "FORBIDDEN" });
@@ -855,6 +891,8 @@ Deno.serve(async (req: Request) => {
           return await handleListUsers(supabase);
         case "list-vendors":
           return await handleListVendors(supabase, body.search);
+        case "list-mapped-vendors":
+          return await handleListMappedVendors(supabase);
         case "map-user":
           if (!body.targetUserId || !body.sicasVendorId) {
             return jsonResponse(400, { ok: false, error: "Se requiere targetUserId y sicasVendorId.", code: "MISSING_PARAMS" });
@@ -868,14 +906,41 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Resolve user's SICAS mapping
-    const mapping = await resolveUserMapping(supabase, user.id);
+    // Check if admin is using vendorId override
+    const isAdmin = await requireAdmin(supabase, user.id);
+    let mapping: UserMapping | null = null;
+
+    if (isAdmin && body.vendorId) {
+      const { data: vendorData } = await supabase
+        .from("sicas_catalogos")
+        .select("id_sicas, nombre")
+        .eq("catalog_type_id", 32)
+        .eq("id_sicas", body.vendorId)
+        .maybeSingle();
+
+      if (vendorData) {
+        mapping = {
+          sicas_vendor_id: vendorData.id_sicas,
+          sicas_vendor_name: vendorData.nombre,
+          usuario_id: user.id,
+          rol: "Administrador",
+          oficina_id: null,
+        };
+        console.log(`[SICASProd] admin override: vendorId=${body.vendorId} (${vendorData.nombre})`);
+      }
+    }
+
+    if (!mapping) {
+      mapping = await resolveUserMapping(supabase, user.id);
+    }
+
     if (!mapping) {
       return jsonResponse(200, {
         ok: false,
         error: "Tu cuenta aun no tiene un vinculo activo con SICAS.",
         code: "NO_MAPPING",
         noMapping: true,
+        isAdmin,
       });
     }
 
@@ -917,7 +982,7 @@ Deno.serve(async (req: Request) => {
           fechaHasta: body.fechaHasta,
         });
 
-      case "detail":
+      case "detail": {
         if (!body.idDocto) {
           return jsonResponse(400, {
             ok: false,
@@ -925,9 +990,12 @@ Deno.serve(async (req: Request) => {
             code: "MISSING_ID",
           });
         }
-        return await handleDetail(client, config, mapping, {
+        // Admins with vendorId override can view any document's detail
+        const detailMapping = (isAdmin && body.vendorId) ? mapping : mapping;
+        return await handleDetail(client, config, detailMapping, {
           idDocto: body.idDocto,
         });
+      }
 
       default:
         return jsonResponse(400, {

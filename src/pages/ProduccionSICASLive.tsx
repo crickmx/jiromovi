@@ -158,15 +158,46 @@ export default function ProduccionSICASLive() {
   // Errors
   const [error, setError] = useState<{ message: string; code?: string; noMapping?: boolean } | null>(null);
 
+  // Admin vendor selector
+  const [mappedVendors, setMappedVendors] = useState<Array<{ usuario_id: string; nombre: string; id_sicas: string; nombre_sicas: string; oficina: string | null }>>([]);
+  const [selectedVendorId, setSelectedVendorId] = useState<string>('');
+  const [loadingVendors, setLoadingVendors] = useState(false);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const isAdmin = usuario?.rol === 'Administrador';
+
+  // ─── Load Mapped Vendors (admin only) ───────────────────────────────────
+
+  const loadMappedVendors = useCallback(async () => {
+    if (!isAdmin) return;
+    setLoadingVendors(true);
+    try {
+      const data = await callSicasProduction({ action: 'list-mapped-vendors' });
+      if (data.ok && data.vendors) {
+        setMappedVendors(data.vendors as typeof mappedVendors);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingVendors(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    loadMappedVendors();
+  }, [loadMappedVendors]);
 
   // ─── Load Summary ────────────────────────────────────────────────────────
 
   const loadSummary = useCallback(async () => {
     if (!usuario) return;
+    if (isAdmin && !selectedVendorId) return;
     setLoadingSummary(true);
     try {
-      const data = await callSicasProduction({ action: 'summary' });
+      const body: Record<string, unknown> = { action: 'summary' };
+      if (isAdmin && selectedVendorId) body.vendorId = selectedVendorId;
+      const data = await callSicasProduction(body);
       if (data.ok) {
         setSummary(data.summary);
         setError(null);
@@ -179,12 +210,13 @@ export default function ProduccionSICASLive() {
     } finally {
       setLoadingSummary(false);
     }
-  }, [usuario]);
+  }, [usuario, isAdmin, selectedVendorId]);
 
   // ─── Load Documents ──────────────────────────────────────────────────────
 
   const loadDocuments = useCallback(async () => {
     if (!usuario) return;
+    if (isAdmin && !selectedVendorId) return;
     setLoadingDocs(true);
     try {
       const body: Record<string, unknown> = {
@@ -195,6 +227,7 @@ export default function ProduccionSICASLive() {
         sortField,
         sortDirection: sortDir,
       };
+      if (isAdmin && selectedVendorId) body.vendorId = selectedVendorId;
       if (searchApplied) body.search = searchApplied;
       if (statusFilter) body.status = statusFilter;
       if (ramoFilter) body.ramo = ramoFilter;
@@ -216,7 +249,7 @@ export default function ProduccionSICASLive() {
     } finally {
       setLoadingDocs(false);
     }
-  }, [usuario, currentPage, pageSize, docType, searchApplied, statusFilter, ramoFilter, aseguradoraFilter, fechaDesde, fechaHasta, sortField, sortDir]);
+  }, [usuario, isAdmin, selectedVendorId, currentPage, pageSize, docType, searchApplied, statusFilter, ramoFilter, aseguradoraFilter, fechaDesde, fechaHasta, sortField, sortDir]);
 
   // ─── Load Detail ─────────────────────────────────────────────────────────
 
@@ -224,7 +257,9 @@ export default function ProduccionSICASLive() {
     setLoadingDetail(true);
     setViewMode('detail');
     try {
-      const data = await callSicasProduction({ action: 'detail', idDocto });
+      const body: Record<string, unknown> = { action: 'detail', idDocto };
+      if (isAdmin && selectedVendorId) body.vendorId = selectedVendorId;
+      const data = await callSicasProduction(body);
       if (data.ok) {
         setSelectedDoc(data.document);
       } else {
@@ -282,36 +317,15 @@ export default function ProduccionSICASLive() {
 
   const activeFilterCount = [searchApplied, statusFilter, ramoFilter, aseguradoraFilter, fechaDesde, fechaHasta].filter(Boolean).length + (docType !== 'all' ? 1 : 0);
 
-  const isAdmin = usuario?.rol === 'Administrador';
   const [activeTab, setActiveTab] = useState<'produccion' | 'mapeo'>('produccion');
 
-  // ─── No mapping state (only block production tab, not mapeo) ─────────────
-
-  if (error?.noMapping && activeTab === 'produccion' && !isAdmin) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 md:p-6">
-        <div className="max-w-2xl mx-auto mt-20">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
-            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
-              <LinkIcon className="w-8 h-8 text-amber-600 dark:text-amber-400" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              Sin vinculo con SICAS
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Tu cuenta aun no tiene un vinculo activo con SICAS. Contacta a un administrador para que realice el mapeo de tu usuario.
-            </p>
-            <button
-              onClick={() => window.history.back()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Volver
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleVendorChange = (vendorId: string) => {
+    setSelectedVendorId(vendorId);
+    setCurrentPage(1);
+    setSummary(null);
+    setDocuments([]);
+    setError(null);
+  };
 
   // ─── Detail View ─────────────────────────────────────────────────────────
 
@@ -400,17 +414,40 @@ export default function ProduccionSICASLive() {
         {/* Production tab content */}
         {activeTab === 'produccion' && <>
 
-        {/* No mapping banner for admins */}
-        {error?.noMapping && isAdmin && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
-            <LinkIcon className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Tu cuenta no tiene un vinculo con SICAS</p>
-              <p className="text-amber-700 dark:text-amber-400 text-xs mt-1">Vincula tu cuenta en la pestana "Mapeo de Usuarios" para ver tu produccion.</p>
+        {/* Admin vendor selector */}
+        {isAdmin && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Ver produccion de:</label>
+              </div>
+              <select
+                value={selectedVendorId}
+                onChange={e => handleVendorChange(e.target.value)}
+                disabled={loadingVendors}
+                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">-- Selecciona un vendedor --</option>
+                {mappedVendors.map(v => (
+                  <option key={v.id_sicas} value={v.id_sicas}>
+                    {v.nombre} - {v.nombre_sicas} (ID: {v.id_sicas}){v.oficina ? ` | ${v.oficina}` : ''}
+                  </option>
+                ))}
+              </select>
+              {loadingVendors && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />}
             </div>
-            <button onClick={() => setActiveTab('mapeo')} className="text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100 text-sm font-medium whitespace-nowrap">
-              Ir a Mapeo
-            </button>
+            {!selectedVendorId && !loadingVendors && mappedVendors.length > 0 && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Selecciona un vendedor para consultar su produccion en SICAS en tiempo real.
+              </p>
+            )}
+            {!loadingVendors && mappedVendors.length === 0 && (
+              <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                No hay vendedores vinculados a SICAS. Ve a la pestana "Mapeo de Usuarios" para configurarlos.
+              </div>
+            )}
           </div>
         )}
 
@@ -428,11 +465,22 @@ export default function ProduccionSICASLive() {
           </div>
         )}
 
-        {/* Summary cards */}
-        {!error?.noMapping && <SummaryCards summary={summary} loading={loadingSummary} />}
+        {/* Non-admin no mapping */}
+        {error?.noMapping && !isAdmin && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
+            <LinkIcon className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Tu cuenta no tiene un vinculo con SICAS</p>
+              <p className="text-amber-700 dark:text-amber-400 text-xs mt-1">Contacta a un administrador para que realice el mapeo de tu usuario.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Summary cards - show when production is queryable */}
+        {(isAdmin ? !!selectedVendorId : !error?.noMapping) && <SummaryCards summary={summary} loading={loadingSummary} />}
 
         {/* Filters bar */}
-        {!error?.noMapping && <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+        {(isAdmin ? !!selectedVendorId : !error?.noMapping) && <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
           {/* Top bar */}
           <div className="p-4 flex flex-col sm:flex-row gap-3">
             {/* Type tabs */}
