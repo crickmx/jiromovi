@@ -51,6 +51,10 @@ Deno.serve(async (req) => {
 
     if (normalizedPhone.length === 10) {
       normalizedPhone = '521' + normalizedPhone;
+    } else if (normalizedPhone.length === 12 && normalizedPhone.startsWith('52')) {
+      normalizedPhone = '521' + normalizedPhone.substring(2);
+    } else if (normalizedPhone.length === 13 && !normalizedPhone.startsWith('521')) {
+      normalizedPhone = '521' + normalizedPhone.substring(3);
     }
 
     console.log('Normalized phone:', normalizedPhone);

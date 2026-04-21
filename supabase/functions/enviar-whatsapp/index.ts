@@ -51,6 +51,10 @@ Deno.serve(async (req) => {
 
       if (numeroNormalizado.length === 10) {
         numeroNormalizado = '521' + numeroNormalizado;
+      } else if (numeroNormalizado.length === 12 && numeroNormalizado.startsWith('52')) {
+        numeroNormalizado = '521' + numeroNormalizado.substring(2);
+      } else if (numeroNormalizado.length === 13 && !numeroNormalizado.startsWith('521')) {
+        numeroNormalizado = '521' + numeroNormalizado.substring(3);
       }
 
       console.log('Número normalizado:', numeroNormalizado);
@@ -189,6 +193,10 @@ Deno.serve(async (req) => {
 
     if (numeroNormalizado.length === 10) {
       numeroNormalizado = '521' + numeroNormalizado;
+    } else if (numeroNormalizado.length === 12 && numeroNormalizado.startsWith('52')) {
+      numeroNormalizado = '521' + numeroNormalizado.substring(2);
+    } else if (numeroNormalizado.length === 13 && !numeroNormalizado.startsWith('521')) {
+      numeroNormalizado = '521' + numeroNormalizado.substring(3);
     }
 
     console.log('Número normalizado:', numeroNormalizado);
