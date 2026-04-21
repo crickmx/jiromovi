@@ -336,11 +336,21 @@ async function handleDocuments(
 
   const records = response.Response?.[0]?.TableInfo || [];
   const control = response.Response?.[0]?.TableControl?.[0];
-  const items = records.map(normalizeRecord);
+  const allItems = records.map(normalizeRecord);
+
+  // Client-side vendor filter safety net
+  const vendorId = String(mapping.sicas_vendor_id);
+  const items = allItems.filter(d => {
+    const docVendId = String(d.vendedorId || "");
+    return !docVendId || docVendId === vendorId;
+  });
+  if (items.length < allItems.length) {
+    console.log(`[SICASProd] documents: client-side vendor filter removed ${allItems.length - items.length} records not belonging to vendorId=${vendorId}`);
+  }
 
   const duration = Date.now() - startTime;
   console.log(
-    `[SICASProd] documents returned ${items.length} records in ${duration}ms`
+    `[SICASProd] documents returned ${items.length} records (vendorId=${vendorId}) in ${duration}ms`
   );
 
   return jsonResponse(200, {
@@ -356,6 +366,7 @@ async function handleDocuments(
       keyCode,
       duration,
       filtersApplied: conditions,
+      vendorId,
     },
   });
 }
@@ -664,7 +675,9 @@ async function handleDashboard(
   if (filters.ramo) condParts.push(`DatDocumentos.Ramo LIKE '%${filters.ramo.replace(/'/g, "")}%'`);
   if (filters.aseguradora) condParts.push(`DatDocumentos.Abreviacion LIKE '%${filters.aseguradora.replace(/'/g, "")}%'`);
 
-  console.log(`[SICASProd] dashboard for vendorId=${mapping.sicas_vendor_id} periodo=${periodoLabel}`);
+  console.log(`[SICASProd] dashboard for vendorId=${mapping.sicas_vendor_id} (${mapping.sicas_vendor_name}) periodo=${periodoLabel}`);
+  console.log(`[SICASProd] dashboard conditionsDirect: ${conditionsDirect}`);
+  if (condParts.length > 0) console.log(`[SICASProd] dashboard conditions: ${condParts.join(" AND ")}`);
 
   // Fetch large batch - up to 1000 records for full analysis
   const allRecords: Record<string, unknown>[] = [];
@@ -694,8 +707,20 @@ async function handleDashboard(
 
   const docs = allRecords.map(normalizeRecord);
 
+  // Client-side vendor filter: ensure only records for this vendor are included.
+  // This is a safety net in case the SICAS API ignores ConditionsDirect for some keycodes.
+  const vendorId = String(mapping.sicas_vendor_id);
+  const docsBeforeVendorFilter = docs.length;
+  const vendorFiltered = docs.filter(d => {
+    const docVendId = String(d.vendedorId || "");
+    return !docVendId || docVendId === vendorId;
+  });
+  if (vendorFiltered.length < docsBeforeVendorFilter) {
+    console.log(`[SICASProd] dashboard: client-side vendor filter removed ${docsBeforeVendorFilter - vendorFiltered.length} records not belonging to vendorId=${vendorId}`);
+  }
+
   // Apply client-side filters that SICAS API doesn't support
-  let filtered = docs;
+  let filtered = vendorFiltered;
   if (filters.type === "policies") filtered = filtered.filter(d => !String(d.tipo).toLowerCase().includes("fianza"));
   else if (filters.type === "bonds") filtered = filtered.filter(d => String(d.tipo).toLowerCase().includes("fianza"));
   if (filters.cliente) {
@@ -1328,43 +1353,35 @@ Deno.serve(async (req: Request) => {
     let mapping: UserMapping | null = null;
 
     if (canManageVendors && body.vendorId) {
-      // Admin/Gerente using vendorId override
-      // For gerente: validate the target vendor belongs to their office
-      if (isGerente && callerOficinaId) {
-        const { data: targetUser } = await supabase
-          .from("usuarios")
-          .select("id, oficina_id, id_sicas, nombre_sicas")
-          .eq("id_sicas", body.vendorId)
-          .eq("activo", true)
-          .maybeSingle();
-
-        if (targetUser && targetUser.oficina_id !== callerOficinaId) {
-          console.log(`[SICASProd] gerente office mismatch: target office=${targetUser.oficina_id} caller office=${callerOficinaId}`);
-          return jsonResponse(403, {
-            ok: false,
-            error: "Solo puedes consultar la produccion de usuarios de tu oficina.",
-            code: "OFFICE_MISMATCH",
-          });
-        }
-      }
-
-      const { data: vendorData } = await supabase
-        .from("sicas_catalogos")
-        .select("id_sicas, nombre")
-        .eq("catalog_type_id", 32)
+      // Admin/Gerente selecting a specific vendor by their SICAS ID.
+      // Look up the target user in usuarios table to validate ownership and get name.
+      const { data: targetUser } = await supabase
+        .from("usuarios")
+        .select("id, oficina_id, id_sicas, nombre_sicas, nombre, apellidos")
         .eq("id_sicas", body.vendorId)
+        .eq("activo", true)
+        .limit(1)
         .maybeSingle();
 
-      if (vendorData) {
-        mapping = {
-          sicas_vendor_id: vendorData.id_sicas,
-          sicas_vendor_name: vendorData.nombre,
-          usuario_id: user.id,
-          rol: callerRol,
-          oficina_id: callerOficinaId,
-        };
-        console.log(`[SICASProd] ${callerRol} override: vendorId=${body.vendorId} (${vendorData.nombre})`);
+      if (isGerente && callerOficinaId && targetUser && targetUser.oficina_id !== callerOficinaId) {
+        console.log(`[SICASProd] gerente office mismatch: target office=${targetUser.oficina_id} caller office=${callerOficinaId}`);
+        return jsonResponse(403, {
+          ok: false,
+          error: "Solo puedes consultar la produccion de usuarios de tu oficina.",
+          code: "OFFICE_MISMATCH",
+        });
       }
+
+      // Use the vendorId directly - no need to look up sicas_catalogos
+      const vendorName = targetUser?.nombre_sicas || targetUser ? `${targetUser.nombre} ${targetUser.apellidos}` : body.vendorId;
+      mapping = {
+        sicas_vendor_id: String(body.vendorId),
+        sicas_vendor_name: vendorName,
+        usuario_id: targetUser?.id || user.id,
+        rol: callerRol,
+        oficina_id: callerOficinaId,
+      };
+      console.log(`[SICASProd] ${callerRol} override: vendorId=${body.vendorId} (${vendorName}), targetUser=${targetUser?.id || 'not found in usuarios'}`);
     }
 
     if (!mapping) {
