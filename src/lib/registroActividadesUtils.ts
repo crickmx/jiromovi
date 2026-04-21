@@ -170,6 +170,7 @@ export async function getTicketEstatus(tipoTramite?: string): Promise<Array<{
 }
 
 export async function createRegistroActividad(data: {
+  tipo_tramite?: string;
   activity_subtype_id: string;
   agente_usuario_id: string;
   insurance_type_id: string;
@@ -220,7 +221,7 @@ export async function createRegistroActividad(data: {
 
     const ticketData: any = {
       folio,
-      tipo_tramite: 'registro_actividad',
+      tipo_tramite: data.tipo_tramite || 'registro_actividad',
       activity_subtype_id: toUuid(data.activity_subtype_id),
       agente_usuario_id: toUuid(data.agente_usuario_id),
       insurance_type_id: toUuid(data.insurance_type_id),

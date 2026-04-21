@@ -481,6 +481,7 @@ export function NuevoTramiteModal({
     const effectiveAgenteId = isAgent ? usuario.id : ceAgenteUserId;
 
     const formData = {
+      tipo_tramite: 'cotizacion_emision',
       activity_subtype_id: COTIZACION_EMISION_SUBTYPE_ID,
       agente_usuario_id: effectiveAgenteId,
       insurance_type_id: ceInsuranceTypeId,
