@@ -61,11 +61,9 @@ import MapeoVendedores from './pages/MapeoVendedores';
 import DocumentosImportar from './pages/DocumentosImportar';
 import MapeoVendedoresAdmin from './pages/MapeoVendedoresAdmin';
 import ProduccionTotal from './pages/ProduccionTotal';
-import ProduccionPorVendedor from './pages/ProduccionPorVendedor';
 import ProduccionConvenio from './pages/ProduccionConvenio';
 import ProduccionConfiguracion from './pages/ProduccionConfiguracion';
 import MiProduccion from './pages/MiProduccion';
-import MiProduccionSICAS from './pages/MiProduccionSICAS';
 import MiProduccionSICASMirror from './pages/MiProduccionSICASMirror';
 import MisPolizas from './pages/MisPolizas';
 import GMMTarifasAdmin from './pages/GMMTarifasAdmin';
@@ -699,17 +697,6 @@ function AppRoutes() {
       />
 
       <Route
-        path="/produccion/por-vendedor"
-        element={
-          <ProtectedRoute requireAdmin={false} requireGerente>
-            <Layout>
-              <ProduccionPorVendedor />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
         path="/produccion/configuracion"
         element={
           <ProtectedRoute requireAdmin>
@@ -868,11 +855,9 @@ function App() {
               <Route path="/produccion/total" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionTotal /></Layout></ProtectedRoute>} />
               <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion" element={<ProtectedRoute><Layout><MiProduccion /></Layout></ProtectedRoute>} />
-              <Route path="/mi-produccion-sicas" element={<ProtectedRoute><Layout><MiProduccionSICAS /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion-sicas-live" element={<ProtectedRoute><Layout><ProduccionSICASLive /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion-sicas-soap" element={<ProtectedRoute><Layout><MiProduccionSICASMirror /></Layout></ProtectedRoute>} />
               <Route path="/mis-polizas" element={<ProtectedRoute><Layout><MisPolizas /></Layout></ProtectedRoute>} />
-              <Route path="/produccion/por-vendedor" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionPorVendedor /></Layout></ProtectedRoute>} />
               <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
               <Route path="/gmm/tarifas" element={<ProtectedRoute requireAdmin><GMMTarifasAdmin /></ProtectedRoute>} />
               <Route path="/gmm/cotizador" element={<ProtectedRoute requireAdmin><GMMCotizador /></ProtectedRoute>} />

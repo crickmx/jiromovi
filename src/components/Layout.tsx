@@ -96,10 +96,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/tramites', label: 'Trámites', icon: ClipboardList, show: true },
     { path: isAdmin ? '/comisiones' : '/mis-comisiones', label: 'Comisiones', icon: DollarSign, show: !isEmpleado && !isAgente },
     { path: '/mi-produccion', label: 'Mi Producción', icon: TrendingUp, show: false },
-    { path: '/mi-produccion-sicas', label: 'Mi Producción SICAS', icon: Database, show: !isEmpleado && !isAgente },
     { path: '/mi-produccion-sicas-live', label: 'Producción SICAS Live', icon: Activity, show: !isEmpleado && !isAgente },
     { path: '/produccion/total', label: 'Producción por Oficina', icon: Building, show: isAdminOrGerente },
-    { path: '/produccion/por-vendedor', label: 'Producción por Vendedor', icon: Users, show: isAdminOrGerente },
     { path: '/mi-crm', label: 'Mi CRM', icon: Briefcase, show: true },
     { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, show: !isEmpleado && !isAgente },
     { path: '/comunicados', label: 'Comunicados', icon: FileText, show: true },
@@ -181,10 +179,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
                 (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones'))) ||
                 (item.label === 'Mi Producción' && location.pathname === '/mi-produccion') ||
                 (item.label === 'Mercadotecnia' && location.pathname.startsWith('/mercadotecnia')) ||
-                (item.label.includes('Producción') && location.pathname.startsWith('/produccion') && (
-                  (item.path === '/produccion/total' && location.pathname === '/produccion/total') ||
-                  (item.path === '/produccion/por-vendedor' && location.pathname === '/produccion/por-vendedor')
-                ));
+                (item.path === '/produccion/total' && location.pathname === '/produccion/total');
 
               return (
                 <Button
