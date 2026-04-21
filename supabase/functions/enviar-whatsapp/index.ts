@@ -206,6 +206,12 @@ Deno.serve(async (req) => {
     datos['nombre_plataforma'] = 'MOVI Digital';
     datos['fecha'] = new Date().toLocaleDateString('es-MX');
 
+    // Convert relative URLs to absolute before substitution
+    const APP_BASE = 'https://app.movi.digital';
+    if (datos.url && typeof datos.url === 'string' && datos.url.startsWith('/')) {
+      datos.url = APP_BASE + datos.url;
+    }
+
     Object.keys(datos).forEach((key) => {
       const regex = new RegExp(`{{${key}}}`, 'g');
       texto = texto.replace(regex, datos[key] || '');

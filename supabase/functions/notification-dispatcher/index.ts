@@ -353,6 +353,10 @@ async function processEmailNotification(
   cuerpoHtml = cuerpoHtml.replace(/{{nombre}}/g, user.nombre || '');
   asunto = asunto.replace(/{{nombre}}/g, user.nombre || '');
 
+  // Convert relative URLs to absolute for email (external channel)
+  const APP_BASE_URL = 'https://app.movi.digital';
+  cuerpoHtml = cuerpoHtml.replace(/href="(\/[^"]+)"/g, `href="${APP_BASE_URL}$1"`);
+
   const startTime = Date.now();
 
   // Preparar adjuntos si existen
@@ -453,6 +457,10 @@ async function processWhatsAppNotification(
   });
 
   mensaje = mensaje.replace(/{{nombre}}/g, user.nombre || '');
+
+  // Convert relative URLs to absolute for WhatsApp (external channel)
+  const APP_BASE_URL_WA = 'https://app.movi.digital';
+  mensaje = mensaje.replace(/(^|[\s:])(\/(tramites|dashboard|comisiones|perfil|comunicados|mis-polizas|centro-notificaciones|registro-actividades)[^\s]*)/g, `$1${APP_BASE_URL_WA}$2`);
 
   // IMPORTANTE: Validar longitud del mensaje
   const MAX_WHATSAPP_LENGTH = 550;
