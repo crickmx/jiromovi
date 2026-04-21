@@ -74,9 +74,10 @@ export function TramiteDetalle() {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
+  const isEmpleado = usuario?.rol === 'Empleado';
   const isOwner = tramite?.creado_por === usuario?.id;
   const isAssigned = tramite?.assigned_to_user_id === usuario?.id;
-  const canEdit = isAdmin || isGerente || isOwner || isAssigned;
+  const canEdit = isAdmin || isGerente || isEmpleado || isOwner || isAssigned;
   const isCerrado = tramite?.cerrado_en !== null;
 
   const isDirty = !!tramite && (
