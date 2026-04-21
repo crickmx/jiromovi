@@ -107,7 +107,7 @@ async function getConfig(
   if (error || !data) {
     return {
       report_filter_mode: "vendor",
-      report_filter_field: "DatDocumentos.IDVend",
+      report_filter_field: "DatDocumentos.VendId",
       report_keycode_all: "HWS_DOCTOS",
       report_keycode_policies: "HWSDOC",
       report_keycode_bonds: "HWSInventario",
@@ -165,10 +165,11 @@ function buildConditions(
   config: ProductionConfig,
   mapping: UserMapping,
   params: DocumentsRequest
-): string {
+): { conditions: string; conditionsDirect: string } {
   const parts: string[] = [];
 
-  parts.push(`${config.report_filter_field}=${mapping.sicas_vendor_id}`);
+  // Vendor filter goes into conditionsDirect (required by SICAS REST API)
+  const conditionsDirect = `${config.report_filter_field} IN (${mapping.sicas_vendor_id})`;
 
   if (params.status) {
     const statusMap: Record<string, string> = {
@@ -203,7 +204,10 @@ function buildConditions(
     );
   }
 
-  return parts.join(" AND ");
+  return {
+    conditions: parts.join(" AND "),
+    conditionsDirect,
+  };
 }
 
 function selectKeyCode(
@@ -293,7 +297,7 @@ async function handleDocuments(
   );
   const page = params.page || 1;
   const keyCode = selectKeyCode(config, params.type || "all");
-  const conditions = buildConditions(config, mapping, params);
+  const { conditions, conditionsDirect } = buildConditions(config, mapping, params);
 
   const sortField = params.sortField || "DatDocumentos.FDesde";
   const sortDir = (params.sortDirection || "desc").toUpperCase();
@@ -302,13 +306,15 @@ async function handleDocuments(
     `[SICASProd] documents keyCode=${keyCode} page=${page} pageSize=${pageSize}`
   );
   console.log(`[SICASProd] conditions: ${conditions}`);
+  console.log(`[SICASProd] conditionsDirect: ${conditionsDirect}`);
 
   const response = await client.readReport({
     keyCode,
     pageRequested: page,
     itemsForPage: pageSize,
     sortFields: `${sortField} ${sortDir}`,
-    conditions,
+    conditions: conditions || undefined,
+    conditionsDirect,
     fieldsRequested: config.fields_requested_list || undefined,
   });
 
@@ -346,15 +352,16 @@ async function handleSummary(
   mapping: UserMapping
 ): Promise<Response> {
   const startTime = Date.now();
-  const conditions = `${config.report_filter_field}=${mapping.sicas_vendor_id}`;
+  const conditionsDirect = `${config.report_filter_field} IN (${mapping.sicas_vendor_id})`;
 
   console.log(`[SICASProd] summary for vendorId=${mapping.sicas_vendor_id}`);
+  console.log(`[SICASProd] summary conditionsDirect: ${conditionsDirect}`);
 
   const response = await client.readReport({
     keyCode: config.report_keycode_all,
     pageRequested: 1,
     itemsForPage: 500,
-    conditions,
+    conditionsDirect,
   });
 
   const records = response.Response?.[0]?.TableInfo || [];
@@ -446,13 +453,15 @@ async function handleDetail(
   );
 
   // Ownership validation: query user's documents with this ID
-  const ownershipConditions = `${config.report_filter_field}=${mapping.sicas_vendor_id} AND DatDocumentos.IDDocto=${idDocto}`;
+  const ownershipConditionsDirect = `${config.report_filter_field} IN (${mapping.sicas_vendor_id})`;
+  const ownershipConditions = `DatDocumentos.IDDocto=${idDocto}`;
 
   const checkResponse = await client.readReport({
     keyCode: config.report_keycode_all,
     pageRequested: 1,
     itemsForPage: 1,
     conditions: ownershipConditions,
+    conditionsDirect: ownershipConditionsDirect,
   });
 
   const checkRecords = checkResponse.Response?.[0]?.TableInfo || [];
