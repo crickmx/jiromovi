@@ -78,6 +78,7 @@ export function TramiteDetalle() {
   const isOwner = tramite?.creado_por === usuario?.id;
   const isAssigned = tramite?.assigned_to_user_id === usuario?.id;
   const canEdit = isAdmin || isGerente || isEmpleado || isOwner || isAssigned;
+  const claimedRef = useRef(false);
   const isCerrado = tramite?.cerrado_en !== null;
 
   const isDirty = !!tramite && (
@@ -194,6 +195,35 @@ export function TramiteDetalle() {
     setLoading(false);
     await loadEstatus(ticketData.tipo_tramite);
   };
+
+  useEffect(() => {
+    if (
+      !claimedRef.current &&
+      tramite &&
+      usuario &&
+      tramite.tipo_tramite === 'cotizacion_emision' &&
+      !tramite.assigned_to_user_id &&
+      !tramite.cerrado_en &&
+      ['Empleado', 'Gerente', 'Administrador', 'Ejecutivo'].includes(usuario.rol)
+    ) {
+      claimedRef.current = true;
+      (async () => {
+        const { error } = await supabase
+          .from('tickets')
+          .update({
+            assigned_to_user_id: usuario.id,
+            attending_user_id: usuario.id,
+            modificado_por: usuario.id,
+          })
+          .eq('id', tramite.id)
+          .is('assigned_to_user_id', null);
+
+        if (!error) {
+          await loadTramite();
+        }
+      })();
+    }
+  }, [tramite?.id, tramite?.assigned_to_user_id]);
 
   const TIPO_TRAMITE_CATEGORIA: Record<string, string> = {
     cotizacion_emision: 'cotizacion_emision',

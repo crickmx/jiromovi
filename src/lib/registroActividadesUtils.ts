@@ -22,7 +22,7 @@ export async function canAccessRegistroActividades(): Promise<boolean> {
     .maybeSingle();
 
   if (!data) return false;
-  return ['Empleado', 'Gerente', 'Administrador'].includes(data.rol);
+  return ['Agente', 'Empleado', 'Gerente', 'Administrador'].includes(data.rol);
 }
 
 export async function getTramiteActivityTypes(): Promise<TramiteActivityType[]> {

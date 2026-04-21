@@ -228,6 +228,8 @@ export function NuevoTramiteModal({
   const resetForm = () => {
     if (preloadedData?.tipoTramite) {
       setTipoTramite(preloadedData.tipoTramite);
+    } else if (isAgent) {
+      setTipoTramite('cotizacion_emision');
     } else {
       setTipoTramite('correccion_poliza_registrada');
     }
@@ -476,20 +478,22 @@ export function NuevoTramiteModal({
   const handleSubmitCotizacionEmision = async () => {
     if (!usuario) return;
 
+    const effectiveAgenteId = isAgent ? usuario.id : ceAgenteUserId;
+
     const formData = {
       activity_subtype_id: COTIZACION_EMISION_SUBTYPE_ID,
-      agente_usuario_id: ceAgenteUserId,
+      agente_usuario_id: effectiveAgenteId,
       insurance_type_id: ceInsuranceTypeId,
       insurers: ceSelectedInsurers,
-      attending_user_id: usuario.id,
+      attending_user_id: isAgent ? '' : usuario.id,
       request_datetime: formatDateTimeFromInput(ceRequestDatetime),
-      completion_datetime: ceCompletionDatetime ? formatDateTimeFromInput(ceCompletionDatetime) : undefined,
-      estatus_nombre: ceEstatusNombre,
-      prioridad,
+      completion_datetime: (!isAgent && ceCompletionDatetime) ? formatDateTimeFromInput(ceCompletionDatetime) : undefined,
+      estatus_nombre: isAgent ? 'Iniciado' : ceEstatusNombre,
+      prioridad: isAgent ? 'Media' : prioridad,
       instrucciones: descripcion
     };
 
-    if (!ceAgenteUserId) { setError('El agente es obligatorio'); return; }
+    if (!effectiveAgenteId) { setError('El agente es obligatorio'); return; }
     if (!ceInsuranceTypeId) { setError('El tipo de seguro es obligatorio'); return; }
     if (ceSelectedInsurers.length === 0) { setError('Debe seleccionar al menos una aseguradora'); return; }
     if (!ceRequestDatetime) { setError('La fecha de inicio es obligatoria'); return; }
@@ -816,67 +820,81 @@ export function NuevoTramiteModal({
         {/* ===== SECCIÓN COTIZACIÓN / EMISIÓN ===== */}
         {tipoTramite === 'cotizacion_emision' && (
           <div className="space-y-4">
-            {/* Pipeline de estatus */}
-            <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
-              <label className="block text-xs font-semibold text-neutral-700 mb-3 uppercase tracking-wide">
-                Estatus del Trámite
-              </label>
-              <div className="flex flex-wrap items-center gap-1">
-                {REGISTRO_ACTIVIDAD_ESTATUS.map((est, idx) => {
-                  const isActive = ceEstatusNombre === est.nombre;
-                  const isPassed = REGISTRO_ACTIVIDAD_ESTATUS.findIndex(e => e.nombre === ceEstatusNombre) > idx;
-                  const isLast = idx === REGISTRO_ACTIVIDAD_ESTATUS.length - 1;
-                  return (
-                    <div key={est.nombre} className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setCeEstatusNombre(est.nombre)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-200 ${
-                          isActive
-                            ? 'text-white border-transparent shadow-md scale-105'
-                            : isPassed
-                            ? 'text-white border-transparent opacity-60'
-                            : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-400'
-                        }`}
-                        style={{
-                          backgroundColor: (isActive || isPassed) ? est.color : undefined,
-                          borderColor: isActive ? est.color : undefined,
-                        }}
-                      >
-                        {(isActive || isPassed) && <CheckCircle2 className="w-3 h-3" />}
-                        {est.nombre}
-                      </button>
-                      {!isLast && <ChevronRight className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />}
-                    </div>
-                  );
-                })}
-              </div>
-              {isEstatusFinal(ceEstatusNombre) && (
-                <div className="mt-3 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-neutral-100 text-neutral-600">
-                  <Lock className="w-3.5 h-3.5" />
-                  Este es un estatus final. El trámite quedará cerrado.
+            {/* Pipeline de estatus - solo para no-agentes */}
+            {!isAgent && (
+              <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
+                <label className="block text-xs font-semibold text-neutral-700 mb-3 uppercase tracking-wide">
+                  Estatus del Trámite
+                </label>
+                <div className="flex flex-wrap items-center gap-1">
+                  {REGISTRO_ACTIVIDAD_ESTATUS.map((est, idx) => {
+                    const isActive = ceEstatusNombre === est.nombre;
+                    const isPassed = REGISTRO_ACTIVIDAD_ESTATUS.findIndex(e => e.nombre === ceEstatusNombre) > idx;
+                    const isLast = idx === REGISTRO_ACTIVIDAD_ESTATUS.length - 1;
+                    return (
+                      <div key={est.nombre} className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setCeEstatusNombre(est.nombre)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-200 ${
+                            isActive
+                              ? 'text-white border-transparent shadow-md scale-105'
+                              : isPassed
+                              ? 'text-white border-transparent opacity-60'
+                              : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-400'
+                          }`}
+                          style={{
+                            backgroundColor: (isActive || isPassed) ? est.color : undefined,
+                            borderColor: isActive ? est.color : undefined,
+                          }}
+                        >
+                          {(isActive || isPassed) && <CheckCircle2 className="w-3 h-3" />}
+                          {est.nombre}
+                        </button>
+                        {!isLast && <ChevronRight className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />}
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
+                {isEstatusFinal(ceEstatusNombre) && (
+                  <div className="mt-3 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-neutral-100 text-neutral-600">
+                    <Lock className="w-3.5 h-3.5" />
+                    Este es un estatus final. El trámite quedará cerrado.
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Agente */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  <User className="w-4 h-4 inline mr-1.5" />
-                  Agente *
-                </label>
-                <select
-                  value={ceAgenteUserId}
-                  onChange={(e) => setCeAgenteUserId(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                >
-                  <option value="">Seleccione...</option>
-                  {ceAgenteUsers.map(user => (
-                    <option key={user.id} value={user.id}>{user.nombre_completo}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Agente - auto-asignado si es Agente */}
+              {isAgent ? (
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                    <User className="w-4 h-4 inline mr-1.5" />
+                    Agente
+                  </label>
+                  <div className="w-full px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm text-neutral-700">
+                    {usuario?.nombre_completo || 'Tu'}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                    <User className="w-4 h-4 inline mr-1.5" />
+                    Agente *
+                  </label>
+                  <select
+                    value={ceAgenteUserId}
+                    onChange={(e) => setCeAgenteUserId(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                  >
+                    <option value="">Seleccione...</option>
+                    {ceAgenteUsers.map(user => (
+                      <option key={user.id} value={user.id}>{user.nombre_completo}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Tipo de Seguro */}
               <div>
@@ -945,7 +963,7 @@ export function NuevoTramiteModal({
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 ${!isAgent ? 'md:grid-cols-2' : ''} gap-4`}>
               {/* Fecha de Inicio */}
               <div>
                 <label className="block text-sm font-semibold text-neutral-900 mb-2">
@@ -960,37 +978,41 @@ export function NuevoTramiteModal({
                 />
               </div>
 
-              {/* Fecha de Finalización */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                  <Clock className="w-4 h-4 inline mr-1.5" />
-                  Fecha de Finalización
-                  {isEstatusFinal(ceEstatusNombre) && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                <input
-                  type="datetime-local"
-                  value={ceCompletionDatetime}
-                  onChange={(e) => setCeCompletionDatetime(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                />
-              </div>
+              {/* Fecha de Finalización - solo para no-agentes */}
+              {!isAgent && (
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                    <Clock className="w-4 h-4 inline mr-1.5" />
+                    Fecha de Finalización
+                    {isEstatusFinal(ceEstatusNombre) && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={ceCompletionDatetime}
+                    onChange={(e) => setCeCompletionDatetime(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Prioridad dentro del bloque CE */}
-            <div>
-              <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                Prioridad
-              </label>
-              <select
-                value={prioridad}
-                onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                <option value="Baja">Baja</option>
-                <option value="Media">Media</option>
-                <option value="Alta">Alta</option>
-              </select>
-            </div>
+            {/* Prioridad dentro del bloque CE - solo para no-agentes */}
+            {!isAgent && (
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  Prioridad
+                </label>
+                <select
+                  value={prioridad}
+                  onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                  <option value="Baja">Baja</option>
+                  <option value="Media">Media</option>
+                  <option value="Alta">Alta</option>
+                </select>
+              </div>
+            )}
           </div>
         )}
 
