@@ -926,7 +926,7 @@ export function NuevoTramiteModal({
                   </div>
                   <div className="p-1">
                     {ceAseguradorasRA
-                      .filter(a => a.nombre.toLowerCase().includes(ceInsurerSearchTerm.toLowerCase()))
+                      .filter(a => (a.nombre ?? '').toLowerCase().includes(ceInsurerSearchTerm.toLowerCase()))
                       .map(aseg => (
                         <label key={aseg.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
                           <input

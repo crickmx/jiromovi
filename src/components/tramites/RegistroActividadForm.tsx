@@ -153,7 +153,7 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
   };
 
   const filteredAseguradoras = aseguradoras.filter(a =>
-    a.nombre.toLowerCase().includes(insurerSearchTerm.toLowerCase())
+    (a.nombre ?? '').toLowerCase().includes(insurerSearchTerm.toLowerCase())
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -313,7 +313,7 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
                 <option value="">Seleccione...</option>
                 {tramiteTypes
                   .filter(type => {
-                    const n = type.nombre.toLowerCase();
+                    const n = (type.nombre ?? '').toLowerCase();
                     return (n.includes('cotizaci') && n.includes('emisi')) || n === 'otro';
                   })
                   .map(type => (

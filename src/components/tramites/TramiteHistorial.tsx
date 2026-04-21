@@ -49,7 +49,7 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
             const newItem = data as HistorialItem;
             if (filtroTipo === 'todos' ||
                 newItem.tipo_accion === filtroTipo ||
-                newItem.accion.toLowerCase().includes(filtroTipo.toLowerCase())) {
+                (newItem.accion ?? '').toLowerCase().includes(filtroTipo.toLowerCase())) {
               setHistorialFiltrado(prev => [newItem, ...prev]);
             }
           }
@@ -82,14 +82,14 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
       setHistorialFiltrado(historial);
     } else {
       setHistorialFiltrado(
-        historial.filter(item => item.tipo_accion === filtroTipo || item.accion.toLowerCase().includes(filtroTipo.toLowerCase()))
+        historial.filter(item => item.tipo_accion === filtroTipo || (item.accion ?? '').toLowerCase().includes(filtroTipo.toLowerCase()))
       );
     }
   }, [filtroTipo, historial]);
 
   const getAccionColor = (tipoAccion: string | null, accion: string) => {
     // Usar tipo_accion si está disponible, sino fallback a texto de acción
-    const tipo = tipoAccion || accion;
+    const tipo = tipoAccion || accion || '';
 
     if (tipo.includes('creacion') || tipo.includes('creado')) {
       return 'bg-green-100 text-green-700 border-green-300';
