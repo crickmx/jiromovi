@@ -275,8 +275,6 @@ export default function ProduccionSICASLive() {
         type: filters.type,
         sortField,
         sortDirection: sortDir,
-        fechaDesde: filters.fechaDesde,
-        fechaHasta: filters.fechaHasta,
       };
       if (selectedVendorId) body.vendorId = selectedVendorId;
       if (filters.search) body.search = filters.search;
@@ -697,7 +695,8 @@ function DocumentsTable({ documents, loading, pagination, currentPage, pageSize,
       {!loading && documents.length > 0 && (
         <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-[10px] text-gray-500 dark:text-gray-400">
-            {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, pagination.maxRecords)} de {pagination.maxRecords}
+            {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, pagination.maxRecords)} de {pagination.maxRecords} documentos
+            {pagination.pages > 1 && ` (pagina ${currentPage} de ${pagination.pages})`}
           </p>
           <div className="flex items-center gap-1">
             <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} className="p-1 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors">

@@ -161,15 +161,38 @@ async function resolveUserMapping(
   return null;
 }
 
+/**
+ * Build the vendor filter condition string.
+ * Uses the configured filter field (e.g. DatDocumentos.VendId).
+ * Returns empty string for ALL mode (no vendor filter).
+ */
+function buildVendorCondition(
+  config: ProductionConfig,
+  mapping: UserMapping
+): string {
+  if (mapping.sicas_vendor_id === "ALL") return "";
+  const vid = mapping.sicas_vendor_id;
+  const field = config.report_filter_field;
+  if (vid.includes(",")) {
+    return `${field} IN (${vid})`;
+  }
+  return `${field}=${vid}`;
+}
+
 function buildConditions(
   config: ProductionConfig,
   mapping: UserMapping,
   params: DocumentsRequest
 ): { conditions: string; conditionsDirect: string } {
-  const parts: string[] = [];
+  const condParts: string[] = [];
+  const cdParts: string[] = [];
 
-  // Vendor filter: skip when "ALL" (admin all-production mode)
-  const conditionsDirect = buildVendorConditionsDirect(config, mapping);
+  // Vendor filter goes into BOTH conditions and conditionsDirect for maximum compatibility
+  const vendorFilter = buildVendorCondition(config, mapping);
+  if (vendorFilter) {
+    condParts.push(vendorFilter);
+    cdParts.push(vendorFilter);
+  }
 
   if (params.status) {
     const statusMap: Record<string, string> = {
@@ -180,50 +203,36 @@ function buildConditions(
       pendiente: "5",
     };
     const val = statusMap[params.status.toLowerCase()] || params.status;
-    parts.push(`DatDocumentos.Status=${val}`);
+    condParts.push(`DatDocumentos.Status=${val}`);
   }
 
   if (params.search) {
     const s = params.search.replace(/'/g, "");
-    parts.push(
+    condParts.push(
       `(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`
     );
   }
 
   if (params.fechaDesde) {
-    parts.push(`DatDocumentos.FDesde>=${params.fechaDesde}`);
+    condParts.push(`DatDocumentos.FDesde>=${params.fechaDesde}`);
   }
   if (params.fechaHasta) {
-    parts.push(`DatDocumentos.FHasta<=${params.fechaHasta}`);
+    condParts.push(`DatDocumentos.FHasta<=${params.fechaHasta}`);
   }
 
   if (params.ramo) {
-    parts.push(`DatDocumentos.Ramo LIKE '%${params.ramo.replace(/'/g, "")}%'`);
+    condParts.push(`DatDocumentos.Ramo LIKE '%${params.ramo.replace(/'/g, "")}%'`);
   }
   if (params.aseguradora) {
-    parts.push(
+    condParts.push(
       `DatDocumentos.Abreviacion LIKE '%${params.aseguradora.replace(/'/g, "")}%'`
     );
   }
 
   return {
-    conditions: parts.join(" AND "),
-    conditionsDirect,
+    conditions: condParts.join(" AND "),
+    conditionsDirect: cdParts.join(" AND "),
   };
-}
-
-function buildVendorConditionsDirect(
-  config: ProductionConfig,
-  mapping: UserMapping
-): string {
-  if (mapping.sicas_vendor_id === "ALL") return "";
-  const vid = mapping.sicas_vendor_id;
-  // For multiple vendor IDs (gerente multi-vendor mode), use IN syntax
-  if (vid.includes(",")) {
-    return `${config.report_filter_field} IN (${vid})`;
-  }
-  // For single vendor ID, use = for better compatibility
-  return `${config.report_filter_field}=${vid}`;
 }
 
 function selectKeyCode(
@@ -312,6 +321,59 @@ function normalizeRecord(raw: Record<string, unknown>): Record<string, unknown> 
   };
 }
 
+/**
+ * Fetch ALL pages from a SICAS report, iterating through pagination.
+ * Returns the full array of raw records and the total from TableControl.
+ */
+async function fetchAllPages(
+  client: SicasRestClient,
+  opts: {
+    keyCode: string;
+    conditions?: string;
+    conditionsDirect?: string;
+    sortFields?: string;
+    fieldsRequested?: string;
+    pageSize?: number;
+    maxPages?: number;
+  }
+): Promise<{ records: Record<string, unknown>[]; totalInSicas: number; pagesFetched: number }> {
+  const pageSize = opts.pageSize || 500;
+  const maxPages = opts.maxPages || 100;
+  const allRecords: Record<string, unknown>[] = [];
+  let page = 1;
+  let totalInSicas = 0;
+  let totalPages = 1;
+
+  while (page <= maxPages) {
+    const response = await client.readReport({
+      keyCode: opts.keyCode,
+      pageRequested: page,
+      itemsForPage: pageSize,
+      conditions: opts.conditions || undefined,
+      conditionsDirect: opts.conditionsDirect || undefined,
+      sortFields: opts.sortFields || undefined,
+      fieldsRequested: opts.fieldsRequested || undefined,
+    });
+
+    const records = response.Response?.[0]?.TableInfo || [];
+    const control = response.Response?.[0]?.TableControl?.[0];
+
+    if (page === 1) {
+      totalInSicas = control?.MaxRecords || records.length;
+      totalPages = control?.Pages || 1;
+      console.log(`[SICASProd] fetchAllPages: SICAS reports MaxRecords=${totalInSicas} Pages=${totalPages} ItemForPage=${control?.ItemForPage || pageSize}`);
+    }
+
+    allRecords.push(...records);
+
+    if (records.length === 0 || page >= totalPages) break;
+    page++;
+  }
+
+  console.log(`[SICASProd] fetchAllPages: fetched ${allRecords.length} records across ${page} pages (totalInSicas=${totalInSicas})`);
+  return { records: allRecords, totalInSicas, pagesFetched: page };
+}
+
 // ─── Action: documents ───────────────────────────────────────────────────────
 
 async function handleDocuments(
@@ -321,10 +383,7 @@ async function handleDocuments(
   params: DocumentsRequest
 ): Promise<Response> {
   const startTime = Date.now();
-  const pageSize = Math.min(
-    params.pageSize || config.default_page_size,
-    500
-  );
+  const pageSize = Math.min(params.pageSize || config.default_page_size, 500);
   const page = params.page || 1;
   const keyCode = selectKeyCode(config, params.type || "all");
   const { conditions, conditionsDirect } = buildConditions(config, mapping, params);
@@ -334,11 +393,9 @@ async function handleDocuments(
   const sortField = params.sortField || "DatDocumentos.FDesde";
   const sortDir = (params.sortDirection || "desc").toUpperCase();
 
-  console.log(
-    `[SICASProd] documents keyCode=${keyCode} page=${page} pageSize=${pageSize} allMode=${isAllMode} vendorId=${vendorIdStr}`
-  );
-  console.log(`[SICASProd] conditions: ${conditions}`);
-  console.log(`[SICASProd] conditionsDirect: ${conditionsDirect || "(none - all vendors)"}`);
+  console.log(`[SICASProd] documents: keyCode=${keyCode} page=${page} pageSize=${pageSize} allMode=${isAllMode} vendorId=${vendorIdStr}`);
+  console.log(`[SICASProd] documents: conditions="${conditions || "(none)"}"`);
+  console.log(`[SICASProd] documents: conditionsDirect="${conditionsDirect || "(none)"}"`);
 
   const response = await client.readReport({
     keyCode,
@@ -352,45 +409,33 @@ async function handleDocuments(
 
   const records = response.Response?.[0]?.TableInfo || [];
   const control = response.Response?.[0]?.TableControl?.[0];
-  console.log(`[SICASProd] documents SICAS returned ${records.length} records, MaxRecords=${control?.MaxRecords || "?"}, Pages=${control?.Pages || "?"}`);
-  const allItems = records.map(normalizeRecord);
+  console.log(`[SICASProd] documents: SICAS returned ${records.length} records, MaxRecords=${control?.MaxRecords || "?"}, Pages=${control?.Pages || "?"}, Page=${control?.Page || "?"}`);
 
-  // Client-side vendor filter safety net (skip in ALL mode)
-  let items: Record<string, unknown>[];
-  if (isAllMode) {
-    items = allItems;
-  } else {
-    items = allItems.filter(d => {
-      const docVendId = String(d.vendedorId || "");
-      if (vendorIdStr.includes(",")) {
-        const vendorIds = vendorIdStr.split(",").map(v => v.trim());
-        return !docVendId || vendorIds.includes(docVendId);
-      }
-      return !docVendId || docVendId === vendorIdStr;
-    });
-    if (items.length < allItems.length) {
-      console.log(`[SICASProd] documents: client-side vendor filter removed ${allItems.length - items.length} records not belonging to vendorId=${vendorIdStr}`);
-    }
+  // Log a sample record's vendor fields to debug filtering
+  if (records.length > 0) {
+    const sample = records[0] as Record<string, unknown>;
+    console.log(`[SICASProd] documents: sample record vendor fields - VendId=${sample.VendId ?? sample.IDVend ?? "?"}, VendNombre=${sample.VendNombre ?? sample.Vendedor ?? "?"}`);
   }
 
+  const allItems = records.map(normalizeRecord);
+
   const duration = Date.now() - startTime;
-  console.log(
-    `[SICASProd] documents returned ${items.length} records (vendorId=${vendorIdStr}) in ${duration}ms`
-  );
+  console.log(`[SICASProd] documents: returning ${allItems.length} records in ${duration}ms`);
 
   return jsonResponse(200, {
     ok: true,
-    items,
+    items: allItems,
     pagination: {
       page: control?.Page || page,
       pageSize: control?.ItemForPage || pageSize,
       pages: control?.Pages || 1,
-      maxRecords: control?.MaxRecords || items.length,
+      maxRecords: control?.MaxRecords || allItems.length,
     },
     meta: {
       keyCode,
       duration,
       filtersApplied: conditions,
+      conditionsDirectApplied: conditionsDirect,
       vendorId: vendorIdStr,
     },
   });
@@ -405,22 +450,20 @@ async function handleSummary(
 ): Promise<Response> {
   const startTime = Date.now();
   const isAllMode = mapping.sicas_vendor_id === "ALL";
-  const conditionsDirect = buildVendorConditionsDirect(config, mapping);
+  const vendorFilter = buildVendorCondition(config, mapping);
 
-  console.log(`[SICASProd] summary for vendorId=${mapping.sicas_vendor_id} (allMode=${isAllMode})`);
-  console.log(`[SICASProd] summary conditionsDirect: ${conditionsDirect || "(none - all vendors)"}`);
+  console.log(`[SICASProd] summary: vendorId=${mapping.sicas_vendor_id} allMode=${isAllMode}`);
+  console.log(`[SICASProd] summary: vendorFilter="${vendorFilter || "(none - all vendors)"}"`);
 
-  const response = await client.readReport({
+  const { records, totalInSicas } = await fetchAllPages(client, {
     keyCode: config.report_keycode_all,
-    pageRequested: 1,
-    itemsForPage: 500,
-    conditionsDirect: conditionsDirect || undefined,
+    conditions: vendorFilter || undefined,
+    conditionsDirect: vendorFilter || undefined,
+    pageSize: 500,
+    maxPages: isAllMode ? 10 : 50,
   });
 
-  const records = response.Response?.[0]?.TableInfo || [];
-  const control = response.Response?.[0]?.TableControl?.[0];
   const normalized = records.map(normalizeRecord);
-  const totalFromControl = control?.MaxRecords || normalized.length;
 
   let totalPrimaNeta = 0;
   let totalPrimaTotal = 0;
@@ -469,14 +512,12 @@ async function handleSummary(
   }
 
   const duration = Date.now() - startTime;
-  console.log(
-    `[SICASProd] summary computed from ${normalized.length} records (total=${totalFromControl}) in ${duration}ms`
-  );
+  console.log(`[SICASProd] summary: computed from ${normalized.length} records (totalInSicas=${totalInSicas}) in ${duration}ms`);
 
   return jsonResponse(200, {
     ok: true,
     summary: {
-      totalDocumentos: totalFromControl,
+      totalDocumentos: totalInSicas,
       totalPolizas: polizas,
       totalFianzas: fianzas,
       primaNetaTotal: Math.round(totalPrimaNeta * 100) / 100,
@@ -488,7 +529,7 @@ async function handleSummary(
       porAseguradora,
       porMes,
     },
-    meta: { duration, recordsAnalyzed: normalized.length, totalInSicas: totalFromControl },
+    meta: { duration, recordsAnalyzed: normalized.length, totalInSicas },
   });
 }
 
@@ -502,34 +543,53 @@ async function handleDetail(
 ): Promise<Response> {
   const startTime = Date.now();
   const idDocto = String(params.idDocto);
+  const isAllMode = mapping.sicas_vendor_id === "ALL";
 
-  console.log(
-    `[SICASProd] detail idDocto=${idDocto} user=${mapping.usuario_id}`
-  );
+  console.log(`[SICASProd] detail: idDocto=${idDocto} user=${mapping.usuario_id} allMode=${isAllMode}`);
 
-  // Ownership validation: query user's documents with this ID
-  const ownershipCd = buildVendorConditionsDirect(config, mapping);
-  const ownershipConditionsDirect = ownershipCd || undefined;
-  const ownershipConditions = `DatDocumentos.IDDocto=${idDocto}`;
+  // Ownership validation: query the document with vendor scope
+  const vendorFilter = buildVendorCondition(config, mapping);
+  const ownershipConditions = vendorFilter
+    ? `DatDocumentos.IDDocto=${idDocto} AND ${vendorFilter}`
+    : `DatDocumentos.IDDocto=${idDocto}`;
 
   const checkResponse = await client.readReport({
     keyCode: config.report_keycode_all,
     pageRequested: 1,
     itemsForPage: 1,
     conditions: ownershipConditions,
-    conditionsDirect: ownershipConditionsDirect,
+    conditionsDirect: vendorFilter || undefined,
   });
 
   const checkRecords = checkResponse.Response?.[0]?.TableInfo || [];
   if (checkRecords.length === 0) {
-    console.log(
-      `[SICASProd] detail DENIED: idDocto=${idDocto} not found for vendor=${mapping.sicas_vendor_id}`
-    );
-    return jsonResponse(403, {
-      ok: false,
-      error: "No tienes permiso para consultar este documento.",
-      code: "DOCUMENT_NOT_OWNED",
-    });
+    // If vendor-filtered check failed, try without vendor filter for admins
+    if (isAllMode) {
+      const fallbackResponse = await client.readReport({
+        keyCode: config.report_keycode_all,
+        pageRequested: 1,
+        itemsForPage: 1,
+        conditions: `DatDocumentos.IDDocto=${idDocto}`,
+      });
+      const fallbackRecords = fallbackResponse.Response?.[0]?.TableInfo || [];
+      if (fallbackRecords.length === 0) {
+        console.log(`[SICASProd] detail: idDocto=${idDocto} not found in SICAS`);
+        return jsonResponse(404, {
+          ok: false,
+          error: "Documento no encontrado en SICAS.",
+          code: "DOCUMENT_NOT_FOUND",
+        });
+      }
+      // Use fallback record
+      checkRecords.push(...fallbackRecords);
+    } else {
+      console.log(`[SICASProd] detail: idDocto=${idDocto} not found for vendor=${mapping.sicas_vendor_id}`);
+      return jsonResponse(403, {
+        ok: false,
+        error: "No tienes permiso para consultar este documento.",
+        code: "DOCUMENT_NOT_OWNED",
+      });
+    }
   }
 
   // Fetch full detail via Data/ReadData
@@ -561,14 +621,12 @@ async function handleDetail(
       document.raw = { listRecord: checkRecords[0], detailError: detailResponse.Error };
     }
   } catch (detailError) {
-    console.warn(
-      `[SICASProd] detail /Data/ReadData failed, using list record. Error: ${detailError}`
-    );
+    console.warn(`[SICASProd] detail: /Data/ReadData failed, using list record. Error: ${detailError}`);
     document.raw = { listRecord: checkRecords[0], detailError: String(detailError) };
   }
 
   const duration = Date.now() - startTime;
-  console.log(`[SICASProd] detail returned in ${duration}ms`);
+  console.log(`[SICASProd] detail: returned in ${duration}ms`);
 
   return jsonResponse(200, {
     ok: true,
@@ -639,8 +697,8 @@ function normalizeDetailValues(
 // ─── Action: dashboard (full KPIs + chart series + top lists) ───────────────
 
 interface DashboardFilters {
-  fechaDesde?: string; // "2026-04-01" format (YYYY-MM-DD)
-  fechaHasta?: string; // "2026-04-30" format (YYYY-MM-DD)
+  fechaDesde?: string;
+  fechaHasta?: string;
   type?: "all" | "policies" | "bonds";
   status?: string;
   ramo?: string;
@@ -672,9 +730,9 @@ async function handleDashboard(
 ): Promise<Response> {
   const startTime = Date.now();
   const isAllMode = mapping.sicas_vendor_id === "ALL";
-  const conditionsDirect = buildVendorConditionsDirect(config, mapping);
+  const vendorFilter = buildVendorCondition(config, mapping);
 
-  // Determine date range
+  // Determine date range for client-side analysis
   const now = new Date();
   let rangeStart: Date;
   let rangeEnd: Date;
@@ -693,104 +751,57 @@ async function handleDashboard(
 
   const periodoLabel = `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, "0")}-${String(rangeStart.getDate()).padStart(2, "0")} a ${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, "0")}-${String(rangeEnd.getDate()).padStart(2, "0")}`;
 
-  // Build conditions for SICAS query
-  const condParts: string[] = [];
+  // Build SICAS API conditions - vendor filter only, NO date filters sent to API
+  // We fetch ALL documents for this vendor and analyze dates client-side
+  // This ensures we get complete data for KPIs, renewals, comparisons, etc.
+  const apiConditionParts: string[] = [];
+  const apiCdParts: string[] = [];
 
-  // Date range conditions for SICAS API
-  if (filters.fechaDesde) {
-    condParts.push(`DatDocumentos.FDesde>=${filters.fechaDesde}`);
-  }
-  if (filters.fechaHasta) {
-    condParts.push(`DatDocumentos.FDesde<=${filters.fechaHasta}`);
+  if (vendorFilter) {
+    apiConditionParts.push(vendorFilter);
+    apiCdParts.push(vendorFilter);
   }
 
+  // Additional API-compatible filters
   if (filters.status) {
     const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
     const val = statusMap[filters.status.toLowerCase()] || filters.status;
-    condParts.push(`DatDocumentos.Status=${val}`);
+    apiConditionParts.push(`DatDocumentos.Status=${val}`);
   }
   if (filters.search) {
     const s = filters.search.replace(/'/g, "");
-    condParts.push(`(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`);
+    apiConditionParts.push(`(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`);
   }
-  if (filters.ramo) condParts.push(`DatDocumentos.Ramo LIKE '%${filters.ramo.replace(/'/g, "")}%'`);
-  if (filters.aseguradora) condParts.push(`DatDocumentos.Abreviacion LIKE '%${filters.aseguradora.replace(/'/g, "")}%'`);
+  if (filters.ramo) apiConditionParts.push(`DatDocumentos.Ramo LIKE '%${filters.ramo.replace(/'/g, "")}%'`);
+  if (filters.aseguradora) apiConditionParts.push(`DatDocumentos.Abreviacion LIKE '%${filters.aseguradora.replace(/'/g, "")}%'`);
 
-  // For dashboard: only send date filters to SICAS API when NOT in ALL mode to avoid
-  // fetching the entire database. In ALL mode, use date filters. For single/multi vendor,
-  // fetch all records to get proper renewals, vigentes, variations, etc.
-  const apiCondParts: string[] = [];
-  if (isAllMode) {
-    // ALL mode: always send date filters to SICAS to limit result set
-    if (filters.fechaDesde) apiCondParts.push(`DatDocumentos.FDesde>=${filters.fechaDesde}`);
-    if (filters.fechaHasta) apiCondParts.push(`DatDocumentos.FDesde<=${filters.fechaHasta}`);
-  }
-  // Add non-date filter conditions (these apply to all modes)
-  for (const cp of condParts) {
-    if (!cp.startsWith("DatDocumentos.FDesde")) apiCondParts.push(cp);
-  }
+  const conditions = apiConditionParts.length > 0 ? apiConditionParts.join(" AND ") : undefined;
+  const conditionsDirect = apiCdParts.length > 0 ? apiCdParts.join(" AND ") : undefined;
 
-  console.log(`[SICASProd] dashboard for vendorId=${mapping.sicas_vendor_id} (${mapping.sicas_vendor_name}) periodo=${periodoLabel} allMode=${isAllMode}`);
-  console.log(`[SICASProd] dashboard conditionsDirect: ${conditionsDirect || "(none - all vendors)"}`);
-  if (apiCondParts.length > 0) console.log(`[SICASProd] dashboard API conditions: ${apiCondParts.join(" AND ")}`);
+  console.log(`[SICASProd] dashboard: vendorId=${mapping.sicas_vendor_id} (${mapping.sicas_vendor_name}) periodo=${periodoLabel} allMode=${isAllMode}`);
+  console.log(`[SICASProd] dashboard: conditions="${conditions || "(none)"}"`);
+  console.log(`[SICASProd] dashboard: conditionsDirect="${conditionsDirect || "(none)"}"`);
 
-  // Fetch records with pagination - increase limits for thorough analysis
-  const allRecords: Record<string, unknown>[] = [];
-  let page = 1;
-  const maxPages = isAllMode ? 5 : 20;
-  const pageSize = isAllMode ? 200 : 500;
-  let totalInSicas = 0;
+  // Fetch ALL records using pagination
+  const { records: allRecords, totalInSicas, pagesFetched } = await fetchAllPages(client, {
+    keyCode: config.report_keycode_all,
+    conditions,
+    conditionsDirect,
+    sortFields: "DatDocumentos.FDesde DESC",
+    pageSize: 500,
+    maxPages: isAllMode ? 10 : 50,
+  });
 
-  while (page <= maxPages) {
-    const response = await client.readReport({
-      keyCode: config.report_keycode_all,
-      pageRequested: page,
-      itemsForPage: pageSize,
-      conditionsDirect: conditionsDirect || undefined,
-      conditions: apiCondParts.length > 0 ? apiCondParts.join(" AND ") : undefined,
-      sortFields: "DatDocumentos.FDesde DESC",
-    });
-
-    const records = response.Response?.[0]?.TableInfo || [];
-    const control = response.Response?.[0]?.TableControl?.[0];
-    if (page === 1) {
-      totalInSicas = control?.MaxRecords || records.length;
-      console.log(`[SICASProd] dashboard SICAS reports MaxRecords=${totalInSicas} Pages=${control?.Pages || "?"} ItemForPage=${control?.ItemForPage || "?"}`);
-    }
-
-    allRecords.push(...records);
-
-    const totalPages = control?.Pages || 1;
-    if (records.length === 0 || page >= totalPages) break;
-    page++;
-  }
-
-  console.log(`[SICASProd] dashboard fetched ${allRecords.length} raw records across ${page} pages (totalInSicas=${totalInSicas})`);
   const docs = allRecords.map(normalizeRecord);
 
-  // Client-side vendor filter: skip in ALL mode (admin viewing all production)
-  let vendorFiltered: Record<string, unknown>[];
-  if (isAllMode) {
-    vendorFiltered = docs;
-  } else {
-    const vendorId = String(mapping.sicas_vendor_id);
-    const docsBeforeVendorFilter = docs.length;
-    vendorFiltered = docs.filter(d => {
-      const docVendId = String(d.vendedorId || "");
-      // If vendor ID contains commas (gerente multi-vendor), check each
-      if (vendorId.includes(",")) {
-        const vendorIds = vendorId.split(",").map(v => v.trim());
-        return !docVendId || vendorIds.includes(docVendId);
-      }
-      return !docVendId || docVendId === vendorId;
-    });
-    if (vendorFiltered.length < docsBeforeVendorFilter) {
-      console.log(`[SICASProd] dashboard: client-side vendor filter removed ${docsBeforeVendorFilter - vendorFiltered.length} records not belonging to vendorId=${vendorId}`);
-    }
+  // Log sample to debug vendor field values
+  if (docs.length > 0) {
+    const sample = docs[0];
+    console.log(`[SICASProd] dashboard: sample - vendedorId="${sample.vendedorId}" vendedor="${sample.vendedor}" idDocto=${sample.idDocto}`);
   }
 
-  // Apply client-side filters that SICAS API doesn't support
-  let filtered = vendorFiltered;
+  // Apply client-side filters
+  let filtered = docs;
   if (filters.type === "policies") filtered = filtered.filter(d => !String(d.tipo).toLowerCase().includes("fianza"));
   else if (filters.type === "bonds") filtered = filtered.filter(d => String(d.tipo).toLowerCase().includes("fianza"));
   if (filters.cliente) {
@@ -826,7 +837,6 @@ async function handleDashboard(
   const clientesSet = new Set<string>();
   const clientesMesSet = new Set<string>();
 
-  // For variation comparisons: compute range duration and shift backward
   const rangeDurationMs = rangeEnd.getTime() - rangeStart.getTime();
   const prevRangeEnd = new Date(rangeStart.getTime() - 1);
   const prevRangeStart = new Date(prevRangeEnd.getTime() - rangeDurationMs);
@@ -837,7 +847,6 @@ async function handleDashboard(
   let prevRangePrima = 0;
   let yoyRangePrima = 0;
 
-  // Aggregation maps
   const porRamo: Record<string, { count: number; prima: number; vigentes: number }> = {};
   const porSubramo: Record<string, { count: number; prima: number }> = {};
   const porAseguradora: Record<string, { count: number; prima: number; vigentes: number }> = {};
@@ -873,7 +882,6 @@ async function handleDashboard(
     if (isCancelada) cancelaciones++;
     if (cliente) clientesSet.add(cliente);
 
-    // Period (date range) analysis
     if (fDesde && fDesde >= rangeStart && fDesde <= rangeEnd) {
       mesPrimaNeta += pn;
       mesPrimaTotal += pt;
@@ -881,16 +889,13 @@ async function handleDashboard(
       if (cliente) clientesMesSet.add(cliente);
     }
 
-    // Previous range for variation
     if (fDesde && fDesde >= prevRangeStart && fDesde <= prevRangeEnd) {
       prevRangePrima += pt;
     }
-    // Same range last year for YoY variation
     if (fDesde && fDesde >= yoyRangeStart && fDesde <= yoyRangeEnd) {
       yoyRangePrima += pt;
     }
 
-    // Renewal analysis (documents expiring soon)
     if (fHasta && isVigente) {
       const daysToExpiry = daysBetween(today, fHasta);
       if (daysToExpiry >= 0 && daysToExpiry <= 30) {
@@ -899,10 +904,8 @@ async function handleDashboard(
         if (daysToExpiry <= 15) renew15++;
         if (daysToExpiry <= 7) renew7++;
 
-        // Renewal within selected range
         if (fHasta >= rangeStart && fHasta <= rangeEnd) renewMes++;
 
-        // Weekly bucket for chart
         const weekLabel = daysToExpiry <= 7 ? "0-7 dias" : daysToExpiry <= 15 ? "8-15 dias" : "16-30 dias";
         if (!renewByWeek[weekLabel]) renewByWeek[weekLabel] = { count: 0, prima: 0 };
         renewByWeek[weekLabel].count++;
@@ -910,7 +913,6 @@ async function handleDashboard(
       }
     }
 
-    // Aggregations
     if (!porRamo[ramo]) porRamo[ramo] = { count: 0, prima: 0, vigentes: 0 };
     porRamo[ramo].count++;
     porRamo[ramo].prima += pt;
@@ -943,7 +945,6 @@ async function handleDashboard(
     porEstatus[st || "desconocido"].prima += pt;
   }
 
-  // Top lists (sorted by prima desc)
   const sortByPrima = (obj: Record<string, { count: number; prima: number }>) =>
     Object.entries(obj).sort((a, b) => b[1].prima - a[1].prima).map(([name, data]) => ({ name, ...data }));
 
@@ -952,10 +953,8 @@ async function handleDashboard(
   const topRamos = sortByPrima(porRamo).slice(0, 10);
   const topSubramos = sortByPrima(porSubramo).slice(0, 10);
 
-  // Ticket promedio
   const ticketPromedio = filtered.length > 0 ? totalPrimaTotal / filtered.length : 0;
 
-  // Variation calculations
   const variacionMesAnterior = prevRangePrima > 0
     ? ((mesPrimaTotal - prevRangePrima) / prevRangePrima) * 100
     : mesPrimaTotal > 0 ? 100 : 0;
@@ -963,22 +962,18 @@ async function handleDashboard(
     ? ((mesPrimaTotal - yoyRangePrima) / yoyRangePrima) * 100
     : mesPrimaTotal > 0 ? 100 : 0;
 
-  // Chart series: prima por mes (sorted by date)
   const primaPorMesSeries = Object.entries(porMes)
     .filter(([k]) => k !== "sin-fecha")
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([mes, data]) => ({ mes, ...data }));
 
-  // Estatus distribution
   const estatusDistribution = Object.entries(porEstatus).map(([estatus, data]) => ({ estatus, ...data }));
 
-  // Polizas vs fianzas distribution
   const tipoDistribution = [
     { tipo: "Polizas", count: polizasEmitidas, prima: totalPrimaTotal - (fianzasEmitidas > 0 ? filtered.filter(d => String(d.tipo).toLowerCase().includes("fianza")).reduce((s, d) => s + (d.primaTotal as number), 0) : 0) },
     { tipo: "Fianzas", count: fianzasEmitidas, prima: filtered.filter(d => String(d.tipo).toLowerCase().includes("fianza")).reduce((s, d) => s + (d.primaTotal as number), 0) },
   ];
 
-  // Renewals list (next 30 days)
   const renewals = filtered
     .filter(d => {
       const fH = parseDate(String(d.fechaHasta || ""));
@@ -995,20 +990,21 @@ async function handleDashboard(
     })
     .slice(0, 50);
 
-  // Available filter values (for dropdown population)
   const availableRamos = [...new Set(filtered.map(d => String(d.ramo)).filter(Boolean))].sort();
   const availableSubramos = [...new Set(filtered.map(d => String(d.subramo)).filter(Boolean))].sort();
   const availableAseguradoras = [...new Set(filtered.map(d => String(d.aseguradora)).filter(Boolean))].sort();
   const availableMonedas = [...new Set(filtered.map(d => String(d.moneda)).filter(Boolean))].sort();
 
   const duration = Date.now() - startTime;
-  console.log(`[SICASProd] dashboard computed from ${filtered.length} records in ${duration}ms`);
+  console.log(`[SICASProd] dashboard: computed from ${filtered.length} records (fetched=${docs.length}, totalInSicas=${totalInSicas}) in ${duration}ms`);
 
   return jsonResponse(200, {
     ok: true,
     periodo: periodoLabel,
     totalRecords: totalInSicas,
     recordsAnalyzed: filtered.length,
+    recordsFetched: docs.length,
+    pagesFetched,
     kpis: {
       polizasEmitidas,
       fianzasEmitidas,
@@ -1306,9 +1302,9 @@ async function handleUnmapUser(
     if (vmError) {
       console.warn(`[SICASProd] unmap-user: failed to clear vendor_mappings: ${vmError.message}`);
     }
-    console.log(`[SICASProd] unmap-user: ${targetUserId} fully unlinked (SICAS + vendor_mappings)`);
+    console.log(`[SICASProd] unmap-user: ${targetUserId} fully unlinked`);
   } else {
-    console.log(`[SICASProd] unmap-user: ${targetUserId} SICAS unlinked (vendor_mappings preserved)`);
+    console.log(`[SICASProd] unmap-user: ${targetUserId} SICAS unlinked`);
   }
 
   return jsonResponse(200, { ok: true, message: "Vinculo eliminado." });
@@ -1381,11 +1377,8 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const action: string = body.action || "documents";
 
-    console.log(
-      `[SICASProd] action=${action} userId=${user.id}`
-    );
+    console.log(`[SICASProd] === REQUEST action=${action} userId=${user.id} ===`);
 
-    // Resolve caller's role and office
     const { rol: callerRol, oficina_id: callerOficinaId } = await getUserRole(supabase, user.id);
     const isAdmin = callerRol === "Administrador";
     const isGerente = callerRol === "Gerente";
@@ -1428,7 +1421,6 @@ Deno.serve(async (req: Request) => {
     let mapping: UserMapping | null = null;
 
     if (canManageVendors && body.vendorId) {
-      // Admin/Gerente selecting a specific vendor by their SICAS ID.
       const { data: targetUser } = await supabase
         .from("usuarios")
         .select("id, oficina_id, id_sicas, nombre_sicas, nombre, apellidos")
@@ -1454,9 +1446,8 @@ Deno.serve(async (req: Request) => {
         rol: callerRol,
         oficina_id: callerOficinaId,
       };
-      console.log(`[SICASProd] ${callerRol} override: vendorId=${body.vendorId} (${vendorName}), targetUser=${targetUser?.id || 'not found in usuarios'}`);
+      console.log(`[SICASProd] ${callerRol} selected vendor: vendorId=${body.vendorId} (${vendorName})`);
     } else if (isAdmin && !body.vendorId) {
-      // Admin without specific vendor: show ALL production (no vendor filter)
       mapping = {
         sicas_vendor_id: "ALL",
         sicas_vendor_name: "Todos los vendedores",
@@ -1464,9 +1455,8 @@ Deno.serve(async (req: Request) => {
         rol: callerRol,
         oficina_id: callerOficinaId,
       };
-      console.log(`[SICASProd] admin ALL mode: showing all production without vendor filter`);
+      console.log(`[SICASProd] admin ALL mode`);
     } else if (isGerente && !body.vendorId) {
-      // Gerente without specific vendor: show all vendors in their office
       const { data: officeVendors } = await supabase
         .from("usuarios")
         .select("id_sicas")
@@ -1483,7 +1473,7 @@ Deno.serve(async (req: Request) => {
           rol: callerRol,
           oficina_id: callerOficinaId,
         };
-        console.log(`[SICASProd] gerente ALL mode: ${vendorIds.length} vendors from office ${callerOficinaId}`);
+        console.log(`[SICASProd] gerente multi-vendor: ${vendorIds.length} vendors [${vendorIds.join(",")}]`);
       }
     }
 
@@ -1503,14 +1493,11 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    console.log(
-      `[SICASProd] mapping resolved: vendorId=${mapping.sicas_vendor_id} rol=${mapping.rol}`
-    );
+    console.log(`[SICASProd] mapping resolved: vendorId=${mapping.sicas_vendor_id} vendorName=${mapping.sicas_vendor_name} rol=${mapping.rol}`);
 
-    // Load config
     const config = await getConfig(supabase);
+    console.log(`[SICASProd] config: filterField=${config.report_filter_field} keycode=${config.report_keycode_all}`);
 
-    // Create REST client
     let client: SicasRestClient;
     try {
       client = new SicasRestClient();
@@ -1522,114 +1509,161 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Diagnostic action to test different query approaches
+    // Diagnostic action to test query approaches
     if (action === "diagnose") {
       const vendorId = mapping.sicas_vendor_id;
+      const field = config.report_filter_field;
       const results: Record<string, unknown> = {
         vendorId,
-        config: {
-          report_filter_field: config.report_filter_field,
-          report_keycode_all: config.report_keycode_all,
-        },
+        filterField: field,
+        keyCode: config.report_keycode_all,
       };
 
-      // Test 1: conditionsDirect with VendId IN (id)
+      // Test 1: No filter at all
       try {
         const r1 = await client.readReport({
           keyCode: config.report_keycode_all,
           pageRequested: 1,
-          itemsForPage: 5,
-          conditionsDirect: `DatDocumentos.VendId IN (${vendorId})`,
+          itemsForPage: 3,
         });
-        const recs1 = r1.Response?.[0]?.TableInfo || [];
-        const ctrl1 = r1.Response?.[0]?.TableControl?.[0];
-        results.test1_conditionsDirect_VendId_IN = {
-          records: recs1.length,
-          maxRecords: ctrl1?.MaxRecords || 0,
-          error: r1.Error || null,
-          sample: recs1[0] ? Object.keys(recs1[0]).slice(0, 15) : [],
-          sampleData: recs1[0] || null,
+        const recs = r1.Response?.[0]?.TableInfo || [];
+        const ctrl = r1.Response?.[0]?.TableControl?.[0];
+        results.test1_no_filter = {
+          records: recs.length,
+          maxRecords: ctrl?.MaxRecords || 0,
+          pages: ctrl?.Pages || 0,
+          fieldNames: recs[0] ? Object.keys(recs[0]) : [],
+          sampleRecord: recs[0] || null,
         };
-      } catch (e) {
-        results.test1_conditionsDirect_VendId_IN = { error: String(e) };
-      }
+      } catch (e) { results.test1_no_filter = { error: String(e) }; }
 
-      // Test 2: conditions with VendId=id
+      // Test 2: Conditions with VendId=id
       try {
         const r2 = await client.readReport({
           keyCode: config.report_keycode_all,
           pageRequested: 1,
           itemsForPage: 5,
-          conditions: `DatDocumentos.VendId=${vendorId}`,
+          conditions: `${field}=${vendorId}`,
         });
-        const recs2 = r2.Response?.[0]?.TableInfo || [];
-        const ctrl2 = r2.Response?.[0]?.TableControl?.[0];
-        results.test2_conditions_VendId_eq = {
-          records: recs2.length,
-          maxRecords: ctrl2?.MaxRecords || 0,
+        const recs = r2.Response?.[0]?.TableInfo || [];
+        const ctrl = r2.Response?.[0]?.TableControl?.[0];
+        results.test2_conditions_eq = {
+          filter: `${field}=${vendorId}`,
+          records: recs.length,
+          maxRecords: ctrl?.MaxRecords || 0,
           error: r2.Error || null,
+          sampleVendorId: recs[0] ? (recs[0] as Record<string, unknown>).VendId ?? (recs[0] as Record<string, unknown>).IDVend : null,
         };
-      } catch (e) {
-        results.test2_conditions_VendId_eq = { error: String(e) };
-      }
+      } catch (e) { results.test2_conditions_eq = { error: String(e) }; }
 
-      // Test 3: conditions with IDVend=id
+      // Test 3: ConditionsDirect with VendId=id
       try {
         const r3 = await client.readReport({
           keyCode: config.report_keycode_all,
           pageRequested: 1,
           itemsForPage: 5,
-          conditions: `DatDocumentos.IDVend=${vendorId}`,
+          conditionsDirect: `${field}=${vendorId}`,
         });
-        const recs3 = r3.Response?.[0]?.TableInfo || [];
-        const ctrl3 = r3.Response?.[0]?.TableControl?.[0];
-        results.test3_conditions_IDVend_eq = {
-          records: recs3.length,
-          maxRecords: ctrl3?.MaxRecords || 0,
+        const recs = r3.Response?.[0]?.TableInfo || [];
+        const ctrl = r3.Response?.[0]?.TableControl?.[0];
+        results.test3_conditionsDirect_eq = {
+          filter: `${field}=${vendorId}`,
+          records: recs.length,
+          maxRecords: ctrl?.MaxRecords || 0,
           error: r3.Error || null,
         };
-      } catch (e) {
-        results.test3_conditions_IDVend_eq = { error: String(e) };
-      }
+      } catch (e) { results.test3_conditionsDirect_eq = { error: String(e) }; }
 
-      // Test 4: No filter at all (just get some records to see field names)
+      // Test 4: Both Conditions AND ConditionsDirect
       try {
         const r4 = await client.readReport({
           keyCode: config.report_keycode_all,
           pageRequested: 1,
-          itemsForPage: 3,
+          itemsForPage: 5,
+          conditions: `${field}=${vendorId}`,
+          conditionsDirect: `${field}=${vendorId}`,
         });
-        const recs4 = r4.Response?.[0]?.TableInfo || [];
-        const ctrl4 = r4.Response?.[0]?.TableControl?.[0];
-        results.test4_no_filter = {
-          records: recs4.length,
-          maxRecords: ctrl4?.MaxRecords || 0,
+        const recs = r4.Response?.[0]?.TableInfo || [];
+        const ctrl = r4.Response?.[0]?.TableControl?.[0];
+        results.test4_both = {
+          filter: `${field}=${vendorId}`,
+          records: recs.length,
+          maxRecords: ctrl?.MaxRecords || 0,
           error: r4.Error || null,
-          fieldNames: recs4[0] ? Object.keys(recs4[0]) : [],
-          sampleRecord: recs4[0] || null,
         };
-      } catch (e) {
-        results.test4_no_filter = { error: String(e) };
-      }
+      } catch (e) { results.test4_both = { error: String(e) }; }
 
-      // Test 5: conditionsDirect with IDVend IN (id)
+      // Test 5: Conditions with IN syntax
       try {
         const r5 = await client.readReport({
           keyCode: config.report_keycode_all,
           pageRequested: 1,
           itemsForPage: 5,
-          conditionsDirect: `DatDocumentos.IDVend IN (${vendorId})`,
+          conditions: `${field} IN (${vendorId})`,
         });
-        const recs5 = r5.Response?.[0]?.TableInfo || [];
-        const ctrl5 = r5.Response?.[0]?.TableControl?.[0];
-        results.test5_conditionsDirect_IDVend_IN = {
-          records: recs5.length,
-          maxRecords: ctrl5?.MaxRecords || 0,
+        const recs = r5.Response?.[0]?.TableInfo || [];
+        const ctrl = r5.Response?.[0]?.TableControl?.[0];
+        results.test5_conditions_in = {
+          filter: `${field} IN (${vendorId})`,
+          records: recs.length,
+          maxRecords: ctrl?.MaxRecords || 0,
           error: r5.Error || null,
         };
-      } catch (e) {
-        results.test5_conditionsDirect_IDVend_IN = { error: String(e) };
-      }
+      } catch (e) { results.test5_conditions_in = { error: String(e) }; }
+
+      // Test 6: ConditionsDirect with IN syntax
+      try {
+        const r6 = await client.readReport({
+          keyCode: config.report_keycode_all,
+          pageRequested: 1,
+          itemsForPage: 5,
+          conditionsDirect: `${field} IN (${vendorId})`,
+        });
+        const recs = r6.Response?.[0]?.TableInfo || [];
+        const ctrl = r6.Response?.[0]?.TableControl?.[0];
+        results.test6_conditionsDirect_in = {
+          filter: `${field} IN (${vendorId})`,
+          records: recs.length,
+          maxRecords: ctrl?.MaxRecords || 0,
+          error: r6.Error || null,
+        };
+      } catch (e) { results.test6_conditionsDirect_in = { error: String(e) }; }
+
+      // Test 7: Try IDVend instead of VendId
+      try {
+        const altField = field.replace("VendId", "IDVend");
+        const r7 = await client.readReport({
+          keyCode: config.report_keycode_all,
+          pageRequested: 1,
+          itemsForPage: 5,
+          conditions: `${altField}=${vendorId}`,
+        });
+        const recs = r7.Response?.[0]?.TableInfo || [];
+        const ctrl = r7.Response?.[0]?.TableControl?.[0];
+        results.test7_IDVend_conditions = {
+          filter: `${altField}=${vendorId}`,
+          records: recs.length,
+          maxRecords: ctrl?.MaxRecords || 0,
+          error: r7.Error || null,
+        };
+      } catch (e) { results.test7_IDVend_conditions = { error: String(e) }; }
+
+      // Test 8: Page 2 of no-filter to check pagination works
+      try {
+        const r8 = await client.readReport({
+          keyCode: config.report_keycode_all,
+          pageRequested: 2,
+          itemsForPage: 100,
+        });
+        const recs = r8.Response?.[0]?.TableInfo || [];
+        const ctrl = r8.Response?.[0]?.TableControl?.[0];
+        results.test8_page2_no_filter = {
+          records: recs.length,
+          maxRecords: ctrl?.MaxRecords || 0,
+          pages: ctrl?.Pages || 0,
+          currentPage: ctrl?.Page || 0,
+        };
+      } catch (e) { results.test8_page2_no_filter = { error: String(e) }; }
 
       return jsonResponse(200, { ok: true, diagnostics: results });
     }
@@ -1677,9 +1711,7 @@ Deno.serve(async (req: Request) => {
             code: "MISSING_ID",
           });
         }
-        // Admins with vendorId override can view any document's detail
-        const detailMapping = (isAdmin && body.vendorId) ? mapping : mapping;
-        return await handleDetail(client, config, detailMapping, {
+        return await handleDetail(client, config, mapping, {
           idDocto: body.idDocto,
         });
       }
