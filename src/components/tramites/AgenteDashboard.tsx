@@ -5,16 +5,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   ClipboardList,
   CheckCircle2,
-  AlertTriangle,
-  Timer,
   TrendingUp,
   FileText,
   BarChart3,
   ChevronDown,
-  ChevronRight,
   ExternalLink,
-  Calendar,
-  X
+  Calendar
 } from 'lucide-react';
 
 interface TicketRecord {
@@ -39,20 +35,12 @@ interface EstatusGroup {
   tickets: TicketRecord[];
 }
 
-interface PriorityCount {
-  Alta: number;
-  Media: number;
-  Baja: number;
-}
-
 interface DashboardData {
   totalActivos: number;
   totalCerrados: number;
   totalTramites: number;
   estatusGroups: EstatusGroup[];
   cerradosGroup: EstatusGroup | null;
-  prioridades: PriorityCount;
-  avgDaysToClose: number | null;
   tramitesEsteMes: number;
   cerradosEsteMes: number;
 }
@@ -105,13 +93,6 @@ export function AgenteDashboard() {
     const tramitesEsteMes = tickets.filter(t => t.fecha_creacion >= startOfMonth).length;
     const cerradosEsteMes = cerrados.filter(t => t.cerrado_en! >= startOfMonth).length;
 
-    const prioridades: PriorityCount = { Alta: 0, Media: 0, Baja: 0 };
-    for (const t of activos) {
-      if (t.prioridad === 'Alta' || t.prioridad === 'Media' || t.prioridad === 'Baja') {
-        prioridades[t.prioridad]++;
-      }
-    }
-
     const ticketsByStatus = new Map<string, TicketRecord[]>();
     for (const t of activos) {
       const list = ticketsByStatus.get(t.estatus_id) || [];
@@ -133,24 +114,12 @@ export function AgenteDashboard() {
       ? { id: '__cerrados__', nombre: 'Concluidos', color: '#16a34a', count: cerrados.length, tickets: cerrados }
       : null;
 
-    let avgDaysToClose: number | null = null;
-    if (cerrados.length > 0) {
-      const totalDays = cerrados.reduce((sum, t) => {
-        const created = new Date(t.fecha_creacion).getTime();
-        const closed = new Date(t.cerrado_en!).getTime();
-        return sum + (closed - created) / 86400000;
-      }, 0);
-      avgDaysToClose = Math.round((totalDays / cerrados.length) * 10) / 10;
-    }
-
     setData({
       totalActivos: activos.length,
       totalCerrados: cerrados.length,
       totalTramites: tickets.length,
       estatusGroups,
       cerradosGroup,
-      prioridades,
-      avgDaysToClose,
       tramitesEsteMes,
       cerradosEsteMes
     });
@@ -188,8 +157,6 @@ export function AgenteDashboard() {
           value={data.totalActivos}
           icon={ClipboardList}
           color="blue"
-          subtitle={data.prioridades.Alta > 0 ? `${data.prioridades.Alta} prioridad alta` : undefined}
-          subtitleColor={data.prioridades.Alta > 0 ? 'text-red-600' : undefined}
         />
         <KpiCard
           label="Concluidos"
@@ -206,11 +173,11 @@ export function AgenteDashboard() {
           subtitle={`${data.cerradosEsteMes} cerrados`}
         />
         <KpiCard
-          label="Tiempo promedio"
-          value={data.avgDaysToClose !== null ? `${data.avgDaysToClose}d` : '--'}
-          icon={Timer}
+          label="Total"
+          value={data.totalTramites}
+          icon={FileText}
           color="amber"
-          subtitle="para cerrar"
+          subtitle="historicos"
         />
       </div>
 
@@ -296,19 +263,6 @@ export function AgenteDashboard() {
 
         {/* Priority & quick stats */}
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5">
-            <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide mb-3 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-neutral-400" />
-              Prioridad (Activos)
-            </h3>
-            <div className="space-y-2.5">
-              <PriorityRow label="Alta" count={data.prioridades.Alta} dotColor="bg-red-500" textColor="text-red-700" />
-              <PriorityRow label="Media" count={data.prioridades.Media} dotColor="bg-amber-400" textColor="text-amber-700" />
-              <PriorityRow label="Baja" count={data.prioridades.Baja} dotColor="bg-green-500" textColor="text-green-700" />
-            </div>
-          </div>
-
-          {/* Summary grid */}
           <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5">
             <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4 text-neutral-400" />
@@ -436,19 +390,3 @@ function KpiCard({
   );
 }
 
-function PriorityRow({ label, count, dotColor, textColor }: {
-  label: string;
-  count: number;
-  dotColor: string;
-  textColor: string;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <span className={`w-2 h-2 rounded-full ${dotColor}`} />
-        <span className={`text-sm font-medium ${textColor}`}>{label}</span>
-      </div>
-      <span className="text-sm font-bold text-neutral-900">{count}</span>
-    </div>
-  );
-}
