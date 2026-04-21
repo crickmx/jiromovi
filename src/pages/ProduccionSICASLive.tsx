@@ -1,8 +1,17 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
-import { FileText, Search, Filter, ChevronDown, ChevronUp, RefreshCw, TrendingUp, Shield, AlertTriangle, X, ArrowUpDown, ChevronLeft, ChevronRight, Eye, Briefcase, DollarSign, Clock, CheckCircle, XCircle, ArrowLeft, Building2, User, Calendar, CreditCard, Hash, Loader2, WifiOff, Link as LinkIcon, Users } from 'lucide-react';
+import {
+  FileText, Search, RefreshCw, TrendingUp, AlertTriangle, X, ArrowUpDown,
+  ChevronLeft, ChevronRight, Eye, ArrowLeft, Building2, User, Calendar,
+  CreditCard, Hash, Loader2, WifiOff, Link as LinkIcon, Users, ChevronDown,
+  ChevronUp, Download, LayoutDashboard, Table2,
+} from 'lucide-react';
 import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
+import SicasDashboardKPIs from '../components/produccion/SicasDashboardKPIs';
+import SicasDashboardCharts from '../components/produccion/SicasDashboardCharts';
+import SicasDashboardFilters, { type DashboardFilterState } from '../components/produccion/SicasDashboardFilters';
+import SicasRenovacionesPanel from '../components/produccion/SicasRenovacionesPanel';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -37,20 +46,6 @@ interface Pagination {
   maxRecords: number;
 }
 
-interface Summary {
-  totalDocumentos: number;
-  totalPolizas: number;
-  totalFianzas: number;
-  primaNetaTotal: number;
-  primaTotalTotal: number;
-  vigentes: number;
-  vencidas: number;
-  canceladas: number;
-  porRamo: Record<string, { count: number; prima: number }>;
-  porAseguradora: Record<string, { count: number; prima: number }>;
-  porMes: Record<string, { count: number; prima: number }>;
-}
-
 interface DocumentDetail {
   idDocto: number | string;
   documento: string;
@@ -72,10 +67,12 @@ interface DocumentDetail {
   importes?: { primaNeta: number; primaTotal: number; derechoPoliza: number; iva: number; recargos: number; descuento: number };
   estatus?: { documento: string; cobro: string; usuario: string };
   raw: Record<string, unknown>;
+  vendedorId?: string;
+  agenteId?: string;
 }
 
-type ViewMode = 'list' | 'detail';
-type DocType = 'all' | 'policies' | 'bonds';
+type ViewMode = 'dashboard' | 'table' | 'detail';
+type ActiveTab = 'produccion' | 'mapeo';
 
 // ─── API Helper ──────────────────────────────────────────────────────────────
 
@@ -116,7 +113,48 @@ function statusColor(status: string): string {
   if (s === 'vigente' || s === 'v') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300';
   if (s === 'cancelada' || s === 'c') return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
   if (s === 'vencida' || s === 'x' || s === 'no vigente' || s === 'n') return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+  if (s === 'renovada') return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300';
   return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+}
+
+function getCurrentPeriodo(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// ─── Export Utils ────────────────────────────────────────────────────────────
+
+function exportToCSV(documents: SicasDocument[], filename: string) {
+  const headers = ['Documento', 'Tipo', 'Cliente', 'Ramo', 'Subramo', 'Aseguradora', 'Vigencia Desde', 'Vigencia Hasta', 'Prima Neta', 'Prima Total', 'Moneda', 'Estatus', 'Vendedor', 'Agente'];
+  const rows = documents.map(d => [
+    d.documento, d.tipo, d.cliente, d.ramo, d.subramo, d.aseguradora,
+    d.fechaDesde, d.fechaHasta, d.primaNeta, d.primaTotal, d.moneda,
+    d.status, d.vendedor, d.agente,
+  ]);
+  const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','))].join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function exportToExcel(documents: SicasDocument[], filename: string) {
+  try {
+    const XLSX = await import('xlsx');
+    const wsData = [
+      ['Documento', 'Tipo', 'Cliente', 'Ramo', 'Subramo', 'Aseguradora', 'Vigencia Desde', 'Vigencia Hasta', 'Prima Neta', 'Prima Total', 'Moneda', 'Estatus', 'Vendedor', 'Agente'],
+      ...documents.map(d => [d.documento, d.tipo, d.cliente, d.ramo, d.subramo, d.aseguradora, d.fechaDesde, d.fechaHasta, d.primaNeta, d.primaTotal, d.moneda, d.status, d.vendedor, d.agente]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Produccion SICAS');
+    XLSX.writeFile(wb, `${filename}.xlsx`);
+  } catch {
+    exportToCSV(documents, filename);
+  }
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -125,31 +163,37 @@ export default function ProduccionSICASLive() {
   const { usuario } = useAuth();
 
   // View state
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('produccion');
 
-  // Summary
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [loadingSummary, setLoadingSummary] = useState(true);
+  // Dashboard data
+  const [dashboardData, setDashboardData] = useState<Record<string, unknown> | null>(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
 
-  // Documents list
+  // Documents list (table view)
   const [documents, setDocuments] = useState<SicasDocument[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, pageSize: 25, pages: 1, maxRecords: 0 });
-  const [loadingDocs, setLoadingDocs] = useState(true);
+  const [loadingDocs, setLoadingDocs] = useState(false);
 
   // Detail
   const [selectedDoc, setSelectedDoc] = useState<DocumentDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Filters
-  const [showFilters, setShowFilters] = useState(false);
-  const [docType, setDocType] = useState<DocType>('all');
-  const [searchText, setSearchText] = useState('');
-  const [searchApplied, setSearchApplied] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [ramoFilter, setRamoFilter] = useState('');
-  const [aseguradoraFilter, setAseguradoraFilter] = useState('');
-  const [fechaDesde, setFechaDesde] = useState('');
-  const [fechaHasta, setFechaHasta] = useState('');
+  const [filters, setFilters] = useState<DashboardFilterState>({
+    periodo: getCurrentPeriodo(),
+    type: 'all',
+    status: '',
+    ramo: '',
+    subramo: '',
+    aseguradora: '',
+    cliente: '',
+    moneda: '',
+    agente: '',
+    search: '',
+  });
+
+  // Table-specific state
   const [sortField, setSortField] = useState('DatDocumentos.FDesde');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -158,63 +202,68 @@ export default function ProduccionSICASLive() {
   // Errors
   const [error, setError] = useState<{ message: string; code?: string; noMapping?: boolean } | null>(null);
 
-  // Admin vendor selector
+  // Vendor selector
   const [mappedVendors, setMappedVendors] = useState<Array<{ usuario_id: string; nombre: string; id_sicas: string; nombre_sicas: string; oficina: string | null }>>([]);
   const [selectedVendorId, setSelectedVendorId] = useState<string>('');
   const [loadingVendors, setLoadingVendors] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const canSelectVendor = isAdmin || isGerente;
 
-  // ─── Load Mapped Vendors (admin only) ───────────────────────────────────
+  // ─── Load Mapped Vendors ───────────────────────────────────────────────
 
   const loadMappedVendors = useCallback(async () => {
     if (!canSelectVendor) return;
     setLoadingVendors(true);
     try {
       const data = await callSicasProduction({ action: 'list-mapped-vendors' });
-      if (data.ok && data.vendors) {
-        setMappedVendors(data.vendors as typeof mappedVendors);
-      }
-    } catch {
-      // silent
-    } finally {
-      setLoadingVendors(false);
-    }
+      if (data.ok && data.vendors) setMappedVendors(data.vendors);
+    } catch { /* silent */ }
+    finally { setLoadingVendors(false); }
   }, [canSelectVendor]);
 
-  useEffect(() => {
-    loadMappedVendors();
-  }, [loadMappedVendors]);
+  useEffect(() => { loadMappedVendors(); }, [loadMappedVendors]);
 
-  // ─── Load Summary ────────────────────────────────────────────────────────
+  // ─── Load Dashboard ────────────────────────────────────────────────────
 
-  const loadSummary = useCallback(async () => {
+  const loadDashboard = useCallback(async () => {
     if (!usuario) return;
     if (canSelectVendor && !selectedVendorId) return;
-    setLoadingSummary(true);
+    setLoadingDashboard(true);
+    setError(null);
     try {
-      const body: Record<string, unknown> = { action: 'summary' };
+      const body: Record<string, unknown> = {
+        action: 'dashboard',
+        periodo: filters.periodo,
+        type: filters.type,
+        status: filters.status || undefined,
+        ramo: filters.ramo || undefined,
+        subramo: filters.subramo || undefined,
+        aseguradora: filters.aseguradora || undefined,
+        cliente: filters.cliente || undefined,
+        moneda: filters.moneda || undefined,
+        agente: filters.agente || undefined,
+        search: filters.search || undefined,
+      };
       if (canSelectVendor && selectedVendorId) body.vendorId = selectedVendorId;
       const data = await callSicasProduction(body);
       if (data.ok) {
-        setSummary(data.summary);
+        setDashboardData(data);
         setError(null);
       } else {
         if (data.noMapping) setError({ message: data.error, code: data.code, noMapping: true });
         else setError({ message: data.error, code: data.code });
       }
-    } catch (e) {
+    } catch {
       setError({ message: 'No fue posible consultar SICAS en este momento.' });
     } finally {
-      setLoadingSummary(false);
+      setLoadingDashboard(false);
     }
-  }, [usuario, canSelectVendor, selectedVendorId]);
+  }, [usuario, canSelectVendor, selectedVendorId, filters]);
 
-  // ─── Load Documents ──────────────────────────────────────────────────────
+  // ─── Load Documents (table view) ──────────────────────────────────────
 
   const loadDocuments = useCallback(async () => {
     if (!usuario) return;
@@ -225,35 +274,31 @@ export default function ProduccionSICASLive() {
         action: 'documents',
         page: currentPage,
         pageSize,
-        type: docType,
+        type: filters.type,
         sortField,
         sortDirection: sortDir,
       };
       if (canSelectVendor && selectedVendorId) body.vendorId = selectedVendorId;
-      if (searchApplied) body.search = searchApplied;
-      if (statusFilter) body.status = statusFilter;
-      if (ramoFilter) body.ramo = ramoFilter;
-      if (aseguradoraFilter) body.aseguradora = aseguradoraFilter;
-      if (fechaDesde) body.fechaDesde = fechaDesde;
-      if (fechaHasta) body.fechaHasta = fechaHasta;
+      if (filters.search) body.search = filters.search;
+      if (filters.status) body.status = filters.status;
+      if (filters.ramo) body.ramo = filters.ramo;
+      if (filters.aseguradora) body.aseguradora = filters.aseguradora;
 
       const data = await callSicasProduction(body);
       if (data.ok) {
         setDocuments(data.items || []);
         setPagination(data.pagination || { page: 1, pageSize: 25, pages: 1, maxRecords: 0 });
-        setError(null);
-      } else {
-        if (data.noMapping) setError({ message: data.error, code: data.code, noMapping: true });
-        else if (!error?.noMapping) setError({ message: data.error, code: data.code });
+      } else if (!error?.noMapping) {
+        setError({ message: data.error, code: data.code });
       }
-    } catch (e) {
+    } catch {
       if (!error?.noMapping) setError({ message: 'Error al cargar documentos.' });
     } finally {
       setLoadingDocs(false);
     }
-  }, [usuario, canSelectVendor, selectedVendorId, currentPage, pageSize, docType, searchApplied, statusFilter, ramoFilter, aseguradoraFilter, fechaDesde, fechaHasta, sortField, sortDir]);
+  }, [usuario, canSelectVendor, selectedVendorId, currentPage, pageSize, filters, sortField, sortDir]);
 
-  // ─── Load Detail ─────────────────────────────────────────────────────────
+  // ─── Load Detail ─────────────────────────────────────────────────────
 
   const loadDetail = async (idDocto: string | number) => {
     setLoadingDetail(true);
@@ -262,86 +307,69 @@ export default function ProduccionSICASLive() {
       const body: Record<string, unknown> = { action: 'detail', idDocto };
       if (canSelectVendor && selectedVendorId) body.vendorId = selectedVendorId;
       const data = await callSicasProduction(body);
-      if (data.ok) {
-        setSelectedDoc(data.document);
-      } else {
-        setSelectedDoc(null);
-        setError({ message: data.error, code: data.code });
-      }
-    } catch {
-      setError({ message: 'Error al cargar detalle del documento.' });
-    } finally {
-      setLoadingDetail(false);
-    }
+      if (data.ok) setSelectedDoc(data.document);
+      else { setSelectedDoc(null); setError({ message: data.error, code: data.code }); }
+    } catch { setError({ message: 'Error al cargar detalle del documento.' }); }
+    finally { setLoadingDetail(false); }
   };
 
-  // ─── Effects ─────────────────────────────────────────────────────────────
+  // ─── Effects ─────────────────────────────────────────────────────────
+
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
   useEffect(() => {
-    loadSummary();
-  }, [loadSummary]);
+    if (viewMode === 'table' && !error?.noMapping) loadDocuments();
+  }, [viewMode, loadDocuments]);
 
-  useEffect(() => {
-    if (!error?.noMapping) loadDocuments();
-  }, [loadDocuments]);
-
-  // Debounced search
-  const handleSearchChange = (val: string) => {
-    setSearchText(val);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setSearchApplied(val);
-      setCurrentPage(1);
-    }, 500);
-  };
-
-  const clearFilters = () => {
-    setSearchText('');
-    setSearchApplied('');
-    setStatusFilter('');
-    setRamoFilter('');
-    setAseguradoraFilter('');
-    setFechaDesde('');
-    setFechaHasta('');
-    setDocType('all');
+  // Debounce filter changes
+  const handleFiltersChange = (newFilters: DashboardFilterState) => {
+    setFilters(newFilters);
     setCurrentPage(1);
   };
-
-  const toggleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('desc');
-    }
-    setCurrentPage(1);
-  };
-
-  const activeFilterCount = [searchApplied, statusFilter, ramoFilter, aseguradoraFilter, fechaDesde, fechaHasta].filter(Boolean).length + (docType !== 'all' ? 1 : 0);
-
-  const [activeTab, setActiveTab] = useState<'produccion' | 'mapeo'>('produccion');
 
   const handleVendorChange = (vendorId: string) => {
     setSelectedVendorId(vendorId);
     setCurrentPage(1);
-    setSummary(null);
+    setDashboardData(null);
     setDocuments([]);
     setError(null);
   };
 
-  // ─── Detail View ─────────────────────────────────────────────────────────
+  const handleExport = (format: 'csv' | 'excel') => {
+    const filename = `produccion-sicas-${filters.periodo}`;
+    if (format === 'csv') exportToCSV(documents, filename);
+    else exportToExcel(documents, filename);
+  };
+
+  const handleKpiClick = (kpiKey: string) => {
+    if (kpiKey.startsWith('renovacion')) {
+      const el = document.getElementById('renovaciones-panel');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      setViewMode('table');
+    }
+  };
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('desc'); }
+    setCurrentPage(1);
+  };
+
+  const showContent = canSelectVendor ? !!selectedVendorId : !error?.noMapping;
+
+  // ─── Detail View ─────────────────────────────────────────────────────
 
   if (viewMode === 'detail') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 md:p-6">
         <div className="max-w-5xl mx-auto">
           <button
-            onClick={() => { setViewMode('list'); setSelectedDoc(null); }}
+            onClick={() => { setViewMode('dashboard'); setSelectedDoc(null); }}
             className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-4 font-medium transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" /> Volver al listado
+            <ArrowLeft className="w-4 h-4" /> Volver al dashboard
           </button>
-
           {loadingDetail ? (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 flex flex-col items-center gap-4">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
@@ -353,7 +381,6 @@ export default function ProduccionSICASLive() {
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 text-center">
               <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
               <p className="text-gray-700 dark:text-gray-300 font-medium">No se pudo cargar el detalle del documento.</p>
-              {error && <p className="text-sm text-red-500 mt-2">{error.message}</p>}
             </div>
           )}
         </div>
@@ -361,36 +388,62 @@ export default function ProduccionSICASLive() {
     );
   }
 
-  // ─── List View ───────────────────────────────────────────────────────────
+  // ─── Main View ──────────────────────────────────────────────────────
+
+  const kpis = dashboardData?.kpis as Record<string, unknown> | undefined;
+  const charts = dashboardData?.charts as Record<string, unknown> | undefined;
+  const renewals = (dashboardData?.renewals || []) as SicasDocument[];
+  const availableFilters = dashboardData?.availableFilters as { ramos: string[]; subramos: string[]; aseguradoras: string[]; monedas: string[] } | undefined;
+  const periodo = (dashboardData?.periodo || filters.periodo) as string;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-[1440px] mx-auto space-y-4">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <FileText className="w-7 h-7 text-blue-600" />
+              <TrendingUp className="w-7 h-7 text-blue-600" />
               Produccion SICAS
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Consulta en tiempo real de tus documentos en SICAS Online
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              Dashboard de produccion en tiempo real
             </p>
           </div>
-          {activeTab === 'produccion' && (
-            <button
-              onClick={() => { loadSummary(); loadDocuments(); }}
-              disabled={loadingSummary || loadingDocs}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
-            >
-              <RefreshCw className={`w-4 h-4 ${(loadingSummary || loadingDocs) ? 'animate-spin' : ''}`} />
-              Actualizar
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {activeTab === 'produccion' && showContent && (
+              <>
+                {/* View mode toggle */}
+                <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setViewMode('dashboard')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${viewMode === 'dashboard' ? 'bg-white dark:bg-gray-600 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
+                  </button>
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+                  >
+                    <Table2 className="w-3.5 h-3.5" /> Tabla
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => { loadDashboard(); if (viewMode === 'table') loadDocuments(); }}
+                  disabled={loadingDashboard || loadingDocs}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs font-medium"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${(loadingDashboard || loadingDocs) ? 'animate-spin' : ''}`} />
+                  Actualizar
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Admin tabs (mapeo only for admin) */}
+        {/* Admin tabs */}
         {isAdmin && (
           <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1">
             <button
@@ -418,17 +471,17 @@ export default function ProduccionSICASLive() {
 
         {/* Vendor selector (admin and gerente) */}
         {canSelectVendor && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex items-center gap-2 shrink-0">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Ver produccion de:</label>
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Ver produccion de:</label>
               </div>
               <select
                 value={selectedVendorId}
                 onChange={e => handleVendorChange(e.target.value)}
                 disabled={loadingVendors}
-                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="flex-1 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="">-- Selecciona un vendedor --</option>
                 {mappedVendors.map(v => (
@@ -439,13 +492,8 @@ export default function ProduccionSICASLive() {
               </select>
               {loadingVendors && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />}
             </div>
-            {!selectedVendorId && !loadingVendors && mappedVendors.length > 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Selecciona un vendedor para consultar su produccion en SICAS en tiempo real.
-              </p>
-            )}
-            {!loadingVendors && mappedVendors.length === 0 && (
-              <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+            {!selectedVendorId && !loadingVendors && mappedVendors.length === 0 && (
+              <div className="mt-1.5 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
                 {isAdmin
                   ? 'No hay vendedores vinculados a SICAS. Ve a la pestana "Mapeo de Usuarios" para configurarlos.'
@@ -457,19 +505,19 @@ export default function ProduccionSICASLive() {
 
         {/* Error banner */}
         {error && !error.noMapping && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-start gap-3">
             <WifiOff className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="text-red-800 dark:text-red-300 text-sm font-medium">{error.message}</p>
-              {error.code && <p className="text-red-600 dark:text-red-400 text-xs mt-1">Codigo: {error.code}</p>}
+              {error.code && <p className="text-red-600 dark:text-red-400 text-xs mt-0.5">Codigo: {error.code}</p>}
             </div>
-            <button onClick={() => { loadSummary(); loadDocuments(); }} className="text-red-600 hover:text-red-800 text-sm font-medium whitespace-nowrap">
+            <button onClick={loadDashboard} className="text-red-600 hover:text-red-800 text-xs font-medium whitespace-nowrap">
               Reintentar
             </button>
           </div>
         )}
 
-        {/* Non-admin/non-gerente no mapping */}
+        {/* No mapping for regular users */}
         {error?.noMapping && !canSelectVendor && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
             <LinkIcon className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
@@ -480,247 +528,64 @@ export default function ProduccionSICASLive() {
           </div>
         )}
 
-        {/* Summary cards - show when production is queryable */}
-        {(canSelectVendor ? !!selectedVendorId : !error?.noMapping) && <SummaryCards summary={summary} loading={loadingSummary} />}
+        {/* Dashboard content */}
+        {showContent && (
+          <>
+            {/* Filters */}
+            <SicasDashboardFilters
+              filters={filters}
+              onFiltersChange={handleFiltersChange}
+              availableFilters={availableFilters || null}
+              onExport={viewMode === 'table' && documents.length > 0 ? handleExport : undefined}
+              loading={loadingDashboard}
+            />
 
-        {/* Filters bar */}
-        {(canSelectVendor ? !!selectedVendorId : !error?.noMapping) && <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
-          {/* Top bar */}
-          <div className="p-4 flex flex-col sm:flex-row gap-3">
-            {/* Type tabs */}
-            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 shrink-0">
-              {([['all', 'Todos'], ['policies', 'Polizas'], ['bonds', 'Fianzas']] as const).map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => { setDocType(val); setCurrentPage(1); }}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${docType === val ? 'bg-white dark:bg-gray-600 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {viewMode === 'dashboard' ? (
+              <>
+                {/* KPI Cards */}
+                <SicasDashboardKPIs
+                  kpis={kpis as any}
+                  loading={loadingDashboard}
+                  periodo={periodo}
+                  onKpiClick={handleKpiClick}
+                />
 
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar por documento o cliente..."
-                value={searchText}
-                onChange={e => handleSearchChange(e.target.value)}
-                className="w-full pl-10 pr-8 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 dark:text-white placeholder-gray-400"
+                {/* Charts + Renovaciones layout */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                  <div className="xl:col-span-2">
+                    <SicasDashboardCharts
+                      charts={charts as any}
+                      loading={loadingDashboard}
+                    />
+                  </div>
+                  <div id="renovaciones-panel">
+                    <SicasRenovacionesPanel
+                      renewals={renewals}
+                      loading={loadingDashboard}
+                      kpis={kpis as any}
+                      onDocumentClick={loadDetail}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Table view */
+              <DocumentsTable
+                documents={documents}
+                loading={loadingDocs}
+                pagination={pagination}
+                currentPage={currentPage}
+                pageSize={pageSize}
+                sortField={sortField}
+                sortDir={sortDir}
+                onToggleSort={toggleSort}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                onViewDetail={loadDetail}
               />
-              {searchText && (
-                <button onClick={() => handleSearchChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            {/* Filter toggle */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors shrink-0 ${showFilters ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-            >
-              <Filter className="w-4 h-4" />
-              Filtros
-              {activeFilterCount > 0 && (
-                <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{activeFilterCount}</span>
-              )}
-              {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-          </div>
-
-          {/* Expandable filters */}
-          {showFilters && (
-            <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Estatus</label>
-                  <select
-                    value={statusFilter}
-                    onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white"
-                  >
-                    <option value="">Todos</option>
-                    <option value="vigente">Vigente</option>
-                    <option value="vencida">Vencida</option>
-                    <option value="cancelada">Cancelada</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Ramo</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: Autos, Vida..."
-                    value={ramoFilter}
-                    onChange={e => { setRamoFilter(e.target.value); setCurrentPage(1); }}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Aseguradora</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: GNP, Chubb..."
-                    value={aseguradoraFilter}
-                    onChange={e => { setAseguradoraFilter(e.target.value); setCurrentPage(1); }}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Vigencia desde</label>
-                  <input
-                    type="date"
-                    value={fechaDesde}
-                    onChange={e => { setFechaDesde(e.target.value); setCurrentPage(1); }}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Vigencia hasta</label>
-                  <input
-                    type="date"
-                    value={fechaHasta}
-                    onChange={e => { setFechaHasta(e.target.value); setCurrentPage(1); }}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Resultados por pagina</label>
-                  <select
-                    value={pageSize}
-                    onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white"
-                  >
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                </div>
-              </div>
-              {activeFilterCount > 0 && (
-                <div className="mt-3 flex justify-end">
-                  <button onClick={clearFilters} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                    Limpiar filtros
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                  <SortableHeader label="Documento" field="DatDocumentos.Documento" current={sortField} dir={sortDir} onToggle={toggleSort} />
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Ramo</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Aseguradora</th>
-                  <SortableHeader label="Vigencia" field="DatDocumentos.FDesde" current={sortField} dir={sortDir} onToggle={toggleSort} className="hidden sm:table-cell" />
-                  <SortableHeader label="Prima Neta" field="DatDocumentos.PrimaNeta" current={sortField} dir={sortDir} onToggle={toggleSort} className="text-right" />
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estatus</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {loadingDocs ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      {Array.from({ length: 8 }).map((_, j) => (
-                        <td key={j} className="px-4 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div></td>
-                      ))}
-                    </tr>
-                  ))
-                ) : documents.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center">
-                      <FileText className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                      <p className="text-gray-500 dark:text-gray-400 font-medium">No se encontraron documentos</p>
-                      <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Ajusta los filtros o intenta de nuevo</p>
-                    </td>
-                  </tr>
-                ) : (
-                  documents.map((doc) => (
-                    <tr
-                      key={String(doc.idDocto)}
-                      className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
-                      onClick={() => loadDetail(doc.idDocto)}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900 dark:text-white truncate max-w-[200px]">{doc.documento || '-'}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{doc.tipo || doc.subtipo}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-gray-700 dark:text-gray-300 truncate max-w-[180px]">{doc.cliente || '-'}</div>
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <div className="text-gray-700 dark:text-gray-300 truncate max-w-[120px]">{doc.ramo || '-'}</div>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <div className="text-gray-700 dark:text-gray-300 truncate max-w-[120px]">{doc.aseguradora || '-'}</div>
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <div className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                          {formatDate(doc.fechaDesde)}
-                        </div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
-                          a {formatDate(doc.fechaHasta)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(doc.primaNeta)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${statusColor(doc.status)}`}>
-                          {doc.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={e => { e.stopPropagation(); loadDetail(doc.idDocto); }}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                          title="Ver detalle"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {!loadingDocs && documents.length > 0 && (
-            <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Mostrando {((currentPage - 1) * pageSize) + 1} a {Math.min(currentPage * pageSize, pagination.maxRecords)} de {pagination.maxRecords} documentos
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage <= 1}
-                  className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300 font-medium">
-                  {currentPage} / {pagination.pages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(pagination.pages, p + 1))}
-                  disabled={currentPage >= pagination.pages}
-                  className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>}
+            )}
+          </>
+        )}
 
         </>}
       </div>
@@ -728,61 +593,141 @@ export default function ProduccionSICASLive() {
   );
 }
 
-// ─── Summary Cards ───────────────────────────────────────────────────────────
+// ─── Documents Table ────────────────────────────────────────────────────────
 
-function SummaryCards({ summary, loading }: { summary: Summary | null; loading: boolean }) {
-  const cards = [
-    { label: 'Total Documentos', value: summary?.totalDocumentos ?? 0, icon: FileText, color: 'from-blue-500 to-blue-600', format: 'number' },
-    { label: 'Prima Neta Total', value: summary?.primaNetaTotal ?? 0, icon: DollarSign, color: 'from-emerald-500 to-emerald-600', format: 'currency' },
-    { label: 'Prima Total', value: summary?.primaTotalTotal ?? 0, icon: TrendingUp, color: 'from-teal-500 to-teal-600', format: 'currency' },
-    { label: 'Polizas', value: summary?.totalPolizas ?? 0, icon: Shield, color: 'from-sky-500 to-sky-600', format: 'number' },
-    { label: 'Fianzas', value: summary?.totalFianzas ?? 0, icon: Briefcase, color: 'from-orange-500 to-orange-600', format: 'number' },
-    { label: 'Vigentes', value: summary?.vigentes ?? 0, icon: CheckCircle, color: 'from-green-500 to-green-600', format: 'number' },
-  ];
-
+function DocumentsTable({ documents, loading, pagination, currentPage, pageSize, sortField, sortDir, onToggleSort, onPageChange, onPageSizeChange, onViewDetail }: {
+  documents: SicasDocument[];
+  loading: boolean;
+  pagination: Pagination;
+  currentPage: number;
+  pageSize: number;
+  sortField: string;
+  sortDir: 'asc' | 'desc';
+  onToggleSort: (field: string) => void;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+  onViewDetail: (idDocto: string | number) => void;
+}) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      {cards.map(card => {
-        const Icon = card.icon;
-        return (
-          <div key={card.label} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 relative overflow-hidden">
-            <div className={`absolute inset-0 opacity-[0.04] bg-gradient-to-br ${card.color}`} />
-            <div className="relative">
-              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${card.color} flex items-center justify-center mb-2`}>
-                <Icon className="w-4 h-4 text-white" />
-              </div>
-              {loading ? (
-                <div className="h-7 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-              ) : (
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {card.format === 'currency' ? formatCurrency(card.value as number) : (card.value as number).toLocaleString('es-MX')}
-                </p>
-              )}
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{card.label}</p>
-            </div>
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      {/* Page size selector */}
+      <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+        <span className="text-xs text-gray-500 dark:text-gray-400">Resultados por pagina:</span>
+        <select
+          value={pageSize}
+          onChange={e => onPageSizeChange(Number(e.target.value))}
+          className="px-2 py-1 text-xs bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300"
+        >
+          <option value={25}>25</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
+              <SortableHeader label="Documento" field="DatDocumentos.Documento" current={sortField} dir={sortDir} onToggle={onToggleSort} />
+              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
+              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Ramo</th>
+              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Aseguradora</th>
+              <SortableHeader label="Vigencia" field="DatDocumentos.FDesde" current={sortField} dir={sortDir} onToggle={onToggleSort} className="hidden sm:table-cell" />
+              <SortableHeader label="Prima Neta" field="DatDocumentos.PrimaNeta" current={sortField} dir={sortDir} onToggle={onToggleSort} className="text-right" />
+              <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estatus</th>
+              <th className="px-3 py-2.5 w-10"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <td key={j} className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div></td>
+                  ))}
+                </tr>
+              ))
+            ) : documents.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-12 text-center">
+                  <FileText className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                  <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">No se encontraron documentos</p>
+                </td>
+              </tr>
+            ) : documents.map((doc) => (
+              <tr
+                key={String(doc.idDocto)}
+                className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                onClick={() => onViewDetail(doc.idDocto)}
+              >
+                <td className="px-3 py-2.5">
+                  <div className="font-medium text-gray-900 dark:text-white text-xs truncate max-w-[180px]">{doc.documento || '-'}</div>
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400">{doc.tipo || doc.subtipo}</div>
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[160px]">{doc.cliente || '-'}</div>
+                </td>
+                <td className="px-3 py-2.5 hidden lg:table-cell">
+                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[100px]">{doc.ramo || '-'}</div>
+                </td>
+                <td className="px-3 py-2.5 hidden md:table-cell">
+                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[100px]">{doc.aseguradora || '-'}</div>
+                </td>
+                <td className="px-3 py-2.5 hidden sm:table-cell">
+                  <div className="text-[10px] text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDate(doc.fechaDesde)}</div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap">a {formatDate(doc.fechaHasta)}</div>
+                </td>
+                <td className="px-3 py-2.5 text-right whitespace-nowrap text-xs font-semibold text-gray-900 dark:text-white">
+                  {formatCurrency(doc.primaNeta)}
+                </td>
+                <td className="px-3 py-2.5 text-center">
+                  <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${statusColor(doc.status)}`}>
+                    {doc.status}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-center">
+                  <button
+                    onClick={e => { e.stopPropagation(); onViewDetail(doc.idDocto); }}
+                    className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {!loading && documents.length > 0 && (
+        <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">
+            {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, pagination.maxRecords)} de {pagination.maxRecords}
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} className="p-1 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="px-2 py-0.5 text-xs text-gray-700 dark:text-gray-300 font-medium">{currentPage} / {pagination.pages}</span>
+            <button onClick={() => onPageChange(Math.min(pagination.pages, currentPage + 1))} disabled={currentPage >= pagination.pages} className="p-1 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Sortable Header ─────────────────────────────────────────────────────────
+// ─── Sortable Header ────────────────────────────────────────────────────────
 
 function SortableHeader({ label, field, current, dir, onToggle, className = '' }: {
-  label: string;
-  field: string;
-  current: string;
-  dir: 'asc' | 'desc';
-  onToggle: (f: string) => void;
-  className?: string;
+  label: string; field: string; current: string; dir: 'asc' | 'desc'; onToggle: (f: string) => void; className?: string;
 }) {
   const active = current === field;
   return (
-    <th
-      className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none ${className}`}
-      onClick={() => onToggle(field)}
-    >
+    <th className={`px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none ${className}`} onClick={() => onToggle(field)}>
       <div className="flex items-center gap-1">
         {label}
         <ArrowUpDown className={`w-3 h-3 ${active ? 'text-blue-600 dark:text-blue-400' : 'opacity-40'}`} />
@@ -791,7 +736,7 @@ function SortableHeader({ label, field, current, dir, onToggle, className = '' }
   );
 }
 
-// ─── Detail View Component ───────────────────────────────────────────────────
+// ─── Detail View ────────────────────────────────────────────────────────────
 
 function DetailView({ doc, isAdmin }: { doc: DocumentDetail; isAdmin: boolean }) {
   const [showRaw, setShowRaw] = useState(false);
@@ -803,7 +748,6 @@ function DetailView({ doc, isAdmin }: { doc: DocumentDetail; isAdmin: boolean })
 
   return (
     <div className="space-y-6">
-      {/* Header card */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -812,14 +756,11 @@ function DetailView({ doc, isAdmin }: { doc: DocumentDetail; isAdmin: boolean })
               <h2 className="text-xl font-bold text-white">{doc.documento || '-'}</h2>
               <p className="text-blue-200 text-sm mt-1">{doc.aseguradora} - {doc.ramo}</p>
             </div>
-            <span className={`inline-flex px-3 py-1 text-sm font-bold rounded-full ${statusColor(doc.status)} self-start`}>
-              {doc.status}
-            </span>
+            <span className={`inline-flex px-3 py-1 text-sm font-bold rounded-full ${statusColor(doc.status)} self-start`}>{doc.status}</span>
           </div>
         </div>
 
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Cliente */}
           <DetailSection icon={User} title="Cliente">
             <DetailField label="Nombre" value={clienteNombre} />
             {clienteObj?.rfc && <DetailField label="RFC" value={clienteObj.rfc} />}
@@ -828,7 +769,6 @@ function DetailView({ doc, isAdmin }: { doc: DocumentDetail; isAdmin: boolean })
             {clienteObj?.direccion && <DetailField label="Direccion" value={clienteObj.direccion} />}
           </DetailSection>
 
-          {/* Vigencia */}
           <DetailSection icon={Calendar} title="Vigencia">
             <DetailField label="Desde" value={formatDate(doc.fechas?.desde || doc.fechaDesde)} />
             <DetailField label="Hasta" value={formatDate(doc.fechas?.hasta || doc.fechaHasta)} />
@@ -836,7 +776,6 @@ function DetailView({ doc, isAdmin }: { doc: DocumentDetail; isAdmin: boolean })
             {doc.fechas?.captura && <DetailField label="Captura" value={formatDate(doc.fechas.captura)} />}
           </DetailSection>
 
-          {/* Importes */}
           <DetailSection icon={CreditCard} title="Importes">
             <DetailField label="Prima Neta" value={formatCurrency(doc.importes?.primaNeta ?? doc.primaNeta)} />
             <DetailField label="Prima Total" value={formatCurrency(doc.importes?.primaTotal ?? doc.primaTotal)} />
@@ -846,7 +785,6 @@ function DetailView({ doc, isAdmin }: { doc: DocumentDetail; isAdmin: boolean })
             {doc.importes?.descuento ? <DetailField label="Descuento" value={formatCurrency(doc.importes.descuento)} /> : null}
           </DetailSection>
 
-          {/* Datos del documento */}
           <DetailSection icon={FileText} title="Documento">
             <DetailField label="Tipo" value={doc.tipo} />
             {doc.subramo && <DetailField label="Subramo" value={doc.subramo} />}
@@ -854,7 +792,6 @@ function DetailView({ doc, isAdmin }: { doc: DocumentDetail; isAdmin: boolean })
             {doc.estatus?.cobro && <DetailField label="Estatus cobro" value={doc.estatus.cobro} />}
           </DetailSection>
 
-          {/* Vendedor / Agente */}
           <DetailSection icon={Building2} title="Vendedor / Agente">
             <DetailField label="Vendedor" value={vendedorObj?.nombre || String(doc.vendedor || '-')} />
             {(vendedorObj?.id || doc.vendedorId) && <DetailField label="ID Vendedor" value={vendedorObj?.id || doc.vendedorId} />}
@@ -864,14 +801,10 @@ function DetailView({ doc, isAdmin }: { doc: DocumentDetail; isAdmin: boolean })
         </div>
       </div>
 
-      {/* Raw JSON for admin/debug */}
       {isAdmin && doc.raw && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => setShowRaw(!showRaw)}
-            className="w-full px-6 py-3 flex items-center justify-between text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-2xl transition-colors"
-          >
-            <span className="flex items-center gap-2"><Hash className="w-4 h-4" /> Datos crudos de SICAS (Debug)</span>
+          <button onClick={() => setShowRaw(!showRaw)} className="w-full px-6 py-3 flex items-center justify-between text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-2xl transition-colors">
+            <span className="flex items-center gap-2"><Hash className="w-4 h-4" /> Datos crudos (Debug)</span>
             {showRaw ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           {showRaw && (

@@ -598,6 +598,371 @@ function normalizeDetailValues(
   };
 }
 
+// ─── Action: dashboard (full KPIs + chart series + top lists) ───────────────
+
+interface DashboardFilters {
+  periodo?: string; // "2026-04" format
+  periodoDesde?: string;
+  periodoHasta?: string;
+  type?: "all" | "policies" | "bonds";
+  status?: string;
+  ramo?: string;
+  subramo?: string;
+  aseguradora?: string;
+  cliente?: string;
+  moneda?: string;
+  agente?: string;
+  formaPago?: string;
+  search?: string;
+}
+
+function parseDate(s: string): Date | null {
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function sameMonth(d: Date, year: number, month: number): boolean {
+  return d.getFullYear() === year && d.getMonth() === month;
+}
+
+function daysBetween(a: Date, b: Date): number {
+  return Math.ceil((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+async function handleDashboard(
+  client: SicasRestClient,
+  config: ProductionConfig,
+  mapping: UserMapping,
+  filters: DashboardFilters
+): Promise<Response> {
+  const startTime = Date.now();
+  const conditionsDirect = `${config.report_filter_field} IN (${mapping.sicas_vendor_id})`;
+
+  // Determine period
+  const now = new Date();
+  let periodoYear = now.getFullYear();
+  let periodoMonth = now.getMonth(); // 0-indexed
+  if (filters.periodo) {
+    const [y, m] = filters.periodo.split("-").map(Number);
+    if (y && m) { periodoYear = y; periodoMonth = m - 1; }
+  }
+
+  const periodoLabel = `${periodoYear}-${String(periodoMonth + 1).padStart(2, "0")}`;
+
+  // Build conditions for SICAS query
+  const condParts: string[] = [];
+  if (filters.status) {
+    const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
+    const val = statusMap[filters.status.toLowerCase()] || filters.status;
+    condParts.push(`DatDocumentos.Status=${val}`);
+  }
+  if (filters.search) {
+    const s = filters.search.replace(/'/g, "");
+    condParts.push(`(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`);
+  }
+  if (filters.ramo) condParts.push(`DatDocumentos.Ramo LIKE '%${filters.ramo.replace(/'/g, "")}%'`);
+  if (filters.aseguradora) condParts.push(`DatDocumentos.Abreviacion LIKE '%${filters.aseguradora.replace(/'/g, "")}%'`);
+
+  console.log(`[SICASProd] dashboard for vendorId=${mapping.sicas_vendor_id} periodo=${periodoLabel}`);
+
+  // Fetch large batch - up to 1000 records for full analysis
+  const allRecords: Record<string, unknown>[] = [];
+  let page = 1;
+  const maxPages = 5;
+  let totalInSicas = 0;
+
+  while (page <= maxPages) {
+    const response = await client.readReport({
+      keyCode: config.report_keycode_all,
+      pageRequested: page,
+      itemsForPage: 200,
+      conditionsDirect,
+      conditions: condParts.length > 0 ? condParts.join(" AND ") : undefined,
+      sortFields: "DatDocumentos.FDesde DESC",
+    });
+
+    const records = response.Response?.[0]?.TableInfo || [];
+    const control = response.Response?.[0]?.TableControl?.[0];
+    if (page === 1) totalInSicas = control?.MaxRecords || records.length;
+
+    allRecords.push(...records);
+
+    if (!control || page >= (control.Pages || 1) || records.length === 0) break;
+    page++;
+  }
+
+  const docs = allRecords.map(normalizeRecord);
+
+  // Apply client-side filters that SICAS API doesn't support
+  let filtered = docs;
+  if (filters.type === "policies") filtered = filtered.filter(d => !String(d.tipo).toLowerCase().includes("fianza"));
+  else if (filters.type === "bonds") filtered = filtered.filter(d => String(d.tipo).toLowerCase().includes("fianza"));
+  if (filters.cliente) {
+    const cl = String(filters.cliente).toLowerCase();
+    filtered = filtered.filter(d => String(d.cliente).toLowerCase().includes(cl));
+  }
+  if (filters.subramo) {
+    const sr = String(filters.subramo).toLowerCase();
+    filtered = filtered.filter(d => String(d.subramo).toLowerCase().includes(sr));
+  }
+  if (filters.moneda) {
+    const mn = String(filters.moneda).toUpperCase();
+    filtered = filtered.filter(d => String(d.moneda).toUpperCase() === mn);
+  }
+  if (filters.agente) {
+    const ag = String(filters.agente).toLowerCase();
+    filtered = filtered.filter(d => String(d.agente).toLowerCase().includes(ag) || String(d.vendedor).toLowerCase().includes(ag));
+  }
+
+  // ── Compute KPIs ──
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let totalPrimaNeta = 0, totalPrimaTotal = 0;
+  let polizasEmitidas = 0, fianzasEmitidas = 0;
+  let polizasVigentes = 0, fianzasVigentes = 0;
+  let primaVigente = 0;
+  let cancelaciones = 0;
+  let mesPrimaNeta = 0, mesPrimaTotal = 0;
+  let mesEmisiones = 0;
+  let renew7 = 0, renew15 = 0, renew30 = 0, primaRenovar = 0;
+  let renewMes = 0;
+  const clientesSet = new Set<string>();
+  const clientesMesSet = new Set<string>();
+
+  // For month comparisons
+  const prevMonth = periodoMonth === 0 ? 11 : periodoMonth - 1;
+  const prevYear = periodoMonth === 0 ? periodoYear - 1 : periodoYear;
+  let prevMonthPrima = 0;
+  let sameMonthLastYearPrima = 0;
+
+  // Aggregation maps
+  const porRamo: Record<string, { count: number; prima: number; vigentes: number }> = {};
+  const porSubramo: Record<string, { count: number; prima: number }> = {};
+  const porAseguradora: Record<string, { count: number; prima: number; vigentes: number }> = {};
+  const porCliente: Record<string, { count: number; prima: number }> = {};
+  const porMes: Record<string, { count: number; primaNeta: number; primaTotal: number; emisiones: number }> = {};
+  const porEstatus: Record<string, { count: number; prima: number }> = {};
+  const renewByWeek: Record<string, { count: number; prima: number }> = {};
+
+  for (const doc of filtered) {
+    const pn = doc.primaNeta as number;
+    const pt = doc.primaTotal as number;
+    const st = String(doc.status || "").toLowerCase();
+    const stRaw = String(doc.statusRaw || "");
+    const tipo = String(doc.tipo || "").toLowerCase();
+    const isPoliza = !tipo.includes("fianza");
+    const isFianza = tipo.includes("fianza");
+    const isVigente = st === "vigente" || stRaw === "1" || stRaw === "V" || st === "renovada" || stRaw === "2";
+    const isCancelada = st === "cancelada" || stRaw === "3" || stRaw === "C";
+    const cliente = String(doc.cliente || "");
+    const ramo = String(doc.ramo || "Otros");
+    const subramo = String(doc.subramo || "Otros");
+    const aseg = String(doc.aseguradora || "Otros");
+    const fDesde = parseDate(String(doc.fechaDesde || ""));
+    const fHasta = parseDate(String(doc.fechaHasta || ""));
+
+    totalPrimaNeta += pn;
+    totalPrimaTotal += pt;
+    if (isPoliza) polizasEmitidas++;
+    if (isFianza) fianzasEmitidas++;
+    if (isVigente && isPoliza) polizasVigentes++;
+    if (isVigente && isFianza) fianzasVigentes++;
+    if (isVigente) primaVigente += pt;
+    if (isCancelada) cancelaciones++;
+    if (cliente) clientesSet.add(cliente);
+
+    // Period (current month) analysis
+    if (fDesde && sameMonth(fDesde, periodoYear, periodoMonth)) {
+      mesPrimaNeta += pn;
+      mesPrimaTotal += pt;
+      mesEmisiones++;
+      if (cliente) clientesMesSet.add(cliente);
+    }
+
+    // Previous month for variation
+    if (fDesde && sameMonth(fDesde, prevYear, prevMonth)) {
+      prevMonthPrima += pt;
+    }
+    // Same month last year for YoY variation
+    if (fDesde && sameMonth(fDesde, periodoYear - 1, periodoMonth)) {
+      sameMonthLastYearPrima += pt;
+    }
+
+    // Renewal analysis (documents expiring soon)
+    if (fHasta && isVigente) {
+      const daysToExpiry = daysBetween(today, fHasta);
+      if (daysToExpiry >= 0 && daysToExpiry <= 30) {
+        renew30++;
+        primaRenovar += pt;
+        if (daysToExpiry <= 15) renew15++;
+        if (daysToExpiry <= 7) renew7++;
+
+        // Monthly renewal
+        if (sameMonth(fHasta, periodoYear, periodoMonth)) renewMes++;
+
+        // Weekly bucket for chart
+        const weekLabel = daysToExpiry <= 7 ? "0-7 dias" : daysToExpiry <= 15 ? "8-15 dias" : "16-30 dias";
+        if (!renewByWeek[weekLabel]) renewByWeek[weekLabel] = { count: 0, prima: 0 };
+        renewByWeek[weekLabel].count++;
+        renewByWeek[weekLabel].prima += pt;
+      }
+    }
+
+    // Aggregations
+    if (!porRamo[ramo]) porRamo[ramo] = { count: 0, prima: 0, vigentes: 0 };
+    porRamo[ramo].count++;
+    porRamo[ramo].prima += pt;
+    if (isVigente) porRamo[ramo].vigentes++;
+
+    if (!porSubramo[subramo]) porSubramo[subramo] = { count: 0, prima: 0 };
+    porSubramo[subramo].count++;
+    porSubramo[subramo].prima += pt;
+
+    if (!porAseguradora[aseg]) porAseguradora[aseg] = { count: 0, prima: 0, vigentes: 0 };
+    porAseguradora[aseg].count++;
+    porAseguradora[aseg].prima += pt;
+    if (isVigente) porAseguradora[aseg].vigentes++;
+
+    if (cliente) {
+      if (!porCliente[cliente]) porCliente[cliente] = { count: 0, prima: 0 };
+      porCliente[cliente].count++;
+      porCliente[cliente].prima += pt;
+    }
+
+    const mesKey = fDesde ? `${fDesde.getFullYear()}-${String(fDesde.getMonth() + 1).padStart(2, "0")}` : "sin-fecha";
+    if (!porMes[mesKey]) porMes[mesKey] = { count: 0, primaNeta: 0, primaTotal: 0, emisiones: 0 };
+    porMes[mesKey].count++;
+    porMes[mesKey].primaNeta += pn;
+    porMes[mesKey].primaTotal += pt;
+    porMes[mesKey].emisiones++;
+
+    if (!porEstatus[st || "desconocido"]) porEstatus[st || "desconocido"] = { count: 0, prima: 0 };
+    porEstatus[st || "desconocido"].count++;
+    porEstatus[st || "desconocido"].prima += pt;
+  }
+
+  // Top lists (sorted by prima desc)
+  const sortByPrima = (obj: Record<string, { count: number; prima: number }>) =>
+    Object.entries(obj).sort((a, b) => b[1].prima - a[1].prima).map(([name, data]) => ({ name, ...data }));
+
+  const topClientes = sortByPrima(porCliente).slice(0, 10);
+  const topAseguradoras = sortByPrima(porAseguradora).slice(0, 10);
+  const topRamos = sortByPrima(porRamo).slice(0, 10);
+  const topSubramos = sortByPrima(porSubramo).slice(0, 10);
+
+  // Ticket promedio
+  const ticketPromedio = filtered.length > 0 ? totalPrimaTotal / filtered.length : 0;
+
+  // Variation calculations
+  const variacionMesAnterior = prevMonthPrima > 0
+    ? ((mesPrimaTotal - prevMonthPrima) / prevMonthPrima) * 100
+    : mesPrimaTotal > 0 ? 100 : 0;
+  const variacionInteranual = sameMonthLastYearPrima > 0
+    ? ((mesPrimaTotal - sameMonthLastYearPrima) / sameMonthLastYearPrima) * 100
+    : mesPrimaTotal > 0 ? 100 : 0;
+
+  // Chart series: prima por mes (sorted by date)
+  const primaPorMesSeries = Object.entries(porMes)
+    .filter(([k]) => k !== "sin-fecha")
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([mes, data]) => ({ mes, ...data }));
+
+  // Estatus distribution
+  const estatusDistribution = Object.entries(porEstatus).map(([estatus, data]) => ({ estatus, ...data }));
+
+  // Polizas vs fianzas distribution
+  const tipoDistribution = [
+    { tipo: "Polizas", count: polizasEmitidas, prima: totalPrimaTotal - (fianzasEmitidas > 0 ? filtered.filter(d => String(d.tipo).toLowerCase().includes("fianza")).reduce((s, d) => s + (d.primaTotal as number), 0) : 0) },
+    { tipo: "Fianzas", count: fianzasEmitidas, prima: filtered.filter(d => String(d.tipo).toLowerCase().includes("fianza")).reduce((s, d) => s + (d.primaTotal as number), 0) },
+  ];
+
+  // Renewals list (next 30 days)
+  const renewals = filtered
+    .filter(d => {
+      const fH = parseDate(String(d.fechaHasta || ""));
+      if (!fH) return false;
+      const stLocal = String(d.status || "").toLowerCase();
+      const isV = stLocal === "vigente" || stLocal === "renovada";
+      const days = daysBetween(today, fH);
+      return isV && days >= 0 && days <= 30;
+    })
+    .sort((a, b) => {
+      const da = new Date(String(a.fechaHasta)).getTime();
+      const db = new Date(String(b.fechaHasta)).getTime();
+      return da - db;
+    })
+    .slice(0, 50);
+
+  // Available filter values (for dropdown population)
+  const availableRamos = [...new Set(filtered.map(d => String(d.ramo)).filter(Boolean))].sort();
+  const availableSubramos = [...new Set(filtered.map(d => String(d.subramo)).filter(Boolean))].sort();
+  const availableAseguradoras = [...new Set(filtered.map(d => String(d.aseguradora)).filter(Boolean))].sort();
+  const availableMonedas = [...new Set(filtered.map(d => String(d.moneda)).filter(Boolean))].sort();
+
+  const duration = Date.now() - startTime;
+  console.log(`[SICASProd] dashboard computed from ${filtered.length} records in ${duration}ms`);
+
+  return jsonResponse(200, {
+    ok: true,
+    periodo: periodoLabel,
+    totalRecords: totalInSicas,
+    recordsAnalyzed: filtered.length,
+    kpis: {
+      polizasEmitidas,
+      fianzasEmitidas,
+      totalDocumentos: filtered.length,
+      primaNetaEmitida: Math.round(totalPrimaNeta * 100) / 100,
+      primaTotalEmitida: Math.round(totalPrimaTotal * 100) / 100,
+      mesPrimaNeta: Math.round(mesPrimaNeta * 100) / 100,
+      mesPrimaTotal: Math.round(mesPrimaTotal * 100) / 100,
+      mesEmisiones,
+      clientesMes: clientesMesSet.size,
+      clientesTotal: clientesSet.size,
+      polizasVigentes,
+      fianzasVigentes,
+      primaVigente: Math.round(primaVigente * 100) / 100,
+      renovaciones7dias: renew7,
+      renovaciones15dias: renew15,
+      renovaciones30dias: renew30,
+      renovacionesMes: renewMes,
+      primaRenovar: Math.round(primaRenovar * 100) / 100,
+      cancelaciones,
+      ticketPromedio: Math.round(ticketPromedio * 100) / 100,
+      topClientePeriodo: topClientes[0]?.name || "-",
+      topAseguradoraPeriodo: topAseguradoras[0]?.name || "-",
+      topRamoPeriodo: topRamos[0]?.name || "-",
+      variacionMesAnterior: Math.round(variacionMesAnterior * 10) / 10,
+      variacionInteranual: Math.round(variacionInteranual * 10) / 10,
+    },
+    charts: {
+      primaPorMes: primaPorMesSeries,
+      porRamo: topRamos,
+      porAseguradora: topAseguradoras,
+      porCliente: topClientes,
+      porSubramo: topSubramos,
+      porEstatus: estatusDistribution,
+      tipoDistribution,
+      renovacionesPorPeriodo: Object.entries(renewByWeek).map(([periodo, data]) => ({ periodo, ...data })),
+    },
+    topLists: {
+      clientes: topClientes,
+      aseguradoras: topAseguradoras,
+      ramos: topRamos,
+      subramos: topSubramos,
+    },
+    renewals,
+    availableFilters: {
+      ramos: availableRamos,
+      subramos: availableSubramos,
+      aseguradoras: availableAseguradoras,
+      monedas: availableMonedas,
+    },
+    meta: { duration, vendorId: mapping.sicas_vendor_id, vendorName: mapping.sicas_vendor_name },
+  });
+}
+
 // ─── Admin Actions ──────────────────────────────────────────────────────────
 
 async function handleListUsers(
@@ -1150,6 +1515,21 @@ Deno.serve(async (req: Request) => {
     }
 
     switch (action) {
+      case "dashboard":
+        return await handleDashboard(client, config, mapping, {
+          periodo: body.periodo,
+          type: body.type,
+          status: body.status,
+          ramo: body.ramo,
+          subramo: body.subramo,
+          aseguradora: body.aseguradora,
+          cliente: body.cliente,
+          moneda: body.moneda,
+          agente: body.agente,
+          formaPago: body.formaPago,
+          search: body.search,
+        });
+
       case "summary":
         return await handleSummary(client, config, mapping);
 
