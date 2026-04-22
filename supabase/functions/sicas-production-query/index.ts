@@ -439,8 +439,6 @@ async function handleGlobalDashboard(
     apiCdParts.push(inClause);
   }
 
-  if (filters.fechaDesde) apiCondParts.push(`DatDocumentos.FDesde>=${filters.fechaDesde}`);
-  if (filters.fechaHasta) apiCondParts.push(`DatDocumentos.FHasta<=${filters.fechaHasta}`);
   if (filters.status) {
     const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
     apiCondParts.push(`DatDocumentos.Status=${statusMap[filters.status.toLowerCase()] || filters.status}`);
@@ -455,7 +453,6 @@ async function handleGlobalDashboard(
   const conditions = apiCondParts.length > 0 ? apiCondParts.join(" AND ") : undefined;
   const conditionsDirect = apiCdParts.length > 0 ? apiCdParts.join(" AND ") : undefined;
 
-  console.log(`[SICASProd][FlowA] global-dashboard: fechaDesde=${filters.fechaDesde || "none"} fechaHasta=${filters.fechaHasta || "none"}`);
   console.log(`[SICASProd][FlowA] global-dashboard: conditions="${conditions || "(none)"}"`);
 
   const { records: allRecords, totalInSicas, pagesFetched } = await fetchAllPages(client, {
@@ -464,17 +461,14 @@ async function handleGlobalDashboard(
     conditionsDirect,
     sortFields: "DatDocumentos.FDesde DESC",
     pageSize: 500,
-    maxPages: 200,
+    maxPages: 10,
   });
-
-  console.log(`[SICASProd][FlowA] global-dashboard: fetched ${allRecords.length} records, totalInSicas=${totalInSicas}, pagesFetched=${pagesFetched}`);
 
   const docs = allRecords.map(normalizeRecord);
   const result = computeKPIs(docs, filters, totalInSicas, pagesFetched);
   result.meta.flow = "global";
   result.meta.vendorScope = officeVendorIds ? "office" : "all";
   result.meta.duration = Date.now() - startTime;
-  result.meta.dateFiltersSentToApi = !!(filters.fechaDesde || filters.fechaHasta);
 
   return jsonResponse(200, result);
 }
@@ -611,8 +605,6 @@ async function handleScopedDashboard(
   const apiCondParts: string[] = [vendorFilter];
   const apiCdParts: string[] = [vendorFilter];
 
-  if (filters.fechaDesde) apiCondParts.push(`DatDocumentos.FDesde>=${filters.fechaDesde}`);
-  if (filters.fechaHasta) apiCondParts.push(`DatDocumentos.FHasta<=${filters.fechaHasta}`);
   if (filters.status) {
     const statusMap: Record<string, string> = { vigente: "1", renovada: "2", cancelada: "3", "no vigente": "4", pendiente: "5" };
     apiCondParts.push(`DatDocumentos.Status=${statusMap[filters.status.toLowerCase()] || filters.status}`);
@@ -628,7 +620,6 @@ async function handleScopedDashboard(
   const conditionsDirect = apiCdParts.join(" AND ");
 
   console.log(`[SICASProd][FlowB] scoped-dashboard: vendorId=${identity.vendorId} vendorName="${identity.vendorName}" source=${identity.source}`);
-  console.log(`[SICASProd][FlowB] fechaDesde=${filters.fechaDesde || "none"} fechaHasta=${filters.fechaHasta || "none"}`);
   console.log(`[SICASProd][FlowB] conditions="${conditions}"`);
   console.log(`[SICASProd][FlowB] conditionsDirect="${conditionsDirect}"`);
 
@@ -638,10 +629,8 @@ async function handleScopedDashboard(
     conditionsDirect,
     sortFields: "DatDocumentos.FDesde DESC",
     pageSize: 500,
-    maxPages: 200,
+    maxPages: 50,
   });
-
-  console.log(`[SICASProd][FlowB] scoped-dashboard: fetched ${allRecords.length} records, totalInSicas=${totalInSicas}, pagesFetched=${pagesFetched}`);
 
   let docs = allRecords.map(normalizeRecord);
 
@@ -664,7 +653,6 @@ async function handleScopedDashboard(
   result.meta.duration = Date.now() - startTime;
   result.meta.totalInSicas = totalInSicas;
   result.meta.totalAfterValidation = docs.length;
-  result.meta.dateFiltersSentToApi = !!(filters.fechaDesde || filters.fechaHasta);
 
   return jsonResponse(200, result);
 }
@@ -1070,76 +1058,26 @@ async function handleListMappedVendors(
   supabase: ReturnType<typeof createClient>,
   filterOficinaId?: string | null
 ): Promise<Response> {
-  // Source 1: usuarios with id_sicas set directly
-  let query1 = supabase
+  let query = supabase
     .from("usuarios")
     .select("id, nombre, apellidos, id_sicas, nombre_sicas, oficina_id")
     .eq("activo", true)
     .not("id_sicas", "is", null)
     .order("nombre");
 
-  if (filterOficinaId) query1 = query1.eq("oficina_id", filterOficinaId);
+  if (filterOficinaId) query = query.eq("oficina_id", filterOficinaId);
 
-  const { data: usuarios1, error: err1 } = await query1;
-  if (err1) return jsonResponse(500, { ok: false, error: err1.message, code: "DB_ERROR" });
-
-  // Source 2: usuarios mapped via sicas_mapeo_vendedor_usuario (may not have id_sicas on usuarios)
-  const { data: mappings } = await supabase
-    .from("sicas_mapeo_vendedor_usuario")
-    .select("id_sicas_vendedor, movi_user_id");
-
-  const mappedUserIds = new Set((usuarios1 || []).map((u: any) => u.id));
-  const extraMappings = (mappings || []).filter((m: any) => !mappedUserIds.has(m.movi_user_id));
-
-  let extraUsers: any[] = [];
-  if (extraMappings.length > 0) {
-    const extraIds = extraMappings.map((m: any) => m.movi_user_id);
-    let query2 = supabase
-      .from("usuarios")
-      .select("id, nombre, apellidos, nombre_sicas, oficina_id")
-      .eq("activo", true)
-      .in("id", extraIds);
-
-    if (filterOficinaId) query2 = query2.eq("oficina_id", filterOficinaId);
-
-    const { data } = await query2;
-    extraUsers = data || [];
-  }
-
-  const mappingByUser: Record<string, string> = {};
-  for (const m of mappings || []) mappingByUser[m.movi_user_id] = m.id_sicas_vendedor;
+  const { data: usuarios, error } = await query;
+  if (error) return jsonResponse(500, { ok: false, error: error.message, code: "DB_ERROR" });
 
   const { data: oficinas } = await supabase.from("oficinas").select("id, nombre").eq("activa", true);
   const oficinasMap: Record<string, string> = {};
   for (const o of oficinas || []) oficinasMap[o.id] = o.nombre;
 
-  const vendors: any[] = [];
-  const seenIds = new Set<string>();
-
-  for (const u of usuarios1 || []) {
-    const uid = u.id as string;
-    if (seenIds.has(uid)) continue;
-    seenIds.add(uid);
-    vendors.push({
-      usuario_id: uid, nombre: `${u.nombre} ${u.apellidos}`, id_sicas: u.id_sicas,
-      nombre_sicas: u.nombre_sicas, oficina: u.oficina_id ? oficinasMap[u.oficina_id as string] || null : null,
-    });
-  }
-
-  for (const u of extraUsers) {
-    const uid = u.id as string;
-    if (seenIds.has(uid)) continue;
-    seenIds.add(uid);
-    const sicasId = mappingByUser[uid];
-    vendors.push({
-      usuario_id: uid, nombre: `${u.nombre} ${u.apellidos}`, id_sicas: sicasId,
-      nombre_sicas: u.nombre_sicas, oficina: u.oficina_id ? oficinasMap[u.oficina_id as string] || null : null,
-    });
-  }
-
-  vendors.sort((a: any, b: any) => (a.nombre || "").localeCompare(b.nombre || ""));
-
-  console.log(`[SICASProd] list-mapped-vendors: ${vendors.length} vendors (${(usuarios1 || []).length} from id_sicas, ${extraUsers.length} from mapping table)`);
+  const vendors = (usuarios || []).map((u: Record<string, unknown>) => ({
+    usuario_id: u.id, nombre: `${u.nombre} ${u.apellidos}`, id_sicas: u.id_sicas,
+    nombre_sicas: u.nombre_sicas, oficina: u.oficina_id ? oficinasMap[u.oficina_id as string] || null : null,
+  }));
 
   return jsonResponse(200, { ok: true, vendors });
 }
@@ -1369,38 +1307,14 @@ Deno.serve(async (req: Request) => {
       // Gerente with no vendorId → Flow A with office vendor IDs
       console.log(`[SICASProd] FLOW A (global): gerente, office=${callerOficinaId}`);
 
-      // Source 1: usuarios with id_sicas directly set
-      const { data: officeVendorsDirect } = await supabase
+      const { data: officeVendors } = await supabase
         .from("usuarios")
-        .select("id, id_sicas")
+        .select("id_sicas")
         .eq("oficina_id", callerOficinaId)
         .eq("activo", true)
         .not("id_sicas", "is", null);
 
-      const vendorIdSet = new Set<string>();
-      for (const v of officeVendorsDirect || []) {
-        if (v.id_sicas) vendorIdSet.add(v.id_sicas);
-      }
-
-      // Source 2: usuarios in this office mapped via sicas_mapeo_vendedor_usuario
-      const { data: officeUsers } = await supabase
-        .from("usuarios")
-        .select("id")
-        .eq("oficina_id", callerOficinaId)
-        .eq("activo", true);
-
-      if (officeUsers && officeUsers.length > 0) {
-        const userIds = officeUsers.map(u => u.id);
-        const { data: mappings } = await supabase
-          .from("sicas_mapeo_vendedor_usuario")
-          .select("id_sicas_vendedor")
-          .in("movi_user_id", userIds);
-        for (const m of mappings || []) {
-          if (m.id_sicas_vendedor) vendorIdSet.add(m.id_sicas_vendedor);
-        }
-      }
-
-      const officeVendorIds = [...vendorIdSet];
+      const officeVendorIds = (officeVendors || []).map(v => v.id_sicas).filter(Boolean);
       if (officeVendorIds.length === 0) {
         return jsonResponse(200, {
           ok: false, error: "No hay usuarios con vinculo SICAS en tu oficina.",
@@ -1408,7 +1322,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      console.log(`[SICASProd] FLOW A: gerente office vendors: [${officeVendorIds.join(",")}] (${(officeVendorsDirect || []).length} direct, ${officeVendorIds.length} total)`);
+      console.log(`[SICASProd] FLOW A: gerente office vendors: [${officeVendorIds.join(",")}]`);
 
       switch (action) {
         case "dashboard":
