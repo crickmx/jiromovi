@@ -76,19 +76,30 @@ type ActiveTab = 'produccion' | 'mapeo';
 
 // ─── API Helper ──────────────────────────────────────────────────────────────
 
-async function callSicasProduction(body: Record<string, unknown>) {
+async function callSicasProduction(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || '';
-  const res = await fetch(`${supabaseUrl}/functions/v1/sicas-production-query`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Apikey': supabaseAnonKey,
-    },
-    body: JSON.stringify(body),
-  });
-  return res.json();
+  if (!session?.access_token) {
+    return { ok: false, error: 'Sesion no disponible. Intenta recargar la pagina.', code: 'NO_SESSION' };
+  }
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/sicas-production-query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        'Apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { ok: false, error: `Error del servidor (${res.status})`, code: 'PARSE_ERROR' };
+    }
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'Error de red al conectar con SICAS.', code: 'NETWORK_ERROR' };
+  }
 }
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
@@ -252,8 +263,8 @@ export default function ProduccionSICASLive() {
         setDashboardData(data);
         setError(null);
       } else {
-        if (data.noMapping) setError({ message: data.error, code: data.code, noMapping: true });
-        else setError({ message: data.error, code: data.code });
+        if (data.noMapping) setError({ message: data.error as string, code: data.code as string, noMapping: true });
+        else setError({ message: data.error as string, code: data.code as string });
       }
     } catch {
       setError({ message: 'No fue posible consultar SICAS en este momento.' });
@@ -277,6 +288,8 @@ export default function ProduccionSICASLive() {
         sortDirection: sortDir,
       };
       if (selectedVendorId) body.vendorId = selectedVendorId;
+      if (filters.fechaDesde) body.fechaDesde = filters.fechaDesde;
+      if (filters.fechaHasta) body.fechaHasta = filters.fechaHasta;
       if (filters.search) body.search = filters.search;
       if (filters.status) body.status = filters.status;
       if (filters.ramo) body.ramo = filters.ramo;
@@ -284,10 +297,10 @@ export default function ProduccionSICASLive() {
 
       const data = await callSicasProduction(body);
       if (data.ok) {
-        setDocuments(data.items || []);
-        setPagination(data.pagination || { page: 1, pageSize: 25, pages: 1, maxRecords: 0 });
+        setDocuments((data.items || []) as SicasDocument[]);
+        setPagination((data.pagination || { page: 1, pageSize: 25, pages: 1, maxRecords: 0 }) as Pagination);
       } else if (!error?.noMapping) {
-        setError({ message: data.error, code: data.code });
+        setError({ message: data.error as string, code: data.code as string });
       }
     } catch {
       if (!error?.noMapping) setError({ message: 'Error al cargar documentos.' });
@@ -305,8 +318,8 @@ export default function ProduccionSICASLive() {
       const body: Record<string, unknown> = { action: 'detail', idDocto };
       if (selectedVendorId) body.vendorId = selectedVendorId;
       const data = await callSicasProduction(body);
-      if (data.ok) setSelectedDoc(data.document);
-      else { setSelectedDoc(null); setError({ message: data.error, code: data.code }); }
+      if (data.ok) setSelectedDoc(data.document as DocumentDetail);
+      else { setSelectedDoc(null); setError({ message: data.error as string, code: data.code as string }); }
     } catch { setError({ message: 'Error al cargar detalle del documento.' }); }
     finally { setLoadingDetail(false); }
   };
