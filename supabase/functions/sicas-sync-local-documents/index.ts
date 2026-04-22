@@ -42,9 +42,6 @@ Deno.serve(async (req: Request) => {
 
   const startTime = Date.now();
 
-  let runId: string | null = null;
-  let supabase: ReturnType<typeof createClient> | null = null;
-
   try {
     const body = await req.json().catch(() => ({}));
     const action: string = body.action || "full";
@@ -59,30 +56,7 @@ Deno.serve(async (req: Request) => {
     if (!supabaseUrl || !supabaseKey) {
       throw new Error("Variables de entorno de Supabase no configuradas");
     }
-    supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Prevent duplicate runs: check if there's already a running sync
-    const { data: existingRun } = await supabase
-      .from("sicas_sync_runs")
-      .select("run_id, started_at")
-      .eq("status", "running")
-      .order("started_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingRun) {
-      const runAge = Date.now() - new Date(existingRun.started_at).getTime();
-      if (runAge < 5 * 60 * 1000) {
-        console.log(`[SYNC] Ya hay una sincronizacion en progreso (${existingRun.run_id}). Abortando.`);
-        return jsonResponse(409, { ok: false, error: "Ya hay una sincronizacion en progreso. Espere a que termine." });
-      }
-      // Stale run older than 5 min, mark as failed
-      await supabase.from("sicas_sync_runs").update({
-        status: "failed",
-        error_message: "Auto-closed: run stuck >5min when new sync started",
-        finished_at: new Date().toISOString(),
-      }).eq("run_id", existingRun.run_id);
-    }
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Load config
     const { data: configRow } = await supabase
@@ -93,7 +67,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     const keycode = configRow?.report_keycode_all || "HWS_DOCTOS";
-    const pageSize = 500;
+    const pageSize = action === "full" ? 500 : 500;
     const maxPages = action === "full" ? 100 : 10;
 
     console.log(`[SYNC] Config: keycode=${keycode}, pageSize=${pageSize}, maxPages=${maxPages}`);
@@ -117,7 +91,7 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Error creando registro de sync: ${runError.message}`);
     }
 
-    runId = run.run_id;
+    const runId = run.run_id;
     console.log(`[SYNC] Run ID: ${runId}`);
 
     // Load vendor and despacho mappings
@@ -512,21 +486,6 @@ Deno.serve(async (req: Request) => {
     const durationMs = Date.now() - startTime;
     console.error(`[SYNC] ERROR FATAL: ${(error as Error).message}`);
     console.error(`[SYNC] Stack: ${(error as Error).stack}`);
-
-    // Update sync run to failed if we have a run ID
-    if (runId && supabase) {
-      try {
-        await supabase.from("sicas_sync_runs").update({
-          status: "failed",
-          error_message: (error as Error).message?.substring(0, 500),
-          finished_at: new Date().toISOString(),
-          duration_seconds: Math.round(durationMs / 1000),
-        }).eq("run_id", runId);
-        console.log(`[SYNC] Sync run ${runId} marcado como failed`);
-      } catch (updateErr) {
-        console.error(`[SYNC] No se pudo actualizar sync run: ${(updateErr as Error).message}`);
-      }
-    }
 
     return jsonResponse(500, {
       ok: false,
