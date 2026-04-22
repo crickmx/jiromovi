@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Users, Building2, Cake, Award, ExternalLink, Sparkles,
+  Users, Building2, Cake, Award, ExternalLink,
   Settings, ClipboardList, UserPlus,
-  MessageSquare, Package, RefreshCw, Megaphone
+  MessageSquare, Package, Megaphone
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { UsuariosPendientes } from '../components/UsuariosPendientes';
@@ -18,7 +18,9 @@ import { UltimoComunicado } from '../components/UltimoComunicado';
 import { getMiPaginaWebFull } from '../lib/webUrlUtils';
 import { getOfficeLogo } from '../lib/logoUtils';
 import MoviPreloader from '../components/MoviPreloader';
-import { getUserWelcomeContext, generateWelcomeMessage } from '../lib/dashboardWelcomeService';
+import { getSmartAnalysis } from '../lib/dashboardWelcomeService';
+import type { SmartAnalysisResult } from '../lib/dashboardWelcomeService';
+import { SmartAnalysisCard } from '../components/SmartAnalysisCard';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -39,8 +41,8 @@ export function Dashboard() {
   const [customBirthdayDate, setCustomBirthdayDate] = useState('');
   const [officeLogo, setOfficeLogo] = useState<string>('/logojiro.png');
   const [officeName, setOfficeName] = useState<string>('JIRO');
-  const [welcomeMessage, setWelcomeMessage] = useState<string>('');
-  const [loadingWelcomeMessage, setLoadingWelcomeMessage] = useState(true);
+  const [analysisResult, setAnalysisResult] = useState<SmartAnalysisResult | null>(null);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(true);
   const isLoadingRef = useRef(false);
   const lastUserIdRef = useRef<string | null>(null);
   const renderCountRef = useRef(0);
@@ -88,8 +90,7 @@ export function Dashboard() {
 
       try {
         await loadOfficeLogo();
-        // Cargar mensaje de bienvenida en paralelo
-        loadWelcomeMessage(currentUser.id);
+        loadSmartAnalysis(currentUser.id);
 
         // Cargar datos solo si es admin o gerente
         const shouldLoadData = currentUser.rol === 'Administrador' || currentUser.rol === 'Gerente';
@@ -113,25 +114,15 @@ export function Dashboard() {
     initializeDashboard();
   }, [birthdayFilter, customBirthdayDate, currentUser?.id]);
 
-  const loadWelcomeMessage = async (userId: string) => {
+  const loadSmartAnalysis = async (userId: string, forceRegenerate = false) => {
     try {
-      console.log('🚀 Iniciando carga de mensaje de bienvenida...');
-      setLoadingWelcomeMessage(true);
-
-      const context = await getUserWelcomeContext(userId);
-      console.log('📦 Contexto obtenido, generando mensaje...');
-
-      const message = await generateWelcomeMessage(context);
-      console.log('✅ Mensaje recibido:', message);
-
-      setWelcomeMessage(message);
+      setLoadingAnalysis(true);
+      const result = await getSmartAnalysis(userId, forceRegenerate);
+      setAnalysisResult(result);
     } catch (error) {
-      console.error('❌ Error cargando mensaje de bienvenida:', error);
-      // El servicio ya maneja el fallback, pero agregamos uno adicional por seguridad
-      setWelcomeMessage('Bienvenido a tu plataforma digital. Todo lo que necesitas está a un clic de distancia.');
+      console.error('Error loading smart analysis:', error);
     } finally {
-      setLoadingWelcomeMessage(false);
-      console.log('🏁 Carga de mensaje finalizada');
+      setLoadingAnalysis(false);
     }
   };
 
@@ -297,33 +288,14 @@ export function Dashboard() {
             />
           </div>
 
-          {/* Mensaje de bienvenida personalizado */}
-          {loadingWelcomeMessage ? (
-            <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
-              <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 animate-pulse text-accent mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
-                  Hola {currentUser?.nombre_completo?.split(' ')[0] || 'Usuario'}...
-                </p>
-              </div>
-            </div>
-          ) : welcomeMessage && (
-            <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100 relative group">
-              <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
-                  {welcomeMessage}
-                </p>
-                <button
-                  onClick={() => currentUser?.id && loadWelcomeMessage(currentUser.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white rounded-md"
-                  title="Generar nuevo mensaje"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-gray-400 hover:text-accent" />
-                </button>
-              </div>
-            </div>
-          )}
+          <div className="mb-4">
+            <SmartAnalysisCard
+              result={analysisResult}
+              loading={loadingAnalysis}
+              onRefresh={() => currentUser?.id && loadSmartAnalysis(currentUser.id, true)}
+              userName={currentUser?.nombre_completo?.split(' ')[0]}
+            />
+          </div>
 
           <div className="flex flex-wrap gap-2">
             {currentUser?.web_slug ? (
@@ -438,33 +410,14 @@ export function Dashboard() {
             />
           </div>
 
-          {/* Mensaje de bienvenida personalizado */}
-          {loadingWelcomeMessage ? (
-            <div className="mt-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
-              <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 animate-pulse text-accent mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
-                  Hola {currentUser?.nombre_completo?.split(' ')[0] || 'Usuario'}...
-                </p>
-              </div>
-            </div>
-          ) : welcomeMessage && (
-            <div className="mt-4 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100 relative group">
-              <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-gray-700 leading-relaxed flex-1 text-justify">
-                  {welcomeMessage}
-                </p>
-                <button
-                  onClick={() => currentUser?.id && loadWelcomeMessage(currentUser.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white rounded-md"
-                  title="Generar nuevo mensaje"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-gray-400 hover:text-accent" />
-                </button>
-              </div>
-            </div>
-          )}
+          <div className="mt-4">
+            <SmartAnalysisCard
+              result={analysisResult}
+              loading={loadingAnalysis}
+              onRefresh={() => currentUser?.id && loadSmartAnalysis(currentUser.id, true)}
+              userName={currentUser?.nombre_completo?.split(' ')[0]}
+            />
+          </div>
 
         <div className="flex flex-wrap gap-2 mt-4">
           {currentUser?.web_slug ? (
