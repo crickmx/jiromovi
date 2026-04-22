@@ -688,12 +688,6 @@ export default function ProduccionSICASLive() {
 
 // ─── Sync Panel ─────────────────────────────────────────────────────────────
 
-interface UnmappedVendor {
-  vendId: string;
-  vendName: string;
-  docCount: number;
-}
-
 interface DiagnosticData {
   totalDocs: number;
   distinctVendors: number;
@@ -712,11 +706,6 @@ interface DiagnosticData {
   lastSyncAt: string | null;
   lastSyncStatus: string | null;
   lastSyncRecords: number;
-  mappedVendorIds: number;
-  unmappedVendorIds: number;
-  unmappedVendors: UnmappedVendor[];
-  userMapEntries: number;
-  stuckRuns: number;
 }
 
 function SyncPanel({ userId }: { userId?: string }) {
@@ -759,11 +748,6 @@ function SyncPanel({ userId }: { userId?: string }) {
           lastSyncAt: d.lastSyncAt || null,
           lastSyncStatus: d.lastSyncStatus || null,
           lastSyncRecords: d.lastSyncRecords || 0,
-          mappedVendorIds: d.mappedVendorIds || 0,
-          unmappedVendorIds: d.unmappedVendorIds || 0,
-          unmappedVendors: Array.isArray(d.unmappedVendors) ? d.unmappedVendors : [],
-          userMapEntries: d.userMapEntries || 0,
-          stuckRuns: d.stuckRuns || 0,
         });
       }
     } catch (err) {
@@ -1008,48 +992,6 @@ function SyncPanel({ userId }: { userId?: string }) {
                 ))}
               </div>
             </div>
-
-            {/* Vendor overlap warning */}
-            {diagnostics.unmappedVendorIds > 0 && (
-              <div>
-                <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                  Vendedores Sin Mapear ({diagnostics.unmappedVendorIds} de {diagnostics.distinctVendors})
-                </p>
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                  <div className="flex items-start gap-2 mb-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                    <p className="text-xs text-amber-800 dark:text-amber-300">
-                      {diagnostics.mappedVendorIds === 0
-                        ? 'Ningun vendedor en documentos esta mapeado a un usuario MOVI. Los agentes no podran ver sus polizas hasta que se creen los mapeos en Mapeo de Vendedores.'
-                        : `${diagnostics.unmappedVendorIds} vendedor(es) no estan vinculados a un usuario MOVI. Sus documentos no seran visibles para agentes.`
-                      }
-                    </p>
-                  </div>
-                  {diagnostics.unmappedVendors.length > 0 && (
-                    <div className="mt-2 max-h-40 overflow-y-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-amber-200 dark:border-amber-700">
-                            <th className="text-left py-1 px-2 text-amber-700 dark:text-amber-400 font-semibold">ID</th>
-                            <th className="text-left py-1 px-2 text-amber-700 dark:text-amber-400 font-semibold">Nombre Vendedor</th>
-                            <th className="text-right py-1 px-2 text-amber-700 dark:text-amber-400 font-semibold">Docs</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-amber-100 dark:divide-amber-800">
-                          {diagnostics.unmappedVendors.map(v => (
-                            <tr key={v.vendId}>
-                              <td className="py-1 px-2 text-amber-800 dark:text-amber-300 font-mono">{v.vendId}</td>
-                              <td className="py-1 px-2 text-amber-800 dark:text-amber-300">{v.vendName}</td>
-                              <td className="py-1 px-2 text-right text-amber-800 dark:text-amber-300 font-semibold">{v.docCount}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Last sync info */}
             {diagnostics.lastSyncAt && (
