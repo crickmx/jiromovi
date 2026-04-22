@@ -1,31 +1,31 @@
 import { TrendingUp, TrendingDown, FileText, Shield, Briefcase, DollarSign, Users, Clock, XCircle, Target, Award, Building2, BarChart3, CalendarClock, Minus } from 'lucide-react';
 
 interface KPIs {
-  polizasEmitidas: number;
-  fianzasEmitidas: number;
-  totalDocumentos: number;
-  primaNetaEmitida: number;
-  primaTotalEmitida: number;
-  mesPrimaNeta: number;
-  mesPrimaTotal: number;
-  mesEmisiones: number;
-  clientesMes: number;
-  clientesTotal: number;
-  polizasVigentes: number;
-  fianzasVigentes: number;
-  primaVigente: number;
-  renovaciones7dias: number;
-  renovaciones15dias: number;
-  renovaciones30dias: number;
-  renovacionesMes: number;
-  primaRenovar: number;
-  cancelaciones: number;
-  ticketPromedio: number;
-  topClientePeriodo: string;
-  topAseguradoraPeriodo: string;
-  topRamoPeriodo: string;
-  variacionMesAnterior: number;
-  variacionInteranual: number;
+  polizasEmitidas?: number;
+  fianzasEmitidas?: number;
+  totalDocumentos?: number;
+  primaNetaEmitida?: number;
+  primaTotalEmitida?: number;
+  mesPrimaNeta?: number;
+  mesPrimaTotal?: number;
+  mesEmisiones?: number;
+  clientesMes?: number;
+  clientesTotal?: number;
+  polizasVigentes?: number;
+  fianzasVigentes?: number;
+  primaVigente?: number;
+  renovaciones7dias?: number;
+  renovaciones15dias?: number;
+  renovaciones30dias?: number;
+  renovacionesMes?: number;
+  primaRenovar?: number;
+  cancelaciones?: number;
+  ticketPromedio?: number;
+  topClientePeriodo?: string;
+  topAseguradoraPeriodo?: string;
+  topRamoPeriodo?: string;
+  variacionMesAnterior?: number;
+  variacionInteranual?: number;
 }
 
 interface Props {
@@ -35,13 +35,15 @@ interface Props {
   onKpiClick?: (kpiKey: string) => void;
 }
 
-function fmt(value: number, type: 'currency' | 'number' | 'percent' = 'number'): string {
-  if (type === 'currency') return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
-  if (type === 'percent') return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
-  return value.toLocaleString('es-MX');
+function fmt(value: number | undefined | null, type: 'currency' | 'number' | 'percent' = 'number'): string {
+  const v = value ?? 0;
+  if (type === 'currency') return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+  if (type === 'percent') return `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+  return v.toLocaleString('es-MX');
 }
 
-function VariationBadge({ value }: { value: number }) {
+function VariationBadge({ value }: { value: number | undefined | null }) {
+  if (value == null) return null;
   if (value === 0) return (
     <span className="inline-flex items-center gap-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
       <Minus className="w-3 h-3" /> 0%
@@ -102,9 +104,9 @@ const secondaryKpis: KpiCardDef[] = [
   { key: 'renovaciones30dias', label: 'Renov. 30 dias', icon: CalendarClock, gradient: 'from-amber-500 to-amber-600', getValue: k => fmt(k.renovaciones30dias) },
   { key: 'cancelaciones', label: 'Cancelaciones', icon: XCircle, gradient: 'from-red-500 to-red-600', getValue: k => fmt(k.cancelaciones) },
   { key: 'ticketPromedio', label: 'Ticket Promedio', icon: Target, gradient: 'from-blue-500 to-blue-600', getValue: k => fmt(k.ticketPromedio, 'currency') },
-  { key: 'topClientePeriodo', label: 'Top Cliente', icon: Award, gradient: 'from-yellow-500 to-yellow-600', getValue: k => k.topClientePeriodo },
-  { key: 'topAseguradoraPeriodo', label: 'Top Aseguradora', icon: Building2, gradient: 'from-sky-500 to-sky-600', getValue: k => k.topAseguradoraPeriodo },
-  { key: 'topRamoPeriodo', label: 'Top Ramo', icon: BarChart3, gradient: 'from-teal-500 to-teal-600', getValue: k => k.topRamoPeriodo },
+  { key: 'topClientePeriodo', label: 'Top Cliente', icon: Award, gradient: 'from-yellow-500 to-yellow-600', getValue: k => k.topClientePeriodo || '-' },
+  { key: 'topAseguradoraPeriodo', label: 'Top Aseguradora', icon: Building2, gradient: 'from-sky-500 to-sky-600', getValue: k => k.topAseguradoraPeriodo || '-' },
+  { key: 'topRamoPeriodo', label: 'Top Ramo', icon: BarChart3, gradient: 'from-teal-500 to-teal-600', getValue: k => k.topRamoPeriodo || '-' },
 ];
 
 function KpiCard({ def, kpis, loading, onClick }: { def: KpiCardDef; kpis: KPIs | null; loading: boolean; onClick?: () => void }) {
