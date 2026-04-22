@@ -242,7 +242,34 @@ export default function ProduccionSICASLive() {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
+  const isEjecutivo = usuario?.rol === 'Ejecutivo';
   const canSelectVendor = isAdmin || isGerente;
+  const isAgent = !isAdmin && !isGerente && !isEjecutivo;
+
+  // ─── Auto-resolve agent's SICAS vendor ID ──────────────────────────
+
+  useEffect(() => {
+    if (!usuario || canSelectVendor) return;
+    const idSicas = (usuario as any)?.id_sicas;
+    if (idSicas && String(idSicas).trim()) {
+      setSelectedVendorId(String(idSicas).trim());
+    } else {
+      // Try mapping table
+      (async () => {
+        const { data } = await supabase
+          .from('sicas_mapeo_vendedor_usuario')
+          .select('id_sicas_vendedor')
+          .eq('movi_user_id', usuario.id)
+          .limit(1)
+          .maybeSingle();
+        if (data?.id_sicas_vendedor) {
+          setSelectedVendorId(String(data.id_sicas_vendedor));
+        } else {
+          setError({ message: 'Tu usuario no esta vinculado a un vendedor en SICAS. Contacta al administrador para que realice el mapeo.', noMapping: true });
+        }
+      })();
+    }
+  }, [usuario, canSelectVendor]);
 
   // ─── Load Mapped Vendors (edge function) ────────────────────────────
 
@@ -601,6 +628,17 @@ export default function ProduccionSICASLive() {
             </div>
           )}
 
+          {/* No mapping warning for agents */}
+          {error?.noMapping && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
+              <Users className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Sin vinculacion SICAS</p>
+                <p className="text-amber-700 dark:text-amber-400 text-xs mt-1">{error.message}</p>
+              </div>
+            </div>
+          )}
+
           {/* Error banner */}
           {error && !error.noMapping && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-start gap-3">
@@ -650,12 +688,74 @@ export default function ProduccionSICASLive() {
 
 // ─── Sync Panel ─────────────────────────────────────────────────────────────
 
+interface DiagnosticData {
+  totalDocs: number;
+  distinctVendors: number;
+  distinctAseguradoras: number;
+  polizas: number;
+  fianzas: number;
+  vigentes: number;
+  canceladas: number;
+  renewables: number;
+  withUserId: number;
+  withOficinaId: number;
+  userMaps: number;
+  vendorMaps: number;
+  despachoMaps: number;
+  usersWithIdSicas: number;
+  lastSyncAt: string | null;
+  lastSyncStatus: string | null;
+  lastSyncRecords: number;
+}
+
 function SyncPanel({ userId }: { userId?: string }) {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<Record<string, any> | null>(null);
   const [syncHistory, setSyncHistory] = useState<SyncRun[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [totalDocs, setTotalDocs] = useState<number | null>(null);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticData | null>(null);
+  const [loadingDiag, setLoadingDiag] = useState(false);
+
+  const loadDiagnostics = useCallback(async () => {
+    setLoadingDiag(true);
+    try {
+      const [docsR, mapsR, vendorR, despR, usersR] = await Promise.all([
+        supabase.rpc('get_sicas_sync_diagnostics'),
+        supabase.from('sicas_document_user_map').select('*', { count: 'exact', head: true }),
+        supabase.from('sicas_mapeo_vendedor_usuario').select('*', { count: 'exact', head: true }),
+        supabase.from('sicas_mapeo_despacho_oficina').select('*', { count: 'exact', head: true }),
+        supabase.from('usuarios').select('id', { count: 'exact', head: true }).not('id_sicas', 'is', null).neq('id_sicas', ''),
+      ]);
+
+      if (docsR.data) {
+        const d = typeof docsR.data === 'string' ? JSON.parse(docsR.data) : docsR.data;
+        setDiagnostics({
+          totalDocs: d.totalDocs || 0,
+          distinctVendors: d.distinctVendors || 0,
+          distinctAseguradoras: d.distinctAseguradoras || 0,
+          polizas: d.polizas || 0,
+          fianzas: d.fianzas || 0,
+          vigentes: d.vigentes || 0,
+          canceladas: d.canceladas || 0,
+          renewables: d.renewables || 0,
+          withUserId: d.withUserId || 0,
+          withOficinaId: d.withOficinaId || 0,
+          userMaps: mapsR.count ?? 0,
+          vendorMaps: vendorR.count ?? 0,
+          despachoMaps: despR.count ?? 0,
+          usersWithIdSicas: usersR.count ?? 0,
+          lastSyncAt: d.lastSyncAt || null,
+          lastSyncStatus: d.lastSyncStatus || null,
+          lastSyncRecords: d.lastSyncRecords || 0,
+        });
+      }
+    } catch (err) {
+      console.error('[Diagnostics] Error:', err);
+    } finally {
+      setLoadingDiag(false);
+    }
+  }, []);
 
   const loadSyncInfo = useCallback(async () => {
     setLoadingHistory(true);
@@ -670,7 +770,7 @@ function SyncPanel({ userId }: { userId?: string }) {
     finally { setLoadingHistory(false); }
   }, []);
 
-  useEffect(() => { loadSyncInfo(); }, [loadSyncInfo]);
+  useEffect(() => { loadSyncInfo(); loadDiagnostics(); }, [loadSyncInfo, loadDiagnostics]);
 
   const runSync = async (mode: 'full' | 'incremental') => {
     setSyncing(true);
@@ -829,6 +929,78 @@ function SyncPanel({ userId }: { userId?: string }) {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Diagnostic Panel */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Info className="w-4 h-4 text-blue-600" /> Diagnostico del Sistema
+          </h3>
+          <button onClick={loadDiagnostics} disabled={loadingDiag}
+            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium disabled:opacity-50">
+            {loadingDiag ? 'Cargando...' : 'Actualizar'}
+          </button>
+        </div>
+        {loadingDiag && !diagnostics ? (
+          <div className="p-6 text-center"><Loader2 className="w-5 h-5 text-blue-500 animate-spin mx-auto" /></div>
+        ) : diagnostics ? (
+          <div className="p-4 space-y-4">
+            {/* Documents summary */}
+            <div>
+              <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Documentos en Base Local</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { label: 'Total', value: diagnostics.totalDocs.toLocaleString(), color: 'text-blue-700 dark:text-blue-300' },
+                  { label: 'Polizas', value: diagnostics.polizas.toLocaleString(), color: 'text-emerald-700 dark:text-emerald-300' },
+                  { label: 'Fianzas', value: diagnostics.fianzas.toLocaleString(), color: 'text-orange-700 dark:text-orange-300' },
+                  { label: 'Vigentes', value: diagnostics.vigentes.toLocaleString(), color: 'text-green-700 dark:text-green-300' },
+                  { label: 'Canceladas', value: diagnostics.canceladas.toLocaleString(), color: 'text-red-700 dark:text-red-300' },
+                  { label: 'Renovables', value: diagnostics.renewables.toLocaleString(), color: 'text-amber-700 dark:text-amber-300' },
+                  { label: 'Vendedores', value: diagnostics.distinctVendors.toLocaleString(), color: 'text-cyan-700 dark:text-cyan-300' },
+                  { label: 'Aseguradoras', value: diagnostics.distinctAseguradoras.toLocaleString(), color: 'text-sky-700 dark:text-sky-300' },
+                ].map(item => (
+                  <div key={item.label} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                    <p className={`text-sm font-bold ${item.color}`}>{item.value}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mapping status */}
+            <div>
+              <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Mapeos y Vinculaciones</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { label: 'Docs con usuario_id', value: diagnostics.withUserId, total: diagnostics.totalDocs },
+                  { label: 'Docs con oficina_id', value: diagnostics.withOficinaId, total: diagnostics.totalDocs },
+                  { label: 'User-doc mappings', value: diagnostics.userMaps, total: null },
+                  { label: 'Vendor mappings', value: diagnostics.vendorMaps, total: null },
+                  { label: 'Despacho mappings', value: diagnostics.despachoMaps, total: null },
+                  { label: 'Usuarios con id_sicas', value: diagnostics.usersWithIdSicas, total: null },
+                ].map(item => (
+                  <div key={item.label} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                    <div className="flex items-baseline gap-1">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{item.value.toLocaleString()}</p>
+                      {item.total !== null && item.total > 0 && (
+                        <p className="text-[10px] text-gray-400">/ {item.total.toLocaleString()} ({Math.round((item.value / item.total) * 100)}%)</p>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Last sync info */}
+            {diagnostics.lastSyncAt && (
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">Ultima sincronizacion exitosa: <span className="font-medium text-gray-700 dark:text-gray-300">{formatDate(diagnostics.lastSyncAt)}</span> - {diagnostics.lastSyncRecords} registros - Estado: <span className="font-medium">{diagnostics.lastSyncStatus}</span></p>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );
