@@ -291,16 +291,14 @@ export class SicasRestClient {
         };
 
         if (body && method === 'POST') {
-          // Según el manual, los reportes usan JSON, no form-urlencoded
-          if (typeof body === 'string') {
-            requestOptions.body = body;
-          } else {
-            requestOptions.body = JSON.stringify(body);
-            requestHeaders['Content-Type'] = 'application/json';
-          }
+          const serialized = typeof body === 'string' ? body : JSON.stringify(body);
+          requestOptions.body = serialized;
+          requestHeaders['Content-Type'] = 'application/json';
         }
 
         console.log(`[SICAS REST] ${method} ${endpoint} (Intento ${attempt + 1}/${maxRetries + 1})`);
+        console.log(`[SICAS REST] Headers: ${JSON.stringify(Object.fromEntries(Object.entries(requestHeaders).filter(([k]) => k !== 'Authorization')))}`);
+        if (requestOptions.body) console.log(`[SICAS REST] Body: ${String(requestOptions.body).substring(0, 500)}`);
 
         const response = await fetch(url, requestOptions);
 
@@ -384,7 +382,7 @@ export class SicasRestClient {
           headers: {
             'Prop_KeyCode': keyCode,
           },
-          body: JSON.stringify(body),
+          body,
           maxRetries: 2,
         }
       );
