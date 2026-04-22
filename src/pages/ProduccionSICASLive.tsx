@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import {
-  FileText, Search, RefreshCw, TrendingUp, AlertTriangle, X, ArrowUpDown,
+  FileText, Search, RefreshCw, TrendingUp, AlertTriangle, ArrowUpDown,
   ChevronLeft, ChevronRight, Eye, ArrowLeft, Building2, User, Calendar,
-  CreditCard, Hash, Loader2, WifiOff, Link as LinkIcon, Users, ChevronDown,
-  ChevronUp, Download, LayoutDashboard, Table2,
+  CreditCard, Hash, Loader2, Users, ChevronDown,
+  ChevronUp, Download, LayoutDashboard, Table2, Database,
+  Cloud, Clock, CheckCircle2, XCircle, Info,
 } from 'lucide-react';
 import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
 import SicasDashboardKPIs from '../components/produccion/SicasDashboardKPIs';
@@ -72,17 +73,59 @@ interface DocumentDetail {
 }
 
 type ViewMode = 'dashboard' | 'table' | 'detail';
-type ActiveTab = 'produccion' | 'mapeo';
+type ActiveTab = 'produccion' | 'sincronizacion' | 'mapeo';
 
-// ─── API Helper ──────────────────────────────────────────────────────────────
+interface SyncRun {
+  run_id: string;
+  module: string;
+  keycode: string;
+  records_fetched: number;
+  records_upserted: number;
+  records_failed: number;
+  status: string;
+  error_message: string | null;
+  started_at: string;
+  finished_at: string | null;
+  duration_seconds: number | null;
+}
 
-async function callSicasProduction(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+// ─── DB Row Mapper ──────────────────────────────────────────────────────────
+
+function dbRowToDocument(row: Record<string, any>): SicasDocument {
+  return {
+    idDocto: row.id_docto,
+    documento: row.poliza || '',
+    tipo: row.tipo_documento || '',
+    subtipo: row.subtipo_documento || '',
+    ramo: row.ramo || '',
+    subramo: row.subramo || '',
+    aseguradora: row.aseguradora_nombre || row.compania || '',
+    cliente: row.cliente || '',
+    fechaDesde: row.vigencia_desde || '',
+    fechaHasta: row.vigencia_hasta || '',
+    primaNeta: Number(row.prima_neta) || 0,
+    primaTotal: Number(row.prima_total) || 0,
+    moneda: row.moneda || 'MXN',
+    status: row.status_texto || '',
+    statusRaw: row.status_codigo || '',
+    statusCobro: row.status_cobro || '',
+    vendedor: row.vend_nombre || '',
+    vendedorId: row.vend_id || '',
+    agente: row.agente_nombre || '',
+    agenteId: row.sicas_id_agente || '',
+    raw: row.raw_data || {},
+  };
+}
+
+// ─── Edge Function Helper (for sync and vendor management) ──────────────────
+
+async function callEdgeFunction(slug: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
-    return { ok: false, error: 'Sesion no disponible. Intenta recargar la pagina.', code: 'NO_SESSION' };
+    return { ok: false, error: 'Sesion no disponible.' };
   }
   try {
-    const res = await fetch(`${supabaseUrl}/functions/v1/sicas-production-query`, {
+    const res = await fetch(`${supabaseUrl}/functions/v1/${slug}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
@@ -92,17 +135,14 @@ async function callSicasProduction(body: Record<string, unknown>): Promise<Recor
       body: JSON.stringify(body),
     });
     const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      return { ok: false, error: `Error del servidor (${res.status})`, code: 'PARSE_ERROR' };
-    }
+    try { return JSON.parse(text); }
+    catch { return { ok: false, error: `Error del servidor (${res.status})` }; }
   } catch (err: any) {
-    return { ok: false, error: err?.message || 'Error de red al conectar con SICAS.', code: 'NETWORK_ERROR' };
+    return { ok: false, error: err?.message || 'Error de red.' };
   }
 }
 
-// ─── Formatters ──────────────────────────────────────────────────────────────
+// ─── Formatters ─────────────────────────────────────────────────────────────
 
 function formatCurrency(value: number, currency = 'MXN'): string {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
@@ -114,9 +154,7 @@ function formatDate(dateStr: string): string {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
-  } catch {
-    return dateStr;
-  }
+  } catch { return dateStr; }
 }
 
 function statusColor(status: string): string {
@@ -158,25 +196,22 @@ async function exportToExcel(documents: SicasDocument[], filename: string) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Produccion SICAS');
     XLSX.writeFile(wb, `${filename}.xlsx`);
-  } catch {
-    exportToCSV(documents, filename);
-  }
+  } catch { exportToCSV(documents, filename); }
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Component ──────────────────────────────────────────────────────────────
 
 export default function ProduccionSICASLive() {
   const { usuario } = useAuth();
 
-  // View state
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [activeTab, setActiveTab] = useState<ActiveTab>('produccion');
 
-  // Dashboard data
+  // Dashboard
   const [dashboardData, setDashboardData] = useState<Record<string, unknown> | null>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
 
-  // Documents list (table view)
+  // Documents (table)
   const [documents, setDocuments] = useState<SicasDocument[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, pageSize: 25, pages: 1, maxRecords: 0 });
   const [loadingDocs, setLoadingDocs] = useState(false);
@@ -188,23 +223,11 @@ export default function ProduccionSICASLive() {
   // Filters
   const [filters, setFilters] = useState<DashboardFilterState>(() => {
     const { fechaDesde, fechaHasta } = getCurrentMonthRange();
-    return {
-      fechaDesde,
-      fechaHasta,
-      type: 'all',
-      status: '',
-      ramo: '',
-      subramo: '',
-      aseguradora: '',
-      cliente: '',
-      moneda: '',
-      agente: '',
-      search: '',
-    };
+    return { fechaDesde, fechaHasta, type: 'all', status: '', ramo: '', subramo: '', aseguradora: '', cliente: '', moneda: '', agente: '', search: '' };
   });
 
-  // Table-specific state
-  const [sortField, setSortField] = useState('DatDocumentos.FDesde');
+  // Table sort/page
+  const [sortField, setSortField] = useState('vigencia_desde');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -212,127 +235,210 @@ export default function ProduccionSICASLive() {
   // Errors
   const [error, setError] = useState<{ message: string; code?: string; noMapping?: boolean } | null>(null);
 
-  // Vendor selector
+  // Vendor selector (admin/gerente)
   const [mappedVendors, setMappedVendors] = useState<Array<{ usuario_id: string; nombre: string; id_sicas: string; nombre_sicas: string; oficina: string | null }>>([]);
   const [selectedVendorId, setSelectedVendorId] = useState<string>('');
   const [loadingVendors, setLoadingVendors] = useState(false);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const canSelectVendor = isAdmin || isGerente;
 
-  // ─── Load Mapped Vendors ───────────────────────────────────────────────
+  // ─── Load Mapped Vendors (edge function) ────────────────────────────
 
   const loadMappedVendors = useCallback(async () => {
     if (!canSelectVendor) return;
     setLoadingVendors(true);
     try {
-      const data = await callSicasProduction({ action: 'list-mapped-vendors' });
-      if (data.ok && data.vendors) setMappedVendors(data.vendors);
+      const data = await callEdgeFunction('sicas-production-query', { action: 'list-mapped-vendors' });
+      if (data.ok && data.vendors) setMappedVendors(data.vendors as any);
     } catch { /* silent */ }
     finally { setLoadingVendors(false); }
   }, [canSelectVendor]);
 
   useEffect(() => { loadMappedVendors(); }, [loadMappedVendors]);
 
-  // ─── Load Dashboard ────────────────────────────────────────────────────
+  // ─── Load Dashboard (local DB via RPC) ──────────────────────────────
 
   const loadDashboard = useCallback(async () => {
     if (!usuario) return;
     setLoadingDashboard(true);
     setError(null);
     try {
-      const body: Record<string, unknown> = {
-        action: 'dashboard',
-        fechaDesde: filters.fechaDesde,
-        fechaHasta: filters.fechaHasta,
-        type: filters.type,
-        status: filters.status || undefined,
-        ramo: filters.ramo || undefined,
-        subramo: filters.subramo || undefined,
-        aseguradora: filters.aseguradora || undefined,
-        cliente: filters.cliente || undefined,
-        moneda: filters.moneda || undefined,
-        agente: filters.agente || undefined,
-        search: filters.search || undefined,
+      const rpcParams: Record<string, any> = {
+        p_fecha_desde: filters.fechaDesde || null,
+        p_fecha_hasta: filters.fechaHasta || null,
+        p_tipo: filters.type || 'all',
+        p_status: filters.status || null,
+        p_ramo: filters.ramo || null,
+        p_subramo: filters.subramo || null,
+        p_aseguradora: filters.aseguradora || null,
+        p_cliente: filters.cliente || null,
+        p_moneda: filters.moneda || null,
+        p_search: filters.search || null,
+        p_vend_id: selectedVendorId || null,
       };
-      if (selectedVendorId) body.vendorId = selectedVendorId;
-      const data = await callSicasProduction(body);
-      if (data.ok) {
-        setDashboardData(data);
-        setError(null);
-      } else {
-        if (data.noMapping) setError({ message: data.error as string, code: data.code as string, noMapping: true });
-        else setError({ message: data.error as string, code: data.code as string });
-      }
-    } catch {
-      setError({ message: 'No fue posible consultar SICAS en este momento.' });
+
+      const { data: dashResult, error: dashErr } = await supabase.rpc('get_sicas_local_dashboard', rpcParams);
+
+      if (dashErr) throw dashErr;
+      if (!dashResult) throw new Error('Sin datos');
+
+      const result = typeof dashResult === 'string' ? JSON.parse(dashResult) : dashResult;
+
+      // Load monthly prima for charts
+      const { data: monthlyData } = await supabase.rpc('get_sicas_monthly_prima', {
+        p_vend_id: selectedVendorId || null,
+        p_fecha_desde: filters.fechaDesde || null,
+        p_fecha_hasta: filters.fechaHasta || null,
+      });
+
+      const primaPorMes = (monthlyData || []).map((m: any) => ({
+        mes: m.mes,
+        primaNeta: Number(m.primaNeta) || 0,
+        primaTotal: Number(m.primaTotal) || 0,
+        emisiones: Number(m.emisiones) || 0,
+        count: Number(m.count) || 0,
+      }));
+
+      // Build charts from dashboard aggregates
+      const porRamo = (result.topRamos || []).map((r: any) => ({ name: r.name, count: Number(r.count), prima: Number(r.prima) }));
+      const porAseguradora = (result.topAseguradoras || []).map((r: any) => ({ name: r.name, count: Number(r.count), prima: Number(r.prima) }));
+      const porCliente = (result.topClientes || []).map((r: any) => ({ name: r.name, count: Number(r.count), prima: Number(r.prima) }));
+      const porEstatus = (result.porEstatus || []).map((r: any) => ({ estatus: r.estatus, count: Number(r.count), prima: Number(r.prima) }));
+
+      setDashboardData({
+        ok: true,
+        kpis: result.kpis,
+        charts: { primaPorMes, porRamo, porAseguradora, porCliente, porSubramo: [], porEstatus, tipoDistribution: [], renovacionesPorPeriodo: [] },
+        renewals: result.renewals || [],
+        availableFilters: result.availableFilters,
+        periodo: `${filters.fechaDesde} - ${filters.fechaHasta}`,
+      });
+    } catch (err: any) {
+      console.error('[Dashboard] Error:', err);
+      setError({ message: err?.message || 'Error cargando dashboard.' });
     } finally {
       setLoadingDashboard(false);
     }
   }, [usuario, selectedVendorId, filters]);
 
-  // ─── Load Documents (table view) ──────────────────────────────────────
+  // ─── Load Documents (local DB direct query) ────────────────────────
 
   const loadDocuments = useCallback(async () => {
     if (!usuario) return;
     setLoadingDocs(true);
     try {
-      const body: Record<string, unknown> = {
-        action: 'documents',
+      let query = supabase
+        .from('sicas_documents')
+        .select('*', { count: 'exact' });
+
+      if (selectedVendorId) query = query.eq('vend_id', selectedVendorId);
+      if (filters.fechaDesde) query = query.gte('vigencia_desde', filters.fechaDesde);
+      if (filters.fechaHasta) query = query.lte('vigencia_hasta', filters.fechaHasta);
+      if (filters.type === 'policies') query = query.eq('is_poliza', true);
+      if (filters.type === 'bonds') query = query.eq('is_fianza', true);
+      if (filters.status) query = query.ilike('status_texto', filters.status);
+      if (filters.ramo) query = query.ilike('ramo', `%${filters.ramo}%`);
+      if (filters.aseguradora) query = query.ilike('aseguradora_nombre', `%${filters.aseguradora}%`);
+      if (filters.search) query = query.or(`poliza.ilike.%${filters.search}%,cliente.ilike.%${filters.search}%,aseguradora_nombre.ilike.%${filters.search}%`);
+
+      const ascending = sortDir === 'asc';
+      query = query.order(sortField, { ascending });
+
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data: rows, count, error: qErr } = await query;
+
+      if (qErr) throw qErr;
+
+      const totalRecords = count || 0;
+      setDocuments((rows || []).map(dbRowToDocument));
+      setPagination({
         page: currentPage,
         pageSize,
-        type: filters.type,
-        sortField,
-        sortDirection: sortDir,
-      };
-      if (selectedVendorId) body.vendorId = selectedVendorId;
-      if (filters.fechaDesde) body.fechaDesde = filters.fechaDesde;
-      if (filters.fechaHasta) body.fechaHasta = filters.fechaHasta;
-      if (filters.search) body.search = filters.search;
-      if (filters.status) body.status = filters.status;
-      if (filters.ramo) body.ramo = filters.ramo;
-      if (filters.aseguradora) body.aseguradora = filters.aseguradora;
-
-      const data = await callSicasProduction(body);
-      if (data.ok) {
-        setDocuments((data.items || []) as SicasDocument[]);
-        setPagination((data.pagination || { page: 1, pageSize: 25, pages: 1, maxRecords: 0 }) as Pagination);
-      } else if (!error?.noMapping) {
-        setError({ message: data.error as string, code: data.code as string });
-      }
-    } catch {
-      if (!error?.noMapping) setError({ message: 'Error al cargar documentos.' });
+        pages: Math.max(1, Math.ceil(totalRecords / pageSize)),
+        maxRecords: totalRecords,
+      });
+    } catch (err: any) {
+      console.error('[Documents] Error:', err);
+      if (!error?.noMapping) setError({ message: err?.message || 'Error al cargar documentos.' });
     } finally {
       setLoadingDocs(false);
     }
   }, [usuario, selectedVendorId, currentPage, pageSize, filters, sortField, sortDir]);
 
-  // ─── Load Detail ─────────────────────────────────────────────────────
+  // ─── Load Detail (local DB) ─────────────────────────────────────────
 
   const loadDetail = async (idDocto: string | number) => {
     setLoadingDetail(true);
     setViewMode('detail');
     try {
-      const body: Record<string, unknown> = { action: 'detail', idDocto };
-      if (selectedVendorId) body.vendorId = selectedVendorId;
-      const data = await callSicasProduction(body);
-      if (data.ok) setSelectedDoc(data.document as DocumentDetail);
-      else { setSelectedDoc(null); setError({ message: data.error as string, code: data.code as string }); }
-    } catch { setError({ message: 'Error al cargar detalle del documento.' }); }
-    finally { setLoadingDetail(false); }
+      const { data: row, error: dErr } = await supabase
+        .from('sicas_documents')
+        .select('*')
+        .eq('id_docto', String(idDocto))
+        .maybeSingle();
+
+      if (dErr) throw dErr;
+      if (!row) { setSelectedDoc(null); return; }
+
+      setSelectedDoc({
+        idDocto: row.id_docto,
+        documento: row.poliza || '',
+        tipo: row.tipo_documento || '',
+        ramo: row.ramo || '',
+        subramo: row.subramo || '',
+        aseguradora: row.aseguradora_nombre || row.compania || '',
+        cliente: row.cliente || '-',
+        fechaDesde: row.vigencia_desde || '',
+        fechaHasta: row.vigencia_hasta || '',
+        primaNeta: Number(row.prima_neta) || 0,
+        primaTotal: Number(row.prima_total) || 0,
+        moneda: row.moneda || 'MXN',
+        status: row.status_texto || '',
+        statusRaw: row.status_codigo || '',
+        agente: row.agente_nombre || '-',
+        vendedor: row.vend_nombre || '-',
+        vendedorId: row.vend_id || '',
+        agenteId: row.sicas_id_agente || '',
+        fechas: {
+          desde: row.vigencia_desde || '',
+          hasta: row.vigencia_hasta || '',
+          emision: row.fecha_emision || '',
+          captura: row.fecha_captura || '',
+        },
+        importes: {
+          primaNeta: Number(row.prima_neta) || 0,
+          primaTotal: Number(row.prima_total) || 0,
+          derechoPoliza: Number(row.derechos) || 0,
+          iva: Number(row.impuestos) || 0,
+          recargos: Number(row.recargos) || 0,
+          descuento: 0,
+        },
+        estatus: {
+          documento: row.status_texto || '',
+          cobro: row.status_cobro || '',
+          usuario: '',
+        },
+        raw: row.raw_data || {},
+      });
+    } catch (err: any) {
+      console.error('[Detail] Error:', err);
+      setSelectedDoc(null);
+      setError({ message: 'Error al cargar detalle del documento.' });
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
-  // ─── Effects ─────────────────────────────────────────────────────────
+  // ─── Effects ────────────────────────────────────────────────────────
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  useEffect(() => { if (viewMode === 'table') loadDocuments(); }, [viewMode, loadDocuments]);
 
-  useEffect(() => {
-    if (viewMode === 'table' && !error?.noMapping) loadDocuments();
-  }, [viewMode, loadDocuments]);
-
-  // Debounce filter changes
   const handleFiltersChange = (newFilters: DashboardFilterState) => {
     setFilters(newFilters);
     setCurrentPage(1);
@@ -367,24 +473,20 @@ export default function ProduccionSICASLive() {
     setCurrentPage(1);
   };
 
-  const showContent = !error?.noMapping;
-
-  // ─── Detail View ─────────────────────────────────────────────────────
+  // ─── Detail View ────────────────────────────────────────────────────
 
   if (viewMode === 'detail') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 md:p-6">
         <div className="max-w-5xl mx-auto">
-          <button
-            onClick={() => { setViewMode('dashboard'); setSelectedDoc(null); }}
-            className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-4 font-medium transition-colors"
-          >
+          <button onClick={() => { setViewMode('dashboard'); setSelectedDoc(null); }}
+            className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-4 font-medium transition-colors">
             <ArrowLeft className="w-4 h-4" /> Volver al dashboard
           </button>
           {loadingDetail ? (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 flex flex-col items-center gap-4">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-              <p className="text-gray-600 dark:text-gray-400">Consultando detalle en SICAS...</p>
+              <p className="text-gray-600 dark:text-gray-400">Cargando detalle...</p>
             </div>
           ) : selectedDoc ? (
             <DetailView doc={selectedDoc} isAdmin={isAdmin} />
@@ -399,7 +501,7 @@ export default function ProduccionSICASLive() {
     );
   }
 
-  // ─── Main View ──────────────────────────────────────────────────────
+  // ─── Main View ─────────────────────────────────────────────────────
 
   const kpis = dashboardData?.kpis as Record<string, unknown> | undefined;
   const charts = dashboardData?.charts as Record<string, unknown> | undefined;
@@ -418,34 +520,27 @@ export default function ProduccionSICASLive() {
               <TrendingUp className="w-7 h-7 text-blue-600" />
               Produccion SICAS
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Dashboard de produccion en tiempo real
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5">
+              <Database className="w-3.5 h-3.5" />
+              Datos locales sincronizados
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {activeTab === 'produccion' && showContent && (
+            {activeTab === 'produccion' && (
               <>
-                {/* View mode toggle */}
                 <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
-                  <button
-                    onClick={() => setViewMode('dashboard')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${viewMode === 'dashboard' ? 'bg-white dark:bg-gray-600 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
-                  >
+                  <button onClick={() => setViewMode('dashboard')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${viewMode === 'dashboard' ? 'bg-white dark:bg-gray-600 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}>
                     <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
                   </button>
-                  <button
-                    onClick={() => setViewMode('table')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
-                  >
+                  <button onClick={() => setViewMode('table')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}>
                     <Table2 className="w-3.5 h-3.5" /> Tabla
                   </button>
                 </div>
-
-                <button
-                  onClick={() => { loadDashboard(); if (viewMode === 'table') loadDocuments(); }}
+                <button onClick={() => { loadDashboard(); if (viewMode === 'table') loadDocuments(); }}
                   disabled={loadingDashboard || loadingDocs}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs font-medium"
-                >
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs font-medium">
                   <RefreshCw className={`w-3.5 h-3.5 ${(loadingDashboard || loadingDocs) ? 'animate-spin' : ''}`} />
                   Actualizar
                 </button>
@@ -457,140 +552,283 @@ export default function ProduccionSICASLive() {
         {/* Admin tabs */}
         {isAdmin && (
           <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1">
-            <button
-              onClick={() => setActiveTab('produccion')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all flex-1 justify-center ${activeTab === 'produccion' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
-            >
-              <TrendingUp className="w-4 h-4" /> Produccion
-            </button>
-            <button
-              onClick={() => setActiveTab('mapeo')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all flex-1 justify-center ${activeTab === 'mapeo' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
-            >
-              <Users className="w-4 h-4" /> Mapeo de Usuarios
-            </button>
+            {([
+              { key: 'produccion' as const, icon: TrendingUp, label: 'Produccion' },
+              { key: 'sincronizacion' as const, icon: Cloud, label: 'Sincronizacion' },
+              { key: 'mapeo' as const, icon: Users, label: 'Mapeo de Usuarios' },
+            ]).map(tab => (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all flex-1 justify-center ${activeTab === tab.key ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}>
+                <tab.icon className="w-4 h-4" /> {tab.label}
+              </button>
+            ))}
           </div>
         )}
 
-        {/* Mapeo tab (admin only) */}
+        {/* Mapeo tab */}
         {activeTab === 'mapeo' && isAdmin && (
-          <MapeoUsuariosSICAS callApi={(body) => callSicasProduction(body)} />
+          <MapeoUsuariosSICAS callApi={(body) => callEdgeFunction('sicas-production-query', body)} />
         )}
 
-        {/* Production tab content */}
+        {/* Sincronizacion tab */}
+        {activeTab === 'sincronizacion' && isAdmin && (
+          <SyncPanel userId={usuario?.id} />
+        )}
+
+        {/* Production tab */}
         {activeTab === 'produccion' && <>
 
-        {/* Vendor selector (admin and gerente) */}
-        {canSelectVendor && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <div className="flex items-center gap-1.5 shrink-0">
-                <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Ver produccion de:</label>
-              </div>
-              <select
-                value={selectedVendorId}
-                onChange={e => handleVendorChange(e.target.value)}
-                disabled={loadingVendors}
-                className="flex-1 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value="">Todos los vendedores</option>
-                {mappedVendors.map(v => (
-                  <option key={v.id_sicas} value={v.id_sicas}>
-                    {v.nombre} - {v.nombre_sicas} (ID: {v.id_sicas}){v.oficina ? ` | ${v.oficina}` : ''}
-                  </option>
-                ))}
-              </select>
-              {loadingVendors && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />}
-            </div>
-          </div>
-        )}
-
-        {/* Error banner */}
-        {error && !error.noMapping && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-start gap-3">
-            <WifiOff className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <p className="text-red-800 dark:text-red-300 text-sm font-medium">{error.message}</p>
-              {error.code && <p className="text-red-600 dark:text-red-400 text-xs mt-0.5">Codigo: {error.code}</p>}
-            </div>
-            <button onClick={loadDashboard} className="text-red-600 hover:text-red-800 text-xs font-medium whitespace-nowrap">
-              Reintentar
-            </button>
-          </div>
-        )}
-
-        {/* No mapping for regular users */}
-        {error?.noMapping && !canSelectVendor && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
-            <LinkIcon className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Tu cuenta no tiene un vinculo con SICAS</p>
-              <p className="text-amber-700 dark:text-amber-400 text-xs mt-1">Contacta a un administrador para que realice el mapeo de tu usuario.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Dashboard content */}
-        {showContent && (
-          <>
-            {/* Filters */}
-            <SicasDashboardFilters
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              availableFilters={availableFilters || null}
-              onExport={viewMode === 'table' && documents.length > 0 ? handleExport : undefined}
-              loading={loadingDashboard}
-            />
-
-            {viewMode === 'dashboard' ? (
-              <>
-                {/* KPI Cards */}
-                <SicasDashboardKPIs
-                  kpis={kpis as any}
-                  loading={loadingDashboard}
-                  periodo={periodo}
-                  onKpiClick={handleKpiClick}
-                />
-
-                {/* Charts + Renovaciones layout */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                  <div className="xl:col-span-2">
-                    <SicasDashboardCharts
-                      charts={charts as any}
-                      loading={loadingDashboard}
-                    />
-                  </div>
-                  <div id="renovaciones-panel">
-                    <SicasRenovacionesPanel
-                      renewals={renewals}
-                      loading={loadingDashboard}
-                      kpis={kpis as any}
-                      onDocumentClick={loadDetail}
-                    />
-                  </div>
+          {/* Vendor selector */}
+          {canSelectVendor && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Ver produccion de:</label>
                 </div>
-              </>
-            ) : (
-              /* Table view */
-              <DocumentsTable
-                documents={documents}
-                loading={loadingDocs}
-                pagination={pagination}
-                currentPage={currentPage}
-                pageSize={pageSize}
-                sortField={sortField}
-                sortDir={sortDir}
-                onToggleSort={toggleSort}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
-                onViewDetail={loadDetail}
-              />
-            )}
-          </>
-        )}
+                <select value={selectedVendorId} onChange={e => handleVendorChange(e.target.value)}
+                  disabled={loadingVendors}
+                  className="flex-1 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="">Todos los vendedores</option>
+                  {mappedVendors.map(v => (
+                    <option key={v.id_sicas} value={v.id_sicas}>
+                      {v.nombre} - {v.nombre_sicas} (ID: {v.id_sicas}){v.oficina ? ` | ${v.oficina}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {loadingVendors && <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />}
+              </div>
+            </div>
+          )}
 
+          {/* Error banner */}
+          {error && !error.noMapping && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-red-800 dark:text-red-300 text-sm font-medium">{error.message}</p>
+              </div>
+              <button onClick={loadDashboard} className="text-red-600 hover:text-red-800 text-xs font-medium whitespace-nowrap">Reintentar</button>
+            </div>
+          )}
+
+          {/* Filters */}
+          <SicasDashboardFilters
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            availableFilters={availableFilters || null}
+            onExport={viewMode === 'table' && documents.length > 0 ? handleExport : undefined}
+            loading={loadingDashboard}
+          />
+
+          {viewMode === 'dashboard' ? (
+            <>
+              <SicasDashboardKPIs kpis={kpis as any} loading={loadingDashboard} periodo={periodo} onKpiClick={handleKpiClick} />
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                <div className="xl:col-span-2">
+                  <SicasDashboardCharts charts={charts as any} loading={loadingDashboard} />
+                </div>
+                <div id="renovaciones-panel">
+                  <SicasRenovacionesPanel renewals={renewals} loading={loadingDashboard} kpis={kpis as any} onDocumentClick={loadDetail} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <DocumentsTable
+              documents={documents} loading={loadingDocs} pagination={pagination}
+              currentPage={currentPage} pageSize={pageSize} sortField={sortField} sortDir={sortDir}
+              onToggleSort={toggleSort} onPageChange={setCurrentPage}
+              onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+              onViewDetail={loadDetail}
+            />
+          )}
         </>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Sync Panel ─────────────────────────────────────────────────────────────
+
+function SyncPanel({ userId }: { userId?: string }) {
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<Record<string, any> | null>(null);
+  const [syncHistory, setSyncHistory] = useState<SyncRun[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [totalDocs, setTotalDocs] = useState<number | null>(null);
+
+  const loadSyncInfo = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const [{ data: history }, { count }] = await Promise.all([
+        supabase.from('sicas_sync_runs').select('*').order('started_at', { ascending: false }).limit(10),
+        supabase.from('sicas_documents').select('*', { count: 'exact', head: true }),
+      ]);
+      setSyncHistory(history || []);
+      setTotalDocs(count ?? 0);
+    } catch { /* silent */ }
+    finally { setLoadingHistory(false); }
+  }, []);
+
+  useEffect(() => { loadSyncInfo(); }, [loadSyncInfo]);
+
+  const runSync = async (mode: 'full' | 'incremental') => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await callEdgeFunction('sicas-sync-local-documents', {
+        action: mode,
+        triggeredBy: userId || null,
+      });
+      setSyncResult(result);
+      loadSyncInfo();
+    } catch (err: any) {
+      setSyncResult({ ok: false, error: err?.message || 'Error desconocido' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const lastSync = syncHistory[0];
+
+  return (
+    <div className="space-y-4">
+      {/* Status cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Documentos Locales</span>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            {totalDocs !== null ? totalDocs.toLocaleString() : '-'}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Ultima Sincronizacion</span>
+          </div>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+            {lastSync?.started_at ? formatDate(lastSync.started_at) : 'Nunca'}
+          </p>
+          {lastSync && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {lastSync.status === 'completed' ? (
+                <span className="text-emerald-600 dark:text-emerald-400">{lastSync.records_upserted} registros sincronizados</span>
+              ) : lastSync.status === 'running' ? (
+                <span className="text-blue-600 dark:text-blue-400">En progreso...</span>
+              ) : (
+                <span className="text-red-600 dark:text-red-400">Error: {lastSync.error_message?.substring(0, 50)}</span>
+              )}
+            </p>
+          )}
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Info className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado</span>
+          </div>
+          {totalDocs === 0 ? (
+            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Sin datos - ejecuta una sincronizacion completa</p>
+          ) : (
+            <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Datos disponibles</p>
+          )}
+        </div>
+      </div>
+
+      {/* Sync buttons */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+          <Cloud className="w-4 h-4 text-blue-600" /> Sincronizar con SICAS
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          La sincronizacion descarga todos los documentos desde SICAS y los almacena localmente. Esto permite consultar y filtrar sin limites de la API.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button onClick={() => runSync('full')} disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium">
+            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Sincronizacion Completa
+          </button>
+          <button onClick={() => runSync('incremental')} disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors text-sm font-medium">
+            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Incremental (30 dias)
+          </button>
+        </div>
+
+        {/* Sync result */}
+        {syncResult && (
+          <div className={`mt-4 p-3 rounded-lg border text-sm ${syncResult.ok ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'}`}>
+            {syncResult.ok ? (
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium">Sincronizacion exitosa</p>
+                  {syncResult.stats && (
+                    <p className="text-xs mt-1 opacity-80">
+                      {(syncResult.stats as any).documentsUpserted || (syncResult.stats as any).records_upserted || 0} documentos sincronizados
+                      {' '}{(syncResult.stats as any).pagesProcessed || 0} paginas procesadas
+                      {' '}en {((syncResult.stats as any).durationMs || 0) / 1000}s
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium">Error en sincronizacion</p>
+                  <p className="text-xs mt-1 opacity-80">{syncResult.error as string}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Sync history */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Historial de Sincronizaciones</h3>
+        </div>
+        {loadingHistory ? (
+          <div className="p-8 text-center"><Loader2 className="w-6 h-6 text-blue-500 animate-spin mx-auto" /></div>
+        ) : syncHistory.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">No hay sincronizaciones registradas</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Reporte</th>
+                  <th className="px-3 py-2 text-center text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Estado</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Leidos</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Guardados</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Duracion</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {syncHistory.map(run => (
+                  <tr key={run.run_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatDate(run.started_at)}</td>
+                    <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{run.keycode || run.module}</td>
+                    <td className="px-3 py-2 text-center">
+                      <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${run.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : run.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
+                        {run.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-right text-gray-700 dark:text-gray-300">{run.records_fetched?.toLocaleString() || 0}</td>
+                    <td className="px-3 py-2 text-xs text-right text-gray-700 dark:text-gray-300">{run.records_upserted?.toLocaleString() || 0}</td>
+                    <td className="px-3 py-2 text-xs text-right text-gray-500 dark:text-gray-400">{run.duration_seconds ? `${run.duration_seconds}s` : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -599,28 +837,18 @@ export default function ProduccionSICASLive() {
 // ─── Documents Table ────────────────────────────────────────────────────────
 
 function DocumentsTable({ documents, loading, pagination, currentPage, pageSize, sortField, sortDir, onToggleSort, onPageChange, onPageSizeChange, onViewDetail }: {
-  documents: SicasDocument[];
-  loading: boolean;
-  pagination: Pagination;
-  currentPage: number;
-  pageSize: number;
-  sortField: string;
-  sortDir: 'asc' | 'desc';
-  onToggleSort: (field: string) => void;
-  onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
-  onViewDetail: (idDocto: string | number) => void;
+  documents: SicasDocument[]; loading: boolean; pagination: Pagination; currentPage: number; pageSize: number;
+  sortField: string; sortDir: 'asc' | 'desc'; onToggleSort: (field: string) => void;
+  onPageChange: (page: number) => void; onPageSizeChange: (size: number) => void; onViewDetail: (idDocto: string | number) => void;
 }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-      {/* Page size selector */}
       <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-        <span className="text-xs text-gray-500 dark:text-gray-400">Resultados por pagina:</span>
-        <select
-          value={pageSize}
-          onChange={e => onPageSizeChange(Number(e.target.value))}
-          className="px-2 py-1 text-xs bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300"
-        >
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {pagination.maxRecords.toLocaleString()} documentos encontrados
+        </span>
+        <select value={pageSize} onChange={e => onPageSizeChange(Number(e.target.value))}
+          className="px-2 py-1 text-xs bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300">
           <option value={25}>25</option>
           <option value={50}>50</option>
           <option value={100}>100</option>
@@ -633,12 +861,12 @@ function DocumentsTable({ documents, loading, pagination, currentPage, pageSize,
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
-              <SortableHeader label="Documento" field="DatDocumentos.Documento" current={sortField} dir={sortDir} onToggle={onToggleSort} />
+              <SortableHeader label="Documento" field="poliza" current={sortField} dir={sortDir} onToggle={onToggleSort} />
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Ramo</th>
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Aseguradora</th>
-              <SortableHeader label="Vigencia" field="DatDocumentos.FDesde" current={sortField} dir={sortDir} onToggle={onToggleSort} className="hidden sm:table-cell" />
-              <SortableHeader label="Prima Neta" field="DatDocumentos.PrimaNeta" current={sortField} dir={sortDir} onToggle={onToggleSort} className="text-right" />
+              <SortableHeader label="Vigencia" field="vigencia_desde" current={sortField} dir={sortDir} onToggle={onToggleSort} className="hidden sm:table-cell" />
+              <SortableHeader label="Prima Neta" field="prima_neta" current={sortField} dir={sortDir} onToggle={onToggleSort} className="text-right" />
               <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estatus</th>
               <th className="px-3 py-2.5 w-10"></th>
             </tr>
@@ -657,44 +885,29 @@ function DocumentsTable({ documents, loading, pagination, currentPage, pageSize,
                 <td colSpan={8} className="px-4 py-12 text-center">
                   <FileText className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                   <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">No se encontraron documentos</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Si es la primera vez, ejecuta una sincronizacion desde la pestana correspondiente</p>
                 </td>
               </tr>
             ) : documents.map((doc) => (
-              <tr
-                key={String(doc.idDocto)}
-                className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
-                onClick={() => onViewDetail(doc.idDocto)}
-              >
+              <tr key={String(doc.idDocto)} className="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onClick={() => onViewDetail(doc.idDocto)}>
                 <td className="px-3 py-2.5">
                   <div className="font-medium text-gray-900 dark:text-white text-xs truncate max-w-[180px]">{doc.documento || '-'}</div>
                   <div className="text-[10px] text-gray-500 dark:text-gray-400">{doc.tipo || doc.subtipo}</div>
                 </td>
-                <td className="px-3 py-2.5">
-                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[160px]">{doc.cliente || '-'}</div>
-                </td>
-                <td className="px-3 py-2.5 hidden lg:table-cell">
-                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[100px]">{doc.ramo || '-'}</div>
-                </td>
-                <td className="px-3 py-2.5 hidden md:table-cell">
-                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[100px]">{doc.aseguradora || '-'}</div>
-                </td>
+                <td className="px-3 py-2.5"><div className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[160px]">{doc.cliente || '-'}</div></td>
+                <td className="px-3 py-2.5 hidden lg:table-cell"><div className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[100px]">{doc.ramo || '-'}</div></td>
+                <td className="px-3 py-2.5 hidden md:table-cell"><div className="text-gray-700 dark:text-gray-300 text-xs truncate max-w-[100px]">{doc.aseguradora || '-'}</div></td>
                 <td className="px-3 py-2.5 hidden sm:table-cell">
                   <div className="text-[10px] text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDate(doc.fechaDesde)}</div>
                   <div className="text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap">a {formatDate(doc.fechaHasta)}</div>
                 </td>
-                <td className="px-3 py-2.5 text-right whitespace-nowrap text-xs font-semibold text-gray-900 dark:text-white">
-                  {formatCurrency(doc.primaNeta)}
+                <td className="px-3 py-2.5 text-right whitespace-nowrap text-xs font-semibold text-gray-900 dark:text-white">{formatCurrency(doc.primaNeta)}</td>
+                <td className="px-3 py-2.5 text-center">
+                  <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${statusColor(doc.status)}`}>{doc.status}</span>
                 </td>
                 <td className="px-3 py-2.5 text-center">
-                  <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${statusColor(doc.status)}`}>
-                    {doc.status}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 text-center">
-                  <button
-                    onClick={e => { e.stopPropagation(); onViewDetail(doc.idDocto); }}
-                    className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                  >
+                  <button onClick={e => { e.stopPropagation(); onViewDetail(doc.idDocto); }}
+                    className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors">
                     <Eye className="w-3.5 h-3.5" />
                   </button>
                 </td>
@@ -704,19 +917,20 @@ function DocumentsTable({ documents, loading, pagination, currentPage, pageSize,
         </table>
       </div>
 
-      {/* Pagination */}
       {!loading && documents.length > 0 && (
         <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-[10px] text-gray-500 dark:text-gray-400">
-            {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, pagination.maxRecords)} de {pagination.maxRecords} documentos
+            {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, pagination.maxRecords)} de {pagination.maxRecords.toLocaleString()} documentos
             {pagination.pages > 1 && ` (pagina ${currentPage} de ${pagination.pages})`}
           </p>
           <div className="flex items-center gap-1">
-            <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} className="p-1 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors">
+            <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1}
+              className="p-1 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
             <span className="px-2 py-0.5 text-xs text-gray-700 dark:text-gray-300 font-medium">{currentPage} / {pagination.pages}</span>
-            <button onClick={() => onPageChange(Math.min(pagination.pages, currentPage + 1))} disabled={currentPage >= pagination.pages} className="p-1 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors">
+            <button onClick={() => onPageChange(Math.min(pagination.pages, currentPage + 1))} disabled={currentPage >= pagination.pages}
+              className="p-1 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -765,39 +979,32 @@ function DetailView({ doc, isAdmin }: { doc: DocumentDetail; isAdmin: boolean })
             <span className={`inline-flex px-3 py-1 text-sm font-bold rounded-full ${statusColor(doc.status)} self-start`}>{doc.status}</span>
           </div>
         </div>
-
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <DetailSection icon={User} title="Cliente">
             <DetailField label="Nombre" value={clienteNombre} />
             {clienteObj?.rfc && <DetailField label="RFC" value={clienteObj.rfc} />}
             {clienteObj?.telefono && <DetailField label="Telefono" value={clienteObj.telefono} />}
             {clienteObj?.email && <DetailField label="Email" value={clienteObj.email} />}
-            {clienteObj?.direccion && <DetailField label="Direccion" value={clienteObj.direccion} />}
           </DetailSection>
-
           <DetailSection icon={Calendar} title="Vigencia">
             <DetailField label="Desde" value={formatDate(doc.fechas?.desde || doc.fechaDesde)} />
             <DetailField label="Hasta" value={formatDate(doc.fechas?.hasta || doc.fechaHasta)} />
             {doc.fechas?.emision && <DetailField label="Emision" value={formatDate(doc.fechas.emision)} />}
             {doc.fechas?.captura && <DetailField label="Captura" value={formatDate(doc.fechas.captura)} />}
           </DetailSection>
-
           <DetailSection icon={CreditCard} title="Importes">
             <DetailField label="Prima Neta" value={formatCurrency(doc.importes?.primaNeta ?? doc.primaNeta)} />
             <DetailField label="Prima Total" value={formatCurrency(doc.importes?.primaTotal ?? doc.primaTotal)} />
             {doc.importes?.derechoPoliza ? <DetailField label="Derecho de Poliza" value={formatCurrency(doc.importes.derechoPoliza)} /> : null}
             {doc.importes?.iva ? <DetailField label="IVA" value={formatCurrency(doc.importes.iva)} /> : null}
             {doc.importes?.recargos ? <DetailField label="Recargos" value={formatCurrency(doc.importes.recargos)} /> : null}
-            {doc.importes?.descuento ? <DetailField label="Descuento" value={formatCurrency(doc.importes.descuento)} /> : null}
           </DetailSection>
-
           <DetailSection icon={FileText} title="Documento">
             <DetailField label="Tipo" value={doc.tipo} />
             {doc.subramo && <DetailField label="Subramo" value={doc.subramo} />}
             <DetailField label="Moneda" value={doc.moneda || 'MXN'} />
             {doc.estatus?.cobro && <DetailField label="Estatus cobro" value={doc.estatus.cobro} />}
           </DetailSection>
-
           <DetailSection icon={Building2} title="Vendedor / Agente">
             <DetailField label="Vendedor" value={vendedorObj?.nombre || String(doc.vendedor || '-')} />
             {(vendedorObj?.id || doc.vendedorId) && <DetailField label="ID Vendedor" value={vendedorObj?.id || doc.vendedorId} />}
