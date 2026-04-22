@@ -297,12 +297,11 @@ async function fetchAllPages(
   }
 ): Promise<{ records: Record<string, unknown>[]; totalInSicas: number; pagesFetched: number }> {
   const pageSize = opts.pageSize || 500;
-  const maxPages = opts.maxPages || 500;
+  const maxPages = opts.maxPages || 100;
   const allRecords: Record<string, unknown>[] = [];
   let page = 1;
   let totalInSicas = 0;
-  let reportedPages = 1;
-  let effectiveItemsPerPage = pageSize;
+  let totalPages = 1;
 
   while (page <= maxPages) {
     const response = await client.readReport({
@@ -320,56 +319,16 @@ async function fetchAllPages(
 
     if (page === 1) {
       totalInSicas = control?.MaxRecords || records.length;
-      reportedPages = control?.Pages || 1;
-      effectiveItemsPerPage = control?.ItemForPage || records.length || pageSize;
-      console.log(`[SICASProd] fetchAllPages p1: MaxRecords=${totalInSicas} Pages=${reportedPages} ItemForPage=${effectiveItemsPerPage} requested=${pageSize} actualRecords=${records.length}`);
-
-      // If SICAS returned exactly as many records as the effective page size,
-      // and MaxRecords equals that same number, SICAS is likely capping/misreporting.
-      // In that case, don't trust MaxRecords or Pages -- keep fetching until empty/partial page.
-      if (totalInSicas === effectiveItemsPerPage && records.length === effectiveItemsPerPage) {
-        console.log(`[SICASProd] fetchAllPages: MaxRecords=${totalInSicas} == ItemForPage=${effectiveItemsPerPage} -- SICAS may be capping. Will keep fetching until partial/empty page.`);
-      }
-
-      // Recalculate pages from MaxRecords if it looks reliable (greater than one page worth)
-      if (totalInSicas > effectiveItemsPerPage && effectiveItemsPerPage > 0) {
-        const calculatedPages = Math.ceil(totalInSicas / effectiveItemsPerPage);
-        if (calculatedPages > reportedPages) {
-          console.log(`[SICASProd] fetchAllPages: SICAS reported Pages=${reportedPages} but calculated=${calculatedPages}. Using calculated.`);
-          reportedPages = calculatedPages;
-        }
-      }
-    } else {
-      // On subsequent pages, update MaxRecords if SICAS provides a more accurate count
-      if (control?.MaxRecords && control.MaxRecords > totalInSicas) {
-        console.log(`[SICASProd] fetchAllPages p${page}: SICAS updated MaxRecords from ${totalInSicas} to ${control.MaxRecords}`);
-        totalInSicas = control.MaxRecords;
-      }
+      totalPages = control?.Pages || 1;
+      console.log(`[SICASProd] fetchAllPages: MaxRecords=${totalInSicas} Pages=${totalPages} ItemForPage=${control?.ItemForPage || pageSize}`);
     }
 
-    console.log(`[SICASProd] fetchAllPages p${page}: got ${records.length} records (total so far: ${allRecords.length + records.length})`);
     allRecords.push(...records);
-
-    // Stop conditions - don't trust SICAS Pages/MaxRecords blindly.
-    // SICAS may cap ItemForPage and report MaxRecords only for the current scope.
-    // The only reliable signal is: empty page or partial page.
-    if (records.length === 0) {
-      console.log(`[SICASProd] fetchAllPages: stopping at page ${page} - empty response`);
-      break;
-    }
-    if (records.length < effectiveItemsPerPage) {
-      console.log(`[SICASProd] fetchAllPages: stopping at page ${page} - partial page (${records.length} < ${effectiveItemsPerPage}), this is the last page`);
-      break;
-    }
-
+    if (records.length === 0 || page >= totalPages) break;
     page++;
   }
 
-  if (page > maxPages) {
-    console.warn(`[SICASProd] fetchAllPages: hit maxPages limit (${maxPages}). Fetched ${allRecords.length}/${totalInSicas} records.`);
-  }
-
-  console.log(`[SICASProd] fetchAllPages DONE: ${allRecords.length} records across ${page} pages (totalInSicas=${totalInSicas})`);
+  console.log(`[SICASProd] fetchAllPages: fetched ${allRecords.length} records across ${page} pages (totalInSicas=${totalInSicas})`);
   return { records: allRecords, totalInSicas, pagesFetched: page };
 }
 
