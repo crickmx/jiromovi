@@ -5,7 +5,8 @@ import {
   FileText, Search, RefreshCw, TrendingUp, AlertTriangle, X, ArrowUpDown,
   ChevronLeft, ChevronRight, Eye, ArrowLeft, Building2, User, Calendar,
   CreditCard, Hash, Loader2, WifiOff, Link as LinkIcon, Users, ChevronDown,
-  ChevronUp, Download, LayoutDashboard, Table2,
+  ChevronUp, Download, LayoutDashboard, Table2, Database, CheckCircle2,
+  XCircle, Clock,
 } from 'lucide-react';
 import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
 import SicasDashboardKPIs from '../components/produccion/SicasDashboardKPIs';
@@ -71,10 +72,18 @@ interface DocumentDetail {
   agenteId?: string;
 }
 
-type ViewMode = 'dashboard' | 'table' | 'detail';
-type ActiveTab = 'produccion' | 'mapeo';
+interface SyncStatus {
+  lastSync: string | null;
+  totalDocs: number;
+  syncing: boolean;
+  syncResult: { ok: boolean; message: string; stats?: Record<string, unknown> } | null;
+  logs: Array<{ id: string; sync_type: string; started_at: string; finished_at: string | null; status: string; records_synced: number; error_message: string | null }>;
+}
 
-// ─── API Helper ──────────────────────────────────────────────────────────────
+type ViewMode = 'dashboard' | 'table' | 'detail';
+type ActiveTab = 'produccion' | 'sincronizacion' | 'mapeo';
+
+// ─── API Helpers ─────────────────────────────────────────────────────────────
 
 async function callSicasProduction(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -92,14 +101,60 @@ async function callSicasProduction(body: Record<string, unknown>): Promise<Recor
       body: JSON.stringify(body),
     });
     const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      return { ok: false, error: `Error del servidor (${res.status})`, code: 'PARSE_ERROR' };
-    }
+    try { return JSON.parse(text); } catch { return { ok: false, error: `Error del servidor (${res.status})`, code: 'PARSE_ERROR' }; }
   } catch (err: any) {
-    return { ok: false, error: err?.message || 'Error de red al conectar con SICAS.', code: 'NETWORK_ERROR' };
+    return { ok: false, error: err?.message || 'Error de red.', code: 'NETWORK_ERROR' };
   }
+}
+
+async function callEdgeFunction(slug: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    return { ok: false, error: 'Sesion no disponible.', code: 'NO_SESSION' };
+  }
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/${slug}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        'Apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    try { return JSON.parse(text); } catch { return { ok: false, error: `Error del servidor (${res.status})`, code: 'PARSE_ERROR' }; }
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'Error de red.', code: 'NETWORK_ERROR' };
+  }
+}
+
+// ─── Local DB row → SicasDocument mapper ─────────────────────────────────────
+
+function dbRowToDocument(row: Record<string, any>): SicasDocument {
+  return {
+    idDocto: row.id_docto,
+    documento: row.poliza || '',
+    tipo: row.tipo_documento || '',
+    subtipo: row.subtipo_documento || '',
+    ramo: row.ramo || '',
+    subramo: row.subramo || '',
+    aseguradora: row.aseguradora_nombre || row.compania || '',
+    cliente: row.cliente || '',
+    fechaDesde: row.vigencia_desde || '',
+    fechaHasta: row.vigencia_hasta || '',
+    primaNeta: Number(row.prima_neta) || 0,
+    primaTotal: Number(row.prima_total) || 0,
+    moneda: row.moneda || 'MXN',
+    status: row.status_texto || '',
+    statusRaw: row.status_codigo || '',
+    statusCobro: row.status_cobro || '',
+    vendedor: row.vend_nombre || '',
+    vendedorId: row.vend_id || '',
+    agente: row.agente_nombre || '',
+    agenteId: row.sicas_id_agente || '',
+    raw: row.raw_data || {},
+  };
 }
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
@@ -114,9 +169,7 @@ function formatDate(dateStr: string): string {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
-  } catch {
-    return dateStr;
-  }
+  } catch { return dateStr; }
 }
 
 function statusColor(status: string): string {
@@ -158,9 +211,7 @@ async function exportToExcel(documents: SicasDocument[], filename: string) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Produccion SICAS');
     XLSX.writeFile(wb, `${filename}.xlsx`);
-  } catch {
-    exportToCSV(documents, filename);
-  }
+  } catch { exportToCSV(documents, filename); }
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -168,7 +219,6 @@ async function exportToExcel(documents: SicasDocument[], filename: string) {
 export default function ProduccionSICASLive() {
   const { usuario } = useAuth();
 
-  // View state
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [activeTab, setActiveTab] = useState<ActiveTab>('produccion');
 
@@ -176,7 +226,7 @@ export default function ProduccionSICASLive() {
   const [dashboardData, setDashboardData] = useState<Record<string, unknown> | null>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
 
-  // Documents list (table view)
+  // Documents list
   const [documents, setDocuments] = useState<SicasDocument[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, pageSize: 25, pages: 1, maxRecords: 0 });
   const [loadingDocs, setLoadingDocs] = useState(false);
@@ -188,23 +238,11 @@ export default function ProduccionSICASLive() {
   // Filters
   const [filters, setFilters] = useState<DashboardFilterState>(() => {
     const { fechaDesde, fechaHasta } = getCurrentMonthRange();
-    return {
-      fechaDesde,
-      fechaHasta,
-      type: 'all',
-      status: '',
-      ramo: '',
-      subramo: '',
-      aseguradora: '',
-      cliente: '',
-      moneda: '',
-      agente: '',
-      search: '',
-    };
+    return { fechaDesde, fechaHasta, type: 'all', status: '', ramo: '', subramo: '', aseguradora: '', cliente: '', moneda: '', agente: '', search: '' };
   });
 
-  // Table-specific state
-  const [sortField, setSortField] = useState('DatDocumentos.FDesde');
+  // Table state
+  const [sortField, setSortField] = useState('vigencia_desde');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -217,7 +255,9 @@ export default function ProduccionSICASLive() {
   const [selectedVendorId, setSelectedVendorId] = useState<string>('');
   const [loadingVendors, setLoadingVendors] = useState(false);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  // Sync
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ lastSync: null, totalDocs: 0, syncing: false, syncResult: null, logs: [] });
+
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const canSelectVendor = isAdmin || isGerente;
@@ -229,85 +269,180 @@ export default function ProduccionSICASLive() {
     setLoadingVendors(true);
     try {
       const data = await callSicasProduction({ action: 'list-mapped-vendors' });
-      if (data.ok && data.vendors) setMappedVendors(data.vendors);
+      if (data.ok && data.vendors) setMappedVendors(data.vendors as any);
     } catch { /* silent */ }
     finally { setLoadingVendors(false); }
   }, [canSelectVendor]);
 
   useEffect(() => { loadMappedVendors(); }, [loadMappedVendors]);
 
-  // ─── Load Dashboard ────────────────────────────────────────────────────
+  // ─── Load Dashboard (from local DB via RPC) ───────────────────────────
 
   const loadDashboard = useCallback(async () => {
     if (!usuario) return;
     setLoadingDashboard(true);
     setError(null);
     try {
-      const body: Record<string, unknown> = {
-        action: 'dashboard',
-        fechaDesde: filters.fechaDesde,
-        fechaHasta: filters.fechaHasta,
-        type: filters.type,
-        status: filters.status || undefined,
-        ramo: filters.ramo || undefined,
-        subramo: filters.subramo || undefined,
-        aseguradora: filters.aseguradora || undefined,
-        cliente: filters.cliente || undefined,
-        moneda: filters.moneda || undefined,
-        agente: filters.agente || undefined,
-        search: filters.search || undefined,
+      const rpcParams: Record<string, any> = {
+        p_fecha_desde: filters.fechaDesde || null,
+        p_fecha_hasta: filters.fechaHasta || null,
+        p_tipo: filters.type || 'all',
+        p_status: filters.status || null,
+        p_ramo: filters.ramo || null,
+        p_subramo: filters.subramo || null,
+        p_aseguradora: filters.aseguradora || null,
+        p_cliente: filters.cliente || null,
+        p_moneda: filters.moneda || null,
+        p_search: filters.search || null,
       };
-      if (selectedVendorId) body.vendorId = selectedVendorId;
-      const data = await callSicasProduction(body);
-      if (data.ok) {
-        setDashboardData(data);
-        setError(null);
-      } else {
-        if (data.noMapping) setError({ message: data.error as string, code: data.code as string, noMapping: true });
-        else setError({ message: data.error as string, code: data.code as string });
+
+      if (selectedVendorId) {
+        rpcParams.p_vend_id = selectedVendorId;
+      } else if (!isAdmin && !isGerente) {
+        rpcParams.p_user_id = usuario.id;
       }
-    } catch {
-      setError({ message: 'No fue posible consultar SICAS en este momento.' });
+
+      const { data, error: rpcError } = await supabase.rpc('get_sicas_local_dashboard', rpcParams);
+
+      if (rpcError) {
+        setError({ message: rpcError.message, code: 'RPC_ERROR' });
+        return;
+      }
+
+      if (!data || (data.totalRecords === 0 && !selectedVendorId && !isAdmin && !isGerente)) {
+        setError({ message: 'Tu cuenta aun no tiene documentos sincronizados desde SICAS.', code: 'NO_DATA', noMapping: !isAdmin && !isGerente });
+        setDashboardData(data);
+        return;
+      }
+
+      // Build charts from RPC + monthly prima
+      const chartData: Record<string, any> = {
+        porRamo: data.topRamos || [],
+        porAseguradora: data.topAseguradoras || [],
+        porCliente: data.topClientes || [],
+        porEstatus: data.porEstatus || [],
+        porSubramo: [],
+        tipoDistribution: [],
+        renovacionesPorPeriodo: [],
+        primaPorMes: [],
+      };
+
+      // Fetch monthly prima data
+      try {
+        const { data: monthlyData } = await supabase.rpc('get_sicas_monthly_prima', {
+          p_vend_id: selectedVendorId || null,
+          p_fecha_desde: filters.fechaDesde || null,
+          p_fecha_hasta: filters.fechaHasta || null,
+        });
+        if (monthlyData) chartData.primaPorMes = monthlyData;
+      } catch { /* monthly chart optional */ }
+
+      // Add tipo distribution from KPIs
+      const kpis = data.kpis || {};
+      chartData.tipoDistribution = [
+        { tipo: 'Polizas', count: kpis.polizasEmitidas || 0, prima: (kpis.primaTotalEmitida || 0) },
+        { tipo: 'Fianzas', count: kpis.fianzasEmitidas || 0, prima: 0 },
+      ];
+
+      // Add topClientePeriodo/topAseguradoraPeriodo/topRamoPeriodo to kpis
+      const topClientes = data.topClientes || [];
+      const topAseguradoras = data.topAseguradoras || [];
+      const topRamos = data.topRamos || [];
+      kpis.topClientePeriodo = topClientes[0]?.name || '-';
+      kpis.topAseguradoraPeriodo = topAseguradoras[0]?.name || '-';
+      kpis.topRamoPeriodo = topRamos[0]?.name || '-';
+      kpis.mesPrimaNeta = kpis.primaNetaEmitida || 0;
+      kpis.mesPrimaTotal = kpis.primaTotalEmitida || 0;
+      kpis.mesEmisiones = kpis.totalDocumentos || 0;
+      kpis.clientesMes = kpis.clientesTotal || 0;
+      kpis.renovacionesMes = kpis.renovaciones30dias || 0;
+      kpis.variacionMesAnterior = 0;
+      kpis.variacionInteranual = 0;
+
+      setDashboardData({
+        ok: true,
+        kpis,
+        charts: chartData,
+        renewals: data.renewals || [],
+        availableFilters: data.availableFilters || { ramos: [], subramos: [], aseguradoras: [], monedas: [] },
+        periodo: `${filters.fechaDesde} a ${filters.fechaHasta}`,
+        totalRecords: data.totalRecords,
+        source: 'local',
+      });
+      setError(null);
+    } catch (err: any) {
+      setError({ message: err?.message || 'Error al consultar datos locales.' });
     } finally {
       setLoadingDashboard(false);
     }
-  }, [usuario, selectedVendorId, filters]);
+  }, [usuario, selectedVendorId, filters, isAdmin, isGerente]);
 
-  // ─── Load Documents (table view) ──────────────────────────────────────
+  // ─── Load Documents (from local DB directly) ──────────────────────────
 
   const loadDocuments = useCallback(async () => {
     if (!usuario) return;
     setLoadingDocs(true);
     try {
-      const body: Record<string, unknown> = {
-        action: 'documents',
+      let query = supabase.from('sicas_documents').select('*', { count: 'exact' });
+
+      // Scope by vendor or user
+      if (selectedVendorId) {
+        query = query.eq('vend_id', selectedVendorId);
+      } else if (!isAdmin && !isGerente) {
+        const { data: userDoc } = await supabase.from('usuarios').select('id_sicas').eq('id', usuario.id).maybeSingle();
+        if (userDoc?.id_sicas) {
+          query = query.eq('vend_id', userDoc.id_sicas);
+        } else {
+          setDocuments([]);
+          setPagination({ page: 1, pageSize, pages: 0, maxRecords: 0 });
+          setLoadingDocs(false);
+          return;
+        }
+      }
+
+      // Apply filters
+      if (filters.fechaDesde) query = query.gte('vigencia_desde', filters.fechaDesde);
+      if (filters.fechaHasta) query = query.lte('vigencia_hasta', filters.fechaHasta);
+      if (filters.type === 'policies') query = query.eq('is_poliza', true);
+      if (filters.type === 'bonds') query = query.eq('is_fianza', true);
+      if (filters.status) query = query.ilike('status_texto', filters.status);
+      if (filters.ramo) query = query.ilike('ramo', `%${filters.ramo}%`);
+      if (filters.aseguradora) query = query.ilike('aseguradora_nombre', `%${filters.aseguradora}%`);
+      if (filters.search) {
+        query = query.or(`poliza.ilike.%${filters.search}%,cliente.ilike.%${filters.search}%,aseguradora_nombre.ilike.%${filters.search}%`);
+      }
+
+      // Sort
+      const sortColumn = sortField || 'vigencia_desde';
+      query = query.order(sortColumn, { ascending: sortDir === 'asc' });
+
+      // Pagination
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data: rows, count, error: queryError } = await query;
+
+      if (queryError) {
+        if (!error?.noMapping) setError({ message: queryError.message, code: 'QUERY_ERROR' });
+        setLoadingDocs(false);
+        return;
+      }
+
+      const totalCount = count || 0;
+      setDocuments((rows || []).map(dbRowToDocument));
+      setPagination({
         page: currentPage,
         pageSize,
-        type: filters.type,
-        sortField,
-        sortDirection: sortDir,
-      };
-      if (selectedVendorId) body.vendorId = selectedVendorId;
-      if (filters.fechaDesde) body.fechaDesde = filters.fechaDesde;
-      if (filters.fechaHasta) body.fechaHasta = filters.fechaHasta;
-      if (filters.search) body.search = filters.search;
-      if (filters.status) body.status = filters.status;
-      if (filters.ramo) body.ramo = filters.ramo;
-      if (filters.aseguradora) body.aseguradora = filters.aseguradora;
-
-      const data = await callSicasProduction(body);
-      if (data.ok) {
-        setDocuments((data.items || []) as SicasDocument[]);
-        setPagination((data.pagination || { page: 1, pageSize: 25, pages: 1, maxRecords: 0 }) as Pagination);
-      } else if (!error?.noMapping) {
-        setError({ message: data.error as string, code: data.code as string });
-      }
-    } catch {
+        pages: Math.ceil(totalCount / pageSize) || 1,
+        maxRecords: totalCount,
+      });
+    } catch (err: any) {
       if (!error?.noMapping) setError({ message: 'Error al cargar documentos.' });
     } finally {
       setLoadingDocs(false);
     }
-  }, [usuario, selectedVendorId, currentPage, pageSize, filters, sortField, sortDir]);
+  }, [usuario, selectedVendorId, currentPage, pageSize, filters, sortField, sortDir, isAdmin, isGerente]);
 
   // ─── Load Detail ─────────────────────────────────────────────────────
 
@@ -315,14 +450,117 @@ export default function ProduccionSICASLive() {
     setLoadingDetail(true);
     setViewMode('detail');
     try {
-      const body: Record<string, unknown> = { action: 'detail', idDocto };
-      if (selectedVendorId) body.vendorId = selectedVendorId;
-      const data = await callSicasProduction(body);
-      if (data.ok) setSelectedDoc(data.document as DocumentDetail);
-      else { setSelectedDoc(null); setError({ message: data.error as string, code: data.code as string }); }
-    } catch { setError({ message: 'Error al cargar detalle del documento.' }); }
+      const { data: row, error: detailError } = await supabase
+        .from('sicas_documents')
+        .select('*')
+        .eq('id_docto', String(idDocto))
+        .maybeSingle();
+
+      if (detailError || !row) {
+        setSelectedDoc(null);
+        setError({ message: 'Documento no encontrado.', code: 'NOT_FOUND' });
+        setLoadingDetail(false);
+        return;
+      }
+
+      setSelectedDoc({
+        idDocto: row.id_docto,
+        documento: row.poliza || '',
+        tipo: row.tipo_documento || '',
+        ramo: row.ramo || '',
+        subramo: row.subramo || '',
+        aseguradora: row.aseguradora_nombre || row.compania || '',
+        cliente: row.cliente || '',
+        fechaDesde: row.vigencia_desde || '',
+        fechaHasta: row.vigencia_hasta || '',
+        primaNeta: Number(row.prima_neta) || 0,
+        primaTotal: Number(row.prima_total) || 0,
+        moneda: row.moneda || 'MXN',
+        status: row.status_texto || '',
+        statusRaw: row.status_codigo || '',
+        agente: row.agente_nombre || '',
+        vendedor: row.vend_nombre || '',
+        vendedorId: row.vend_id || '',
+        agenteId: row.sicas_id_agente || '',
+        fechas: {
+          desde: row.vigencia_desde || '',
+          hasta: row.vigencia_hasta || '',
+          emision: row.fecha_emision || '',
+          captura: row.fecha_captura || '',
+        },
+        importes: {
+          primaNeta: Number(row.prima_neta) || 0,
+          primaTotal: Number(row.prima_total) || 0,
+          derechoPoliza: Number(row.derechos) || 0,
+          iva: Number(row.impuestos) || 0,
+          recargos: Number(row.recargos) || 0,
+          descuento: 0,
+        },
+        estatus: {
+          documento: row.status_texto || '',
+          cobro: row.status_cobro || '',
+          usuario: '',
+        },
+        raw: row.raw_data || {},
+      });
+    } catch { setError({ message: 'Error al cargar detalle.' }); }
     finally { setLoadingDetail(false); }
   };
+
+  // ─── Sync Functions ───────────────────────────────────────────────────
+
+  const loadSyncStatus = useCallback(async () => {
+    const [countResult, logsResult] = await Promise.all([
+      supabase.from('sicas_documents').select('id', { count: 'exact', head: true }),
+      supabase.from('sicas_sync_logs').select('*').order('started_at', { ascending: false }).limit(10),
+    ]);
+
+    const totalDocs = countResult.count || 0;
+    const logs = (logsResult.data || []) as SyncStatus['logs'];
+    const lastLog = logs.find(l => l.status === 'success');
+
+    setSyncStatus(prev => ({
+      ...prev,
+      totalDocs,
+      lastSync: lastLog?.finished_at || null,
+      logs,
+    }));
+  }, []);
+
+  const triggerSync = async (syncType: 'full' | 'incremental') => {
+    setSyncStatus(prev => ({ ...prev, syncing: true, syncResult: null }));
+    try {
+      const result = await callEdgeFunction('sicas-sync-local-documents', {
+        action: syncType,
+        triggeredBy: usuario?.id,
+      });
+
+      setSyncStatus(prev => ({
+        ...prev,
+        syncing: false,
+        syncResult: {
+          ok: !!result.ok,
+          message: result.ok
+            ? `Sincronizacion ${syncType} completada. ${(result as any).stats?.documentsUpserted || 0} documentos procesados.`
+            : String(result.error || 'Error desconocido'),
+          stats: (result as any).stats,
+        },
+      }));
+
+      await loadSyncStatus();
+      if (result.ok) loadDashboard();
+    } catch (err: any) {
+      setSyncStatus(prev => ({
+        ...prev,
+        syncing: false,
+        syncResult: { ok: false, message: err?.message || 'Error de red al sincronizar.' },
+      }));
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'sincronizacion') loadSyncStatus();
+  }, [activeTab, loadSyncStatus]);
 
   // ─── Effects ─────────────────────────────────────────────────────────
 
@@ -332,7 +570,6 @@ export default function ProduccionSICASLive() {
     if (viewMode === 'table' && !error?.noMapping) loadDocuments();
   }, [viewMode, loadDocuments]);
 
-  // Debounce filter changes
   const handleFiltersChange = (newFilters: DashboardFilterState) => {
     setFilters(newFilters);
     setCurrentPage(1);
@@ -361,13 +598,20 @@ export default function ProduccionSICASLive() {
     }
   };
 
+  const sortMap: Record<string, string> = {
+    'DatDocumentos.FDesde': 'vigencia_desde',
+    'DatDocumentos.Documento': 'poliza',
+    'DatDocumentos.PrimaNeta': 'prima_neta',
+  };
+
   const toggleSort = (field: string) => {
-    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortField(field); setSortDir('desc'); }
+    const dbField = sortMap[field] || field;
+    if (sortField === dbField) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(dbField); setSortDir('desc'); }
     setCurrentPage(1);
   };
 
-  const showContent = !error?.noMapping;
+  const showContent = !error?.noMapping || isAdmin || isGerente;
 
   // ─── Detail View ─────────────────────────────────────────────────────
 
@@ -384,7 +628,7 @@ export default function ProduccionSICASLive() {
           {loadingDetail ? (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 flex flex-col items-center gap-4">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-              <p className="text-gray-600 dark:text-gray-400">Consultando detalle en SICAS...</p>
+              <p className="text-gray-600 dark:text-gray-400">Cargando detalle...</p>
             </div>
           ) : selectedDoc ? (
             <DetailView doc={selectedDoc} isAdmin={isAdmin} />
@@ -418,14 +662,14 @@ export default function ProduccionSICASLive() {
               <TrendingUp className="w-7 h-7 text-blue-600" />
               Produccion SICAS
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Dashboard de produccion en tiempo real
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5">
+              <Database className="w-3.5 h-3.5" />
+              Datos locales sincronizados
             </p>
           </div>
           <div className="flex items-center gap-2">
             {activeTab === 'produccion' && showContent && (
               <>
-                {/* View mode toggle */}
                 <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
                   <button
                     onClick={() => setViewMode('dashboard')}
@@ -440,7 +684,6 @@ export default function ProduccionSICASLive() {
                     <Table2 className="w-3.5 h-3.5" /> Tabla
                   </button>
                 </div>
-
                 <button
                   onClick={() => { loadDashboard(); if (viewMode === 'table') loadDocuments(); }}
                   disabled={loadingDashboard || loadingDocs}
@@ -457,30 +700,39 @@ export default function ProduccionSICASLive() {
         {/* Admin tabs */}
         {isAdmin && (
           <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1">
-            <button
-              onClick={() => setActiveTab('produccion')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all flex-1 justify-center ${activeTab === 'produccion' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
-            >
-              <TrendingUp className="w-4 h-4" /> Produccion
-            </button>
-            <button
-              onClick={() => setActiveTab('mapeo')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all flex-1 justify-center ${activeTab === 'mapeo' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
-            >
-              <Users className="w-4 h-4" /> Mapeo de Usuarios
-            </button>
+            {[
+              { key: 'produccion' as const, icon: TrendingUp, label: 'Produccion' },
+              { key: 'sincronizacion' as const, icon: Download, label: 'Sincronizacion' },
+              { key: 'mapeo' as const, icon: Users, label: 'Mapeo de Usuarios' },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all flex-1 justify-center ${activeTab === tab.key ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+              >
+                <tab.icon className="w-4 h-4" /> {tab.label}
+              </button>
+            ))}
           </div>
         )}
 
-        {/* Mapeo tab (admin only) */}
+        {/* Mapeo tab */}
         {activeTab === 'mapeo' && isAdmin && (
           <MapeoUsuariosSICAS callApi={(body) => callSicasProduction(body)} />
         )}
 
-        {/* Production tab content */}
+        {/* Sync tab */}
+        {activeTab === 'sincronizacion' && isAdmin && (
+          <SyncPanel
+            syncStatus={syncStatus}
+            onSync={triggerSync}
+          />
+        )}
+
+        {/* Production tab */}
         {activeTab === 'produccion' && <>
 
-        {/* Vendor selector (admin and gerente) */}
+        {/* Vendor selector */}
         {canSelectVendor && (
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -514,19 +766,17 @@ export default function ProduccionSICASLive() {
               <p className="text-red-800 dark:text-red-300 text-sm font-medium">{error.message}</p>
               {error.code && <p className="text-red-600 dark:text-red-400 text-xs mt-0.5">Codigo: {error.code}</p>}
             </div>
-            <button onClick={loadDashboard} className="text-red-600 hover:text-red-800 text-xs font-medium whitespace-nowrap">
-              Reintentar
-            </button>
+            <button onClick={loadDashboard} className="text-red-600 hover:text-red-800 text-xs font-medium whitespace-nowrap">Reintentar</button>
           </div>
         )}
 
-        {/* No mapping for regular users */}
+        {/* No mapping */}
         {error?.noMapping && !canSelectVendor && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
             <LinkIcon className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
             <div className="flex-1">
-              <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Tu cuenta no tiene un vinculo con SICAS</p>
-              <p className="text-amber-700 dark:text-amber-400 text-xs mt-1">Contacta a un administrador para que realice el mapeo de tu usuario.</p>
+              <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">Tu cuenta no tiene documentos sincronizados</p>
+              <p className="text-amber-700 dark:text-amber-400 text-xs mt-1">Contacta a un administrador para que vincule tu cuenta con SICAS y ejecute la sincronizacion.</p>
             </div>
           </div>
         )}
@@ -534,7 +784,6 @@ export default function ProduccionSICASLive() {
         {/* Dashboard content */}
         {showContent && (
           <>
-            {/* Filters */}
             <SicasDashboardFilters
               filters={filters}
               onFiltersChange={handleFiltersChange}
@@ -545,34 +794,22 @@ export default function ProduccionSICASLive() {
 
             {viewMode === 'dashboard' ? (
               <>
-                {/* KPI Cards */}
                 <SicasDashboardKPIs
                   kpis={kpis as any}
                   loading={loadingDashboard}
                   periodo={periodo}
                   onKpiClick={handleKpiClick}
                 />
-
-                {/* Charts + Renovaciones layout */}
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                   <div className="xl:col-span-2">
-                    <SicasDashboardCharts
-                      charts={charts as any}
-                      loading={loadingDashboard}
-                    />
+                    <SicasDashboardCharts charts={charts as any} loading={loadingDashboard} />
                   </div>
                   <div id="renovaciones-panel">
-                    <SicasRenovacionesPanel
-                      renewals={renewals}
-                      loading={loadingDashboard}
-                      kpis={kpis as any}
-                      onDocumentClick={loadDetail}
-                    />
+                    <SicasRenovacionesPanel renewals={renewals} loading={loadingDashboard} kpis={kpis as any} onDocumentClick={loadDetail} />
                   </div>
                 </div>
               </>
             ) : (
-              /* Table view */
               <DocumentsTable
                 documents={documents}
                 loading={loadingDocs}
@@ -589,9 +826,119 @@ export default function ProduccionSICASLive() {
             )}
           </>
         )}
-
         </>}
       </div>
+    </div>
+  );
+}
+
+// ─── Sync Panel ────────────────────────────────────────────────────────────
+
+function SyncPanel({ syncStatus, onSync }: { syncStatus: SyncStatus; onSync: (type: 'full' | 'incremental') => void }) {
+  return (
+    <div className="space-y-4">
+      {/* Status Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Database className="w-5 h-5 text-blue-600" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sincronizacion SICAS</h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Documentos en BD local</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{syncStatus.totalDocs.toLocaleString()}</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Ultima sincronizacion</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              {syncStatus.lastSync ? formatDate(syncStatus.lastSync) : 'Nunca'}
+            </p>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Estado</p>
+            <p className={`text-sm font-medium ${syncStatus.syncing ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+              {syncStatus.syncing ? 'Sincronizando...' : 'Disponible'}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => onSync('full')}
+            disabled={syncStatus.syncing}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
+          >
+            {syncStatus.syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Sincronizacion Completa
+          </button>
+          <button
+            onClick={() => onSync('incremental')}
+            disabled={syncStatus.syncing}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors text-sm font-medium"
+          >
+            {syncStatus.syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Sincronizacion Incremental
+          </button>
+        </div>
+
+        {/* Result */}
+        {syncStatus.syncResult && (
+          <div className={`mt-4 p-3 rounded-lg border ${syncStatus.syncResult.ok ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
+            <div className="flex items-center gap-2">
+              {syncStatus.syncResult.ok ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <XCircle className="w-4 h-4 text-red-600" />}
+              <p className={`text-sm font-medium ${syncStatus.syncResult.ok ? 'text-emerald-800 dark:text-emerald-300' : 'text-red-800 dark:text-red-300'}`}>
+                {syncStatus.syncResult.message}
+              </p>
+            </div>
+            {syncStatus.syncResult.stats && (
+              <pre className="mt-2 text-xs text-gray-600 dark:text-gray-400 bg-white/50 dark:bg-gray-800/50 rounded p-2 overflow-x-auto">
+                {JSON.stringify(syncStatus.syncResult.stats, null, 2)}
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Sync History */}
+      {syncStatus.logs.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Clock className="w-4 h-4" /> Historial de sincronizaciones
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-800/50">
+                  <th className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Tipo</th>
+                  <th className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Inicio</th>
+                  <th className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Estado</th>
+                  <th className="px-3 py-2 text-right text-gray-500 dark:text-gray-400 font-medium">Registros</th>
+                  <th className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Error</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {syncStatus.logs.map(log => (
+                  <tr key={log.id}>
+                    <td className="px-3 py-2 text-gray-700 dark:text-gray-300 capitalize">{log.sync_type}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDate(log.started_at)}</td>
+                    <td className="px-3 py-2">
+                      <span className={`inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${log.status === 'success' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : log.status === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'}`}>
+                        {log.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300 font-medium">{log.records_synced}</td>
+                    <td className="px-3 py-2 text-red-600 dark:text-red-400 truncate max-w-[200px]">{log.error_message || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -613,7 +960,6 @@ function DocumentsTable({ documents, loading, pagination, currentPage, pageSize,
 }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-      {/* Page size selector */}
       <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
         <span className="text-xs text-gray-500 dark:text-gray-400">Resultados por pagina:</span>
         <select
@@ -633,12 +979,12 @@ function DocumentsTable({ documents, loading, pagination, currentPage, pageSize,
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
-              <SortableHeader label="Documento" field="DatDocumentos.Documento" current={sortField} dir={sortDir} onToggle={onToggleSort} />
+              <SortableHeader label="Documento" field="poliza" current={sortField} dir={sortDir} onToggle={onToggleSort} />
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Ramo</th>
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Aseguradora</th>
-              <SortableHeader label="Vigencia" field="DatDocumentos.FDesde" current={sortField} dir={sortDir} onToggle={onToggleSort} className="hidden sm:table-cell" />
-              <SortableHeader label="Prima Neta" field="DatDocumentos.PrimaNeta" current={sortField} dir={sortDir} onToggle={onToggleSort} className="text-right" />
+              <SortableHeader label="Vigencia" field="vigencia_desde" current={sortField} dir={sortDir} onToggle={onToggleSort} className="hidden sm:table-cell" />
+              <SortableHeader label="Prima Neta" field="prima_neta" current={sortField} dir={sortDir} onToggle={onToggleSort} className="text-right" />
               <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estatus</th>
               <th className="px-3 py-2.5 w-10"></th>
             </tr>
@@ -657,6 +1003,7 @@ function DocumentsTable({ documents, loading, pagination, currentPage, pageSize,
                 <td colSpan={8} className="px-4 py-12 text-center">
                   <FileText className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                   <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">No se encontraron documentos</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Ejecuta una sincronizacion para importar datos desde SICAS.</p>
                 </td>
               </tr>
             ) : documents.map((doc) => (
@@ -708,7 +1055,7 @@ function DocumentsTable({ documents, loading, pagination, currentPage, pageSize,
       {!loading && documents.length > 0 && (
         <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-[10px] text-gray-500 dark:text-gray-400">
-            {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, pagination.maxRecords)} de {pagination.maxRecords} documentos
+            {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, pagination.maxRecords)} de {pagination.maxRecords.toLocaleString()} documentos
             {pagination.pages > 1 && ` (pagina ${currentPage} de ${pagination.pages})`}
           </p>
           <div className="flex items-center gap-1">
