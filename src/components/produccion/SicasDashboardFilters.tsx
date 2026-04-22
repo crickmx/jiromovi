@@ -38,12 +38,11 @@ function getMonthRange(year: number, month: number): { desde: string; hasta: str
 }
 
 export function getCurrentMonthRange(): { fechaDesde: string; fechaHasta: string } {
-  const now = new Date();
-  const { desde, hasta } = getMonthRange(now.getFullYear(), now.getMonth());
+  const { desde, hasta } = getPresetRange('todo');
   return { fechaDesde: desde, fechaHasta: hasta };
 }
 
-type PresetKey = 'este_mes' | 'mes_anterior' | 'trimestre' | 'semestre' | 'anio' | 'ultimo_anio';
+type PresetKey = 'este_mes' | 'mes_anterior' | 'trimestre' | 'semestre' | 'anio' | 'ultimo_anio' | 'todo';
 
 function getPresetRange(key: PresetKey): { desde: string; hasta: string } {
   const now = new Date();
@@ -83,16 +82,20 @@ function getPresetRange(key: PresetKey): { desde: string; hasta: string } {
       const hasta = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       return { desde, hasta };
     }
+    case 'todo': {
+      return { desde: '2015-01-01', hasta: `${y}-12-31` };
+    }
   }
 }
 
 const presets: { key: PresetKey; label: string }[] = [
+  { key: 'todo', label: 'Todo' },
+  { key: 'ultimo_anio', label: 'Ultimos 12 meses' },
+  { key: 'anio', label: 'Ano' },
+  { key: 'semestre', label: 'Semestre' },
+  { key: 'trimestre', label: 'Trimestre' },
   { key: 'este_mes', label: 'Este mes' },
   { key: 'mes_anterior', label: 'Mes anterior' },
-  { key: 'trimestre', label: 'Trimestre' },
-  { key: 'semestre', label: 'Semestre' },
-  { key: 'anio', label: 'Ano' },
-  { key: 'ultimo_anio', label: 'Ultimos 12 meses' },
 ];
 
 function formatRangeLabel(desde: string, hasta: string): string {
