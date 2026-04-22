@@ -447,6 +447,8 @@ async function handleGlobalDashboard(
     const s = filters.search.replace(/'/g, "");
     apiCondParts.push(`(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`);
   }
+  if (filters.fechaDesde) apiCondParts.push(`DatDocumentos.FDesde>=${filters.fechaDesde}`);
+  if (filters.fechaHasta) apiCondParts.push(`DatDocumentos.FHasta<=${filters.fechaHasta}`);
   if (filters.ramo) apiCondParts.push(`DatDocumentos.Ramo LIKE '%${filters.ramo.replace(/'/g, "")}%'`);
   if (filters.aseguradora) apiCondParts.push(`DatDocumentos.Abreviacion LIKE '%${filters.aseguradora.replace(/'/g, "")}%'`);
 
@@ -454,6 +456,7 @@ async function handleGlobalDashboard(
   const conditionsDirect = apiCdParts.length > 0 ? apiCdParts.join(" AND ") : undefined;
 
   console.log(`[SICASProd][FlowA] global-dashboard: conditions="${conditions || "(none)"}"`);
+  console.log(`[SICASProd][FlowA] dateFiltersSentToApi: fechaDesde=${filters.fechaDesde || "(none)"} fechaHasta=${filters.fechaHasta || "(none)"}`);
 
   const { records: allRecords, totalInSicas, pagesFetched } = await fetchAllPages(client, {
     keyCode: config.report_keycode_all,
@@ -461,7 +464,7 @@ async function handleGlobalDashboard(
     conditionsDirect,
     sortFields: "DatDocumentos.FDesde DESC",
     pageSize: 500,
-    maxPages: 10,
+    maxPages: 500,
   });
 
   const docs = allRecords.map(normalizeRecord);
@@ -469,6 +472,7 @@ async function handleGlobalDashboard(
   result.meta.flow = "global";
   result.meta.vendorScope = officeVendorIds ? "office" : "all";
   result.meta.duration = Date.now() - startTime;
+  result.meta.dateFiltersSentToApi = { fechaDesde: filters.fechaDesde || null, fechaHasta: filters.fechaHasta || null };
 
   return jsonResponse(200, result);
 }
@@ -613,6 +617,8 @@ async function handleScopedDashboard(
     const s = filters.search.replace(/'/g, "");
     apiCondParts.push(`(DatDocumentos.Documento LIKE '%${s}%' OR DatDocumentos.NombreCompleto LIKE '%${s}%')`);
   }
+  if (filters.fechaDesde) apiCondParts.push(`DatDocumentos.FDesde>=${filters.fechaDesde}`);
+  if (filters.fechaHasta) apiCondParts.push(`DatDocumentos.FHasta<=${filters.fechaHasta}`);
   if (filters.ramo) apiCondParts.push(`DatDocumentos.Ramo LIKE '%${filters.ramo.replace(/'/g, "")}%'`);
   if (filters.aseguradora) apiCondParts.push(`DatDocumentos.Abreviacion LIKE '%${filters.aseguradora.replace(/'/g, "")}%'`);
 
@@ -622,6 +628,7 @@ async function handleScopedDashboard(
   console.log(`[SICASProd][FlowB] scoped-dashboard: vendorId=${identity.vendorId} vendorName="${identity.vendorName}" source=${identity.source}`);
   console.log(`[SICASProd][FlowB] conditions="${conditions}"`);
   console.log(`[SICASProd][FlowB] conditionsDirect="${conditionsDirect}"`);
+  console.log(`[SICASProd][FlowB] dateFiltersSentToApi: fechaDesde=${filters.fechaDesde || "(none)"} fechaHasta=${filters.fechaHasta || "(none)"}`);
 
   const { records: allRecords, totalInSicas, pagesFetched } = await fetchAllPages(client, {
     keyCode: config.report_keycode_all,
@@ -629,7 +636,7 @@ async function handleScopedDashboard(
     conditionsDirect,
     sortFields: "DatDocumentos.FDesde DESC",
     pageSize: 500,
-    maxPages: 50,
+    maxPages: 500,
   });
 
   let docs = allRecords.map(normalizeRecord);
@@ -653,6 +660,7 @@ async function handleScopedDashboard(
   result.meta.duration = Date.now() - startTime;
   result.meta.totalInSicas = totalInSicas;
   result.meta.totalAfterValidation = docs.length;
+  result.meta.dateFiltersSentToApi = { fechaDesde: filters.fechaDesde || null, fechaHasta: filters.fechaHasta || null };
 
   return jsonResponse(200, result);
 }
