@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, FileText, Shield, Briefcase, DollarSign, Users, Clock, XCircle, Target, Award, Building2, BarChart3, CalendarClock, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Shield, Briefcase, DollarSign, Users, Clock, XCircle, Target, Award, Building2, BarChart3, CalendarClock, Minus } from 'lucide-react';
 
 interface KPIs {
   polizasEmitidas?: number;
@@ -136,14 +136,14 @@ function KpiCard({ def, kpis, loading, onClick }: { def: KpiCardDef; kpis: KPIs 
 export default function SicasDashboardKPIs({ kpis, loading, periodo, onKpiClick }: Props) {
   return (
     <div className="space-y-4">
-      {/* Primary KPIs - larger cards */}
+      {/* Primary KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {primaryKpis.map(def => (
           <KpiCard key={def.key} def={def} kpis={kpis} loading={loading} onClick={() => onKpiClick?.(def.key)} />
         ))}
       </div>
 
-      {/* Secondary KPIs - smaller grid */}
+      {/* Secondary KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
         {secondaryKpis.map(def => (
           <KpiCard key={def.key} def={def} kpis={kpis} loading={loading} onClick={() => onKpiClick?.(def.key)} />
@@ -151,16 +151,20 @@ export default function SicasDashboardKPIs({ kpis, loading, periodo, onKpiClick 
       </div>
 
       {/* Variation cards */}
-      {!loading && kpis && (
+      {!loading && kpis && (kpis.variacionMesAnterior != null || kpis.variacionInteranual != null) && (
         <div className="flex gap-3 flex-wrap">
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center gap-3">
-            <span className="text-xs text-gray-500 dark:text-gray-400">vs mes anterior</span>
-            <VariationBadge value={kpis.variacionMesAnterior} />
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center gap-3">
-            <span className="text-xs text-gray-500 dark:text-gray-400">vs mismo mes ano anterior</span>
-            <VariationBadge value={kpis.variacionInteranual} />
-          </div>
+          {kpis.variacionMesAnterior != null && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center gap-3">
+              <span className="text-xs text-gray-500 dark:text-gray-400">vs mes anterior</span>
+              <VariationBadge value={kpis.variacionMesAnterior} />
+            </div>
+          )}
+          {kpis.variacionInteranual != null && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center gap-3">
+              <span className="text-xs text-gray-500 dark:text-gray-400">vs mismo mes ano anterior</span>
+              <VariationBadge value={kpis.variacionInteranual} />
+            </div>
+          )}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center gap-2">
             <span className="text-xs text-gray-500 dark:text-gray-400">Periodo:</span>
             <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{periodo}</span>
