@@ -37,9 +37,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    console.log('[Pólizas List] Iniciando consulta de pólizas');
+    console.log('[Polizas List] Iniciando consulta de polizas');
 
-    // Inicializar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -49,7 +48,6 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Obtener usuario autenticado desde el token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('No authorization header');
@@ -62,9 +60,8 @@ Deno.serve(async (req: Request) => {
       throw new Error('Usuario no autenticado');
     }
 
-    console.log('[Pólizas List] Usuario autenticado:', user.id);
+    console.log('[Polizas List] Usuario autenticado:', user.id);
 
-    // Obtener información del usuario y su mapeo SICAS
     const { data: usuarioData, error: usuarioError } = await supabase
       .from('usuarios')
       .select(`
@@ -80,57 +77,76 @@ Deno.serve(async (req: Request) => {
       throw new Error('Usuario no encontrado en la base de datos');
     }
 
-    console.log('[Pólizas List] Rol del usuario:', usuarioData.rol);
+    console.log('[Polizas List] Rol del usuario:', usuarioData.rol);
 
-    // Obtener mapeo SICAS del usuario (si existe)
-    const { data: mappingData } = await supabase
-      .from('sicas_user_mapping')
-      .select('*')
-      .eq('usuario_id', user.id)
-      .eq('es_mapeo_principal', true)
-      .eq('activo', true)
+    // Load the user's SICAS vendor mapping from the correct table
+    const { data: vendorMapping } = await supabase
+      .from('sicas_mapeo_vendedor_usuario')
+      .select('id_sicas_vendedor')
+      .eq('movi_user_id', user.id)
       .maybeSingle();
 
-    console.log('[Pólizas List] Mapeo SICAS:', mappingData ? 'encontrado' : 'no encontrado');
+    console.log('[Polizas List] Mapeo SICAS vendedor:', vendorMapping
+      ? `vend_id=${vendorMapping.id_sicas_vendedor}`
+      : 'no encontrado');
 
-    // Parsear request body
     const requestBody: PolizasListRequest = await req.json();
     const filters = requestBody.filters || {};
     const page = requestBody.page || 1;
     const itemsPerPage = Math.min(requestBody.items_per_page || 100, 500);
 
-    console.log('[Pólizas List] Filtros recibidos:', filters);
+    console.log('[Polizas List] Filtros recibidos:', JSON.stringify(filters));
 
-    // Construir query base con RLS
-    let query = supabase
+    // Build query – try sicas_polizas_vigentes first (populated by sync),
+    // fall back to sicas_documents
+    let tableName = 'sicas_polizas_vigentes';
+    let usePolizasVigentes = true;
+
+    // Check which table has data
+    const { count: pvCount } = await supabase
+      .from('sicas_polizas_vigentes')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: sdCount } = await supabase
       .from('sicas_documents')
+      .select('*', { count: 'exact', head: true });
+
+    if ((pvCount || 0) === 0 && (sdCount || 0) > 0) {
+      tableName = 'sicas_documents';
+      usePolizasVigentes = false;
+    }
+
+    console.log(`[Polizas List] Usando tabla: ${tableName} (pv=${pvCount}, sd=${sdCount})`);
+
+    let query = supabase
+      .from(tableName)
       .select('*', { count: 'exact' });
 
-    // Aplicar filtros según rol
-    if (usuarioData.rol === 'Administrador') {
-      console.log('[Pólizas List] Administrador: sin filtros de permisos');
-      // Administrador ve todo
-    } else if (usuarioData.rol === 'Gerente' || usuarioData.rol === 'Empleado') {
-      console.log('[Pólizas List] Gerente/Empleado: filtrar por oficina');
-      // Gerente/Empleado: solo su oficina
+    // Role-based access control with correct capitalized role names
+    const rol = usuarioData.rol;
+
+    if (rol === 'Administrador') {
+      console.log('[Polizas List] Administrador: sin filtros de permisos');
+    } else if (rol === 'Gerente' || rol === 'Empleado' || rol === 'Ejecutivo') {
+      console.log('[Polizas List] Gerente/Empleado/Ejecutivo: filtrar por oficina');
       if (usuarioData.oficina_id) {
         query = query.eq('oficina_id', usuarioData.oficina_id);
       } else {
-        console.warn('[Pólizas List] Usuario sin oficina asignada');
-        // Sin oficina = sin resultados
         query = query.eq('oficina_id', '00000000-0000-0000-0000-000000000000');
       }
-    } else if (usuarioData.rol === 'Agente') {
-      console.log('[Pólizas List] Agente: filtrar por usuario_id');
-      // Agente: solo sus pólizas
-      query = query.eq('usuario_id', user.id);
+    } else if (rol === 'Agente') {
+      console.log('[Polizas List] Agente: filtrar por vend_id del mapeo');
+      if (vendorMapping) {
+        query = query.eq('vend_id', String(vendorMapping.id_sicas_vendedor));
+      } else {
+        query = query.eq('usuario_id', user.id);
+      }
     } else {
-      console.warn('[Pólizas List] Rol desconocido, sin acceso');
-      // Rol desconocido = sin acceso
+      console.warn('[Polizas List] Rol desconocido:', rol);
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'Rol de usuario no válido para consultar pólizas',
+          error: 'Rol de usuario no valido para consultar polizas',
         }),
         {
           status: 403,
@@ -139,114 +155,128 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Aplicar filtros de búsqueda
+    // Search filter
     if (filters.searchText) {
       const search = `%${filters.searchText}%`;
-      query = query.or(`poliza.ilike.${search},cliente.ilike.${search},id_docto.ilike.${search}`);
+      if (usePolizasVigentes) {
+        query = query.or(`no_poliza.ilike.${search},contratante.ilike.${search},asegurado.ilike.${search},aseguradora.ilike.${search}`);
+      } else {
+        query = query.or(`poliza.ilike.${search},cliente.ilike.${search},id_docto.ilike.${search},compania.ilike.${search}`);
+      }
     }
 
-    // Filtro por estatus
+    // Status filter
     if (filters.estatus === 'vigente') {
-      // Solo vigentes: vigencia_hasta >= hoy
       const today = new Date().toISOString().split('T')[0];
       query = query.gte('vigencia_hasta', today);
     } else if (filters.estatus === 'no_vigente') {
-      // Solo no vigentes: vigencia_hasta < hoy
       const today = new Date().toISOString().split('T')[0];
       query = query.lt('vigencia_hasta', today);
     }
 
-    // Filtro por fechas
+    // Date range filter
     if (filters.fecha_desde && filters.fecha_hasta) {
-      const fieldMap = {
+      const fieldMap: Record<string, string> = {
         vigencia: 'vigencia_desde',
-        captura: 'fecha_captura',
-        emision: 'fecha_emision',
+        captura: usePolizasVigentes ? 'created_at' : 'fecha_captura',
+        emision: usePolizasVigentes ? 'vigencia_desde' : 'fecha_emision',
       };
       const field = fieldMap[filters.tipo_fecha || 'vigencia'] || 'vigencia_desde';
-
       query = query
         .gte(field, filters.fecha_desde)
         .lte(field, filters.fecha_hasta);
     }
 
-    // Filtro por oficina (solo admin puede filtrar por oficina diferente)
-    if (filters.oficina_id && usuarioData.rol === 'admin') {
+    // Office filter (admin only)
+    if (filters.oficina_id && rol === 'Administrador') {
       query = query.eq('oficina_id', filters.oficina_id);
     }
 
-    // Filtro por vendedor
+    // Vendor filter by MOVI user ID – translate to SICAS vend_id
+    if (filters.vendedor_id) {
+      const { data: targetMapping } = await supabase
+        .from('sicas_mapeo_vendedor_usuario')
+        .select('id_sicas_vendedor')
+        .eq('movi_user_id', filters.vendedor_id)
+        .maybeSingle();
+
+      if (targetMapping) {
+        query = query.eq('vend_id', String(targetMapping.id_sicas_vendedor));
+      } else {
+        query = query.eq('usuario_id', filters.vendedor_id);
+      }
+    }
+
+    // Vendor name filter
     if (filters.vendedor_nombre) {
       query = query.ilike('vend_nombre', `%${filters.vendedor_nombre}%`);
     }
 
-    // Filtro por aseguradora
+    // Insurer filter
     if (filters.aseguradora) {
-      query = query.ilike('compania', `%${filters.aseguradora}%`);
+      const col = usePolizasVigentes ? 'aseguradora' : 'compania';
+      query = query.ilike(col, `%${filters.aseguradora}%`);
     }
 
-    // Filtro por ramo
+    // Ramo filter
     if (filters.ramo) {
       query = query.ilike('ramo', `%${filters.ramo}%`);
     }
 
-    // Filtro por subramo
+    // Subramo filter
     if (filters.subramo) {
       query = query.ilike('subramo', `%${filters.subramo}%`);
     }
 
-    // Ordenamiento
-    const sortBy = filters.sort_by || 'synced_at';
+    // Sorting
+    const sortBy = filters.sort_by || (usePolizasVigentes ? 'synced_at' : 'synced_at');
     const sortOrder = filters.sort_order || 'desc';
     query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
-    // Paginación
+    // Pagination
     const offset = (page - 1) * itemsPerPage;
     query = query.range(offset, offset + itemsPerPage - 1);
 
-    // Ejecutar query
     const { data: polizas, error: polizasError, count } = await query;
 
     if (polizasError) {
-      console.error('[Pólizas List] Error al consultar:', polizasError);
+      console.error('[Polizas List] Error al consultar:', polizasError);
       throw polizasError;
     }
 
-    console.log('[Pólizas List] Resultados encontrados:', polizas?.length || 0);
-    console.log('[Pólizas List] Total en DB:', count || 0);
+    console.log('[Polizas List] Resultados:', polizas?.length || 0, 'de', count || 0);
 
-    // Calcular paginación
     const totalRecords = count || 0;
     const totalPages = Math.ceil(totalRecords / itemsPerPage);
 
-    // Mapear pólizas al formato esperado
+    // Normalize records to a consistent format regardless of source table
     const polizasMapeadas = (polizas || []).map((p: any) => ({
       id: p.id,
-      id_docto: p.id_docto,
-      poliza: p.poliza || p.documento || 'N/A',
-      documento: p.poliza || p.documento || 'N/A',
-      compania: p.compania || 'N/A',
+      id_docto: p.id_docto || p.id_documento || '',
+      poliza: p.poliza || p.no_poliza || p.documento || 'N/A',
+      documento: p.poliza || p.no_poliza || p.documento || 'N/A',
+      compania: p.compania || p.aseguradora || 'N/A',
       ramo: p.ramo || 'N/A',
       subramo: p.subramo || '',
-      cliente: p.cliente || 'N/A',
+      cliente: p.cliente || p.contratante || 'N/A',
+      asegurado: p.asegurado || p.cliente || p.contratante || '',
       vigencia_desde: p.vigencia_desde,
       vigencia_hasta: p.vigencia_hasta,
-      fecha_emision: p.fecha_emision,
-      fecha_captura: p.fecha_captura,
+      fecha_emision: p.fecha_emision || p.vigencia_desde,
+      fecha_captura: p.fecha_captura || p.created_at,
       prima_neta: p.prima_neta || 0,
-      prima_total: p.importe || p.prima_total || 0,
-      importe: p.importe || 0,
-      estatus: p.estatus || 'vigente',
+      prima_total: p.prima_total || p.importe || 0,
+      importe: p.importe || p.prima_total || 0,
+      estatus: p.estatus || (p.vigencia_hasta && new Date(p.vigencia_hasta) >= new Date() ? 'vigente' : 'no_vigente'),
       es_vigente: p.vigencia_hasta ? new Date(p.vigencia_hasta) >= new Date() : false,
       vend_id: p.vend_id,
       vend_nombre: p.vend_nombre || 'N/A',
       desp_nombre: p.desp_nombre,
       oficina_id: p.oficina_id,
       usuario_id: p.usuario_id,
-      synced_at: p.synced_at,
+      synced_at: p.synced_at || p.updated_at,
     }));
 
-    // Respuesta exitosa
     return new Response(
       JSON.stringify({
         success: true,
@@ -260,10 +290,9 @@ Deno.serve(async (req: Request) => {
           has_prev_page: page > 1,
         },
         metadata: {
-          source: 'database',
-          keycode_used: 'N/A (from cache)',
+          source: tableName,
           filters_applied: Object.keys(filters),
-          cached_at: polizas && polizas.length > 0 ? polizas[0].synced_at : null,
+          cached_at: polizas && polizas.length > 0 ? (polizas[0].synced_at || polizas[0].updated_at) : null,
         },
       }),
       {
@@ -273,7 +302,7 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error('[Pólizas List] Error:', error);
+    console.error('[Polizas List] Error:', error);
 
     return new Response(
       JSON.stringify({

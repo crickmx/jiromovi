@@ -55,9 +55,9 @@ export default function MisPolizas() {
     sort_order: 'asc',
   });
 
-  const puedeAdministrar = usuario?.rol === 'admin';
-  const esGerente = usuario?.rol === 'gerente';
-  const esAgente = usuario?.rol === 'agente';
+  const puedeAdministrar = usuario?.rol === 'Administrador';
+  const esGerente = usuario?.rol === 'Gerente';
+  const esAgente = usuario?.rol === 'Agente';
 
   useEffect(() => {
     if (usuario) {
