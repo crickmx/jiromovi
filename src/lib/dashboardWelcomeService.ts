@@ -3,46 +3,87 @@ import { supabase } from './supabase';
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface SmartAnalysis {
-  title: string;
-  summary: string;
-  insights: Array<{ icon: string; label: string; value: string; detail?: string }>;
-  alerts: Array<{ level: 'info' | 'warning' | 'critical'; message: string }>;
-  opportunities: Array<{ description: string; impact: string }>;
-  recommendations: Array<{ action: string; reason: string }>;
+  message: string;
   tone: 'positive' | 'neutral' | 'attention';
-  priority: 'low' | 'medium' | 'high';
 }
 
 export interface SmartAnalysisResult {
   analysis: SmartAnalysis;
-  source: 'chatgpt' | 'fallback' | 'no_sicas' | 'cache';
+  source: 'chatgpt' | 'fallback' | 'cache';
   periodo: string;
-  hasSicasMapping: boolean;
   cachedAt?: string;
 }
 
-interface UserContext {
-  nombre: string;
-  rol: string;
-  oficina?: string;
-  tareas_pendientes?: number;
-  tareas_vencidas?: number;
-  cotizaciones_activas?: number;
-  comunicados_sin_leer?: number;
-  tramites_pendientes_atencion?: number;
-  nivel_actual?: number;
-  dias_racha?: number;
-  posicion_ranking?: number;
+interface ModuleSnapshot {
+  usuario: { nombre: string; rol: string; oficina?: string };
+  sicas: SicasSnapshot | null;
+  tickets: TicketsSnapshot | null;
+  comisiones: ComisionesSnapshot | null;
+  crm: CRMSnapshot | null;
+  webLeads: WebLeadsSnapshot | null;
+  gamificacion: GamificacionSnapshot | null;
+  comunicados: ComunicadosSnapshot | null;
 }
 
-interface SicasContext {
-  usuario: { nombre: string; rol: string; oficina: string; id_sicas: string };
-  kpis: Record<string, number>;
-  top_clientes: Array<{ name: string; count: number; prima: number }>;
-  top_aseguradoras: Array<{ name: string; count: number; prima: number }>;
-  top_ramos: Array<{ name: string; count: number; prima: number }>;
-  top_subramos: Array<{ name: string; count: number; prima: number }>;
-  observaciones: Record<string, any>;
+interface SicasSnapshot {
+  polizas_vigentes: number;
+  fianzas_vigentes: number;
+  prima_vigente: number;
+  polizas_emitidas: number;
+  mes_emisiones: number;
+  mes_prima_total: number;
+  renovaciones_7dias: number;
+  renovaciones_15dias: number;
+  renovaciones_30dias: number;
+  prima_renovar: number;
+  cancelaciones: number;
+  variacion_mes_anterior: number;
+  clientes_total: number;
+  top_ramo: string;
+  top_aseguradora: string;
+  top_cliente: string;
+}
+
+interface TicketsSnapshot {
+  abiertos: number;
+  en_proceso: number;
+  cerrados_mes: number;
+  total_mes: number;
+  vencidos: number;
+}
+
+interface ComisionesSnapshot {
+  total_periodo_actual: number;
+  total_periodo_anterior: number;
+  batches_cerrados: number;
+  variacion_porcentaje: number;
+}
+
+interface CRMSnapshot {
+  contactos_total: number;
+  prospectos: number;
+  clientes: number;
+  cotizaciones_activas: number;
+  tareas_pendientes: number;
+  tareas_vencidas: number;
+  contactos_recientes_30d: number;
+}
+
+interface WebLeadsSnapshot {
+  leads_total: number;
+  leads_mes: number;
+  leads_sin_seguimiento: number;
+  tiene_pagina_web: boolean;
+}
+
+interface GamificacionSnapshot {
+  nivel_actual: number;
+  dias_racha: number;
+  posicion_ranking: number | null;
+}
+
+interface ComunicadosSnapshot {
+  sin_leer: number;
 }
 
 // ─── Main Entry Point ───────────────────────────────────────────────────────
@@ -54,156 +95,77 @@ export async function getSmartAnalysis(
   const now = new Date();
   const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  // 1. Check cache (unless forcing regeneration)
   if (!forceRegenerate) {
     const cached = await getCachedAnalysis(userId, periodo);
     if (cached) return cached;
   }
 
-  // 2. Get user basic info
-  const userContext = await getUserContext(userId);
+  const snapshot = await buildModuleSnapshot(userId);
 
-  // 3. Try to get SICAS production data
-  const sicasResult = await getSicasProductionData(userId, userContext, periodo);
+  const result = await callAnalysisEdgeFunction(snapshot, periodo, forceRegenerate);
 
-  // 4. Build context hash to detect data changes
-  const contextHash = buildContextHash(sicasResult.sicasData, periodo);
-
-  // 5. Call edge function for analysis
-  const result = await callAnalysisEdgeFunction(
-    sicasResult.sicasData,
-    userContext,
-    periodo,
-    forceRegenerate
-  );
-
-  // 6. Cache the result
-  await cacheAnalysis(userId, result.analysis, contextHash, periodo, sicasResult.hasSicasMapping, result.source);
+  await cacheAnalysis(userId, result.analysis, periodo, result.source);
 
   return {
     analysis: result.analysis,
     source: result.source,
     periodo,
-    hasSicasMapping: sicasResult.hasSicasMapping,
   };
 }
 
-// ─── User Context ───────────────────────────────────────────────────────────
+// ─── Build Module Snapshot ──────────────────────────────────────────────────
 
-async function getUserContext(userId: string): Promise<UserContext> {
+async function buildModuleSnapshot(userId: string): Promise<ModuleSnapshot> {
   const { data: usuario } = await supabase
     .from('usuarios')
-    .select('nombre_completo, rol, oficina_id, oficinas(nombre)')
+    .select('nombre_completo, nombre, rol, oficina_id, web_slug, id_sicas, oficinas(nombre)')
     .eq('id', userId)
     .maybeSingle();
 
-  const context: UserContext = {
-    nombre: usuario?.nombre_completo || 'Usuario',
-    rol: usuario?.rol || 'Agente',
-    oficina: usuario?.oficinas?.nombre,
+  const nombreCompleto = usuario?.nombre_completo || usuario?.nombre || 'Usuario';
+
+  const snapshot: ModuleSnapshot = {
+    usuario: {
+      nombre: nombreCompleto,
+      rol: usuario?.rol || 'Agente',
+      oficina: (usuario?.oficinas as any)?.nombre,
+    },
+    sicas: null,
+    tickets: null,
+    comisiones: null,
+    crm: null,
+    webLeads: null,
+    gamificacion: null,
+    comunicados: null,
   };
 
-  const [tareasResult, cotizacionesResult, comunicadosResult, tramitesResult, gamificacionResult] =
-    await Promise.allSettled([
-      getTareasCount(userId),
-      getCotizacionesCount(userId),
-      getComunicadosSinLeer(userId),
-      getTramitesPendientes(userId),
-      getGamificacionBasic(userId),
-    ]);
+  const results = await Promise.allSettled([
+    usuario?.id_sicas ? fetchSicasSnapshot(userId) : Promise.resolve(null),
+    fetchTicketsSnapshot(userId),
+    fetchComisionesSnapshot(userId),
+    fetchCRMSnapshot(userId),
+    fetchWebLeadsSnapshot(userId, !!usuario?.web_slug),
+    fetchGamificacionSnapshot(userId),
+    fetchComunicadosSnapshot(userId, usuario?.oficina_id),
+  ]);
 
-  if (tareasResult.status === 'fulfilled' && tareasResult.value) Object.assign(context, tareasResult.value);
-  if (cotizacionesResult.status === 'fulfilled' && cotizacionesResult.value) Object.assign(context, cotizacionesResult.value);
-  if (comunicadosResult.status === 'fulfilled' && comunicadosResult.value) Object.assign(context, comunicadosResult.value);
-  if (tramitesResult.status === 'fulfilled' && tramitesResult.value) Object.assign(context, tramitesResult.value);
-  if (gamificacionResult.status === 'fulfilled' && gamificacionResult.value) Object.assign(context, gamificacionResult.value);
+  if (results[0].status === 'fulfilled' && results[0].value) snapshot.sicas = results[0].value;
+  if (results[1].status === 'fulfilled' && results[1].value) snapshot.tickets = results[1].value;
+  if (results[2].status === 'fulfilled' && results[2].value) snapshot.comisiones = results[2].value;
+  if (results[3].status === 'fulfilled' && results[3].value) snapshot.crm = results[3].value;
+  if (results[4].status === 'fulfilled' && results[4].value) snapshot.webLeads = results[4].value;
+  if (results[5].status === 'fulfilled' && results[5].value) snapshot.gamificacion = results[5].value;
+  if (results[6].status === 'fulfilled' && results[6].value) snapshot.comunicados = results[6].value;
 
-  return context;
+  return snapshot;
 }
 
-async function getTareasCount(userId: string) {
+// ─── SICAS ──────────────────────────────────────────────────────────────────
+
+async function fetchSicasSnapshot(userId: string): Promise<SicasSnapshot | null> {
   try {
-    const now = new Date().toISOString();
-    const [{ count: pendientes }, { count: vencidas }] = await Promise.all([
-      supabase.from('crm_tareas').select('*', { count: 'exact', head: true }).eq('creado_por', userId).eq('estatus', 'pendiente'),
-      supabase.from('crm_tareas').select('*', { count: 'exact', head: true }).eq('creado_por', userId).eq('estatus', 'pendiente').lt('fecha_vencimiento', now),
-    ]);
-    return { tareas_pendientes: pendientes || 0, tareas_vencidas: vencidas || 0 };
-  } catch { return null; }
-}
-
-async function getCotizacionesCount(userId: string) {
-  try {
-    const { count } = await supabase.from('crm_cotizaciones').select('*', { count: 'exact', head: true }).eq('creado_por', userId).eq('estatus_cotizacion', 'activa');
-    return { cotizaciones_activas: count || 0 };
-  } catch { return null; }
-}
-
-async function getComunicadosSinLeer(userId: string) {
-  try {
-    const { data: userData } = await supabase.from('usuarios').select('oficina_id').eq('id', userId).maybeSingle();
-    if (!userData) return null;
-
-    const { data: comunicados } = await supabase
-      .from('comunicados')
-      .select('id, comunicados_visibilidad(usuario_id, area_id, oficina_id, para_todos)')
-      .eq('publicado', true);
-
-    if (!comunicados) return null;
-
-    const relevantes = comunicados.filter((c: any) => {
-      const vis = c.comunicados_visibilidad;
-      if (!vis || vis.length === 0) return false;
-      return vis.some((v: any) => v.para_todos || v.usuario_id === userId || v.oficina_id === userData.oficina_id);
-    });
-
-    const { data: lecturas } = await supabase.from('comunicados_lecturas').select('comunicado_id').eq('usuario_id', userId);
-    const leidos = new Set(lecturas?.map(l => l.comunicado_id) || []);
-    const sinLeer = relevantes.filter(c => !leidos.has(c.id));
-
-    return { comunicados_sin_leer: sinLeer.length };
-  } catch { return null; }
-}
-
-async function getTramitesPendientes(userId: string) {
-  try {
-    const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('agente_id', userId).in('estatus', ['abierto', 'en_proceso']);
-    return { tramites_pendientes_atencion: count || 0 };
-  } catch { return null; }
-}
-
-async function getGamificacionBasic(userId: string) {
-  try {
-    const { data: profile } = await supabase
-      .from('agent_gamification_profile')
-      .select('nivel_actual, dias_racha')
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (!profile) return null;
-    return { nivel_actual: profile.nivel_actual, dias_racha: profile.dias_racha || 0 };
-  } catch { return null; }
-}
-
-// ─── SICAS Production Data ──────────────────────────────────────────────────
-
-async function getSicasProductionData(
-  userId: string,
-  userContext: UserContext,
-  periodo: string
-): Promise<{ sicasData: SicasContext | null; hasSicasMapping: boolean }> {
-  try {
-    const { data: usuario } = await supabase
-      .from('usuarios')
-      .select('id_sicas, nombre_completo, rol, oficina_id, oficinas(nombre)')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (!usuario?.id_sicas) {
-      return { sicasData: null, hasSicasMapping: false };
-    }
-
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return { sicasData: null, hasSicasMapping: true };
+    if (!session) return null;
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const response = await fetch(`${supabaseUrl}/functions/v1/sicas-production-query`, {
@@ -215,72 +177,242 @@ async function getSicasProductionData(
       body: JSON.stringify({ action: 'dashboard' }),
     });
 
-    if (!response.ok) {
-      console.error('SICAS production query failed:', response.status);
-      return { sicasData: null, hasSicasMapping: true };
-    }
-
+    if (!response.ok) return null;
     const data = await response.json();
-    if (!data.ok || !data.kpis) {
-      return { sicasData: null, hasSicasMapping: true };
-    }
+    if (!data.ok || !data.kpis) return null;
 
-    const sicasData: SicasContext = {
-      usuario: {
-        nombre: usuario.nombre_completo || userContext.nombre,
-        rol: usuario.rol || userContext.rol,
-        oficina: usuario.oficinas?.nombre || userContext.oficina || '',
-        id_sicas: usuario.id_sicas,
-      },
-      kpis: {
-        polizas_vigentes: data.kpis.polizasVigentes || 0,
-        fianzas_vigentes: data.kpis.fianzasVigentes || 0,
-        prima_vigente: data.kpis.primaVigente || 0,
-        polizas_emitidas: data.kpis.polizasEmitidas || 0,
-        fianzas_emitidas: data.kpis.fianzasEmitidas || 0,
-        prima_neta_emitida: data.kpis.primaNetaEmitida || 0,
-        prima_total_emitida: data.kpis.primaTotalEmitida || 0,
-        mes_prima_neta: data.kpis.mesPrimaNeta || 0,
-        mes_prima_total: data.kpis.mesPrimaTotal || 0,
-        mes_emisiones: data.kpis.mesEmisiones || 0,
-        clientes_total: data.kpis.clientesTotal || 0,
-        clientes_mes: data.kpis.clientesMes || 0,
-        renovaciones_7dias: data.kpis.renovaciones7dias || 0,
-        renovaciones_15dias: data.kpis.renovaciones15dias || 0,
-        renovaciones_30dias: data.kpis.renovaciones30dias || 0,
-        prima_renovar: data.kpis.primaRenovar || 0,
-        cancelaciones: data.kpis.cancelaciones || 0,
-        ticket_promedio: data.kpis.ticketPromedio || 0,
-        variacion_mes_anterior: data.kpis.variacionMesAnterior || 0,
-        variacion_interanual: data.kpis.variacionInteranual || 0,
-      },
-      top_clientes: (data.topLists?.clientes || []).slice(0, 5),
-      top_aseguradoras: (data.topLists?.aseguradoras || []).slice(0, 5),
-      top_ramos: (data.topLists?.ramos || []).slice(0, 5),
-      top_subramos: (data.topLists?.subramos || []).slice(0, 5),
-      observaciones: {
-        periodo_analizado: data.periodo || periodo,
-        total_documentos: data.recordsAnalyzed || 0,
-        tiene_fianzas: (data.kpis.fianzasEmitidas || 0) > 0,
-        tiene_renovaciones_urgentes: (data.kpis.renovaciones7dias || 0) > 0,
-      },
+    const k = data.kpis;
+    return {
+      polizas_vigentes: k.polizasVigentes || 0,
+      fianzas_vigentes: k.fianzasVigentes || 0,
+      prima_vigente: k.primaVigente || 0,
+      polizas_emitidas: k.polizasEmitidas || 0,
+      mes_emisiones: k.mesEmisiones || 0,
+      mes_prima_total: k.mesPrimaTotal || 0,
+      renovaciones_7dias: k.renovaciones7dias || 0,
+      renovaciones_15dias: k.renovaciones15dias || 0,
+      renovaciones_30dias: k.renovaciones30dias || 0,
+      prima_renovar: k.primaRenovar || 0,
+      cancelaciones: k.cancelaciones || 0,
+      variacion_mes_anterior: k.variacionMesAnterior || 0,
+      clientes_total: k.clientesTotal || 0,
+      top_ramo: data.topLists?.ramos?.[0]?.name || '',
+      top_aseguradora: data.topLists?.aseguradoras?.[0]?.name || '',
+      top_cliente: data.topLists?.clientes?.[0]?.name || '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Tickets / Tramites ─────────────────────────────────────────────────────
+
+async function fetchTicketsSnapshot(userId: string): Promise<TicketsSnapshot | null> {
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const [abiertosR, enProcesoR, cerradosMesR, totalMesR, vencidosR] = await Promise.all([
+      supabase.from('tickets').select('*', { count: 'exact', head: true })
+        .or(`agente_usuario_id.eq.${userId},attending_user_id.eq.${userId},creado_por.eq.${userId}`)
+        .eq('cerrado', false)
+        .in('estatus', ['Abierto', 'abierto']),
+      supabase.from('tickets').select('*', { count: 'exact', head: true })
+        .or(`agente_usuario_id.eq.${userId},attending_user_id.eq.${userId},creado_por.eq.${userId}`)
+        .eq('cerrado', false)
+        .in('estatus', ['En Proceso', 'en_proceso', 'En proceso']),
+      supabase.from('tickets').select('*', { count: 'exact', head: true })
+        .or(`agente_usuario_id.eq.${userId},attending_user_id.eq.${userId},creado_por.eq.${userId}`)
+        .eq('cerrado', true)
+        .gte('fecha_cierre', monthStart),
+      supabase.from('tickets').select('*', { count: 'exact', head: true })
+        .or(`agente_usuario_id.eq.${userId},attending_user_id.eq.${userId},creado_por.eq.${userId}`)
+        .gte('created_at', monthStart),
+      supabase.from('tickets').select('*', { count: 'exact', head: true })
+        .or(`agente_usuario_id.eq.${userId},attending_user_id.eq.${userId},creado_por.eq.${userId}`)
+        .eq('cerrado', false)
+        .lt('updated_at', new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+    ]);
+
+    const snap: TicketsSnapshot = {
+      abiertos: abiertosR.count || 0,
+      en_proceso: enProcesoR.count || 0,
+      cerrados_mes: cerradosMesR.count || 0,
+      total_mes: totalMesR.count || 0,
+      vencidos: vencidosR.count || 0,
     };
 
-    return { sicasData, hasSicasMapping: true };
-  } catch (error) {
-    console.error('Error fetching SICAS data:', error);
-    return { sicasData: null, hasSicasMapping: false };
+    if (snap.abiertos === 0 && snap.en_proceso === 0 && snap.cerrados_mes === 0 && snap.total_mes === 0) return null;
+    return snap;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Comisiones ─────────────────────────────────────────────────────────────
+
+async function fetchComisionesSnapshot(userId: string): Promise<ComisionesSnapshot | null> {
+  try {
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const prevMonth = now.getMonth() === 0
+      ? `${now.getFullYear() - 1}-12`
+      : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, '0')}`;
+
+    const [currentR, prevR, batchesR] = await Promise.all([
+      supabase.from('commission_details')
+        .select('commission_neta')
+        .eq('usuario_id', userId)
+        .gte('created_at', `${thisMonth}-01`),
+      supabase.from('commission_details')
+        .select('commission_neta')
+        .eq('usuario_id', userId)
+        .gte('created_at', `${prevMonth}-01`)
+        .lt('created_at', `${thisMonth}-01`),
+      supabase.from('commission_batches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'closed')
+        .gte('created_at', `${thisMonth}-01`),
+    ]);
+
+    const totalActual = (currentR.data || []).reduce((s, r) => s + (r.commission_neta || 0), 0);
+    const totalAnterior = (prevR.data || []).reduce((s, r) => s + (r.commission_neta || 0), 0);
+    const variacion = totalAnterior > 0 ? ((totalActual - totalAnterior) / totalAnterior) * 100 : (totalActual > 0 ? 100 : 0);
+
+    if (totalActual === 0 && totalAnterior === 0) return null;
+
+    return {
+      total_periodo_actual: Math.round(totalActual * 100) / 100,
+      total_periodo_anterior: Math.round(totalAnterior * 100) / 100,
+      batches_cerrados: batchesR.count || 0,
+      variacion_porcentaje: Math.round(variacion * 10) / 10,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── CRM ────────────────────────────────────────────────────────────────────
+
+async function fetchCRMSnapshot(userId: string): Promise<CRMSnapshot | null> {
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [contactosR, prospectosR, clientesR, cotizacionesR, tareasPendR, tareasVencR, recientesR] = await Promise.all([
+      supabase.from('crm_contactos').select('*', { count: 'exact', head: true }).eq('creado_por', userId),
+      supabase.from('crm_contactos').select('*', { count: 'exact', head: true }).eq('creado_por', userId).eq('estatus', 'Prospecto'),
+      supabase.from('crm_contactos').select('*', { count: 'exact', head: true }).eq('creado_por', userId).eq('estatus', 'Cliente'),
+      supabase.from('crm_cotizaciones').select('*', { count: 'exact', head: true }).eq('creado_por', userId).in('estatus_cotizacion', ['activa', 'Nueva', 'Pendiente']),
+      supabase.from('crm_tareas').select('*', { count: 'exact', head: true }).eq('creado_por', userId).in('estatus', ['Pendiente', 'pendiente']).eq('completada', false),
+      supabase.from('crm_tareas').select('*', { count: 'exact', head: true }).eq('creado_por', userId).eq('completada', false).lt('fecha_vencimiento', now.toISOString()),
+      supabase.from('crm_contactos').select('*', { count: 'exact', head: true }).eq('creado_por', userId).gte('fecha_creacion', thirtyDaysAgo),
+    ]);
+
+    const total = contactosR.count || 0;
+    if (total === 0 && (cotizacionesR.count || 0) === 0) return null;
+
+    return {
+      contactos_total: total,
+      prospectos: prospectosR.count || 0,
+      clientes: clientesR.count || 0,
+      cotizaciones_activas: cotizacionesR.count || 0,
+      tareas_pendientes: tareasPendR.count || 0,
+      tareas_vencidas: tareasVencR.count || 0,
+      contactos_recientes_30d: recientesR.count || 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Web Leads ──────────────────────────────────────────────────────────────
+
+async function fetchWebLeadsSnapshot(userId: string, hasWebPage: boolean): Promise<WebLeadsSnapshot | null> {
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const [totalR, mesR, sinSeguimientoR] = await Promise.all([
+      supabase.from('crm_contactos').select('*', { count: 'exact', head: true })
+        .eq('creado_por', userId).eq('fuente_origen', 'Mi Página Web'),
+      supabase.from('crm_contactos').select('*', { count: 'exact', head: true })
+        .eq('creado_por', userId).eq('fuente_origen', 'Mi Página Web').gte('fecha_creacion', monthStart),
+      supabase.from('crm_contactos').select('*', { count: 'exact', head: true })
+        .eq('creado_por', userId).eq('fuente_origen', 'Mi Página Web').eq('estatus', 'Prospecto'),
+    ]);
+
+    const total = totalR.count || 0;
+    if (total === 0 && !hasWebPage) return null;
+
+    return {
+      leads_total: total,
+      leads_mes: mesR.count || 0,
+      leads_sin_seguimiento: sinSeguimientoR.count || 0,
+      tiene_pagina_web: hasWebPage,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Gamificacion ───────────────────────────────────────────────────────────
+
+async function fetchGamificacionSnapshot(userId: string): Promise<GamificacionSnapshot | null> {
+  try {
+    const { data: profile } = await supabase
+      .from('agent_gamification_profile')
+      .select('nivel_actual, dias_racha')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!profile) return null;
+
+    return {
+      nivel_actual: profile.nivel_actual || 0,
+      dias_racha: profile.dias_racha || 0,
+      posicion_ranking: null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Comunicados ────────────────────────────────────────────────────────────
+
+async function fetchComunicadosSnapshot(userId: string, oficinaId?: string | null): Promise<ComunicadosSnapshot | null> {
+  try {
+    const { data: comunicados } = await supabase
+      .from('comunicados')
+      .select('id, comunicados_visibilidad(usuario_id, area_id, oficina_id, para_todos)')
+      .eq('publicado', true);
+
+    if (!comunicados || comunicados.length === 0) return null;
+
+    const relevantes = comunicados.filter((c: any) => {
+      const vis = c.comunicados_visibilidad;
+      if (!vis || vis.length === 0) return false;
+      return vis.some((v: any) => v.para_todos || v.usuario_id === userId || (oficinaId && v.oficina_id === oficinaId));
+    });
+
+    const { data: lecturas } = await supabase.from('comunicados_lecturas').select('comunicado_id').eq('usuario_id', userId);
+    const leidos = new Set(lecturas?.map(l => l.comunicado_id) || []);
+    const sinLeer = relevantes.filter(c => !leidos.has(c.id)).length;
+
+    if (sinLeer === 0) return null;
+    return { sin_leer: sinLeer };
+  } catch {
+    return null;
   }
 }
 
 // ─── Edge Function Call ─────────────────────────────────────────────────────
 
 async function callAnalysisEdgeFunction(
-  sicasData: SicasContext | null,
-  userContext: UserContext,
+  snapshot: ModuleSnapshot,
   periodo: string,
   forceRegenerate: boolean
-): Promise<{ analysis: SmartAnalysis; source: 'chatgpt' | 'fallback' | 'no_sicas' }> {
+): Promise<{ analysis: SmartAnalysis; source: 'chatgpt' | 'fallback' }> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('No session');
@@ -292,7 +424,7 @@ async function callAnalysisEdgeFunction(
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ sicasData, userContext, periodo, forceRegenerate }),
+      body: JSON.stringify({ snapshot, periodo, forceRegenerate }),
     });
 
     if (!response.ok) throw new Error(`Edge function error: ${response.status}`);
@@ -303,7 +435,7 @@ async function callAnalysisEdgeFunction(
     return { analysis: data.analysis, source: data.source || 'chatgpt' };
   } catch (error) {
     console.error('Edge function call failed, using client fallback:', error);
-    return { analysis: buildClientFallback(sicasData, userContext, periodo), source: sicasData ? 'fallback' : 'no_sicas' };
+    return { analysis: buildClientFallback(snapshot, periodo), source: 'fallback' };
   }
 }
 
@@ -318,18 +450,19 @@ async function getCachedAnalysis(userId: string, periodo: string): Promise<Smart
       .maybeSingle();
 
     if (!data) return null;
-
     if (data.periodo !== periodo) return null;
 
     const cacheAge = Date.now() - new Date(data.updated_at).getTime();
-    const maxAge = 4 * 60 * 60 * 1000; // 4 hours
+    const maxAge = 4 * 60 * 60 * 1000;
     if (cacheAge > maxAge) return null;
 
+    const cached = data.analysis_json as any;
+    if (!cached?.message) return null;
+
     return {
-      analysis: data.analysis_json as SmartAnalysis,
+      analysis: { message: cached.message, tone: cached.tone || 'neutral' },
       source: 'cache',
       periodo: data.periodo,
-      hasSicasMapping: data.has_sicas_mapping,
       cachedAt: data.updated_at,
     };
   } catch {
@@ -340,18 +473,16 @@ async function getCachedAnalysis(userId: string, periodo: string): Promise<Smart
 async function cacheAnalysis(
   userId: string,
   analysis: SmartAnalysis,
-  contextHash: string,
   periodo: string,
-  hasSicasMapping: boolean,
   source: string
 ): Promise<void> {
   try {
     await supabase.from('dashboard_smart_analysis').upsert({
       user_id: userId,
       analysis_json: analysis as any,
-      sicas_context_hash: contextHash,
+      sicas_context_hash: `${periodo}_${Date.now()}`,
       periodo,
-      has_sicas_mapping: hasSicasMapping,
+      has_sicas_mapping: true,
       source,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
@@ -360,76 +491,72 @@ async function cacheAnalysis(
   }
 }
 
-function buildContextHash(sicasData: SicasContext | null, periodo: string): string {
-  if (!sicasData) return `no_sicas_${periodo}`;
-  const k = sicasData.kpis;
-  return `${periodo}_${k.polizas_vigentes}_${k.mes_emisiones}_${k.renovaciones_30dias}_${k.prima_total_emitida}`;
-}
-
 // ─── Client-Side Fallback ───────────────────────────────────────────────────
 
-function buildClientFallback(sicasData: SicasContext | null, userContext: UserContext, periodo: string): SmartAnalysis {
-  const nombre = userContext.nombre.split(' ')[0];
+function buildClientFallback(snapshot: ModuleSnapshot, periodo: string): SmartAnalysis {
+  const nombre = snapshot.usuario.nombre.split(' ')[0];
+  const parts: string[] = [];
+  let tone: SmartAnalysis['tone'] = 'neutral';
 
-  if (!sicasData) {
+  const s = snapshot.sicas;
+  const t = snapshot.tickets;
+  const c = snapshot.comisiones;
+  const crm = snapshot.crm;
+  const web = snapshot.webLeads;
+
+  if (s) {
+    if (s.mes_prima_total > 0) {
+      parts.push(`${nombre}, este mes llevas $${fmt(s.mes_prima_total)} en prima emitida con ${s.mes_emisiones} emisiones`);
+      tone = 'positive';
+    } else if (s.polizas_vigentes > 0) {
+      parts.push(`${nombre}, tienes ${s.polizas_vigentes} polizas vigentes en tu cartera`);
+    }
+    if (s.renovaciones_7dias > 0) {
+      parts.push(`Tienes ${s.renovaciones_7dias} renovacion${s.renovaciones_7dias > 1 ? 'es' : ''} proxima${s.renovaciones_7dias > 1 ? 's' : ''} en los siguientes 7 dias que conviene gestionar cuanto antes`);
+      tone = 'attention';
+    } else if (s.renovaciones_30dias > 0) {
+      parts.push(`Hay ${s.renovaciones_30dias} renovacion${s.renovaciones_30dias > 1 ? 'es' : ''} en los proximos 30 dias por un total de $${fmt(s.prima_renovar)}`);
+    }
+  }
+
+  if (t && (t.abiertos + t.en_proceso) > 0) {
+    parts.push(`En tramites, tienes ${t.abiertos + t.en_proceso} pendiente${(t.abiertos + t.en_proceso) > 1 ? 's' : ''} de atencion`);
+    if (t.vencidos > 0) {
+      parts.push(`${t.vencidos} de ellos lleva${t.vencidos > 1 ? 'n' : ''} mas de una semana sin actualizacion`);
+      tone = 'attention';
+    }
+  }
+
+  if (crm) {
+    if (crm.tareas_vencidas > 0) {
+      parts.push(`En tu CRM hay ${crm.tareas_vencidas} tarea${crm.tareas_vencidas > 1 ? 's' : ''} vencida${crm.tareas_vencidas > 1 ? 's' : ''} que requiere${crm.tareas_vencidas > 1 ? 'n' : ''} seguimiento`);
+      tone = 'attention';
+    } else if (crm.prospectos > 0 && crm.tareas_pendientes > 0) {
+      parts.push(`Tienes ${crm.prospectos} prospecto${crm.prospectos > 1 ? 's' : ''} activo${crm.prospectos > 1 ? 's' : ''} y ${crm.tareas_pendientes} tarea${crm.tareas_pendientes > 1 ? 's' : ''} pendiente${crm.tareas_pendientes > 1 ? 's' : ''} en CRM`);
+    }
+  }
+
+  if (c && c.total_periodo_actual > 0) {
+    if (c.variacion_porcentaje > 10) {
+      parts.push(`Tus comisiones muestran un crecimiento de ${c.variacion_porcentaje.toFixed(0)}% respecto al periodo anterior`);
+      tone = 'positive';
+    } else if (c.variacion_porcentaje < -10) {
+      parts.push(`Tus comisiones bajaron ${Math.abs(c.variacion_porcentaje).toFixed(0)}% respecto al periodo anterior`);
+    }
+  }
+
+  if (web && web.leads_sin_seguimiento > 0) {
+    parts.push(`Tienes ${web.leads_sin_seguimiento} lead${web.leads_sin_seguimiento > 1 ? 's' : ''} de tu pagina web sin seguimiento`);
+  }
+
+  if (parts.length === 0) {
     return {
-      title: `Bienvenido, ${nombre}`,
-      summary: 'Tu cuenta aun no esta vinculada a SICAS. Contacta a tu administrador para activar el analisis de produccion.',
-      insights: [],
-      alerts: [{ level: 'info', message: 'Sin vinculacion a SICAS. Solicita el mapeo de tu cuenta.' }],
-      opportunities: [],
-      recommendations: [{ action: 'Solicitar vinculacion SICAS', reason: 'Para ver tu cartera y produccion en tiempo real' }],
+      message: `${nombre}, aun no hay suficiente actividad consolidada para generar un analisis mas detallado, pero conforme se registren mas movimientos en tus modulos de MOVI, aqui veras observaciones y sugerencias personalizadas para ayudarte a dar mejor seguimiento a tu operacion comercial.`,
       tone: 'neutral',
-      priority: 'low',
     };
   }
 
-  const k = sicasData.kpis;
-  const insights: SmartAnalysis['insights'] = [];
-  const alerts: SmartAnalysis['alerts'] = [];
-  const opportunities: SmartAnalysis['opportunities'] = [];
-  const recommendations: SmartAnalysis['recommendations'] = [];
-  let tone: SmartAnalysis['tone'] = 'neutral';
-  let priority: SmartAnalysis['priority'] = 'low';
-
-  if (k.polizas_vigentes > 0) insights.push({ icon: 'Shield', label: 'Polizas vigentes', value: String(k.polizas_vigentes), detail: `Prima: $${fmt(k.prima_vigente)}` });
-  if (k.mes_emisiones > 0) insights.push({ icon: 'TrendingUp', label: 'Emisiones del mes', value: String(k.mes_emisiones), detail: `Prima: $${fmt(k.mes_prima_total)}` });
-  if (k.renovaciones_30dias > 0) insights.push({ icon: 'RefreshCw', label: 'Renovaciones 30 dias', value: String(k.renovaciones_30dias), detail: `Prima: $${fmt(k.prima_renovar)}` });
-  if (k.clientes_total > 0) insights.push({ icon: 'Users', label: 'Clientes en cartera', value: String(k.clientes_total) });
-
-  if (k.renovaciones_7dias > 0) {
-    alerts.push({ level: 'critical', message: `${k.renovaciones_7dias} poliza${k.renovaciones_7dias > 1 ? 's' : ''} por renovar en 7 dias` });
-    priority = 'high'; tone = 'attention';
-  }
-  if (k.variacion_mes_anterior < -10) {
-    alerts.push({ level: 'warning', message: `Produccion ${k.variacion_mes_anterior.toFixed(1)}% vs mes anterior` });
-    priority = 'high'; tone = 'attention';
-  } else if (k.variacion_mes_anterior > 10) {
-    tone = 'positive';
-  }
-
-  if (sicasData.top_clientes[0]) {
-    opportunities.push({ description: `Fortalecer relacion con ${sicasData.top_clientes[0].name}`, impact: `${sicasData.top_clientes[0].count} polizas` });
-  }
-  if (k.renovaciones_30dias > 0) {
-    recommendations.push({ action: 'Gestionar renovaciones proximas', reason: `${k.renovaciones_30dias} polizas por vencer` });
-  }
-
-  let summary = '';
-  if (k.mes_prima_total > 0) summary = `${nombre}, llevas $${fmt(k.mes_prima_total)} en prima este mes con ${k.mes_emisiones} emisiones.`;
-  else if (k.polizas_vigentes > 0) summary = `${nombre}, tienes ${k.polizas_vigentes} polizas vigentes.`;
-  else summary = `${nombre}, sin movimientos registrados este periodo.`;
-
-  return {
-    title: `Analisis de produccion - ${periodo}`,
-    summary,
-    insights: insights.slice(0, 4),
-    alerts: alerts.slice(0, 3),
-    opportunities: opportunities.slice(0, 3),
-    recommendations: recommendations.slice(0, 3),
-    tone,
-    priority,
-  };
+  return { message: parts.join('. ') + '.', tone };
 }
 
 function fmt(n: number): string {

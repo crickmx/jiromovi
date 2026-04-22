@@ -2,317 +2,399 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-interface SmartAnalysisRequest {
-  sicasData: SicasContext | null;
-  userContext: UserContext;
-  periodo: string;
-  forceRegenerate?: boolean;
-}
-
-interface UserContext {
-  nombre: string;
-  rol: string;
-  oficina?: string;
-  tareas_pendientes?: number;
-  tareas_vencidas?: number;
-  cotizaciones_activas?: number;
-  comunicados_sin_leer?: number;
-  tramites_pendientes_atencion?: number;
-  nivel_actual?: number;
-  dias_racha?: number;
-  posicion_ranking?: number;
-}
-
-interface SicasContext {
-  usuario: {
-    nombre: string;
-    rol: string;
-    oficina: string;
-    id_sicas: string;
-  };
-  kpis: {
+interface ModuleSnapshot {
+  usuario: { nombre: string; rol: string; oficina?: string };
+  sicas: {
     polizas_vigentes: number;
     fianzas_vigentes: number;
     prima_vigente: number;
     polizas_emitidas: number;
-    fianzas_emitidas: number;
-    prima_neta_emitida: number;
-    prima_total_emitida: number;
-    mes_prima_neta: number;
-    mes_prima_total: number;
     mes_emisiones: number;
-    clientes_total: number;
-    clientes_mes: number;
+    mes_prima_total: number;
     renovaciones_7dias: number;
     renovaciones_15dias: number;
     renovaciones_30dias: number;
     prima_renovar: number;
     cancelaciones: number;
-    ticket_promedio: number;
     variacion_mes_anterior: number;
-    variacion_interanual: number;
-  };
-  top_clientes: Array<{ name: string; count: number; prima: number }>;
-  top_aseguradoras: Array<{ name: string; count: number; prima: number }>;
-  top_ramos: Array<{ name: string; count: number; prima: number }>;
-  top_subramos: Array<{ name: string; count: number; prima: number }>;
-  observaciones: {
-    periodo_analizado: string;
-    total_documentos: number;
-    tiene_fianzas: boolean;
-    tiene_renovaciones_urgentes: boolean;
-  };
+    clientes_total: number;
+    top_ramo: string;
+    top_aseguradora: string;
+    top_cliente: string;
+  } | null;
+  tickets: {
+    abiertos: number;
+    en_proceso: number;
+    cerrados_mes: number;
+    total_mes: number;
+    vencidos: number;
+  } | null;
+  comisiones: {
+    total_periodo_actual: number;
+    total_periodo_anterior: number;
+    batches_cerrados: number;
+    variacion_porcentaje: number;
+  } | null;
+  crm: {
+    contactos_total: number;
+    prospectos: number;
+    clientes: number;
+    cotizaciones_activas: number;
+    tareas_pendientes: number;
+    tareas_vencidas: number;
+    contactos_recientes_30d: number;
+  } | null;
+  webLeads: {
+    leads_total: number;
+    leads_mes: number;
+    leads_sin_seguimiento: number;
+    tiene_pagina_web: boolean;
+  } | null;
+  gamificacion: {
+    nivel_actual: number;
+    dias_racha: number;
+    posicion_ranking: number | null;
+  } | null;
+  comunicados: { sin_leer: number } | null;
 }
 
-interface AnalysisResponse {
-  title: string;
-  summary: string;
-  insights: Array<{ icon: string; label: string; value: string; detail?: string }>;
-  alerts: Array<{ level: 'info' | 'warning' | 'critical'; message: string }>;
-  opportunities: Array<{ description: string; impact: string }>;
-  recommendations: Array<{ action: string; reason: string }>;
-  tone: 'positive' | 'neutral' | 'attention';
-  priority: 'low' | 'medium' | 'high';
+function buildChatGPTPrompt(snapshot: ModuleSnapshot, periodo: string): string {
+  const nombre = snapshot.usuario.nombre.split(" ")[0];
+  const sections: string[] = [];
+
+  if (snapshot.sicas) {
+    const s = snapshot.sicas;
+    const lines: string[] = [];
+    if (s.polizas_vigentes > 0)
+      lines.push(`Polizas vigentes: ${s.polizas_vigentes}`);
+    if (s.prima_vigente > 0)
+      lines.push(`Prima vigente total: $${fmtNum(s.prima_vigente)}`);
+    if (s.mes_emisiones > 0)
+      lines.push(
+        `Emisiones este mes: ${s.mes_emisiones}, prima emitida: $${fmtNum(s.mes_prima_total)}`
+      );
+    if (s.renovaciones_7dias > 0)
+      lines.push(`Renovaciones urgentes (7 dias): ${s.renovaciones_7dias}`);
+    if (s.renovaciones_15dias > 0)
+      lines.push(`Renovaciones proximas (15 dias): ${s.renovaciones_15dias}`);
+    if (s.renovaciones_30dias > 0)
+      lines.push(
+        `Renovaciones 30 dias: ${s.renovaciones_30dias}, prima a renovar: $${fmtNum(s.prima_renovar)}`
+      );
+    if (s.cancelaciones > 0) lines.push(`Cancelaciones: ${s.cancelaciones}`);
+    if (s.variacion_mes_anterior !== 0)
+      lines.push(
+        `Variacion vs mes anterior: ${s.variacion_mes_anterior > 0 ? "+" : ""}${s.variacion_mes_anterior.toFixed(1)}%`
+      );
+    if (s.clientes_total > 0)
+      lines.push(`Clientes en cartera: ${s.clientes_total}`);
+    if (s.top_ramo) lines.push(`Ramo principal: ${s.top_ramo}`);
+    if (s.top_aseguradora)
+      lines.push(`Aseguradora principal: ${s.top_aseguradora}`);
+    if (lines.length > 0)
+      sections.push(`PRODUCCION SICAS:\n${lines.join("\n")}`);
+  }
+
+  if (snapshot.tickets) {
+    const t = snapshot.tickets;
+    const lines: string[] = [];
+    if (t.abiertos > 0) lines.push(`Tramites abiertos: ${t.abiertos}`);
+    if (t.en_proceso > 0) lines.push(`Tramites en proceso: ${t.en_proceso}`);
+    if (t.cerrados_mes > 0)
+      lines.push(`Cerrados este mes: ${t.cerrados_mes}`);
+    if (t.vencidos > 0)
+      lines.push(`Sin actualizacion en 7+ dias: ${t.vencidos}`);
+    if (lines.length > 0)
+      sections.push(`TRAMITES Y TICKETS:\n${lines.join("\n")}`);
+  }
+
+  if (snapshot.comisiones) {
+    const c = snapshot.comisiones;
+    const lines: string[] = [];
+    if (c.total_periodo_actual > 0)
+      lines.push(
+        `Comisiones periodo actual: $${fmtNum(c.total_periodo_actual)}`
+      );
+    if (c.total_periodo_anterior > 0)
+      lines.push(
+        `Comisiones periodo anterior: $${fmtNum(c.total_periodo_anterior)}`
+      );
+    if (c.variacion_porcentaje !== 0)
+      lines.push(
+        `Variacion: ${c.variacion_porcentaje > 0 ? "+" : ""}${c.variacion_porcentaje.toFixed(1)}%`
+      );
+    if (lines.length > 0) sections.push(`COMISIONES:\n${lines.join("\n")}`);
+  }
+
+  if (snapshot.crm) {
+    const crm = snapshot.crm;
+    const lines: string[] = [];
+    if (crm.contactos_total > 0)
+      lines.push(`Contactos totales: ${crm.contactos_total}`);
+    if (crm.prospectos > 0) lines.push(`Prospectos activos: ${crm.prospectos}`);
+    if (crm.clientes > 0) lines.push(`Clientes: ${crm.clientes}`);
+    if (crm.cotizaciones_activas > 0)
+      lines.push(`Cotizaciones activas: ${crm.cotizaciones_activas}`);
+    if (crm.tareas_pendientes > 0)
+      lines.push(`Tareas pendientes: ${crm.tareas_pendientes}`);
+    if (crm.tareas_vencidas > 0)
+      lines.push(`Tareas vencidas: ${crm.tareas_vencidas}`);
+    if (crm.contactos_recientes_30d > 0)
+      lines.push(`Nuevos contactos (30d): ${crm.contactos_recientes_30d}`);
+    if (lines.length > 0) sections.push(`CRM:\n${lines.join("\n")}`);
+  }
+
+  if (snapshot.webLeads) {
+    const w = snapshot.webLeads;
+    const lines: string[] = [];
+    if (w.leads_mes > 0)
+      lines.push(`Leads desde pagina web este mes: ${w.leads_mes}`);
+    if (w.leads_sin_seguimiento > 0)
+      lines.push(`Leads sin seguimiento: ${w.leads_sin_seguimiento}`);
+    if (!w.tiene_pagina_web)
+      lines.push("Pagina web publica: no configurada");
+    if (lines.length > 0)
+      sections.push(`MI PAGINA WEB / LEADS:\n${lines.join("\n")}`);
+  }
+
+  if (snapshot.comunicados && snapshot.comunicados.sin_leer > 0) {
+    sections.push(`COMUNICADOS:\nSin leer: ${snapshot.comunicados.sin_leer}`);
+  }
+
+  if (snapshot.gamificacion) {
+    const g = snapshot.gamificacion;
+    const lines: string[] = [];
+    if (g.nivel_actual > 0) lines.push(`Nivel actual: ${g.nivel_actual}`);
+    if (g.dias_racha > 0) lines.push(`Dias de racha: ${g.dias_racha}`);
+    if (lines.length > 0)
+      sections.push(`GAMIFICACION:\n${lines.join("\n")}`);
+  }
+
+  const dataBlock =
+    sections.length > 0
+      ? sections.join("\n\n")
+      : "No hay datos suficientes de los modulos en este momento.";
+
+  return `Eres un consultor de negocios experto en seguros y promotorias en Mexico. Tu trabajo es generar un breve mensaje de analisis personalizado para un agente o gerente de seguros basandote en los datos reales de su plataforma de trabajo MOVI Digital.
+
+INSTRUCCIONES ESTRICTAS:
+1. Escribe en lenguaje natural, fluido y profesional, como un mentor que habla directamente al usuario.
+2. Maximo 2 parrafos cortos (3-5 oraciones en total). Se conciso y directo.
+3. NO uses listas, viñetas, markdown, negritas, asteriscos ni formato especial. Solo texto plano.
+4. NO enumeres metricas una por una. Interpreta y sintetiza: que significan los datos, que señales positivas o de atencion hay, y que conviene hacer.
+5. Si hay datos de varios modulos, integralos naturalmente en el mensaje. No los separes por seccion.
+6. Prioriza: alertas urgentes (renovaciones, tareas vencidas, tramites rezagados) > oportunidades (leads, prospectos, crecimiento) > contexto general.
+7. Siempre menciona el nombre del usuario al inicio.
+8. Si hay poco o ningun dato, genera un mensaje amable y motivador indicando que conforme use la plataforma vera analisis mas completos.
+9. NUNCA inventes datos o cifras que no esten en la informacion proporcionada.
+10. Todos los textos en español.
+
+Ademas, responde con un JSON asi:
+{"message": "tu mensaje en texto plano", "tone": "positive|neutral|attention"}
+
+Donde tone es:
+- "positive": produccion creciente, buenas metricas, buen ritmo
+- "attention": hay pendientes urgentes, retrasos, caidas, o temas que requieren accion inmediata
+- "neutral": situacion estable o datos insuficientes para emitir juicio
+
+USUARIO: ${nombre} (${snapshot.usuario.rol}${snapshot.usuario.oficina ? `, oficina: ${snapshot.usuario.oficina}` : ""})
+PERIODO: ${periodo}
+
+DATOS DE SUS MODULOS:
+${dataBlock}`;
 }
 
-function buildChatGPTPrompt(sicasData: SicasContext, periodo: string): string {
-  return `Eres un consultor experto en produccion, cartera, renovaciones, ventas y desarrollo comercial para agentes y promotorias de seguros en Mexico. Recibes datos reales del sistema SICAS y debes generar un analisis inteligente, accionable y personalizado.
-
-REGLAS:
-1. Responde EXCLUSIVAMENTE en formato JSON valido (sin markdown, sin backticks, sin texto fuera del JSON)
-2. Usa solo los datos proporcionados, NUNCA inventes numeros o porcentajes
-3. Prioriza: alertas urgentes > oportunidades comerciales > tendencias > motivacion
-4. Maximo 4 insights, 3 alertas, 3 oportunidades, 3 recomendaciones
-5. Sigue la estructura JSON exacta especificada abajo
-6. Todos los textos en espanol
-7. Se breve y directo, cada texto max 80 caracteres
-8. Para iconos usa nombres de Lucide React (TrendingUp, AlertTriangle, Target, Shield, Clock, DollarSign, Users, FileText, RefreshCw, Award, BarChart3, Zap)
-
-ESTRUCTURA JSON REQUERIDA:
-{
-  "title": "string corto (max 60 chars)",
-  "summary": "string resumen ejecutivo (max 200 chars)",
-  "insights": [{"icon": "LucideIconName", "label": "etiqueta", "value": "valor formateado", "detail": "contexto opcional"}],
-  "alerts": [{"level": "info|warning|critical", "message": "texto de alerta"}],
-  "opportunities": [{"description": "oportunidad", "impact": "impacto esperado"}],
-  "recommendations": [{"action": "accion concreta", "reason": "razon"}],
-  "tone": "positive|neutral|attention",
-  "priority": "low|medium|high"
-}
-
-LOGICA DE PRIORIDADES:
-- Si hay renovaciones en 7 dias: priority=high, tone=attention
-- Si variacion mes anterior < -10%: priority=high, tone=attention
-- Si cancelaciones > 5% del total: incluir alerta
-- Si prima mes actual > mes anterior: tone=positive
-- Si no hay renovaciones urgentes y produccion estable: priority=low, tone=positive
-
-DATOS DEL PERIODO ${periodo}:
-${JSON.stringify(sicasData, null, 2)}`;
-}
-
-function generateFallbackAnalysis(sicasData: SicasContext | null, userContext: UserContext, periodo: string): AnalysisResponse {
-  if (!sicasData) {
-    return {
-      title: `Bienvenido, ${userContext.nombre.split(' ')[0]}`,
-      summary: 'Tu cuenta aun no esta vinculada a SICAS. Contacta a tu administrador para activar el analisis de produccion.',
-      insights: [],
-      alerts: [{
-        level: 'info',
-        message: 'Sin vinculacion a SICAS. Solicita el mapeo de tu cuenta para ver tu produccion.'
-      }],
-      opportunities: [],
-      recommendations: [{
-        action: 'Solicitar vinculacion SICAS',
-        reason: 'Para ver analisis de tu cartera y produccion en tiempo real'
-      }],
-      tone: 'neutral',
-      priority: 'low'
-    };
-  }
-
-  const k = sicasData.kpis;
-  const nombre = userContext.nombre.split(' ')[0];
-
-  const insights: AnalysisResponse['insights'] = [];
-  const alerts: AnalysisResponse['alerts'] = [];
-  const opportunities: AnalysisResponse['opportunities'] = [];
-  const recommendations: AnalysisResponse['recommendations'] = [];
-
-  let tone: AnalysisResponse['tone'] = 'neutral';
-  let priority: AnalysisResponse['priority'] = 'low';
-
-  if (k.polizas_vigentes > 0) {
-    insights.push({ icon: 'Shield', label: 'Polizas vigentes', value: String(k.polizas_vigentes), detail: `Prima vigente: $${formatNumber(k.prima_vigente)}` });
-  }
-  if (k.mes_emisiones > 0) {
-    insights.push({ icon: 'TrendingUp', label: 'Emisiones del mes', value: String(k.mes_emisiones), detail: `Prima: $${formatNumber(k.mes_prima_total)}` });
-  }
-  if (k.renovaciones_30dias > 0) {
-    insights.push({ icon: 'RefreshCw', label: 'Renovaciones 30 dias', value: String(k.renovaciones_30dias), detail: `Prima: $${formatNumber(k.prima_renovar)}` });
-  }
-  if (k.clientes_total > 0) {
-    insights.push({ icon: 'Users', label: 'Clientes en cartera', value: String(k.clientes_total) });
-  }
-
-  if (k.renovaciones_7dias > 0) {
-    alerts.push({ level: 'critical', message: `${k.renovaciones_7dias} poliza${k.renovaciones_7dias > 1 ? 's' : ''} por renovar en 7 dias ($${formatNumber(k.prima_renovar)})` });
-    priority = 'high';
-    tone = 'attention';
-  } else if (k.renovaciones_15dias > 0) {
-    alerts.push({ level: 'warning', message: `${k.renovaciones_15dias} poliza${k.renovaciones_15dias > 1 ? 's' : ''} por renovar en 15 dias` });
-    priority = 'medium';
-  }
-
-  if (k.cancelaciones > 0 && k.polizas_emitidas > 0) {
-    const cancRate = (k.cancelaciones / k.polizas_emitidas) * 100;
-    if (cancRate > 5) {
-      alerts.push({ level: 'warning', message: `Tasa de cancelacion: ${cancRate.toFixed(1)}% (${k.cancelaciones} polizas)` });
-    }
-  }
-
-  if (k.variacion_mes_anterior < -10) {
-    alerts.push({ level: 'warning', message: `Produccion ${k.variacion_mes_anterior.toFixed(1)}% vs mes anterior` });
-    priority = 'high';
-    tone = 'attention';
-  } else if (k.variacion_mes_anterior > 10) {
-    tone = 'positive';
-  }
-
-  if (sicasData.top_clientes.length > 0) {
-    const top = sicasData.top_clientes[0];
-    opportunities.push({ description: `Fortalecer relacion con ${top.name}`, impact: `${top.count} polizas, $${formatNumber(top.prima)} en prima` });
-  }
-
-  if (k.renovaciones_30dias > 0) {
-    recommendations.push({ action: 'Gestionar renovaciones proximas', reason: `${k.renovaciones_30dias} polizas por vencer representan $${formatNumber(k.prima_renovar)}` });
-  }
-  if (k.mes_emisiones === 0 && k.polizas_emitidas > 0) {
-    recommendations.push({ action: 'Impulsar nuevas emisiones este mes', reason: 'No hay emisiones nuevas registradas en el periodo actual' });
-  }
-
-  let title = `Analisis de produccion - ${periodo}`;
-  let summary = '';
-
-  if (k.mes_prima_total > 0) {
-    summary = `${nombre}, este mes llevas $${formatNumber(k.mes_prima_total)} en prima emitida con ${k.mes_emisiones} emisiones.`;
-    if (k.renovaciones_7dias > 0) {
-      summary += ` Atencion: ${k.renovaciones_7dias} renovaciones urgentes.`;
-    }
-  } else if (k.polizas_vigentes > 0) {
-    summary = `${nombre}, tienes ${k.polizas_vigentes} polizas vigentes con $${formatNumber(k.prima_vigente)} en prima.`;
-  } else {
-    summary = `${nombre}, aun no hay movimientos registrados para este periodo.`;
-  }
-
-  return { title, summary, insights: insights.slice(0, 4), alerts: alerts.slice(0, 3), opportunities: opportunities.slice(0, 3), recommendations: recommendations.slice(0, 3), tone, priority };
-}
-
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+function fmtNum(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
   return n.toFixed(0);
 }
 
-function validateAnalysis(data: any): AnalysisResponse {
-  return {
-    title: typeof data.title === 'string' ? data.title.slice(0, 100) : 'Analisis de produccion',
-    summary: typeof data.summary === 'string' ? data.summary.slice(0, 300) : '',
-    insights: Array.isArray(data.insights)
-      ? data.insights.slice(0, 4).map((i: any) => ({
-          icon: typeof i.icon === 'string' ? i.icon : 'BarChart3',
-          label: typeof i.label === 'string' ? i.label : '',
-          value: typeof i.value === 'string' ? i.value : String(i.value ?? ''),
-          detail: typeof i.detail === 'string' ? i.detail : undefined,
-        }))
-      : [],
-    alerts: Array.isArray(data.alerts)
-      ? data.alerts.slice(0, 3).map((a: any) => ({
-          level: ['info', 'warning', 'critical'].includes(a.level) ? a.level : 'info',
-          message: typeof a.message === 'string' ? a.message : '',
-        }))
-      : [],
-    opportunities: Array.isArray(data.opportunities)
-      ? data.opportunities.slice(0, 3).map((o: any) => ({
-          description: typeof o.description === 'string' ? o.description : '',
-          impact: typeof o.impact === 'string' ? o.impact : '',
-        }))
-      : [],
-    recommendations: Array.isArray(data.recommendations)
-      ? data.recommendations.slice(0, 3).map((r: any) => ({
-          action: typeof r.action === 'string' ? r.action : '',
-          reason: typeof r.reason === 'string' ? r.reason : '',
-        }))
-      : [],
-    tone: ['positive', 'neutral', 'attention'].includes(data.tone) ? data.tone : 'neutral',
-    priority: ['low', 'medium', 'high'].includes(data.priority) ? data.priority : 'low',
-  };
+function hasAnyData(snapshot: ModuleSnapshot): boolean {
+  return !!(
+    snapshot.sicas ||
+    snapshot.tickets ||
+    snapshot.comisiones ||
+    snapshot.crm ||
+    snapshot.webLeads ||
+    snapshot.gamificacion ||
+    snapshot.comunicados
+  );
+}
+
+function generateFallbackMessage(snapshot: ModuleSnapshot): {
+  message: string;
+  tone: "positive" | "neutral" | "attention";
+} {
+  const nombre = snapshot.usuario.nombre.split(" ")[0];
+  const parts: string[] = [];
+  let tone: "positive" | "neutral" | "attention" = "neutral";
+
+  const s = snapshot.sicas;
+  if (s) {
+    if (s.mes_prima_total > 0) {
+      parts.push(
+        `${nombre}, este mes llevas $${fmtNum(s.mes_prima_total)} en prima emitida con ${s.mes_emisiones} emisiones`
+      );
+      tone = "positive";
+    } else if (s.polizas_vigentes > 0) {
+      parts.push(
+        `${nombre}, tienes ${s.polizas_vigentes} polizas vigentes en tu cartera`
+      );
+    }
+    if (s.renovaciones_7dias > 0) {
+      parts.push(
+        `Tienes ${s.renovaciones_7dias} renovacion${s.renovaciones_7dias > 1 ? "es" : ""} proxima${s.renovaciones_7dias > 1 ? "s" : ""} en los siguientes 7 dias que conviene gestionar cuanto antes`
+      );
+      tone = "attention";
+    } else if (s.renovaciones_30dias > 0) {
+      parts.push(
+        `Hay ${s.renovaciones_30dias} renovacion${s.renovaciones_30dias > 1 ? "es" : ""} en los proximos 30 dias por un total de $${fmtNum(s.prima_renovar)}`
+      );
+    }
+  }
+
+  const t = snapshot.tickets;
+  if (t && t.abiertos + t.en_proceso > 0) {
+    const pending = t.abiertos + t.en_proceso;
+    parts.push(
+      `En tramites, tienes ${pending} pendiente${pending > 1 ? "s" : ""} de atencion`
+    );
+    if (t.vencidos > 0) {
+      parts.push(
+        `${t.vencidos} de ellos lleva${t.vencidos > 1 ? "n" : ""} mas de una semana sin actualizacion`
+      );
+      tone = "attention";
+    }
+  }
+
+  const crm = snapshot.crm;
+  if (crm) {
+    if (crm.tareas_vencidas > 0) {
+      parts.push(
+        `En tu CRM hay ${crm.tareas_vencidas} tarea${crm.tareas_vencidas > 1 ? "s" : ""} vencida${crm.tareas_vencidas > 1 ? "s" : ""} que requiere${crm.tareas_vencidas > 1 ? "n" : ""} seguimiento`
+      );
+      tone = "attention";
+    } else if (crm.prospectos > 0 && crm.tareas_pendientes > 0) {
+      parts.push(
+        `Tienes ${crm.prospectos} prospecto${crm.prospectos > 1 ? "s" : ""} activo${crm.prospectos > 1 ? "s" : ""} y ${crm.tareas_pendientes} tarea${crm.tareas_pendientes > 1 ? "s" : ""} pendiente${crm.tareas_pendientes > 1 ? "s" : ""} en CRM`
+      );
+    }
+  }
+
+  const c = snapshot.comisiones;
+  if (c && c.total_periodo_actual > 0) {
+    if (c.variacion_porcentaje > 10) {
+      parts.push(
+        `Tus comisiones muestran un crecimiento de ${c.variacion_porcentaje.toFixed(0)}% respecto al periodo anterior`
+      );
+      tone = "positive";
+    } else if (c.variacion_porcentaje < -10) {
+      parts.push(
+        `Tus comisiones bajaron ${Math.abs(c.variacion_porcentaje).toFixed(0)}% respecto al periodo anterior`
+      );
+    }
+  }
+
+  const web = snapshot.webLeads;
+  if (web && web.leads_sin_seguimiento > 0) {
+    parts.push(
+      `Tienes ${web.leads_sin_seguimiento} lead${web.leads_sin_seguimiento > 1 ? "s" : ""} de tu pagina web sin seguimiento`
+    );
+  }
+
+  if (parts.length === 0) {
+    if (!parts.length) {
+      parts.push(
+        `${nombre}, aun no hay suficiente actividad consolidada para generar un analisis mas detallado, pero conforme se registren mas movimientos en tus modulos de MOVI, aqui veras observaciones y sugerencias personalizadas para ayudarte a dar mejor seguimiento a tu operacion comercial`
+      );
+    }
+  }
+
+  return { message: parts.join(". ") + ".", tone };
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('Missing Authorization header');
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Missing Authorization header");
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) throw new Error('Unauthorized');
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("Unauthorized");
 
-    const body = await req.json() as SmartAnalysisRequest;
-    const { sicasData, userContext, periodo, forceRegenerate } = body;
+    const body = await req.json();
+    const snapshot: ModuleSnapshot = body.snapshot;
+    const periodo: string = body.periodo || "";
 
-    // If no SICAS data or no OpenAI key, use fallback
-    if (!sicasData || !openaiApiKey) {
-      const analysis = generateFallbackAnalysis(sicasData, userContext, periodo);
+    if (!snapshot || !snapshot.usuario) {
+      throw new Error("Invalid request: missing snapshot");
+    }
+
+    if (!hasAnyData(snapshot) || !openaiApiKey) {
+      const fallback = generateFallbackMessage(snapshot);
       return new Response(
-        JSON.stringify({ success: true, analysis, source: sicasData ? 'fallback' : 'no_sicas' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, analysis: fallback, source: "fallback" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Call ChatGPT for structured analysis
-    const prompt = buildChatGPTPrompt(sicasData, periodo);
+    const prompt = buildChatGPTPrompt(snapshot, periodo);
 
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: prompt },
-          { role: 'user', content: `Genera el analisis JSON para el periodo ${periodo}. Solo responde con el JSON, nada mas.` },
-        ],
-        temperature: 0.4,
-        max_tokens: 800,
-        response_format: { type: 'json_object' },
-      }),
-    });
+    const openaiResponse = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: prompt },
+            {
+              role: "user",
+              content: `Genera el mensaje de analisis personalizado para el periodo ${periodo}. Solo responde con el JSON {"message": "...", "tone": "..."}, nada mas.`,
+            },
+          ],
+          temperature: 0.5,
+          max_tokens: 600,
+          response_format: { type: "json_object" },
+        }),
+      }
+    );
 
     if (!openaiResponse.ok) {
-      console.error('OpenAI error:', openaiResponse.status, await openaiResponse.text());
-      const analysis = generateFallbackAnalysis(sicasData, userContext, periodo);
+      console.error(
+        "OpenAI error:",
+        openaiResponse.status,
+        await openaiResponse.text()
+      );
+      const fallback = generateFallbackMessage(snapshot);
       return new Response(
-        JSON.stringify({ success: true, analysis, source: 'fallback' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, analysis: fallback, source: "fallback" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -320,10 +402,10 @@ Deno.serve(async (req) => {
     const rawContent = openaiData.choices?.[0]?.message?.content;
 
     if (!rawContent) {
-      const analysis = generateFallbackAnalysis(sicasData, userContext, periodo);
+      const fallback = generateFallbackMessage(snapshot);
       return new Response(
-        JSON.stringify({ success: true, analysis, source: 'fallback' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, analysis: fallback, source: "fallback" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -331,25 +413,39 @@ Deno.serve(async (req) => {
     try {
       parsed = JSON.parse(rawContent);
     } catch {
-      console.error('Failed to parse ChatGPT JSON:', rawContent.substring(0, 200));
-      const analysis = generateFallbackAnalysis(sicasData, userContext, periodo);
+      console.error(
+        "Failed to parse ChatGPT JSON:",
+        rawContent.substring(0, 300)
+      );
+      const fallback = generateFallbackMessage(snapshot);
       return new Response(
-        JSON.stringify({ success: true, analysis, source: 'fallback' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, analysis: fallback, source: "fallback" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const analysis = validateAnalysis(parsed);
+    const message =
+      typeof parsed.message === "string" && parsed.message.length > 0
+        ? parsed.message.slice(0, 1000)
+        : generateFallbackMessage(snapshot).message;
+
+    const tone = ["positive", "neutral", "attention"].includes(parsed.tone)
+      ? parsed.tone
+      : "neutral";
 
     return new Response(
-      JSON.stringify({ success: true, analysis, source: 'chatgpt' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: true,
+        analysis: { message, tone },
+        source: "chatgpt",
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    console.error('Error:', error.message);
+    console.error("Error:", error.message);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
