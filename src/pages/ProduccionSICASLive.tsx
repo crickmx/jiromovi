@@ -814,7 +814,7 @@ function SyncPanel({ userId }: { userId?: string }) {
           </p>
           {lastSync && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {lastSync.status === 'completed' ? (
+              {lastSync.status === 'success' || lastSync.status === 'completed' ? (
                 <span className="text-emerald-600 dark:text-emerald-400">{lastSync.records_upserted} registros sincronizados</span>
               ) : lastSync.status === 'running' ? (
                 <span className="text-blue-600 dark:text-blue-400">En progreso...</span>
@@ -916,8 +916,8 @@ function SyncPanel({ userId }: { userId?: string }) {
                     <td className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatDate(run.started_at)}</td>
                     <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{run.keycode || run.module}</td>
                     <td className="px-3 py-2 text-center">
-                      <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${run.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : run.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
-                        {run.status}
+                      <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${run.status === 'success' || run.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : run.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : run.status === 'partial' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
+                        {run.status === 'success' ? 'completado' : run.status === 'partial' ? 'parcial' : run.status === 'running' ? 'en progreso' : run.status === 'failed' ? 'error' : run.status}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-xs text-right text-gray-700 dark:text-gray-300">{run.records_fetched?.toLocaleString() || 0}</td>
