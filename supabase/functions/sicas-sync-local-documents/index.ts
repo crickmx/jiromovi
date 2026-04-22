@@ -72,31 +72,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[SYNC] Config: keycode=${keycode}, pageSize=${pageSize}, maxPages=${maxPages}`);
 
-    // Check for stuck running sync runs and clean them up
-    const { data: stuckRuns } = await supabase
-      .from("sicas_sync_runs")
-      .select("run_id, started_at")
-      .eq("status", "running")
-      .eq("module", "documents");
-
-    if (stuckRuns && stuckRuns.length > 0) {
-      const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-      for (const stuck of stuckRuns) {
-        const startedAt = new Date(stuck.started_at).getTime();
-        if (startedAt > fiveMinAgo) {
-          console.log(`[SYNC] Run ${stuck.run_id} is still recent, returning 409`);
-          return jsonResponse(409, { ok: false, error: "Sync already in progress", runId: stuck.run_id });
-        }
-        // Mark old stuck runs as failed
-        await supabase.from("sicas_sync_runs").update({
-          status: "failed",
-          finished_at: new Date().toISOString(),
-          error_message: "Auto-closed: stuck in running state",
-        }).eq("run_id", stuck.run_id);
-        console.log(`[SYNC] Cleaned up stuck run: ${stuck.run_id}`);
-      }
-    }
-
     // Create sync run record
     const { data: run, error: runError } = await supabase
       .from("sicas_sync_runs")
@@ -462,17 +437,11 @@ Deno.serve(async (req: Request) => {
     const durationMs = Date.now() - startTime;
     const durationSeconds = Math.round(durationMs / 1000);
 
-    // Update sync run - status must be 'success', 'partial', or 'failed' (NOT 'completed')
-    const finalStatus = totalErrors > 0 && totalUpserted === 0
-      ? "failed"
-      : totalErrors > 0
-        ? "partial"
-        : "success";
-
-    const { error: updateRunError } = await supabase
+    // Update sync run
+    await supabase
       .from("sicas_sync_runs")
       .update({
-        status: finalStatus,
+        status: totalErrors > 0 && totalUpserted === 0 ? "failed" : "completed",
         records_fetched: allRecords.length,
         records_upserted: totalUpserted,
         records_failed: totalErrors,
@@ -481,12 +450,6 @@ Deno.serve(async (req: Request) => {
         error_message: totalErrors > 0 ? `${totalErrors} errores durante upsert` : null,
       })
       .eq("run_id", runId);
-
-    if (updateRunError) {
-      console.error(`[SYNC] ERROR actualizando sync run: ${updateRunError.message}`);
-    } else {
-      console.log(`[SYNC] Sync run actualizado: status=${finalStatus}`);
-    }
 
     // Update sync cursor
     await supabase.from("sicas_sync_cursors").upsert(
@@ -523,23 +486,6 @@ Deno.serve(async (req: Request) => {
     const durationMs = Date.now() - startTime;
     console.error(`[SYNC] ERROR FATAL: ${(error as Error).message}`);
     console.error(`[SYNC] Stack: ${(error as Error).stack}`);
-
-    // Try to mark any running sync run as failed
-    try {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL");
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (supabaseUrl && supabaseKey) {
-        const sb = createClient(supabaseUrl, supabaseKey);
-        await sb.from("sicas_sync_runs").update({
-          status: "failed",
-          finished_at: new Date().toISOString(),
-          duration_seconds: Math.round(durationMs / 1000),
-          error_message: (error as Error).message?.substring(0, 500),
-        }).eq("status", "running").eq("module", "documents");
-      }
-    } catch (cleanupErr) {
-      console.error(`[SYNC] Error cleaning up run status: ${cleanupErr}`);
-    }
 
     return jsonResponse(500, {
       ok: false,
