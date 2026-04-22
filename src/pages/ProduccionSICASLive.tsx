@@ -78,31 +78,17 @@ type ActiveTab = 'produccion' | 'mapeo';
 
 async function callSicasProduction(body: Record<string, unknown>) {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    return { ok: false, error: 'Sesion no disponible. Intenta recargar la pagina.', code: 'NO_SESSION' };
-  }
+  const token = session?.access_token || '';
   const res = await fetch(`${supabaseUrl}/functions/v1/sicas-production-query`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${session.access_token}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       'Apikey': supabaseAnonKey,
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    try {
-      return JSON.parse(text);
-    } catch {
-      return { ok: false, error: `Error del servidor (${res.status})`, code: 'HTTP_ERROR' };
-    }
-  }
-  try {
-    return await res.json();
-  } catch {
-    return { ok: false, error: 'Respuesta invalida del servidor.', code: 'PARSE_ERROR' };
-  }
+  return res.json();
 }
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
