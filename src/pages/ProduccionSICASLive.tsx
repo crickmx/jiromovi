@@ -281,8 +281,6 @@ export default function ProduccionSICASLive() {
       if (filters.status) body.status = filters.status;
       if (filters.ramo) body.ramo = filters.ramo;
       if (filters.aseguradora) body.aseguradora = filters.aseguradora;
-      if (filters.fechaDesde) body.fechaDesde = filters.fechaDesde;
-      if (filters.fechaHasta) body.fechaHasta = filters.fechaHasta;
 
       const data = await callSicasProduction(body);
       if (data.ok) {
