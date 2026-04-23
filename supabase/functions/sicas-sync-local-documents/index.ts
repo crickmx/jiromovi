@@ -78,9 +78,11 @@ Deno.serve(async (req: Request) => {
       .insert({
         module: "documents",
         keycode,
-        report_name: `Sync ${action}`,
+        report_name: `Sync ${action} (REST)`,
         items_per_page: pageSize,
         status: "running",
+        source_api: "REST",
+        sync_mode: action,
         started_at: new Date().toISOString(),
       })
       .select()
@@ -340,6 +342,9 @@ Deno.serve(async (req: Request) => {
           is_renewable: isRenewable,
           renewal_days_remaining: renewalDays,
           source_keycode: keycode,
+          source_api: "REST",
+          source_mode: action,
+          source_run_id: runId,
           raw_data: raw,
           raw_hash: JSON.stringify(raw),
           synced_at: now,
@@ -441,7 +446,7 @@ Deno.serve(async (req: Request) => {
     await supabase
       .from("sicas_sync_runs")
       .update({
-        status: totalErrors > 0 && totalUpserted === 0 ? "failed" : "completed",
+        status: totalErrors > 0 && totalUpserted === 0 ? "failed" : allRecords.length === 0 ? "empty" : "success",
         records_fetched: allRecords.length,
         records_upserted: totalUpserted,
         records_failed: totalErrors,
