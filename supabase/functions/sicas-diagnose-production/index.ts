@@ -8,27 +8,35 @@ const corsHeaders = {
     "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-function parseXmlAllRows(xmlString: string): Record<string, string>[] {
+function parseXmlRecords(xmlString: string): Record<string, string>[] {
   const records: Record<string, string>[] = [];
-  const rowRegex = /<(Table_WS_\w+)>([\s\S]*?)<\/\1>/g;
-  let rowMatch;
-  while ((rowMatch = rowRegex.exec(xmlString)) !== null) {
-    const rowXml = rowMatch[2];
+  const rowRegex = /<Table_WS_Documentos>([\s\S]*?)<\/Table_WS_Documentos>/g;
+  let match;
+  while ((match = rowRegex.exec(xmlString)) !== null) {
+    const rowXml = match[1];
     const record: Record<string, string> = {};
     const fieldRegex = /<(\w+)>([\s\S]*?)<\/\1>/g;
     let fieldMatch;
     while ((fieldMatch = fieldRegex.exec(rowXml)) !== null) {
       record[fieldMatch[1]] = fieldMatch[2].trim();
     }
+    // Also capture self-closing empty tags
+    const emptyRegex = /<(\w+)\s*\/>/g;
+    let emptyMatch;
+    while ((emptyMatch = emptyRegex.exec(rowXml)) !== null) {
+      if (!record[emptyMatch[1]]) {
+        record[emptyMatch[1]] = "";
+      }
+    }
     records.push(record);
   }
   return records;
 }
 
-function parseXmlPagination(xmlString: string): { maxRecords: number; pages: number; page: number } | null {
-  const match = xmlString.match(/<Table_Paginacion>([\s\S]*?)<\/Table_Paginacion>/);
-  if (!match) return null;
-  const xml = match[1];
+function parseXmlControl(xmlString: string): { maxRecords: number; pages: number; page: number } | null {
+  const controlMatch = xmlString.match(/<Table_Paginacion>([\s\S]*?)<\/Table_Paginacion>/);
+  if (!controlMatch) return null;
+  const xml = controlMatch[1];
   const getVal = (tag: string): number => {
     const m = xml.match(new RegExp(`<${tag}>(\\d+)</${tag}>`));
     return m ? parseInt(m[1], 10) : 0;
@@ -47,151 +55,204 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const mode = body.mode || "format-compare";
+    const vendorId = body.vendorId || "37";
 
     const client = new SicasRestClient();
     const token = await client.getValidToken();
     const baseUrl = Deno.env.get("SICAS_REST_API_URL") || "https://security-services.sicasonline.info/api";
-    const results: Record<string, unknown> = { mode };
 
-    if (mode === "format-compare") {
-      // Test FormatResponse=0 (XML native) vs FormatResponse=2 (JSON)
-      // Also test with different ItemsForPage values
+    const results: Record<string, unknown> = { vendorId, baseUrl };
 
-      for (const format of [0, 2]) {
-        for (const itemsPerPage of [50, 100, 200, 500, 1000]) {
-          const key = `format_${format}_items_${itemsPerPage}`;
-          try {
-            const resp = await fetch(`${baseUrl}/Report/ReadData`, {
-              method: "POST",
-              headers: {
-                Authorization: token,
-                "Content-Type": "application/json",
-                Prop_KeyCode: "HWS_DOCTOS",
-              },
-              body: JSON.stringify({
-                PageRequested: 1,
-                ItemsForPage: itemsPerPage,
-                FormatResponse: format,
-              }),
-            });
-            const rawText = await resp.text();
+    // Test A: HWS_DOCTOS with vendor filter - parse XML response
+    try {
+      const url = `${baseUrl}/Report/ReadData`;
+      const rawBody = {
+        PageRequested: 1,
+        ItemsForPage: 5,
+        FormatResponse: 2,
+        ConditionsDirect: `DatDocumentos.VendId IN (${vendorId})`,
+      };
 
-            if (format === 0) {
-              // Pure XML response
-              const records = parseXmlAllRows(rawText);
-              const pagination = parseXmlPagination(rawText);
-              const ids = new Set(records.map(r => r.IDDocto || r.Id_Docto || ""));
-              (results as any)[key] = {
-                format: "XML(0)",
-                rawLength: rawText.length,
-                recordsParsed: records.length,
-                uniqueIds: ids.size,
-                pagination,
-                sampleFields: records[0] ? Object.keys(records[0]).slice(0, 10) : [],
-              };
-            } else {
-              // JSON response - may be wrapped
-              let parsed: any;
-              try { parsed = JSON.parse(rawText); } catch { parsed = null; }
-              if (parsed) {
-                const responseField = parsed.Response;
-                if (typeof responseField === "string" && responseField.includes("<")) {
-                  const records = parseXmlAllRows(responseField);
-                  const pagination = parseXmlPagination(responseField);
-                  const ids = new Set(records.map(r => r.IDDocto || r.Id_Docto || ""));
-                  (results as any)[key] = {
-                    format: "JSON(2)->XML_STRING",
-                    xmlLength: responseField.length,
-                    recordsParsed: records.length,
-                    uniqueIds: ids.size,
-                    pagination,
-                  };
-                } else if (Array.isArray(responseField)) {
-                  const recs = responseField[0]?.TableInfo || [];
-                  const ctrl = responseField[0]?.TableControl?.[0];
-                  const ids = new Set(recs.map((r: any) => r.IDDocto || r.Id_Docto || ""));
-                  (results as any)[key] = {
-                    format: "JSON(2)->ARRAY",
-                    records: recs.length,
-                    uniqueIds: ids.size,
-                    maxRecords: ctrl?.MaxRecords,
-                    pages: ctrl?.Pages,
-                  };
-                } else {
-                  (results as any)[key] = {
-                    format: "JSON(2)->OTHER",
-                    type: typeof responseField,
-                    preview: String(responseField).substring(0, 200),
-                  };
-                }
-              } else {
-                (results as any)[key] = { format: "UNPARSEABLE", preview: rawText.substring(0, 200) };
-              }
-            }
-          } catch (e: unknown) {
-            (results as any)[key] = { error: String(e) };
-          }
-        }
-      }
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+          Prop_KeyCode: "HWS_DOCTOS",
+        },
+        body: JSON.stringify(rawBody),
+      });
 
-    } else if (mode === "xml-paginated") {
-      // Test XML format with actual pagination across pages
-      const itemsPerPage = body.itemsPerPage || 50;
-      const maxPagesToTest = body.maxPages || 3;
-      const condition = body.condition || "";
+      const rawText = await resp.text();
+      let parsed: any = null;
+      try { parsed = JSON.parse(rawText); } catch { /* ignore */ }
 
-      const allIds = new Set<string>();
-      const pageResults: Array<{ page: number; fetched: number; newIds: number; totalUnique: number; pagination: any }> = [];
+      if (parsed) {
+        const responseField = parsed.Response;
+        const responseType = typeof responseField;
 
-      for (let p = 1; p <= maxPagesToTest; p++) {
-        try {
-          const reqBody: any = {
-            PageRequested: p,
-            ItemsForPage: itemsPerPage,
-            FormatResponse: 0,
+        if (responseType === "string") {
+          // XML response - parse it
+          const records = parseXmlRecords(responseField);
+          const control = parseXmlControl(responseField);
+          results.testA_HWS_DOCTOS_vendor = {
+            responseType: "XML_STRING",
+            xmlLength: responseField.length,
+            parsedRecords: records.length,
+            control,
+            fieldNames: records[0] ? Object.keys(records[0]) : [],
+            sample: records.slice(0, 2),
+            success: parsed.Sucess,
+            error: parsed.Error,
           };
-          if (condition) reqBody.ConditionsDirect = condition;
+        } else if (Array.isArray(responseField)) {
+          // JSON array response
+          const recs = responseField[0]?.TableInfo || [];
+          const ctrl = responseField[0]?.TableControl?.[0];
+          results.testA_HWS_DOCTOS_vendor = {
+            responseType: "JSON_ARRAY",
+            records: recs.length,
+            maxRecords: ctrl?.MaxRecords || 0,
+            fieldNames: recs[0] ? Object.keys(recs[0]) : [],
+            sample: recs.slice(0, 2),
+          };
+        } else {
+          results.testA_HWS_DOCTOS_vendor = {
+            responseType: responseType,
+            preview: String(responseField).substring(0, 300),
+          };
+        }
+      } else {
+        results.testA_HWS_DOCTOS_vendor = {
+          error: "Could not parse JSON",
+          rawPreview: rawText.substring(0, 500),
+        };
+      }
+    } catch (e: unknown) {
+      results.testA_HWS_DOCTOS_vendor = { error: String(e) };
+    }
 
-          const resp = await fetch(`${baseUrl}/Report/ReadData`, {
-            method: "POST",
-            headers: {
-              Authorization: token,
-              "Content-Type": "application/json",
-              Prop_KeyCode: "HWS_DOCTOS",
-            },
-            body: JSON.stringify(reqBody),
-          });
-          const rawText = await resp.text();
-          const records = parseXmlAllRows(rawText);
-          const pagination = parseXmlPagination(rawText);
+    // Test B: HWSDOC with vendor filter - parse XML response
+    try {
+      const url = `${baseUrl}/Report/ReadData`;
+      const rawBody = {
+        PageRequested: 1,
+        ItemsForPage: 5,
+        FormatResponse: 2,
+        ConditionsDirect: `DatDocumentos.VendId IN (${vendorId})`,
+      };
 
-          const prevSize = allIds.size;
-          for (const rec of records) {
-            const id = rec.IDDocto || rec.Id_Docto || "";
-            if (id) allIds.add(id);
-          }
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+          Prop_KeyCode: "HWSDOC",
+        },
+        body: JSON.stringify(rawBody),
+      });
 
-          pageResults.push({
-            page: p,
-            fetched: records.length,
-            newIds: allIds.size - prevSize,
-            totalUnique: allIds.size,
-            pagination,
-          });
+      const rawText = await resp.text();
+      let parsed: any = null;
+      try { parsed = JSON.parse(rawText); } catch { /* ignore */ }
 
-          if (records.length === 0) break;
-          if (pagination && p >= pagination.pages) break;
-        } catch (e: unknown) {
-          pageResults.push({ page: p, fetched: 0, newIds: 0, totalUnique: allIds.size, pagination: null });
-          break;
+      if (parsed) {
+        const responseField = parsed.Response;
+        if (typeof responseField === "string") {
+          const records = parseXmlRecords(responseField);
+          const control = parseXmlControl(responseField);
+          results.testB_HWSDOC_vendor = {
+            responseType: "XML_STRING",
+            xmlLength: responseField.length,
+            parsedRecords: records.length,
+            control,
+            fieldNames: records[0] ? Object.keys(records[0]) : [],
+            sample: records.slice(0, 2),
+          };
+        } else if (Array.isArray(responseField)) {
+          const recs = responseField[0]?.TableInfo || [];
+          results.testB_HWSDOC_vendor = {
+            responseType: "JSON_ARRAY",
+            records: recs.length,
+            fieldNames: recs[0] ? Object.keys(recs[0]) : [],
+          };
         }
       }
+    } catch (e: unknown) {
+      results.testB_HWSDOC_vendor = { error: String(e) };
+    }
 
-      results.itemsPerPage = itemsPerPage;
-      results.condition = condition || "none";
-      results.pages = pageResults;
-      results.totalUniqueIds = allIds.size;
+    // Test C: HWS_DOCTOS no vendor filter (just to confirm data exists)
+    try {
+      const url = `${baseUrl}/Report/ReadData`;
+      const rawBody = {
+        PageRequested: 1,
+        ItemsForPage: 3,
+        FormatResponse: 2,
+      };
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+          Prop_KeyCode: "HWS_DOCTOS",
+        },
+        body: JSON.stringify(rawBody),
+      });
+
+      const rawText = await resp.text();
+      let parsed: any = null;
+      try { parsed = JSON.parse(rawText); } catch { /* ignore */ }
+
+      if (parsed) {
+        const responseField = parsed.Response;
+        if (typeof responseField === "string") {
+          const records = parseXmlRecords(responseField);
+          const control = parseXmlControl(responseField);
+          results.testC_HWS_DOCTOS_no_filter = {
+            responseType: "XML_STRING",
+            parsedRecords: records.length,
+            control,
+            fieldNames: records[0] ? Object.keys(records[0]) : [],
+            vendorIdField: records[0]?.VendId || records[0]?.IDVend || "NOT_FOUND",
+            sample: records[0] || null,
+          };
+        }
+      }
+    } catch (e: unknown) {
+      results.testC_HWS_DOCTOS_no_filter = { error: String(e) };
+    }
+
+    // Test D: Try FormatResponse=0 (XML) to see if that changes anything
+    try {
+      const url = `${baseUrl}/Report/ReadData`;
+      const rawBody = {
+        PageRequested: 1,
+        ItemsForPage: 3,
+        FormatResponse: 0,
+        ConditionsDirect: `DatDocumentos.VendId IN (${vendorId})`,
+      };
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+          Prop_KeyCode: "HWS_DOCTOS",
+        },
+        body: JSON.stringify(rawBody),
+      });
+
+      const rawText = await resp.text();
+      results.testD_FormatResponse_0 = {
+        status: resp.status,
+        bodyLength: rawText.length,
+        bodyPreview: rawText.substring(0, 300),
+        isXml: rawText.trim().startsWith("<") || rawText.includes("<DATAINFO"),
+      };
+    } catch (e: unknown) {
+      results.testD_FormatResponse_0 = { error: String(e) };
     }
 
     return new Response(JSON.stringify(results, null, 2), {
@@ -201,7 +262,10 @@ Deno.serve(async (req: Request) => {
   } catch (error: unknown) {
     return new Response(
       JSON.stringify({ error: String(error), stack: (error as Error).stack }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });

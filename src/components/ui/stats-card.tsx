@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { LucideIcon } from 'lucide-react';
+import { Video as LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StatsCardProps {
@@ -18,6 +18,22 @@ interface StatsCardProps {
   className?: string;
 }
 
+const iconColorMap = {
+  primary: 'text-accent dark:text-accent bg-accent/8 dark:bg-accent/15',
+  success: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15',
+  warning: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15',
+  danger: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/15',
+  neutral: 'text-neutral-600 dark:text-white/60 bg-neutral-100 dark:bg-white/8',
+};
+
+const trendColorMap = {
+  primary: 'text-accent',
+  success: 'text-emerald-600 dark:text-emerald-400',
+  warning: 'text-amber-600 dark:text-amber-400',
+  danger: 'text-red-600 dark:text-red-400',
+  neutral: 'text-neutral-600 dark:text-white/60',
+};
+
 export function StatsCard({
   title,
   value,
@@ -29,79 +45,38 @@ export function StatsCard({
   children,
   className
 }: StatsCardProps) {
-  const colorStyles = {
-    primary: {
-      bg: 'bg-primary-50',
-      icon: 'text-accent',
-      value: 'text-neutral-900',
-      trend: 'text-accent'
-    },
-    success: {
-      bg: 'bg-green-50',
-      icon: 'text-green-600',
-      value: 'text-neutral-900',
-      trend: 'text-green-600'
-    },
-    warning: {
-      bg: 'bg-orange-50',
-      icon: 'text-orange-600',
-      value: 'text-neutral-900',
-      trend: 'text-orange-600'
-    },
-    danger: {
-      bg: 'bg-red-50',
-      icon: 'text-red-600',
-      value: 'text-neutral-900',
-      trend: 'text-red-600'
-    },
-    neutral: {
-      bg: 'bg-neutral-100',
-      icon: 'text-neutral-600',
-      value: 'text-neutral-900',
-      trend: 'text-neutral-600'
-    }
-  };
-
-  const styles = colorStyles[color];
-
   return (
     <div
       onClick={onClick}
       className={cn(
-        'bg-white/70 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-neutral-200/50 dark:border-white/10 shadow-ios p-4 sm:p-6',
-        'transition-all duration-250 ease-ios-smooth',
-        onClick && 'cursor-pointer hover:shadow-ios-lg hover:border-primary-300 dark:hover:border-accent/30 hover:-translate-y-0.5 active:scale-[0.98]',
+        'bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5 shadow-card',
+        'transition-all duration-200 ease-smooth',
+        onClick && 'cursor-pointer hover:shadow-card-hover hover:border-neutral-300 dark:hover:border-white/15 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]',
         className
       )}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          {/* Título */}
-          <p className="text-sm font-medium text-neutral-600 dark:text-white/60 mb-1 truncate">
+          <p className="text-[13px] font-medium text-neutral-500 dark:text-white/50 mb-1.5 truncate">
             {title}
           </p>
 
-          {/* Valor principal */}
-          <p className={cn(
-            'text-2xl sm:text-3xl font-bold tracking-tight mb-1',
-            'text-neutral-900 dark:text-white'
-          )}>
+          <p className="text-2xl sm:text-[28px] font-bold tracking-tight text-neutral-900 dark:text-white leading-none mb-1.5">
             {value}
           </p>
 
-          {/* Descripción o trend */}
           {(description || trend) && (
             <div className="flex items-center gap-2 flex-wrap">
               {trend && (
                 <span className={cn(
-                  'text-xs sm:text-sm font-medium',
-                  styles.trend
+                  'text-xs font-semibold',
+                  trendColorMap[color]
                 )}>
-                  {trend.direction === 'up' ? '↑' : '↓'} {trend.value}% {trend.label}
+                  {trend.direction === 'up' ? '+' : '-'}{trend.value}% {trend.label}
                 </span>
               )}
               {description && (
-                <span className="text-xs sm:text-sm text-neutral-500">
+                <span className="text-xs text-neutral-500 dark:text-white/40">
                   {description}
                 </span>
               )}
@@ -109,31 +84,18 @@ export function StatsCard({
           )}
         </div>
 
-        {/* Icono */}
         {Icon && (
           <div className={cn(
-            'flex-shrink-0 p-3 rounded-xl bg-gradient-to-br',
-            color === 'primary' && 'from-primary-50 to-primary-100 dark:from-primary-500/10 dark:to-primary-600/20',
-            color === 'success' && 'from-green-50 to-green-100 dark:from-green-500/10 dark:to-green-600/20',
-            color === 'warning' && 'from-orange-50 to-orange-100 dark:from-orange-500/10 dark:to-orange-600/20',
-            color === 'danger' && 'from-red-50 to-red-100 dark:from-red-500/10 dark:to-red-600/20',
-            color === 'neutral' && 'from-neutral-100 to-neutral-200 dark:from-white/5 dark:to-white/10'
+            'flex-shrink-0 p-2.5 rounded-xl',
+            iconColorMap[color]
           )}>
-            <Icon className={cn(
-              'w-6 h-6',
-              color === 'primary' && 'text-accent dark:text-primary-400',
-              color === 'success' && 'text-green-600 dark:text-green-400',
-              color === 'warning' && 'text-orange-600 dark:text-orange-400',
-              color === 'danger' && 'text-red-600 dark:text-red-400',
-              color === 'neutral' && 'text-neutral-600 dark:text-white/60'
-            )} />
+            <Icon className="w-5 h-5" />
           </div>
         )}
       </div>
 
-      {/* Contenido adicional */}
       {children && (
-        <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-white/10">
+        <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-white/8">
           {children}
         </div>
       )}
