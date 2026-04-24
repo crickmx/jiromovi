@@ -88,12 +88,6 @@ interface CentroDigitalContext {
   subidos_semana: number;
 }
 
-interface VacacionesContext {
-  pendientes: number;
-  dias_disponibles: number;
-  proxima_aprobada: string | null;
-}
-
 interface StoreContext {
   pedidos_pendientes: number;
   pedidos_mes: number;
@@ -125,7 +119,6 @@ interface FullContext {
   registroActividades: RegistroActividadesContext | null;
   produccion: ProduccionContext | null;
   centroDigital: CentroDigitalContext | null;
-  vacaciones: VacacionesContext | null;
   store: StoreContext | null;
   chat: ChatContext | null;
   gamificacion: GamificacionContext | null;
@@ -153,7 +146,7 @@ async function buildFullContext(
   const { data: usuario } = await supabase
     .from("usuarios")
     .select(
-      "nombre_completo, nombre, rol, oficina_id, web_slug, id_sicas, email_laboral, fecha_ingreso, dias_vacaciones_disponibles, oficinas(nombre)"
+      "nombre_completo, nombre, rol, oficina_id, web_slug, id_sicas, email_laboral, fecha_ingreso, oficinas(nombre)"
     )
     .eq("id", userId)
     .maybeSingle();
@@ -176,7 +169,6 @@ async function buildFullContext(
     registroActividades: null,
     produccion: null,
     centroDigital: null,
-    vacaciones: null,
     store: null,
     chat: null,
     gamificacion: null,
@@ -202,7 +194,6 @@ async function buildFullContext(
     fetchRegistroActividades(supabase, userId, monthStart),
     fetchProduccion(supabase, userId, monthStart),
     fetchCentroDigital(supabase, userId, sevenDaysAgo),
-    fetchVacaciones(supabase, userId, usuario?.dias_vacaciones_disponibles),
     fetchStore(supabase, userId, monthStart),
     fetchChat(supabase, userId),
     fetchGamificacion(supabase, userId),
@@ -212,7 +203,7 @@ async function buildFullContext(
   const keys: (keyof Omit<FullContext, "usuario">)[] = [
     "sicas", "tickets", "comisiones", "crm", "webLeads",
     "education", "registroActividades", "produccion",
-    "centroDigital", "vacaciones", "store", "chat",
+    "centroDigital", "store", "chat",
     "gamificacion", "comunicados",
   ];
   keys.forEach((key, i) => {
@@ -447,22 +438,6 @@ async function fetchCentroDigital(
   } catch { return null; }
 }
 
-async function fetchVacaciones(
-  supabase: any, userId: string, diasDisponibles?: number
-): Promise<VacacionesContext | null> {
-  try {
-    const [pendR, proxR] = await Promise.all([
-      supabase.from("solicitudes_vacaciones").select("*", { count: "exact", head: true }).eq("empleado_id", userId).eq("estado", "pendiente"),
-      supabase.from("solicitudes_vacaciones").select("fecha_inicio").eq("empleado_id", userId).eq("estado", "aprobado").gte("fecha_inicio", new Date().toISOString().split("T")[0]).order("fecha_inicio", { ascending: true }).limit(1),
-    ]);
-    const pendientes = pendR.count || 0;
-    const dias = diasDisponibles || 0;
-    const proxAprobada = proxR.data?.[0]?.fecha_inicio || null;
-    if (pendientes === 0 && dias === 0 && !proxAprobada) return null;
-    return { pendientes, dias_disponibles: dias, proxima_aprobada: proxAprobada };
-  } catch { return null; }
-}
-
 async function fetchStore(
   supabase: any, userId: string, monthStart: string
 ): Promise<StoreContext | null> {
@@ -624,15 +599,6 @@ function buildPrompt(ctx: FullContext, periodo: string): string {
     sections.push(`PRODUCCION (EXCEL):\n${lines.join("\n")}`);
   }
 
-  if (ctx.vacaciones) {
-    const v = ctx.vacaciones;
-    const lines: string[] = [];
-    if (v.dias_disponibles > 0) lines.push(`Dias de vacaciones disponibles: ${v.dias_disponibles}`);
-    if (v.pendientes > 0) lines.push(`Solicitudes pendientes: ${v.pendientes}`);
-    if (v.proxima_aprobada) lines.push(`Proximas vacaciones aprobadas: ${v.proxima_aprobada}`);
-    if (lines.length > 0) sections.push(`VACACIONES:\n${lines.join("\n")}`);
-  }
-
   if (ctx.comunicados && ctx.comunicados.sin_leer > 0) {
     sections.push(`COMUNICADOS:\nSin leer: ${ctx.comunicados.sin_leer}`);
   }
@@ -775,7 +741,6 @@ function getModulesIncluded(ctx: FullContext): string[] {
   if (ctx.registroActividades) modules.push("registroActividades");
   if (ctx.produccion) modules.push("produccion");
   if (ctx.centroDigital) modules.push("centroDigital");
-  if (ctx.vacaciones) modules.push("vacaciones");
   if (ctx.store) modules.push("store");
   if (ctx.chat) modules.push("chat");
   if (ctx.gamificacion) modules.push("gamificacion");
