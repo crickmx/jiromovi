@@ -416,28 +416,54 @@ export class SicasRestClient {
       // Handle already-structured JSON array response
       const reportResponse = response as SicasReportResponse;
 
-      // SICAS mezcla registros de paginación dentro de TableInfo — separarlos
       const rawTableInfo = reportResponse.Response?.[0]?.TableInfo ?? [];
+
+      // OPCIÓN B (robusta): cualquier registro sin IDDocto ni Documento
+      // es el registro de paginación — independiente del idioma de campos
       const paginationRecord = rawTableInfo.find(
-        (r: any) => (r.Pages !== undefined || r.MaxRecords !== undefined)
-                    && r.IDDocto === undefined
-                    && r.Documento === undefined
+        (r: any) => r.IDDocto === undefined && r.Documento === undefined
       );
+
       const cleanTableInfo = rawTableInfo.filter(
         (r: any) => r.IDDocto !== undefined || r.Documento !== undefined
       );
-      const tableControl = paginationRecord ? [{
-        MaxRecords: Number(paginationRecord.MaxRecords ?? paginationRecord.TotalRecords ?? 0),
-        Pages:      Number(paginationRecord.Pages ?? 1),
-        Page:       Number(paginationRecord.Page ?? 1),
-        ItemForPage: Number(paginationRecord.ItemForPage ?? 100)
-      }] : reportResponse.Response?.[1]?.TableControl;
 
-      console.log('[SICAS REST] readReport - Success. Records:', cleanTableInfo.length, 'TableControl:', JSON.stringify(tableControl));
+      // Extraer con todos los posibles nombres (inglés y español)
+      const tableControl = paginationRecord ? [{
+        MaxRecords: Number(
+          paginationRecord.MaxRecords   ??
+          paginationRecord.TotalRegistros ??
+          paginationRecord.TotalRecords   ?? 0
+        ),
+        Pages: Number(
+          paginationRecord.Pages        ??
+          paginationRecord.TotalPaginas ?? 1
+        ),
+        Page: Number(
+          paginationRecord.Page         ??
+          paginationRecord.PaginaActual ?? 1
+        ),
+        ItemForPage: Number(
+          paginationRecord.ItemForPage    ??
+          paginationRecord.ItemsPorPagina ?? 100
+        )
+      }] : (reportResponse.Response?.[1]?.TableControl ?? []);
+
+      // Log para confirmar que la paginación fue detectada
+      if (paginationRecord) {
+        console.log('[SICAS] Paginación detectada:', JSON.stringify(tableControl[0]));
+        console.log('[SICAS] Documentos reales en este batch:', cleanTableInfo.length);
+      } else {
+        console.warn('[SICAS] ADVERTENCIA: No se encontró registro de paginación.');
+        console.warn('[SICAS] Campos del último registro:',
+          JSON.stringify(Object.keys(rawTableInfo[rawTableInfo.length - 1] ?? {})));
+      }
+
+      // Retornar estructura normalizada
       return {
         Response: [
-          { TableInfo: cleanTableInfo },
-          { TableControl: tableControl ?? [] }
+          { TableInfo:    cleanTableInfo },
+          { TableControl: tableControl  }
         ],
         Sucess: reportResponse.Sucess
       };
