@@ -523,16 +523,14 @@ export default function SicasAdmin() {
     }
   }
 
-  async function handleSyncSoapFull() {
+  async function handleSyncSoapFull(mode: 'full' | 'continue' = 'full') {
     setSyncingSoapFull(true);
-    setSoapFullResult(null);
+    if (mode === 'full') setSoapFullResult(null);
     setMessage(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('sicas-sync-local-documents', {
-        body: {
-          action: 'full',
-        },
+        body: { mode },
       });
 
       if (error) throw error;
@@ -541,10 +539,11 @@ export default function SicasAdmin() {
       await loadTotalPolizas();
 
       if (data.ok) {
-        const stats = data.stats || {};
+        const p = data.progress || {};
+        const label = data.isComplete ? 'Sync completo' : `Batch completado (${p.percent || 0}%)`;
         setMessage({
           type: 'success',
-          text: `Sync REST completado: ${stats.recordsFetched || 0} documentos obtenidos, ${stats.documentsUpserted || 0} guardados, ${stats.recordsLinked || 0} vinculados en ${stats.pagesProcessed || 0} paginas (${Math.round((stats.durationMs || 0) / 1000)}s)`
+          text: `${label}: ${p.batchFetched || 0} obtenidos, ${p.batchUpserted || 0} guardados, paginas ${data.stats?.startPage || 1}-${data.stats?.endPage || 0}/${p.totalPages || '?'} (${Math.round((data.stats?.durationMs || 0) / 1000)}s)`
         });
       } else {
         setMessage({ type: 'error', text: `Error: ${data.error}` });
@@ -1377,88 +1376,83 @@ export default function SicasAdmin() {
                   </Button>
 
                   <Button
-                    onClick={handleSyncSoapFull}
+                    onClick={() => handleSyncSoapFull('full')}
                     disabled={syncingSoapFull}
                     className="w-full bg-emerald-600 hover:bg-emerald-700"
                   >
                     {syncingSoapFull ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Sincronizacion REST completa en curso...
+                        Sincronizacion en curso...
                       </>
                     ) : (
                       <>
                         <RefreshCw className="w-4 h-4 mr-2" />
-                        Sync Completo REST (Todos los documentos)
+                        Sincronizacion Completa (desde pagina 1)
                       </>
                     )}
                   </Button>
+
+                  {soapFullResult?.ok && !soapFullResult.isComplete && !syncingSoapFull && (
+                    <Button
+                      onClick={() => handleSyncSoapFull('continue')}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Continuar Sync (pagina {soapFullResult.nextPage || '?'} de {soapFullResult.progress?.totalPages || '?'})
+                    </Button>
+                  )}
+
                   {soapFullResult && (
                     <div className={`p-3 rounded-lg border text-sm ${soapFullResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
                       {soapFullResult.ok ? (
                         <div>
-                          <p className="font-medium">Sync REST completado</p>
-                          <p className="text-xs mt-1">
-                            {soapFullResult.stats?.recordsFetched || 0} documentos obtenidos,{' '}
+                          <p className="font-medium">
+                            {soapFullResult.isComplete ? 'Sincronizacion completa' : `Batch completado - ${soapFullResult.progress?.percent || 0}%`}
+                          </p>
+
+                          {/* Progress bar */}
+                          {soapFullResult.progress && (
+                            <div className="mt-2">
+                              <div className="flex justify-between text-[11px] mb-1">
+                                <span>Pagina {soapFullResult.progress.currentPage} de {soapFullResult.progress.totalPages}</span>
+                                <span>{soapFullResult.progress.percent}%</span>
+                              </div>
+                              <div className="w-full bg-emerald-200 rounded-full h-2.5">
+                                <div
+                                  className={`h-2.5 rounded-full transition-all duration-300 ${soapFullResult.isComplete ? 'bg-emerald-600' : 'bg-blue-500'}`}
+                                  style={{ width: `${soapFullResult.progress.percent || 0}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <p className="text-xs mt-2">
+                            {soapFullResult.stats?.recordsFetched || 0} obtenidos en este batch,{' '}
                             {soapFullResult.stats?.documentsUpserted || 0} guardados,{' '}
-                            {soapFullResult.stats?.recordsLinked || 0} vinculados a usuarios,{' '}
-                            {soapFullResult.stats?.pagesProcessed || 0} paginas,{' '}
+                            paginas {soapFullResult.stats?.startPage || 1}-{soapFullResult.stats?.endPage || 0}/{soapFullResult.progress?.totalPages || '?'},{' '}
                             {Math.round((soapFullResult.stats?.durationMs || 0) / 1000)}s
                           </p>
                           <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                             <div className="bg-white/60 rounded p-1.5">
-                              <span className="text-emerald-600 font-medium">Total SICAS:</span> {soapFullResult.stats?.totalInSicas || 0}
+                              <span className="text-emerald-600 font-medium">Total SICAS:</span> {soapFullResult.progress?.totalInSicas?.toLocaleString() || 0}
                             </div>
                             <div className="bg-white/60 rounded p-1.5">
-                              <span className="text-emerald-600 font-medium">Vendedores con docs:</span> {soapFullResult.stats?.vendedoresConDocs || 0}
+                              <span className="text-emerald-600 font-medium">Acumulado:</span> {soapFullResult.progress?.accumulatedSynced?.toLocaleString() || 0}
                             </div>
                             <div className="bg-white/60 rounded p-1.5">
-                              <span className="text-emerald-600 font-medium">Vinculados:</span> {soapFullResult.stats?.recordsLinked || 0}
+                              <span className="text-emerald-600 font-medium">Este batch:</span> {soapFullResult.progress?.batchUpserted || 0}
                             </div>
-                            <div className={`rounded p-1.5 ${(soapFullResult.stats?.vendedoresSinMapeo || 0) > 0 ? 'bg-amber-50' : 'bg-white/60'}`}>
-                              <span className={`font-medium ${(soapFullResult.stats?.vendedoresSinMapeo || 0) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>Sin mapeo:</span> {soapFullResult.stats?.vendedoresSinMapeo || 0} vendedores
+                            <div className={`rounded p-1.5 ${(soapFullResult.progress?.errors || 0) > 0 ? 'bg-amber-50' : 'bg-white/60'}`}>
+                              <span className={`font-medium ${(soapFullResult.progress?.errors || 0) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>Errores:</span> {soapFullResult.progress?.errors || 0}
                             </div>
                           </div>
-                          {soapFullResult.stats?.perPage && (
-                            <details className="mt-2">
-                              <summary className="cursor-pointer text-[11px] font-medium text-emerald-700 hover:text-emerald-900">
-                                Ver detalle por pagina ({soapFullResult.stats.perPage.length} paginas)
-                              </summary>
-                              <div className="mt-1 space-y-0.5">
-                                {soapFullResult.stats.perPage.slice(0, 20).map((p: any, i: number) => (
-                                  <p key={i} className="text-[10px] font-mono">
-                                    Pag {p.page}: {p.fetched} obtenidos, acum: {p.accumulated}
-                                  </p>
-                                ))}
-                                {soapFullResult.stats.perPage.length > 20 && (
-                                  <p className="text-[10px] font-mono text-gray-500">... y {soapFullResult.stats.perPage.length - 20} paginas mas</p>
-                                )}
-                              </div>
-                            </details>
-                          )}
-                          {soapFullResult.stats?.vendedoresSinMapeoDetalle?.length > 0 && (
-                            <div className="mt-3 border-t border-emerald-200 pt-3">
-                              <p className="font-medium text-amber-700 mb-2 flex items-center gap-1">
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                Vendedores pendientes de asignacion ({soapFullResult.stats.vendedoresSinMapeoDetalle.length})
-                              </p>
-                              <div className="space-y-1 max-h-48 overflow-y-auto">
-                                {soapFullResult.stats.vendedoresSinMapeoDetalle.map((v: any) => (
-                                  <div key={v.vendId} className="flex items-center justify-between bg-white/80 rounded px-2 py-1.5 text-xs">
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                      <span className="font-mono text-neutral-500 flex-shrink-0">ID:{v.vendId}</span>
-                                      <span className="truncate font-medium text-neutral-800">{v.vendNombre || 'Sin nombre'}</span>
-                                    </div>
-                                    <Badge variant="outline" className="ml-2 flex-shrink-0 text-amber-700 border-amber-300 bg-amber-50">
-                                      {v.docs} docs
-                                    </Badge>
-                                  </div>
-                                ))}
-                              </div>
-                              <p className="text-[10px] text-emerald-600 mt-2">
-                                Asigna estos vendedores en la pestana "Vendedores" para vincular sus documentos.
-                              </p>
-                            </div>
+
+                          {!soapFullResult.isComplete && (
+                            <p className="mt-2 text-xs text-blue-700 bg-blue-50 rounded p-2">
+                              Faltan {(soapFullResult.progress?.totalPages || 0) - (soapFullResult.progress?.currentPage || 0)} paginas por sincronizar.
+                              Presiona "Continuar Sync" para descargar el siguiente lote.
+                            </p>
                           )}
                         </div>
                       ) : (

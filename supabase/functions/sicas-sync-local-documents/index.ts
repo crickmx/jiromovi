@@ -16,25 +16,9 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-interface SyncStats {
-  recordsFetched: number;
-  documentsUpserted: number;
-  recordsLinked: number;
-  pagesProcessed: number;
-  totalInSicas: number;
-  vendedoresConDocs: number;
-  vendedoresSinMapeo: number;
-  vendedoresSinMapeoDetalle: Array<{ vendId: string; vendNombre: string; docs: number }>;
-  errors: number;
-  durationMs: number;
-  runId: string;
-  keycode: string;
-  perPage: Array<{
-    page: number;
-    fetched: number;
-    accumulated: number;
-  }>;
-}
+const PAGES_PER_BATCH = 60;
+const ITEMS_PER_PAGE = 100;
+const TOKEN_RENEW_INTERVAL = 2;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -45,10 +29,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const action: string = body.action || "full";
-
-    console.log(`[SYNC] ========== INICIO SINCRONIZACION ==========`);
-    console.log(`[SYNC] Modo: ${action} | Timestamp: ${new Date().toISOString()}`);
+    const mode: string = body.mode || body.action || "continue";
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -65,32 +46,68 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     const keycode = configRow?.report_keycode_all || "HWS_DOCTOS";
-    const pageSize = 500;
-    const maxPages = 200;
 
-    console.log(`[SYNC] Config: keycode=${keycode}, pageSize=${pageSize}, maxPages=${maxPages}`);
+    // Read cursor to know where we left off
+    const { data: cursor } = await supabase
+      .from("sicas_sync_cursors")
+      .select("*")
+      .eq("module", "documents")
+      .eq("keycode", keycode)
+      .maybeSingle();
 
+    let startPage = 1;
+    let knownTotalPages: number | null = null;
+
+    if (mode === "full") {
+      // Reset: start from page 1
+      startPage = 1;
+      console.log(`[SYNC] Modo FULL: reiniciando desde pagina 1`);
+    } else {
+      // Continue from last cursor
+      if (cursor && !cursor.is_complete && cursor.last_page) {
+        startPage = cursor.last_page + 1;
+        knownTotalPages = cursor.total_pages || null;
+        console.log(`[SYNC] Modo CONTINUE: retomando desde pagina ${startPage}, totalPages conocido: ${knownTotalPages}`);
+      } else if (cursor?.is_complete) {
+        return jsonResponse(200, {
+          ok: true,
+          isComplete: true,
+          message: "Sincronizacion ya completa. Usa mode=full para reiniciar.",
+          stats: {
+            totalSynced: cursor.total_synced || 0,
+            totalPages: cursor.total_pages || 0,
+          },
+        });
+      }
+    }
+
+    console.log(`[SYNC] ========== BATCH SYNC ==========`);
+    console.log(`[SYNC] Keycode: ${keycode}, StartPage: ${startPage}, PagesPerBatch: ${PAGES_PER_BATCH}`);
+
+    // Create sync run
     const { data: run, error: runError } = await supabase
       .from("sicas_sync_runs")
       .insert({
         module: "documents",
         keycode,
-        report_name: `Sync ${action} - ALL docs no vendor filter`,
-        items_per_page: pageSize,
+        report_name: `Batch sync pages ${startPage}-${startPage + PAGES_PER_BATCH - 1}`,
+        items_per_page: ITEMS_PER_PAGE,
         status: "running",
         started_at: new Date().toISOString(),
       })
       .select()
       .single();
 
-    if (runError) {
-      throw new Error(`Error creando registro de sync: ${runError.message}`);
-    }
+    if (runError) throw new Error(`Error creando sync run: ${runError.message}`);
     const runId = run.run_id;
-    console.log(`[SYNC] Run ID: ${runId}`);
 
-    // ===== STEP 1: Download ALL documents WITHOUT vendor filter =====
-    console.log(`[SYNC] === STEP 1: Descarga masiva SIN filtro de vendedor ===`);
+    // Load despacho name -> office mapping
+    const despachoNameToOffice = await loadDespachoNameMap(supabase);
+    console.log(`[SYNC] Despacho name mappings loaded: ${despachoNameToOffice.size}`);
+
+    // Load vendor -> user mappings
+    const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
+    console.log(`[SYNC] Vendor mappings: ${vendorToUser.size} vendor->user, ${vendorToOficina.size} vendor->oficina`);
 
     const client = new SicasRestClient({
       baseUrl: Deno.env.get("SICAS_REST_API_URL") || undefined,
@@ -99,393 +116,156 @@ Deno.serve(async (req: Request) => {
       sCodeAuth: Deno.env.get("SICAS_CODE_AUTH") || undefined,
     });
 
-    const allRecords: Record<string, unknown>[] = [];
-    const perPageStats: SyncStats["perPage"] = [];
+    let totalPages = knownTotalPages || 1;
     let totalInSicas = 0;
-    let page = 1;
-    let totalPages = 1;
+    let totalFetched = 0;
+    let totalUpserted = 0;
+    let totalErrors = 0;
+    let lastPageProcessed = startPage - 1;
+    let page = startPage;
+    const endPage = startPage + PAGES_PER_BATCH - 1;
 
-    while (page <= totalPages && page <= maxPages) {
+    while (page <= endPage) {
+      // Don't go beyond totalPages once known
+      if (totalPages > 0 && page > totalPages) break;
+
+      // Renew token every TOKEN_RENEW_INTERVAL pages
+      if ((page - startPage) > 0 && (page - startPage) % TOKEN_RENEW_INTERVAL === 0) {
+        try {
+          await client.getValidToken();
+        } catch (e) {
+          console.warn(`[SYNC] Token renewal warning: ${(e as Error).message}`);
+        }
+      }
+
       let response;
       try {
         response = await client.readReport({
           keyCode: keycode,
           pageRequested: page,
-          itemsForPage: pageSize,
+          itemsForPage: ITEMS_PER_PAGE,
           sortFields: "Documento",
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[SYNC] ERROR pagina ${page}: ${msg}`);
-        perPageStats.push({ page, fetched: 0, accumulated: allRecords.length });
+        console.error(`[SYNC] ERROR page ${page}: ${msg}`);
+        totalErrors++;
+        if (totalErrors >= 3) {
+          console.error(`[SYNC] Too many consecutive errors, stopping batch`);
+          break;
+        }
+        page++;
+        continue;
+      }
+
+      // TableControl is now in Response[1] thanks to FIX 1
+      const records = response.Response?.[0]?.TableInfo || [];
+      const control = response.Response?.[1]?.TableControl?.[0]
+        || response.Response?.[0]?.TableControl?.[0];
+
+      if (page === startPage && control) {
+        totalInSicas = control.MaxRecords || 0;
+        totalPages = control.Pages || 1;
+        console.log(`[SYNC] SICAS reports: MaxRecords=${totalInSicas}, TotalPages=${totalPages}`);
+      }
+
+      if (records.length === 0) {
+        console.log(`[SYNC] Page ${page}: 0 records, end of data`);
         break;
       }
 
-      const records = response.Response?.[0]?.TableInfo || [];
-      const control = response.Response?.[0]?.TableControl?.[0];
+      totalFetched += records.length;
 
-      if (page === 1) {
-        totalInSicas = control?.MaxRecords || records.length;
-        totalPages = control?.Pages || 1;
-        console.log(`[SYNC] SICAS reporta: MaxRecords=${totalInSicas}, Pages=${totalPages}`);
-      }
+      // Map and upsert this page's documents
+      const documents = records.map((raw: Record<string, unknown>) =>
+        mapDocument(raw, keycode, despachoNameToOffice, vendorToUser, vendorToOficina)
+      );
 
-      allRecords.push(...records);
-      perPageStats.push({ page, fetched: records.length, accumulated: allRecords.length });
-      console.log(`[SYNC] Pagina ${page}/${totalPages}: ${records.length} registros (acumulado: ${allRecords.length}/${totalInSicas})`);
+      const { upserted, errors } = await upsertDocuments(supabase, documents);
+      totalUpserted += upserted;
+      totalErrors += errors;
 
-      if (records.length === 0) break;
+      lastPageProcessed = page;
+      console.log(`[SYNC] Page ${page}/${totalPages}: ${records.length} fetched, ${upserted} upserted (total: ${totalFetched}/${totalInSicas})`);
+
       page++;
     }
 
-    console.log(`[SYNC] Descarga completa: ${allRecords.length} registros en ${perPageStats.length} paginas`);
+    // Determine if sync is complete
+    const isComplete = lastPageProcessed >= totalPages;
+    const previousSynced = (mode !== "full" && cursor?.total_synced) ? cursor.total_synced : 0;
+    const accumulatedSynced = previousSynced + totalUpserted;
 
-    // ===== STEP 2: Parse and upsert all documents =====
-    console.log(`[SYNC] === STEP 2: Upsert de ${allRecords.length} documentos ===`);
-
-    let totalUpserted = 0;
-    let totalErrors = 0;
-
-    if (allRecords.length > 0) {
-      const now = new Date().toISOString();
-      const today = new Date();
-
-      const documents = allRecords.map((raw: Record<string, unknown>) => {
-        const get = (keys: string[]): string => {
-          for (const k of keys) {
-            const val = raw[k] ?? raw[k?.toLowerCase()] ?? raw[k?.toUpperCase()];
-            if (val !== undefined && val !== null && String(val).trim()) return String(val).trim();
-          }
-          return "";
-        };
-        const num = (keys: string[]): number => {
-          const v = get(keys);
-          if (!v) return 0;
-          const n = Number.parseFloat(v.replace(/,/g, ""));
-          return isNaN(n) ? 0 : n;
-        };
-
-        const idDocto = get(["IDDocto", "IdDocto", "Id_Docto", "iddocto"]) || `DOC_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        const vendId = get(["IDVend", "VendId", "Vend_Id"]);
-        const despId = get(["IDDesp", "DespId"]);
-
-        const statusTxt = get(["Status_TXT", "Estatus_TXT"]);
-        const statusRaw = get(["Status", "Estatus", "StatusDoc"]);
-        const statusLetterMap: Record<string, string> = { V: "Vigente", C: "Cancelada", X: "Vencida", N: "No Vigente", P: "Pendiente" };
-        const statusNumMap: Record<string, string> = { "1": "Vigente", "2": "Renovada", "3": "Cancelada", "4": "No Vigente", "5": "Pendiente" };
-        const statusTexto = statusTxt || statusLetterMap[statusRaw] || statusNumMap[statusRaw] || statusRaw || "";
-
-        const tipoDoc = get(["TipoDocto_TXT", "TipoDocto", "Tipo"]);
-        const subtipoDoc = get(["SubTipoDocto_TXT", "SubTipoDocto"]);
-        const tipoLower = tipoDoc.toLowerCase();
-        const isPoliza = tipoLower.includes("poliza") || tipoLower.includes("póliza") || (!tipoLower.includes("fianza") && !tipoLower.includes("orden"));
-        const isFianza = tipoLower.includes("fianza");
-
-        const fHasta = get(["FHasta", "FechaHasta", "Vigencia_Hasta"]);
-        let isVigente = statusTexto.toLowerCase() === "vigente";
-        let renewalDays: number | null = null;
-        if (fHasta) {
-          try {
-            const hastaDate = new Date(fHasta);
-            if (!isNaN(hastaDate.getTime())) {
-              const diffMs = hastaDate.getTime() - today.getTime();
-              renewalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-              if (renewalDays < 0 && isVigente) isVigente = false;
-            }
-          } catch { /* ignore */ }
-        }
-        const isCancelada = statusTexto.toLowerCase() === "cancelada";
-        const isRenewable = isVigente && renewalDays !== null && renewalDays >= 0 && renewalDays <= 90;
-
-        return {
-          id_docto: idDocto,
-          vend_id: vendId || null,
-          vend_nombre: get(["VendNombre", "Vendedor", "Vend_Nombre"]) || null,
-          desp_id: despId || null,
-          desp_nombre: get(["DespNombre", "Despacho"]) || null,
-          usuario_id: null,
-          oficina_id: null,
-          ramo: get(["RamosNombre", "Ramo", "Ramo_TXT", "NombreRamo"]) || null,
-          subramo: get(["SRamoNombre", "SubRamo", "SubRamo_TXT"]) || null,
-          compania: get(["CiaNombre", "Aseguradora", "Compania"]) || null,
-          aseguradora_nombre: get(["CiaAbreviacion", "CiaNombre", "Abreviacion"]) || null,
-          poliza: get(["Documento", "NoDocumento", "No_Documento"]) || null,
-          cliente: get(["NombreCompleto", "Nombre_Completo", "Cliente", "Contratante"]) || null,
-          fecha_captura: get(["FCaptura", "FechaCaptura"]) || null,
-          fecha_emision: get(["FEmision", "FechaEmision"]) || null,
-          vigencia_desde: get(["FDesde", "FechaDesde", "Vigencia_Desde"]) || null,
-          vigencia_hasta: fHasta || null,
-          importe: num(["Importe", "ImporteTotal"]),
-          prima_neta: num(["PrimaNeta", "Prima_Neta", "ImporteNeto"]),
-          prima_total: num(["PrimaTotal", "Prima_Total", "ImporteTotal"]),
-          derechos: num(["DerechoPoliza", "Derecho"]),
-          impuestos: num(["IVA", "Iva"]),
-          recargos: num(["Recargos"]),
-          moneda: get(["Moneda", "MonedaTXT"]) || "MXN",
-          tipo_documento: tipoDoc || null,
-          subtipo_documento: subtipoDoc || null,
-          sicas_id_agente: get(["IDAgente", "AgenteId", "CAgente"]) || null,
-          agente_nombre: get(["AgenteNombre", "Agente", "NombreAgente"]) || null,
-          status_codigo: statusRaw || null,
-          status_texto: statusTexto || null,
-          status_cobro: get(["StatusCobro", "Status_Cobro", "EstatusCobro"]) || null,
-          is_poliza: isPoliza,
-          is_fianza: isFianza,
-          is_vigente: isVigente,
-          is_cancelada: isCancelada,
-          is_renewable: isRenewable,
-          renewal_days_remaining: renewalDays,
-          source_keycode: keycode,
-          raw_data: raw,
-          raw_hash: JSON.stringify(raw),
-          synced_at: now,
-        };
-      });
-
-      const batchSize = 200;
-      for (let i = 0; i < documents.length; i += batchSize) {
-        const batch = documents.slice(i, i + batchSize);
-        const batchNum = Math.floor(i / batchSize) + 1;
-        const totalBatches = Math.ceil(documents.length / batchSize);
-
-        const { error: upsertError, data: upserted } = await supabase
-          .from("sicas_documents")
-          .upsert(batch, { onConflict: "id_docto", ignoreDuplicates: false })
-          .select("id");
-
-        if (upsertError) {
-          console.error(`[SYNC] Error upsert lote ${batchNum}/${totalBatches}: ${upsertError.message}`);
-          totalErrors += batch.length;
-        } else {
-          const count = upserted?.length || batch.length;
-          totalUpserted += count;
-          console.log(`[SYNC] Upsert lote ${batchNum}/${totalBatches}: ${count} docs OK`);
-        }
-      }
-
-      // Backward compat: upsert into sicas_polizas_vigentes
-      const polizasVigentes = allRecords.map((raw: Record<string, unknown>) => {
-        const get = (keys: string[]): string => {
-          for (const k of keys) {
-            const val = raw[k] ?? raw[k?.toLowerCase()] ?? raw[k?.toUpperCase()];
-            if (val !== undefined && val !== null && String(val).trim()) return String(val).trim();
-          }
-          return "";
-        };
-        const vendId = get(["IDVend", "VendId", "Vend_Id"]);
-        const despId = get(["IDDesp", "DespId"]);
-
-        return {
-          id_documento: get(["IDDocto", "IdDocto"]) || `DOC_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-          no_poliza: get(["Documento", "NoDocumento"]) || null,
-          vend_id: vendId || null,
-          vend_nombre: get(["VendNombre", "Vendedor"]) || null,
-          desp_id: despId || null,
-          desp_nombre: get(["DespNombre", "Despacho"]) || null,
-          aseguradora: get(["CiaNombre", "Aseguradora"]) || null,
-          ramo: get(["RamosNombre", "Ramo"]) || null,
-          subramo: get(["SRamoNombre", "SubRamo"]) || null,
-          contratante: get(["NombreCompleto", "Cliente", "Contratante"]) || null,
-          asegurado: get(["Asegurado"]) || null,
-          vigencia_desde: get(["FDesde", "FechaDesde"]) || null,
-          vigencia_hasta: get(["FHasta", "FechaHasta"]) || null,
-          prima_neta: Number.parseFloat(get(["PrimaNeta", "ImporteNeto"]) || "0") || null,
-          prima_total: Number.parseFloat(get(["PrimaTotal", "Importe"]) || "0") || null,
-          usuario_id: null,
-          oficina_id: null,
-          synced_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-      });
-
-      for (let i = 0; i < polizasVigentes.length; i += batchSize) {
-        const batch = polizasVigentes.slice(i, i + batchSize);
-        const { error } = await supabase
-          .from("sicas_polizas_vigentes")
-          .upsert(batch, { onConflict: "id_documento", ignoreDuplicates: false });
-        if (error) {
-          console.error(`[SYNC] Error sicas_polizas_vigentes: ${error.message}`);
-        }
-      }
-    }
-
-    // ===== STEP 3: Link documents to users/offices using mappings =====
-    console.log(`[SYNC] === STEP 3: Vinculacion de documentos a usuarios ===`);
-
-    const [vendorMappingsR, despachoMappingsR, usuariosWithSicasR] = await Promise.all([
-      supabase.from("sicas_mapeo_vendedor_usuario").select("id_sicas_vendedor, movi_user_id"),
-      supabase.from("sicas_mapeo_despacho_oficina").select("id_sicas_despacho, movi_oficina_id"),
-      supabase.from("usuarios").select("id, id_sicas, oficina_id").not("id_sicas", "is", null),
-    ]);
-
-    const vendorToUser = new Map<string, string>();
-    const vendorToOficina = new Map<string, string>();
-
-    for (const m of vendorMappingsR.data || []) {
-      vendorToUser.set(String(m.id_sicas_vendedor), m.movi_user_id);
-    }
-    for (const u of usuariosWithSicasR.data || []) {
-      if (u.id_sicas && String(u.id_sicas).trim()) {
-        const idSicas = String(u.id_sicas).trim();
-        if (!vendorToUser.has(idSicas)) {
-          vendorToUser.set(idSicas, u.id);
-        }
-        if (u.oficina_id) {
-          vendorToOficina.set(idSicas, u.oficina_id);
-        }
-      }
-    }
-
-    const despachoToOficina = new Map<string, string>();
-    for (const m of despachoMappingsR.data || []) {
-      despachoToOficina.set(String(m.id_sicas_despacho), m.movi_oficina_id);
-    }
-
-    // Get user->oficina fallback
-    const userIds = [...new Set(vendorToUser.values())];
-    const userOficinaMap = new Map<string, string>();
-    if (userIds.length > 0) {
-      const { data: usuarios } = await supabase
-        .from("usuarios")
-        .select("id, oficina_id")
-        .in("id", userIds);
-      for (const u of usuarios || []) {
-        if (u.oficina_id) userOficinaMap.set(u.id, u.oficina_id);
-      }
-    }
-
-    console.log(`[SYNC] Mappings: ${vendorToUser.size} vendedor->usuario, ${despachoToOficina.size} despacho->oficina`);
-
-    let recordsLinked = 0;
-    for (const [vendId, userId] of vendorToUser.entries()) {
-      let oficinaId = vendorToOficina.get(vendId) || userOficinaMap.get(userId) || null;
-
-      // Also try despacho mapping for this vendor's documents
-      const updatePayload: Record<string, unknown> = { usuario_id: userId };
-      if (oficinaId) updatePayload.oficina_id = oficinaId;
-
-      const { count, error: linkErr } = await supabase
-        .from("sicas_documents")
-        .update(updatePayload, { count: "exact" })
-        .eq("vend_id", vendId)
-        .is("usuario_id", null);
-
-      if (linkErr) {
-        console.error(`[SYNC] Error linking vendor ${vendId}: ${linkErr.message}`);
-      } else if (count && count > 0) {
-        recordsLinked += count;
-        console.log(`[SYNC] Vendor ${vendId} -> usuario ${userId}: ${count} docs linked`);
-      }
-
-      // Also update sicas_polizas_vigentes
-      await supabase
-        .from("sicas_polizas_vigentes")
-        .update(updatePayload)
-        .eq("vend_id", vendId)
-        .is("usuario_id", null);
-    }
-
-    // Link by despacho for remaining unlinked docs
-    for (const [despId, oficinaId] of despachoToOficina.entries()) {
-      const { count, error: linkErr } = await supabase
-        .from("sicas_documents")
-        .update({ oficina_id: oficinaId }, { count: "exact" })
-        .eq("desp_id", despId)
-        .is("oficina_id", null);
-
-      if (linkErr) {
-        console.error(`[SYNC] Error linking despacho ${despId}: ${linkErr.message}`);
-      } else if (count && count > 0) {
-        console.log(`[SYNC] Despacho ${despId} -> oficina ${oficinaId}: ${count} docs linked`);
-      }
-    }
-
-    console.log(`[SYNC] Total documentos vinculados a usuarios: ${recordsLinked}`);
-
-    // ===== STEP 4: Calculate unmapped vendor stats =====
-    console.log(`[SYNC] === STEP 4: Estadisticas de vendedores sin mapeo ===`);
-
-    const vendedoresConDocsMap = new Map<string, { nombre: string; docs: number }>();
-    for (const raw of allRecords) {
-      const vendId = String((raw as Record<string, unknown>)["IDVend"] || (raw as Record<string, unknown>)["VendId"] || "").trim();
-      const vendNombre = String((raw as Record<string, unknown>)["VendNombre"] || (raw as Record<string, unknown>)["Vendedor"] || "").trim();
-      if (!vendId) continue;
-      const existing = vendedoresConDocsMap.get(vendId);
-      if (existing) {
-        existing.docs++;
-      } else {
-        vendedoresConDocsMap.set(vendId, { nombre: vendNombre, docs: 1 });
-      }
-    }
-
-    const vendedoresSinMapeo: Array<{ vendId: string; vendNombre: string; docs: number }> = [];
-    for (const [vendId, info] of vendedoresConDocsMap.entries()) {
-      if (!vendorToUser.has(vendId)) {
-        vendedoresSinMapeo.push({ vendId, vendNombre: info.nombre, docs: info.docs });
-      }
-    }
-    vendedoresSinMapeo.sort((a, b) => b.docs - a.docs);
-
-    console.log(`[SYNC] Vendedores con docs: ${vendedoresConDocsMap.size}, sin mapeo: ${vendedoresSinMapeo.length}`);
-    for (const v of vendedoresSinMapeo.slice(0, 10)) {
-      console.log(`[SYNC]   - Vendor ${v.vendId} "${v.vendNombre}": ${v.docs} docs`);
-    }
-
-    // ===== STEP 5: Record sync run results =====
-    const durationMs = Date.now() - startTime;
-    const durationSeconds = Math.round(durationMs / 1000);
-
-    await supabase
-      .from("sicas_sync_runs")
-      .update({
-        status: totalErrors > 0 && totalUpserted === 0 ? "failed" : "completed",
-        records_fetched: allRecords.length,
-        records_upserted: totalUpserted,
-        records_linked: recordsLinked,
-        records_failed: totalErrors,
-        pages_requested: perPageStats.length,
-        finished_at: new Date().toISOString(),
-        duration_seconds: durationSeconds,
-        error_message: totalErrors > 0 ? `${totalErrors} errores durante upsert` : null,
-      })
-      .eq("run_id", runId);
-
+    // Update cursor
     await supabase.from("sicas_sync_cursors").upsert(
       {
         module: "documents",
         keycode,
+        last_page: lastPageProcessed,
+        total_pages: totalPages,
+        is_complete: isComplete,
+        total_synced: accumulatedSynced,
         last_success_at: new Date().toISOString(),
         last_cursor_date: new Date().toISOString(),
-        total_synced: totalUpserted,
         last_run_id: runId,
       },
       { onConflict: "module,keycode" }
     );
 
-    const stats: SyncStats = {
-      recordsFetched: allRecords.length,
-      documentsUpserted: totalUpserted,
-      recordsLinked,
-      pagesProcessed: perPageStats.length,
-      totalInSicas,
-      vendedoresConDocs: vendedoresConDocsMap.size,
-      vendedoresSinMapeo: vendedoresSinMapeo.length,
-      vendedoresSinMapeoDetalle: vendedoresSinMapeo,
-      errors: totalErrors,
-      durationMs,
-      runId,
-      keycode,
-      perPage: perPageStats,
-    };
+    // Update sync run
+    const durationMs = Date.now() - startTime;
+    await supabase
+      .from("sicas_sync_runs")
+      .update({
+        status: isComplete ? "completed" : "partial",
+        records_fetched: totalFetched,
+        records_upserted: totalUpserted,
+        records_failed: totalErrors,
+        pages_requested: lastPageProcessed - startPage + 1,
+        finished_at: new Date().toISOString(),
+        duration_seconds: Math.round(durationMs / 1000),
+      })
+      .eq("run_id", runId);
 
-    console.log(`[SYNC] ========== FIN SINCRONIZACION ==========`);
-    console.log(`[SYNC] ${totalUpserted} upserted, ${recordsLinked} linked, ${totalErrors} errors, ${perPageStats.length} pages, ${durationMs}ms`);
-    console.log(`[SYNC] Total en SICAS: ${totalInSicas}, Descargados: ${allRecords.length}`);
+    const progressPercent = totalPages > 0
+      ? Math.round((lastPageProcessed / totalPages) * 100)
+      : 100;
 
-    return jsonResponse(200, { ok: true, stats });
+    console.log(`[SYNC] ========== BATCH COMPLETE ==========`);
+    console.log(`[SYNC] Pages ${startPage}-${lastPageProcessed}/${totalPages} (${progressPercent}%)`);
+    console.log(`[SYNC] Fetched: ${totalFetched}, Upserted: ${totalUpserted}, Errors: ${totalErrors}`);
+    console.log(`[SYNC] isComplete: ${isComplete}, Duration: ${durationMs}ms`);
+
+    return jsonResponse(200, {
+      ok: true,
+      isComplete,
+      nextPage: isComplete ? null : lastPageProcessed + 1,
+      progress: {
+        currentPage: lastPageProcessed,
+        totalPages,
+        percent: progressPercent,
+        totalInSicas,
+        batchFetched: totalFetched,
+        batchUpserted: totalUpserted,
+        accumulatedSynced,
+        errors: totalErrors,
+      },
+      stats: {
+        recordsFetched: totalFetched,
+        documentsUpserted: totalUpserted,
+        pagesProcessed: lastPageProcessed - startPage + 1,
+        totalInSicas,
+        errors: totalErrors,
+        durationMs,
+        runId,
+        keycode,
+        startPage,
+        endPage: lastPageProcessed,
+      },
+    });
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    console.error(`[SYNC] ERROR FATAL: ${(error as Error).message}`);
+    console.error(`[SYNC] FATAL ERROR: ${(error as Error).message}`);
     console.error(`[SYNC] Stack: ${(error as Error).stack}`);
 
     return jsonResponse(500, {
@@ -495,3 +275,281 @@ Deno.serve(async (req: Request) => {
     });
   }
 });
+
+// ===== DespNombre-based office resolution =====
+// Documents don't have IDDesp — only DespNombre as text.
+// Strategy: sicas_catalogos (type 11) maps despacho name -> id_sicas,
+// then sicas_mapeo_despacho_oficina maps id_sicas -> movi_oficina_id.
+async function loadDespachoNameMap(
+  supabase: ReturnType<typeof createClient>
+): Promise<Map<string, { oficina_id: string; desp_id: string }>> {
+  const map = new Map<string, { oficina_id: string; desp_id: string }>();
+
+  const { data: catalogs } = await supabase
+    .from("sicas_catalogos")
+    .select("id_sicas, nombre")
+    .eq("catalog_type_id", 11);
+
+  if (!catalogs || catalogs.length === 0) return map;
+
+  const { data: mappings } = await supabase
+    .from("sicas_mapeo_despacho_oficina")
+    .select("id_sicas_despacho, movi_oficina_id");
+
+  if (!mappings) return map;
+
+  const despIdToOficina = new Map<string, string>();
+  for (const m of mappings) {
+    despIdToOficina.set(String(m.id_sicas_despacho), m.movi_oficina_id);
+  }
+
+  for (const cat of catalogs) {
+    const oficinaId = despIdToOficina.get(String(cat.id_sicas));
+    if (oficinaId) {
+      // Normalize: uppercase, trim
+      const normalizedName = String(cat.nombre).toUpperCase().trim();
+      map.set(normalizedName, { oficina_id: oficinaId, desp_id: String(cat.id_sicas) });
+    }
+  }
+
+  return map;
+}
+
+async function loadVendorMaps(
+  supabase: ReturnType<typeof createClient>
+): Promise<{
+  vendorToUser: Map<string, string>;
+  vendorToOficina: Map<string, string>;
+}> {
+  const vendorToUser = new Map<string, string>();
+  const vendorToOficina = new Map<string, string>();
+
+  const [vendorMappingsR, usuariosWithSicasR] = await Promise.all([
+    supabase.from("sicas_mapeo_vendedor_usuario").select("id_sicas_vendedor, movi_user_id"),
+    supabase.from("usuarios").select("id, id_sicas, oficina_id").not("id_sicas", "is", null),
+  ]);
+
+  for (const m of vendorMappingsR.data || []) {
+    vendorToUser.set(String(m.id_sicas_vendedor), m.movi_user_id);
+  }
+
+  for (const u of usuariosWithSicasR.data || []) {
+    if (u.id_sicas && String(u.id_sicas).trim()) {
+      const idSicas = String(u.id_sicas).trim();
+      if (!vendorToUser.has(idSicas)) {
+        vendorToUser.set(idSicas, u.id);
+      }
+      if (u.oficina_id) {
+        vendorToOficina.set(idSicas, u.oficina_id);
+      }
+    }
+  }
+
+  // Also load user oficina for vendor-mapped users
+  const userIds = [...new Set(vendorToUser.values())];
+  if (userIds.length > 0) {
+    const { data: usuarios } = await supabase
+      .from("usuarios")
+      .select("id, oficina_id")
+      .in("id", userIds);
+    for (const u of usuarios || []) {
+      if (u.oficina_id) {
+        for (const [vendId, userId] of vendorToUser.entries()) {
+          if (userId === u.id && !vendorToOficina.has(vendId)) {
+            vendorToOficina.set(vendId, u.oficina_id);
+          }
+        }
+      }
+    }
+  }
+
+  return { vendorToUser, vendorToOficina };
+}
+
+function mapDocument(
+  raw: Record<string, unknown>,
+  keycode: string,
+  despachoNameToOffice: Map<string, { oficina_id: string; desp_id: string }>,
+  vendorToUser: Map<string, string>,
+  vendorToOficina: Map<string, string>,
+): Record<string, unknown> {
+  const get = (keys: string[]): string => {
+    for (const k of keys) {
+      const val = raw[k] ?? raw[k?.toLowerCase()] ?? raw[k?.toUpperCase()];
+      if (val !== undefined && val !== null && String(val).trim()) return String(val).trim();
+    }
+    return "";
+  };
+  const num = (keys: string[]): number => {
+    const v = get(keys);
+    if (!v) return 0;
+    const n = Number.parseFloat(v.replace(/,/g, ""));
+    return isNaN(n) ? 0 : n;
+  };
+
+  const idDocto = get(["IDDocto", "IdDocto", "Id_Docto", "iddocto"]);
+  if (!idDocto) return null as any; // will be filtered
+
+  const vendId = get(["IDVend", "VendId", "Vend_Id"]);
+  const despNombre = get(["DespNombre", "Despacho"]);
+
+  // Resolve office via DespNombre -> catalog -> mapping
+  let oficina_id: string | null = null;
+  let desp_id: string | null = null;
+  let oficina_nombre: string | null = null;
+
+  if (despNombre) {
+    const normalizedDesp = despNombre.toUpperCase().trim();
+    const match = despachoNameToOffice.get(normalizedDesp);
+    if (match) {
+      oficina_id = match.oficina_id;
+      desp_id = match.desp_id;
+      oficina_nombre = despNombre;
+    }
+  }
+
+  // Resolve user via vendor mapping
+  let usuario_id: string | null = null;
+  if (vendId && vendorToUser.has(vendId)) {
+    usuario_id = vendorToUser.get(vendId)!;
+    if (!oficina_id && vendorToOficina.has(vendId)) {
+      oficina_id = vendorToOficina.get(vendId)!;
+    }
+  }
+
+  const statusTxt = get(["Status_TXT", "Estatus_TXT"]);
+  const statusRaw = get(["Status", "Estatus", "StatusDoc"]);
+  const statusLetterMap: Record<string, string> = { V: "Vigente", C: "Cancelada", X: "Vencida", N: "No Vigente", P: "Pendiente" };
+  const statusNumMap: Record<string, string> = { "1": "Vigente", "2": "Renovada", "3": "Cancelada", "4": "No Vigente", "5": "Pendiente" };
+  const statusTexto = statusTxt || statusLetterMap[statusRaw] || statusNumMap[statusRaw] || statusRaw || "";
+
+  const tipoDoc = get(["TipoDocto_TXT", "TipoDocto", "Tipo"]);
+  const subtipoDoc = get(["SubTipoDocto_TXT", "SubTipoDocto"]);
+  const tipoLower = tipoDoc.toLowerCase();
+  const isPoliza = tipoLower.includes("poliza") || tipoLower.includes("póliza") || (!tipoLower.includes("fianza") && !tipoLower.includes("orden"));
+  const isFianza = tipoLower.includes("fianza");
+
+  const fHasta = get(["FHasta", "FechaHasta", "Vigencia_Hasta"]);
+  const today = new Date();
+  let isVigente = statusTexto.toLowerCase() === "vigente";
+  let renewalDays: number | null = null;
+  if (fHasta) {
+    try {
+      const hastaDate = new Date(fHasta);
+      if (!isNaN(hastaDate.getTime())) {
+        const diffMs = hastaDate.getTime() - today.getTime();
+        renewalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        if (renewalDays < 0 && isVigente) isVigente = false;
+      }
+    } catch { /* ignore */ }
+  }
+  const isCancelada = statusTexto.toLowerCase() === "cancelada";
+  const isRenewable = isVigente && renewalDays !== null && renewalDays >= 0 && renewalDays <= 90;
+
+  return {
+    id_docto: idDocto,
+    vend_id: vendId || null,
+    vend_nombre: get(["VendNombre", "Vendedor", "Vend_Nombre"]) || null,
+    desp_id: desp_id,
+    desp_nombre: despNombre || null,
+    usuario_id,
+    oficina_id,
+    oficina_nombre,
+    ramo: get(["RamosNombre", "Ramo", "Ramo_TXT", "NombreRamo"]) || null,
+    subramo: get(["SRamoNombre", "SubRamo", "SubRamo_TXT"]) || null,
+    compania: get(["CiaNombre", "Aseguradora", "Compania"]) || null,
+    aseguradora_nombre: get(["CiaAbreviacion", "CiaNombre", "Abreviacion"]) || null,
+    poliza: get(["Documento", "NoDocumento", "No_Documento"]) || null,
+    cliente: get(["NombreCompleto", "Nombre_Completo", "Cliente", "Contratante"]) || null,
+    fecha_captura: get(["FCaptura", "FechaCaptura"]) || null,
+    fecha_emision: get(["FEmision", "FechaEmision"]) || null,
+    vigencia_desde: get(["FDesde", "FechaDesde", "Vigencia_Desde"]) || null,
+    vigencia_hasta: fHasta || null,
+    importe: num(["Importe", "ImporteTotal"]),
+    prima_neta: num(["PrimaNeta", "Prima_Neta", "ImporteNeto"]),
+    prima_total: num(["PrimaTotal", "Prima_Total", "ImporteTotal"]),
+    derechos: num(["DerechoPoliza", "Derecho"]),
+    impuestos: num(["IVA", "Iva"]),
+    recargos: num(["Recargos"]),
+    moneda: get(["Moneda", "MonedaTXT"]) || "MXN",
+    tipo_documento: tipoDoc || null,
+    subtipo_documento: subtipoDoc || null,
+    sicas_id_agente: get(["IDAgente", "AgenteId", "CAgente"]) || null,
+    agente_nombre: get(["AgenteNombre", "Agente", "NombreAgente"]) || null,
+    status_codigo: statusRaw || null,
+    status_texto: statusTexto || null,
+    status_cobro: get(["StatusCobro", "Status_Cobro", "EstatusCobro"]) || null,
+    is_poliza: isPoliza,
+    is_fianza: isFianza,
+    is_vigente: isVigente,
+    is_cancelada: isCancelada,
+    is_renewable: isRenewable,
+    renewal_days_remaining: renewalDays,
+    source_keycode: keycode,
+    raw_data: raw,
+    raw_hash: JSON.stringify(raw),
+    synced_at: new Date().toISOString(),
+  };
+}
+
+async function upsertDocuments(
+  supabase: ReturnType<typeof createClient>,
+  documents: Record<string, unknown>[],
+): Promise<{ upserted: number; errors: number }> {
+  // Filter out null entries (records without IDDocto)
+  const validDocs = documents.filter((d) => d !== null && d.id_docto);
+  if (validDocs.length === 0) return { upserted: 0, errors: 0 };
+
+  let totalUpserted = 0;
+  let totalErrors = 0;
+  const batchSize = 200;
+
+  for (let i = 0; i < validDocs.length; i += batchSize) {
+    const batch = validDocs.slice(i, i + batchSize);
+    const { error: upsertError, data: upserted } = await supabase
+      .from("sicas_documents")
+      .upsert(batch, { onConflict: "id_docto", ignoreDuplicates: false })
+      .select("id");
+
+    if (upsertError) {
+      console.error(`[SYNC] Upsert error: ${upsertError.message}`);
+      totalErrors += batch.length;
+    } else {
+      totalUpserted += upserted?.length || batch.length;
+    }
+  }
+
+  // Also upsert into sicas_polizas_vigentes for backward compat
+  const polizasVigentes = validDocs.map((d) => ({
+    id_documento: d.id_docto as string,
+    no_poliza: d.poliza || null,
+    vend_id: d.vend_id || null,
+    vend_nombre: d.vend_nombre || null,
+    desp_id: d.desp_id || null,
+    desp_nombre: d.desp_nombre || null,
+    aseguradora: d.compania || null,
+    ramo: d.ramo || null,
+    subramo: d.subramo || null,
+    contratante: d.cliente || null,
+    vigencia_desde: d.vigencia_desde || null,
+    vigencia_hasta: d.vigencia_hasta || null,
+    prima_neta: d.prima_neta || null,
+    prima_total: d.prima_total || null,
+    usuario_id: d.usuario_id || null,
+    oficina_id: d.oficina_id || null,
+    synced_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }));
+
+  for (let i = 0; i < polizasVigentes.length; i += batchSize) {
+    const batch = polizasVigentes.slice(i, i + batchSize);
+    const { error } = await supabase
+      .from("sicas_polizas_vigentes")
+      .upsert(batch, { onConflict: "id_documento", ignoreDuplicates: false });
+    if (error) {
+      console.error(`[SYNC] sicas_polizas_vigentes error: ${error.message}`);
+    }
+  }
+
+  return { upserted: totalUpserted, errors: totalErrors };
+}

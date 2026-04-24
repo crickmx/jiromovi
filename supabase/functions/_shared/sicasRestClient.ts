@@ -415,8 +415,32 @@ export class SicasRestClient {
 
       // Handle already-structured JSON array response
       const reportResponse = response as SicasReportResponse;
-      console.log('[SICAS REST] readReport - Success. Records:', reportResponse.Response?.[0]?.TableInfo?.length || 0);
-      return reportResponse;
+
+      // SICAS mezcla registros de paginación dentro de TableInfo — separarlos
+      const rawTableInfo = reportResponse.Response?.[0]?.TableInfo ?? [];
+      const paginationRecord = rawTableInfo.find(
+        (r: any) => (r.Pages !== undefined || r.MaxRecords !== undefined)
+                    && r.IDDocto === undefined
+                    && r.Documento === undefined
+      );
+      const cleanTableInfo = rawTableInfo.filter(
+        (r: any) => r.IDDocto !== undefined || r.Documento !== undefined
+      );
+      const tableControl = paginationRecord ? [{
+        MaxRecords: Number(paginationRecord.MaxRecords ?? paginationRecord.TotalRecords ?? 0),
+        Pages:      Number(paginationRecord.Pages ?? 1),
+        Page:       Number(paginationRecord.Page ?? 1),
+        ItemForPage: Number(paginationRecord.ItemForPage ?? 100)
+      }] : reportResponse.Response?.[1]?.TableControl;
+
+      console.log('[SICAS REST] readReport - Success. Records:', cleanTableInfo.length, 'TableControl:', JSON.stringify(tableControl));
+      return {
+        Response: [
+          { TableInfo: cleanTableInfo },
+          { TableControl: tableControl ?? [] }
+        ],
+        Sucess: reportResponse.Sucess
+      };
     } catch (error: any) {
       console.error('[SICAS REST] readReport - Error:', error.message);
       // Mejorar el mensaje de error para códigos de reporte
