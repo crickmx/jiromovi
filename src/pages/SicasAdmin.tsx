@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, CheckCircle, XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, AlertCircle, Zap, Square, Clock } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle, XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, AlertCircle, Zap, Square, Clock, SearchCheck, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -78,6 +78,10 @@ export default function SicasAdmin() {
   const [timeoutCodesResult, setTimeoutCodesResult] = useState<any>(null);
   const [testingH03117, setTestingH03117] = useState(false);
   const [h03117Result, setH03117Result] = useState<any>(null);
+
+  const [runningApiDiag, setRunningApiDiag] = useState(false);
+  const [apiDiagResult, setApiDiagResult] = useState<any>(null);
+  const [apiDiagExpanded, setApiDiagExpanded] = useState<Record<string, boolean>>({});
 
   // Auto-sync state
   const [autoSyncing, setAutoSyncing] = useState(false);
@@ -475,6 +479,36 @@ export default function SicasAdmin() {
       setH03117Result({ success: false, error: error.message });
     } finally {
       setTestingH03117(false);
+    }
+  }
+
+  async function handleRunApiDiagnostic() {
+    setRunningApiDiag(true);
+    setApiDiagResult(null);
+    setApiDiagExpanded({});
+    setMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sicas-diagnostico-alternativas');
+
+      if (error) throw error;
+
+      setApiDiagResult(data);
+
+      if (data?.ok) {
+        const strategy = data.recomendacion?.strategy || 'N/A';
+        setMessage({
+          type: 'success',
+          text: `Diagnostico completado en ${Math.round((data.total_duration_ms || 0) / 1000)}s. Estrategia recomendada: ${strategy}`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data?.error || 'Respuesta invalida'}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setApiDiagResult({ ok: false, error: error.message });
+    } finally {
+      setRunningApiDiag(false);
     }
   }
 
@@ -3033,6 +3067,162 @@ export default function SicasAdmin() {
                     </Button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mt-6 border-2 border-teal-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <SearchCheck className="w-5 h-5 text-teal-600" />
+                  Diagnostico de Alternativas API
+                </CardTitle>
+                <CardDescription>
+                  Ejecuta 5 pruebas automaticas para determinar la mejor estrategia de sincronizacion
+                  cuando la API REST ignora paginacion/filtros para HWS_DOCTOS.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-4 bg-teal-50 border border-teal-200 rounded-lg space-y-2 text-sm text-teal-900">
+                  <p className="font-medium">Pruebas incluidas:</p>
+                  <ol className="list-decimal list-inside space-y-1 ml-2">
+                    <li>SOAP HWS_DOCTOS con paginacion real</li>
+                    <li>REST filtro por vendedor (IDVend=307)</li>
+                    <li>REST filtro por despacho (IDDesp / DespNombre)</li>
+                    <li>Keycode alternativo HAPPDATAL_D004</li>
+                    <li>SOAP H03117 con timeout extendido (120s)</li>
+                  </ol>
+                  <p className="text-xs text-teal-700 mt-2">
+                    La funcion puede tardar hasta 3 minutos ejecutando todas las pruebas.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleRunApiDiagnostic}
+                  disabled={runningApiDiag}
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                >
+                  {runningApiDiag ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Ejecutando Diagnostico de API...
+                    </>
+                  ) : (
+                    <>
+                      <SearchCheck className="w-4 h-4 mr-2" />
+                      Ejecutar Diagnostico de API
+                    </>
+                  )}
+                </Button>
+
+                {apiDiagResult && (
+                  <div className="space-y-4 pt-6 border-t border-teal-200">
+                    {apiDiagResult.ok === false && apiDiagResult.error && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="font-medium text-red-900 mb-1">Error</div>
+                        <div className="text-sm text-red-800 font-mono whitespace-pre-wrap">
+                          {apiDiagResult.error}
+                        </div>
+                      </div>
+                    )}
+
+                    {apiDiagResult.ok && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold">Resultados</h3>
+                          <span className="text-xs text-neutral-500">
+                            {apiDiagResult.timestamp} | {Math.round((apiDiagResult.total_duration_ms || 0) / 1000)}s
+                          </span>
+                        </div>
+
+                        {apiDiagResult.recomendacion && (
+                          <div className={`p-4 rounded-lg border-2 ${
+                            apiDiagResult.recomendacion.priority?.length > 0
+                              ? 'bg-teal-50 border-teal-300'
+                              : 'bg-amber-50 border-amber-300'
+                          }`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Zap className={`w-5 h-5 ${
+                                apiDiagResult.recomendacion.priority?.length > 0
+                                  ? 'text-teal-600' : 'text-amber-600'
+                              }`} />
+                              <span className="font-bold text-lg">
+                                Estrategia: {apiDiagResult.recomendacion.strategy}
+                              </span>
+                            </div>
+                            <p className="text-sm">{apiDiagResult.recomendacion.explanation}</p>
+                            {apiDiagResult.recomendacion.priority?.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-3">
+                                {apiDiagResult.recomendacion.priority.map((p: string) => (
+                                  <Badge key={p} className="bg-teal-600 text-white font-mono text-xs">
+                                    {p}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {[
+                          { key: 'prueba1_soap_hwsdoctos', label: 'Prueba 1: SOAP HWS_DOCTOS paginado' },
+                          { key: 'prueba2_rest_filtro_vendedor', label: 'Prueba 2: REST filtro vendedor' },
+                          { key: 'prueba3_rest_filtro_despacho', label: 'Prueba 3: REST filtro despacho' },
+                          { key: 'prueba4_happdatal', label: 'Prueba 4: HAPPDATAL_D004' },
+                          { key: 'prueba5_soap_h03117', label: 'Prueba 5: SOAP H03117' },
+                        ].map(({ key, label }) => {
+                          const result = apiDiagResult[key];
+                          if (!result) return null;
+                          const isExpanded = apiDiagExpanded[key] || false;
+                          const viable = result.viable === true;
+
+                          return (
+                            <div key={key} className={`rounded-lg border ${
+                              viable ? 'border-green-200 bg-green-50' :
+                              result.error ? 'border-red-200 bg-red-50' :
+                              'border-neutral-200 bg-neutral-50'
+                            }`}>
+                              <button
+                                className="w-full p-4 flex items-center justify-between text-left"
+                                onClick={() => setApiDiagExpanded(prev => ({ ...prev, [key]: !prev[key] }))}
+                              >
+                                <div className="flex items-center gap-3">
+                                  {viable ? (
+                                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                                  ) : result.error ? (
+                                    <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                                  ) : (
+                                    <XCircle className="w-5 h-5 text-neutral-400 flex-shrink-0" />
+                                  )}
+                                  <span className="font-medium text-sm">{label}</span>
+                                  <Badge className={viable ? 'bg-green-600 text-white' : 'bg-neutral-400 text-white'}>
+                                    {viable ? 'VIABLE' : result.error ? 'ERROR' : 'NO VIABLE'}
+                                  </Badge>
+                                  {result.duration_ms != null && (
+                                    <span className="text-xs text-neutral-500">
+                                      {(result.duration_ms / 1000).toFixed(1)}s
+                                    </span>
+                                  )}
+                                </div>
+                                {isExpanded ? (
+                                  <ChevronDown className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                                )}
+                              </button>
+
+                              {isExpanded && (
+                                <div className="px-4 pb-4 border-t border-neutral-200">
+                                  <pre className="mt-3 p-3 bg-white rounded-lg text-xs overflow-x-auto max-h-80 font-mono">
+                                    {JSON.stringify(result, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </Section>
