@@ -544,7 +544,7 @@ export default function SicasAdmin() {
         const stats = data.stats || {};
         setMessage({
           type: 'success',
-          text: `Sync REST completado: ${stats.recordsFetched || 0} documentos obtenidos, ${stats.documentsUpserted || 0} guardados en ${stats.pagesProcessed || 0} paginas (${Math.round((stats.durationMs || 0) / 1000)}s)`
+          text: `Sync REST completado: ${stats.recordsFetched || 0} documentos obtenidos, ${stats.documentsUpserted || 0} guardados, ${stats.recordsLinked || 0} vinculados en ${stats.pagesProcessed || 0} paginas (${Math.round((stats.durationMs || 0) / 1000)}s)`
         });
       } else {
         setMessage({ type: 'error', text: `Error: ${data.error}` });
@@ -1401,19 +1401,63 @@ export default function SicasAdmin() {
                           <p className="text-xs mt-1">
                             {soapFullResult.stats?.recordsFetched || 0} documentos obtenidos,{' '}
                             {soapFullResult.stats?.documentsUpserted || 0} guardados,{' '}
+                            {soapFullResult.stats?.recordsLinked || 0} vinculados a usuarios,{' '}
                             {soapFullResult.stats?.pagesProcessed || 0} paginas,{' '}
                             {Math.round((soapFullResult.stats?.durationMs || 0) / 1000)}s
                           </p>
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-white/60 rounded p-1.5">
+                              <span className="text-emerald-600 font-medium">Total SICAS:</span> {soapFullResult.stats?.totalInSicas || 0}
+                            </div>
+                            <div className="bg-white/60 rounded p-1.5">
+                              <span className="text-emerald-600 font-medium">Vendedores con docs:</span> {soapFullResult.stats?.vendedoresConDocs || 0}
+                            </div>
+                            <div className="bg-white/60 rounded p-1.5">
+                              <span className="text-emerald-600 font-medium">Vinculados:</span> {soapFullResult.stats?.recordsLinked || 0}
+                            </div>
+                            <div className={`rounded p-1.5 ${(soapFullResult.stats?.vendedoresSinMapeo || 0) > 0 ? 'bg-amber-50' : 'bg-white/60'}`}>
+                              <span className={`font-medium ${(soapFullResult.stats?.vendedoresSinMapeo || 0) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>Sin mapeo:</span> {soapFullResult.stats?.vendedoresSinMapeo || 0} vendedores
+                            </div>
+                          </div>
                           {soapFullResult.stats?.perPage && (
-                            <div className="mt-2 space-y-0.5">
-                              {soapFullResult.stats.perPage.slice(0, 20).map((p: any, i: number) => (
-                                <p key={i} className="text-[10px] font-mono">
-                                  Pag {p.page}: {p.fetched} obtenidos, acum: {p.accumulated}
-                                </p>
-                              ))}
-                              {soapFullResult.stats.perPage.length > 20 && (
-                                <p className="text-[10px] font-mono text-gray-500">... y {soapFullResult.stats.perPage.length - 20} paginas mas</p>
-                              )}
+                            <details className="mt-2">
+                              <summary className="cursor-pointer text-[11px] font-medium text-emerald-700 hover:text-emerald-900">
+                                Ver detalle por pagina ({soapFullResult.stats.perPage.length} paginas)
+                              </summary>
+                              <div className="mt-1 space-y-0.5">
+                                {soapFullResult.stats.perPage.slice(0, 20).map((p: any, i: number) => (
+                                  <p key={i} className="text-[10px] font-mono">
+                                    Pag {p.page}: {p.fetched} obtenidos, acum: {p.accumulated}
+                                  </p>
+                                ))}
+                                {soapFullResult.stats.perPage.length > 20 && (
+                                  <p className="text-[10px] font-mono text-gray-500">... y {soapFullResult.stats.perPage.length - 20} paginas mas</p>
+                                )}
+                              </div>
+                            </details>
+                          )}
+                          {soapFullResult.stats?.vendedoresSinMapeoDetalle?.length > 0 && (
+                            <div className="mt-3 border-t border-emerald-200 pt-3">
+                              <p className="font-medium text-amber-700 mb-2 flex items-center gap-1">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                Vendedores pendientes de asignacion ({soapFullResult.stats.vendedoresSinMapeoDetalle.length})
+                              </p>
+                              <div className="space-y-1 max-h-48 overflow-y-auto">
+                                {soapFullResult.stats.vendedoresSinMapeoDetalle.map((v: any) => (
+                                  <div key={v.vendId} className="flex items-center justify-between bg-white/80 rounded px-2 py-1.5 text-xs">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <span className="font-mono text-neutral-500 flex-shrink-0">ID:{v.vendId}</span>
+                                      <span className="truncate font-medium text-neutral-800">{v.vendNombre || 'Sin nombre'}</span>
+                                    </div>
+                                    <Badge variant="outline" className="ml-2 flex-shrink-0 text-amber-700 border-amber-300 bg-amber-50">
+                                      {v.docs} docs
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-[10px] text-emerald-600 mt-2">
+                                Asigna estos vendedores en la pestana "Vendedores" para vincular sus documentos.
+                              </p>
                             </div>
                           )}
                         </div>
