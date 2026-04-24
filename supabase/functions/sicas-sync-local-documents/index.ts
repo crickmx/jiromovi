@@ -149,80 +149,134 @@ Deno.serve(async (req: Request) => {
       sCodeAuth: Deno.env.get("SICAS_CODE_AUTH") || undefined,
     });
 
-    // Build conditions for incremental sync
-    let conditionsDirect: string | undefined;
+    // Build per-vendor fetch strategy
+    // The REST API HWS_DOCTOS without vendor filter returns max ~101 records.
+    // By filtering per vendor with Conditions, we get all documents for each vendor.
+    const vendorIds = [...vendorToUser.keys()];
+    const allRecords: Record<string, unknown>[] = [];
+    let totalInSicas = 0;
+    const perPageStats: SyncStats["perPage"] = [];
+    let globalPageCounter = 0;
+
     if (action === "incremental") {
+      // Incremental: fetch recent documents without vendor filter (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const dateStr = thirtyDaysAgo.toISOString().split("T")[0].split("-").reverse().join("/");
-      conditionsDirect = `DatDocumentos.FCaptura>='${dateStr}'`;
+      const conditionsDirect = `DatDocumentos.FCaptura>='${dateStr}'`;
       console.log(`[SYNC] Incremental filter: ${conditionsDirect}`);
-    }
+      console.log(`[SYNC] ---- Iniciando paginacion incremental ----`);
 
-    // Paginated fetch
-    const allRecords: Record<string, unknown>[] = [];
-    let page = 1;
-    let totalInSicas = 0;
-    let totalPages = 1;
-    const perPageStats: SyncStats["perPage"] = [];
+      let page = 1;
+      let totalPages = 1;
+      while (page <= maxPages) {
+        let response;
+        try {
+          response = await client.readReport({
+            keyCode: keycode,
+            pageRequested: page,
+            itemsForPage: pageSize,
+            sortFields: "Documento",
+            conditionsDirect,
+          });
+        } catch (err: any) {
+          console.error(`[SYNC] ERROR en pagina ${page}: ${err.message}`);
+          perPageStats.push({ page, fetched: 0, accumulated: allRecords.length, upserted: 0, errors: 1 });
+          break;
+        }
 
-    console.log(`[SYNC] ---- Iniciando paginacion ----`);
+        const records = response.Response?.[0]?.TableInfo || [];
+        const control = response.Response?.[0]?.TableControl?.[0];
+        if (page === 1) {
+          totalInSicas = control?.MaxRecords || records.length;
+          totalPages = control?.Pages || 1;
+          console.log(`[SYNC] SICAS reporta: MaxRecords=${totalInSicas}, Pages=${totalPages}`);
+        }
+        allRecords.push(...records);
+        perPageStats.push({ page, fetched: records.length, accumulated: allRecords.length, upserted: 0, errors: 0 });
+        console.log(`[SYNC] Pagina ${page}: ${records.length} registros (acumulado: ${allRecords.length}/${totalInSicas})`);
+        if (records.length === 0 || page >= totalPages) break;
+        page++;
+      }
+    } else {
+      // Full sync: iterate per-vendor using Conditions filter
+      // Format: ;TipoFiltro;SubFiltro;Valores;Texto;PosTitle;ChangeTable;Tabla.Campo
+      // TipoFiltro=0 means exact match
+      console.log(`[SYNC] ---- Full sync por vendedor: ${vendorIds.length} vendedores ----`);
 
-    while (page <= maxPages) {
-      console.log(`[SYNC] Pagina ${page}/${Math.min(maxPages, totalPages)}: solicitando ${pageSize} items...`);
+      for (const vendId of vendorIds) {
+        const vendorConditions = `;0;0;${vendId};Vendedor;0;0;DatDocumentos.IDVend`;
+        console.log(`[SYNC] Vendedor ${vendId}: iniciando...`);
 
-      let response;
-      try {
-        response = await client.readReport({
-          keyCode: keycode,
-          pageRequested: page,
-          itemsForPage: pageSize,
-          sortFields: "DatDocumentos.FDesde DESC",
-          conditionsDirect,
-        });
-      } catch (err: any) {
-        console.error(`[SYNC] ERROR en pagina ${page}: ${err.message}`);
-        perPageStats.push({ page, fetched: 0, accumulated: allRecords.length, upserted: 0, errors: 1 });
-        break;
+        let page = 1;
+        let vendorTotalPages = 1;
+        let vendorRecords = 0;
+
+        while (page <= maxPages) {
+          let response;
+          try {
+            response = await client.readReport({
+              keyCode: keycode,
+              pageRequested: page,
+              itemsForPage: pageSize,
+              sortFields: "Documento",
+              conditions: vendorConditions,
+            });
+          } catch (err: any) {
+            console.error(`[SYNC] Vendedor ${vendId} pagina ${page} ERROR: ${err.message}`);
+            globalPageCounter++;
+            perPageStats.push({ page: globalPageCounter, fetched: 0, accumulated: allRecords.length, upserted: 0, errors: 1 });
+            break;
+          }
+
+          const records = response.Response?.[0]?.TableInfo || [];
+          const control = response.Response?.[0]?.TableControl?.[0];
+          if (page === 1) {
+            vendorTotalPages = control?.Pages || 1;
+            const vendorMax = control?.MaxRecords || records.length;
+            totalInSicas += vendorMax;
+            console.log(`[SYNC] Vendedor ${vendId}: MaxRecords=${vendorMax}, Pages=${vendorTotalPages}`);
+          }
+          allRecords.push(...records);
+          vendorRecords += records.length;
+          globalPageCounter++;
+          perPageStats.push({ page: globalPageCounter, fetched: records.length, accumulated: allRecords.length, upserted: 0, errors: 0 });
+
+          if (records.length === 0 || page >= vendorTotalPages) break;
+          page++;
+        }
+        console.log(`[SYNC] Vendedor ${vendId}: ${vendorRecords} registros en ${page} paginas`);
       }
 
-      const records = response.Response?.[0]?.TableInfo || [];
-      const control = response.Response?.[0]?.TableControl?.[0];
-
-      if (page === 1) {
-        totalInSicas = control?.MaxRecords || records.length;
-        totalPages = control?.Pages || 1;
-        console.log(`[SYNC] SICAS reporta: MaxRecords=${totalInSicas}, Pages=${totalPages}, ItemForPage=${control?.ItemForPage || pageSize}`);
+      // Also do one pass without vendor filter to catch unmapped vendors
+      console.log(`[SYNC] Pasada global sin filtro de vendedor...`);
+      let page = 1;
+      let globalTotalPages = 1;
+      while (page <= 5) {
+        let response;
+        try {
+          response = await client.readReport({
+            keyCode: keycode,
+            pageRequested: page,
+            itemsForPage: pageSize,
+            sortFields: "Documento",
+          });
+        } catch (err: any) {
+          console.error(`[SYNC] Pasada global pagina ${page} ERROR: ${err.message}`);
+          break;
+        }
+        const records = response.Response?.[0]?.TableInfo || [];
+        const control = response.Response?.[0]?.TableControl?.[0];
+        if (page === 1) {
+          globalTotalPages = control?.Pages || 1;
+          console.log(`[SYNC] Global: MaxRecords=${control?.MaxRecords || records.length}, Pages=${globalTotalPages}`);
+        }
+        allRecords.push(...records);
+        globalPageCounter++;
+        perPageStats.push({ page: globalPageCounter, fetched: records.length, accumulated: allRecords.length, upserted: 0, errors: 0 });
+        if (records.length === 0 || page >= globalTotalPages) break;
+        page++;
       }
-
-      allRecords.push(...records);
-
-      const stat = {
-        page,
-        fetched: records.length,
-        accumulated: allRecords.length,
-        upserted: 0,
-        errors: 0,
-      };
-      perPageStats.push(stat);
-
-      console.log(`[SYNC] Pagina ${page}: ${records.length} registros (acumulado: ${allRecords.length}/${totalInSicas})`);
-
-      if (records.length === 0) {
-        console.log(`[SYNC] Pagina ${page} vacia. Fin de paginacion.`);
-        break;
-      }
-
-      if (page >= totalPages) {
-        console.log(`[SYNC] Alcanzada ultima pagina (${totalPages}). Fin de paginacion.`);
-        break;
-      }
-
-      page++;
-    }
-
-    if (page > maxPages && page <= totalPages) {
-      console.warn(`[SYNC] ADVERTENCIA: Se alcanzo el limite de ${maxPages} paginas pero SICAS tiene ${totalPages}. Faltan datos.`);
     }
 
     console.log(`[SYNC] ---- Paginacion completa: ${allRecords.length} registros en ${perPageStats.length} paginas ----`);

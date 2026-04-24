@@ -58,6 +58,8 @@ export default function SicasAdmin() {
   const [totalPolizas, setTotalPolizas] = useState(0);
   const [testingProduccion, setTestingProduccion] = useState(false);
   const [testProduccionResult, setTestProduccionResult] = useState<any>(null);
+  const [syncingSoapFull, setSyncingSoapFull] = useState(false);
+  const [soapFullResult, setSoapFullResult] = useState<any>(null);
 
   const [syncingComisionesPendientes, setSyncingComisionesPendientes] = useState(false);
   const [comisionesPendientesResult, setComisionesPendientesResult] = useState<any>(null);
@@ -518,6 +520,44 @@ export default function SicasAdmin() {
       setProduccionResult({ success: false, error: error.message });
     } finally {
       setSyncingProduccion(false);
+    }
+  }
+
+  async function handleSyncSoapFull() {
+    setSyncingSoapFull(true);
+    setSoapFullResult(null);
+    setMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('sicas-sync-full', {
+        body: {
+          startYear: 2020,
+          endYear: new Date().getFullYear(),
+          windowMode: 'yearly',
+          keyCode: 'H03400',
+          includeAllStatuses: true,
+          itemsPerPage: 200,
+        },
+      });
+
+      if (error) throw error;
+
+      setSoapFullResult(data);
+      await loadTotalPolizas();
+
+      if (data.ok) {
+        setMessage({
+          type: 'success',
+          text: `Sync SOAP completado: ${data.summary?.totalFetched || 0} documentos obtenidos, ${data.summary?.totalUpserted || 0} guardados en ${data.summary?.windowsProcessed || 0} ventanas (${data.summary?.durationSeconds || 0}s)`
+        });
+      } else {
+        setMessage({ type: 'error', text: `Error: ${data.error}` });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setSoapFullResult({ ok: false, error: error.message });
+    } finally {
+      setSyncingSoapFull(false);
     }
   }
 
@@ -1335,10 +1375,54 @@ export default function SicasAdmin() {
                     ) : (
                       <>
                         <RefreshCw className="w-4 h-4 mr-2" />
-                        Sincronizar Pólizas Vigentes
+                        Sincronizar Polizas Vigentes (SOAP)
                       </>
                     )}
                   </Button>
+
+                  <Button
+                    onClick={handleSyncSoapFull}
+                    disabled={syncingSoapFull}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {syncingSoapFull ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Sincronizacion SOAP completa en curso...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Sync Completo SOAP (Todos los documentos)
+                      </>
+                    )}
+                  </Button>
+                  {soapFullResult && (
+                    <div className={`p-3 rounded-lg border text-sm ${soapFullResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                      {soapFullResult.ok ? (
+                        <div>
+                          <p className="font-medium">Sync SOAP completado</p>
+                          <p className="text-xs mt-1">
+                            {soapFullResult.summary?.totalFetched || 0} documentos obtenidos,{' '}
+                            {soapFullResult.summary?.totalUpserted || 0} guardados,{' '}
+                            {soapFullResult.summary?.windowsProcessed || 0} ventanas,{' '}
+                            {soapFullResult.summary?.durationSeconds || 0}s
+                          </p>
+                          {soapFullResult.windows && (
+                            <div className="mt-2 space-y-0.5">
+                              {soapFullResult.windows.map((w: any, i: number) => (
+                                <p key={i} className="text-[10px] font-mono">
+                                  [{w.label}] {w.fetched} obtenidos, {w.upserted} guardados, {w.errors} errores
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p>Error: {soapFullResult.error}</p>
+                      )}
+                    </div>
+                  )}
 
                   <Button
                     onClick={loadTotalPolizas}

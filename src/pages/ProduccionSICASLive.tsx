@@ -761,7 +761,7 @@ function SyncPanel({ userId }: { userId?: string }) {
     setLoadingHistory(true);
     try {
       const [{ data: history }, { count }] = await Promise.all([
-        supabase.from('sicas_sync_runs').select('*').order('started_at', { ascending: false }).limit(10),
+        supabase.from('sicas_sync_runs').select('*').is('parent_run_id', null).order('started_at', { ascending: false }).limit(15),
         supabase.from('sicas_documents').select('*', { count: 'exact', head: true }),
       ]);
       setSyncHistory(history || []);
@@ -776,10 +776,22 @@ function SyncPanel({ userId }: { userId?: string }) {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const result = await callEdgeFunction('sicas-sync-local-documents', {
-        action: mode,
-        triggeredBy: userId || null,
-      });
+      let result: Record<string, unknown>;
+      if (mode === 'full') {
+        result = await callEdgeFunction('sicas-sync-full', {
+          startYear: 2020,
+          endYear: new Date().getFullYear(),
+          windowMode: 'yearly',
+          keyCode: 'H03400',
+          includeAllStatuses: true,
+          itemsPerPage: 200,
+        });
+      } else {
+        result = await callEdgeFunction('sicas-sync-local-documents', {
+          action: 'incremental',
+          triggeredBy: userId || null,
+        });
+      }
       setSyncResult(result);
       loadSyncInfo();
     } catch (err: any) {
@@ -814,7 +826,7 @@ function SyncPanel({ userId }: { userId?: string }) {
           </p>
           {lastSync && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {lastSync.status === 'completed' ? (
+              {(lastSync.status === 'success' || lastSync.status === 'completed') ? (
                 <span className="text-emerald-600 dark:text-emerald-400">{lastSync.records_upserted} registros sincronizados</span>
               ) : lastSync.status === 'running' ? (
                 <span className="text-blue-600 dark:text-blue-400">En progreso...</span>
@@ -866,11 +878,11 @@ function SyncPanel({ userId }: { userId?: string }) {
                 <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Sincronizacion exitosa</p>
-                  {syncResult.stats && (
+                  {(syncResult.stats || syncResult.summary) && (
                     <p className="text-xs mt-1 opacity-80">
-                      {(syncResult.stats as any).documentsUpserted || (syncResult.stats as any).records_upserted || 0} documentos sincronizados
-                      {' '}{(syncResult.stats as any).pagesProcessed || 0} paginas procesadas
-                      {' '}en {((syncResult.stats as any).durationMs || 0) / 1000}s
+                      {(syncResult.summary as any)?.totalUpserted || (syncResult.stats as any)?.documentsUpserted || (syncResult.stats as any)?.records_upserted || 0} documentos sincronizados
+                      {' '}{(syncResult.summary as any)?.windowsProcessed || (syncResult.stats as any)?.pagesProcessed || 0} {syncResult.summary ? 'ventanas' : 'paginas'} procesadas
+                      {' '}en {((syncResult.summary as any)?.durationMs || (syncResult.stats as any)?.durationMs || 0) / 1000}s
                     </p>
                   )}
                 </div>
@@ -916,8 +928,8 @@ function SyncPanel({ userId }: { userId?: string }) {
                     <td className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatDate(run.started_at)}</td>
                     <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{run.keycode || run.module}</td>
                     <td className="px-3 py-2 text-center">
-                      <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${run.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : run.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
-                        {run.status}
+                      <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${(run.status === 'success' || run.status === 'completed') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : run.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : run.status === 'partial' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : run.status === 'empty' ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
+                        {run.status}{run.source_api ? ` (${run.source_api})` : ''}{run.window_label ? ` [${run.window_label}]` : ''}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-xs text-right text-gray-700 dark:text-gray-300">{run.records_fetched?.toLocaleString() || 0}</td>
