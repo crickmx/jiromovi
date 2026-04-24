@@ -529,14 +529,9 @@ export default function SicasAdmin() {
     setMessage(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('sicas-sync-full', {
+      const { data, error } = await supabase.functions.invoke('sicas-sync-local-documents', {
         body: {
-          startYear: 2020,
-          endYear: new Date().getFullYear(),
-          windowMode: 'yearly',
-          keyCode: 'H03400',
-          includeAllStatuses: true,
-          itemsPerPage: 200,
+          action: 'full',
         },
       });
 
@@ -546,9 +541,10 @@ export default function SicasAdmin() {
       await loadTotalPolizas();
 
       if (data.ok) {
+        const stats = data.stats || {};
         setMessage({
           type: 'success',
-          text: `Sync SOAP completado: ${data.summary?.totalFetched || 0} documentos obtenidos, ${data.summary?.totalUpserted || 0} guardados en ${data.summary?.windowsProcessed || 0} ventanas (${data.summary?.durationSeconds || 0}s)`
+          text: `Sync REST completado: ${stats.recordsFetched || 0} documentos obtenidos, ${stats.documentsUpserted || 0} guardados en ${stats.pagesProcessed || 0} paginas (${Math.round((stats.durationMs || 0) / 1000)}s)`
         });
       } else {
         setMessage({ type: 'error', text: `Error: ${data.error}` });
@@ -1388,12 +1384,12 @@ export default function SicasAdmin() {
                     {syncingSoapFull ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Sincronizacion SOAP completa en curso...
+                        Sincronizacion REST completa en curso...
                       </>
                     ) : (
                       <>
                         <RefreshCw className="w-4 h-4 mr-2" />
-                        Sync Completo SOAP (Todos los documentos)
+                        Sync Completo REST (Todos los documentos)
                       </>
                     )}
                   </Button>
@@ -1401,20 +1397,23 @@ export default function SicasAdmin() {
                     <div className={`p-3 rounded-lg border text-sm ${soapFullResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
                       {soapFullResult.ok ? (
                         <div>
-                          <p className="font-medium">Sync SOAP completado</p>
+                          <p className="font-medium">Sync REST completado</p>
                           <p className="text-xs mt-1">
-                            {soapFullResult.summary?.totalFetched || 0} documentos obtenidos,{' '}
-                            {soapFullResult.summary?.totalUpserted || 0} guardados,{' '}
-                            {soapFullResult.summary?.windowsProcessed || 0} ventanas,{' '}
-                            {soapFullResult.summary?.durationSeconds || 0}s
+                            {soapFullResult.stats?.recordsFetched || 0} documentos obtenidos,{' '}
+                            {soapFullResult.stats?.documentsUpserted || 0} guardados,{' '}
+                            {soapFullResult.stats?.pagesProcessed || 0} paginas,{' '}
+                            {Math.round((soapFullResult.stats?.durationMs || 0) / 1000)}s
                           </p>
-                          {soapFullResult.windows && (
+                          {soapFullResult.stats?.perPage && (
                             <div className="mt-2 space-y-0.5">
-                              {soapFullResult.windows.map((w: any, i: number) => (
+                              {soapFullResult.stats.perPage.slice(0, 20).map((p: any, i: number) => (
                                 <p key={i} className="text-[10px] font-mono">
-                                  [{w.label}] {w.fetched} obtenidos, {w.upserted} guardados, {w.errors} errores
+                                  Pag {p.page}: {p.fetched} obtenidos, acum: {p.accumulated}
                                 </p>
                               ))}
+                              {soapFullResult.stats.perPage.length > 20 && (
+                                <p className="text-[10px] font-mono text-gray-500">... y {soapFullResult.stats.perPage.length - 20} paginas mas</p>
+                              )}
                             </div>
                           )}
                         </div>

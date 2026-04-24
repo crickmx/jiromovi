@@ -777,21 +777,10 @@ function SyncPanel({ userId }: { userId?: string }) {
     setSyncResult(null);
     try {
       let result: Record<string, unknown>;
-      if (mode === 'full') {
-        result = await callEdgeFunction('sicas-sync-full', {
-          startYear: 2020,
-          endYear: new Date().getFullYear(),
-          windowMode: 'yearly',
-          keyCode: 'H03400',
-          includeAllStatuses: true,
-          itemsPerPage: 200,
-        });
-      } else {
-        result = await callEdgeFunction('sicas-sync-local-documents', {
-          action: 'incremental',
-          triggeredBy: userId || null,
-        });
-      }
+      result = await callEdgeFunction('sicas-sync-local-documents', {
+        action: mode,
+        triggeredBy: userId || null,
+      });
       setSyncResult(result);
       loadSyncInfo();
     } catch (err: any) {
@@ -878,11 +867,14 @@ function SyncPanel({ userId }: { userId?: string }) {
                 <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Sincronizacion exitosa</p>
-                  {(syncResult.stats || syncResult.summary) && (
+                  {syncResult.stats && (
                     <p className="text-xs mt-1 opacity-80">
-                      {(syncResult.summary as any)?.totalUpserted || (syncResult.stats as any)?.documentsUpserted || (syncResult.stats as any)?.records_upserted || 0} documentos sincronizados
-                      {' '}{(syncResult.summary as any)?.windowsProcessed || (syncResult.stats as any)?.pagesProcessed || 0} {syncResult.summary ? 'ventanas' : 'paginas'} procesadas
-                      {' '}en {((syncResult.summary as any)?.durationMs || (syncResult.stats as any)?.durationMs || 0) / 1000}s
+                      {(syncResult.stats as any)?.documentsUpserted || 0} documentos sincronizados,
+                      {' '}{(syncResult.stats as any)?.pagesProcessed || 0} paginas procesadas
+                      {' '}en {((syncResult.stats as any)?.durationMs || 0) / 1000}s
+                      {(syncResult.stats as any)?.totalInSicas > 0 && (
+                        <> ({(syncResult.stats as any).totalInSicas} total en SICAS)</>
+                      )}
                     </p>
                   )}
                 </div>
