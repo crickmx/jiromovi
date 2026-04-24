@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, CheckCircle, XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, AlertCircle } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle, XCircle, Building, Users, Trash2, Link as LinkIcon, FlaskConical, Stethoscope, AlertCircle, Zap, Square, Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -79,10 +79,33 @@ export default function SicasAdmin() {
   const [testingH03117, setTestingH03117] = useState(false);
   const [h03117Result, setH03117Result] = useState<any>(null);
 
+  // Auto-sync state
+  const [autoSyncing, setAutoSyncing] = useState(false);
+  const [autoSyncLog, setAutoSyncLog] = useState<{ time: string; text: string }[]>([]);
+  const [autoSyncProgress, setAutoSyncProgress] = useState<{
+    current: number;
+    total: number;
+    percent: number;
+    batch: number;
+    totalBatches: number;
+    done: boolean;
+    startedAt: number;
+  } | null>(null);
+  const [autoSyncError, setAutoSyncError] = useState<string | null>(null);
+  const [autoSyncComplete, setAutoSyncComplete] = useState<{
+    totalSynced: number;
+    batches: number;
+    durationSeconds: number;
+  } | null>(null);
+  const shouldStopRef = useRef(false);
+  const logContainerRef = useRef<HTMLDivElement>(null);
+  const [totalDocuments, setTotalDocuments] = useState(0);
+
   useEffect(() => {
     loadData();
     loadTotalPolizas();
     loadTotalComisiones();
+    loadTotalDocuments();
   }, []);
 
   useEffect(() => {
@@ -556,6 +579,146 @@ export default function SicasAdmin() {
     }
   }
 
+  const addLog = useCallback((text: string) => {
+    const time = new Date().toLocaleTimeString('es-MX', { hour12: false });
+    setAutoSyncLog(prev => [...prev, { time, text }]);
+    setTimeout(() => {
+      logContainerRef.current?.scrollTo({ top: logContainerRef.current.scrollHeight, behavior: 'smooth' });
+    }, 50);
+  }, []);
+
+  function formatDuration(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}m ${s}s`;
+  }
+
+  async function runAutoSync() {
+    setAutoSyncing(true);
+    setAutoSyncLog([]);
+    setAutoSyncError(null);
+    setAutoSyncComplete(null);
+    shouldStopRef.current = false;
+
+    const startedAt = Date.now();
+    let isComplete = false;
+    let totalSynced = 0;
+    let totalPages = 0;
+    let batchNumber = 0;
+    let consecutiveErrors = 0;
+
+    addLog('Iniciando sincronizacion automatica...');
+
+    // First batch: mode='full' to reset cursor
+    try {
+      const { data, error } = await supabase.functions.invoke('sicas-sync-local-documents', {
+        body: { mode: 'full' },
+      });
+
+      if (error) throw new Error(error.message);
+      if (!data?.ok) throw new Error(data?.error || 'Error en primer batch');
+
+      isComplete = data.isComplete;
+      totalSynced = data.progress?.accumulatedSynced ?? data.progress?.batchUpserted ?? 0;
+      totalPages = data.progress?.totalPages ?? 0;
+      batchNumber = 1;
+      consecutiveErrors = 0;
+
+      const docsThisBatch = data.progress?.batchUpserted ?? data.progress?.batchFetched ?? 0;
+      addLog(`Batch 1: ${docsThisBatch.toLocaleString()} docs descargados | Paginas: ${data.progress?.currentPage ?? 0}/${totalPages}`);
+
+      const estBatches = totalPages > 0 ? Math.ceil(totalPages / 60) : 0;
+      setAutoSyncProgress({
+        current: totalSynced,
+        total: totalPages * 100,
+        percent: totalPages > 0 ? Math.round(((data.progress?.currentPage ?? 0) / totalPages) * 100) : 0,
+        batch: 1,
+        totalBatches: estBatches,
+        done: isComplete,
+        startedAt,
+      });
+
+      await loadTotalDocuments();
+
+    } catch (err: any) {
+      setAutoSyncError(`Error en batch 1: ${err.message}`);
+      addLog(`ERROR en batch 1: ${err.message}`);
+      setAutoSyncing(false);
+      return;
+    }
+
+    // Continue batches until complete
+    while (!isComplete && batchNumber < 100 && !shouldStopRef.current) {
+      await new Promise(r => setTimeout(r, 2000));
+
+      if (shouldStopRef.current) {
+        addLog('Sincronizacion detenida por el usuario.');
+        break;
+      }
+
+      try {
+        const { data, error } = await supabase.functions.invoke('sicas-sync-local-documents', {
+          body: { mode: 'continue' },
+        });
+
+        if (error) throw new Error(error.message);
+        if (!data?.ok) throw new Error(data?.error || `Error en batch ${batchNumber + 1}`);
+
+        batchNumber++;
+        consecutiveErrors = 0;
+        isComplete = data.isComplete;
+        totalSynced = data.progress?.accumulatedSynced ?? totalSynced;
+        totalPages = data.progress?.totalPages ?? totalPages;
+
+        const docsThisBatch = data.progress?.batchUpserted ?? data.progress?.batchFetched ?? 0;
+        addLog(`Batch ${batchNumber}: ${docsThisBatch.toLocaleString()} docs | Total: ${totalSynced.toLocaleString()} | Pag ${data.progress?.currentPage ?? '?'}/${totalPages}`);
+
+        const estBatches = totalPages > 0 ? Math.ceil(totalPages / 60) : batchNumber;
+        const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+        const currentPage = data.progress?.currentPage ?? 0;
+        const pct = totalPages > 0 ? Math.round((currentPage / totalPages) * 100) : 0;
+
+        setAutoSyncProgress({
+          current: totalSynced,
+          total: totalPages * 100,
+          percent: pct,
+          batch: batchNumber,
+          totalBatches: estBatches,
+          done: isComplete,
+          startedAt,
+        });
+
+        if (batchNumber % 3 === 0) await loadTotalDocuments();
+
+      } catch (err: any) {
+        consecutiveErrors++;
+        addLog(`Error en batch ${batchNumber + 1}: ${err.message}${consecutiveErrors < 3 ? ' - Reintentando en 5s...' : ''}`);
+
+        if (consecutiveErrors >= 3) {
+          setAutoSyncError(`3 errores consecutivos. Ultimo: ${err.message}. Puedes reanudar con "Continuar Sync".`);
+          addLog('Detenido tras 3 errores consecutivos.');
+          break;
+        }
+
+        await new Promise(r => setTimeout(r, 5000));
+      }
+    }
+
+    await loadTotalDocuments();
+    await loadTotalPolizas();
+    setAutoSyncing(false);
+
+    if (isComplete) {
+      const durationSeconds = Math.round((Date.now() - startedAt) / 1000);
+      setAutoSyncComplete({ totalSynced, batches: batchNumber, durationSeconds });
+      addLog(`Sincronizacion completa: ${totalSynced.toLocaleString()} documentos en ${batchNumber} batches (${formatDuration(durationSeconds)})`);
+      setAutoSyncProgress(prev => prev ? { ...prev, done: true, percent: 100 } : null);
+    } else if (shouldStopRef.current) {
+      addLog(`Detenido en batch ${batchNumber}. ${totalSynced.toLocaleString()} docs descargados hasta ahora.`);
+    }
+  }
+
   async function loadTotalPolizas() {
     const { count, error } = await supabase
       .from('sicas_polizas_vigentes')
@@ -564,6 +727,13 @@ export default function SicasAdmin() {
     if (!error) {
       setTotalPolizas(count || 0);
     }
+  }
+
+  async function loadTotalDocuments() {
+    const { count, error } = await supabase
+      .from('sicas_documents')
+      .select('*', { count: 'exact', head: true });
+    if (!error) setTotalDocuments(count || 0);
   }
 
   async function loadTotalComisiones() {
@@ -1375,27 +1545,48 @@ export default function SicasAdmin() {
                     )}
                   </Button>
 
-                  <Button
-                    onClick={() => handleSyncSoapFull('full')}
-                    disabled={syncingSoapFull}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    {syncingSoapFull ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Sincronizacion en curso...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Sincronizacion Completa (desde pagina 1)
-                      </>
-                    )}
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => handleSyncSoapFull('full')}
+                      disabled={syncingSoapFull || autoSyncing}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {syncingSoapFull ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sincronizando...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Sync Manual (1 batch)
+                        </>
+                      )}
+                    </Button>
 
-                  {soapFullResult?.ok && !soapFullResult.isComplete && !syncingSoapFull && (
+                    <Button
+                      onClick={runAutoSync}
+                      disabled={syncingSoapFull || autoSyncing}
+                      className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold shadow-md"
+                    >
+                      {autoSyncing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Ejecutando...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4 mr-2" />
+                          Sincronizacion Automatica
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {soapFullResult?.ok && !soapFullResult.isComplete && !syncingSoapFull && !autoSyncing && (
                     <Button
                       onClick={() => handleSyncSoapFull('continue')}
+                      disabled={autoSyncing}
                       className="w-full bg-blue-600 hover:bg-blue-700"
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
@@ -1403,7 +1594,159 @@ export default function SicasAdmin() {
                     </Button>
                   )}
 
-                  {soapFullResult && (
+                  {/* Auto-sync progress panel */}
+                  {(autoSyncing || autoSyncProgress || autoSyncComplete) && (
+                    <div className="border-2 border-blue-200 rounded-xl overflow-hidden bg-white">
+                      {/* Header */}
+                      <div className={`px-4 py-3 flex items-center justify-between ${
+                        autoSyncComplete ? 'bg-emerald-50 border-b border-emerald-200' :
+                        autoSyncError ? 'bg-red-50 border-b border-red-200' :
+                        'bg-blue-50 border-b border-blue-200'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {autoSyncComplete ? (
+                            <CheckCircle className="w-5 h-5 text-emerald-600" />
+                          ) : autoSyncError ? (
+                            <XCircle className="w-5 h-5 text-red-600" />
+                          ) : (
+                            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                          )}
+                          <span className={`font-semibold text-sm ${
+                            autoSyncComplete ? 'text-emerald-900' :
+                            autoSyncError ? 'text-red-900' :
+                            'text-blue-900'
+                          }`}>
+                            {autoSyncComplete ? 'Sincronizacion Completa' :
+                             autoSyncError ? 'Sincronizacion Detenida' :
+                             'Sincronizacion Automatica en Curso'}
+                          </span>
+                        </div>
+                        {autoSyncing && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { shouldStopRef.current = true; }}
+                            className="border-red-300 text-red-700 hover:bg-red-50 h-7 text-xs"
+                          >
+                            <Square className="w-3 h-3 mr-1" />
+                            Detener
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Progress bar */}
+                      {autoSyncProgress && (
+                        <div className="px-4 pt-3 pb-2">
+                          <div className="flex justify-between text-xs text-neutral-600 mb-1.5">
+                            <span>
+                              {autoSyncProgress.current.toLocaleString()} de {autoSyncProgress.total > 0 ? `~${autoSyncProgress.total.toLocaleString()}` : '...'} documentos
+                            </span>
+                            <span className="font-semibold text-blue-700">{autoSyncProgress.percent}%</span>
+                          </div>
+                          <div className="w-full bg-neutral-200 rounded-full h-3 overflow-hidden">
+                            <div
+                              className={`h-3 rounded-full transition-all duration-500 ${
+                                autoSyncProgress.done ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                              }`}
+                              style={{ width: `${Math.max(autoSyncProgress.percent, 1)}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[11px] text-neutral-500 mt-1.5">
+                            <span>
+                              Batch {autoSyncProgress.batch} de ~{autoSyncProgress.totalBatches}
+                            </span>
+                            {autoSyncing && autoSyncProgress.batch > 1 && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {(() => {
+                                  const elapsed = Math.round((Date.now() - autoSyncProgress.startedAt) / 1000);
+                                  const rate = autoSyncProgress.batch > 0 ? elapsed / autoSyncProgress.batch : 0;
+                                  const remaining = Math.round(rate * (autoSyncProgress.totalBatches - autoSyncProgress.batch));
+                                  return `~${formatDuration(remaining)} restantes`;
+                                })()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stats row */}
+                      {autoSyncProgress && (
+                        <div className="px-4 pb-2">
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className="bg-blue-50 rounded-lg px-2.5 py-1.5 text-center">
+                              <div className="text-blue-600 font-medium">Documentos</div>
+                              <div className="text-blue-900 font-bold">{totalDocuments.toLocaleString()}</div>
+                            </div>
+                            <div className="bg-emerald-50 rounded-lg px-2.5 py-1.5 text-center">
+                              <div className="text-emerald-600 font-medium">Descargados</div>
+                              <div className="text-emerald-900 font-bold">{autoSyncProgress.current.toLocaleString()}</div>
+                            </div>
+                            <div className="bg-neutral-50 rounded-lg px-2.5 py-1.5 text-center">
+                              <div className="text-neutral-600 font-medium">Tiempo</div>
+                              <div className="text-neutral-900 font-bold">
+                                {formatDuration(Math.round((Date.now() - autoSyncProgress.startedAt) / 1000))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Error message */}
+                      {autoSyncError && (
+                        <div className="mx-4 mb-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+                          {autoSyncError}
+                        </div>
+                      )}
+
+                      {/* Completion summary */}
+                      {autoSyncComplete && (
+                        <div className="mx-4 mb-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <div className="grid grid-cols-3 gap-3 text-center text-sm">
+                            <div>
+                              <div className="text-emerald-600 text-xs font-medium">Documentos</div>
+                              <div className="text-emerald-900 font-bold text-lg">{autoSyncComplete.totalSynced.toLocaleString()}</div>
+                            </div>
+                            <div>
+                              <div className="text-emerald-600 text-xs font-medium">Batches</div>
+                              <div className="text-emerald-900 font-bold text-lg">{autoSyncComplete.batches}</div>
+                            </div>
+                            <div>
+                              <div className="text-emerald-600 text-xs font-medium">Duracion</div>
+                              <div className="text-emerald-900 font-bold text-lg">{formatDuration(autoSyncComplete.durationSeconds)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Log */}
+                      {autoSyncLog.length > 0 && (
+                        <div className="px-4 pb-3">
+                          <div className="text-xs font-medium text-neutral-500 mb-1.5">Log en tiempo real</div>
+                          <div
+                            ref={logContainerRef}
+                            className="bg-neutral-900 text-neutral-100 rounded-lg p-3 max-h-48 overflow-y-auto font-mono text-[11px] leading-relaxed"
+                          >
+                            {autoSyncLog.slice(-15).map((entry, i) => (
+                              <div key={i} className="flex gap-2">
+                                <span className="text-neutral-500 flex-shrink-0">[{entry.time}]</span>
+                                <span className={
+                                  entry.text.includes('ERROR') || entry.text.includes('Error') ? 'text-red-400' :
+                                  entry.text.includes('completa') || entry.text.includes('Completa') ? 'text-emerald-400' :
+                                  entry.text.includes('Detenid') ? 'text-amber-400' :
+                                  'text-neutral-200'
+                                }>
+                                  {entry.text}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {soapFullResult && !autoSyncing && !autoSyncProgress && (
                     <div className={`p-3 rounded-lg border text-sm ${soapFullResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
                       {soapFullResult.ok ? (
                         <div>
