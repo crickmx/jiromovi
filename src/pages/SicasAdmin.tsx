@@ -83,6 +83,9 @@ export default function SicasAdmin() {
   const [apiDiagResult, setApiDiagResult] = useState<any>(null);
   const [apiDiagExpanded, setApiDiagExpanded] = useState<Record<string, boolean>>({});
 
+  const [runningVendorSync, setRunningVendorSync] = useState(false);
+  const [vendorSyncResult, setVendorSyncResult] = useState<any>(null);
+
   // Auto-sync state
   const [autoSyncing, setAutoSyncing] = useState(false);
   const [autoSyncLog, setAutoSyncLog] = useState<{ time: string; text: string }[]>([]);
@@ -509,6 +512,31 @@ export default function SicasAdmin() {
       setApiDiagResult({ ok: false, error: error.message });
     } finally {
       setRunningApiDiag(false);
+    }
+  }
+
+  async function handleVendorSync(mode: string = 'continue') {
+    setRunningVendorSync(true);
+    if (mode === 'full') setVendorSyncResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-sync-por-vendedor`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ mode }),
+        }
+      );
+      const result = await resp.json();
+      setVendorSyncResult(result);
+    } catch (error: any) {
+      setVendorSyncResult({ ok: false, error: error.message, filterWorking: false });
+    } finally {
+      setRunningVendorSync(false);
     }
   }
 
@@ -3220,6 +3248,145 @@ export default function SicasAdmin() {
                           );
                         })}
                       </>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Vendor-loop sync experimental */}
+            <Card className="border-amber-200 dark:border-amber-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                  <FlaskConical className="w-4 h-4" />
+                  Sync por Vendedor (experimental)
+                </CardTitle>
+                <CardDescription>
+                  Descarga documentos iterando por cada vendedor del catalogo SICAS. Estrategia alternativa para superar el limite de 101 registros.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30"
+                    disabled={runningVendorSync}
+                    onClick={() => handleVendorSync('continue')}
+                  >
+                    {runningVendorSync ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Zap className="w-4 h-4 mr-2" />
+                    )}
+                    {runningVendorSync ? 'Sincronizando...' : 'Ejecutar Sync por Vendedor'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30"
+                    disabled={runningVendorSync}
+                    onClick={() => handleVendorSync('full')}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Reiniciar desde cero
+                  </Button>
+                </div>
+
+                {vendorSyncResult && (
+                  <div className="space-y-3">
+                    {vendorSyncResult.filterWorking === true && (
+                      <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          <span className="font-medium text-green-700 dark:text-green-400">El filtro por vendedor funciona correctamente</span>
+                        </div>
+                        <p className="text-sm text-green-600 dark:text-green-300">
+                          Se encontraron {vendorSyncResult.stats?.newDocsFound || 0} documentos nuevos fuera del baseline de {vendorSyncResult.stats?.baselineCount || 0}.
+                        </p>
+                        {!vendorSyncResult.isComplete && (
+                          <Button
+                            size="sm"
+                            className="mt-2 bg-green-600 hover:bg-green-700 text-white"
+                            disabled={runningVendorSync}
+                            onClick={() => handleVendorSync('continue')}
+                          >
+                            {runningVendorSync ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Zap className="w-4 h-4 mr-2" />
+                            )}
+                            Continuar sync por vendedor
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
+                    {vendorSyncResult.filterWorking === false && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <XCircle className="w-4 h-4 text-red-600" />
+                          <span className="font-medium text-red-700 dark:text-red-400">El filtro por vendedor NO funciona</span>
+                        </div>
+                        <p className="text-sm text-red-600 dark:text-red-300">
+                          SICAS devuelve los mismos registros sin importar el filtro de vendedor. Se requiere configurar SICAS_CODE_AUTH para habilitar filtros avanzados.
+                        </p>
+                      </div>
+                    )}
+
+                    {vendorSyncResult.ok && vendorSyncResult.progress && (
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Progreso</span>
+                          <span className="font-mono font-medium">{vendorSyncResult.progress.percent}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div
+                            className="bg-amber-500 h-2 rounded-full transition-all"
+                            style={{ width: `${vendorSyncResult.progress.percent}%` }}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                          <div>Vendedores: {vendorSyncResult.progress.vendorStart}-{vendorSyncResult.progress.vendorEnd} / {vendorSyncResult.progress.vendorsTotal}</div>
+                          <div>Con datos: {vendorSyncResult.progress.vendorsWithData}</div>
+                          <div>Docs obtenidos: {vendorSyncResult.stats?.totalFetched || 0}</div>
+                          <div>Docs upserted: {vendorSyncResult.stats?.totalUpserted || 0}</div>
+                          <div>Docs nuevos: {vendorSyncResult.stats?.newDocsFound || 0}</div>
+                          <div>Baseline: {vendorSyncResult.stats?.baselineCount || 0}</div>
+                          <div>Acumulado: {vendorSyncResult.stats?.accumulatedSynced || 0}</div>
+                          <div>Duracion: {((vendorSyncResult.stats?.durationMs || 0) / 1000).toFixed(1)}s</div>
+                        </div>
+                        {vendorSyncResult.isComplete && (
+                          <div className="flex items-center gap-2 mt-1 text-sm text-amber-600 dark:text-amber-400 font-medium">
+                            <CheckCircle className="w-4 h-4" />
+                            Todos los vendedores procesados
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {vendorSyncResult.vendorResults && vendorSyncResult.vendorResults.length > 0 && (
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Detalle por vendedor (primeros 10)</p>
+                        <div className="space-y-1">
+                          {vendorSyncResult.vendorResults.map((v: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between text-xs font-mono">
+                              <span className="text-gray-600 dark:text-gray-400 truncate max-w-[200px]" title={v.nombre}>
+                                {v.id_sicas} - {v.nombre}
+                              </span>
+                              <span className={v.newRecords > 0 ? 'text-green-600 font-medium' : 'text-gray-500'}>
+                                {v.records} docs {v.newRecords > 0 ? `(${v.newRecords} nuevos)` : ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!vendorSyncResult.ok && vendorSyncResult.error && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                        <p className="text-sm text-red-600 dark:text-red-300 font-mono">{vendorSyncResult.error}</p>
+                      </div>
                     )}
                   </div>
                 )}
