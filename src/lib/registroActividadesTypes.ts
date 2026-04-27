@@ -17,7 +17,6 @@ export const TIPO_TRAMITE_OPTIONS: TipoTramiteConfig[] = [
   { value: 'correccion_comisiones',           label: 'Corrección de comisiones', area: 'Operaciones',  tipoAplicable: 'general' },
   { value: 'registro_poliza',                 label: 'Registro de póliza',       area: 'Operaciones',  tipoAplicable: 'general' },
   { value: 'solicitud_comisiones_pendientes', label: 'Solicitud de comisiones',  area: 'Operaciones',  tipoAplicable: 'solicitud_comisiones' },
-  { value: 'lead_registro_movi',              label: 'Lead / Registro Movi',     area: 'Comercial',    tipoAplicable: 'general' },
   { value: 'registro_actividad',              label: 'Registro de actividades',  area: 'Comercial',    tipoAplicable: 'general' },
   { value: 'cambio_bancario',                 label: 'Cambio bancario',          area: 'Operaciones',  tipoAplicable: 'general' },
 ];
