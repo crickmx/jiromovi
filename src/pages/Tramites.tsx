@@ -287,7 +287,7 @@ export function Tramites() {
             )}
             {(isAdmin || isGerente) && (
               <button
-                onClick={() => navigate('/tramites-reportes')}
+                onClick={() => navigate('/tramites/reportes')}
                 className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
               >
                 <BarChart3 className="w-5 h-5" />
