@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ClipboardList, Plus, Search, AlertCircle, Clock, CheckCircle2, FileText, Settings } from 'lucide-react';
+import { ClipboardList, Plus, Search, AlertCircle, Clock, CheckCircle2, FileText, Settings, Users, BarChart3 } from 'lucide-react';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
+import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
 import { AgenteDashboard } from '../components/tramites/AgenteDashboard';
 import {
   TIPO_TRAMITE_OPTIONS,
@@ -62,6 +63,7 @@ export function Tramites() {
   const [selectedPrioridad, setSelectedPrioridad] = useState<string>('todas');
   const [showNuevoModal, setShowNuevoModal] = useState(false);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
+  const [showGruposModal, setShowGruposModal] = useState(false);
   const [userArea, setUserArea] = useState<string | null>(null);
   const [userAreaLoaded, setUserAreaLoaded] = useState(false);
 
@@ -265,13 +267,31 @@ export function Tramites() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <button
+                onClick={() => setShowGruposModal(true)}
+                className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
+              >
+                <Users className="w-5 h-5" />
+                <span>Gestionar Equipos</span>
+              </button>
+            )}
             {canManageCatalogs && (
               <button
                 onClick={() => setShowCatalogosModal(true)}
                 className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
               >
                 <Settings className="w-5 h-5" />
-                <span>Gestionar Catálogos</span>
+                <span>Catálogos</span>
+              </button>
+            )}
+            {(isAdmin || isGerente) && (
+              <button
+                onClick={() => navigate('/tramites-reportes')}
+                className="flex items-center space-x-2 bg-neutral-100 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-200 transition-all duration-200 font-semibold"
+              >
+                <BarChart3 className="w-5 h-5" />
+                <span>Reportes</span>
               </button>
             )}
             <button
@@ -567,6 +587,31 @@ export function Tramites() {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showGruposModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl my-8 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+              <div>
+                <h2 className="text-xl font-bold text-neutral-900">Gestión de Equipos de Trabajo</h2>
+                <p className="text-sm text-neutral-500 mt-1">Asigna usuarios a los equipos para controlar la visibilidad de trámites</p>
+              </div>
+              <button
+                onClick={() => setShowGruposModal(false)}
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500 hover:text-neutral-700"
+              >
+                <span className="sr-only">Cerrar</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <GestionGruposVisualizacion />
             </div>
           </div>
         </div>

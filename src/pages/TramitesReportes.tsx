@@ -11,7 +11,6 @@ import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
-import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
 import { ConversionDashboard } from '../components/tramites/ConversionDashboard';
 import {
   TIPO_TRAMITE_OPTIONS as CENTRAL_TIPO_OPTIONS,
@@ -119,9 +118,6 @@ export default function TramitesReportes() {
   const [showTramitesPorUsuario, setShowTramitesPorUsuario] = useState(false);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [expandedTipo, setExpandedTipo] = useState<string | null>('cotizacion_emision');
-
-  // Modal de gestión de grupos
-  const [showGruposModal, setShowGruposModal] = useState(false);
 
   // Filtros
   const [fechaInicio, setFechaInicio] = useState('');
@@ -678,15 +674,6 @@ export default function TramitesReportes() {
           <p className="text-neutral-600 mt-1">Análisis y métricas de productividad</p>
         </div>
         <div className="flex items-center gap-3">
-          {isAdmin && (
-            <button
-              onClick={() => setShowGruposModal(true)}
-              className="px-4 py-2 bg-neutral-700 text-white rounded-lg hover:bg-neutral-800 transition-colors flex items-center gap-2"
-            >
-              <Users className="w-5 h-5" />
-              Gestionar Equipos
-            </button>
-          )}
           <button
             onClick={loadData}
             disabled={loading}
@@ -1734,28 +1721,6 @@ export default function TramitesReportes() {
         </div>
       )}
 
-      {/* Modal de Gestión de Grupos */}
-      {showGruposModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">Gestión de Grupos de Visualización</h2>
-              <button
-                onClick={() => {
-                  setShowGruposModal(false);
-                  loadCatalogos(); // Recargar grupos después de cerrar
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
-              <GestionGruposVisualizacion />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

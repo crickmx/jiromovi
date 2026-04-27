@@ -71,14 +71,13 @@ export function GestionGruposVisualizacion() {
       .from('usuarios')
       .select(`
         id,
-        nombre,
-        apellidos,
+        nombre_completo,
         rol,
         oficinas(nombre)
       `)
-      .eq('estado', 'Activo')
+      .eq('estado', 'activo')
       .in('rol', ['Empleado', 'Gerente', 'Ejecutivo'])
-      .order('nombre');
+      .order('nombre_completo');
 
     if (error) {
       console.error('Error loading usuarios:', error);
@@ -88,7 +87,7 @@ export function GestionGruposVisualizacion() {
     setUsuarios(
       (data || []).map(u => ({
         id: u.id,
-        nombre_completo: `${u.nombre || ''} ${u.apellidos || ''}`.trim().toUpperCase(),
+        nombre_completo: u.nombre_completo || '',
         rol: u.rol,
         oficina_nombre: (u.oficinas as any)?.nombre || null,
       }))
