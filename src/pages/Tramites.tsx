@@ -32,7 +32,10 @@ interface TramiteItem {
   fecha_creacion: string;
   ultima_modificacion: string;
   cerrado_en: string | null;
-  agente: { nombre_completo: string; oficina: { nombre: string } | null } | null;
+  agente_id: string | null;
+  creado_por: string | null;
+  assigned_to_user_id: string | null;
+  agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
   ticket_asignaciones: Array<{
@@ -59,6 +62,8 @@ export function Tramites() {
   const [selectedPrioridad, setSelectedPrioridad] = useState<string>('todas');
   const [showNuevoModal, setShowNuevoModal] = useState(false);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
+  const [userArea, setUserArea] = useState<string | null>(null);
+  const [userAreaLoaded, setUserAreaLoaded] = useState(false);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -80,14 +85,30 @@ export function Tramites() {
   const availablePrioridades = PRIORIDADES;
 
   useEffect(() => {
-    loadData();
-  }, [activeTab]);
+    loadUserArea();
+  }, [usuario?.id]);
+
+  useEffect(() => {
+    if (userAreaLoaded) loadData();
+  }, [activeTab, userAreaLoaded]);
 
   // Reset estatus/prioridad when tipo changes
   useEffect(() => {
     setSelectedEstatus('todos');
     setSelectedPrioridad('todas');
   }, [selectedTipo]);
+
+  const loadUserArea = async () => {
+    if (!usuario?.id) return;
+    if (isAdmin) {
+      setUserArea(null);
+      setUserAreaLoaded(true);
+      return;
+    }
+    const { data } = await supabase.rpc('get_user_tramite_area', { p_user_id: usuario.id });
+    setUserArea(data || null);
+    setUserAreaLoaded(true);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -113,7 +134,7 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_id(nombre_completo, oficina:oficina_id(nombre)),
+          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo))
@@ -156,7 +177,31 @@ export function Tramites() {
 
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
-  const filteredTramites = tramites.filter(tramite => {
+  // Visibility filter based on user's group area
+  const visibleTramites = tramites.filter(tramite => {
+    if (isAdmin) return true;
+
+    if (userArea === 'Comercial') {
+      const tipoArea = getTipoTramiteArea(tramite.tipo_tramite);
+      if (tipoArea !== 'Comercial') return false;
+      const agenteOficinaId = tramite.agente?.oficina_id ?? null;
+      return agenteOficinaId === usuario?.oficina_id;
+    }
+
+    if (userArea === 'Operaciones') {
+      const tipoArea = getTipoTramiteArea(tramite.tipo_tramite);
+      return tipoArea === 'Operaciones';
+    }
+
+    // Users not in any group: see tramites they created or are assigned to
+    return (
+      tramite.creado_por === usuario?.id ||
+      tramite.assigned_to_user_id === usuario?.id ||
+      tramite.agente_id === usuario?.id
+    );
+  });
+
+  const filteredTramites = visibleTramites.filter(tramite => {
     const term = (searchTerm ?? '').toLowerCase();
     const matches = (value: string | null | undefined) =>
       (value ?? '').toLowerCase().includes(term);
@@ -210,8 +255,13 @@ export function Tramites() {
             <h1 className="text-3xl font-display font-bold text-accent mb-2">
               Gestión de Trámites
             </h1>
-            <p className="text-neutral-600">
+            <p className="text-neutral-600 flex items-center gap-2">
               Gestiona solicitudes y soporte interno
+              {userArea && !isAdmin && (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.bg} ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.color}`}>
+                  Vista: {userArea}
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-3">

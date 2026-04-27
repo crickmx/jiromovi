@@ -1,26 +1,31 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Users, Plus, CreditCard as Edit, Trash2, X, Check, UserPlus, UserMinus, Search } from 'lucide-react';
+import { Users, UserPlus, UserMinus, Search, ShieldCheck, Briefcase, Wrench } from 'lucide-react';
+import { AREA_CONFIG, type AreaCategoria } from '../../lib/registroActividadesTypes';
 
 interface Grupo {
   id: string;
   nombre: string;
   descripcion: string | null;
   color: string;
-  oficina_id: string | null;
+  area_categoria: AreaCategoria | null;
   activo: boolean;
 }
 
 interface Miembro {
+  id: string;
   usuario_id: string;
   nombre_completo: string;
   oficina_nombre: string | null;
+  rol: string;
+  oficina_id: string | null;
 }
 
 interface Usuario {
   id: string;
   nombre_completo: string;
+  rol: string;
   oficina_nombre: string | null;
 }
 
@@ -29,28 +34,12 @@ export function GestionGruposVisualizacion() {
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showNuevoModal, setShowNuevoModal] = useState(false);
-  const [showEditarModal, setShowEditarModal] = useState(false);
-  const [showMiembrosModal, setShowMiembrosModal] = useState(false);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState<Grupo | null>(null);
   const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [searchUsuario, setSearchUsuario] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const [formData, setFormData] = useState({
-    nombre: '',
-    descripcion: '',
-    color: '#6366f1'
-  });
-
-  const coloresDisponibles = [
-    { value: '#10b981', label: 'Verde' },
-    { value: '#3b82f6', label: 'Azul' },
-    { value: '#8b5cf6', label: 'Morado' },
-    { value: '#f59e0b', label: 'Naranja' },
-    { value: '#ef4444', label: 'Rojo' },
-    { value: '#06b6d4', label: 'Cyan' },
-    { value: '#ec4899', label: 'Rosa' }
-  ];
+  const isAdmin = usuario?.rol === 'Administrador';
 
   useEffect(() => {
     loadData();
@@ -66,13 +55,14 @@ export function GestionGruposVisualizacion() {
     const { data, error } = await supabase
       .from('tramites_grupos_visualizacion')
       .select('*')
+      .eq('activo', true)
+      .not('area_categoria', 'is', null)
       .order('nombre');
 
     if (error) {
       console.error('Error loading grupos:', error);
       return;
     }
-
     setGrupos(data || []);
   };
 
@@ -83,9 +73,11 @@ export function GestionGruposVisualizacion() {
         id,
         nombre,
         apellidos,
+        rol,
         oficinas(nombre)
       `)
       .eq('estado', 'Activo')
+      .in('rol', ['Empleado', 'Gerente', 'Ejecutivo'])
       .order('nombre');
 
     if (error) {
@@ -93,18 +85,19 @@ export function GestionGruposVisualizacion() {
       return;
     }
 
-    const formattedUsuarios = data?.map(u => ({
-      id: u.id,
-      nombre_completo: `${u.nombre || ''} ${u.apellidos || ''}`.trim().toUpperCase(),
-      oficina_nombre: (u.oficinas as any)?.nombre || null
-    })) || [];
-
-    setUsuarios(formattedUsuarios);
+    setUsuarios(
+      (data || []).map(u => ({
+        id: u.id,
+        nombre_completo: `${u.nombre || ''} ${u.apellidos || ''}`.trim().toUpperCase(),
+        rol: u.rol,
+        oficina_nombre: (u.oficinas as any)?.nombre || null,
+      }))
+    );
   };
 
   const loadMiembros = async (grupoId: string) => {
     const { data, error } = await supabase.rpc('get_grupo_miembros', {
-      p_grupo_id: grupoId
+      p_grupo_id: grupoId,
     });
 
     if (error) {
@@ -112,80 +105,21 @@ export function GestionGruposVisualizacion() {
       return;
     }
 
-    setMiembros(data || []);
-  };
-
-  const handleCrearGrupo = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const { error } = await supabase
-      .from('tramites_grupos_visualizacion')
-      .insert({
-        nombre: formData.nombre,
-        descripcion: formData.descripcion || null,
-        color: formData.color,
-        oficina_id: usuario?.oficina_id
-      });
-
-    if (error) {
-      alert('Error al crear grupo: ' + error.message);
-      return;
-    }
-
-    setShowNuevoModal(false);
-    setFormData({ nombre: '', descripcion: '', color: '#6366f1' });
-    loadGrupos();
-  };
-
-  const handleEditarGrupo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!grupoSeleccionado) return;
-
-    const { error } = await supabase
-      .from('tramites_grupos_visualizacion')
-      .update({
-        nombre: formData.nombre,
-        descripcion: formData.descripcion || null,
-        color: formData.color
-      })
-      .eq('id', grupoSeleccionado.id);
-
-    if (error) {
-      alert('Error al editar grupo: ' + error.message);
-      return;
-    }
-
-    setShowEditarModal(false);
-    setGrupoSeleccionado(null);
-    setFormData({ nombre: '', descripcion: '', color: '#6366f1' });
-    loadGrupos();
-  };
-
-  const handleEliminarGrupo = async (grupoId: string) => {
-    if (!confirm('¿Eliminar este grupo? Se removerán todos sus miembros.')) return;
-
-    const { error } = await supabase
-      .from('tramites_grupos_visualizacion')
-      .delete()
-      .eq('id', grupoId);
-
-    if (error) {
-      alert('Error al eliminar grupo: ' + error.message);
-      return;
-    }
-
-    loadGrupos();
+    setMiembros(
+      (data || []).map((m: any) => ({
+        ...m,
+        usuario_id: m.id,
+      }))
+    );
   };
 
   const handleAgregarMiembro = async (usuarioId: string) => {
     if (!grupoSeleccionado) return;
+    setSaving(true);
 
     const { error } = await supabase
       .from('tramites_grupos_miembros')
-      .insert({
-        grupo_id: grupoSeleccionado.id,
-        usuario_id: usuarioId
-      });
+      .insert({ grupo_id: grupoSeleccionado.id, usuario_id: usuarioId });
 
     if (error) {
       if (error.code === '23505') {
@@ -193,14 +127,17 @@ export function GestionGruposVisualizacion() {
       } else {
         alert('Error al agregar miembro: ' + error.message);
       }
+      setSaving(false);
       return;
     }
 
-    loadMiembros(grupoSeleccionado.id);
+    await loadMiembros(grupoSeleccionado.id);
+    setSaving(false);
   };
 
   const handleRemoverMiembro = async (usuarioId: string) => {
     if (!grupoSeleccionado) return;
+    setSaving(true);
 
     const { error } = await supabase
       .from('tramites_grupos_miembros')
@@ -210,303 +147,150 @@ export function GestionGruposVisualizacion() {
 
     if (error) {
       alert('Error al remover miembro: ' + error.message);
+      setSaving(false);
       return;
     }
 
-    loadMiembros(grupoSeleccionado.id);
+    await loadMiembros(grupoSeleccionado.id);
+    setSaving(false);
   };
 
-  const openEditarModal = (grupo: Grupo) => {
+  const openMiembrosPanel = async (grupo: Grupo) => {
     setGrupoSeleccionado(grupo);
-    setFormData({
-      nombre: grupo.nombre,
-      descripcion: grupo.descripcion || '',
-      color: grupo.color
-    });
-    setShowEditarModal(true);
-  };
-
-  const openMiembrosModal = async (grupo: Grupo) => {
-    setGrupoSeleccionado(grupo);
+    setSearchUsuario('');
     await loadMiembros(grupo.id);
-    setShowMiembrosModal(true);
   };
 
   const usuariosDisponibles = usuarios.filter(
-    u => !miembros.some(m => m.usuario_id === u.id) &&
-         u.nombre_completo.toLowerCase().includes(searchUsuario.toLowerCase())
+    u =>
+      !miembros.some(m => m.usuario_id === u.id) &&
+      u.nombre_completo.toLowerCase().includes(searchUsuario.toLowerCase())
   );
+
+  const getAreaIcon = (area: string | null) => {
+    if (area === 'Comercial') return <Briefcase className="w-5 h-5" />;
+    return <Wrench className="w-5 h-5" />;
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="text-center py-12 text-neutral-500">
+        <ShieldCheck className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
+        <p className="font-medium">Solo los administradores pueden gestionar los grupos de visualizacion.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Grupos de Visualización</h3>
-        <button
-          onClick={() => setShowNuevoModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Grupo
-        </button>
+      <div>
+        <h3 className="text-lg font-semibold text-neutral-900">Equipos de Trabajo</h3>
+        <p className="text-sm text-neutral-500 mt-1">
+          Asigna usuarios a cada equipo para controlar que tramites pueden ver. Los usuarios de Comercial solo ven tramites de su oficina. Los usuarios de Operaciones ven tramites de toda la organizacion.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {grupos.map(grupo => (
-          <div
-            key={grupo.id}
-            className="border rounded-lg p-4 hover:shadow-md transition"
-            style={{ borderLeftWidth: '4px', borderLeftColor: grupo.color }}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <h4 className="font-semibold text-gray-900">{grupo.nombre}</h4>
-                {grupo.descripcion && (
-                  <p className="text-sm text-gray-600 mt-1">{grupo.descripcion}</p>
-                )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {grupos.map(grupo => {
+          const area = grupo.area_categoria as AreaCategoria;
+          const ac = area ? AREA_CONFIG[area] : { bg: 'bg-neutral-50', color: 'text-neutral-700', border: 'border-neutral-200' };
+          const isSelected = grupoSeleccionado?.id === grupo.id;
+
+          return (
+            <button
+              key={grupo.id}
+              onClick={() => openMiembrosPanel(grupo)}
+              className={`text-left border-2 rounded-xl p-5 transition-all hover:shadow-md ${
+                isSelected ? `${ac.border} shadow-md ring-2 ring-offset-1` : 'border-neutral-200 hover:border-neutral-300'
+              }`}
+              style={isSelected ? { ringColor: grupo.color } : undefined}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`p-2.5 rounded-lg ${ac.bg}`}>
+                  <span className={ac.color}>{getAreaIcon(grupo.area_categoria)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-neutral-900">{grupo.nombre}</h4>
+                  {grupo.descripcion && (
+                    <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{grupo.descripcion}</p>
+                  )}
+                  <div className="mt-2">
+                    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${ac.bg} ${ac.color}`}>
+                      {grupo.area_categoria}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => openMiembrosModal(grupo)}
-                  className="p-1.5 hover:bg-gray-100 rounded transition"
-                  title="Ver miembros"
-                >
-                  <Users className="h-4 w-4 text-gray-600" />
-                </button>
-                <button
-                  onClick={() => openEditarModal(grupo)}
-                  className="p-1.5 hover:bg-gray-100 rounded transition"
-                  title="Editar"
-                >
-                  <Edit className="h-4 w-4 text-gray-600" />
-                </button>
-                <button
-                  onClick={() => handleEliminarGrupo(grupo.id)}
-                  className="p-1.5 hover:bg-red-50 rounded transition"
-                  title="Eliminar"
-                >
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Modal Nuevo Grupo */}
-      {showNuevoModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold">Nuevo Grupo</h3>
-              <button
-                onClick={() => setShowNuevoModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {/* Members panel */}
+      {grupoSeleccionado && (() => {
+        const area = grupoSeleccionado.area_categoria as AreaCategoria;
+        const ac = area ? AREA_CONFIG[area] : { bg: 'bg-neutral-50', color: 'text-neutral-700', border: 'border-neutral-200' };
 
-            <form onSubmit={handleCrearGrupo} className="p-6 space-y-4">
+        return (
+          <div className={`border-2 rounded-xl overflow-hidden ${ac.border}`}>
+            <div className={`px-5 py-4 ${ac.bg} flex items-center justify-between`}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nombre del Grupo
-                </label>
-                <input
-                  type="text"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Descripción (opcional)
-                </label>
-                <textarea
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Color
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {coloresDisponibles.map(color => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, color: color.value })}
-                      className={`h-10 rounded-lg border-2 transition ${
-                        formData.color === color.value ? 'border-gray-900 scale-110' : 'border-gray-200'
-                      }`}
-                      style={{ backgroundColor: color.value }}
-                      title={color.label}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowNuevoModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition"
-                >
-                  Crear Grupo
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Editar Grupo */}
-      {showEditarModal && grupoSeleccionado && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold">Editar Grupo</h3>
-              <button
-                onClick={() => setShowEditarModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleEditarGrupo} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nombre del Grupo
-                </label>
-                <input
-                  type="text"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Descripción (opcional)
-                </label>
-                <textarea
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Color
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {coloresDisponibles.map(color => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, color: color.value })}
-                      className={`h-10 rounded-lg border-2 transition ${
-                        formData.color === color.value ? 'border-gray-900 scale-110' : 'border-gray-200'
-                      }`}
-                      style={{ backgroundColor: color.value }}
-                      title={color.label}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEditarModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition"
-                >
-                  Guardar Cambios
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Miembros */}
-      {showMiembrosModal && grupoSeleccionado && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b">
-              <div>
-                <h3 className="text-lg font-semibold">Miembros del Grupo</h3>
-                <p className="text-sm text-gray-600 mt-1">{grupoSeleccionado.nombre}</p>
-              </div>
-              <button
-                onClick={() => setShowMiembrosModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Miembros Actuales */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Miembros Actuales ({miembros.length})
+                <h4 className={`font-bold ${ac.color}`}>
+                  {grupoSeleccionado.nombre} - Miembros ({miembros.length})
                 </h4>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  {grupoSeleccionado.area_categoria === 'Comercial'
+                    ? 'Estos usuarios solo veran tramites Comercial de su oficina'
+                    : 'Estos usuarios veran tramites Operaciones de toda la organizacion'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {/* Current members */}
+              <div>
+                <h5 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Miembros Actuales
+                </h5>
                 {miembros.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No hay miembros en este grupo
+                  <p className="text-sm text-neutral-400 text-center py-6 bg-neutral-50 rounded-lg">
+                    No hay miembros asignados a este grupo
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {miembros.map(miembro => (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {miembros.map(m => (
                       <div
-                        key={miembro.usuario_id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        key={m.usuario_id}
+                        className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg group hover:bg-neutral-100 transition-colors"
                       >
-                        <div>
-                          <p className="font-medium text-gray-900">{miembro.nombre_completo}</p>
-                          {miembro.oficina_nombre && (
-                            <p className="text-xs text-gray-600">{miembro.oficina_nombre}</p>
-                          )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-neutral-900 text-sm">{m.nombre_completo}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-neutral-500">{m.rol}</span>
+                            {m.oficina_nombre && (
+                              <>
+                                <span className="text-neutral-300">|</span>
+                                <span className="text-xs text-neutral-500">{m.oficina_nombre}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                         <button
-                          onClick={() => handleRemoverMiembro(miembro.usuario_id)}
-                          className="p-1.5 hover:bg-red-100 rounded transition"
+                          onClick={(e) => { e.stopPropagation(); handleRemoverMiembro(m.usuario_id); }}
+                          disabled={saving}
+                          className="p-1.5 hover:bg-red-100 rounded-lg transition opacity-0 group-hover:opacity-100"
                           title="Remover del grupo"
                         >
-                          <UserMinus className="h-4 w-4 text-red-600" />
+                          <UserMinus className="w-4 h-4 text-red-600" />
                         </button>
                       </div>
                     ))}
@@ -514,47 +298,55 @@ export function GestionGruposVisualizacion() {
                 )}
               </div>
 
-              {/* Agregar Usuarios */}
+              {/* Add users */}
               <div>
-                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
+                <h5 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                  <UserPlus className="w-4 h-4" />
                   Agregar Usuarios
-                </h4>
+                  <span className="text-xs font-normal text-neutral-400">(Empleados y Gerentes)</span>
+                </h5>
 
                 <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                   <input
                     type="text"
-                    placeholder="Buscar usuarios..."
+                    placeholder="Buscar por nombre..."
                     value={searchUsuario}
-                    onChange={(e) => setSearchUsuario(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
+                    onChange={e => setSearchUsuario(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent text-sm"
                   />
                 </div>
 
-                <div className="max-h-64 overflow-y-auto space-y-2">
+                <div className="max-h-64 overflow-y-auto space-y-1">
                   {usuariosDisponibles.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      No hay usuarios disponibles
+                    <p className="text-sm text-neutral-400 text-center py-4">
+                      {searchUsuario ? 'Sin resultados' : 'Todos los usuarios ya estan asignados'}
                     </p>
                   ) : (
-                    usuariosDisponibles.map(usuario => (
+                    usuariosDisponibles.map(u => (
                       <div
-                        key={usuario.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition"
+                        key={u.id}
+                        className="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
                       >
-                        <div>
-                          <p className="font-medium text-gray-900">{usuario.nombre_completo}</p>
-                          {usuario.oficina_nombre && (
-                            <p className="text-xs text-gray-600">{usuario.oficina_nombre}</p>
-                          )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-neutral-900 text-sm">{u.nombre_completo}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-neutral-500">{u.rol}</span>
+                            {u.oficina_nombre && (
+                              <>
+                                <span className="text-neutral-300">|</span>
+                                <span className="text-xs text-neutral-500">{u.oficina_nombre}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                         <button
-                          onClick={() => handleAgregarMiembro(usuario.id)}
-                          className="p-1.5 hover:bg-green-100 rounded transition"
+                          onClick={() => handleAgregarMiembro(u.id)}
+                          disabled={saving}
+                          className="p-1.5 hover:bg-green-100 rounded-lg transition"
                           title="Agregar al grupo"
                         >
-                          <UserPlus className="h-4 w-4 text-green-600" />
+                          <UserPlus className="w-4 h-4 text-green-600" />
                         </button>
                       </div>
                     ))
@@ -562,18 +354,9 @@ export function GestionGruposVisualizacion() {
                 </div>
               </div>
             </div>
-
-            <div className="p-6 border-t">
-              <button
-                onClick={() => setShowMiembrosModal(false)}
-                className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-              >
-                Cerrar
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

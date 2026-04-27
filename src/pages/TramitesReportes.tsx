@@ -145,18 +145,42 @@ export default function TramitesReportes() {
   const isGerente = usuario?.rol === 'Gerente';
   const canViewReports = isAdmin || isGerente;
 
+  // Visibility scoping for non-admin users
+  const [userArea, setUserArea] = useState<AreaCategoria | null>(null);
+  const [userAreaLoaded, setUserAreaLoaded] = useState(false);
+
   useEffect(() => {
     if (canViewReports) {
       loadCatalogos();
       aplicarPresetFecha('ultimos30');
+      if (!isAdmin && usuario?.id) {
+        loadUserArea();
+      } else {
+        setUserAreaLoaded(true);
+      }
     }
   }, [canViewReports]);
 
+  const loadUserArea = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_user_tramite_area', {
+        p_user_id: usuario!.id,
+      });
+      if (!error && data) {
+        setUserArea(data as AreaCategoria);
+      }
+    } catch (err) {
+      console.error('Error loading user area:', err);
+    } finally {
+      setUserAreaLoaded(true);
+    }
+  };
+
   useEffect(() => {
-    if (fechaInicio && fechaFin) {
+    if (fechaInicio && fechaFin && userAreaLoaded) {
       loadData();
     }
-  }, [fechaInicio, fechaFin, oficinaFiltro, usuarioFiltro, grupoFiltro, tipoTramiteFiltro, estatusFiltro, prioridadFiltro]);
+  }, [fechaInicio, fechaFin, oficinaFiltro, usuarioFiltro, grupoFiltro, tipoTramiteFiltro, estatusFiltro, prioridadFiltro, userAreaLoaded]);
 
   useEffect(() => {
     if (grupoFiltro) {
@@ -192,11 +216,12 @@ export default function TramitesReportes() {
 
       if (usuariosData) setUsuarios(usuariosData);
 
-      // Cargar grupos
+      // Cargar grupos (solo los que tienen area_categoria)
       const { data: gruposData } = await supabase
         .from('tramites_grupos_visualizacion')
-        .select('id, nombre, color')
+        .select('id, nombre, color, area_categoria')
         .eq('activo', true)
+        .not('area_categoria', 'is', null)
         .order('nombre');
 
       if (gruposData) setGrupos(gruposData);
@@ -245,20 +270,17 @@ export default function TramitesReportes() {
     setFechaFin(hoy.toISOString().split('T')[0]);
   };
 
+  const getAreaTipoTramites = (area: AreaCategoria): string[] =>
+    CENTRAL_TIPO_OPTIONS.filter(t => t.area === area).map(t => t.value);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      // Cargar KPIs
-      const { data: kpisData } = await supabase.rpc('get_tramites_kpis', {
-        p_fecha_inicio: fechaInicio ? new Date(fechaInicio).toISOString() : null,
-        p_fecha_fin: fechaFin ? new Date(fechaFin + 'T23:59:59').toISOString() : null,
-        p_oficina_id: oficinaFiltro || null,
-        p_usuario_id: usuarioFiltro || null,
-        p_tipo_tramite: tipoTramiteFiltro || null,
-        p_avance: null
-      });
-
-      if (kpisData) setKpis(kpisData);
+      // Determine area-scoped tipo_tramite values for non-admin users
+      const areaTipos = userArea ? getAreaTipoTramites(userArea) : null;
+      const effectiveOficina = userArea === 'Comercial' && !oficinaFiltro
+        ? usuario?.oficina_id || null
+        : oficinaFiltro || null;
 
       // Cargar trámites detallados
       let query = supabase
@@ -268,7 +290,16 @@ export default function TramitesReportes() {
         .lte('fecha_solicitud', new Date(fechaFin + 'T23:59:59').toISOString())
         .order('fecha_solicitud', { ascending: false });
 
-      if (oficinaFiltro) query = query.eq('asignado_oficina_id', oficinaFiltro);
+      // Area-based scoping for non-admin users
+      if (areaTipos && !tipoTramiteFiltro) {
+        query = query.in('tipo_tramite', areaTipos);
+      }
+      if (userArea === 'Comercial' && !oficinaFiltro) {
+        query = query.eq('asignado_oficina_id', usuario?.oficina_id);
+      } else if (oficinaFiltro) {
+        query = query.eq('asignado_oficina_id', oficinaFiltro);
+      }
+
       if (usuarioFiltro) query = query.eq('asignado_id', usuarioFiltro);
       if (grupoFiltro && usuariosDelGrupo.length > 0) {
         query = query.in('asignado_id', usuariosDelGrupo);
@@ -278,24 +309,65 @@ export default function TramitesReportes() {
       if (prioridadFiltro) query = query.eq('prioridad', prioridadFiltro);
 
       const { data: tramitesData } = await query;
-      if (tramitesData) setTramites(tramitesData);
+      const filteredTramites = tramitesData || [];
+      setTramites(filteredTramites);
 
-      // Cargar productividad por usuario
-      let userQuery = supabase
-        .from('tramites_productividad_usuario')
-        .select('*')
-        .order('total_tramites', { ascending: false })
-        .limit(10);
+      // Compute KPIs from filtered tramites
+      const pendientes = filteredTramites.filter((t: any) => t.estatus_calculado === 'Pendiente').length;
+      const enProceso = filteredTramites.filter((t: any) => t.estatus_calculado === 'En Proceso').length;
+      const finalizados = filteredTramites.filter((t: any) => t.estatus_calculado === 'Finalizado').length;
+      const conTiempo = filteredTramites.filter((t: any) => t.tiempo_resolucion_dias != null);
+      const tiempoPromedio = conTiempo.length > 0
+        ? conTiempo.reduce((s: number, t: any) => s + (t.tiempo_resolucion_dias || 0), 0) / conTiempo.length
+        : 0;
+      const avancePromedio = filteredTramites.length > 0
+        ? filteredTramites.reduce((s: number, t: any) => s + (t.avance || 0), 0) / filteredTramites.length
+        : 0;
+      setKpis({
+        total_tramites: filteredTramites.length,
+        tramites_pendientes: pendientes,
+        tramites_en_proceso: enProceso,
+        tramites_finalizados: finalizados,
+        tiempo_promedio_resolucion_dias: tiempoPromedio,
+        porcentaje_finalizacion: filteredTramites.length > 0 ? (finalizados / filteredTramites.length) * 100 : 0,
+        avance_promedio: avancePromedio,
+      });
 
-      if (oficinaFiltro) userQuery = userQuery.eq('oficina_id', oficinaFiltro);
-      if (grupoFiltro && usuariosDelGrupo.length > 0) {
-        userQuery = userQuery.in('usuario_id', usuariosDelGrupo);
-      }
+      // Compute productividad por usuario from filtered tramites
+      const userProdMap: Record<string, ProductividadUsuario> = {};
+      filteredTramites.forEach((t: any) => {
+        const uid = t.asignado_id;
+        if (!uid) return;
+        if (!userProdMap[uid]) {
+          userProdMap[uid] = {
+            usuario_id: uid,
+            nombre_completo: t.asignado_nombre || 'Sin nombre',
+            oficina_nombre: t.oficina_nombre || 'Sin oficina',
+            total_tramites: 0,
+            tramites_pendientes: 0,
+            tramites_en_proceso: 0,
+            tramites_finalizados: 0,
+            avance_promedio: 0,
+            tiempo_promedio_resolucion_dias: 0,
+            porcentaje_finalizacion: 0,
+          };
+        }
+        const up = userProdMap[uid];
+        up.total_tramites++;
+        if (t.estatus_calculado === 'Pendiente') up.tramites_pendientes++;
+        else if (t.estatus_calculado === 'En Proceso') up.tramites_en_proceso++;
+        else if (t.estatus_calculado === 'Finalizado') up.tramites_finalizados++;
+      });
+      const userProdArr = Object.values(userProdMap)
+        .map(up => ({
+          ...up,
+          porcentaje_finalizacion: up.total_tramites > 0 ? (up.tramites_finalizados / up.total_tramites) * 100 : 0,
+        }))
+        .sort((a, b) => b.total_tramites - a.total_tramites)
+        .slice(0, 10);
+      setProductividadUsuarios(userProdArr);
 
-      const { data: userProdData } = await userQuery;
-      if (userProdData) setProductividadUsuarios(userProdData);
-
-      // Cargar productividad por oficina (solo para admin)
+      // Cargar productividad por oficina (solo para admin, sin area scoping)
       if (isAdmin) {
         const { data: officeProdData } = await supabase
           .from('tramites_productividad_oficina')
@@ -316,6 +388,8 @@ export default function TramitesReportes() {
 
   const loadTramitesPorUsuario = async () => {
     try {
+      const areaTipos = userArea ? getAreaTipoTramites(userArea) : null;
+
       let query = supabase
         .from('tramites_reportes_view')
         .select('*')
@@ -325,7 +399,16 @@ export default function TramitesReportes() {
         .order('asignado_nombre')
         .order('fecha_solicitud', { ascending: false });
 
-      if (oficinaFiltro) query = query.eq('asignado_oficina_id', oficinaFiltro);
+      // Area-based scoping
+      if (areaTipos && !tipoTramiteFiltro) {
+        query = query.in('tipo_tramite', areaTipos);
+      }
+      if (userArea === 'Comercial' && !oficinaFiltro) {
+        query = query.eq('asignado_oficina_id', usuario?.oficina_id);
+      } else if (oficinaFiltro) {
+        query = query.eq('asignado_oficina_id', oficinaFiltro);
+      }
+
       if (usuarioFiltro) query = query.eq('asignado_id', usuarioFiltro);
       if (grupoFiltro && usuariosDelGrupo.length > 0) {
         query = query.in('asignado_id', usuariosDelGrupo);
@@ -452,7 +535,10 @@ export default function TramitesReportes() {
 
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
-  const tiposTramite = CENTRAL_TIPO_OPTIONS.map(t => t.value);
+  // Scope tipo list based on user area
+  const tiposTramite = userArea
+    ? CENTRAL_TIPO_OPTIONS.filter(t => t.area === userArea).map(t => t.value)
+    : CENTRAL_TIPO_OPTIONS.map(t => t.value);
   const estatusOptions = ['Pendiente', 'En Proceso', 'Finalizado'];
   const prioridadOptions = ['Alta', 'Media', 'Baja'];
 
@@ -578,17 +664,29 @@ export default function TramitesReportes() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Dashboard de Trámites</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-neutral-900">Dashboard de Trámites</h1>
+            {userArea && (() => {
+              const ac = AREA_CONFIG[userArea];
+              return (
+                <span className={`px-3 py-1 text-sm font-bold rounded-full ${ac.bg} ${ac.color} border ${ac.border}`}>
+                  {userArea}
+                </span>
+              );
+            })()}
+          </div>
           <p className="text-neutral-600 mt-1">Análisis y métricas de productividad</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowGruposModal(true)}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-          >
-            <Users className="w-5 h-5" />
-            Gestionar Grupos
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowGruposModal(true)}
+              className="px-4 py-2 bg-neutral-700 text-white rounded-lg hover:bg-neutral-800 transition-colors flex items-center gap-2"
+            >
+              <Users className="w-5 h-5" />
+              Gestionar Equipos
+            </button>
+          )}
           <button
             onClick={loadData}
             disabled={loading}
@@ -648,7 +746,7 @@ export default function TramitesReportes() {
             />
           </div>
 
-          {isAdmin && (
+          {(isAdmin || (isGerente && userArea === 'Operaciones')) && (
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Oficina
@@ -668,28 +766,28 @@ export default function TramitesReportes() {
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Grupo
+              Equipo
             </label>
             <select
               value={grupoFiltro}
               onChange={(e) => {
                 setGrupoFiltro(e.target.value);
                 if (e.target.value) {
-                  setUsuarioFiltro(''); // Limpiar filtro individual si se selecciona grupo
+                  setUsuarioFiltro('');
                 }
               }}
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Sin filtro de grupo</option>
+              <option value="">Sin filtro de equipo</option>
               {grupos.map(g => (
                 <option key={g.id} value={g.id}>
-                  <span style={{ color: g.color }}>●</span> {g.nombre}
+                  {g.nombre} ({g.area_categoria})
                 </option>
               ))}
             </select>
             {grupoFiltro && usuariosDelGrupo.length > 0 && (
               <p className="text-xs text-neutral-500 mt-1">
-                {usuariosDelGrupo.length} usuario{usuariosDelGrupo.length !== 1 ? 's' : ''} en el grupo
+                {usuariosDelGrupo.length} usuario{usuariosDelGrupo.length !== 1 ? 's' : ''} en el equipo
               </p>
             )}
           </div>
@@ -728,16 +826,20 @@ export default function TramitesReportes() {
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todos</option>
-              <optgroup label="Comercial">
-                {getTipoTramitesByArea('Comercial').map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Operaciones">
-                {getTipoTramitesByArea('Operaciones').map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </optgroup>
+              {(!userArea || userArea === 'Comercial') && (
+                <optgroup label="Comercial">
+                  {getTipoTramitesByArea('Comercial').map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </optgroup>
+              )}
+              {(!userArea || userArea === 'Operaciones') && (
+                <optgroup label="Operaciones">
+                  {getTipoTramitesByArea('Operaciones').map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
