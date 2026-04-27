@@ -578,15 +578,23 @@ export function Tramites() {
 
       {showCatalogosModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl my-8 max-h-[90vh] overflow-y-auto">
-            <GestionCatalogosRegistro />
-            <div className="flex justify-end p-6 border-t border-neutral-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-8 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+              <div>
+                <h2 className="text-xl font-bold text-neutral-900">Catálogos de Trámites</h2>
+                <p className="text-sm text-neutral-500 mt-1">Gestiona los tipos de seguro disponibles en los trámites</p>
+              </div>
               <button
                 onClick={() => setShowCatalogosModal(false)}
-                className="px-6 py-2.5 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors"
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500 hover:text-neutral-700"
               >
-                Cerrar
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <GestionCatalogosRegistro />
             </div>
           </div>
         </div>
