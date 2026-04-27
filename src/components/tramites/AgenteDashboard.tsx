@@ -12,6 +12,11 @@ import {
   ExternalLink,
   Calendar
 } from 'lucide-react';
+import {
+  getTipoTramiteLabel as centralGetLabel,
+  getTipoTramiteArea,
+  AREA_CONFIG,
+} from '../../lib/registroActividadesTypes';
 
 interface TicketRecord {
   id: string;
@@ -45,15 +50,7 @@ interface DashboardData {
   cerradosEsteMes: number;
 }
 
-const TIPO_LABELS: Record<string, string> = {
-  cotizacion_emision: 'Cotizacion / Emision',
-  correccion_poliza_registrada: 'Correccion de poliza',
-  correccion_comisiones: 'Correccion de comisiones',
-  registro_poliza: 'Registro de poliza',
-  solicitud_comisiones_pendientes: 'Solicitud de comisiones',
-  lead_registro_movi: 'Lead / Registro Movi',
-  registro_actividad: 'Registro de actividad',
-};
+const TIPO_LABELS = (tipo: string) => centralGetLabel(tipo);
 
 export function AgenteDashboard() {
   const { usuario } = useAuth();
@@ -320,9 +317,15 @@ function TicketRow({ ticket, onNavigate }: { ticket: TicketRecord; onNavigate: (
           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${getPrioridadStyle(ticket.prioridad)}`}>
             {ticket.prioridad}
           </span>
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">
-            {TIPO_LABELS[ticket.tipo_tramite] || ticket.tipo_tramite}
-          </span>
+          {(() => {
+            const area = getTipoTramiteArea(ticket.tipo_tramite);
+            const ac = AREA_CONFIG[area];
+            return (
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ac.bg} ${ac.color}`}>
+                {TIPO_LABELS(ticket.tipo_tramite)}
+              </span>
+            );
+          })()}
         </div>
         <p className="text-sm text-neutral-700 truncate">{ticket.instrucciones}</p>
         <div className="flex items-center gap-3 mt-1 text-xs text-neutral-500">

@@ -2,6 +2,43 @@
  * Tipos TypeScript para el módulo de Registro de Actividades
  */
 
+export type AreaCategoria = 'Comercial' | 'Operaciones';
+
+export interface TipoTramiteConfig {
+  value: string;
+  label: string;
+  area: AreaCategoria;
+  tipoAplicable: string;
+}
+
+export const TIPO_TRAMITE_OPTIONS: TipoTramiteConfig[] = [
+  { value: 'cotizacion_emision',              label: 'Cotización / Emisión',     area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'correccion_poliza_registrada',    label: 'Corrección de póliza',     area: 'Operaciones',  tipoAplicable: 'general' },
+  { value: 'correccion_comisiones',           label: 'Corrección de comisiones', area: 'Operaciones',  tipoAplicable: 'general' },
+  { value: 'registro_poliza',                 label: 'Registro de póliza',       area: 'Operaciones',  tipoAplicable: 'general' },
+  { value: 'solicitud_comisiones_pendientes', label: 'Solicitud de comisiones',  area: 'Operaciones',  tipoAplicable: 'solicitud_comisiones' },
+  { value: 'lead_registro_movi',              label: 'Lead / Registro Movi',     area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'registro_actividad',              label: 'Registro de actividades',  area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'cambio_bancario',                 label: 'Cambio bancario',          area: 'Operaciones',  tipoAplicable: 'general' },
+];
+
+export function getTipoTramiteLabel(tipo: string): string {
+  return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.label ?? tipo.replace(/_/g, ' ');
+}
+
+export function getTipoTramiteArea(tipo: string): AreaCategoria {
+  return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.area ?? 'Operaciones';
+}
+
+export function getTipoTramitesByArea(area: AreaCategoria): TipoTramiteConfig[] {
+  return TIPO_TRAMITE_OPTIONS.filter(t => t.area === area);
+}
+
+export const AREA_CONFIG: Record<AreaCategoria, { color: string; bg: string; border: string }> = {
+  Comercial:    { color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200' },
+  Operaciones:  { color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
+};
+
 export interface TramiteActivityType {
   id: string;
   nombre: string;

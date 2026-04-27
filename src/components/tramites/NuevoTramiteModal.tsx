@@ -16,6 +16,9 @@ import {
 import {
   REGISTRO_ACTIVIDAD_ESTATUS,
   isEstatusFinal,
+  getTipoTramitesByArea,
+  getTipoTramiteArea,
+  AREA_CONFIG,
   type InsuranceType,
   type Aseguradora as AseguradoraRA,
   type UsuarioOficina
@@ -805,15 +808,24 @@ export function NuevoTramiteModal({
             disabled={!!preloadedData?.tipoTramite}
             className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
           >
-            {canAccessRegistroAct && (
-              <option value="cotizacion_emision">Cotización / Emisión</option>
-            )}
-            <option value="correccion_poliza_registrada">Corrección de póliza registrada</option>
-            <option value="correccion_comisiones">Corrección de comisiones</option>
-            <option value="registro_poliza">Registro de póliza</option>
-            <option value="solicitud_comisiones_pendientes">Solicitud de comisiones pendientes</option>
+            <optgroup label="Comercial">
+              {canAccessRegistroAct && (
+                <option value="cotizacion_emision">Cotización / Emisión</option>
+              )}
+              {getTipoTramitesByArea('Comercial')
+                .filter(t => t.value !== 'cotizacion_emision' && t.value !== 'registro_actividad')
+                .map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </optgroup>
+            <optgroup label="Operaciones">
+              {getTipoTramitesByArea('Operaciones')
+                .filter(t => t.value !== 'cambio_bancario')
+                .map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </optgroup>
           </select>
           <p className="text-xs text-neutral-500 mt-1">
+            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 ${AREA_CONFIG[getTipoTramiteArea(tipoTramite)].bg} ${AREA_CONFIG[getTipoTramiteArea(tipoTramite)].color}`}>
+              {getTipoTramiteArea(tipoTramite)}
+            </span>
             {getTipoLabel(tipoTramite)}
           </p>
         </div>

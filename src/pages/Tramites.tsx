@@ -6,6 +6,13 @@ import { ClipboardList, Plus, Search, AlertCircle, Clock, CheckCircle2, FileText
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { AgenteDashboard } from '../components/tramites/AgenteDashboard';
+import {
+  TIPO_TRAMITE_OPTIONS,
+  getTipoTramiteLabel as centralGetLabel,
+  getTipoTramiteArea,
+  getTipoTramitesByArea,
+  AREA_CONFIG,
+} from '../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
   id: string;
@@ -33,14 +40,9 @@ interface TramiteItem {
   }>;
 }
 
-const TIPO_TRAMITE_OPTIONS = [
-  { value: 'cotizacion_emision', label: 'Cotización / Emisión', tipoAplicable: 'general' },
-  { value: 'correccion_poliza_registrada', label: 'Corrección de póliza', tipoAplicable: 'general' },
-  { value: 'correccion_comisiones', label: 'Corrección de comisiones', tipoAplicable: 'general' },
-  { value: 'registro_poliza', label: 'Registro de póliza', tipoAplicable: 'general' },
-  { value: 'solicitud_comisiones_pendientes', label: 'Solicitud de comisiones', tipoAplicable: 'solicitud_comisiones' },
-  { value: 'lead_registro_movi', label: 'Lead / Registro Movi', tipoAplicable: 'general' },
-];
+const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
+  t => t.value !== 'registro_actividad' && t.value !== 'cambio_bancario'
+);
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
 
@@ -152,9 +154,7 @@ export function Tramites() {
     }
   };
 
-  const getTipoTramiteLabel = (tipo: string) => {
-    return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.label ?? tipo;
-  };
+  const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
   const filteredTramites = tramites.filter(tramite => {
     const term = (searchTerm ?? '').toLowerCase();
@@ -294,9 +294,16 @@ export function Tramites() {
                 className="px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all text-sm bg-white"
               >
                 <option value="todos">Todos los tipos</option>
-                {TIPO_TRAMITE_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
+                <optgroup label="Comercial">
+                  {getTipoTramitesByArea('Comercial').filter(t => TRAMITE_OPTIONS_FOR_FILTER.some(f => f.value === t.value)).map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Operaciones">
+                  {getTipoTramitesByArea('Operaciones').filter(t => TRAMITE_OPTIONS_FOR_FILTER.some(f => f.value === t.value)).map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
 
@@ -357,11 +364,11 @@ export function Tramites() {
           {selectedTipo !== 'todos' && (
             <div className="flex items-center gap-2 text-xs text-neutral-500 pt-1 border-t border-neutral-100">
               <span className="font-medium">Filtrando por tipo:</span>
-              <span className="px-2 py-0.5 bg-accent/10 text-accent rounded-full font-semibold">
+              <span className={`px-2 py-0.5 rounded-full font-semibold ${AREA_CONFIG[getTipoTramiteArea(selectedTipo)].bg} ${AREA_CONFIG[getTipoTramiteArea(selectedTipo)].color}`}>
                 {getTipoTramiteLabel(selectedTipo)}
               </span>
               <span className="text-neutral-400">
-                — Mostrando {filteredEstatusList.length} estatus aplicables
+                ({getTipoTramiteArea(selectedTipo)}) — Mostrando {filteredEstatusList.length} estatus aplicables
               </span>
             </div>
           )}
@@ -433,9 +440,15 @@ export function Tramites() {
 
                 {/* Segunda línea: Badges y etiquetas */}
                 <div className="flex items-center flex-wrap gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700 border border-neutral-300">
-                    {getTipoTramiteLabel(tramite.tipo_tramite)}
-                  </span>
+                  {(() => {
+                    const area = getTipoTramiteArea(tramite.tipo_tramite);
+                    const ac = AREA_CONFIG[area];
+                    return (
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${ac.bg} ${ac.color} ${ac.border}`}>
+                        {getTipoTramiteLabel(tramite.tipo_tramite)}
+                      </span>
+                    );
+                  })()}
                   {tramite.estatus && (
                     <span
                       className="px-3 py-1 rounded-full text-xs font-semibold border"

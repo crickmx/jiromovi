@@ -13,6 +13,14 @@ import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { TramiteHistorial } from '../components/tramites/TramiteHistorial';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
 import { ConversionDashboard } from '../components/tramites/ConversionDashboard';
+import {
+  TIPO_TRAMITE_OPTIONS as CENTRAL_TIPO_OPTIONS,
+  getTipoTramiteLabel as centralGetLabel,
+  getTipoTramiteArea,
+  getTipoTramitesByArea,
+  AREA_CONFIG,
+  type AreaCategoria,
+} from '../lib/registroActividadesTypes';
 
 interface KPIs {
   total_tramites: number;
@@ -442,30 +450,9 @@ export default function TramitesReportes() {
     );
   }
 
-  const getTipoTramiteLabel = (tipo: string) => {
-    const labels: Record<string, string> = {
-      cotizacion_emision: 'Cotización / Emisión',
-      correccion_poliza_registrada: 'Corrección de póliza',
-      correccion_comisiones: 'Corrección de comisiones',
-      registro_poliza: 'Registro de póliza',
-      solicitud_comisiones_pendientes: 'Solicitud de comisiones',
-      registro_actividad: 'Registro de actividades',
-      lead_registro_movi: 'Lead / Registro MOVI',
-      cambio_bancario: 'Cambio bancario',
-    };
-    return labels[tipo] || tipo.replace(/_/g, ' ');
-  };
+  const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
-  const tiposTramite = [
-    'cotizacion_emision',
-    'correccion_poliza_registrada',
-    'correccion_comisiones',
-    'registro_poliza',
-    'solicitud_comisiones_pendientes',
-    'registro_actividad',
-    'lead_registro_movi',
-    'cambio_bancario',
-  ];
+  const tiposTramite = CENTRAL_TIPO_OPTIONS.map(t => t.value);
   const estatusOptions = ['Pendiente', 'En Proceso', 'Finalizado'];
   const prioridadOptions = ['Alta', 'Media', 'Baja'];
 
@@ -741,9 +728,16 @@ export default function TramitesReportes() {
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todos</option>
-              {tiposTramite.map(t => (
-                <option key={t} value={t}>{getTipoTramiteLabel(t)}</option>
-              ))}
+              <optgroup label="Comercial">
+                {getTipoTramitesByArea('Comercial').map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Operaciones">
+                {getTipoTramitesByArea('Operaciones').map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
@@ -1039,8 +1033,20 @@ export default function TramitesReportes() {
           KPIs individuales por cada tipo de trámite. Haz clic en una tarjeta para ver el desglose.
         </p>
 
-        <div className="space-y-3">
-          {kpisPorTipo.map(item => {
+        {(['Comercial', 'Operaciones'] as AreaCategoria[]).map(area => {
+          const areaItems = kpisPorTipo.filter(item => getTipoTramiteArea(item.tipo) === area);
+          if (areaItems.length === 0) return null;
+          const ac = AREA_CONFIG[area];
+          return (
+            <div key={area} className="mb-6 last:mb-0">
+              <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-lg ${ac.bg} border ${ac.border}`}>
+                <span className={`text-sm font-bold ${ac.color}`}>{area}</span>
+                <span className="text-xs text-neutral-500">
+                  ({areaItems.reduce((sum, i) => sum + i.total, 0)} trámites)
+                </span>
+              </div>
+              <div className="space-y-3">
+        {areaItems.map(item => {
             const isExpanded = expandedTipo === item.tipo;
             const isCotizacion = item.tipo === 'cotizacion_emision';
             const porcentajeColor =
@@ -1241,7 +1247,10 @@ export default function TramitesReportes() {
               </div>
             );
           })}
-        </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Gráficas */}
@@ -1249,21 +1258,34 @@ export default function TramitesReportes() {
         {/* Gráfica de Tipos de Trámite */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h3 className="text-lg font-semibold text-neutral-900 mb-4">Trámites por Tipo</h3>
-          <div className="space-y-3">
-            {tramitesPorTipo.map((item, idx) => (
-              <div key={idx}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-neutral-700">{item.tipo.replace(/_/g, ' ')}</span>
-                  <span className="font-semibold">{item.cantidad}</span>
+          <div className="space-y-4">
+            {(['Comercial', 'Operaciones'] as AreaCategoria[]).map(area => {
+              const items = tramitesPorTipo.filter(i => getTipoTramiteArea(i.tipo) === area);
+              if (items.length === 0) return null;
+              const ac = AREA_CONFIG[area];
+              const maxVal = Math.max(1, ...tramitesPorTipo.map(t => t.cantidad));
+              return (
+                <div key={area}>
+                  <div className={`text-xs font-bold mb-2 px-2 py-1 rounded ${ac.bg} ${ac.color} inline-block`}>{area}</div>
+                  <div className="space-y-2 mb-2">
+                    {items.map((item, idx) => (
+                      <div key={idx}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-neutral-700">{getTipoTramiteLabel(item.tipo)}</span>
+                          <span className="font-semibold">{item.cantidad}</span>
+                        </div>
+                        <div className="w-full bg-neutral-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${area === 'Comercial' ? 'bg-sky-500' : 'bg-amber-500'}`}
+                            style={{ width: `${(item.cantidad / maxVal) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="w-full bg-neutral-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full"
-                    style={{ width: `${(item.cantidad / Math.max(...tramitesPorTipo.map(t => t.cantidad))) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
