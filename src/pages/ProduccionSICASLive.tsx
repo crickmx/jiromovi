@@ -711,6 +711,7 @@ interface DiagnosticData {
 function SyncPanel({ userId }: { userId?: string }) {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<Record<string, any> | null>(null);
+  const [syncProgress, setSyncProgress] = useState<{ percent: number; page: number; totalPages: number; fetched: number; totalInSicas: number } | null>(null);
   const [syncHistory, setSyncHistory] = useState<SyncRun[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [totalDocs, setTotalDocs] = useState<number | null>(null);
@@ -775,18 +776,77 @@ function SyncPanel({ userId }: { userId?: string }) {
   const runSync = async (mode: 'full' | 'incremental') => {
     setSyncing(true);
     setSyncResult(null);
+    setSyncProgress(null);
+
+    let totalFetched = 0;
+    let totalUpserted = 0;
+    let totalErrors = 0;
+    let totalDurationMs = 0;
+    let totalInSicas = 0;
+    let totalPagesProcessed = 0;
+    let currentMode = mode === 'full' ? 'full' : 'continue';
+    let runId = '';
+    let keycode = '';
+
     try {
-      let result: Record<string, unknown>;
-      result = await callEdgeFunction('sicas-sync-local-documents', {
-        action: mode,
-        triggeredBy: userId || null,
-      });
-      setSyncResult(result);
+      let batchNum = 0;
+      while (true) {
+        batchNum++;
+        const result = await callEdgeFunction('sicas-sync-local-documents', {
+          action: currentMode,
+          triggeredBy: userId || null,
+        });
+
+        if (!result.ok) {
+          setSyncResult(result);
+          break;
+        }
+
+        const stats = result.stats as any;
+        const progress = result.progress as any;
+
+        totalFetched += stats?.recordsFetched || 0;
+        totalUpserted += stats?.documentsUpserted || 0;
+        totalErrors += stats?.errors || 0;
+        totalDurationMs += stats?.durationMs || 0;
+        totalPagesProcessed += stats?.pagesProcessed || 0;
+        totalInSicas = stats?.totalInSicas || progress?.totalInSicas || totalInSicas;
+        runId = stats?.runId || runId;
+        keycode = stats?.keycode || keycode;
+
+        setSyncProgress({
+          percent: progress?.percent || 0,
+          page: progress?.currentPage || 0,
+          totalPages: progress?.totalPages || 0,
+          fetched: progress?.accumulatedSynced || totalUpserted,
+          totalInSicas,
+        });
+
+        if (result.isComplete) {
+          setSyncResult({
+            ok: true,
+            stats: {
+              documentsUpserted: totalUpserted,
+              pagesProcessed: totalPagesProcessed,
+              durationMs: totalDurationMs,
+              totalInSicas,
+              errors: totalErrors,
+              runId,
+              keycode,
+            },
+          });
+          break;
+        }
+
+        currentMode = 'continue';
+        await new Promise(r => setTimeout(r, 1000));
+      }
       loadSyncInfo();
     } catch (err: any) {
       setSyncResult({ ok: false, error: err?.message || 'Error desconocido' });
     } finally {
       setSyncing(false);
+      setSyncProgress(null);
     }
   };
 
@@ -859,6 +919,23 @@ function SyncPanel({ userId }: { userId?: string }) {
           </button>
         </div>
 
+        {/* Sync progress */}
+        {syncing && syncProgress && (
+          <div className="mt-4 p-3 rounded-lg border text-sm bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
+            <div className="flex items-center gap-2 mb-2">
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+              <p className="font-medium">Sincronizando... {syncProgress.percent}%</p>
+            </div>
+            <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 mb-2">
+              <div className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-500" style={{ width: `${syncProgress.percent}%` }} />
+            </div>
+            <p className="text-xs opacity-80">
+              Pagina {syncProgress.page} de {syncProgress.totalPages} - {syncProgress.fetched.toLocaleString()} documentos sincronizados
+              {syncProgress.totalInSicas > 0 && <> de {syncProgress.totalInSicas.toLocaleString()} en SICAS</>}
+            </p>
+          </div>
+        )}
+
         {/* Sync result */}
         {syncResult && (
           <div className={`mt-4 p-3 rounded-lg border text-sm ${syncResult.ok ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'}`}>
@@ -866,14 +943,14 @@ function SyncPanel({ userId }: { userId?: string }) {
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium">Sincronizacion exitosa</p>
+                  <p className="font-medium">Sincronizacion completa</p>
                   {syncResult.stats && (
                     <p className="text-xs mt-1 opacity-80">
-                      {(syncResult.stats as any)?.documentsUpserted || 0} documentos sincronizados,
+                      {((syncResult.stats as any)?.documentsUpserted || 0).toLocaleString()} documentos sincronizados,
                       {' '}{(syncResult.stats as any)?.pagesProcessed || 0} paginas procesadas
-                      {' '}en {((syncResult.stats as any)?.durationMs || 0) / 1000}s
+                      {' '}en {(((syncResult.stats as any)?.durationMs || 0) / 1000).toFixed(1)}s
                       {(syncResult.stats as any)?.totalInSicas > 0 && (
-                        <> ({(syncResult.stats as any).totalInSicas} total en SICAS)</>
+                        <> de {((syncResult.stats as any).totalInSicas).toLocaleString()} en SICAS</>
                       )}
                     </p>
                   )}
