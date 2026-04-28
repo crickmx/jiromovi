@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { createSicasRestClientWithDbAuth } from "../_shared/sicasRestClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,121 +15,143 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const ITEMS_PER_PAGE = 100;
-const MAX_SECONDS = 50;
+const ITEMS_PER_PAGE = 200;
+const MAX_SECONDS = 45;
+const PAGES_PER_BATCH = 8;
 
-interface WorkPlan {
-  strategies: Strategy[];
-  currentStrategyIndex: number;
-  currentStepIndex: number;
-  completedSteps: number;
-  totalSteps: number;
+interface SyncState {
+  currentPage: number;
+  totalPages: number;
+  totalRecordsInSicas: number;
+  totalFetched: number;
+  totalUpserted: number;
+  totalErrors: number;
 }
 
-interface Strategy {
-  name: string;
-  steps: StrategyStep[];
+interface SoapPageResult {
+  records: Record<string, unknown>[];
+  totalPages: number;
+  totalRecords: number;
+  currentPage: number;
 }
 
-interface StrategyStep {
-  label: string;
-  keyCode: string;
-  conditions?: string;
-  conditionsDirect?: string;
-  done?: boolean;
+function xmlEscape(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
-function buildWorkPlan(): WorkPlan {
-  const strategies: Strategy[] = [];
+async function fetchSoapPage(
+  endpoint: string,
+  username: string,
+  password: string,
+  page: number,
+  itemsPerPage: number
+): Promise<SoapPageResult> {
+  const escapedUser = xmlEscape(username);
+  const escapedPass = xmlEscape(password);
 
-  // Strategy 1: Unfiltered with multiple keycodes
-  const keyCodes: StrategyStep[] = [
-    { label: "HWS_DOCTOS unfiltered", keyCode: "HWS_DOCTOS" },
-    { label: "HWSDOC unfiltered", keyCode: "HWSDOC" },
-    { label: "HWSInventario unfiltered", keyCode: "HWSInventario" },
-  ];
-  strategies.push({ name: "keycodes", steps: keyCodes });
+  const envelope = `<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <tem:ProcesarWS>
+      <tem:oDataWS>
+        <tem:Credentials>
+          <tem:UserName>${escapedUser}</tem:UserName>
+          <tem:Password>${escapedPass}</tem:Password>
+        </tem:Credentials>
+        <tem:TypeFormat>XML</tem:TypeFormat>
+        <tem:KeyProcess>REPORT</tem:KeyProcess>
+        <tem:KeyCode>H03400</tem:KeyCode>
+        <tem:Page>${page}</tem:Page>
+        <tem:ItemForPage>${itemsPerPage}</tem:ItemForPage>
+        <tem:InfoSort>DatDocumentos.FCaptura DESC</tem:InfoSort>
+        <tem:ConditionsAdd>Estatus;0;0;0;Vigentes;-1;0;DatDocumentos.Status</tem:ConditionsAdd>
+      </tem:oDataWS>
+    </tem:ProcesarWS>
+  </soapenv:Body>
+</soapenv:Envelope>`;
 
-  // Strategy 2: IDDocto range scanning (0 to 500000 in chunks of 25000)
-  const idRangeSteps: StrategyStep[] = [];
-  for (let start = 0; start < 500000; start += 25000) {
-    const end = start + 25000;
-    idRangeSteps.push({
-      label: `IDDocto ${start}-${end}`,
-      keyCode: "HWS_DOCTOS",
-      conditions: `DatDocumentos.IDDocto>=${start};DatDocumentos.IDDocto<${end}`,
-    });
+  const resp = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      SOAPAction: "http://tempuri.org/ProcesarWS",
+    },
+    body: envelope,
+  });
+
+  if (!resp.ok) {
+    throw new Error(`SOAP HTTP ${resp.status}: ${resp.statusText}`);
   }
-  strategies.push({ name: "id_ranges", steps: idRangeSteps });
 
-  // Strategy 3: Date range scanning by FCaptura (monthly from 2017-01 to 2026-12)
-  const dateRangeSteps: StrategyStep[] = [];
-  for (let year = 2017; year <= 2026; year++) {
-    for (let month = 1; month <= 12; month++) {
-      if (year === 2026 && month > 6) break;
-      const from = `${year}-${String(month).padStart(2, "0")}-01`;
-      const nextMonth = month === 12 ? 1 : month + 1;
-      const nextYear = month === 12 ? year + 1 : year;
-      const to = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
-      dateRangeSteps.push({
-        label: `FCaptura ${from} to ${to}`,
-        keyCode: "HWS_DOCTOS",
-        conditions: `DatDocumentos.FCaptura>='${from}';DatDocumentos.FCaptura<'${to}'`,
-      });
+  const rawText = await resp.text();
+
+  const decoded = rawText
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+
+  // Check for errors in PROCESSDATA
+  const msgMatch = decoded.match(/<MESSAGE>([\s\S]*?)<\/MESSAGE>/i);
+  if (msgMatch) {
+    const msg = msgMatch[1].trim();
+    if (
+      msg.toLowerCase().includes("error") ||
+      msg.toLowerCase().includes("denied") ||
+      msg.toLowerCase().includes("sintaxis")
+    ) {
+      throw new Error(`SICAS SOAP error: ${msg}`);
     }
   }
-  strategies.push({ name: "date_ranges", steps: dateRangeSteps });
 
-  // Strategy 4: Status codes (0-10)
-  const statusSteps: StrategyStep[] = [];
-  for (let s = 0; s <= 10; s++) {
-    statusSteps.push({
-      label: `Status=${s}`,
-      keyCode: "HWS_DOCTOS",
-      conditions: `DatDocumentos.Status=${s}`,
-    });
+  // Parse <TableInfo> blocks for records
+  const records: Record<string, unknown>[] = [];
+  const tableInfoRegex = /<TableInfo>([\s\S]*?)<\/TableInfo>/gi;
+  let match;
+  while ((match = tableInfoRegex.exec(decoded)) !== null) {
+    const block = match[1];
+    const record: Record<string, unknown> = {};
+    const fieldRegex = /<(\w+)>([\s\S]*?)<\/\1>/g;
+    let fm;
+    while ((fm = fieldRegex.exec(block)) !== null) {
+      const val = fm[2].trim();
+      if (val && !isNaN(Number(val)) && val !== "") {
+        record[fm[1]] = Number(val);
+      } else {
+        record[fm[1]] = val;
+      }
+    }
+    if (Object.keys(record).length > 0) {
+      records.push(record);
+    }
   }
-  strategies.push({ name: "statuses", steps: statusSteps });
 
-  // Strategy 5: TipoDocto codes (1-10)
-  const tipoSteps: StrategyStep[] = [];
-  for (let t = 1; t <= 10; t++) {
-    tipoSteps.push({
-      label: `TipoDocto=${t}`,
-      keyCode: "HWS_DOCTOS",
-      conditions: `DatDocumentos.IDTipoDocto=${t}`,
-    });
+  // Parse <TableControl> for pagination
+  let totalPages = 1;
+  let totalRecords = 0;
+  let currentPageReturned = page;
+
+  const controlMatch = decoded.match(
+    /<TableControl>([\s\S]*?)<\/TableControl>/i
+  );
+  if (controlMatch) {
+    const controlBlock = controlMatch[1];
+    const pagesMatch = controlBlock.match(/<Pages>(\d+)<\/Pages>/i);
+    const maxRecMatch = controlBlock.match(/<MaxRecords>(\d+)<\/MaxRecords>/i);
+    const pageMatch = controlBlock.match(/<Page>(\d+)<\/Page>/i);
+    if (pagesMatch) totalPages = parseInt(pagesMatch[1], 10);
+    if (maxRecMatch) totalRecords = parseInt(maxRecMatch[1], 10);
+    if (pageMatch) currentPageReturned = parseInt(pageMatch[1], 10);
   }
-  strategies.push({ name: "tipo_docto", steps: tipoSteps });
 
-  // Strategy 6: conditionsDirect with LIKE patterns on Documento field
-  const likeSteps: StrategyStep[] = [];
-  for (let i = 0; i <= 9; i++) {
-    likeSteps.push({
-      label: `Documento starts with ${i}`,
-      keyCode: "HWS_DOCTOS",
-      conditionsDirect: `DatDocumentos.Documento LIKE '${i}%'`,
-    });
-  }
-  for (const c of ["A", "B", "C", "D", "E", "F", "G", "H", "P", "S"]) {
-    likeSteps.push({
-      label: `Documento starts with ${c}`,
-      keyCode: "HWS_DOCTOS",
-      conditionsDirect: `DatDocumentos.Documento LIKE '${c}%'`,
-    });
-  }
-  strategies.push({ name: "documento_like", steps: likeSteps });
-
-  let totalSteps = 0;
-  for (const s of strategies) totalSteps += s.steps.length;
-
-  return {
-    strategies,
-    currentStrategyIndex: 0,
-    currentStepIndex: 0,
-    completedSteps: 0,
-    totalSteps,
-  };
+  return { records, totalPages, totalRecords, currentPage: currentPageReturned };
 }
 
 Deno.serve(async (req: Request) => {
@@ -146,6 +167,12 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    const soapEndpoint =
+      Deno.env.get("SICAS_SOAP_ENDPOINT") ||
+      "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx";
+    const sicasUsername = Deno.env.get("SICAS_USERNAME") || "";
+    const sicasPassword = Deno.env.get("SICAS_PASSWORD") || "";
+
     // ── ACTION: start ──────────────────────────────────────────────────
     if (action === "start") {
       await supabase
@@ -157,7 +184,54 @@ Deno.serve(async (req: Request) => {
         })
         .in("status", ["queued", "running"]);
 
-      const workPlan = buildWorkPlan();
+      // Fetch page 1 to discover total pages and records
+      console.log("[BULK-SYNC] Fetching page 1 to discover totals...");
+      const firstPage = await fetchSoapPage(
+        soapEndpoint,
+        sicasUsername,
+        sicasPassword,
+        1,
+        ITEMS_PER_PAGE
+      );
+
+      const syncState: SyncState = {
+        currentPage: 1,
+        totalPages: firstPage.totalPages,
+        totalRecordsInSicas: firstPage.totalRecords,
+        totalFetched: firstPage.records.length,
+        totalUpserted: 0,
+        totalErrors: 0,
+      };
+
+      console.log(
+        `[BULK-SYNC] Discovered: ${syncState.totalRecordsInSicas} total records, ${syncState.totalPages} pages`
+      );
+
+      // Upsert page 1 records
+      const despachoNameToOffice = await loadDespachoNameMap(supabase);
+      const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
+
+      const documents = firstPage.records
+        .map((raw) =>
+          mapDocument(
+            raw,
+            "H03400",
+            despachoNameToOffice,
+            vendorToUser,
+            vendorToOficina
+          )
+        )
+        .filter((d) => d !== null);
+
+      const result = await upsertDocuments(supabase, documents);
+      syncState.totalUpserted += result.upserted;
+      syncState.totalErrors += result.errors;
+      syncState.currentPage = 2; // Next page to fetch
+
+      const percent =
+        syncState.totalPages > 0
+          ? Math.min(99, Math.round((1 / syncState.totalPages) * 100))
+          : 0;
 
       const { data: job, error: jobError } = await supabase
         .from("sicas_sync_jobs")
@@ -165,20 +239,23 @@ Deno.serve(async (req: Request) => {
           mode: "full",
           status: "running",
           triggered_by: body.triggeredBy || null,
-          keycode: "BULK",
+          keycode: "H03400_SOAP",
           started_at: new Date().toISOString(),
-          total_pages: workPlan.totalSteps,
-          current_page: 0,
-          percent: 0,
-          error_message: JSON.stringify(workPlan),
+          total_pages: syncState.totalPages,
+          current_page: 1,
+          total_synced: syncState.totalUpserted,
+          total_in_sicas: syncState.totalRecordsInSicas,
+          total_errors: 0,
+          percent,
+          error_message: JSON.stringify(syncState),
         })
         .select("id")
         .single();
 
-      if (jobError) throw new Error(`Error creando job: ${jobError.message}`);
+      if (jobError) throw new Error(`Error creating job: ${jobError.message}`);
 
       console.log(
-        `[BULK-SYNC] Created job ${job.id} with ${workPlan.totalSteps} total steps across ${workPlan.strategies.length} strategies`
+        `[BULK-SYNC] Created job ${job.id}, page 1 done (${firstPage.records.length} records, ${result.upserted} upserted)`
       );
 
       selfChain(supabaseUrl, supabaseKey, job.id);
@@ -187,11 +264,9 @@ Deno.serve(async (req: Request) => {
         ok: true,
         jobId: job.id,
         status: "running",
-        totalSteps: workPlan.totalSteps,
-        strategies: workPlan.strategies.map((s) => ({
-          name: s.name,
-          steps: s.steps.length,
-        })),
+        totalPages: syncState.totalPages,
+        totalRecordsInSicas: syncState.totalRecordsInSicas,
+        firstPageRecords: firstPage.records.length,
       });
     }
 
@@ -211,85 +286,101 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      let workPlan: WorkPlan;
+      let syncState: SyncState;
       try {
-        workPlan = JSON.parse(job.error_message || "{}");
+        syncState = JSON.parse(job.error_message || "{}");
       } catch {
-        return jsonResponse(200, { ok: true, status: "invalid_plan" });
+        return jsonResponse(200, { ok: true, status: "invalid_state" });
       }
 
-      if (
-        !workPlan.strategies ||
-        workPlan.currentStrategyIndex >= workPlan.strategies.length
-      ) {
-        await markComplete(supabase, jobId, workPlan);
+      if (syncState.currentPage > syncState.totalPages) {
+        await markComplete(supabase, jobId, syncState);
         return jsonResponse(200, { ok: true, status: "completed" });
       }
 
       const batchStart = Date.now();
-      const client = await createSicasRestClientWithDbAuth();
       const despachoNameToOffice = await loadDespachoNameMap(supabase);
       const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
 
-      let totalErrors = job.total_errors || 0;
-      let stepsProcessedThisBatch = 0;
+      let pagesThisBatch = 0;
 
-      while (workPlan.currentStrategyIndex < workPlan.strategies.length) {
+      while (
+        syncState.currentPage <= syncState.totalPages &&
+        pagesThisBatch < PAGES_PER_BATCH
+      ) {
         const elapsed = (Date.now() - batchStart) / 1000;
         if (elapsed >= MAX_SECONDS) break;
 
-        const strategy = workPlan.strategies[workPlan.currentStrategyIndex];
-        const stepIdx = workPlan.currentStepIndex;
-
-        if (stepIdx >= strategy.steps.length) {
-          workPlan.currentStrategyIndex++;
-          workPlan.currentStepIndex = 0;
-          continue;
-        }
-
-        const step = strategy.steps[stepIdx];
+        const page = syncState.currentPage;
         console.log(
-          `[BULK-SYNC] Strategy "${strategy.name}" step ${stepIdx + 1}/${strategy.steps.length}: ${step.label}`
+          `[BULK-SYNC] Fetching page ${page}/${syncState.totalPages}...`
         );
 
         try {
-          const result = await fetchAllPagesForStep(
-            client,
-            step,
-            batchStart,
-            MAX_SECONDS,
-            supabase,
-            despachoNameToOffice,
-            vendorToUser,
-            vendorToOficina
+          const pageResult = await fetchSoapPage(
+            soapEndpoint,
+            sicasUsername,
+            sicasPassword,
+            page,
+            ITEMS_PER_PAGE
           );
-          totalErrors += result.errors;
+
+          if (pageResult.records.length === 0) {
+            console.log(
+              `[BULK-SYNC] Page ${page} returned 0 records, skipping.`
+            );
+            syncState.currentPage++;
+            pagesThisBatch++;
+            continue;
+          }
+
+          // Update totalPages if server reports differently
+          if (
+            pageResult.totalPages > 0 &&
+            pageResult.totalPages !== syncState.totalPages
+          ) {
+            console.log(
+              `[BULK-SYNC] Server updated totalPages: ${syncState.totalPages} -> ${pageResult.totalPages}`
+            );
+            syncState.totalPages = pageResult.totalPages;
+            if (pageResult.totalRecords > 0) {
+              syncState.totalRecordsInSicas = pageResult.totalRecords;
+            }
+          }
+
+          syncState.totalFetched += pageResult.records.length;
+
+          const documents = pageResult.records
+            .map((raw) =>
+              mapDocument(
+                raw,
+                "H03400",
+                despachoNameToOffice,
+                vendorToUser,
+                vendorToOficina
+              )
+            )
+            .filter((d) => d !== null);
+
+          const result = await upsertDocuments(supabase, documents);
+          syncState.totalUpserted += result.upserted;
+          syncState.totalErrors += result.errors;
+
           console.log(
-            `[BULK-SYNC] ${step.label}: ${result.fetched} fetched, ${result.upserted} upserted, ${result.newIds} new IDs`
+            `[BULK-SYNC] Page ${page}: ${pageResult.records.length} fetched, ${result.upserted} upserted`
           );
         } catch (e: unknown) {
           console.error(
-            `[BULK-SYNC] ${step.label} error: ${(e as Error).message}`
+            `[BULK-SYNC] Page ${page} error: ${(e as Error).message}`
           );
-          totalErrors++;
+          syncState.totalErrors++;
         }
 
-        workPlan.currentStepIndex++;
-        workPlan.completedSteps++;
-        stepsProcessedThisBatch++;
-
-        // Renew token periodically
-        if (stepsProcessedThisBatch % 5 === 0) {
-          try {
-            await client.getValidToken();
-          } catch {
-            /* ignore */
-          }
-        }
+        syncState.currentPage++;
+        pagesThisBatch++;
       }
 
-      const isComplete =
-        workPlan.currentStrategyIndex >= workPlan.strategies.length;
+      const isComplete = syncState.currentPage > syncState.totalPages;
 
       const { count: uniqueCount } = await supabase
         .from("sicas_documents")
@@ -297,11 +388,11 @@ Deno.serve(async (req: Request) => {
 
       const percent = isComplete
         ? 100
-        : workPlan.totalSteps > 0
+        : syncState.totalPages > 0
           ? Math.min(
               99,
               Math.round(
-                (workPlan.completedSteps / workPlan.totalSteps) * 100
+                ((syncState.currentPage - 1) / syncState.totalPages) * 100
               )
             )
           : 0;
@@ -311,23 +402,20 @@ Deno.serve(async (req: Request) => {
         .update({
           status: isComplete ? "completed" : "running",
           total_synced: uniqueCount || 0,
-          total_in_sicas: uniqueCount || 0,
-          total_errors: totalErrors,
-          current_page: workPlan.completedSteps,
-          total_pages: workPlan.totalSteps,
+          total_in_sicas: syncState.totalRecordsInSicas,
+          total_errors: syncState.totalErrors,
+          current_page: syncState.currentPage - 1,
+          total_pages: syncState.totalPages,
           percent,
-          error_message: JSON.stringify(workPlan),
+          error_message: JSON.stringify(syncState),
           updated_at: new Date().toISOString(),
           ...(isComplete ? { finished_at: new Date().toISOString() } : {}),
         })
         .eq("id", jobId);
 
-      const currentStrategy =
-        workPlan.strategies[workPlan.currentStrategyIndex];
       console.log(
-        `[BULK-SYNC] Batch done: ${workPlan.completedSteps}/${workPlan.totalSteps} steps, ` +
-          `${uniqueCount} unique docs in DB, ` +
-          `strategy=${currentStrategy?.name || "done"}, complete=${isComplete}`
+        `[BULK-SYNC] Batch done: page ${syncState.currentPage - 1}/${syncState.totalPages}, ` +
+          `${uniqueCount} unique docs in DB, ${percent}% complete`
       );
 
       if (!isComplete) {
@@ -340,10 +428,12 @@ Deno.serve(async (req: Request) => {
         status: isComplete ? "completed" : "running",
         progress: {
           percent,
-          completedSteps: workPlan.completedSteps,
-          totalSteps: workPlan.totalSteps,
+          currentPage: syncState.currentPage - 1,
+          totalPages: syncState.totalPages,
+          totalRecordsInSicas: syncState.totalRecordsInSicas,
           uniqueDocs: uniqueCount,
-          currentStrategy: currentStrategy?.name || "done",
+          totalFetched: syncState.totalFetched,
+          totalErrors: syncState.totalErrors,
         },
       });
     }
@@ -369,11 +459,9 @@ Deno.serve(async (req: Request) => {
         .from("sicas_documents")
         .select("*", { count: "exact", head: true });
 
-      let currentStrategy = "unknown";
+      let syncState: Partial<SyncState> = {};
       try {
-        const plan: WorkPlan = JSON.parse(latestJob.error_message || "{}");
-        currentStrategy =
-          plan.strategies?.[plan.currentStrategyIndex]?.name || "done";
+        syncState = JSON.parse(latestJob.error_message || "{}");
       } catch {
         /* ignore */
       }
@@ -384,11 +472,13 @@ Deno.serve(async (req: Request) => {
         status: latestJob.status,
         progress: {
           percent: latestJob.percent,
-          completedSteps: latestJob.current_page,
-          totalSteps: latestJob.total_pages,
+          currentPage: latestJob.current_page,
+          totalPages: latestJob.total_pages,
           totalSynced: latestJob.total_synced,
+          totalInSicas: latestJob.total_in_sicas,
           uniqueDocs: uniqueCount,
-          currentStrategy,
+          totalFetched: syncState.totalFetched || 0,
+          totalErrors: latestJob.total_errors,
         },
         startedAt: latestJob.started_at,
         finishedAt: latestJob.finished_at,
@@ -428,7 +518,7 @@ function selfChain(supabaseUrl: string, serviceKey: string, jobId: string) {
 async function markComplete(
   supabase: ReturnType<typeof createClient>,
   jobId: string,
-  workPlan: WorkPlan
+  syncState: SyncState
 ) {
   const { count } = await supabase
     .from("sicas_documents")
@@ -439,111 +529,13 @@ async function markComplete(
       status: "completed",
       percent: 100,
       total_synced: count || 0,
-      total_in_sicas: count || 0,
-      current_page: workPlan.totalSteps,
-      error_message: JSON.stringify(workPlan),
+      total_in_sicas: syncState.totalRecordsInSicas,
+      current_page: syncState.totalPages,
+      error_message: JSON.stringify(syncState),
       finished_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq("id", jobId);
-}
-
-// ─── Fetch all pages for a single strategy step ─────────────────────────
-async function fetchAllPagesForStep(
-  client: Awaited<ReturnType<typeof createSicasRestClientWithDbAuth>>,
-  step: StrategyStep,
-  batchStart: number,
-  maxSeconds: number,
-  supabase: ReturnType<typeof createClient>,
-  despachoNameToOffice: Map<string, { oficina_id: string; desp_id: string }>,
-  vendorToUser: Map<string, string>,
-  vendorToOficina: Map<string, string>
-): Promise<{
-  fetched: number;
-  upserted: number;
-  errors: number;
-  pages: number;
-  newIds: number;
-}> {
-  let page = 1;
-  let totalPages = 1;
-  let fetched = 0;
-  let upserted = 0;
-  let errors = 0;
-  let newIds = 0;
-  const seenIds = new Set<string>();
-
-  while (page <= totalPages) {
-    const elapsed = (Date.now() - batchStart) / 1000;
-    if (elapsed >= maxSeconds) break;
-
-    const reportOpts: Parameters<typeof client.readReport>[0] = {
-      keyCode: step.keyCode,
-      pageRequested: page,
-      itemsForPage: ITEMS_PER_PAGE,
-      sortFields: "IDDocto",
-    };
-    if (step.conditions) reportOpts.conditions = step.conditions;
-    if (step.conditionsDirect)
-      reportOpts.conditionsDirect = step.conditionsDirect;
-
-    const response = await client.readReport(reportOpts);
-
-    const records = response.Response?.[0]?.TableInfo || [];
-    const control =
-      response.Response?.[1]?.TableControl?.[0] ||
-      response.Response?.[0]?.TableControl?.[0];
-
-    if (page === 1 && control) {
-      totalPages = control.Pages || 1;
-    }
-
-    if (records.length === 0) break;
-
-    let newInPage = 0;
-    for (const r of records) {
-      const id = String(
-        (r as Record<string, unknown>).IDDocto ||
-          (r as Record<string, unknown>).IdDocto ||
-          (r as Record<string, unknown>).Id_Docto ||
-          ""
-      ).trim();
-      if (id && !seenIds.has(id)) {
-        seenIds.add(id);
-        newInPage++;
-      }
-    }
-
-    if (page > 1 && newInPage === 0) {
-      console.log(
-        `[BULK-SYNC] ${step.label} page ${page}: recycled data, stopping.`
-      );
-      break;
-    }
-
-    newIds += newInPage;
-    fetched += records.length;
-
-    const documents = records
-      .map((raw: Record<string, unknown>) =>
-        mapDocument(
-          raw,
-          step.keyCode,
-          despachoNameToOffice,
-          vendorToUser,
-          vendorToOficina
-        )
-      )
-      .filter((d: unknown) => d !== null);
-
-    const result = await upsertDocuments(supabase, documents);
-    upserted += result.upserted;
-    errors += result.errors;
-
-    page++;
-  }
-
-  return { fetched, upserted, errors, pages: page - 1, newIds };
 }
 
 // ===== Helper functions =====
@@ -729,22 +721,16 @@ function mapDocument(
     oficina_nombre,
     ramo: get(["RamosNombre", "Ramo", "Ramo_TXT", "NombreRamo"]) || null,
     subramo: get(["SRamoNombre", "SubRamo", "SubRamo_TXT"]) || null,
-    compania:
-      get(["CiaNombre", "Aseguradora", "Compania"]) || null,
+    compania: get(["CiaNombre", "Aseguradora", "Compania"]) || null,
     aseguradora_nombre:
       get(["CiaAbreviacion", "CiaNombre", "Abreviacion"]) || null,
     poliza: get(["Documento", "NoDocumento", "No_Documento"]) || null,
     cliente:
-      get([
-        "NombreCompleto",
-        "Nombre_Completo",
-        "Cliente",
-        "Contratante",
-      ]) || null,
+      get(["NombreCompleto", "Nombre_Completo", "Cliente", "Contratante"]) ||
+      null,
     fecha_captura: get(["FCaptura", "FechaCaptura"]) || null,
     fecha_emision: get(["FEmision", "FechaEmision"]) || null,
-    vigencia_desde:
-      get(["FDesde", "FechaDesde", "Vigencia_Desde"]) || null,
+    vigencia_desde: get(["FDesde", "FechaDesde", "Vigencia_Desde"]) || null,
     vigencia_hasta: fHasta || null,
     importe: num(["Importe", "ImporteTotal"]),
     prima_neta: num(["PrimaNeta", "Prima_Neta", "ImporteNeto"]),
@@ -755,14 +741,12 @@ function mapDocument(
     moneda: get(["Moneda", "MonedaTXT"]) || "MXN",
     tipo_documento: tipoDoc || null,
     subtipo_documento: subtipoDoc || null,
-    sicas_id_agente:
-      get(["IDAgente", "AgenteId", "CAgente"]) || null,
+    sicas_id_agente: get(["IDAgente", "AgenteId", "CAgente"]) || null,
     agente_nombre:
       get(["AgenteNombre", "Agente", "NombreAgente"]) || null,
     status_codigo: statusRaw || null,
     status_texto: statusTexto || null,
-    status_cobro:
-      get(["StatusCobro", "Status_Cobro", "EstatusCobro"]) || null,
+    status_cobro: get(["StatusCobro", "Status_Cobro", "EstatusCobro"]) || null,
     is_poliza: isPoliza,
     is_fianza: isFianza,
     is_vigente: isVigente,
