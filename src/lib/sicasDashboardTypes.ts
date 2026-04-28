@@ -98,11 +98,14 @@ export interface SicasDocRow {
   poliza: string | null;
   cliente: string | null;
   compania: string | null;
+  aseguradora_nombre: string | null;
   ramo: string | null;
   subramo: string | null;
   tipo_documento: string | null;
+  subtipo_documento: string | null;
   status_texto: string | null;
   status_codigo: string | null;
+  status_cobro: string | null;
   fecha_captura: string | null;
   fecha_emision: string | null;
   vigencia_desde: string | null;
@@ -110,17 +113,27 @@ export interface SicasDocRow {
   prima_neta: number;
   prima_total: number;
   importe: number;
+  derechos: number | null;
+  impuestos: number | null;
+  recargos: number | null;
   moneda: string | null;
   vend_nombre: string | null;
   vend_id: string | null;
+  desp_nombre: string | null;
+  desp_id: string | null;
   usuario_id: string | null;
   oficina_id: string | null;
+  oficina_nombre: string | null;
+  is_poliza: boolean;
+  is_fianza: boolean;
   is_vigente: boolean;
   is_cancelada: boolean;
   is_renewable: boolean;
   renewal_days_remaining: number | null;
   agente_nombre: string | null;
+  sicas_id_agente: string | null;
   synced_at: string | null;
+  raw_data: Record<string, unknown> | null;
 }
 
 export type DashboardTab =

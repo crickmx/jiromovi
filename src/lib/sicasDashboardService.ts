@@ -106,9 +106,9 @@ export async function fetchDocuments(params: DocQueryParams): Promise<{
 
   if (scope === 'office' && oficinaId) {
     query = query.eq('oficina_id', oficinaId);
-  } else if (scope === 'self') {
-    query = query.eq('usuario_id', userId);
   }
+  // For 'self' scope, RLS handles access via vend_id/nombre_sicas matching
+  // For 'admin' scope, no client-side filter needed
 
   if (vendedorId) query = query.eq('vend_id', vendedorId);
 
@@ -160,8 +160,6 @@ export async function fetchFilterOptions(
 
   if (scope === 'office' && oficinaId) {
     query = query.eq('oficina_id', oficinaId);
-  } else if (scope === 'self') {
-    query = query.eq('usuario_id', userId);
   }
 
   const { data } = await query.limit(10000);
