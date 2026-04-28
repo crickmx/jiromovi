@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
+import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
     console.log('[Sync REST] Parámetros:', { maxPages, itemsPerPage });
 
     // Crear cliente REST
-    const sicasClient = createSicasRestClient();
+    const sicasClient = await createSicasRestClientWithDbAuth();
 
     console.log('[Sync REST] Testing conexión REST...');
     const testResult = await sicasClient.testConnection();

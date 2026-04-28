@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { SicasRestClient } from '../_shared/sicasRestClient.ts';
+import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
     console.log('[SICAS REST Pólizas] Vendedores:', vendedor_ids?.length || 'Todos');
 
     // Inicializar cliente REST
-    const client = new SicasRestClient();
+    const client = await createSicasRestClientWithDbAuth();
 
     // Construir condiciones de filtrado según manual (página 28)
     const conditions: string[] = [];

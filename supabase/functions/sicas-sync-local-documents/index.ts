@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SicasRestClient } from "../_shared/sicasRestClient.ts";
+import { createSicasRestClientWithDbAuth } from "../_shared/sicasRestClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,12 +109,7 @@ Deno.serve(async (req: Request) => {
     const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
     console.log(`[SYNC] Vendor mappings: ${vendorToUser.size} vendor->user, ${vendorToOficina.size} vendor->oficina`);
 
-    const client = new SicasRestClient({
-      baseUrl: Deno.env.get("SICAS_REST_API_URL") || undefined,
-      username: Deno.env.get("SICAS_USERNAME") || undefined,
-      password: Deno.env.get("SICAS_PASSWORD") || undefined,
-      sCodeAuth: Deno.env.get("SICAS_CODE_AUTH") || undefined,
-    });
+    const client = await createSicasRestClientWithDbAuth();
 
     let totalPages = knownTotalPages || 1;
     let totalInSicas = 0;

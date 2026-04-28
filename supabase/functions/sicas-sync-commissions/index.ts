@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
+import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
 import {
   getCursor,
   updateCursor,
@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('[Sync Commissions] Run ID:', runId);
 
-    const client = createSicasRestClient();
+    const client = await createSicasRestClientWithDbAuth();
 
     let currentPage = 1;
     let totalFetched = 0;

@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
+import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +22,7 @@ Deno.serve(async (req: Request) => {
     console.log('[SICAS REST Test] Iniciando prueba de conexión...');
     console.log('[SICAS REST Test] URL:', sicasRestUrl);
 
-    const client = createSicasRestClient();
+    const client = await createSicasRestClientWithDbAuth();
     const result = await client.testConnection();
 
     console.log('[SICAS REST Test] Resultado:', result);

@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { SicasRestClient } from "../_shared/sicasRestClient.ts";
+import { createSicasRestClientWithDbAuth } from "../_shared/sicasRestClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const vendorId = body.vendorId || "37";
 
-    const client = new SicasRestClient();
+    const client = await createSicasRestClientWithDbAuth();
     const token = await client.getValidToken();
     const baseUrl = Deno.env.get("SICAS_REST_API_URL") || "https://security-services.sicasonline.info/api";
 

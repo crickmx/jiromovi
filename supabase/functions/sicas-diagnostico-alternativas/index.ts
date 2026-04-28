@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { SicasRestClient } from "../_shared/sicasRestClient.ts";
+import { createSicasRestClientWithDbAuth } from "../_shared/sicasRestClient.ts";
 import { SicasSoapReportClient } from "../_shared/sicasSoapReportClient.ts";
 
 const corsHeaders = {
@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const restClient = new SicasRestClient();
+    const restClient = await createSicasRestClientWithDbAuth();
     const soapClient = new SicasSoapReportClient({
       endpoint: soapEndpoint,
       username: soapUser,

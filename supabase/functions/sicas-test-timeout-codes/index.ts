@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
+import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,11 +49,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('[Test Timeout Codes] Configuración verificada, creando cliente...');
 
-    const sicasClient = createSicasRestClient({
-      baseUrl: config.endpoint || 'https://security-services.sicasonline.info/api',
-      username: config.sicas_usuario,
-      password: config.sicas_password,
-    });
+    const sicasClient = await createSicasRestClientWithDbAuth();
 
     // Códigos que dieron timeout en la prueba anterior (probados secuencialmente)
     const timeoutCodes = [

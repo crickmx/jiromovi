@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
+import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
       console.log('[Digital Files] Omitiendo cache, consultando SICAS directamente...');
     }
 
-    const client = createSicasRestClient();
+    const client = await createSicasRestClientWithDbAuth();
 
     const response = await client.getDigitalFiles({
       identity,

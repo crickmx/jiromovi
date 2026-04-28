@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { SicasRestClient } from '../_shared/sicasRestClient.ts';
+import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -91,19 +91,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Inicializar cliente REST
-    const restApiUrl = Deno.env.get('SICAS_REST_API_URL') || 'https://security-services.sicasonline.info/api';
-    const sicasUsername = Deno.env.get('SICAS_USERNAME');
-    const sicasPassword = Deno.env.get('SICAS_PASSWORD');
-
-    if (!sicasUsername || !sicasPassword) {
-      throw new Error('SICAS credentials not configured');
-    }
-
-    const restClient = new SicasRestClient({
-      baseUrl: restApiUrl,
-      username: sicasUsername,
-      password: sicasPassword,
-    });
+    const restClient = await createSicasRestClientWithDbAuth();
 
     console.log('[SICAS REST Sync] Iniciando petición REST API...');
 

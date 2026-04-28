@@ -513,6 +513,37 @@ export class SicasRestClient {
   }
 }
 
-export function createSicasRestClient(): SicasRestClient {
-  return new SicasRestClient();
+export async function loadCodeAuthFromDb(): Promise<string | undefined> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !serviceRoleKey) return undefined;
+
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/sicas_config?select=code_auth&limit=1`,
+      {
+        headers: {
+          'apikey': serviceRoleKey,
+          'Authorization': `Bearer ${serviceRoleKey}`,
+        },
+      }
+    );
+    if (!res.ok) return undefined;
+    const rows = await res.json();
+    return rows?.[0]?.code_auth || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function createSicasRestClient(config?: ConstructorParameters<typeof SicasRestClient>[0]): SicasRestClient {
+  return new SicasRestClient(config);
+}
+
+export async function createSicasRestClientWithDbAuth(
+  config?: ConstructorParameters<typeof SicasRestClient>[0]
+): Promise<SicasRestClient> {
+  const envCodeAuth = Deno.env.get('SICAS_CODE_AUTH');
+  const sCodeAuth = config?.sCodeAuth || envCodeAuth || await loadCodeAuthFromDb();
+  return new SicasRestClient({ ...config, sCodeAuth });
 }

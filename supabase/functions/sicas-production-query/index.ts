@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SicasRestClient } from "../_shared/sicasRestClient.ts";
+import { SicasRestClient, createSicasRestClientWithDbAuth } from "../_shared/sicasRestClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1197,7 +1197,7 @@ Deno.serve(async (req: Request) => {
     // ── Create SICAS client ──
     let client: SicasRestClient;
     try {
-      client = new SicasRestClient();
+      client = await createSicasRestClientWithDbAuth();
     } catch (_e) {
       return jsonResponse(503, { ok: false, error: "SICAS no esta configurado en el servidor.", code: "SICAS_NOT_CONFIGURED" });
     }

@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { createSicasRestClient } from '../_shared/sicasRestClient.ts';
+import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,11 +58,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('[Test Reports] Configuración verificada, creando cliente...');
 
-    const sicasClient = createSicasRestClient({
-      baseUrl: config.endpoint || 'https://security-services.sicasonline.info/api',
-      username: config.sicas_usuario,
-      password: config.sicas_password,
-    });
+    const sicasClient = await createSicasRestClientWithDbAuth();
 
     // Usar códigos manuales si se proporcionan, si no usar los códigos oficiales del manual
     const reportCodes = manualCodes || config.alternate_report_codes || [
