@@ -1009,12 +1009,8 @@ function SyncPanel({ userId, onSyncComplete }: { userId?: string; onSyncComplete
                   <p className="font-medium">Sincronizacion completa</p>
                   {syncResult.stats && (
                     <p className="text-xs mt-1 opacity-80">
-                      {((syncResult.stats as any)?.documentsUpserted || 0).toLocaleString()} documentos sincronizados,
-                      {' '}{(syncResult.stats as any)?.pagesProcessed || 0} paginas procesadas
-                      {' '}en {(((syncResult.stats as any)?.durationMs || 0) / 1000).toFixed(1)}s
-                      {(syncResult.stats as any)?.totalInSicas > 0 && (
-                        <> de {((syncResult.stats as any).totalInSicas).toLocaleString()} en SICAS</>
-                      )}
+                      {((syncResult.stats as any)?.documentsUpserted || 0).toLocaleString()} documentos sincronizados
+                      {(syncResult.stats as any)?.errors > 0 && <>, {(syncResult.stats as any).errors} errores</>}
                     </p>
                   )}
                 </div>

@@ -340,21 +340,23 @@ async function processBatch(
   let lastPageProcessed = startPage - 1;
   let page = startPage;
   let consecutiveErrors = 0;
-  let firstPageIds: Set<string> | null = null;
   let duplicatePageDetected = false;
 
+  // Track ALL unique IDs across every page in this batch to detect when the
+  // API recycles the same records across different "pages".
+  const allSeenIds = new Set<string>();
+  let uniqueCountAfterLastPage = 0;
+  let pagesWithNoNewIds = 0;
+
   while (true) {
-    // Check time budget
     const elapsed = (Date.now() - batchStart) / 1000;
     if (elapsed >= MAX_EXECUTION_SECONDS) {
       console.log(`[ORCHESTRATOR] Time budget reached (${elapsed.toFixed(1)}s), pausing at page ${lastPageProcessed}`);
       break;
     }
 
-    // Don't go beyond totalPages once known
     if (totalPages > 0 && page > totalPages) break;
 
-    // Renew token periodically
     if ((page - startPage) > 0 && (page - startPage) % TOKEN_RENEW_INTERVAL === 0) {
       try {
         await client.getValidToken();
@@ -423,45 +425,44 @@ async function processBatch(
       break;
     }
 
-    // Duplicate page detection: SICAS API may ignore PageRequested and always
-    // return the same data. If control.Page is always 1 regardless of what we
-    // request, or if the IDs match the first page, the API doesn't support
-    // pagination for this account.
-    const currentIds = new Set(
-      records
-        .map((r: Record<string, unknown>) => String(r.IDDocto || r.IdDocto || r.Id_Docto || ""))
-        .filter((id: string) => id && id !== "")
-    );
+    // Track unique IDs across all pages to detect API recycling the same records
+    for (const r of records) {
+      const id = String(
+        (r as Record<string, unknown>).IDDocto ||
+        (r as Record<string, unknown>).IdDocto ||
+        (r as Record<string, unknown>).Id_Docto || ""
+      ).trim();
+      if (id) allSeenIds.add(id);
+    }
 
-    if (page === startPage) {
-      firstPageIds = currentIds;
-
-      // Also check: if we requested page > 1 but control says Page=1, the API
-      // is ignoring pagination
-      if (startPage > 1 && control && control.Page === 1) {
-        console.log(`[ORCHESTRATOR] API ignores PageRequested (requested ${startPage}, got Page=1). All accessible data already synced.`);
-        duplicatePageDetected = true;
-        lastPageProcessed = page;
-        break;
+    // After at least 2 pages, check if unique count is growing
+    if (page > startPage) {
+      if (allSeenIds.size === uniqueCountAfterLastPage) {
+        pagesWithNoNewIds++;
+        console.log(`[ORCHESTRATOR] Page ${page}: no new unique IDs (still ${allSeenIds.size}). Streak: ${pagesWithNoNewIds}`);
+      } else {
+        pagesWithNoNewIds = 0;
       }
-    } else if (firstPageIds && currentIds.size > 0) {
-      // Check if this page's IDs are the same as the first page
-      let overlap = 0;
-      for (const id of currentIds) {
-        if (firstPageIds.has(id)) overlap++;
-      }
-      const overlapRatio = overlap / currentIds.size;
-      if (overlapRatio > 0.9) {
-        console.log(`[ORCHESTRATOR] Duplicate page detected: page ${page} has ${(overlapRatio * 100).toFixed(0)}% overlap with first page. API not paginating.`);
+      // If 2+ consecutive pages added zero new IDs, the API is recycling
+      if (pagesWithNoNewIds >= 2) {
+        console.log(`[ORCHESTRATOR] API recycling detected after ${page - startPage + 1} pages. Only ${allSeenIds.size} unique records exist. Stopping.`);
         duplicatePageDetected = true;
         lastPageProcessed = page;
         break;
       }
     }
+    uniqueCountAfterLastPage = allSeenIds.size;
+
+    // Also check: if we requested page > 1 but control always says Page=1
+    if (page === startPage && startPage > 1 && control && control.Page === 1) {
+      console.log(`[ORCHESTRATOR] API ignores PageRequested (requested ${startPage}, got Page=1). All accessible data already synced.`);
+      duplicatePageDetected = true;
+      lastPageProcessed = page;
+      // Still upsert this page's data before breaking
+    }
 
     batchFetched += records.length;
 
-    // Map and upsert
     const documents = records
       .map((raw: Record<string, unknown>) =>
         mapDocument(raw, keycode, despachoNameToOffice, vendorToUser, vendorToOficina)
@@ -474,25 +475,28 @@ async function processBatch(
     lastPageProcessed = page;
 
     console.log(
-      `[ORCHESTRATOR] Page ${page}/${totalPages}: ${records.length} fetched, ${upserted} upserted`
+      `[ORCHESTRATOR] Page ${page}/${totalPages}: ${records.length} fetched, ${upserted} upserted, unique IDs so far: ${allSeenIds.size}`
     );
 
+    if (duplicatePageDetected) break;
     page++;
   }
 
-  const accumulatedSynced = (job.total_synced || 0) + batchUpserted;
+  let accumulatedSynced = (job.total_synced || 0) + batchUpserted;
   const accumulatedErrors = (job.total_errors || 0) + batchErrors;
 
   // If duplicate pages were detected, the API doesn't paginate - we have all data
   if (duplicatePageDetected) {
-    totalPages = 1;
-    // Count actual unique documents as the real totalInSicas
+    totalPages = lastPageProcessed;
     const { count: realCount } = await supabase
       .from("sicas_documents")
       .select("*", { count: "exact", head: true })
       .eq("source_keycode", keycode);
-    if (realCount !== null) totalInSicas = realCount;
-    console.log(`[ORCHESTRATOR] Duplicate detection: API does not paginate. Real accessible records: ${totalInSicas}`);
+    if (realCount !== null) {
+      totalInSicas = realCount;
+      accumulatedSynced = realCount;
+    }
+    console.log(`[ORCHESTRATOR] Duplicate detection: API recycles data. Real unique records: ${totalInSicas} (seen ${allSeenIds.size} unique IDs across ${lastPageProcessed - startPage + 1} pages)`);
   }
 
   const isComplete = duplicatePageDetected || (lastPageProcessed >= totalPages && totalPages > 0);
