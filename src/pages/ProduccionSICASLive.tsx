@@ -602,7 +602,7 @@ export default function ProduccionSICASLive() {
 
         {/* Sincronizacion tab */}
         {activeTab === 'sincronizacion' && isAdmin && (
-          <SyncPanel userId={usuario?.id} />
+          <SyncPanel userId={usuario?.id} onSyncComplete={() => { loadDashboard(); loadDocuments(); }} />
         )}
 
         {/* Production tab */}
@@ -711,7 +711,7 @@ interface DiagnosticData {
   lastSyncRecords: number;
 }
 
-function SyncPanel({ userId }: { userId?: string }) {
+function SyncPanel({ userId, onSyncComplete }: { userId?: string; onSyncComplete?: () => void }) {
   const [syncing, setSyncing] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<Record<string, any> | null>(null);
@@ -836,6 +836,7 @@ function SyncPanel({ userId }: { userId?: string }) {
         });
         loadSyncInfo();
         loadDiagnostics();
+        onSyncComplete?.();
       } else if (job.status === 'failed') {
         setSyncing(false);
         setActiveJobId(null);
