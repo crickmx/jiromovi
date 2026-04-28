@@ -16,7 +16,7 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const PAGES_PER_BATCH = 60;
+const PAGES_PER_BATCH = 5;
 const ITEMS_PER_PAGE = 100;
 const TOKEN_RENEW_INTERVAL = 2;
 
