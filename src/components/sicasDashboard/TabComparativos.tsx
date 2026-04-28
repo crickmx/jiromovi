@@ -1,18 +1,24 @@
 import { useMemo } from 'react';
-import { TrendingUp, TrendingDown, Minus, GitCompare, DollarSign, BarChart3 } from 'lucide-react';
-import type { DashboardKPIs, DashboardCharts } from '../../lib/sicasDashboardTypes';
+import { TrendingUp, TrendingDown, Minus, GitCompare, DollarSign, BarChart3, MapPin, CircleUser as UserCircle } from 'lucide-react';
+import type { DashboardKPIs, DashboardCharts, DashboardScope } from '../../lib/sicasDashboardTypes';
 import { formatCurrency, formatFullCurrency, formatNumber, formatPercent, monthLabel } from '../../lib/sicasDashboardTypes';
 import GraficaColumnasAgrupadas from '../produccion/GraficaColumnasAgrupadas';
 import GraficaLinea from '../produccion/GraficaLinea';
+import GraficaCircular from '../comisiones/GraficaCircular';
 
 interface Props {
   kpis: DashboardKPIs | null;
   charts: DashboardCharts | null;
   loading: boolean;
+  userId?: string;
+  scope?: DashboardScope | null;
   accentColor: string;
+  isAdmin?: boolean;
+  vendedorId?: string;
+  onEntityClick?: (dimension: 'cliente' | 'aseguradora' | 'ramo' | 'oficina' | 'vendedor', name: string, id?: string) => void;
 }
 
-export default function TabComparativos({ kpis, charts, loading, accentColor }: Props) {
+export default function TabComparativos({ kpis, charts, loading, accentColor, isAdmin, onEntityClick }: Props) {
   const primaLineData = useMemo(() => {
     if (!charts?.prima_por_mes) return [];
     return charts.prima_por_mes.map(m => ({
@@ -131,6 +137,28 @@ export default function TabComparativos({ kpis, charts, loading, accentColor }: 
         valueFormatter={v => formatNumber(v)}
         height={280}
       />
+
+      {/* Admin: Office & Vendor distribution */}
+      {isAdmin && charts && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {charts.por_oficina && charts.por_oficina.length > 0 && (
+            <GraficaCircular
+              data={charts.por_oficina.slice(0, 10).map(o => ({ label: o.nombre, value: o.prima }))}
+              title="Distribucion por Oficina"
+              valueFormatter={v => formatCurrency(v)}
+              size={220}
+            />
+          )}
+          {charts.por_vendedor && charts.por_vendedor.length > 0 && (
+            <GraficaCircular
+              data={charts.por_vendedor.slice(0, 10).map(v => ({ label: v.nombre, value: v.prima }))}
+              title="Distribucion por Vendedor"
+              valueFormatter={v => formatCurrency(v)}
+              size={220}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

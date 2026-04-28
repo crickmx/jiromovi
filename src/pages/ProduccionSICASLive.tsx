@@ -1,22 +1,15 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
-import {
-  TrendingUp, Database, Loader2, AlertTriangle, Users,
-  BarChart3, RefreshCcw, Shield, FileText, Building2,
-  Layers, CalendarClock, GitCompare, Cloud, Search,
-  X, ChevronDown, Filter,
-} from 'lucide-react';
+import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle } from 'lucide-react';
 import {
   type DashboardTab, type DashboardScope, type DashboardKPIs,
-  type DashboardCharts, type GlobalFilters, type SicasDocRow,
-  DEFAULT_FILTERS, formatCurrency, formatFullCurrency, formatNumber,
-  formatPercent, formatDate, monthLabel, daysUntilRenewal,
-  renewalUrgencyColor, renewalUrgencyBg,
+  type DashboardCharts, type GlobalFilters, type OficinaOption,
+  DEFAULT_FILTERS, formatDate,
 } from '../lib/sicasDashboardTypes';
 import {
   fetchUserScope, fetchDashboardKPIs, fetchDashboardCharts,
-  fetchTopItems, fetchDocuments, fetchFilterOptions, fetchSyncStatus,
+  fetchFilterOptions, fetchOficinas,
 } from '../lib/sicasDashboardService';
 import TabResumen from '../components/sicasDashboard/TabResumen';
 import TabProduccion from '../components/sicasDashboard/TabProduccion';
@@ -26,7 +19,7 @@ import TabDocumentos from '../components/sicasDashboard/TabDocumentos';
 import TabComparativos from '../components/sicasDashboard/TabComparativos';
 import TabSincronizacion from '../components/sicasDashboard/TabSincronizacion';
 import DocumentoModal from '../components/sicasDashboard/DocumentoModal';
-import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
+import EntityDetailModal from '../components/sicasDashboard/EntityDetailModal';
 import { tienePermisoAdminEnModulo } from '../lib/permisosUtils';
 
 const TAB_CONFIG: { key: DashboardTab; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
@@ -62,6 +55,12 @@ export async function callEdgeFunction(slug: string, body: Record<string, unknow
   }
 }
 
+interface EntityModalState {
+  dimension: 'cliente' | 'aseguradora' | 'ramo' | 'oficina' | 'vendedor';
+  entityName: string;
+  entityId?: string;
+}
+
 export default function ProduccionSICASLive() {
   const { usuario } = useAuth();
   const [activeTab, setActiveTab] = useState<DashboardTab>('resumen');
@@ -72,6 +71,7 @@ export default function ProduccionSICASLive() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [entityModal, setEntityModal] = useState<EntityModalState | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filterOptions, setFilterOptions] = useState<{
     aseguradoras: string[];
@@ -80,6 +80,7 @@ export default function ProduccionSICASLive() {
     monedas: string[];
     vendedores: { id: string; nombre: string }[];
   } | null>(null);
+  const [oficinas, setOficinas] = useState<OficinaOption[]>([]);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -92,7 +93,18 @@ export default function ProduccionSICASLive() {
     [hasAdminAccess]
   );
 
-  // Load scope on mount
+  // Effective scope considering admin filters
+  const effectiveScope = useMemo(() => {
+    if (!scope) return null;
+    if (isAdmin && filters.oficina) {
+      return { ...scope, scope: 'office' as const, oficina_id: filters.oficina };
+    }
+    return scope;
+  }, [scope, isAdmin, filters.oficina]);
+
+  const effectiveOficinaId = effectiveScope?.scope === 'office' ? effectiveScope.oficina_id : undefined;
+  const effectiveVendedorId = filters.vendedor || undefined;
+
   useEffect(() => {
     if (!usuario?.id) return;
     (async () => {
@@ -111,15 +123,15 @@ export default function ProduccionSICASLive() {
     })();
   }, [usuario?.id]);
 
-  // Load dashboard data
+  // Load dashboard data reacting to filter changes
   const loadData = useCallback(async () => {
-    if (!usuario?.id || !scope) return;
+    if (!usuario?.id || !effectiveScope) return;
     setLoading(true);
     setError(null);
     try {
       const [kpiData, chartData] = await Promise.all([
-        fetchDashboardKPIs(usuario.id, scope.scope, scope.oficina_id || undefined),
-        fetchDashboardCharts(usuario.id, scope.scope, scope.oficina_id || undefined),
+        fetchDashboardKPIs(usuario.id, effectiveScope.scope, effectiveOficinaId || undefined, effectiveVendedorId),
+        fetchDashboardCharts(usuario.id, effectiveScope.scope, effectiveOficinaId || undefined, undefined, effectiveVendedorId),
       ]);
       setKpis(kpiData);
       setCharts(chartData);
@@ -129,30 +141,31 @@ export default function ProduccionSICASLive() {
     } finally {
       setLoading(false);
     }
-  }, [usuario?.id, scope]);
+  }, [usuario?.id, effectiveScope, effectiveOficinaId, effectiveVendedorId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Load filter options once
+  // Load filter options and oficinas once
   useEffect(() => {
     if (!usuario?.id || !scope) return;
     fetchFilterOptions(usuario.id, scope.scope, scope.oficina_id || undefined)
       .then(setFilterOptions)
       .catch(() => {});
-  }, [usuario?.id, scope]);
+    if (isAdmin) {
+      fetchOficinas().then(setOficinas).catch(() => {});
+    }
+  }, [usuario?.id, scope, isAdmin]);
 
-  const handleTabChange = (tab: DashboardTab) => {
-    setActiveTab(tab);
+  const handleTabChange = (tab: DashboardTab) => setActiveTab(tab);
+  const handleDocumentClick = (docId: string) => setSelectedDocId(docId);
+  const handleEntityClick = (dimension: EntityModalState['dimension'], entityName: string, entityId?: string) => {
+    setEntityModal({ dimension, entityName, entityId });
   };
 
-  const handleDocumentClick = (docId: string) => {
-    setSelectedDocId(docId);
-  };
-
-  const scopeLabel = scope?.scope === 'admin'
+  const scopeLabel = effectiveScope?.scope === 'admin'
     ? 'Vista Global'
-    : scope?.scope === 'office'
-    ? `Oficina: ${(usuario as any)?.oficina?.nombre || ''}`
+    : effectiveScope?.scope === 'office'
+    ? `Oficina: ${oficinas.find(o => o.id === effectiveOficinaId)?.nombre || (usuario as any)?.oficina?.nombre || ''}`
     : 'Mi Produccion';
 
   const activeFiltersCount = Object.entries(filters).filter(
@@ -185,6 +198,32 @@ export default function ProduccionSICASLive() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Admin Office Filter */}
+            {isAdmin && oficinas.length > 0 && (
+              <select
+                value={filters.oficina}
+                onChange={e => setFilters(f => ({ ...f, oficina: e.target.value, vendedor: '' }))}
+                className="px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-700 dark:text-gray-300 outline-none focus:ring-1 focus:ring-blue-500 max-w-[180px]"
+              >
+                <option value="">Todas las oficinas</option>
+                {oficinas.map(o => (
+                  <option key={o.id} value={o.id}>{o.nombre} ({o.documentos})</option>
+                ))}
+              </select>
+            )}
+            {/* Admin/Gerente Vendor Filter */}
+            {(isAdmin || isGerente) && filterOptions?.vendedores && filterOptions.vendedores.length > 0 && (
+              <select
+                value={filters.vendedor}
+                onChange={e => setFilters(f => ({ ...f, vendedor: e.target.value }))}
+                className="px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-700 dark:text-gray-300 outline-none focus:ring-1 focus:ring-blue-500 max-w-[180px]"
+              >
+                <option value="">Todos los vendedores</option>
+                {filterOptions.vendedores.map(v => (
+                  <option key={v.id} value={v.id}>{v.nombre}</option>
+                ))}
+              </select>
+            )}
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
@@ -194,7 +233,7 @@ export default function ProduccionSICASLive() {
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
-              Filtros
+              <span className="hidden sm:inline">Filtros</span>
               {activeFiltersCount > 0 && (
                 <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center">{activeFiltersCount}</span>
               )}
@@ -259,8 +298,10 @@ export default function ProduccionSICASLive() {
             charts={charts}
             loading={loading}
             accentColor={accentColor}
+            isAdmin={isAdmin}
             onDocumentClick={handleDocumentClick}
             onTabChange={handleTabChange}
+            onEntityClick={handleEntityClick}
           />
         )}
         {activeTab === 'produccion' && (
@@ -269,9 +310,12 @@ export default function ProduccionSICASLive() {
             charts={charts}
             loading={loading}
             userId={usuario?.id || ''}
-            scope={scope}
+            scope={effectiveScope}
             accentColor={accentColor}
+            isAdmin={isAdmin}
+            vendedorId={effectiveVendedorId}
             onDocumentClick={handleDocumentClick}
+            onEntityClick={handleEntityClick}
           />
         )}
         {activeTab === 'renovaciones' && (
@@ -279,8 +323,9 @@ export default function ProduccionSICASLive() {
             kpis={kpis}
             loading={loading}
             userId={usuario?.id || ''}
-            scope={scope}
+            scope={effectiveScope}
             accentColor={accentColor}
+            vendedorId={effectiveVendedorId}
             onDocumentClick={handleDocumentClick}
           />
         )}
@@ -291,17 +336,20 @@ export default function ProduccionSICASLive() {
             charts={charts}
             loading={loading}
             userId={usuario?.id || ''}
-            scope={scope}
+            scope={effectiveScope}
             accentColor={accentColor}
+            vendedorId={effectiveVendedorId}
             onDocumentClick={handleDocumentClick}
+            onEntityClick={handleEntityClick}
           />
         )}
         {activeTab === 'documentos' && (
           <TabDocumentos
             userId={usuario?.id || ''}
-            scope={scope}
+            scope={effectiveScope}
             filterOptions={filterOptions}
             accentColor={accentColor}
+            vendedorId={effectiveVendedorId}
             onDocumentClick={handleDocumentClick}
           />
         )}
@@ -310,7 +358,12 @@ export default function ProduccionSICASLive() {
             kpis={kpis}
             charts={charts}
             loading={loading}
+            userId={usuario?.id || ''}
+            scope={effectiveScope}
             accentColor={accentColor}
+            isAdmin={isAdmin}
+            vendedorId={effectiveVendedorId}
+            onEntityClick={handleEntityClick}
           />
         )}
         {activeTab === 'sincronizacion' && hasAdminAccess && (
@@ -329,12 +382,26 @@ export default function ProduccionSICASLive() {
             onClose={() => setSelectedDocId(null)}
           />
         )}
+
+        {/* Entity Detail Modal */}
+        {entityModal && (
+          <EntityDetailModal
+            dimension={entityModal.dimension}
+            entityName={entityModal.entityName}
+            entityId={entityModal.entityId}
+            userId={usuario?.id || ''}
+            scope={effectiveScope?.scope || 'self'}
+            oficinaId={effectiveOficinaId || undefined}
+            accentColor={accentColor}
+            onClose={() => setEntityModal(null)}
+            onDocumentClick={handleDocumentClick}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-// Inline filters panel
 function FiltersPanel({ filters, onChange, options, onClose }: {
   filters: GlobalFilters;
   onChange: (f: GlobalFilters) => void;
@@ -345,9 +412,7 @@ function FiltersPanel({ filters, onChange, options, onClose }: {
     onChange({ ...filters, [key]: value });
   };
 
-  const reset = () => {
-    onChange(DEFAULT_FILTERS);
-  };
+  const reset = () => onChange(DEFAULT_FILTERS);
 
   const selectClass = "w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none";
 

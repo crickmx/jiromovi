@@ -1,3 +1,10 @@
+export interface TopKPI {
+  nombre: string | null;
+  prima: number;
+  oficina_id?: string;
+  vend_id?: string;
+}
+
 export interface DashboardKPIs {
   polizas_emitidas: number;
   fianzas_emitidas: number;
@@ -22,9 +29,11 @@ export interface DashboardKPIs {
   acumulado_ytd: number;
   acumulado_ytd_anterior: number;
   crecimiento_ytd: number;
-  top_cliente: { nombre: string; prima: number };
-  top_aseguradora: { nombre: string; prima: number };
-  top_ramo: { nombre: string; prima: number };
+  top_cliente: TopKPI;
+  top_aseguradora: TopKPI;
+  top_ramo: TopKPI;
+  top_oficina: TopKPI;
+  top_vendedor: TopKPI;
   concentracion_top5_clientes: number;
   concentracion_top3_aseguradoras: number;
   scope: string;
@@ -47,6 +56,8 @@ export interface ChartDataDimension {
   cantidad: number;
   prima: number;
   ramo?: string;
+  oficina_id?: string;
+  vend_id?: string;
 }
 
 export interface ChartDataRenovaciones {
@@ -61,6 +72,8 @@ export interface DashboardCharts {
   por_ramo: ChartDataDimension[];
   por_subramo: ChartDataDimension[];
   por_cliente: ChartDataDimension[];
+  por_oficina: ChartDataDimension[];
+  por_vendedor: ChartDataDimension[];
   renovaciones_horizonte: ChartDataRenovaciones[];
 }
 
@@ -72,8 +85,11 @@ export interface TopItem {
   clientes?: number;
   aseguradoras?: number;
   ramos?: number;
+  vendedores?: number;
   proxima_renovacion?: string;
   ramo?: string;
+  oficina_id?: string;
+  vend_id?: string;
 }
 
 export interface SicasDocRow {
@@ -130,6 +146,7 @@ export interface GlobalFilters {
   fechaHasta: string;
   usuario: string;
   oficina: string;
+  vendedor: string;
   cliente: string;
   aseguradora: string;
   ramo: string;
@@ -146,6 +163,7 @@ export const DEFAULT_FILTERS: GlobalFilters = {
   fechaHasta: '',
   usuario: '',
   oficina: '',
+  vendedor: '',
   cliente: '',
   aseguradora: '',
   ramo: '',
@@ -155,6 +173,14 @@ export const DEFAULT_FILTERS: GlobalFilters = {
   moneda: '',
   search: '',
 };
+
+export type DashboardDimension = 'cliente' | 'aseguradora' | 'ramo' | 'subramo' | 'oficina' | 'vendedor';
+
+export interface OficinaOption {
+  id: string;
+  nombre: string;
+  documentos: number;
+}
 
 export function formatCurrency(value: number): string {
   if (Math.abs(value) >= 1_000_000) {

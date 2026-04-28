@@ -17,7 +17,9 @@ interface Props {
   userId: string;
   scope: DashboardScope | null;
   accentColor: string;
+  vendedorId?: string;
   onDocumentClick: (docId: string) => void;
+  onEntityClick?: (dimension: 'cliente' | 'aseguradora' | 'ramo' | 'oficina' | 'vendedor', name: string, id?: string) => void;
 }
 
 const DIMENSION_CONFIG = {
@@ -26,7 +28,7 @@ const DIMENSION_CONFIG = {
   ramo: { icon: Layers, label: 'Ramos', plural: 'ramos', color: '#f59e0b' },
 };
 
-export default function TabEntidades({ dimension, kpis, charts, loading, userId, scope, accentColor, onDocumentClick }: Props) {
+export default function TabEntidades({ dimension, kpis, charts, loading, userId, scope, accentColor, vendedorId, onDocumentClick, onEntityClick }: Props) {
   const config = DIMENSION_CONFIG[dimension];
   const [items, setItems] = useState<TopItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -40,11 +42,11 @@ export default function TabEntidades({ dimension, kpis, charts, loading, userId,
   useEffect(() => {
     if (!userId || !scope) return;
     setLoadingItems(true);
-    fetchTopItems(userId, dimension, 50, scope.scope, scope.oficina_id || undefined)
+    fetchTopItems(userId, dimension, 50, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId)
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoadingItems(false));
-  }, [userId, scope, dimension]);
+  }, [userId, scope, dimension, vendedorId]);
 
   const loadItemDocs = useCallback(async (itemName: string) => {
     if (!userId || !scope) return;
@@ -54,6 +56,7 @@ export default function TabEntidades({ dimension, kpis, charts, loading, userId,
         userId,
         scope: scope.scope,
         oficinaId: scope.oficina_id || undefined,
+        vendedorId,
         page: docPage,
         pageSize: docPageSize,
       };
@@ -69,7 +72,7 @@ export default function TabEntidades({ dimension, kpis, charts, loading, userId,
     } finally {
       setLoadingDocs(false);
     }
-  }, [userId, scope, dimension, docPage]);
+  }, [userId, scope, dimension, docPage, vendedorId]);
 
   useEffect(() => {
     if (selectedItem) loadItemDocs(selectedItem);
@@ -118,7 +121,14 @@ export default function TabEntidades({ dimension, kpis, charts, loading, userId,
               return (
                 <div key={idx}>
                   <button
-                    onClick={() => { setSelectedItem(isExpanded ? null : item.nombre); setDocPage(1); }}
+                    onClick={() => {
+                      if (onEntityClick) {
+                        onEntityClick(dimension, item.nombre);
+                      } else {
+                        setSelectedItem(isExpanded ? null : item.nombre);
+                        setDocPage(1);
+                      }
+                    }}
                     className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
                   >
                     <span className="text-[10px] font-bold text-gray-400 w-6 text-right shrink-0">{idx + 1}</span>

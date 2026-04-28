@@ -12,10 +12,11 @@ interface Props {
   scope: DashboardScope | null;
   filterOptions: { aseguradoras: string[]; ramos: string[]; subramos: string[]; monedas: string[]; vendedores: { id: string; nombre: string }[] } | null;
   accentColor: string;
+  vendedorId?: string;
   onDocumentClick: (docId: string) => void;
 }
 
-export default function TabDocumentos({ userId, scope, filterOptions, accentColor, onDocumentClick }: Props) {
+export default function TabDocumentos({ userId, scope, filterOptions, accentColor, vendedorId, onDocumentClick }: Props) {
   const [docs, setDocs] = useState<SicasDocRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,7 @@ export default function TabDocumentos({ userId, scope, filterOptions, accentColo
         userId,
         scope: scope.scope,
         oficinaId: scope.oficina_id || undefined,
+        vendedorId,
         page,
         pageSize,
         search: search || undefined,
@@ -56,7 +58,7 @@ export default function TabDocumentos({ userId, scope, filterOptions, accentColo
     } finally {
       setLoading(false);
     }
-  }, [userId, scope, page, pageSize, search, sortField, sortAsc, tipo, status, aseguradora, ramo, moneda]);
+  }, [userId, scope, vendedorId, page, pageSize, search, sortField, sortAsc, tipo, status, aseguradora, ramo, moneda]);
 
   useEffect(() => { loadDocs(); }, [loadDocs]);
 

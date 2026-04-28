@@ -13,10 +13,11 @@ interface Props {
   userId: string;
   scope: DashboardScope | null;
   accentColor: string;
+  vendedorId?: string;
   onDocumentClick: (docId: string) => void;
 }
 
-export default function TabRenovaciones({ kpis, loading, userId, scope, accentColor, onDocumentClick }: Props) {
+export default function TabRenovaciones({ kpis, loading, userId, scope, accentColor, vendedorId, onDocumentClick }: Props) {
   const [filterDias, setFilterDias] = useState(90);
   const [docs, setDocs] = useState<SicasDocRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -33,6 +34,7 @@ export default function TabRenovaciones({ kpis, loading, userId, scope, accentCo
         userId,
         scope: scope.scope,
         oficinaId: scope.oficina_id || undefined,
+        vendedorId,
         page,
         pageSize,
         search: search || undefined,
@@ -48,7 +50,7 @@ export default function TabRenovaciones({ kpis, loading, userId, scope, accentCo
     } finally {
       setLoadingDocs(false);
     }
-  }, [userId, scope, page, pageSize, search, filterDias]);
+  }, [userId, scope, vendedorId, page, pageSize, search, filterDias]);
 
   useEffect(() => { loadRenovaciones(); }, [loadRenovaciones]);
 

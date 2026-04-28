@@ -1,8 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import {
-  TrendingUp, FileText, DollarSign, BarChart3, ArrowUpDown,
-  ChevronLeft, ChevronRight, Eye, Loader2,
-} from 'lucide-react';
+import { TrendingUp, FileText, DollarSign, BarChart3, ArrowUpDown, ChevronLeft, ChevronRight, Eye, Loader2, MapPin, CircleUser as UserCircle } from 'lucide-react';
 import type { DashboardKPIs, DashboardCharts, DashboardScope, TopItem } from '../../lib/sicasDashboardTypes';
 import { formatCurrency, formatFullCurrency, formatNumber, formatDate, monthLabel } from '../../lib/sicasDashboardTypes';
 import { fetchTopItems } from '../../lib/sicasDashboardService';
@@ -16,26 +13,38 @@ interface Props {
   userId: string;
   scope: DashboardScope | null;
   accentColor: string;
+  isAdmin?: boolean;
+  vendedorId?: string;
   onDocumentClick: (docId: string) => void;
+  onEntityClick?: (dimension: 'cliente' | 'aseguradora' | 'ramo' | 'oficina' | 'vendedor', name: string, id?: string) => void;
 }
 
-export default function TabProduccion({ kpis, charts, loading, userId, scope, accentColor, onDocumentClick }: Props) {
+export default function TabProduccion({ kpis, charts, loading, userId, scope, accentColor, isAdmin, vendedorId, onDocumentClick, onEntityClick }: Props) {
   const [topRamos, setTopRamos] = useState<TopItem[]>([]);
   const [topAseguradoras, setTopAseguradoras] = useState<TopItem[]>([]);
+  const [topOficinas, setTopOficinas] = useState<TopItem[]>([]);
+  const [topVendedores, setTopVendedores] = useState<TopItem[]>([]);
   const [loadingTop, setLoadingTop] = useState(false);
 
   useEffect(() => {
     if (!userId || !scope) return;
     setLoadingTop(true);
-    Promise.all([
-      fetchTopItems(userId, 'ramo', 10, scope.scope, scope.oficina_id || undefined),
-      fetchTopItems(userId, 'aseguradora', 10, scope.scope, scope.oficina_id || undefined),
-    ]).then(([ramos, aseguradoras]) => {
-      setTopRamos(ramos);
-      setTopAseguradoras(aseguradoras);
+    const promises: Promise<TopItem[]>[] = [
+      fetchTopItems(userId, 'ramo', 10, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId),
+      fetchTopItems(userId, 'aseguradora', 10, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId),
+    ];
+    if (isAdmin) {
+      promises.push(fetchTopItems(userId, 'oficina', 10, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId));
+      promises.push(fetchTopItems(userId, 'vendedor', 10, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId));
+    }
+    Promise.all(promises).then(results => {
+      setTopRamos(results[0]);
+      setTopAseguradoras(results[1]);
+      if (results[2]) setTopOficinas(results[2]);
+      if (results[3]) setTopVendedores(results[3]);
     }).catch(() => {})
     .finally(() => setLoadingTop(false));
-  }, [userId, scope]);
+  }, [userId, scope, isAdmin, vendedorId]);
 
   const emisionLineData = useMemo(() => {
     if (!charts?.prima_por_mes) return [];
@@ -105,14 +114,38 @@ export default function TabProduccion({ kpis, charts, loading, userId, scope, ac
           items={topRamos}
           loading={loadingTop}
           accentColor={accentColor}
+          onItemClick={onEntityClick ? (item) => onEntityClick('ramo', item.nombre) : undefined}
         />
         <TopTable
           title="Top 10 Aseguradoras"
           items={topAseguradoras}
           loading={loadingTop}
           accentColor={accentColor}
+          onItemClick={onEntityClick ? (item) => onEntityClick('aseguradora', item.nombre) : undefined}
         />
       </div>
+
+      {/* Admin: Top Offices & Vendors */}
+      {isAdmin && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TopTable
+            title="Top 10 Oficinas"
+            icon={MapPin}
+            items={topOficinas}
+            loading={loadingTop}
+            accentColor="#8b5cf6"
+            onItemClick={onEntityClick ? (item) => onEntityClick('oficina', item.nombre, item.oficina_id) : undefined}
+          />
+          <TopTable
+            title="Top 10 Vendedores"
+            icon={UserCircle}
+            items={topVendedores}
+            loading={loadingTop}
+            accentColor="#06b6d4"
+            onItemClick={onEntityClick ? (item) => onEntityClick('vendedor', item.nombre, item.vend_id) : undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -129,7 +162,10 @@ function MiniKPI({ icon: Icon, label, value, color }: { icon: React.ElementType;
   );
 }
 
-function TopTable({ title, items, loading, accentColor }: { title: string; items: TopItem[]; loading: boolean; accentColor: string }) {
+function TopTable({ title, icon: TblIcon, items, loading, accentColor, onItemClick }: {
+  title: string; icon?: React.ElementType; items: TopItem[]; loading: boolean; accentColor: string;
+  onItemClick?: (item: TopItem) => void;
+}) {
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
@@ -147,7 +183,8 @@ function TopTable({ title, items, loading, accentColor }: { title: string; items
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
+        {TblIcon && <TblIcon className="w-4 h-4" style={{ color: accentColor }} />}
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
       </div>
       {items.length === 0 ? (
@@ -155,7 +192,11 @@ function TopTable({ title, items, loading, accentColor }: { title: string; items
       ) : (
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
           {items.map((item, idx) => (
-            <div key={idx} className="px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <div
+              key={idx}
+              className={`px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${onItemClick ? 'cursor-pointer' : ''}`}
+              onClick={onItemClick ? () => onItemClick(item) : undefined}
+            >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className="text-[10px] font-bold text-gray-400 w-5 text-right">{idx + 1}</span>

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { DashboardKPIs, DashboardCharts, TopItem, SicasDocRow, DashboardScope } from './sicasDashboardTypes';
+import type { DashboardKPIs, DashboardCharts, TopItem, SicasDocRow, DashboardScope, DashboardDimension, OficinaOption } from './sicasDashboardTypes';
 
 export async function fetchUserScope(userId: string): Promise<DashboardScope> {
   const { data, error } = await supabase.rpc('get_sicas_user_scope', { p_user_id: userId });
@@ -10,11 +10,13 @@ export async function fetchUserScope(userId: string): Promise<DashboardScope> {
 export async function fetchDashboardKPIs(
   userId: string,
   scope?: string,
-  oficinaId?: string
+  oficinaId?: string,
+  vendedorId?: string
 ): Promise<DashboardKPIs> {
   const params: Record<string, unknown> = { p_user_id: userId };
   if (scope) params.p_scope = scope;
   if (oficinaId) params.p_oficina_id = oficinaId;
+  if (vendedorId) params.p_vendedor_id = vendedorId;
   const { data, error } = await supabase.rpc('get_sicas_dashboard_kpis', params);
   if (error) throw new Error(error.message);
   return data as DashboardKPIs;
@@ -24,12 +26,14 @@ export async function fetchDashboardCharts(
   userId: string,
   scope?: string,
   oficinaId?: string,
-  meses?: number
+  meses?: number,
+  vendedorId?: string
 ): Promise<DashboardCharts> {
   const params: Record<string, unknown> = { p_user_id: userId };
   if (scope) params.p_scope = scope;
   if (oficinaId) params.p_oficina_id = oficinaId;
   if (meses) params.p_meses = meses;
+  if (vendedorId) params.p_vendedor_id = vendedorId;
   const { data, error } = await supabase.rpc('get_sicas_dashboard_charts', params);
   if (error) throw new Error(error.message);
   return data as DashboardCharts;
@@ -37,12 +41,13 @@ export async function fetchDashboardCharts(
 
 export async function fetchTopItems(
   userId: string,
-  dimension: 'cliente' | 'aseguradora' | 'ramo' | 'subramo',
+  dimension: DashboardDimension,
   limit = 10,
   scope?: string,
   oficinaId?: string,
   fechaDesde?: string,
-  fechaHasta?: string
+  fechaHasta?: string,
+  vendedorId?: string
 ): Promise<TopItem[]> {
   const params: Record<string, unknown> = {
     p_user_id: userId,
@@ -53,15 +58,17 @@ export async function fetchTopItems(
   if (oficinaId) params.p_oficina_id = oficinaId;
   if (fechaDesde) params.p_fecha_desde = fechaDesde;
   if (fechaHasta) params.p_fecha_hasta = fechaHasta;
+  if (vendedorId) params.p_vendedor_id = vendedorId;
   const { data, error } = await supabase.rpc('get_sicas_dashboard_top', params);
   if (error) throw new Error(error.message);
   return (data ?? []) as TopItem[];
 }
 
-interface DocQueryParams {
+export interface DocQueryParams {
   userId: string;
   scope: string;
   oficinaId?: string;
+  vendedorId?: string;
   page?: number;
   pageSize?: number;
   search?: string;
@@ -85,7 +92,7 @@ export async function fetchDocuments(params: DocQueryParams): Promise<{
   count: number;
 }> {
   const {
-    userId, scope, oficinaId,
+    userId, scope, oficinaId, vendedorId,
     page = 1, pageSize = 50,
     search, cliente, aseguradora, ramo, subramo, status, tipo, moneda,
     fechaDesde, fechaHasta,
@@ -97,12 +104,13 @@ export async function fetchDocuments(params: DocQueryParams): Promise<{
     .from('sicas_documents')
     .select('*', { count: 'exact' });
 
-  // Scope filtering
   if (scope === 'office' && oficinaId) {
     query = query.eq('oficina_id', oficinaId);
   } else if (scope === 'self') {
     query = query.eq('usuario_id', userId);
   }
+
+  if (vendedorId) query = query.eq('vend_id', vendedorId);
 
   if (search) {
     query = query.or(
@@ -170,6 +178,12 @@ export async function fetchFilterOptions(
   const vendedores = Array.from(vendMap.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   return { aseguradoras, ramos, subramos, monedas, vendedores };
+}
+
+export async function fetchOficinas(): Promise<OficinaOption[]> {
+  const { data, error } = await supabase.rpc('get_sicas_oficinas_con_documentos');
+  if (error) return [];
+  return (data ?? []) as OficinaOption[];
 }
 
 export async function fetchSyncStatus(): Promise<{

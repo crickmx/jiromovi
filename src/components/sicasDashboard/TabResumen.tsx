@@ -1,9 +1,5 @@
 import { useMemo } from 'react';
-import {
-  TrendingUp, TrendingDown, FileText, Shield, Users,
-  Building2, Layers, CalendarClock, DollarSign, BarChart3,
-  ArrowRight, AlertTriangle, CheckCircle2, Minus,
-} from 'lucide-react';
+import { TrendingUp, TrendingDown, FileText, Shield, Users, Building2, Layers, CalendarClock, DollarSign, BarChart3, ArrowRight, AlertTriangle, CheckCircle2, Minus, MapPin, CircleUser as UserCircle } from 'lucide-react';
 import type { DashboardKPIs, DashboardCharts, DashboardTab } from '../../lib/sicasDashboardTypes';
 import { formatCurrency, formatFullCurrency, formatNumber, formatPercent, monthLabel } from '../../lib/sicasDashboardTypes';
 import GraficaLinea from '../produccion/GraficaLinea';
@@ -14,8 +10,10 @@ interface Props {
   charts: DashboardCharts | null;
   loading: boolean;
   accentColor: string;
+  isAdmin?: boolean;
   onDocumentClick: (docId: string) => void;
   onTabChange: (tab: DashboardTab) => void;
+  onEntityClick?: (dimension: 'cliente' | 'aseguradora' | 'ramo' | 'oficina' | 'vendedor', name: string, id?: string) => void;
 }
 
 function SkeletonCard() {
@@ -73,7 +71,7 @@ function KPICard({ label, value, subtitle, icon: Icon, trend, color, onClick }: 
   );
 }
 
-export default function TabResumen({ kpis, charts, loading, accentColor, onDocumentClick, onTabChange }: Props) {
+export default function TabResumen({ kpis, charts, loading, accentColor, isAdmin, onDocumentClick, onTabChange, onEntityClick }: Props) {
   const primaLineData = useMemo(() => {
     if (!charts?.prima_por_mes) return [];
     return charts.prima_por_mes.map(m => ({
@@ -233,49 +231,61 @@ export default function TabResumen({ kpis, charts, loading, accentColor, onDocum
         </div>
 
         {/* Top cliente */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <Users className="w-4 h-4 text-blue-500" /> Principal Cliente
-          </h3>
-          {kpis.top_cliente?.nombre ? (
-            <div>
-              <p className="text-base font-bold text-gray-900 dark:text-white truncate">{kpis.top_cliente.nombre}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{formatFullCurrency(kpis.top_cliente.prima)}</p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Concentracion top 5: {formatPercent(kpis.concentracion_top5_clientes)}</p>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">Sin datos</p>
-          )}
-          <button
-            onClick={() => onTabChange('clientes')}
-            className="mt-3 w-full text-center text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-          >
-            Ver todos los clientes
-          </button>
-        </div>
+        <TopEntityCard
+          icon={Users}
+          iconColor="#0ea5e9"
+          title="Principal Cliente"
+          name={kpis.top_cliente?.nombre}
+          prima={kpis.top_cliente?.prima}
+          subtitle={`Concentracion top 5: ${formatPercent(kpis.concentracion_top5_clientes)}`}
+          onView={() => onTabChange('clientes')}
+          viewLabel="Ver todos los clientes"
+          onDrillDown={onEntityClick ? () => onEntityClick('cliente', kpis.top_cliente?.nombre || '') : undefined}
+        />
 
         {/* Top aseguradora */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-teal-500" /> Principal Aseguradora
-          </h3>
-          {kpis.top_aseguradora?.nombre ? (
-            <div>
-              <p className="text-base font-bold text-gray-900 dark:text-white truncate">{kpis.top_aseguradora.nombre}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{formatFullCurrency(kpis.top_aseguradora.prima)}</p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Concentracion top 3: {formatPercent(kpis.concentracion_top3_aseguradoras)}</p>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">Sin datos</p>
-          )}
-          <button
-            onClick={() => onTabChange('aseguradoras')}
-            className="mt-3 w-full text-center text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-          >
-            Ver todas las aseguradoras
-          </button>
-        </div>
+        <TopEntityCard
+          icon={Building2}
+          iconColor="#14b8a6"
+          title="Principal Aseguradora"
+          name={kpis.top_aseguradora?.nombre}
+          prima={kpis.top_aseguradora?.prima}
+          subtitle={`Concentracion top 3: ${formatPercent(kpis.concentracion_top3_aseguradoras)}`}
+          onView={() => onTabChange('aseguradoras')}
+          viewLabel="Ver todas las aseguradoras"
+          onDrillDown={onEntityClick ? () => onEntityClick('aseguradora', kpis.top_aseguradora?.nombre || '') : undefined}
+        />
       </div>
+
+      {/* Top oficina + Top vendedor (admin only) */}
+      {isAdmin && (kpis.top_oficina?.nombre || kpis.top_vendedor?.nombre) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {kpis.top_oficina?.nombre && (
+            <TopEntityCard
+              icon={MapPin}
+              iconColor="#8b5cf6"
+              title="Principal Oficina"
+              name={kpis.top_oficina.nombre}
+              prima={kpis.top_oficina.prima}
+              onView={() => onEntityClick?.('oficina', kpis.top_oficina.nombre || '', kpis.top_oficina.oficina_id)}
+              viewLabel="Ver detalle de oficina"
+              onDrillDown={onEntityClick ? () => onEntityClick('oficina', kpis.top_oficina.nombre || '', kpis.top_oficina.oficina_id) : undefined}
+            />
+          )}
+          {kpis.top_vendedor?.nombre && (
+            <TopEntityCard
+              icon={UserCircle}
+              iconColor="#06b6d4"
+              title="Principal Vendedor"
+              name={kpis.top_vendedor.nombre}
+              prima={kpis.top_vendedor.prima}
+              onView={() => onEntityClick?.('vendedor', kpis.top_vendedor.nombre || '', kpis.top_vendedor.vend_id)}
+              viewLabel="Ver detalle de vendedor"
+              onDrillDown={onEntityClick ? () => onEntityClick('vendedor', kpis.top_vendedor.nombre || '', kpis.top_vendedor.vend_id) : undefined}
+            />
+          )}
+        </div>
+      )}
 
       {/* Prima por ramo chart */}
       <GraficaCircular
@@ -284,6 +294,35 @@ export default function TabResumen({ kpis, charts, loading, accentColor, onDocum
         valueFormatter={v => formatCurrency(v)}
         size={220}
       />
+    </div>
+  );
+}
+
+function TopEntityCard({ icon: CardIcon, iconColor, title, name, prima, subtitle, onView, viewLabel, onDrillDown }: {
+  icon: React.ElementType; iconColor: string; title: string; name: string | null | undefined;
+  prima: number | undefined; subtitle?: string; onView: () => void; viewLabel: string;
+  onDrillDown?: () => void;
+}) {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+        <CardIcon className="w-4 h-4" style={{ color: iconColor }} /> {title}
+      </h3>
+      {name ? (
+        <button onClick={onDrillDown} className="text-left w-full group">
+          <p className="text-base font-bold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{name}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{formatFullCurrency(prima || 0)}</p>
+          {subtitle && <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{subtitle}</p>}
+        </button>
+      ) : (
+        <p className="text-sm text-gray-500">Sin datos</p>
+      )}
+      <button
+        onClick={onView}
+        className="mt-3 w-full text-center text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+      >
+        {viewLabel}
+      </button>
     </div>
   );
 }
