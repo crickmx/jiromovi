@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, Eye, ArrowLeft, Building2, User, Calendar,
   CreditCard, Hash, Loader2, Users, ChevronDown,
   ChevronUp, Download, LayoutDashboard, Table2, Database,
-  Cloud, Clock, CheckCircle2, XCircle, Info,
+  Cloud, Clock, CheckCircle2, XCircle, Info, StopCircle,
 } from 'lucide-react';
 import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
 import SicasDashboardKPIs from '../components/produccion/SicasDashboardKPIs';
@@ -713,6 +713,7 @@ interface DiagnosticData {
 
 function SyncPanel({ userId }: { userId?: string }) {
   const [syncing, setSyncing] = useState(false);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<Record<string, any> | null>(null);
   const [syncProgress, setSyncProgress] = useState<{ percent: number; page: number; totalPages: number; fetched: number; totalInSicas: number } | null>(null);
   const [syncHistory, setSyncHistory] = useState<SyncRun[]>([]);
@@ -774,83 +775,131 @@ function SyncPanel({ userId }: { userId?: string }) {
     finally { setLoadingHistory(false); }
   }, []);
 
-  useEffect(() => { loadSyncInfo(); loadDiagnostics(); }, [loadSyncInfo, loadDiagnostics]);
+  // Check for an active job on mount (resumes UI if user navigated away)
+  const checkActiveJob = useCallback(async () => {
+    const { data: job } = await supabase
+      .from('sicas_sync_jobs')
+      .select('*')
+      .in('status', ['queued', 'running'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (job) {
+      setActiveJobId(job.id);
+      setSyncing(true);
+      setSyncProgress({
+        percent: job.percent || 0,
+        page: job.current_page || 0,
+        totalPages: job.total_pages || 0,
+        fetched: job.total_synced || 0,
+        totalInSicas: job.total_in_sicas || 0,
+      });
+    }
+  }, []);
+
+  useEffect(() => { loadSyncInfo(); loadDiagnostics(); checkActiveJob(); }, [loadSyncInfo, loadDiagnostics, checkActiveJob]);
+
+  // Poll for job progress while syncing
+  useEffect(() => {
+    if (!syncing || !activeJobId) return;
+
+    const interval = setInterval(async () => {
+      const { data: job } = await supabase
+        .from('sicas_sync_jobs')
+        .select('*')
+        .eq('id', activeJobId)
+        .maybeSingle();
+
+      if (!job) return;
+
+      setSyncProgress({
+        percent: job.percent || 0,
+        page: job.current_page || 0,
+        totalPages: job.total_pages || 0,
+        fetched: job.total_synced || 0,
+        totalInSicas: job.total_in_sicas || 0,
+      });
+
+      if (job.status === 'completed') {
+        setSyncing(false);
+        setActiveJobId(null);
+        setSyncProgress(null);
+        setSyncResult({
+          ok: true,
+          stats: {
+            documentsUpserted: job.total_synced || 0,
+            totalInSicas: job.total_in_sicas || 0,
+            errors: job.total_errors || 0,
+            pagesProcessed: job.total_pages || 0,
+          },
+        });
+        loadSyncInfo();
+        loadDiagnostics();
+      } else if (job.status === 'failed') {
+        setSyncing(false);
+        setActiveJobId(null);
+        setSyncProgress(null);
+        setSyncResult({ ok: false, error: job.error_message || 'Error desconocido en segundo plano' });
+        loadSyncInfo();
+      } else if (job.status === 'cancelled') {
+        setSyncing(false);
+        setActiveJobId(null);
+        setSyncProgress(null);
+        setSyncResult({ ok: false, error: 'Sincronizacion cancelada por el usuario' });
+        loadSyncInfo();
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [syncing, activeJobId, loadSyncInfo, loadDiagnostics]);
 
   const runSync = async (mode: 'full' | 'incremental') => {
     setSyncing(true);
     setSyncResult(null);
-    setSyncProgress(null);
-
-    let totalFetched = 0;
-    let totalUpserted = 0;
-    let totalErrors = 0;
-    let totalDurationMs = 0;
-    let totalInSicas = 0;
-    let totalPagesProcessed = 0;
-    let currentMode = mode === 'full' ? 'full' : 'continue';
-    let runId = '';
-    let keycode = '';
+    setSyncProgress({ percent: 0, page: 0, totalPages: 0, fetched: 0, totalInSicas: 0 });
 
     try {
-      let batchNum = 0;
-      while (true) {
-        batchNum++;
-        const result = await callEdgeFunction('sicas-sync-local-documents', {
-          action: currentMode,
-          triggeredBy: userId || null,
-        });
+      const result = await callEdgeFunction('sicas-sync-orchestrator', {
+        action: 'start',
+        mode,
+        triggeredBy: userId || null,
+      });
 
-        if (!result.ok) {
-          setSyncResult(result);
-          break;
-        }
-
-        const stats = result.stats as any;
-        const progress = result.progress as any;
-
-        totalFetched += stats?.recordsFetched || 0;
-        totalUpserted += stats?.documentsUpserted || 0;
-        totalErrors += stats?.errors || 0;
-        totalDurationMs += stats?.durationMs || 0;
-        totalPagesProcessed += stats?.pagesProcessed || 0;
-        totalInSicas = stats?.totalInSicas || progress?.totalInSicas || totalInSicas;
-        runId = stats?.runId || runId;
-        keycode = stats?.keycode || keycode;
-
-        setSyncProgress({
-          percent: progress?.percent || 0,
-          page: progress?.currentPage || 0,
-          totalPages: progress?.totalPages || 0,
-          fetched: progress?.accumulatedSynced || totalUpserted,
-          totalInSicas,
-        });
-
-        if (result.isComplete) {
-          setSyncResult({
-            ok: true,
-            stats: {
-              documentsUpserted: totalUpserted,
-              pagesProcessed: totalPagesProcessed,
-              durationMs: totalDurationMs,
-              totalInSicas,
-              errors: totalErrors,
-              runId,
-              keycode,
-            },
-          });
-          break;
-        }
-
-        currentMode = 'continue';
-        await new Promise(r => setTimeout(r, 1000));
+      if (!result.ok) {
+        setSyncResult(result);
+        setSyncing(false);
+        setSyncProgress(null);
+        return;
       }
-      loadSyncInfo();
+
+      setActiveJobId(result.jobId as string);
+
+      if (result.alreadyRunning) {
+        const p = result.progress as any;
+        setSyncProgress({
+          percent: p?.percent || 0,
+          page: p?.currentPage || 0,
+          totalPages: p?.totalPages || 0,
+          fetched: p?.totalSynced || 0,
+          totalInSicas: p?.totalInSicas || 0,
+        });
+      }
     } catch (err: any) {
       setSyncResult({ ok: false, error: err?.message || 'Error desconocido' });
-    } finally {
       setSyncing(false);
       setSyncProgress(null);
     }
+  };
+
+  const cancelSync = async () => {
+    if (!activeJobId) return;
+    try {
+      await callEdgeFunction('sicas-sync-orchestrator', {
+        action: 'cancel',
+        jobId: activeJobId,
+      });
+    } catch { /* silent */ }
   };
 
   const lastSync = syncHistory[0];
@@ -907,7 +956,7 @@ function SyncPanel({ userId }: { userId?: string }) {
           <Cloud className="w-4 h-4 text-blue-600" /> Sincronizar con SICAS
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          La sincronizacion descarga todos los documentos desde SICAS y los almacena localmente. Esto permite consultar y filtrar sin limites de la API.
+          La sincronizacion descarga todos los documentos desde SICAS y los almacena localmente. El proceso continua en segundo plano aunque cierres esta pagina.
         </p>
         <div className="flex flex-wrap gap-3">
           <button onClick={() => runSync('full')} disabled={syncing}
@@ -920,6 +969,13 @@ function SyncPanel({ userId }: { userId?: string }) {
             {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Incremental (30 dias)
           </button>
+          {syncing && activeJobId && (
+            <button onClick={cancelSync}
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-sm font-medium">
+              <StopCircle className="w-4 h-4" />
+              Cancelar
+            </button>
+          )}
         </div>
 
         {/* Sync progress */}
@@ -927,7 +983,7 @@ function SyncPanel({ userId }: { userId?: string }) {
           <div className="mt-4 p-3 rounded-lg border text-sm bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
             <div className="flex items-center gap-2 mb-2">
               <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-              <p className="font-medium">Sincronizando... {syncProgress.percent}%</p>
+              <p className="font-medium">Sincronizando en segundo plano... {syncProgress.percent}%</p>
             </div>
             <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 mb-2">
               <div className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-500" style={{ width: `${syncProgress.percent}%` }} />
@@ -935,6 +991,9 @@ function SyncPanel({ userId }: { userId?: string }) {
             <p className="text-xs opacity-80">
               Pagina {syncProgress.page} de {syncProgress.totalPages} - {syncProgress.fetched.toLocaleString()} documentos sincronizados
               {syncProgress.totalInSicas > 0 && <> de {syncProgress.totalInSicas.toLocaleString()} en SICAS</>}
+            </p>
+            <p className="text-[10px] mt-1.5 opacity-60">
+              Puedes cerrar esta pagina. La sincronizacion continuara automaticamente.
             </p>
           </div>
         )}
