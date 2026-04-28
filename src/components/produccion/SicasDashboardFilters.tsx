@@ -37,15 +37,15 @@ function getMonthRange(year: number, month: number): { desde: string; hasta: str
   return { desde, hasta };
 }
 
-export function getCurrentMonthRange(): { fechaDesde: string; fechaHasta: string } {
-  const now = new Date();
-  const { desde, hasta } = getMonthRange(now.getFullYear(), now.getMonth());
-  return { fechaDesde: desde, fechaHasta: hasta };
+export function getDefaultDateRange(): { fechaDesde: string; fechaHasta: string } {
+  return { fechaDesde: '', fechaHasta: '' };
 }
 
-type PresetKey = 'este_mes' | 'mes_anterior' | 'trimestre' | 'semestre' | 'anio' | 'ultimo_anio';
+type PresetKey = 'todo' | 'este_mes' | 'mes_anterior' | 'trimestre' | 'semestre' | 'anio' | 'ultimo_anio';
 
 function getPresetRange(key: PresetKey): { desde: string; hasta: string } {
+  if (key === 'todo') return { desde: '', hasta: '' };
+
   const now = new Date();
   const y = now.getFullYear();
   const m = now.getMonth();
@@ -87,6 +87,7 @@ function getPresetRange(key: PresetKey): { desde: string; hasta: string } {
 }
 
 const presets: { key: PresetKey; label: string }[] = [
+  { key: 'todo', label: 'Todo' },
   { key: 'este_mes', label: 'Este mes' },
   { key: 'mes_anterior', label: 'Mes anterior' },
   { key: 'trimestre', label: 'Trimestre' },
@@ -96,6 +97,7 @@ const presets: { key: PresetKey; label: string }[] = [
 ];
 
 function formatRangeLabel(desde: string, hasta: string): string {
+  if (!desde && !hasta) return 'Todos los periodos';
   const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   try {
     const d1 = new Date(desde + 'T00:00:00');
@@ -128,10 +130,9 @@ export default function SicasDashboardFilters({ filters, onFiltersChange, availa
   };
 
   const clearAll = () => {
-    const { fechaDesde, fechaHasta } = getCurrentMonthRange();
     onFiltersChange({
-      fechaDesde,
-      fechaHasta,
+      fechaDesde: '',
+      fechaHasta: '',
       type: 'all',
       status: '',
       ramo: '',

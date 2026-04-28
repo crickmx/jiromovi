@@ -11,7 +11,7 @@ import {
 import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
 import SicasDashboardKPIs from '../components/produccion/SicasDashboardKPIs';
 import SicasDashboardCharts from '../components/produccion/SicasDashboardCharts';
-import SicasDashboardFilters, { type DashboardFilterState, getCurrentMonthRange } from '../components/produccion/SicasDashboardFilters';
+import SicasDashboardFilters, { type DashboardFilterState, getDefaultDateRange } from '../components/produccion/SicasDashboardFilters';
 import SicasRenovacionesPanel from '../components/produccion/SicasRenovacionesPanel';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ export default function ProduccionSICASLive() {
 
   // Filters
   const [filters, setFilters] = useState<DashboardFilterState>(() => {
-    const { fechaDesde, fechaHasta } = getCurrentMonthRange();
+    const { fechaDesde, fechaHasta } = getDefaultDateRange();
     return { fechaDesde, fechaHasta, type: 'all', status: '', ramo: '', subramo: '', aseguradora: '', cliente: '', moneda: '', agente: '', search: '' };
   });
 
@@ -295,6 +295,7 @@ export default function ProduccionSICASLive() {
       const rpcParams: Record<string, any> = {
         p_fecha_desde: filters.fechaDesde || null,
         p_fecha_hasta: filters.fechaHasta || null,
+        p_user_id: null,
         p_tipo: filters.type || 'all',
         p_status: filters.status || null,
         p_ramo: filters.ramo || null,
@@ -340,7 +341,9 @@ export default function ProduccionSICASLive() {
         charts: { primaPorMes, porRamo, porAseguradora, porCliente, porSubramo: [], porEstatus, tipoDistribution: [], renovacionesPorPeriodo: [] },
         renewals: result.renewals || [],
         availableFilters: result.availableFilters,
-        periodo: `${filters.fechaDesde} - ${filters.fechaHasta}`,
+        periodo: (filters.fechaDesde && filters.fechaHasta)
+          ? `${filters.fechaDesde} - ${filters.fechaHasta}`
+          : 'Todos los periodos',
       });
     } catch (err: any) {
       console.error('[Dashboard] Error:', err);
