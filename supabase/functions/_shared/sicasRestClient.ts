@@ -57,35 +57,40 @@ function parseXmlToTableInfo(xmlString: string): {
   tableControl: { MaxRecords: number; Pages: number; Page: number; ItemForPage: number } | null;
 } {
   const records: Record<string, string>[] = [];
-  // Match any row element: Table_WS_Documentos, Table_WS_xxx, etc.
-  const rowRegex = /<(Table_WS_\w+)>([\s\S]*?)<\/\1>/g;
-  let rowMatch;
-  while ((rowMatch = rowRegex.exec(xmlString)) !== null) {
-    const rowXml = rowMatch[2];
+  let tableControl: { MaxRecords: number; Pages: number; Page: number; ItemForPage: number } | null = null;
+
+  const parseFields = (xml: string): Record<string, string> => {
     const record: Record<string, string> = {};
     const fieldRegex = /<(\w+)>([\s\S]*?)<\/\1>/g;
     let fieldMatch;
-    while ((fieldMatch = fieldRegex.exec(rowXml)) !== null) {
+    while ((fieldMatch = fieldRegex.exec(xml)) !== null) {
       record[fieldMatch[1]] = fieldMatch[2].trim();
     }
-    records.push(record);
-  }
+    return record;
+  };
 
-  // Parse pagination control
-  let tableControl = null;
-  const controlMatch = xmlString.match(/<Table_Paginacion>([\s\S]*?)<\/Table_Paginacion>/);
-  if (controlMatch) {
-    const xml = controlMatch[1];
-    const getVal = (tag: string): number => {
-      const m = xml.match(new RegExp(`<${tag}>(\\d+)</${tag}>`));
-      return m ? parseInt(m[1], 10) : 0;
-    };
-    tableControl = {
-      MaxRecords: getVal("MaxRecords") || getVal("TotalRegistros"),
-      Pages: getVal("Pages") || getVal("TotalPaginas"),
-      Page: getVal("Page") || getVal("PaginaActual"),
-      ItemForPage: getVal("ItemForPage") || getVal("ItemsPorPagina"),
-    };
+  const extractControl = (fields: Record<string, string>) => ({
+    MaxRecords: parseInt(fields.MaxRecords || fields.TotalRegistros || "0", 10),
+    Pages: parseInt(fields.Pages || fields.TotalPaginas || "1", 10),
+    Page: parseInt(fields.Page || fields.PaginaActual || "1", 10),
+    ItemForPage: parseInt(fields.ItemForPage || fields.ItemsPorPagina || "100", 10),
+  });
+
+  // Match all Table_* elements, separating data rows from control rows
+  const rowRegex = /<(Table_\w+)>([\s\S]*?)<\/\1>/g;
+  let rowMatch;
+  while ((rowMatch = rowRegex.exec(xmlString)) !== null) {
+    const tagName = rowMatch[1];
+    const rowXml = rowMatch[2];
+
+    // Control/pagination tags: Table_Paginacion, Table_WS_*_Control, etc.
+    if (tagName === "Table_Paginacion" || tagName.endsWith("_Control")) {
+      const fields = parseFields(rowXml);
+      tableControl = extractControl(fields);
+      console.log(`[SICAS XML] Pagination from <${tagName}>: MaxRecords=${tableControl.MaxRecords}, Pages=${tableControl.Pages}`);
+    } else {
+      records.push(parseFields(rowXml));
+    }
   }
 
   return { tableInfo: records, tableControl };
