@@ -15,9 +15,9 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const ITEMS_PER_PAGE = 200;
-const MAX_SECONDS = 45;
-const PAGES_PER_BATCH = 8;
+const ITEMS_PER_PAGE = 500;
+const MAX_SECONDS = 50;
+const PAGES_PER_BATCH = 15;
 
 interface SyncState {
   currentPage: number;
