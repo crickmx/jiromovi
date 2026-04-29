@@ -15,11 +15,13 @@ interface Props {
   accentColor: string;
   isAdmin?: boolean;
   vendedorId?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
   onDocumentClick: (docId: string) => void;
   onEntityClick?: (dimension: 'cliente' | 'aseguradora' | 'ramo' | 'oficina' | 'vendedor', name: string, id?: string) => void;
 }
 
-export default function TabProduccion({ kpis, charts, loading, userId, scope, accentColor, isAdmin, vendedorId, onDocumentClick, onEntityClick }: Props) {
+export default function TabProduccion({ kpis, charts, loading, userId, scope, accentColor, isAdmin, vendedorId, fechaDesde, fechaHasta, onDocumentClick, onEntityClick }: Props) {
   const [topRamos, setTopRamos] = useState<TopItem[]>([]);
   const [topAseguradoras, setTopAseguradoras] = useState<TopItem[]>([]);
   const [topOficinas, setTopOficinas] = useState<TopItem[]>([]);
@@ -30,12 +32,12 @@ export default function TabProduccion({ kpis, charts, loading, userId, scope, ac
     if (!userId || !scope) return;
     setLoadingTop(true);
     const promises: Promise<TopItem[]>[] = [
-      fetchTopItems(userId, 'ramo', 10, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId),
-      fetchTopItems(userId, 'aseguradora', 10, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId),
+      fetchTopItems(userId, 'ramo', 10, scope.scope, scope.oficina_id || undefined, fechaDesde, fechaHasta, vendedorId),
+      fetchTopItems(userId, 'aseguradora', 10, scope.scope, scope.oficina_id || undefined, fechaDesde, fechaHasta, vendedorId),
     ];
     if (isAdmin) {
-      promises.push(fetchTopItems(userId, 'oficina', 10, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId));
-      promises.push(fetchTopItems(userId, 'vendedor', 10, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId));
+      promises.push(fetchTopItems(userId, 'oficina', 10, scope.scope, scope.oficina_id || undefined, fechaDesde, fechaHasta, vendedorId));
+      promises.push(fetchTopItems(userId, 'vendedor', 10, scope.scope, scope.oficina_id || undefined, fechaDesde, fechaHasta, vendedorId));
     }
     Promise.all(promises).then(results => {
       setTopRamos(results[0]);
@@ -44,7 +46,7 @@ export default function TabProduccion({ kpis, charts, loading, userId, scope, ac
       if (results[3]) setTopVendedores(results[3]);
     }).catch(() => {})
     .finally(() => setLoadingTop(false));
-  }, [userId, scope, isAdmin, vendedorId]);
+  }, [userId, scope, isAdmin, vendedorId, fechaDesde, fechaHasta]);
 
   const emisionLineData = useMemo(() => {
     if (!charts?.prima_por_mes) return [];

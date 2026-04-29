@@ -13,10 +13,12 @@ interface Props {
   filterOptions: { aseguradoras: string[]; ramos: string[]; subramos: string[]; monedas: string[]; vendedores: { id: string; nombre: string }[] } | null;
   accentColor: string;
   vendedorId?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
   onDocumentClick: (docId: string) => void;
 }
 
-export default function TabDocumentos({ userId, scope, filterOptions, vendedorId, onDocumentClick }: Props) {
+export default function TabDocumentos({ userId, scope, filterOptions, vendedorId, fechaDesde: globalFechaDesde, fechaHasta: globalFechaHasta, onDocumentClick }: Props) {
   const [docs, setDocs] = useState<SicasDocRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -31,8 +33,14 @@ export default function TabDocumentos({ userId, scope, filterOptions, vendedorId
   const [ramo, setRamo] = useState('');
   const [subramo, setSubramo] = useState('');
   const [moneda, setMoneda] = useState('');
-  const [fechaDesde, setFechaDesde] = useState('');
-  const [fechaHasta, setFechaHasta] = useState('');
+  const [fechaDesde, setFechaDesde] = useState(globalFechaDesde || '');
+  const [fechaHasta, setFechaHasta] = useState(globalFechaHasta || '');
+
+  useEffect(() => {
+    setFechaDesde(globalFechaDesde || '');
+    setFechaHasta(globalFechaHasta || '');
+    setPage(1);
+  }, [globalFechaDesde, globalFechaHasta]);
 
   const hasActiveFilters = tipo || status || aseguradora || ramo || subramo || moneda || fechaDesde || fechaHasta;
 

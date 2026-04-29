@@ -145,7 +145,8 @@ export type DashboardTab =
   | 'ramos'
   | 'documentos'
   | 'comparativos'
-  | 'sincronizacion';
+  | 'sincronizacion'
+  | 'mapeo-usuarios';
 
 export interface DashboardScope {
   scope: 'admin' | 'office' | 'self';
@@ -170,10 +171,23 @@ export interface GlobalFilters {
   search: string;
 }
 
+function currentMonthRange(): { desde: string; hasta: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+  return {
+    desde: `${y}-${m}-01`,
+    hasta: `${y}-${m}-${String(lastDay).padStart(2, '0')}`,
+  };
+}
+
+const { desde: _defaultDesde, hasta: _defaultHasta } = currentMonthRange();
+
 export const DEFAULT_FILTERS: GlobalFilters = {
   periodo: 'este_mes',
-  fechaDesde: '',
-  fechaHasta: '',
+  fechaDesde: _defaultDesde,
+  fechaHasta: _defaultHasta,
   usuario: '',
   oficina: '',
   vendedor: '',

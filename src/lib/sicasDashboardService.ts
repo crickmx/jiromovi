@@ -11,12 +11,16 @@ export async function fetchDashboardKPIs(
   userId: string,
   scope?: string,
   oficinaId?: string,
-  vendedorId?: string
+  vendedorId?: string,
+  fechaDesde?: string,
+  fechaHasta?: string
 ): Promise<DashboardKPIs> {
   const params: Record<string, unknown> = { p_user_id: userId };
   if (scope) params.p_scope = scope;
   if (oficinaId) params.p_oficina_id = oficinaId;
   if (vendedorId) params.p_vendedor_id = vendedorId;
+  if (fechaDesde) params.p_fecha_desde = fechaDesde;
+  if (fechaHasta) params.p_fecha_hasta = fechaHasta;
   const { data, error } = await supabase.rpc('get_sicas_dashboard_kpis', params);
   if (error) throw new Error(error.message);
   return data as DashboardKPIs;
@@ -27,13 +31,17 @@ export async function fetchDashboardCharts(
   scope?: string,
   oficinaId?: string,
   meses?: number,
-  vendedorId?: string
+  vendedorId?: string,
+  fechaDesde?: string,
+  fechaHasta?: string
 ): Promise<DashboardCharts> {
   const params: Record<string, unknown> = { p_user_id: userId };
   if (scope) params.p_scope = scope;
   if (oficinaId) params.p_oficina_id = oficinaId;
   if (meses) params.p_meses = meses;
   if (vendedorId) params.p_vendedor_id = vendedorId;
+  if (fechaDesde) params.p_fecha_desde = fechaDesde;
+  if (fechaHasta) params.p_fecha_hasta = fechaHasta;
   const { data, error } = await supabase.rpc('get_sicas_dashboard_charts', params);
   if (error) throw new Error(error.message);
   return data as DashboardCharts;

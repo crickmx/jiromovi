@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
-import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle } from 'lucide-react';
+import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle, Link2 } from 'lucide-react';
 import {
   type DashboardTab, type DashboardScope, type DashboardKPIs,
   type DashboardCharts, type GlobalFilters, type OficinaOption,
@@ -18,6 +18,7 @@ import TabEntidades from '../components/sicasDashboard/TabEntidades';
 import TabDocumentos from '../components/sicasDashboard/TabDocumentos';
 import TabComparativos from '../components/sicasDashboard/TabComparativos';
 import TabSincronizacion from '../components/sicasDashboard/TabSincronizacion';
+import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
 import DocumentoModal from '../components/sicasDashboard/DocumentoModal';
 import EntityDetailModal from '../components/sicasDashboard/EntityDetailModal';
 import { tienePermisoAdminEnModulo } from '../lib/permisosUtils';
@@ -32,6 +33,7 @@ const TAB_CONFIG: { key: DashboardTab; label: string; icon: React.ElementType; a
   { key: 'documentos', label: 'Documentos', icon: FileText },
   { key: 'comparativos', label: 'Comparativos', icon: GitCompare },
   { key: 'sincronizacion', label: 'Sincronizacion', icon: Cloud, adminOnly: true },
+  { key: 'mapeo-usuarios', label: 'Mapeo Usuarios', icon: Link2, adminOnly: true },
 ];
 
 export async function callEdgeFunction(slug: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -123,6 +125,9 @@ export default function ProduccionSICASLive() {
     })();
   }, [usuario?.id]);
 
+  const effectiveFechaDesde = filters.fechaDesde || undefined;
+  const effectiveFechaHasta = filters.fechaHasta || undefined;
+
   // Load dashboard data reacting to filter changes
   const loadData = useCallback(async () => {
     if (!usuario?.id || !effectiveScope) return;
@@ -130,8 +135,8 @@ export default function ProduccionSICASLive() {
     setError(null);
     try {
       const [kpiData, chartData] = await Promise.all([
-        fetchDashboardKPIs(usuario.id, effectiveScope.scope, effectiveOficinaId || undefined, effectiveVendedorId),
-        fetchDashboardCharts(usuario.id, effectiveScope.scope, effectiveOficinaId || undefined, undefined, effectiveVendedorId),
+        fetchDashboardKPIs(usuario.id, effectiveScope.scope, effectiveOficinaId || undefined, effectiveVendedorId, effectiveFechaDesde, effectiveFechaHasta),
+        fetchDashboardCharts(usuario.id, effectiveScope.scope, effectiveOficinaId || undefined, undefined, effectiveVendedorId, effectiveFechaDesde, effectiveFechaHasta),
       ]);
       setKpis(kpiData);
       setCharts(chartData);
@@ -141,7 +146,7 @@ export default function ProduccionSICASLive() {
     } finally {
       setLoading(false);
     }
-  }, [usuario?.id, effectiveScope, effectiveOficinaId, effectiveVendedorId]);
+  }, [usuario?.id, effectiveScope, effectiveOficinaId, effectiveVendedorId, effectiveFechaDesde, effectiveFechaHasta]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -197,7 +202,13 @@ export default function ProduccionSICASLive() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Date Range */}
+            <DateRangeSelector
+              fechaDesde={filters.fechaDesde}
+              fechaHasta={filters.fechaHasta}
+              onChange={(desde, hasta) => setFilters(f => ({ ...f, fechaDesde: desde, fechaHasta: hasta }))}
+            />
             {/* Admin Office Filter */}
             {isAdmin && oficinas.length > 0 && (
               <select
@@ -314,6 +325,8 @@ export default function ProduccionSICASLive() {
             accentColor={accentColor}
             isAdmin={isAdmin}
             vendedorId={effectiveVendedorId}
+            fechaDesde={effectiveFechaDesde}
+            fechaHasta={effectiveFechaHasta}
             onDocumentClick={handleDocumentClick}
             onEntityClick={handleEntityClick}
           />
@@ -339,6 +352,8 @@ export default function ProduccionSICASLive() {
             scope={effectiveScope}
             accentColor={accentColor}
             vendedorId={effectiveVendedorId}
+            fechaDesde={effectiveFechaDesde}
+            fechaHasta={effectiveFechaHasta}
             onDocumentClick={handleDocumentClick}
             onEntityClick={handleEntityClick}
           />
@@ -350,6 +365,8 @@ export default function ProduccionSICASLive() {
             filterOptions={filterOptions}
             accentColor={accentColor}
             vendedorId={effectiveVendedorId}
+            fechaDesde={effectiveFechaDesde}
+            fechaHasta={effectiveFechaHasta}
             onDocumentClick={handleDocumentClick}
           />
         )}
@@ -373,6 +390,9 @@ export default function ProduccionSICASLive() {
             accentColor={accentColor}
           />
         )}
+        {activeTab === 'mapeo-usuarios' && hasAdminAccess && (
+          <MapeoUsuariosSICAS callApi={(body) => callEdgeFunction('sicas-map-vendedor', body)} />
+        )}
 
         {/* Document Detail Modal */}
         {selectedDocId && (
@@ -393,6 +413,8 @@ export default function ProduccionSICASLive() {
             scope={effectiveScope?.scope || 'self'}
             oficinaId={effectiveOficinaId || undefined}
             accentColor={accentColor}
+            fechaDesde={effectiveFechaDesde}
+            fechaHasta={effectiveFechaHasta}
             onClose={() => setEntityModal(null)}
             onDocumentClick={handleDocumentClick}
           />
@@ -400,6 +422,92 @@ export default function ProduccionSICASLive() {
       </div>
     </div>
   );
+}
+
+function DateRangeSelector({ fechaDesde, fechaHasta, onChange }: {
+  fechaDesde: string;
+  fechaHasta: string;
+  onChange: (desde: string, hasta: string) => void;
+}) {
+  const setPreset = (preset: string) => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+
+    if (preset === 'este_mes') {
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      const mm = String(m + 1).padStart(2, '0');
+      onChange(`${y}-${mm}-01`, `${y}-${mm}-${String(lastDay).padStart(2, '0')}`);
+    } else if (preset === 'mes_anterior') {
+      const pm = m === 0 ? 11 : m - 1;
+      const py = m === 0 ? y - 1 : y;
+      const lastDay = new Date(py, pm + 1, 0).getDate();
+      const mm = String(pm + 1).padStart(2, '0');
+      onChange(`${py}-${mm}-01`, `${py}-${mm}-${String(lastDay).padStart(2, '0')}`);
+    } else if (preset === 'trimestre') {
+      const qStart = new Date(y, Math.floor(m / 3) * 3, 1);
+      const qEnd = new Date(y, Math.floor(m / 3) * 3 + 3, 0);
+      onChange(formatISO(qStart), formatISO(qEnd));
+    } else if (preset === 'este_anio') {
+      onChange(`${y}-01-01`, `${y}-12-31`);
+    } else if (preset === 'todo') {
+      onChange('', '');
+    }
+  };
+
+  const activePreset = (() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const mm = String(m + 1).padStart(2, '0');
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    if (fechaDesde === `${y}-${mm}-01` && fechaHasta === `${y}-${mm}-${String(lastDay).padStart(2, '0')}`) return 'este_mes';
+    if (fechaDesde === `${y}-01-01` && fechaHasta === `${y}-12-31`) return 'este_anio';
+    if (!fechaDesde && !fechaHasta) return 'todo';
+    return '';
+  })();
+
+  const presetBtnClass = (key: string) =>
+    `px-2 py-1 text-[10px] font-medium rounded-md transition-colors ${
+      activePreset === key
+        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+    }`;
+
+  const inputClass = "px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-700 dark:text-gray-300 outline-none focus:ring-1 focus:ring-blue-500 w-[120px]";
+
+  return (
+    <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5">
+      <CalendarClock className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1" />
+      <div className="flex items-center gap-0.5">
+        <button onClick={() => setPreset('este_mes')} className={presetBtnClass('este_mes')}>Mes</button>
+        <button onClick={() => setPreset('mes_anterior')} className={presetBtnClass('mes_anterior')}>Ant.</button>
+        <button onClick={() => setPreset('trimestre')} className={presetBtnClass('trimestre')}>Trim.</button>
+        <button onClick={() => setPreset('este_anio')} className={presetBtnClass('este_anio')}>Anio</button>
+        <button onClick={() => setPreset('todo')} className={presetBtnClass('todo')}>Todo</button>
+      </div>
+      <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+      <input
+        type="date"
+        value={fechaDesde}
+        onChange={e => onChange(e.target.value, fechaHasta)}
+        className={inputClass}
+        title="Desde"
+      />
+      <span className="text-[10px] text-gray-400">-</span>
+      <input
+        type="date"
+        value={fechaHasta}
+        onChange={e => onChange(fechaDesde, e.target.value)}
+        className={inputClass}
+        title="Hasta"
+      />
+    </div>
+  );
+}
+
+function formatISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function FiltersPanel({ filters, onChange, options, onClose }: {

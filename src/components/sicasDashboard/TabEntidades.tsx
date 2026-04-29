@@ -18,6 +18,8 @@ interface Props {
   scope: DashboardScope | null;
   accentColor: string;
   vendedorId?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
   onDocumentClick: (docId: string) => void;
   onEntityClick?: (dimension: 'cliente' | 'aseguradora' | 'ramo' | 'oficina' | 'vendedor', name: string, id?: string) => void;
 }
@@ -28,7 +30,7 @@ const DIMENSION_CONFIG = {
   ramo: { icon: Layers, label: 'Ramos', plural: 'ramos', color: '#f59e0b' },
 };
 
-export default function TabEntidades({ dimension, kpis, charts, loading, userId, scope, accentColor, vendedorId, onDocumentClick, onEntityClick }: Props) {
+export default function TabEntidades({ dimension, kpis, charts, loading, userId, scope, accentColor, vendedorId, fechaDesde, fechaHasta, onDocumentClick, onEntityClick }: Props) {
   const config = DIMENSION_CONFIG[dimension];
   const [items, setItems] = useState<TopItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -42,11 +44,11 @@ export default function TabEntidades({ dimension, kpis, charts, loading, userId,
   useEffect(() => {
     if (!userId || !scope) return;
     setLoadingItems(true);
-    fetchTopItems(userId, dimension, 50, scope.scope, scope.oficina_id || undefined, undefined, undefined, vendedorId)
+    fetchTopItems(userId, dimension, 50, scope.scope, scope.oficina_id || undefined, fechaDesde, fechaHasta, vendedorId)
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoadingItems(false));
-  }, [userId, scope, dimension, vendedorId]);
+  }, [userId, scope, dimension, vendedorId, fechaDesde, fechaHasta]);
 
   const loadItemDocs = useCallback(async (itemName: string) => {
     if (!userId || !scope) return;
@@ -57,6 +59,8 @@ export default function TabEntidades({ dimension, kpis, charts, loading, userId,
         scope: scope.scope,
         oficinaId: scope.oficina_id || undefined,
         vendedorId,
+        fechaDesde,
+        fechaHasta,
         page: docPage,
         pageSize: docPageSize,
       };
@@ -72,7 +76,7 @@ export default function TabEntidades({ dimension, kpis, charts, loading, userId,
     } finally {
       setLoadingDocs(false);
     }
-  }, [userId, scope, dimension, docPage, vendedorId]);
+  }, [userId, scope, dimension, docPage, vendedorId, fechaDesde, fechaHasta]);
 
   useEffect(() => {
     if (selectedItem) loadItemDocs(selectedItem);

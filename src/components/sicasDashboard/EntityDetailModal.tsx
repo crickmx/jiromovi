@@ -12,6 +12,8 @@ interface Props {
   scope: string;
   oficinaId?: string;
   accentColor: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
   onClose: () => void;
   onDocumentClick: (docId: string) => void;
 }
@@ -28,7 +30,7 @@ const PAGE_SIZE = 20;
 
 export default function EntityDetailModal({
   dimension, entityName, entityId, userId, scope, oficinaId,
-  accentColor, onClose, onDocumentClick,
+  accentColor, fechaDesde, fechaHasta, onClose, onDocumentClick,
 }: Props) {
   const config = DIMENSION_CONFIG[dimension];
   const Icon = config.icon;
@@ -50,6 +52,8 @@ export default function EntityDetailModal({
       userId,
       scope: dimension === 'oficina' ? 'office' : scope,
       oficinaId: dimension === 'oficina' ? entityId : oficinaId,
+      fechaDesde,
+      fechaHasta,
       page,
       pageSize: PAGE_SIZE,
     };
@@ -62,7 +66,7 @@ export default function EntityDetailModal({
       .then(({ data, count }) => { setDocs(data); setTotalDocs(count); })
       .catch(() => { setDocs([]); setTotalDocs(0); })
       .finally(() => setLoading(false));
-  }, [dimension, entityName, entityId, userId, scope, oficinaId, page]);
+  }, [dimension, entityName, entityId, userId, scope, oficinaId, fechaDesde, fechaHasta, page]);
 
   const kpis = useMemo(() => {
     if (loading && docs.length === 0) return null;
