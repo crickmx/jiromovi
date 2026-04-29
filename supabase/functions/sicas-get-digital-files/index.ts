@@ -85,14 +85,34 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!response.Sucess) {
-      console.error('[Digital Files] Error en SICAS:', response.Error || response.Message);
+      const sicasMsg = response.Error || response.Message || '';
+      console.warn('[Digital Files] SICAS respondio sin exito:', sicasMsg);
+
+      const isNotFound = sicasMsg.toLowerCase().includes('no se localizo')
+        || sicasMsg.toLowerCase().includes('not found');
+
+      if (isNotFound) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            files: [],
+            cached: false,
+            sicas_message: sicasMsg,
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
       return new Response(
         JSON.stringify({
           success: false,
-          error: response.Error || response.Message || 'Error desconocido',
+          error: sicasMsg || 'Error desconocido',
         }),
         {
-          status: 500,
+          status: 502,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
