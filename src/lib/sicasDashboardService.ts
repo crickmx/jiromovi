@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { DashboardKPIs, DashboardCharts, TopItem, SicasDocRow, DashboardScope, DashboardDimension, OficinaOption } from './sicasDashboardTypes';
+import type { DashboardKPIs, DashboardCharts, TopItem, SicasDocRow, DashboardScope, DashboardDimension, OficinaOption, AvanceComercialData } from './sicasDashboardTypes';
 
 export async function fetchUserScope(userId: string): Promise<DashboardScope> {
   const { data, error } = await supabase.rpc('get_sicas_user_scope', { p_user_id: userId });
@@ -239,4 +239,23 @@ export async function fetchSyncStatus(): Promise<{
     finishedAt: data.finished_at,
     lastSync: lastDoc?.synced_at || data.finished_at,
   };
+}
+
+export async function fetchAvanceComercial(
+  userId: string,
+  scope?: string,
+  oficinaId?: string,
+  vendedorId?: string,
+  fechaDesde?: string,
+  fechaHasta?: string
+): Promise<AvanceComercialData> {
+  const params: Record<string, unknown> = { p_user_id: userId };
+  if (scope) params.p_scope = scope;
+  if (oficinaId) params.p_oficina_id = oficinaId;
+  if (vendedorId) params.p_vendedor_id = vendedorId;
+  if (fechaDesde) params.p_fecha_desde = fechaDesde;
+  if (fechaHasta) params.p_fecha_hasta = fechaHasta;
+  const { data, error } = await supabase.rpc('get_sicas_avance_comercial', params);
+  if (error) throw new Error(error.message);
+  return data as AvanceComercialData;
 }

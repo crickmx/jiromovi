@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { TrendingUp, TrendingDown, FileText, Shield, Users, Building2, Layers, CalendarClock, DollarSign, BarChart3, ArrowRight, AlertTriangle, CheckCircle2, Minus, MapPin, CircleUser as UserCircle } from 'lucide-react';
-import type { DashboardKPIs, DashboardCharts, DashboardTab } from '../../lib/sicasDashboardTypes';
+import type { DashboardKPIs, DashboardCharts, DashboardTab, DashboardScope } from '../../lib/sicasDashboardTypes';
 import { formatCurrency, formatFullCurrency, formatNumber, formatPercent, monthLabel } from '../../lib/sicasDashboardTypes';
 import GraficaLinea from '../produccion/GraficaLinea';
 import GraficaCircular from '../comisiones/GraficaCircular';
+import AvanceComercialCard from './AvanceComercialCard';
 
 interface Props {
   kpis: DashboardKPIs | null;
@@ -11,6 +12,11 @@ interface Props {
   loading: boolean;
   accentColor: string;
   isAdmin?: boolean;
+  userId: string;
+  scope: DashboardScope | null;
+  vendedorId?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
   onDocumentClick: (docId: string) => void;
   onTabChange: (tab: DashboardTab) => void;
   onEntityClick?: (dimension: 'cliente' | 'aseguradora' | 'ramo' | 'oficina' | 'vendedor', name: string, id?: string) => void;
@@ -71,7 +77,7 @@ function KPICard({ label, value, subtitle, icon: Icon, trend, color, onClick }: 
   );
 }
 
-export default function TabResumen({ kpis, charts, loading, accentColor, isAdmin, onDocumentClick, onTabChange, onEntityClick }: Props) {
+export default function TabResumen({ kpis, charts, loading, accentColor, isAdmin, userId, scope, vendedorId, fechaDesde, fechaHasta, onDocumentClick, onTabChange, onEntityClick }: Props) {
   const primaLineData = useMemo(() => {
     if (!charts?.prima_por_mes) return [];
     return charts.prima_por_mes.map(m => ({
@@ -122,6 +128,21 @@ export default function TabResumen({ kpis, charts, loading, accentColor, isAdmin
 
   return (
     <div className="space-y-4">
+      {/* Avance Comercial */}
+      {userId && scope && (
+        <div className="grid grid-cols-1">
+          <AvanceComercialCard
+            userId={userId}
+            scope={scope}
+            vendedorId={vendedorId}
+            fechaDesde={fechaDesde}
+            fechaHasta={fechaHasta}
+            accentColor={accentColor}
+            onDocumentClick={onDocumentClick}
+          />
+        </div>
+      )}
+
       {/* Primary KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KPICard

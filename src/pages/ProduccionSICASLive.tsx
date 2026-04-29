@@ -310,6 +310,11 @@ export default function ProduccionSICASLive() {
             loading={loading}
             accentColor={accentColor}
             isAdmin={isAdmin}
+            userId={usuario?.id || ''}
+            scope={effectiveScope}
+            vendedorId={effectiveVendedorId}
+            fechaDesde={effectiveFechaDesde}
+            fechaHasta={effectiveFechaHasta}
             onDocumentClick={handleDocumentClick}
             onTabChange={handleTabChange}
             onEntityClick={handleEntityClick}

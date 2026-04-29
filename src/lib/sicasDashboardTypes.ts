@@ -279,3 +279,57 @@ export function renewalUrgencyBg(days: number | null): string {
   if (days <= 30) return 'bg-amber-50 dark:bg-amber-900/20';
   return 'bg-blue-50 dark:bg-blue-900/20';
 }
+
+export interface PeriodMetrics {
+  prima_neta: number;
+  prima_total: number;
+  polizas: number;
+  fianzas: number;
+  total_docs: number;
+  clientes: number;
+  fecha_desde: string;
+  fecha_hasta: string;
+}
+
+export interface YTDMetrics {
+  prima_neta: number;
+  polizas: number;
+  total_docs: number;
+  fecha_desde: string;
+  fecha_hasta: string;
+}
+
+export interface GoalMetrics {
+  prima_neta: number;
+  polizas: number;
+  total_docs: number;
+}
+
+export interface GrowthMetrics {
+  prima_vs_anterior: number;
+  polizas_vs_anterior: number;
+  prima_delta: number;
+  polizas_delta: number;
+  avance_meta_prima_pct: number;
+  avance_meta_polizas_pct: number;
+  falta_prima: number;
+  falta_polizas: number;
+  ytd_prima_vs_anterior: number;
+  ytd_polizas_vs_anterior: number;
+  avance_meta_anual_prima_pct: number;
+  avance_meta_anual_polizas_pct: number;
+}
+
+export interface AvanceComercialData {
+  periodo_actual: PeriodMetrics;
+  periodo_anterior: PeriodMetrics;
+  ytd_actual: YTDMetrics;
+  ytd_anterior: YTDMetrics;
+  anual_anterior_completo: YTDMetrics;
+  meta_anual: GoalMetrics;
+  meta_mensual: { prima_neta: number; polizas: number };
+  crecimiento: GrowthMetrics;
+  scope: string;
+  dia_del_mes: number;
+  mes_actual: number;
+}
