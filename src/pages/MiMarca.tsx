@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, X, Image as ImageIcon, CheckCircle2, AlertCircle, Sparkles, User, Save, RotateCcw } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, CheckCircle2, AlertCircle, User, Save, RotateCcw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
@@ -139,24 +139,6 @@ export default function MiMarca() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-50 via-white to-teal-50 border border-blue-100 rounded-2xl p-6 flex items-start gap-4">
-        <div className="flex-shrink-0 p-3 bg-blue-600 rounded-xl">
-          <Sparkles className="w-6 h-6 text-white" />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-neutral-900">Fuente única de tu marca</h2>
-          <p className="text-sm text-neutral-600 mt-1">
-            Tu <strong>foto de perfil</strong> y tu <strong>logotipo</strong> se aplican automáticamente
-            en Mi Página Web, Publicidad, cotizaciones, firmas de correo y comunicados.
-            Cambia una sola vez aquí y se reflejará en todos esos módulos.
-          </p>
-          <p className="text-xs text-neutral-500 mt-2">
-            <strong>Nota:</strong> el encabezado del sistema y los PDFs de comisiones siempre
-            usan el logotipo de tu oficina, no tu logotipo personal.
-          </p>
-        </div>
-      </div>
-
       {message && (
         <div
           className={`flex items-center gap-2 p-4 rounded-lg border ${
