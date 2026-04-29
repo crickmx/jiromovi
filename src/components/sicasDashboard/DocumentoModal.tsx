@@ -75,7 +75,7 @@ export default function DocumentoModal({ docId, isAdmin, onClose }: Props) {
         },
         body: JSON.stringify({
           idDocto: doc.id_docto,
-          identity: 'Documento',
+          identity: 'H02',
           valuePK: doc.id_docto,
         }),
       });
