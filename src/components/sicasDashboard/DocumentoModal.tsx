@@ -66,19 +66,39 @@ export default function DocumentoModal({ docId, isAdmin, onClose }: Props) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No autenticado');
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-centro-digital-files`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-get-digital-files`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id_docto: doc.id_docto }),
+        body: JSON.stringify({
+          idDocto: doc.id_docto,
+          identity: 'Documento',
+          valuePK: doc.id_docto,
+        }),
       });
 
       const result = await response.json();
-      if (result.success && result.archivos) {
-        setArchivos(result.archivos);
+      if (result.success && result.files) {
+        const mapped: CentroDigitalArchivo[] = result.files.map((f: Record<string, unknown>, idx: number) => {
+          const fileName = (f.FileName || f.Nombre || 'Sin nombre') as string;
+          const ext = ((f.FileExtension || f.Extension || fileName.split('.').pop()) as string || 'bin').replace(/^\./, '');
+          const size = (f.FileSize || f.Tamanio || 0) as number;
+          return {
+            id: (f.IDFile || f.Id || `file_${idx}`) as string,
+            nombre: fileName,
+            nombre_archivo: fileName,
+            tipo_archivo: (f.FileType || f.Tipo || 'application/octet-stream') as string,
+            extension: ext,
+            tamanio_bytes: size,
+            tamanio_legible: formatFileSize(size),
+            fecha_subida: (f.UploadDate || f.DocumentDate || f.FechaSubida || '') as string,
+            es_descargable: f.IsDownloadable !== false,
+          };
+        });
+        setArchivos(mapped);
       } else {
         setArchivosError(result.error || 'No se pudieron obtener los archivos');
       }
@@ -543,4 +563,12 @@ function HeaderStatusBadge({ status, isVigente, isCancelada }: { status: string 
 
 function Tag({ text, color }: { text: string; color: string }) {
   return <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded ${color}`}>{text}</span>;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
 }
