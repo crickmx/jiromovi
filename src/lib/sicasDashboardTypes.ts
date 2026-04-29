@@ -145,8 +145,7 @@ export type DashboardTab =
   | 'ramos'
   | 'documentos'
   | 'comparativos'
-  | 'sincronizacion'
-  | 'mapeo-usuarios';
+  | 'sincronizacion';
 
 export interface DashboardScope {
   scope: 'admin' | 'office' | 'self';

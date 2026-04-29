@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
-import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle, Link2 } from 'lucide-react';
+import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle } from 'lucide-react';
 import {
   type DashboardTab, type DashboardScope, type DashboardKPIs,
   type DashboardCharts, type GlobalFilters, type OficinaOption,
@@ -18,7 +18,6 @@ import TabEntidades from '../components/sicasDashboard/TabEntidades';
 import TabDocumentos from '../components/sicasDashboard/TabDocumentos';
 import TabComparativos from '../components/sicasDashboard/TabComparativos';
 import TabSincronizacion from '../components/sicasDashboard/TabSincronizacion';
-import MapeoUsuariosSICAS from '../components/produccion/MapeoUsuariosSICAS';
 import DocumentoModal from '../components/sicasDashboard/DocumentoModal';
 import EntityDetailModal from '../components/sicasDashboard/EntityDetailModal';
 import { tienePermisoAdminEnModulo } from '../lib/permisosUtils';
@@ -33,7 +32,6 @@ const TAB_CONFIG: { key: DashboardTab; label: string; icon: React.ElementType; a
   { key: 'documentos', label: 'Documentos', icon: FileText },
   { key: 'comparativos', label: 'Comparativos', icon: GitCompare },
   { key: 'sincronizacion', label: 'Sincronizacion', icon: Cloud, adminOnly: true },
-  { key: 'mapeo-usuarios', label: 'Mapeo Usuarios', icon: Link2, adminOnly: true },
 ];
 
 export async function callEdgeFunction(slug: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -394,9 +392,6 @@ export default function ProduccionSICASLive() {
             onSyncComplete={loadData}
             accentColor={accentColor}
           />
-        )}
-        {activeTab === 'mapeo-usuarios' && hasAdminAccess && (
-          <MapeoUsuariosSICAS callApi={(body) => callEdgeFunction('sicas-map-vendedor', body)} />
         )}
 
         {/* Document Detail Modal */}
