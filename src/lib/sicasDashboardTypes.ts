@@ -328,6 +328,7 @@ export interface AvanceComercialData {
   meta_anual: GoalMetrics;
   meta_mensual: { prima_neta: number; polizas: number };
   crecimiento: GrowthMetrics;
+  has_previous_year_data?: boolean;
   scope: string;
   dia_del_mes: number;
   mes_actual: number;

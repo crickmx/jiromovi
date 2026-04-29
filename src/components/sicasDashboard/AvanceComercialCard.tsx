@@ -47,17 +47,19 @@ export default function AvanceComercialCard({
 
   useEffect(() => { load(); }, [load]);
 
+  const hasPrevYear = data?.has_previous_year_data !== false;
   const avancePrima = data?.crecimiento.avance_meta_prima_pct ?? 0;
   const avancePolizas = data?.crecimiento.avance_meta_polizas_pct ?? 0;
   const crecPrima = data?.crecimiento.prima_vs_anterior ?? 0;
 
   const sentiment = useMemo(() => {
     if (!data) return 'neutral';
+    if (!hasPrevYear && data.periodo_actual.prima_neta > 0) return 'good';
     if (avancePrima >= 100 && crecPrima >= 0) return 'excellent';
     if (avancePrima >= 70 || crecPrima > 0) return 'good';
     if (avancePrima >= 40) return 'warning';
     return 'behind';
-  }, [data, avancePrima, crecPrima]);
+  }, [data, hasPrevYear, avancePrima, crecPrima]);
 
   const sentimentConfig = {
     excellent: { gradient: 'from-emerald-500 to-teal-600', icon: Award, label: 'Meta superada', ringColor: 'stroke-emerald-400' },
@@ -86,7 +88,8 @@ export default function AvanceComercialCard({
 
   if (!data) return null;
 
-  const cappedAvancePrima = Math.min(avancePrima, 100);
+  const effectiveAvancePrima = hasPrevYear ? avancePrima : (data?.periodo_actual.prima_neta > 0 ? 100 : 0);
+  const cappedAvancePrima = Math.min(effectiveAvancePrima, 100);
   const circumference = 2 * Math.PI * 38;
   const strokeDash = (cappedAvancePrima / 100) * circumference;
 
@@ -116,10 +119,21 @@ export default function AvanceComercialCard({
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-white font-bold text-lg leading-none">
-                  {avancePrima > 999 ? '999+' : Math.round(avancePrima)}%
-                </span>
-                <span className="text-white/60 text-[9px] font-medium mt-0.5">de meta</span>
+                {hasPrevYear ? (
+                  <>
+                    <span className="text-white font-bold text-lg leading-none">
+                      {avancePrima > 999 ? '999+' : Math.round(avancePrima)}%
+                    </span>
+                    <span className="text-white/60 text-[9px] font-medium mt-0.5">de meta</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-white font-bold text-sm leading-none">
+                      {formatNumber(data.periodo_actual.polizas)}
+                    </span>
+                    <span className="text-white/60 text-[9px] font-medium mt-0.5">polizas</span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -139,28 +153,46 @@ export default function AvanceComercialCard({
 
               {/* Comparison bar */}
               <div className="flex items-center gap-3 mt-3">
-                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                  crecPrima >= 0
-                    ? 'bg-white/20 text-white'
-                    : 'bg-red-900/30 text-red-200'
-                }`}>
-                  {crecPrima >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  {crecPrima > 0 ? '+' : ''}{crecPrima.toFixed(1)}% vs anterior
-                </div>
-                <span className="text-white/50 text-[11px]">
-                  {formatCurrency(data.periodo_anterior.prima_neta)} en {new Date(data.periodo_anterior.fecha_desde).getFullYear()}
-                </span>
+                {hasPrevYear ? (
+                  <>
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                      crecPrima >= 0
+                        ? 'bg-white/20 text-white'
+                        : 'bg-red-900/30 text-red-200'
+                    }`}>
+                      {crecPrima >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {crecPrima > 0 ? '+' : ''}{crecPrima.toFixed(1)}% vs anterior
+                    </div>
+                    <span className="text-white/50 text-[11px]">
+                      {formatCurrency(data.periodo_anterior.prima_neta)} en {new Date(data.periodo_anterior.fecha_desde).getFullYear()}
+                    </span>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white">
+                    <TrendingUp className="w-3 h-3" />
+                    Produccion nueva (sin datos {new Date(data.periodo_anterior.fecha_desde).getFullYear()})
+                  </div>
+                )}
               </div>
 
               {/* Mini stats row */}
               <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/15">
                 <MiniStat label="Polizas" value={formatNumber(data.periodo_actual.polizas)} delta={data.crecimiento.polizas_delta} />
-                <MiniStat label="Meta mes" value={formatCurrency(data.meta_mensual.prima_neta)} />
-                <MiniStat
-                  label="Falta"
-                  value={data.crecimiento.falta_prima > 0 ? formatCurrency(data.crecimiento.falta_prima) : 'Cumplida'}
-                  isPositive={data.crecimiento.falta_prima <= 0}
-                />
+                {hasPrevYear ? (
+                  <>
+                    <MiniStat label="Meta mes" value={formatCurrency(data.meta_mensual.prima_neta)} />
+                    <MiniStat
+                      label="Falta"
+                      value={data.crecimiento.falta_prima > 0 ? formatCurrency(data.crecimiento.falta_prima) : 'Cumplida'}
+                      isPositive={data.crecimiento.falta_prima <= 0}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <MiniStat label="Clientes" value={formatNumber(data.periodo_actual.clientes)} />
+                    <MiniStat label="Prima total" value={formatCurrency(data.periodo_actual.prima_total)} />
+                  </>
+                )}
               </div>
             </div>
 
