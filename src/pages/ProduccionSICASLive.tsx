@@ -279,15 +279,15 @@ export default function ProduccionSICASLive() {
         )}
 
         {/* Tab Navigation */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-1 overflow-x-auto scrollbar-hide">
-          <div className="flex gap-0.5 min-w-max">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-1">
+          <div className="flex flex-wrap gap-0.5">
             {visibleTabs.map(tab => {
               const isActive = activeTab === tab.key;
               return (
                 <button
                   key={tab.key}
                   onClick={() => handleTabChange(tab.key)}
-                  className={`flex items-center gap-1.5 px-3 md:px-4 py-2 text-xs md:text-sm font-medium rounded-lg transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 md:py-2 text-[11px] md:text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
                     isActive
                       ? 'text-white shadow-sm'
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'
