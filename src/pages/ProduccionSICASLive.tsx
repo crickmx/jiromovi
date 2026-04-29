@@ -84,6 +84,9 @@ export default function ProduccionSICASLive() {
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
+  const isEmpleado = usuario?.rol === 'Empleado';
+  const isEjecutivo = usuario?.rol === 'Ejecutivo';
+  const isOfficeRole = isGerente || isEmpleado || isEjecutivo;
   const hasAdminAccess = isAdmin || (isGerente && tienePermisoAdminEnModulo(usuario, 'sicas'));
 
   const accentColor = (usuario as any)?.oficina?.accent_color || '#0E23E2';
@@ -114,7 +117,7 @@ export default function ProduccionSICASLive() {
       } catch (err: any) {
         console.error('[Scope]', err);
         const fallbackScope: DashboardScope = {
-          scope: isAdmin ? 'admin' : isGerente ? 'office' : 'self',
+          scope: isAdmin ? 'admin' : isOfficeRole ? 'office' : 'self',
           rol: usuario.rol || 'Agente',
           oficina_id: (usuario as any)?.oficina?.id || null,
         };
@@ -220,8 +223,8 @@ export default function ProduccionSICASLive() {
                 ))}
               </select>
             )}
-            {/* Admin/Gerente Vendor Filter */}
-            {(isAdmin || isGerente) && filterOptions?.vendedores && filterOptions.vendedores.length > 0 && (
+            {/* Vendor Filter (admin, office roles) */}
+            {(isAdmin || isOfficeRole) && filterOptions?.vendedores && filterOptions.vendedores.length > 0 && (
               <select
                 value={filters.vendedor}
                 onChange={e => setFilters(f => ({ ...f, vendedor: e.target.value }))}
