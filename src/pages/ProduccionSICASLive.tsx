@@ -358,8 +358,6 @@ export default function ProduccionSICASLive() {
             scope={effectiveScope}
             accentColor={accentColor}
             vendedorId={effectiveVendedorId}
-            fechaDesde={effectiveFechaDesde}
-            fechaHasta={effectiveFechaHasta}
             onDocumentClick={handleDocumentClick}
             onEntityClick={handleEntityClick}
           />
@@ -371,8 +369,6 @@ export default function ProduccionSICASLive() {
             filterOptions={filterOptions}
             accentColor={accentColor}
             vendedorId={effectiveVendedorId}
-            fechaDesde={effectiveFechaDesde}
-            fechaHasta={effectiveFechaHasta}
             onDocumentClick={handleDocumentClick}
           />
         )}
