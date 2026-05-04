@@ -95,8 +95,6 @@ export interface DocQueryParams {
   orderAsc?: boolean;
 }
 
-const DOC_SELECT_COLUMNS = 'id,id_docto,vend_id,vend_nombre,desp_id,desp_nombre,usuario_id,oficina_id,oficina_nombre,ramo,subramo,compania,aseguradora_nombre,poliza,cliente,fecha_captura,fecha_emision,vigencia_desde,vigencia_hasta,importe,prima_neta,prima_total,derechos,impuestos,recargos,moneda,tipo_documento,subtipo_documento,agente_nombre,status_codigo,status_texto,status_cobro,is_poliza,is_fianza,is_vigente,is_cancelada,is_renewable,renewal_days_remaining,source_keycode,synced_at';
-
 export async function fetchDocuments(params: DocQueryParams): Promise<{
   data: SicasDocRow[];
   count: number;
@@ -110,48 +108,40 @@ export async function fetchDocuments(params: DocQueryParams): Promise<{
     orderBy = 'fecha_captura', orderAsc = false,
   } = params;
 
-  let query = supabase
-    .from('sicas_documents')
-    .select(DOC_SELECT_COLUMNS, { count: 'estimated' });
+  const rpcParams: Record<string, unknown> = {
+    p_user_id: userId,
+    p_scope: scope || 'all',
+    p_page: page,
+    p_page_size: pageSize,
+    p_order_by: orderBy,
+    p_order_asc: orderAsc,
+  };
 
-  if (scope === 'office' && oficinaId) {
-    query = query.eq('oficina_id', oficinaId);
-  }
-
-  if (vendedorId) query = query.eq('vend_id', vendedorId);
-
-  if (search) {
-    const s = search.replace(/[%_]/g, '');
-    query = query.or(
-      `cliente.ilike.%${s}%,poliza.ilike.%${s}%,compania.ilike.%${s}%,ramo.ilike.%${s}%,vend_nombre.ilike.%${s}%`
-    );
-  }
-  if (cliente) query = query.ilike('cliente', `%${cliente.replace(/[%_]/g, '')}%`);
-  if (aseguradora) query = query.eq('compania', aseguradora);
-  if (ramo) query = query.eq('ramo', ramo);
-  if (subramo) query = query.eq('subramo', subramo);
-  if (status === 'vigente') query = query.eq('is_vigente', true);
-  else if (status === 'cancelada') query = query.eq('is_cancelada', true);
-  else if (status) query = query.eq('status_texto', status);
-  if (tipo === 'polizas') query = query.eq('is_poliza', true);
-  else if (tipo === 'fianzas') query = query.eq('is_fianza', true);
-  if (moneda) query = query.eq('moneda', moneda);
-  if (fechaDesde) query = query.gte('fecha_captura', fechaDesde);
-  if (fechaHasta) query = query.lte('fecha_captura', fechaHasta + 'T23:59:59');
-
+  if (oficinaId) rpcParams.p_oficina_id = oficinaId;
+  if (vendedorId) rpcParams.p_vendedor_id = vendedorId;
+  if (search) rpcParams.p_search = search;
+  if (cliente) rpcParams.p_cliente = cliente;
+  if (aseguradora) rpcParams.p_aseguradora = aseguradora;
+  if (ramo) rpcParams.p_ramo = ramo;
+  if (subramo) rpcParams.p_subramo = subramo;
+  if (status) rpcParams.p_status = status;
+  if (tipo) rpcParams.p_tipo = tipo;
+  if (moneda) rpcParams.p_moneda = moneda;
+  if (fechaDesde) rpcParams.p_fecha_desde = fechaDesde;
+  if (fechaHasta) rpcParams.p_fecha_hasta = fechaHasta;
   if (soloRenovaciones) {
-    query = query.eq('is_vigente', true).gte('renewal_days_remaining', 0);
-    if (diasRenovacion) query = query.lte('renewal_days_remaining', diasRenovacion);
-    else query = query.lte('renewal_days_remaining', 90);
+    rpcParams.p_solo_renovaciones = true;
+    rpcParams.p_dias_renovacion = diasRenovacion || 90;
   }
 
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  query = query.order(orderBy, { ascending: orderAsc }).range(from, to);
-
-  const { data, error, count } = await query;
+  const { data, error } = await supabase.rpc('get_sicas_documents', rpcParams);
   if (error) throw new Error(error.message);
-  return { data: (data ?? []) as SicasDocRow[], count: count ?? 0 };
+
+  const result = data as { data: SicasDocRow[]; count: number } | null;
+  return {
+    data: result?.data ?? [],
+    count: result?.count ?? 0,
+  };
 }
 
 export async function fetchFilterOptions(
@@ -165,34 +155,30 @@ export async function fetchFilterOptions(
   monedas: string[];
   vendedores: { id: string; nombre: string }[];
 }> {
-  const buildQuery = (columns: string) => {
-    let q = supabase.from('sicas_documents').select(columns);
-    if (scope === 'office' && oficinaId) {
-      q = q.eq('oficina_id', oficinaId);
-    }
-    return q;
+  const rpcParams: Record<string, unknown> = {
+    p_user_id: userId,
+    p_scope: scope || 'all',
   };
+  if (oficinaId) rpcParams.p_oficina_id = oficinaId;
 
-  // Run smaller focused queries in parallel instead of one massive scan
-  const [asegR, ramoR, subR, monR, vendR] = await Promise.all([
-    buildQuery('compania').not('compania', 'is', null).limit(500),
-    buildQuery('ramo').not('ramo', 'is', null).limit(500),
-    buildQuery('subramo').not('subramo', 'is', null).limit(500),
-    buildQuery('moneda').not('moneda', 'is', null).limit(200),
-    buildQuery('vend_id, vend_nombre').not('vend_id', 'is', null).limit(500),
-  ]);
+  const { data, error } = await supabase.rpc('get_sicas_filter_options', rpcParams);
+  if (error) throw new Error(error.message);
 
-  const aseguradoras = [...new Set((asegR.data || []).map(d => d.compania).filter(Boolean) as string[])].sort();
-  const ramos = [...new Set((ramoR.data || []).map(d => d.ramo).filter(Boolean) as string[])].sort();
-  const subramos = [...new Set((subR.data || []).map(d => d.subramo).filter(Boolean) as string[])].sort();
-  const monedas = [...new Set((monR.data || []).map(d => d.moneda).filter(Boolean) as string[])].sort();
-  const vendMap = new Map<string, string>();
-  for (const d of (vendR.data || [])) {
-    if (d.vend_id && d.vend_nombre) vendMap.set(d.vend_id, d.vend_nombre);
-  }
-  const vendedores = Array.from(vendMap.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const result = data as {
+    aseguradoras: string[];
+    ramos: string[];
+    subramos: string[];
+    monedas: string[];
+    vendedores: { id: string; nombre: string }[];
+  } | null;
 
-  return { aseguradoras, ramos, subramos, monedas, vendedores };
+  return {
+    aseguradoras: result?.aseguradoras ?? [],
+    ramos: result?.ramos ?? [],
+    subramos: result?.subramos ?? [],
+    monedas: result?.monedas ?? [],
+    vendedores: result?.vendedores ?? [],
+  };
 }
 
 export async function fetchOficinas(): Promise<OficinaOption[]> {
