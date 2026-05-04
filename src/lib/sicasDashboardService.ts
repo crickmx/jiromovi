@@ -95,6 +95,8 @@ export interface DocQueryParams {
   orderAsc?: boolean;
 }
 
+const DOC_SELECT_COLUMNS = 'id,id_docto,vend_id,vend_nombre,desp_id,desp_nombre,usuario_id,oficina_id,oficina_nombre,ramo,subramo,compania,aseguradora_nombre,poliza,cliente,fecha_captura,fecha_emision,vigencia_desde,vigencia_hasta,importe,prima_neta,prima_total,derechos,impuestos,recargos,moneda,tipo_documento,subtipo_documento,agente_nombre,status_codigo,status_texto,status_cobro,is_poliza,is_fianza,is_vigente,is_cancelada,is_renewable,renewal_days_remaining,source_keycode,synced_at';
+
 export async function fetchDocuments(params: DocQueryParams): Promise<{
   data: SicasDocRow[];
   count: number;
@@ -110,28 +112,27 @@ export async function fetchDocuments(params: DocQueryParams): Promise<{
 
   let query = supabase
     .from('sicas_documents')
-    .select('*', { count: 'exact' });
+    .select(DOC_SELECT_COLUMNS, { count: 'estimated' });
 
   if (scope === 'office' && oficinaId) {
     query = query.eq('oficina_id', oficinaId);
   }
-  // For 'self' scope, RLS handles access via vend_id/nombre_sicas matching
-  // For 'admin' scope, no client-side filter needed
 
   if (vendedorId) query = query.eq('vend_id', vendedorId);
 
   if (search) {
+    const s = search.replace(/[%_]/g, '');
     query = query.or(
-      `cliente.ilike.%${search}%,poliza.ilike.%${search}%,compania.ilike.%${search}%,ramo.ilike.%${search}%,vend_nombre.ilike.%${search}%`
+      `cliente.ilike.%${s}%,poliza.ilike.%${s}%,compania.ilike.%${s}%,ramo.ilike.%${s}%,vend_nombre.ilike.%${s}%`
     );
   }
-  if (cliente) query = query.ilike('cliente', `%${cliente}%`);
+  if (cliente) query = query.ilike('cliente', `%${cliente.replace(/[%_]/g, '')}%`);
   if (aseguradora) query = query.eq('compania', aseguradora);
   if (ramo) query = query.eq('ramo', ramo);
   if (subramo) query = query.eq('subramo', subramo);
   if (status === 'vigente') query = query.eq('is_vigente', true);
   else if (status === 'cancelada') query = query.eq('is_cancelada', true);
-  else if (status) query = query.ilike('status_texto', `%${status}%`);
+  else if (status) query = query.eq('status_texto', status);
   if (tipo === 'polizas') query = query.eq('is_poliza', true);
   else if (tipo === 'fianzas') query = query.eq('is_fianza', true);
   if (moneda) query = query.eq('moneda', moneda);
@@ -164,21 +165,29 @@ export async function fetchFilterOptions(
   monedas: string[];
   vendedores: { id: string; nombre: string }[];
 }> {
-  let query = supabase.from('sicas_documents').select('compania, ramo, subramo, moneda, vend_id, vend_nombre');
+  const buildQuery = (columns: string) => {
+    let q = supabase.from('sicas_documents').select(columns);
+    if (scope === 'office' && oficinaId) {
+      q = q.eq('oficina_id', oficinaId);
+    }
+    return q;
+  };
 
-  if (scope === 'office' && oficinaId) {
-    query = query.eq('oficina_id', oficinaId);
-  }
+  // Run smaller focused queries in parallel instead of one massive scan
+  const [asegR, ramoR, subR, monR, vendR] = await Promise.all([
+    buildQuery('compania').not('compania', 'is', null).limit(500),
+    buildQuery('ramo').not('ramo', 'is', null).limit(500),
+    buildQuery('subramo').not('subramo', 'is', null).limit(500),
+    buildQuery('moneda').not('moneda', 'is', null).limit(200),
+    buildQuery('vend_id, vend_nombre').not('vend_id', 'is', null).limit(500),
+  ]);
 
-  const { data } = await query.limit(10000);
-  if (!data) return { aseguradoras: [], ramos: [], subramos: [], monedas: [], vendedores: [] };
-
-  const aseguradoras = [...new Set(data.map(d => d.compania).filter(Boolean) as string[])].sort();
-  const ramos = [...new Set(data.map(d => d.ramo).filter(Boolean) as string[])].sort();
-  const subramos = [...new Set(data.map(d => d.subramo).filter(Boolean) as string[])].sort();
-  const monedas = [...new Set(data.map(d => d.moneda).filter(Boolean) as string[])].sort();
+  const aseguradoras = [...new Set((asegR.data || []).map(d => d.compania).filter(Boolean) as string[])].sort();
+  const ramos = [...new Set((ramoR.data || []).map(d => d.ramo).filter(Boolean) as string[])].sort();
+  const subramos = [...new Set((subR.data || []).map(d => d.subramo).filter(Boolean) as string[])].sort();
+  const monedas = [...new Set((monR.data || []).map(d => d.moneda).filter(Boolean) as string[])].sort();
   const vendMap = new Map<string, string>();
-  for (const d of data) {
+  for (const d of (vendR.data || [])) {
     if (d.vend_id && d.vend_nombre) vendMap.set(d.vend_id, d.vend_nombre);
   }
   const vendedores = Array.from(vendMap.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -214,6 +223,7 @@ export async function fetchSyncStatus(): Promise<{
   const { data: lastDoc } = await supabase
     .from('sicas_documents')
     .select('synced_at')
+    .not('synced_at', 'is', null)
     .order('synced_at', { ascending: false })
     .limit(1)
     .maybeSingle();
