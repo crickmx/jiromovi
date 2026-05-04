@@ -17,10 +17,13 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 const VENDORS_PER_BATCH = 30;
+const PARALLEL_VENDORS = 6;
 const ITEMS_PER_PAGE = 100;
 const MAX_PAGES_PER_VENDOR = 20;
+const UPSERT_BATCH_SIZE = 500;
 const CURSOR_MODULE = "documents_by_vendor";
 const CURSOR_KEYCODE = "HWS_DOCTOS";
+const MAX_EXECUTION_MS = 50_000;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -40,280 +43,53 @@ Deno.serve(async (req: Request) => {
     }
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data: configRow } = await supabase
-      .from("sicas_production_config")
-      .select("*")
-      .eq("activo", true)
-      .limit(1)
+    // === MUTEX: prevent overlapping sync jobs ===
+    const jobId = crypto.randomUUID();
+    const { data: runningJob } = await supabase
+      .from("sicas_sync_jobs")
+      .select("id, started_at")
+      .eq("status", "running")
+      .eq("job_type", "vendor_sync")
+      .gt("started_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
       .maybeSingle();
 
-    const keycode = configRow?.report_keycode_all || "HWS_DOCTOS";
-
-    // 1. Load all vendors from catalog
-    const { data: allVendors, error: vendErr } = await supabase
-      .from("sicas_catalogos")
-      .select("id_sicas, nombre")
-      .eq("catalog_type_id", 32)
-      .order("id_sicas", { ascending: true });
-
-    if (vendErr || !allVendors || allVendors.length === 0) {
-      return jsonResponse(400, {
+    if (runningJob) {
+      return jsonResponse(409, {
         ok: false,
-        error: "No se encontraron vendedores en sicas_catalogos (type 32)",
-        vendorCount: 0,
+        error: "Ya hay una sincronizacion de vendedores en curso",
+        running_since: runningJob.started_at,
       });
     }
 
-    console.log(`[VENDOR-SYNC] Total vendedores en catalogo: ${allVendors.length}`);
-
-    // 2. Read cursor
-    const { data: cursor } = await supabase
-      .from("sicas_sync_cursors")
-      .select("*")
-      .eq("module", CURSOR_MODULE)
-      .eq("keycode", CURSOR_KEYCODE)
-      .maybeSingle();
-
-    let lastVendorId = "";
-    if (mode === "full") {
-      lastVendorId = "";
-      console.log(`[VENDOR-SYNC] Modo FULL: reiniciando desde el primer vendedor`);
-    } else if (cursor?.last_cursor_date) {
-      lastVendorId = cursor.last_cursor_date || "";
-      console.log(`[VENDOR-SYNC] Modo CONTINUE: retomando despues de vendedor ${lastVendorId}`);
-    }
-
-    // 3. Find vendors to process in this batch
-    const startIdx = lastVendorId
-      ? allVendors.findIndex((v) => String(v.id_sicas) === lastVendorId) + 1
-      : 0;
-
-    if (startIdx >= allVendors.length) {
-      return jsonResponse(200, {
-        ok: true,
-        isComplete: true,
-        filterWorking: null,
-        message: "Todos los vendedores ya fueron procesados. Usa mode=full para reiniciar.",
-        stats: {
-          totalVendors: allVendors.length,
-          totalSynced: cursor?.total_synced || 0,
-        },
-      });
-    }
-
-    const vendorBatch = allVendors.slice(startIdx, startIdx + VENDORS_PER_BATCH);
-    console.log(`[VENDOR-SYNC] Procesando vendedores ${startIdx + 1}-${startIdx + vendorBatch.length} de ${allVendors.length}`);
-
-    // 4. Get baseline: call without filter to know the "default" IDs
-    const client = await createSicasRestClientWithDbAuth();
-
-    let baselineIds = new Set<string>();
-    let baselineCount = 0;
-    try {
-      const baselineResp = await client.readReport({
-        keyCode: keycode,
-        pageRequested: 1,
-        itemsForPage: ITEMS_PER_PAGE,
-        sortFields: "Documento",
-      });
-      const baseRecords = baselineResp.Response?.[0]?.TableInfo || [];
-      for (const r of baseRecords) {
-        const id = r.IDDocto || r.IdDocto || r.iddocto;
-        if (id) baselineIds.add(String(id));
-      }
-      baselineCount = baselineIds.size;
-      console.log(`[VENDOR-SYNC] Baseline sin filtro: ${baselineCount} IDs`);
-    } catch (err) {
-      console.warn(`[VENDOR-SYNC] Error obteniendo baseline: ${(err as Error).message}`);
-    }
-
-    // 5. Load mapping helpers
-    const despachoNameToOffice = await loadDespachoNameMap(supabase);
-    const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
-
-    // 6. Process each vendor
-    let filterWorking: boolean | null = null;
-    let totalFetched = 0;
-    let totalUpserted = 0;
-    let totalErrors = 0;
-    let vendorsProcessed = 0;
-    let vendorsWithData = 0;
-    let newDocsFound = 0;
-    const allDocIds = new Set<string>();
-    const vendorResults: Array<{
-      id_sicas: string;
-      nombre: string;
-      records: number;
-      newRecords: number;
-      pages: number;
-    }> = [];
-
-    for (const vendor of vendorBatch) {
-      const vendorId = String(vendor.id_sicas);
-      const conditions = `;0;0;${vendorId};Vendedor;0;0;DatDocumentos.IDVend`;
-
-      let vendorRecordCount = 0;
-      let vendorNewRecords = 0;
-      let vendorPages = 0;
-
-      try {
-        // Renew token periodically
-        if (vendorsProcessed > 0 && vendorsProcessed % 5 === 0) {
-          try {
-            await client.getValidToken();
-          } catch (e) {
-            console.warn(`[VENDOR-SYNC] Token renewal warning: ${(e as Error).message}`);
-          }
-        }
-
-        let page = 1;
-        let totalPages = 1;
-
-        while (page <= totalPages && page <= MAX_PAGES_PER_VENDOR) {
-          const resp = await client.readReport({
-            keyCode: keycode,
-            pageRequested: page,
-            itemsForPage: ITEMS_PER_PAGE,
-            sortFields: "Documento",
-            conditions,
-          });
-
-          const records = resp.Response?.[0]?.TableInfo || [];
-          const control = resp.Response?.[1]?.TableControl?.[0]
-            || resp.Response?.[0]?.TableControl?.[0];
-
-          if (page === 1 && control) {
-            totalPages = control.Pages || 1;
-          }
-
-          if (records.length === 0) break;
-
-          vendorRecordCount += records.length;
-          totalFetched += records.length;
-          vendorPages++;
-
-          // Check if these are different from baseline
-          for (const r of records) {
-            const id = r.IDDocto || r.IdDocto || r.iddocto;
-            if (id) {
-              const idStr = String(id);
-              allDocIds.add(idStr);
-              if (!baselineIds.has(idStr)) {
-                vendorNewRecords++;
-                newDocsFound++;
-              }
-            }
-          }
-
-          // Map and upsert documents
-          const documents = records
-            .map((raw: Record<string, unknown>) =>
-              mapDocument(raw, keycode, despachoNameToOffice, vendorToUser, vendorToOficina)
-            )
-            .filter((d: any) => d !== null && d?.id_docto);
-
-          if (documents.length > 0) {
-            const { upserted, errors } = await upsertDocuments(supabase, documents);
-            totalUpserted += upserted;
-            totalErrors += errors;
-          }
-
-          page++;
-        }
-
-        if (vendorRecordCount > 0) vendorsWithData++;
-
-        // Detect if filter is working
-        if (filterWorking === null && vendorsProcessed >= 2) {
-          if (allDocIds.size > baselineCount && newDocsFound > 0) {
-            filterWorking = true;
-          } else if (vendorsProcessed >= 5 && newDocsFound === 0 && allDocIds.size <= baselineCount) {
-            filterWorking = false;
-          }
-        }
-      } catch (err) {
-        console.error(`[VENDOR-SYNC] Error vendor ${vendorId}: ${(err as Error).message}`);
-        totalErrors++;
-      }
-
-      vendorsProcessed++;
-      vendorResults.push({
-        id_sicas: vendorId,
-        nombre: vendor.nombre || "",
-        records: vendorRecordCount,
-        newRecords: vendorNewRecords,
-        pages: vendorPages,
-      });
-
-      console.log(
-        `[VENDOR-SYNC] Vendor ${vendorId} (${vendor.nombre}): ${vendorRecordCount} records, ${vendorNewRecords} new, ${vendorPages} pages`
-      );
-    }
-
-    // If we still haven't determined, make final assessment
-    if (filterWorking === null) {
-      filterWorking = newDocsFound > 0 && allDocIds.size > baselineCount;
-    }
-
-    // 7. Update cursor
-    const lastProcessedVendor = vendorBatch[vendorBatch.length - 1];
-    const isComplete = startIdx + vendorBatch.length >= allVendors.length;
-    const previousSynced = cursor?.total_synced || 0;
-    const accumulatedSynced = previousSynced + totalUpserted;
-
-    await supabase.from("sicas_sync_cursors").upsert(
-      {
-        module: CURSOR_MODULE,
-        keycode: CURSOR_KEYCODE,
-        last_page: startIdx + vendorBatch.length,
-        total_pages: allVendors.length,
-        is_complete: isComplete,
-        total_synced: accumulatedSynced,
-        last_success_at: new Date().toISOString(),
-        last_cursor_date: String(lastProcessedVendor.id_sicas),
-        last_run_id: null,
-      },
-      { onConflict: "module,keycode" }
-    );
-
-    const durationMs = Date.now() - startTime;
-    const progressPercent = Math.round(
-      ((startIdx + vendorBatch.length) / allVendors.length) * 100
-    );
-
-    console.log(`[VENDOR-SYNC] ========== BATCH COMPLETE ==========`);
-    console.log(`[VENDOR-SYNC] Vendors: ${vendorsProcessed}, WithData: ${vendorsWithData}`);
-    console.log(`[VENDOR-SYNC] Fetched: ${totalFetched}, Upserted: ${totalUpserted}, NewDocs: ${newDocsFound}`);
-    console.log(`[VENDOR-SYNC] FilterWorking: ${filterWorking}, Duration: ${durationMs}ms`);
-
-    return jsonResponse(200, {
-      ok: true,
-      isComplete,
-      filterWorking,
-      progress: {
-        vendorsProcessed,
-        vendorsWithData,
-        vendorsTotal: allVendors.length,
-        vendorStart: startIdx + 1,
-        vendorEnd: startIdx + vendorBatch.length,
-        percent: progressPercent,
-      },
-      stats: {
-        baselineCount,
-        totalUniqueDocIds: allDocIds.size,
-        newDocsFound,
-        totalFetched,
-        totalUpserted,
-        totalErrors,
-        accumulatedSynced,
-        durationMs,
-      },
-      vendorResults: vendorResults.slice(0, 10),
+    await supabase.from("sicas_sync_jobs").insert({
+      id: jobId,
+      job_type: "vendor_sync",
+      status: "running",
+      started_at: new Date().toISOString(),
+      metadata: { mode, batch_size: VENDORS_PER_BATCH, parallel: PARALLEL_VENDORS },
     });
+
+    try {
+      const result = await runVendorSync(supabase, mode, startTime);
+
+      await supabase.from("sicas_sync_jobs").update({
+        status: "completed",
+        finished_at: new Date().toISOString(),
+        metadata: { ...result, duration_ms: Date.now() - startTime },
+      }).eq("id", jobId);
+
+      return jsonResponse(200, result);
+    } catch (err) {
+      await supabase.from("sicas_sync_jobs").update({
+        status: "failed",
+        finished_at: new Date().toISOString(),
+        error_message: (err as Error).message,
+      }).eq("id", jobId);
+      throw err;
+    }
   } catch (error) {
     const durationMs = Date.now() - startTime;
     console.error(`[VENDOR-SYNC] FATAL ERROR: ${(error as Error).message}`);
-    console.error(`[VENDOR-SYNC] Stack: ${(error as Error).stack}`);
 
     return jsonResponse(500, {
       ok: false,
@@ -324,25 +100,353 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-// ===== Helper functions (duplicated from sicas-sync-local-documents, no cross-deps) =====
+async function runVendorSync(
+  supabase: ReturnType<typeof createClient>,
+  mode: string,
+  startTime: number,
+) {
+  const { data: configRow } = await supabase
+    .from("sicas_production_config")
+    .select("*")
+    .eq("activo", true)
+    .limit(1)
+    .maybeSingle();
+
+  const keycode = configRow?.report_keycode_all || "HWS_DOCTOS";
+
+  // 1. Load all vendors from catalog
+  const { data: allVendors, error: vendErr } = await supabase
+    .from("sicas_catalogos")
+    .select("id_sicas, nombre")
+    .eq("catalog_type_id", 32)
+    .order("id_sicas", { ascending: true });
+
+  if (vendErr || !allVendors || allVendors.length === 0) {
+    return {
+      ok: false,
+      error: "No se encontraron vendedores en sicas_catalogos (type 32)",
+      vendorCount: 0,
+    };
+  }
+
+  console.log(`[VENDOR-SYNC] Total vendedores en catalogo: ${allVendors.length}`);
+
+  // 2. Read cursor
+  const { data: cursor } = await supabase
+    .from("sicas_sync_cursors")
+    .select("*")
+    .eq("module", CURSOR_MODULE)
+    .eq("keycode", CURSOR_KEYCODE)
+    .maybeSingle();
+
+  let lastVendorId = "";
+  if (mode === "full") {
+    lastVendorId = "";
+    console.log(`[VENDOR-SYNC] Modo FULL: reiniciando desde el primer vendedor`);
+  } else if (cursor?.last_cursor_date) {
+    lastVendorId = cursor.last_cursor_date || "";
+    console.log(`[VENDOR-SYNC] Modo CONTINUE: retomando despues de vendedor ${lastVendorId}`);
+  }
+
+  // 3. Find vendors to process in this batch
+  const startIdx = lastVendorId
+    ? allVendors.findIndex((v) => String(v.id_sicas) === lastVendorId) + 1
+    : 0;
+
+  if (startIdx >= allVendors.length) {
+    return {
+      ok: true,
+      isComplete: true,
+      filterWorking: null,
+      message: "Todos los vendedores ya fueron procesados. Usa mode=full para reiniciar.",
+      stats: {
+        totalVendors: allVendors.length,
+        totalSynced: cursor?.total_synced || 0,
+      },
+    };
+  }
+
+  const vendorBatch = allVendors.slice(startIdx, startIdx + VENDORS_PER_BATCH);
+  console.log(`[VENDOR-SYNC] Procesando vendedores ${startIdx + 1}-${startIdx + vendorBatch.length} de ${allVendors.length}`);
+
+  // 4. Get baseline (quick single page to detect filter effectiveness)
+  const client = await createSicasRestClientWithDbAuth();
+
+  let baselineIds = new Set<string>();
+  let baselineCount = 0;
+  try {
+    const baselineResp = await client.readReport({
+      keyCode: keycode,
+      pageRequested: 1,
+      itemsForPage: ITEMS_PER_PAGE,
+      sortFields: "Documento",
+    });
+    const baseRecords = baselineResp.Response?.[0]?.TableInfo || [];
+    for (const r of baseRecords) {
+      const id = r.IDDocto || r.IdDocto || r.iddocto;
+      if (id) baselineIds.add(String(id));
+    }
+    baselineCount = baselineIds.size;
+    console.log(`[VENDOR-SYNC] Baseline sin filtro: ${baselineCount} IDs`);
+  } catch (err) {
+    console.warn(`[VENDOR-SYNC] Error obteniendo baseline: ${(err as Error).message}`);
+  }
+
+  // 5. Load mapping helpers ONCE (cached for entire batch)
+  const [despachoNameToOffice, vendorMaps] = await Promise.all([
+    loadDespachoNameMap(supabase),
+    loadVendorMaps(supabase),
+  ]);
+  const { vendorToUser, vendorToOficina } = vendorMaps;
+
+  // 6. Process vendors in PARALLEL chunks
+  let filterWorking: boolean | null = null;
+  let totalFetched = 0;
+  let totalUpserted = 0;
+  let totalErrors = 0;
+  let vendorsProcessed = 0;
+  let vendorsWithData = 0;
+  let newDocsFound = 0;
+  const allDocIds = new Set<string>();
+  const vendorResults: Array<{
+    id_sicas: string;
+    nombre: string;
+    records: number;
+    newRecords: number;
+    pages: number;
+  }> = [];
+
+  // Process in parallel chunks of PARALLEL_VENDORS
+  for (let chunkStart = 0; chunkStart < vendorBatch.length; chunkStart += PARALLEL_VENDORS) {
+    // Check time budget
+    if (Date.now() - startTime > MAX_EXECUTION_MS) {
+      console.log(`[VENDOR-SYNC] Tiempo maximo alcanzado, deteniendo en chunk ${chunkStart}`);
+      break;
+    }
+
+    const chunk = vendorBatch.slice(chunkStart, chunkStart + PARALLEL_VENDORS);
+
+    // Renew token before each parallel chunk
+    try {
+      await client.getValidToken();
+    } catch (e) {
+      console.warn(`[VENDOR-SYNC] Token renewal warning: ${(e as Error).message}`);
+    }
+
+    // Process all vendors in this chunk concurrently
+    const chunkResults = await Promise.allSettled(
+      chunk.map((vendor) =>
+        processVendor(client, vendor, keycode, baselineIds)
+      )
+    );
+
+    // Collect all documents from this chunk for batch upsert
+    const allChunkDocs: Record<string, unknown>[] = [];
+
+    for (let i = 0; i < chunkResults.length; i++) {
+      const result = chunkResults[i];
+      const vendor = chunk[i];
+      const vendorId = String(vendor.id_sicas);
+
+      if (result.status === "fulfilled") {
+        const { records, newRecords, pages, docIds, rawRecords } = result.value;
+        totalFetched += records;
+        newDocsFound += newRecords;
+        vendorsProcessed++;
+        if (records > 0) vendorsWithData++;
+
+        for (const id of docIds) allDocIds.add(id);
+
+        // Map all raw records to documents
+        for (const raw of rawRecords) {
+          const doc = mapDocument(raw, keycode, despachoNameToOffice, vendorToUser, vendorToOficina);
+          if (doc && doc.id_docto) allChunkDocs.push(doc);
+        }
+
+        vendorResults.push({
+          id_sicas: vendorId,
+          nombre: vendor.nombre || "",
+          records,
+          newRecords,
+          pages,
+        });
+
+        console.log(
+          `[VENDOR-SYNC] Vendor ${vendorId} (${vendor.nombre}): ${records} records, ${newRecords} new, ${pages} pages`
+        );
+      } else {
+        console.error(`[VENDOR-SYNC] Error vendor ${vendorId}: ${result.reason}`);
+        totalErrors++;
+        vendorsProcessed++;
+        vendorResults.push({
+          id_sicas: vendorId,
+          nombre: vendor.nombre || "",
+          records: 0,
+          newRecords: 0,
+          pages: 0,
+        });
+      }
+    }
+
+    // Batch upsert all documents from this chunk at once
+    if (allChunkDocs.length > 0) {
+      const { upserted, errors } = await upsertDocumentsParallel(supabase, allChunkDocs);
+      totalUpserted += upserted;
+      totalErrors += errors;
+    }
+
+    // Detect if filter is working after processing a few vendors
+    if (filterWorking === null && vendorsProcessed >= 5) {
+      if (allDocIds.size > baselineCount && newDocsFound > 0) {
+        filterWorking = true;
+      } else if (newDocsFound === 0 && allDocIds.size <= baselineCount) {
+        filterWorking = false;
+      }
+    }
+  }
+
+  if (filterWorking === null) {
+    filterWorking = newDocsFound > 0 && allDocIds.size > baselineCount;
+  }
+
+  // 7. Update cursor
+  const lastProcessedVendor = vendorBatch[Math.min(vendorsProcessed - 1, vendorBatch.length - 1)];
+  const isComplete = startIdx + vendorsProcessed >= allVendors.length;
+  const previousSynced = cursor?.total_synced || 0;
+  const accumulatedSynced = previousSynced + totalUpserted;
+
+  await supabase.from("sicas_sync_cursors").upsert(
+    {
+      module: CURSOR_MODULE,
+      keycode: CURSOR_KEYCODE,
+      last_page: startIdx + vendorsProcessed,
+      total_pages: allVendors.length,
+      is_complete: isComplete,
+      total_synced: accumulatedSynced,
+      last_success_at: new Date().toISOString(),
+      last_cursor_date: String(lastProcessedVendor.id_sicas),
+      last_run_id: null,
+    },
+    { onConflict: "module,keycode" }
+  );
+
+  const durationMs = Date.now() - startTime;
+  const progressPercent = Math.round(
+    ((startIdx + vendorsProcessed) / allVendors.length) * 100
+  );
+
+  console.log(`[VENDOR-SYNC] ========== BATCH COMPLETE ==========`);
+  console.log(`[VENDOR-SYNC] Vendors: ${vendorsProcessed}, WithData: ${vendorsWithData}`);
+  console.log(`[VENDOR-SYNC] Fetched: ${totalFetched}, Upserted: ${totalUpserted}, NewDocs: ${newDocsFound}`);
+  console.log(`[VENDOR-SYNC] FilterWorking: ${filterWorking}, Duration: ${durationMs}ms`);
+
+  return {
+    ok: true,
+    isComplete,
+    filterWorking,
+    progress: {
+      vendorsProcessed,
+      vendorsWithData,
+      vendorsTotal: allVendors.length,
+      vendorStart: startIdx + 1,
+      vendorEnd: startIdx + vendorsProcessed,
+      percent: progressPercent,
+    },
+    stats: {
+      baselineCount,
+      totalUniqueDocIds: allDocIds.size,
+      newDocsFound,
+      totalFetched,
+      totalUpserted,
+      totalErrors,
+      accumulatedSynced,
+      durationMs,
+    },
+    vendorResults: vendorResults.slice(0, 10),
+  };
+}
+
+// Process a single vendor's data from SICAS (API calls only, no DB writes)
+async function processVendor(
+  client: Awaited<ReturnType<typeof createSicasRestClientWithDbAuth>>,
+  vendor: { id_sicas: string | number; nombre: string },
+  keycode: string,
+  baselineIds: Set<string>,
+): Promise<{
+  records: number;
+  newRecords: number;
+  pages: number;
+  docIds: string[];
+  rawRecords: Record<string, unknown>[];
+}> {
+  const vendorId = String(vendor.id_sicas);
+  const conditions = `;0;0;${vendorId};Vendedor;0;0;DatDocumentos.IDVend`;
+
+  let records = 0;
+  let newRecords = 0;
+  let pages = 0;
+  const docIds: string[] = [];
+  const rawRecords: Record<string, unknown>[] = [];
+
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages && page <= MAX_PAGES_PER_VENDOR) {
+    const resp = await client.readReport({
+      keyCode: keycode,
+      pageRequested: page,
+      itemsForPage: ITEMS_PER_PAGE,
+      sortFields: "Documento",
+      conditions,
+    });
+
+    const pageRecords = resp.Response?.[0]?.TableInfo || [];
+    const control = resp.Response?.[1]?.TableControl?.[0]
+      || resp.Response?.[0]?.TableControl?.[0];
+
+    if (page === 1 && control) {
+      totalPages = control.Pages || 1;
+    }
+
+    if (pageRecords.length === 0) break;
+
+    records += pageRecords.length;
+    pages++;
+
+    for (const r of pageRecords) {
+      const id = r.IDDocto || r.IdDocto || r.iddocto;
+      if (id) {
+        const idStr = String(id);
+        docIds.push(idStr);
+        if (!baselineIds.has(idStr)) {
+          newRecords++;
+        }
+      }
+      rawRecords.push(r);
+    }
+
+    page++;
+  }
+
+  return { records, newRecords, pages, docIds, rawRecords };
+}
+
+// ===== Helper functions =====
 
 async function loadDespachoNameMap(
   supabase: ReturnType<typeof createClient>
 ): Promise<Map<string, { oficina_id: string; desp_id: string }>> {
   const map = new Map<string, { oficina_id: string; desp_id: string }>();
 
-  const { data: catalogs } = await supabase
-    .from("sicas_catalogos")
-    .select("id_sicas, nombre")
-    .eq("catalog_type_id", 11);
+  const [catalogsR, mappingsR] = await Promise.all([
+    supabase.from("sicas_catalogos").select("id_sicas, nombre").eq("catalog_type_id", 11),
+    supabase.from("sicas_mapeo_despacho_oficina").select("id_sicas_despacho, movi_oficina_id"),
+  ]);
 
-  if (!catalogs || catalogs.length === 0) return map;
+  const catalogs = catalogsR.data || [];
+  const mappings = mappingsR.data || [];
 
-  const { data: mappings } = await supabase
-    .from("sicas_mapeo_despacho_oficina")
-    .select("id_sicas_despacho, movi_oficina_id");
-
-  if (!mappings) return map;
+  if (catalogs.length === 0) return map;
 
   const despIdToOficina = new Map<string, string>();
   for (const m of mappings) {
@@ -533,13 +637,11 @@ function mapDocument(
     is_renewable: isRenewable,
     renewal_days_remaining: renewalDays,
     source_keycode: keycode,
-    raw_data: raw,
-    raw_hash: JSON.stringify(raw),
     synced_at: new Date().toISOString(),
   };
 }
 
-async function upsertDocuments(
+async function upsertDocumentsParallel(
   supabase: ReturnType<typeof createClient>,
   documents: Record<string, unknown>[],
 ): Promise<{ upserted: number; errors: number }> {
@@ -548,51 +650,39 @@ async function upsertDocuments(
 
   let totalUpserted = 0;
   let totalErrors = 0;
-  const batchSize = 200;
 
-  for (let i = 0; i < validDocs.length; i += batchSize) {
-    const batch = validDocs.slice(i, i + batchSize);
-    const { error: upsertError, data: upserted } = await supabase
-      .from("sicas_documents")
-      .upsert(batch, { onConflict: "id_docto", ignoreDuplicates: false })
-      .select("id");
-
-    if (upsertError) {
-      console.error(`[VENDOR-SYNC] Upsert error: ${upsertError.message}`);
-      totalErrors += batch.length;
-    } else {
-      totalUpserted += upserted?.length || batch.length;
-    }
+  // Split into batches and run up to 3 upserts in parallel
+  const batches: Record<string, unknown>[][] = [];
+  for (let i = 0; i < validDocs.length; i += UPSERT_BATCH_SIZE) {
+    batches.push(validDocs.slice(i, i + UPSERT_BATCH_SIZE));
   }
 
-  const polizasVigentes = validDocs.map((d) => ({
-    id_documento: d.id_docto as string,
-    no_poliza: d.poliza || null,
-    vend_id: d.vend_id || null,
-    vend_nombre: d.vend_nombre || null,
-    desp_id: d.desp_id || null,
-    desp_nombre: d.desp_nombre || null,
-    aseguradora: d.compania || null,
-    ramo: d.ramo || null,
-    subramo: d.subramo || null,
-    contratante: d.cliente || null,
-    vigencia_desde: d.vigencia_desde || null,
-    vigencia_hasta: d.vigencia_hasta || null,
-    prima_neta: d.prima_neta || null,
-    prima_total: d.prima_total || null,
-    usuario_id: d.usuario_id || null,
-    oficina_id: d.oficina_id || null,
-    synced_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }));
+  const PARALLEL_UPSERTS = 3;
+  for (let i = 0; i < batches.length; i += PARALLEL_UPSERTS) {
+    const upsertChunk = batches.slice(i, i + PARALLEL_UPSERTS);
 
-  for (let i = 0; i < polizasVigentes.length; i += batchSize) {
-    const batch = polizasVigentes.slice(i, i + batchSize);
-    const { error } = await supabase
-      .from("sicas_polizas_vigentes")
-      .upsert(batch, { onConflict: "id_documento", ignoreDuplicates: false });
-    if (error) {
-      console.error(`[VENDOR-SYNC] sicas_polizas_vigentes error: ${error.message}`);
+    const results = await Promise.allSettled(
+      upsertChunk.map(async (batch) => {
+        const { error: upsertError, data: upserted } = await supabase
+          .from("sicas_documents")
+          .upsert(batch, { onConflict: "id_docto", ignoreDuplicates: false })
+          .select("id");
+
+        if (upsertError) {
+          console.error(`[VENDOR-SYNC] Upsert error: ${upsertError.message}`);
+          return { upserted: 0, errors: batch.length };
+        }
+        return { upserted: upserted?.length || batch.length, errors: 0 };
+      })
+    );
+
+    for (const r of results) {
+      if (r.status === "fulfilled") {
+        totalUpserted += r.value.upserted;
+        totalErrors += r.value.errors;
+      } else {
+        totalErrors += UPSERT_BATCH_SIZE;
+      }
     }
   }
 

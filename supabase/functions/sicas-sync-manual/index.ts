@@ -58,115 +58,83 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[SICAS-Sync-Manual] Iniciando sincronización: ${syncType || 'completa'}`);
 
-    // Sincronizar pólizas vigentes usando REST API
-    let polizasMetadata: any = null;
-    if (!syncType || syncType === 'polizas' || syncType === 'completa') {
-      try {
-        console.log('[SICAS-Sync-Manual] Llamando a sicas-get-polizas-vigentes-rest...');
+    // Run polizas and cobranza in PARALLEL for faster sync
+    const syncPolizas = async () => {
+      if (syncType && syncType !== 'polizas' && syncType !== 'completa') return;
 
-        const polizasResponse = await fetch(
-          `${Deno.env.get("SUPABASE_URL")}/functions/v1/sicas-get-polizas-vigentes-rest`,
-          {
-            method: "POST",
-            headers: {
-              "Authorization": authHeader,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              // Las fechas se asignan automáticamente en el edge function
-            }),
-          }
-        );
+      console.log('[SICAS-Sync-Manual] Llamando a sicas-get-polizas-vigentes-rest...');
 
-        const polizasData = await polizasResponse.json();
-
-        console.log('[SICAS-Sync-Manual] Respuesta REST:', {
-          ok: polizasResponse.ok,
-          status: polizasResponse.status,
-          success: polizasData.success,
-          polizasCount: polizasData.polizas?.length || 0
-        });
-
-        if (polizasResponse.ok && polizasData.success) {
-          results.polizas_vigentes = polizasData.polizas?.length || 0;
-          polizasMetadata = {
-            source: 'REST API (HWSDOC)',
-            records: results.polizas_vigentes,
-            sicas_response: polizasData.metadata
-          };
-          console.log(`[SICAS-Sync-Manual] Pólizas sincronizadas: ${results.polizas_vigentes}`);
-
-          // Verificar si hay warnings de SICAS
-          if (polizasData.metadata?.warnings?.length > 0) {
-            console.warn('[SICAS-Sync-Manual] Warnings:', polizasData.metadata.warnings);
-          }
-        } else {
-          const errorMsg = polizasData.error || polizasData.message || 'Error desconocido en SICAS REST';
-          results.errors.push(`Error en pólizas: ${errorMsg}`);
-          console.error("[SICAS-Sync-Manual] Error en pólizas REST:", errorMsg);
-
-          // Incluir metadata de error si está disponible
-          if (polizasData.metadata) {
-            polizasMetadata = polizasData.metadata;
-          }
+      const polizasResponse = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/sicas-get-polizas-vigentes-rest`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": authHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
         }
-      } catch (error) {
-        const errorMsg = error.message || 'Error de conexión con SICAS REST';
+      );
+
+      const polizasData = await polizasResponse.json();
+
+      if (polizasResponse.ok && polizasData.success) {
+        results.polizas_vigentes = polizasData.polizas?.length || 0;
+        console.log(`[SICAS-Sync-Manual] Pólizas sincronizadas: ${results.polizas_vigentes}`);
+      } else {
+        const errorMsg = polizasData.error || polizasData.message || 'Error desconocido en SICAS REST';
         results.errors.push(`Error en pólizas: ${errorMsg}`);
-        console.error("[SICAS-Sync-Manual] Error en pólizas:", error);
+        console.error("[SICAS-Sync-Manual] Error en pólizas REST:", errorMsg);
       }
-    }
+    };
 
-    // Sincronizar cobranza pendiente
-    if (!syncType || syncType === 'cobranza' || syncType === 'completa') {
-      try {
-        const cobranzaResponse = await fetch(
-          `${Deno.env.get("SUPABASE_URL")}/functions/v1/sicas-sync-cobranza`,
-          {
-            method: "POST",
-            headers: {
-              "Authorization": authHeader,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+    const syncCobranza = async () => {
+      if (syncType && syncType !== 'cobranza' && syncType !== 'completa') return;
 
-        if (cobranzaResponse.ok) {
-          const cobranzaData = await cobranzaResponse.json();
-          results.cobranza_pendiente = cobranzaData.records_count || 0;
-
-          // Si el reporte no está disponible, no es un error
-          if (cobranzaData.report_available === false) {
-            console.log(`[SICAS-Sync-Manual] Reporte de cobranza no disponible en SICAS`);
-          } else {
-            console.log(`[SICAS-Sync-Manual] Cobranza sincronizada: ${results.cobranza_pendiente}`);
-          }
-        } else {
-          const errorText = await cobranzaResponse.text();
-          let errorMsg = errorText;
-
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorMsg = errorJson.error || errorText;
-          } catch (e) {
-            // Si no es JSON, usar el texto tal cual
-          }
-
-          results.errors.push(`Error en cobranza: ${errorMsg}`);
-          console.error("[SICAS-Sync-Manual] Error en cobranza:", errorMsg);
+      const cobranzaResponse = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/sicas-sync-cobranza`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": authHeader,
+            "Content-Type": "application/json",
+          },
         }
-      } catch (error) {
-        results.errors.push(`Error en cobranza: ${error.message}`);
-        console.error("[SICAS-Sync-Manual] Error en cobranza:", error);
-      }
-    }
+      );
 
-    // Refrescar vistas materializadas
-    try {
-      console.log("[SICAS-Sync-Manual] Refrescando vistas...");
-      // Las vistas se actualizan automáticamente ya que son vistas normales
-    } catch (error) {
-      console.error("[SICAS-Sync-Manual] Error al refrescar vistas:", error);
+      if (cobranzaResponse.ok) {
+        const cobranzaData = await cobranzaResponse.json();
+        results.cobranza_pendiente = cobranzaData.records_count || 0;
+        if (cobranzaData.report_available === false) {
+          console.log(`[SICAS-Sync-Manual] Reporte de cobranza no disponible en SICAS`);
+        } else {
+          console.log(`[SICAS-Sync-Manual] Cobranza sincronizada: ${results.cobranza_pendiente}`);
+        }
+      } else {
+        const errorText = await cobranzaResponse.text();
+        let errorMsg = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMsg = errorJson.error || errorText;
+        } catch (_) { /* use text as-is */ }
+        results.errors.push(`Error en cobranza: ${errorMsg}`);
+        console.error("[SICAS-Sync-Manual] Error en cobranza:", errorMsg);
+      }
+    };
+
+    // Execute both in parallel
+    const [polizasResult, cobranzaResult] = await Promise.allSettled([
+      syncPolizas(),
+      syncCobranza(),
+    ]);
+
+    if (polizasResult.status === "rejected") {
+      results.errors.push(`Error en pólizas: ${polizasResult.reason?.message || 'Error de conexión'}`);
+      console.error("[SICAS-Sync-Manual] Error en pólizas:", polizasResult.reason);
+    }
+    if (cobranzaResult.status === "rejected") {
+      results.errors.push(`Error en cobranza: ${cobranzaResult.reason?.message || 'Error de conexión'}`);
+      console.error("[SICAS-Sync-Manual] Error en cobranza:", cobranzaResult.reason);
     }
 
     const success = results.errors.length === 0;

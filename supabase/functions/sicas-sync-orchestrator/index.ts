@@ -326,9 +326,12 @@ async function processBatch(
 
   console.log(`[ORCHESTRATOR] Job ${jobId}: starting batch from page ${startPage}`);
 
-  // Load mappings
-  const despachoNameToOffice = await loadDespachoNameMap(supabase);
-  const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
+  // Load mappings in parallel
+  const [despachoNameToOffice, vendorMaps] = await Promise.all([
+    loadDespachoNameMap(supabase),
+    loadVendorMaps(supabase),
+  ]);
+  const { vendorToUser, vendorToOficina } = vendorMaps;
 
   const client = await createSicasRestClientWithDbAuth();
 
@@ -574,17 +577,15 @@ async function loadDespachoNameMap(
 ): Promise<Map<string, { oficina_id: string; desp_id: string }>> {
   const map = new Map<string, { oficina_id: string; desp_id: string }>();
 
-  const { data: catalogs } = await supabase
-    .from("sicas_catalogos")
-    .select("id_sicas, nombre")
-    .eq("catalog_type_id", 11);
+  const [catalogsR, mappingsR] = await Promise.all([
+    supabase.from("sicas_catalogos").select("id_sicas, nombre").eq("catalog_type_id", 11),
+    supabase.from("sicas_mapeo_despacho_oficina").select("id_sicas_despacho, movi_oficina_id"),
+  ]);
+
+  const catalogs = catalogsR.data;
+  const mappings = mappingsR.data;
 
   if (!catalogs || catalogs.length === 0) return map;
-
-  const { data: mappings } = await supabase
-    .from("sicas_mapeo_despacho_oficina")
-    .select("id_sicas_despacho, movi_oficina_id");
-
   if (!mappings) return map;
 
   const despIdToOficina = new Map<string, string>();
@@ -813,8 +814,6 @@ function mapDocument(
     is_renewable: isRenewable,
     renewal_days_remaining: renewalDays,
     source_keycode: keycode,
-    raw_data: raw,
-    raw_hash: JSON.stringify(raw),
     synced_at: new Date().toISOString(),
   };
 }
@@ -830,7 +829,7 @@ async function upsertDocuments(
 
   let totalUpserted = 0;
   let totalErrors = 0;
-  const batchSize = 200;
+  const batchSize = 500;
 
   for (let i = 0; i < validDocs.length; i += batchSize) {
     const batch = validDocs.slice(i, i + batchSize);
