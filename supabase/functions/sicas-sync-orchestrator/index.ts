@@ -16,9 +16,9 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const ITEMS_PER_PAGE = 100;
-const TOKEN_RENEW_INTERVAL = 2;
-const MAX_EXECUTION_SECONDS = 45;
+const ITEMS_PER_PAGE = 1000;
+const TOKEN_RENEW_INTERVAL = 5;
+const MAX_EXECUTION_SECONDS = 48;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
 
     // ── ACTION: start ─ Create a new sync job and begin processing ──
     if (action === "start") {
-      const mode: string = body.mode || "full";
+      const mode: string = body.mode || "incremental";
       const triggeredBy: string | null = body.triggeredBy || null;
 
       // Check if there's already a running job
@@ -77,24 +77,46 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       const keycode = configRow?.report_keycode_all || "HWS_DOCTOS";
 
-      // Reset cursor if full mode
-      if (mode === "full") {
-        await supabase
-          .from("sicas_sync_cursors")
-          .upsert(
-            {
-              module: "documents",
-              keycode,
-              last_page: 0,
-              total_pages: null,
-              is_complete: false,
-              total_synced: 0,
-              last_success_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "module,keycode" }
-          );
+      // Determine incremental date filter
+      let incrementalSince: string | null = null;
+      if (mode === "incremental") {
+        // Get the last successful sync date
+        const { data: lastJob } = await supabase
+          .from("sicas_sync_jobs")
+          .select("finished_at")
+          .eq("status", "completed")
+          .order("finished_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (lastJob?.finished_at) {
+          // Go back 3 days buffer to catch any late-arriving records
+          const since = new Date(lastJob.finished_at);
+          since.setDate(since.getDate() - 3);
+          incrementalSince = since.toISOString().split("T")[0];
+          console.log(`[ORCHESTRATOR] Incremental mode: fetching since ${incrementalSince}`);
+        } else {
+          console.log(`[ORCHESTRATOR] No previous sync found, falling back to full mode`);
+        }
       }
+
+      // Reset cursor
+      await supabase
+        .from("sicas_sync_cursors")
+        .upsert(
+          {
+            module: "documents",
+            keycode,
+            last_page: 0,
+            total_pages: null,
+            is_complete: false,
+            total_synced: 0,
+            incremental_since: incrementalSince,
+            last_success_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "module,keycode" }
+        );
 
       // Create job
       const { data: job, error: jobError } = await supabase
@@ -300,6 +322,7 @@ async function processBatch(
 
   let startPage = (cursor?.last_page || 0) + 1;
   let knownTotalPages = cursor?.total_pages || job.total_pages || 0;
+  const incrementalSince: string | null = (cursor as any)?.incremental_since || null;
 
   if (cursor?.is_complete) {
     await supabase
@@ -370,12 +393,19 @@ async function processBatch(
 
     let response;
     try {
-      response = await client.readReport({
+      const reportOptions: Parameters<typeof client.readReport>[0] = {
         keyCode: keycode,
         pageRequested: page,
         itemsForPage: ITEMS_PER_PAGE,
-        sortFields: "Documento",
-      });
+        sortFields: "FCaptura DESC",
+      };
+
+      // Apply incremental date filter if available
+      if (incrementalSince) {
+        reportOptions.conditionsDirect = `FCaptura >= '${incrementalSince}'`;
+      }
+
+      response = await client.readReport(reportOptions);
       consecutiveErrors = 0;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
