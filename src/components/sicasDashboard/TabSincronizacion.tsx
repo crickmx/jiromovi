@@ -231,6 +231,9 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
                   Pagina {syncProgress.page}/{syncProgress.totalPages}
                   {syncProgress.totalInSicas > 0 && ` - ${formatNumber(syncProgress.totalInSicas)} registros en SICAS`}
                   {syncProgress.fetched > 0 && ` - ${formatNumber(syncProgress.fetched)} documentos unicos en BD`}
+                  {syncProgress.page > 0 && syncProgress.totalPages > 0 && syncProgress.page < syncProgress.totalPages && (
+                    ` - ~${Math.round((syncProgress.totalPages - syncProgress.page) * 1.1)} min restantes`
+                  )}
                 </p>
               </div>
             )}
