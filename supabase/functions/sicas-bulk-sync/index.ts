@@ -15,8 +15,8 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const ITEMS_PER_PAGE = 1000;
-const MAX_SECONDS = 140;
+const ITEMS_PER_PAGE = 500;
+const MAX_SECONDS = 55;
 const PAGES_PER_BATCH = 999;
 
 interface SyncState {
@@ -804,8 +804,8 @@ function mapDocument(
       renewalDays <= 90,
     renewal_days_remaining: renewalDays,
     source_keycode: keycode,
-    raw_data: raw,
-    raw_hash: JSON.stringify(raw),
+    raw_data: null,
+    raw_hash: null,
     synced_at: new Date().toISOString(),
   };
 }
@@ -818,45 +818,18 @@ async function upsertDocuments(
   if (validDocs.length === 0) return { upserted: 0, errors: 0 };
   let totalUpserted = 0;
   let totalErrors = 0;
-  const batchSize = 200;
+  const batchSize = 100;
   for (let i = 0; i < validDocs.length; i += batchSize) {
     const batch = validDocs.slice(i, i + batchSize);
-    const { error: upsertError, data: upserted } = await supabase
+    const { error: upsertError } = await supabase
       .from("sicas_documents")
-      .upsert(batch, { onConflict: "id_docto", ignoreDuplicates: false })
-      .select("id");
+      .upsert(batch, { onConflict: "id_docto", ignoreDuplicates: false });
     if (upsertError) {
       console.error(`[BULK-SYNC] Upsert error: ${upsertError.message}`);
       totalErrors += batch.length;
     } else {
-      totalUpserted += upserted?.length || batch.length;
+      totalUpserted += batch.length;
     }
-  }
-  const polizasVigentes = validDocs.map((d) => ({
-    id_documento: d.id_docto as string,
-    no_poliza: d.poliza || null,
-    vend_id: d.vend_id || null,
-    vend_nombre: d.vend_nombre || null,
-    desp_id: d.desp_id || null,
-    desp_nombre: d.desp_nombre || null,
-    aseguradora: d.compania || null,
-    ramo: d.ramo || null,
-    subramo: d.subramo || null,
-    contratante: d.cliente || null,
-    vigencia_desde: d.vigencia_desde || null,
-    vigencia_hasta: d.vigencia_hasta || null,
-    prima_neta: d.prima_neta || null,
-    prima_total: d.prima_total || null,
-    usuario_id: d.usuario_id || null,
-    oficina_id: d.oficina_id || null,
-    synced_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }));
-  for (let i = 0; i < polizasVigentes.length; i += batchSize) {
-    const batch = polizasVigentes.slice(i, i + batchSize);
-    await supabase
-      .from("sicas_polizas_vigentes")
-      .upsert(batch, { onConflict: "id_documento", ignoreDuplicates: false });
   }
   return { upserted: totalUpserted, errors: totalErrors };
 }
