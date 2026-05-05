@@ -48,6 +48,7 @@ interface Message {
   source_event: string | null;
   created_at: string;
   metadata: Record<string, unknown> | null;
+  attachment_urls?: Array<{ url?: string; type?: string; name?: string }> | null;
   read_at: string | null;
   sender_name?: string;
   attachments?: Attachment[];
@@ -133,6 +134,9 @@ export default function CentroContacto() {
 
   // Assign modal
   const [showAssignModal, setShowAssignModal] = useState(false);
+
+  // Attachment preview
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = usuario?.rol === 'Administrador';
@@ -224,14 +228,41 @@ export default function CentroContacto() {
           }
         }
 
-        setMessages(data.map(m => ({
-          ...m,
-          sender_name: m.direction === 'inbound'
-            ? ((m.metadata as Record<string, unknown>)?.sender_name as string || 'Agente')
-            : (m.sender_type === 'system' ? 'Sistema' : (m.sender_user_id ? senderMap[m.sender_user_id] || 'Usuario' : 'Sistema')),
-          attachments: attachMap[m.id] || [],
-          linked_task_id: taskLinkMap[m.id] || null,
-        })));
+        setMessages(data.map(m => {
+          let atts = attachMap[m.id] || [];
+          // Fallback: synthesize from attachment_urls JSONB if no records in attachments table
+          if (atts.length === 0 && m.attachment_urls && Array.isArray(m.attachment_urls)) {
+            atts = (m.attachment_urls as Array<{ url?: string; type?: string; name?: string }>).filter(a => a.url).map((a, i) => ({
+              id: `${m.id}_synth_${i}`,
+              file_name: a.name || 'Archivo',
+              file_type: a.type || 'document',
+              mime_type: null,
+              file_url: a.url || null,
+              direction: m.direction,
+            }));
+          }
+          // Fallback: use metadata.content_uri for old messages
+          if (atts.length === 0 && (m.metadata as Record<string, unknown>)?.content_uri) {
+            const meta = m.metadata as Record<string, unknown>;
+            const mType = (meta.message_type as string) || 'document';
+            atts = [{
+              id: `${m.id}_meta`,
+              file_name: mType === 'image' ? 'Imagen' : mType === 'video' ? 'Video' : mType === 'audio' ? 'Audio' : 'Archivo',
+              file_type: mType === 'sticker' ? 'image' : mType,
+              mime_type: null,
+              file_url: meta.content_uri as string,
+              direction: m.direction,
+            }];
+          }
+          return {
+            ...m,
+            sender_name: m.direction === 'inbound'
+              ? ((m.metadata as Record<string, unknown>)?.sender_name as string || 'Agente')
+              : (m.sender_type === 'system' ? 'Sistema' : (m.sender_user_id ? senderMap[m.sender_user_id] || 'Usuario' : 'Sistema')),
+            attachments: atts,
+            linked_task_id: taskLinkMap[m.id] || null,
+          };
+        }));
 
         // Mark messages as read and update local unread count
         if (usuario) {
@@ -280,12 +311,35 @@ export default function CentroContacto() {
         if (selectedAgent && newMsg.agent_user_id === selectedAgent.agent_user_id) {
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id)) return prev;
+            let realtimeAtts: Attachment[] = [];
+            const rawPayload = payload.new as Record<string, unknown>;
+            if (rawPayload.attachment_urls && Array.isArray(rawPayload.attachment_urls)) {
+              realtimeAtts = (rawPayload.attachment_urls as Array<{ url?: string; type?: string; name?: string }>).filter(a => a.url).map((a, i) => ({
+                id: `${newMsg.id}_rt_${i}`,
+                file_name: a.name || 'Archivo',
+                file_type: a.type || 'document',
+                mime_type: null,
+                file_url: a.url || null,
+                direction: newMsg.direction,
+              }));
+            } else if ((newMsg.metadata as Record<string, unknown>)?.content_uri) {
+              const meta = newMsg.metadata as Record<string, unknown>;
+              const mType = (meta.message_type as string) || 'document';
+              realtimeAtts = [{
+                id: `${newMsg.id}_rt_meta`,
+                file_name: mType === 'image' ? 'Imagen' : mType === 'video' ? 'Video' : mType === 'audio' ? 'Audio' : 'Archivo',
+                file_type: mType === 'sticker' ? 'image' : mType,
+                mime_type: null,
+                file_url: meta.content_uri as string,
+                direction: newMsg.direction,
+              }];
+            }
             const enriched: Message = {
               ...newMsg,
               sender_name: newMsg.direction === 'inbound'
                 ? ((newMsg.metadata as Record<string, unknown>)?.sender_name as string || 'Agente')
                 : 'Sistema',
-              attachments: [],
+              attachments: realtimeAtts,
             };
             return [...prev, enriched];
           });
@@ -599,6 +653,7 @@ export default function CentroContacto() {
                       isSelected={selectedMessageIds.has(msg.id)}
                       onToggleSelect={() => toggleMessageSelection(msg.id)}
                       linkedTaskId={msg.linked_task_id}
+                      onPreviewAttachment={setPreviewAttachment}
                     />
                   ))
                 )}
@@ -719,6 +774,12 @@ export default function CentroContacto() {
           onSuccess={() => { setShowAssignModal(false); loadConversations(); }}
         />
       )}
+      {previewAttachment && (
+        <AttachmentPreviewModal
+          attachment={previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+        />
+      )}
     </div>
   );
 }
@@ -727,9 +788,10 @@ export default function CentroContacto() {
 // MessageBubble Component
 // ============================================================
 
-function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, isSelected, onToggleSelect, linkedTaskId }: {
+function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, isSelected, onToggleSelect, linkedTaskId, onPreviewAttachment }: {
   message: Message; isAdmin: boolean; onRetry: (id: string) => void; formatDate: (s: string) => string;
   selectionMode: boolean; isSelected: boolean; onToggleSelect: () => void; linkedTaskId?: string | null;
+  onPreviewAttachment?: (att: Attachment) => void;
 }) {
   const isInbound = message.direction === 'inbound';
   const isSystem = message.sender_type === 'system' && !isInbound;
@@ -777,7 +839,7 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
             {message.attachments && message.attachments.length > 0 && (
               <div className="mt-2 space-y-1">
                 {message.attachments.map(att => (
-                  <AttachmentChip key={att.id} attachment={att} />
+                  <AttachmentChip key={att.id} attachment={att} onPreview={onPreviewAttachment} />
                 ))}
               </div>
             )}
@@ -803,7 +865,7 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
             {message.attachments && message.attachments.length > 0 && (
               <div className="mt-2 space-y-1">
                 {message.attachments.map(att => (
-                  <AttachmentChip key={att.id} attachment={att} />
+                  <AttachmentChip key={att.id} attachment={att} onPreview={onPreviewAttachment} />
                 ))}
               </div>
             )}
@@ -832,9 +894,66 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
 // AttachmentChip
 // ============================================================
 
-function AttachmentChip({ attachment }: { attachment: Attachment }) {
+function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onPreview?: (att: Attachment) => void }) {
   const iconMap: Record<string, typeof FileText> = { image: Image, audio: Music, video: Video, document: FileText };
   const Icon = iconMap[attachment.file_type] || Paperclip;
+  const isImage = attachment.file_type === 'image';
+  const isVideo = attachment.file_type === 'video';
+  const isAudio = attachment.file_type === 'audio';
+
+  if (isImage && attachment.file_url) {
+    return (
+      <div className="mt-1">
+        <div
+          className="relative group cursor-pointer rounded-lg overflow-hidden max-w-[220px] border border-gray-200 dark:border-gray-700"
+          onClick={() => onPreview?.(attachment)}
+        >
+          <img
+            src={attachment.file_url}
+            alt={attachment.file_name}
+            className="w-full max-h-[180px] object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+            <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
+      </div>
+    );
+  }
+
+  if (isAudio && attachment.file_url) {
+    return (
+      <div className="mt-1 max-w-[250px]">
+        <audio controls className="w-full h-8" preload="none">
+          <source src={attachment.file_url} type={attachment.mime_type || 'audio/ogg'} />
+        </audio>
+        <p className="text-[10px] text-gray-400 mt-0.5 truncate">{attachment.file_name}</p>
+      </div>
+    );
+  }
+
+  if (isVideo && attachment.file_url) {
+    return (
+      <div className="mt-1">
+        <div
+          className="relative group cursor-pointer rounded-lg overflow-hidden max-w-[220px] border border-gray-200 dark:border-gray-700 bg-black"
+          onClick={() => onPreview?.(attachment)}
+        >
+          <video className="w-full max-h-[150px] object-cover" preload="metadata">
+            <source src={attachment.file_url} type={attachment.mime_type || 'video/mp4'} />
+          </video>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+            <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
+              <Video className="w-5 h-5 text-gray-800" />
+            </div>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
+      </div>
+    );
+  }
 
   return (
     <a
@@ -846,6 +965,44 @@ function AttachmentChip({ attachment }: { attachment: Attachment }) {
       <Icon className="w-3.5 h-3.5 text-gray-500" />
       <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate max-w-[150px]">{attachment.file_name}</span>
     </a>
+  );
+}
+
+function AttachmentPreviewModal({ attachment, onClose }: { attachment: Attachment; onClose: () => void }) {
+  const isImage = attachment.file_type === 'image';
+  const isVideo = attachment.file_type === 'video';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative max-w-[90vw] max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center z-10 hover:bg-gray-100 dark:hover:bg-gray-700">
+          <X className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+        </button>
+        {isImage && (
+          <img
+            src={attachment.file_url || ''}
+            alt={attachment.file_name}
+            className="max-w-[85vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
+          />
+        )}
+        {isVideo && (
+          <video controls autoPlay className="max-w-[85vw] max-h-[80vh] rounded-lg shadow-2xl">
+            <source src={attachment.file_url || ''} type={attachment.mime_type || 'video/mp4'} />
+          </video>
+        )}
+        <div className="flex items-center justify-center gap-3 mt-3">
+          <span className="text-sm text-white/80">{attachment.file_name}</span>
+          <a
+            href={attachment.file_url || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs rounded-md transition-colors"
+          >
+            Descargar
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 

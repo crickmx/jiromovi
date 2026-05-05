@@ -130,13 +130,25 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
-        const messageBody = msg.text || (msg.contentUri ? `[${msg.type}]` : `[${msg.type}]`);
+        const hasMedia = !!msg.contentUri && msg.type !== "text";
+        const mediaTypeLabels: Record<string, string> = {
+          image: "Imagen",
+          video: "Video",
+          audio: "Audio",
+          document: "Documento",
+          sticker: "Sticker",
+          voice: "Audio",
+        };
+        const mediaLabel = mediaTypeLabels[msg.type] || msg.type;
+        const messageBody = msg.text || (hasMedia ? `[${mediaLabel}]` : "");
 
         const direction = isInbound ? "inbound" : "outbound";
         const status = isInbound ? "received" : "sent";
         const senderType = isInbound ? "user" : "system";
 
-        const { error: insertErr } = await supabase
+        const attachmentUrls = hasMedia ? [{ url: msg.contentUri, type: msg.type, name: msg.fileName || `${mediaLabel}` }] : null;
+
+        const { data: insertedMsg, error: insertErr } = await supabase
           .from("contact_center_messages")
           .insert({
             agent_user_id: agentUserId,
@@ -149,6 +161,7 @@ Deno.serve(async (req: Request) => {
             provider: "wazzup",
             provider_message_id: msg.messageId,
             provider_response: msg,
+            attachment_urls: attachmentUrls,
             created_at: msg.dateTime || new Date().toISOString(),
             updated_at: new Date().toISOString(),
             metadata: {
@@ -161,12 +174,50 @@ Deno.serve(async (req: Request) => {
               sender_phone: msg.chatId,
               source: isOutboundEcho ? "wazzup_direct" : "whatsapp_inbound",
             },
-          });
+          })
+          .select("id")
+          .maybeSingle();
 
         if (insertErr) {
           logs.push(`insert_error=${insertErr.message}`);
         } else {
           logs.push(`inserted_${msg.messageId}`);
+
+          // Insert attachment record for media messages
+          if (hasMedia && insertedMsg?.id) {
+            const fileTypeMap: Record<string, string> = {
+              image: "image",
+              video: "video",
+              audio: "audio",
+              voice: "audio",
+              document: "document",
+              sticker: "image",
+            };
+            const fileName = msg.fileName || `${mediaLabel}_${Date.now()}`;
+            const { error: attErr } = await supabase
+              .from("contact_center_attachments")
+              .insert({
+                message_id: insertedMsg.id,
+                agent_user_id: agentUserId,
+                provider: "wazzup",
+                provider_file_id: msg.messageId,
+                file_name: fileName,
+                file_type: fileTypeMap[msg.type] || "document",
+                mime_type: msg.mimeType || null,
+                file_url: msg.contentUri,
+                direction,
+                metadata: {
+                  content_uri: msg.contentUri,
+                  wazzup_type: msg.type,
+                  channel_id: msg.channelId,
+                },
+              });
+            if (attErr) {
+              logs.push(`att_insert_error=${attErr.message}`);
+            } else {
+              logs.push(`att_inserted_for_${msg.messageId}`);
+            }
+          }
 
           // Notify employees related to this agent's open tramites (only for inbound)
           if (isInbound) {
