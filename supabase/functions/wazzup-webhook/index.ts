@@ -180,32 +180,6 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          // Also notify admins from the agent's office
-          if (agentUserId) {
-            const { data: agentInfo } = await supabase
-              .from("usuarios")
-              .select("oficina_id")
-              .eq("id", agentUserId)
-              .maybeSingle();
-
-            if (agentInfo?.oficina_id) {
-              const { data: admins } = await supabase
-                .from("usuarios")
-                .select("id")
-                .eq("oficina_id", agentInfo.oficina_id)
-                .in("rol", ["Administrador", "Gerente"])
-                .eq("activo", true);
-
-              if (admins) {
-                for (const admin of admins) {
-                  if (!notifiedIds.has(admin.id)) {
-                    notifiedIds.add(admin.id);
-                  }
-                }
-              }
-            }
-          }
-
           // Insert bell notifications
           if (notifiedIds.size > 0) {
             const preview = messageBody.length > 60 ? messageBody.slice(0, 60) + "..." : messageBody;
