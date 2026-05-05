@@ -4,7 +4,7 @@ import {
   User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2,
   ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check,
   ListTodo, Plus, Link2, FileText, Image, Music, Video,
-  Paperclip, UserX, UserPlus, Eye,
+  Paperclip, UserX, UserPlus, Eye, Download, ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -956,25 +956,30 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
   }
 
   return (
-    <a
-      href={attachment.file_url || '#'}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-1.5 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+    <button
+      onClick={() => onPreview?.(attachment)}
+      className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors group cursor-pointer"
     >
-      <Icon className="w-3.5 h-3.5 text-gray-500" />
+      <Icon className="w-4 h-4 text-gray-500 shrink-0" />
       <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate max-w-[150px]">{attachment.file_name}</span>
-    </a>
+      <Eye className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+    </button>
   );
 }
 
 function AttachmentPreviewModal({ attachment, onClose }: { attachment: Attachment; onClose: () => void }) {
   const isImage = attachment.file_type === 'image';
   const isVideo = attachment.file_type === 'video';
+  const isDocument = attachment.file_type === 'document' || (!isImage && !isVideo && attachment.file_type !== 'audio');
+  const isPdf = isDocument && (
+    attachment.mime_type?.includes('pdf') ||
+    attachment.file_name?.toLowerCase().endsWith('.pdf') ||
+    attachment.file_url?.toLowerCase().includes('.pdf')
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative max-w-[90vw] max-h-[90vh]" onClick={e => e.stopPropagation()}>
+      <div className={`relative ${isDocument ? 'w-[90vw] h-[90vh] max-w-4xl' : 'max-w-[90vw] max-h-[90vh]'} flex flex-col`} onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center z-10 hover:bg-gray-100 dark:hover:bg-gray-700">
           <X className="w-4 h-4 text-gray-700 dark:text-gray-300" />
         </button>
@@ -990,15 +995,56 @@ function AttachmentPreviewModal({ attachment, onClose }: { attachment: Attachmen
             <source src={attachment.file_url || ''} type={attachment.mime_type || 'video/mp4'} />
           </video>
         )}
+        {isDocument && isPdf && (
+          <div className="flex-1 rounded-lg overflow-hidden shadow-2xl bg-white">
+            <iframe
+              src={attachment.file_url || ''}
+              className="w-full h-full"
+              title={attachment.file_name}
+            />
+          </div>
+        )}
+        {isDocument && !isPdf && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-white dark:bg-gray-900 rounded-lg shadow-2xl p-8">
+            <div className="w-20 h-20 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <FileText className="w-10 h-10 text-gray-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-medium text-gray-800 dark:text-gray-200">{attachment.file_name}</p>
+              {attachment.mime_type && (
+                <p className="text-sm text-gray-500 mt-1">{attachment.mime_type}</p>
+              )}
+              <p className="text-sm text-gray-400 mt-3">Vista previa no disponible para este tipo de archivo</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <a
+                href={attachment.file_url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm rounded-lg transition-colors"
+              >
+                <Download className="w-4 h-4" /> Descargar
+              </a>
+              <a
+                href={attachment.file_url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" /> Abrir en nueva ventana
+              </a>
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-center gap-3 mt-3">
           <span className="text-sm text-white/80">{attachment.file_name}</span>
           <a
             href={attachment.file_url || '#'}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs rounded-md transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs rounded-md transition-colors"
           >
-            Descargar
+            <Download className="w-3 h-3" /> Descargar
           </a>
         </div>
       </div>
