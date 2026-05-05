@@ -298,7 +298,7 @@ Deno.serve(async (req: Request) => {
         `[BULK-SYNC] Created job ${job.id}, page 1 done (${firstPage.records.length} records, ${result.upserted} upserted)`
       );
 
-      selfChain(supabaseUrl, supabaseKey, job.id);
+      await selfChain(supabase, supabaseUrl, supabaseKey, job.id);
 
       return jsonResponse(200, {
         ok: true,
@@ -460,7 +460,7 @@ Deno.serve(async (req: Request) => {
       );
 
       if (!isComplete) {
-        selfChain(supabaseUrl, supabaseKey, jobId);
+        await selfChain(supabase, supabaseUrl, supabaseKey, jobId);
       }
 
       return jsonResponse(200, {
@@ -536,23 +536,26 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-// ─── Self-chain ──────────────────────────────────────────────────────────
-function selfChain(supabaseUrl: string, serviceKey: string, jobId: string) {
+// ─── Self-chain using pg_net via database RPC (reliable async) ─────────
+async function selfChain(supabase: ReturnType<typeof createClient>, supabaseUrl: string, serviceKey: string, jobId: string): Promise<void> {
   const url = `${supabaseUrl}/functions/v1/sicas-bulk-sync`;
-  const promise = fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${serviceKey}`,
-      "Content-Type": "application/json",
-      Apikey: serviceKey,
-    },
-    body: JSON.stringify({ action: "continue", jobId }),
-  }).catch((err) => {
-    console.error(`[BULK-SYNC] Self-chain failed: ${err.message}`);
+  const headers = JSON.stringify({
+    'Authorization': `Bearer ${serviceKey}`,
+    'Content-Type': 'application/json',
+    'Apikey': serviceKey,
+  });
+  const body = JSON.stringify({ action: 'continue', jobId });
+
+  const { error } = await supabase.rpc('net_http_post_wrapper', {
+    target_url: url,
+    headers_json: headers,
+    body_json: body,
   });
 
-  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-    EdgeRuntime.waitUntil(promise);
+  if (error) {
+    console.error(`[BULK-SYNC] pg_net self-chain error: ${error.message}`);
+  } else {
+    console.log(`[BULK-SYNC] Self-chain queued via pg_net for job ${jobId}`);
   }
 }
 
