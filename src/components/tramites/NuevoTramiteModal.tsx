@@ -303,7 +303,7 @@ export function NuevoTramiteModal({
               details:commission_details!inner(id)
             `)
             .eq('details.usuario_id', targetUserId)
-            .in('status', ['confirmed', 'closed'])
+            .in('status', ['draft', 'confirmed', 'closed'])
             .order('date_from', { ascending: false })
             .limit(20);
 
@@ -320,7 +320,7 @@ export function NuevoTramiteModal({
       const { data } = await supabase
         .from('commission_batches')
         .select('*')
-        .in('status', ['confirmed', 'closed'])
+        .in('status', ['draft', 'confirmed', 'closed'])
         .order('date_from', { ascending: false })
         .limit(20);
 
