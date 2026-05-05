@@ -66,9 +66,10 @@ Deno.serve(async (req: Request) => {
         }
 
         const isInbound = msg.status === "inbound" && !msg.isEcho;
-        logs.push(`msg_${msg.messageId}_status=${msg.status}_echo=${msg.isEcho}_inbound=${isInbound}`);
+        const isOutboundEcho = msg.isEcho === true;
+        logs.push(`msg_${msg.messageId}_status=${msg.status}_echo=${msg.isEcho}_inbound=${isInbound}_outEcho=${isOutboundEcho}`);
 
-        if (!isInbound) {
+        if (!isInbound && !isOutboundEcho) {
           if (["sent", "delivered", "read"].includes(msg.status)) {
             await supabase
               .from("contact_center_messages")
@@ -131,16 +132,20 @@ Deno.serve(async (req: Request) => {
 
         const messageBody = msg.text || (msg.contentUri ? `[${msg.type}]` : `[${msg.type}]`);
 
+        const direction = isInbound ? "inbound" : "outbound";
+        const status = isInbound ? "received" : "sent";
+        const senderType = isInbound ? "user" : "system";
+
         const { error: insertErr } = await supabase
           .from("contact_center_messages")
           .insert({
             agent_user_id: agentUserId,
-            sender_type: "user",
+            sender_type: senderType,
             channel: "whatsapp",
             message_type: "manual",
-            direction: "inbound",
+            direction,
             body: messageBody,
-            status: "received",
+            status,
             provider: "wazzup",
             provider_message_id: msg.messageId,
             provider_response: msg,
@@ -154,6 +159,7 @@ Deno.serve(async (req: Request) => {
               content_uri: msg.contentUri || null,
               contact_name: msg.contact?.name || null,
               sender_phone: msg.chatId,
+              source: isOutboundEcho ? "wazzup_direct" : "whatsapp_inbound",
             },
           });
 
@@ -162,45 +168,46 @@ Deno.serve(async (req: Request) => {
         } else {
           logs.push(`inserted_${msg.messageId}`);
 
-          // Notify employees/admins related to this agent's open tramites
-          const displayName = agentName || "Agente";
-          const { data: asignaciones } = await supabase
-            .from("ticket_asignaciones")
-            .select("ejecutivo_id, ticket_id, tickets!inner(cerrado, agente_usuario_id)")
-            .eq("tickets.agente_usuario_id", agentUserId)
-            .eq("tickets.cerrado", false);
+          // Notify employees related to this agent's open tramites (only for inbound)
+          if (isInbound) {
+            const displayName = agentName || "Agente";
+            const { data: asignaciones } = await supabase
+              .from("ticket_asignaciones")
+              .select("ejecutivo_id, ticket_id, tickets!inner(cerrado, agente_usuario_id)")
+              .eq("tickets.agente_usuario_id", agentUserId)
+              .eq("tickets.cerrado", false);
 
-          const notifiedIds = new Set<string>();
+            const notifiedIds = new Set<string>();
 
-          if (asignaciones && asignaciones.length > 0) {
-            for (const asig of asignaciones) {
-              if (asig.ejecutivo_id && !notifiedIds.has(asig.ejecutivo_id)) {
-                notifiedIds.add(asig.ejecutivo_id);
+            if (asignaciones && asignaciones.length > 0) {
+              for (const asig of asignaciones) {
+                if (asig.ejecutivo_id && !notifiedIds.has(asig.ejecutivo_id)) {
+                  notifiedIds.add(asig.ejecutivo_id);
+                }
               }
             }
-          }
 
-          // Insert bell notifications
-          if (notifiedIds.size > 0) {
-            const preview = messageBody.length > 60 ? messageBody.slice(0, 60) + "..." : messageBody;
-            const notifications = [...notifiedIds].map(uid => ({
-              usuario_id: uid,
-              titulo: `Mensaje de WhatsApp de ${displayName}`,
-              mensaje: preview,
-              tipo: "info",
-              modulo: "Centro de Contacto",
-              accion_url: "/centro-contacto",
-              accion_texto: "Ver conversacion",
-              leida: false,
-              prioridad: "normal",
-              metadata: { agent_user_id: agentUserId, message_id: msg.messageId },
-            }));
+            if (notifiedIds.size > 0) {
+              const preview = messageBody.length > 60 ? messageBody.slice(0, 60) + "..." : messageBody;
+              const notifications = [...notifiedIds].map(uid => ({
+                usuario_id: uid,
+                titulo: `Mensaje de WhatsApp de ${displayName}`,
+                mensaje: preview,
+                tipo: "info",
+                modulo: "Centro de Contacto",
+                accion_url: "/centro-contacto",
+                accion_texto: "Ver conversacion",
+                leida: false,
+                prioridad: "normal",
+                metadata: { agent_user_id: agentUserId, message_id: msg.messageId },
+              }));
 
-            const { error: notifErr } = await supabase
-              .from("notificaciones")
-              .insert(notifications);
+              const { error: notifErr } = await supabase
+                .from("notificaciones")
+                .insert(notifications);
 
-            logs.push(`notified_${notifiedIds.size}_users${notifErr ? `_err=${notifErr.message}` : ""}`);
+              logs.push(`notified_${notifiedIds.size}_users${notifErr ? `_err=${notifErr.message}` : ""}`);
+            }
           }
         }
       }
