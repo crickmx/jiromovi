@@ -1168,7 +1168,7 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
           agente:usuarios!tickets_agente_usuario_id_fkey(nombre_completo)
         `)
         .eq('cerrado', false)
-        .eq('tipo_tramite', 'cotizacion_emision')
+        .eq('agente_usuario_id', agentUserId)
         .order('created_at', { ascending: false })
         .limit(50);
       if (data) {
