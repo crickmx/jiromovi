@@ -51,6 +51,7 @@ interface Message {
   read_at: string | null;
   sender_name?: string;
   attachments?: Attachment[];
+  linked_task_id?: string | null;
 }
 
 interface Attachment {
@@ -203,12 +204,29 @@ export default function CentroContacto() {
           }
         }
 
+        // Load task links for messages
+        const { data: taskLinks } = await supabase
+          .from('task_contact_center_items')
+          .select('contact_center_message_id, task_id')
+          .in('contact_center_message_id', msgIds)
+          .not('task_id', 'is', null);
+
+        const taskLinkMap: Record<string, string> = {};
+        if (taskLinks) {
+          for (const link of taskLinks) {
+            if (link.contact_center_message_id) {
+              taskLinkMap[link.contact_center_message_id] = link.task_id;
+            }
+          }
+        }
+
         setMessages(data.map(m => ({
           ...m,
           sender_name: m.direction === 'inbound'
             ? ((m.metadata as Record<string, unknown>)?.sender_name as string || 'Agente')
             : (m.sender_type === 'system' ? 'Sistema' : (m.sender_user_id ? senderMap[m.sender_user_id] || 'Usuario' : 'Sistema')),
           attachments: attachMap[m.id] || [],
+          linked_task_id: taskLinkMap[m.id] || null,
         })));
 
         // Mark messages as read
@@ -566,6 +584,7 @@ export default function CentroContacto() {
                       selectionMode={selectionMode}
                       isSelected={selectedMessageIds.has(msg.id)}
                       onToggleSelect={() => toggleMessageSelection(msg.id)}
+                      linkedTaskId={msg.linked_task_id}
                     />
                   ))
                 )}
@@ -694,9 +713,9 @@ export default function CentroContacto() {
 // MessageBubble Component
 // ============================================================
 
-function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, isSelected, onToggleSelect }: {
+function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, isSelected, onToggleSelect, linkedTaskId }: {
   message: Message; isAdmin: boolean; onRetry: (id: string) => void; formatDate: (s: string) => string;
-  selectionMode: boolean; isSelected: boolean; onToggleSelect: () => void;
+  selectionMode: boolean; isSelected: boolean; onToggleSelect: () => void; linkedTaskId?: string | null;
 }) {
   const isInbound = message.direction === 'inbound';
   const isSystem = message.sender_type === 'system' && !isInbound;
@@ -733,6 +752,11 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
               <ChannelIcon channel={message.channel} size={12} />
               <span className="text-[10px] font-medium text-green-600 dark:text-green-400">{message.sender_name}</span>
               <span className="text-[9px] bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-1 py-0.5 rounded">Recibido</span>
+              {linkedTaskId && (
+                <span className="text-[9px] bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-1 py-0.5 rounded flex items-center gap-0.5">
+                  <ListTodo className="w-2.5 h-2.5" /> Vinculado
+                </span>
+              )}
             </div>
             {message.subject && <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">{message.subject}</p>}
             <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{message.body}</p>
@@ -754,6 +778,11 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
               <ChannelIcon channel={message.channel} size={12} />
               <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{message.sender_name}</span>
               {message.message_type === 'automatic' && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1 py-0.5 rounded">Auto</span>}
+              {linkedTaskId && (
+                <span className="text-[9px] bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-1 py-0.5 rounded flex items-center gap-0.5">
+                  <ListTodo className="w-2.5 h-2.5" /> Vinculado
+                </span>
+              )}
             </div>
             {message.subject && <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">{message.subject}</p>}
             <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{message.body}</p>
