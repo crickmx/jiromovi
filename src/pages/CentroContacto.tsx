@@ -895,7 +895,6 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Tipo de tramite</label>
               <select value={tipoTramite} onChange={e => setTipoTramite(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3">
                 <option value="cotizacion_emision">Cotizacion / Emision</option>
-                <option value="registro_actividad">Registro actividad</option>
               </select>
             </div>
             <div>
@@ -948,7 +947,7 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
           agente:usuarios!tickets_agente_usuario_id_fkey(nombre_completo)
         `)
         .eq('cerrado', false)
-        .in('tipo_tramite', ['cotizacion_emision', 'registro_actividad'])
+        .eq('tipo_tramite', 'cotizacion_emision')
         .order('created_at', { ascending: false })
         .limit(50);
       if (data) {

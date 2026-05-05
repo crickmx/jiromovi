@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
         instrucciones: task.instrucciones,
         agente_usuario_id: agentUserId,
         creado_por: senderUser.id,
-        assigned_to_user_id: agentUserId,
+        assigned_to_user_id: senderUser.id,
         cerrado: false,
         metadata: {
           source: "centro_contacto",
