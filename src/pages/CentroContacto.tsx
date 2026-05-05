@@ -68,13 +68,15 @@ interface Oficina {
   nombre: string;
 }
 
-interface TaskOption {
+interface TramiteOption {
   id: string;
-  descripcion: string;
-  estatus: string;
+  folio: string;
+  instrucciones: string;
   prioridad: string;
-  fecha_vencimiento: string;
-  creado_por: string;
+  tipo_tramite: string;
+  estatus_nombre: string;
+  agente_nombre: string | null;
+  fecha_creacion: string;
 }
 
 async function callApi(slug: string, body: Record<string, unknown>) {
@@ -555,10 +557,10 @@ export default function CentroContacto() {
                   </span>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setShowCreateTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors">
-                      <Plus className="w-3 h-3" /> Crear tarea
+                      <Plus className="w-3 h-3" /> Crear tramite
                     </button>
                     <button onClick={() => setShowAddToTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors">
-                      <Link2 className="w-3 h-3" /> Agregar a tarea
+                      <Link2 className="w-3 h-3" /> Agregar a tramite
                     </button>
                     <button onClick={cancelSelection} className="p-1.5 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-teal-600">
                       <X className="w-4 h-4" />
@@ -843,42 +845,36 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
   agentUserId: string; agentName: string; selectedMessages: Message[];
   onClose: () => void; onSuccess: () => void;
 }) {
-  const [descripcion, setDescripcion] = useState(() => {
+  const [instrucciones, setInstrucciones] = useState(() => {
     const header = `Informacion agregada desde Centro de Contacto:\nAgente: ${agentName}\nCanal: WhatsApp\nFecha de captura: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n`;
     const msgs = selectedMessages.map((m, i) =>
       `${i + 1}. [${new Date(m.created_at).toLocaleString('es-MX')}] ${m.direction === 'inbound' ? agentName : (m.sender_name || 'Usuario')}:\n${m.body}`
     ).join('\n\n');
     return header + msgs;
   });
-  const [tipoActividad, setTipoActividad] = useState('Otro');
+  const [tipoTramite, setTipoTramite] = useState('registro_actividad');
   const [prioridad, setPrioridad] = useState('Media');
-  const [fechaVencimiento, setFechaVencimiento] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() + 7);
-    return d.toISOString().slice(0, 16);
-  });
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!descripcion.trim() || !fechaVencimiento) return;
+    if (!instrucciones.trim()) return;
     setSaving(true);
     const result = await callApi('create-task-from-contact-messages', {
       agentUserId,
       messageIds: selectedMessages.map(m => m.id),
       attachmentIds: selectedMessages.flatMap(m => (m.attachments || []).map(a => a.id)),
       task: {
-        descripcion: descripcion.trim(),
-        tipo_actividad: tipoActividad,
-        fecha_vencimiento: fechaVencimiento,
+        instrucciones: instrucciones.trim(),
+        tipo_tramite: tipoTramite,
         prioridad,
-        estatus: 'Pendiente',
       },
     });
     setSaving(false);
     if (result.success) {
-      alert('Tarea creada correctamente con los mensajes seleccionados.');
+      alert(`Tramite ${result.folio || ''} creado correctamente con los mensajes seleccionados.`);
       onSuccess();
     } else {
-      alert(result.error || 'Error al crear la tarea');
+      alert(result.error || 'Error al crear el tramite');
     }
   };
 
@@ -888,7 +884,7 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <ListTodo className="w-5 h-5 text-teal-600" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Crear tarea desde mensajes</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Crear tramite desde mensajes</h2>
           </div>
           <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5 text-gray-400" /></button>
         </div>
@@ -896,9 +892,12 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
           <p className="text-xs text-gray-500 dark:text-gray-400">{selectedMessages.length} mensaje(s) de {agentName}</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Tipo actividad</label>
-              <select value={tipoActividad} onChange={e => setTipoActividad(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3">
-                <option>Llamada</option><option>Email</option><option>Reunion</option><option>Otro</option>
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Tipo de tramite</label>
+              <select value={tipoTramite} onChange={e => setTipoTramite(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3">
+                <option value="registro_actividad">Registro actividad</option>
+                <option value="cotizacion_emision">Cotizacion / Emision</option>
+                <option value="registro_poliza">Registro poliza</option>
+                <option value="correccion_poliza_registrada">Correccion poliza</option>
               </select>
             </div>
             <div>
@@ -909,18 +908,14 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Fecha limite</label>
-            <input type="datetime-local" value={fechaVencimiento} onChange={e => setFechaVencimiento(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Descripcion</label>
-            <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={8} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3 resize-none" />
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Instrucciones</label>
+            <textarea value={instrucciones} onChange={e => setInstrucciones(e.target.value)} rows={8} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3 resize-none" />
           </div>
         </div>
         <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
           <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
-          <button onClick={handleSave} disabled={saving || !descripcion.trim()} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
-            {saving ? 'Creando...' : 'Crear tarea'}
+          <button onClick={handleSave} disabled={saving || !instrucciones.trim()} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
+            {saving ? 'Creando...' : 'Crear tramite'}
           </button>
         </div>
       </div>
@@ -937,33 +932,51 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
   onClose: () => void; onSuccess: () => void;
 }) {
   const { usuario } = useAuth();
-  const [tasks, setTasks] = useState<TaskOption[]>([]);
-  const [loadingTasks, setLoadingTasks] = useState(true);
-  const [searchTask, setSearchTask] = useState('');
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [tramites, setTramites] = useState<TramiteOption[]>([]);
+  const [loadingTramites, setLoadingTramites] = useState(true);
+  const [searchTramite, setSearchTramite] = useState('');
+  const [selectedTramiteId, setSelectedTramiteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
       if (!usuario) return;
-      setLoadingTasks(true);
+      setLoadingTramites(true);
       const { data } = await supabase
-        .from('crm_tareas')
-        .select('id, descripcion, estatus, prioridad, fecha_vencimiento, creado_por')
-        .in('estatus', ['Pendiente', 'En Proceso'])
-        .order('creado_en', { ascending: false })
+        .from('tickets')
+        .select(`
+          id, folio, instrucciones, prioridad, tipo_tramite, created_at,
+          ticket_estatus(nombre),
+          agente:usuarios!tickets_agente_usuario_id_fkey(nombre_completo)
+        `)
+        .eq('cerrado', false)
+        .order('created_at', { ascending: false })
         .limit(50);
-      if (data) setTasks(data);
-      setLoadingTasks(false);
+      if (data) {
+        setTramites(data.map((t: Record<string, unknown>) => ({
+          id: t.id as string,
+          folio: (t.folio as string) || '',
+          instrucciones: (t.instrucciones as string) || '',
+          prioridad: (t.prioridad as string) || 'Media',
+          tipo_tramite: (t.tipo_tramite as string) || '',
+          estatus_nombre: (t.ticket_estatus as Record<string, string>)?.nombre || '',
+          agente_nombre: (t.agente as Record<string, string>)?.nombre_completo || null,
+          fecha_creacion: t.created_at as string,
+        })));
+      }
+      setLoadingTramites(false);
     })();
   }, [usuario]);
 
-  const filteredTasks = tasks.filter(t =>
-    !searchTask || t.descripcion.toLowerCase().includes(searchTask.toLowerCase())
+  const filteredTramites = tramites.filter(t =>
+    !searchTramite ||
+    t.folio.toLowerCase().includes(searchTramite.toLowerCase()) ||
+    t.instrucciones.toLowerCase().includes(searchTramite.toLowerCase()) ||
+    (t.agente_nombre || '').toLowerCase().includes(searchTramite.toLowerCase())
   );
 
   const handleAdd = async () => {
-    if (!selectedTaskId) return;
+    if (!selectedTramiteId) return;
     setSaving(true);
     const commentText = `Informacion agregada desde Centro de Contacto:\nAgente: ${agentName}\nCanal: WhatsApp\nAgregado por: ${usuario?.nombre_completo || 'Usuario'}\nFecha: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n` +
       selectedMessages.map((m, i) =>
@@ -972,18 +985,24 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
 
     const result = await callApi('add-contact-messages-to-task', {
       agentUserId,
-      taskId: selectedTaskId,
+      ticketId: selectedTramiteId,
       messageIds: selectedMessages.map(m => m.id),
       attachmentIds: selectedMessages.flatMap(m => (m.attachments || []).map(a => a.id)),
       commentText,
     });
     setSaving(false);
     if (result.success) {
-      alert('Mensajes agregados correctamente a la tarea.');
+      alert('Mensajes agregados correctamente al tramite.');
       onSuccess();
     } else {
       alert(result.error || 'Error al agregar mensajes');
     }
+  };
+
+  const estatusColor = (estatus: string) => {
+    if (estatus === 'Iniciado') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+    if (estatus === 'En proceso') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+    return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
   };
 
   return (
@@ -992,7 +1011,7 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <Link2 className="w-5 h-5 text-teal-600" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Agregar a tarea existente</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Agregar a tramite existente</h2>
           </div>
           <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5 text-gray-400" /></button>
         </div>
@@ -1002,29 +1021,33 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              value={searchTask}
-              onChange={e => setSearchTask(e.target.value)}
-              placeholder="Buscar tarea por descripcion..."
+              value={searchTramite}
+              onChange={e => setSearchTramite(e.target.value)}
+              placeholder="Buscar por folio, instrucciones o agente..."
               className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
             />
           </div>
           <div className="max-h-60 overflow-y-auto space-y-1 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
-            {loadingTasks ? (
+            {loadingTramites ? (
               <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
-            ) : filteredTasks.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">No se encontraron tareas</p>
+            ) : filteredTramites.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No se encontraron tramites abiertos</p>
             ) : (
-              filteredTasks.map(t => (
+              filteredTramites.map(t => (
                 <button
                   key={t.id}
-                  onClick={() => setSelectedTaskId(t.id)}
-                  className={`w-full text-left p-2.5 rounded-lg transition-colors ${selectedTaskId === t.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300 dark:border-teal-700' : 'hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent'}`}
+                  onClick={() => setSelectedTramiteId(t.id)}
+                  className={`w-full text-left p-2.5 rounded-lg transition-colors ${selectedTramiteId === t.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300 dark:border-teal-700' : 'hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent'}`}
                 >
-                  <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{t.descripcion}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-semibold text-teal-700 dark:text-teal-400">{t.folio}</span>
+                    {t.agente_nombre && <span className="text-[10px] text-gray-500 dark:text-gray-400">- {t.agente_nombre}</span>}
+                  </div>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2 mt-0.5">{t.instrucciones}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.estatus === 'Pendiente' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{t.estatus}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${estatusColor(t.estatus_nombre)}`}>{t.estatus_nombre}</span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.prioridad === 'Alta' ? 'bg-red-100 text-red-700' : t.prioridad === 'Media' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>{t.prioridad}</span>
-                    <span className="text-[10px] text-gray-400">{new Date(t.fecha_vencimiento).toLocaleDateString('es-MX')}</span>
+                    <span className="text-[10px] text-gray-400">{new Date(t.fecha_creacion).toLocaleDateString('es-MX')}</span>
                   </div>
                 </button>
               ))
@@ -1033,8 +1056,8 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
         </div>
         <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
           <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
-          <button onClick={handleAdd} disabled={saving || !selectedTaskId} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
-            {saving ? 'Agregando...' : 'Agregar a tarea'}
+          <button onClick={handleAdd} disabled={saving || !selectedTramiteId} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
+            {saving ? 'Agregando...' : 'Agregar a tramite'}
           </button>
         </div>
       </div>

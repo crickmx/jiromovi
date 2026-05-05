@@ -12,14 +12,10 @@ interface CreateTaskRequest {
   messageIds: string[];
   attachmentIds?: string[];
   task: {
-    descripcion: string;
-    tipo_actividad: string;
-    fecha_vencimiento: string;
+    instrucciones: string;
+    tipo_tramite?: string;
     prioridad?: string;
-    estatus?: string;
-    board_id?: string;
-    asignado_a?: string;
-    contacto_id?: string;
+    assigned_to_user_id?: string;
   };
 }
 
@@ -46,8 +42,8 @@ Deno.serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!senderUser || !["Administrador", "Gerente", "Empleado"].includes(senderUser.rol)) {
-      throw new Error("No tienes permiso para crear tareas");
+    if (!senderUser || !["Administrador", "Gerente", "Empleado", "Ejecutivo"].includes(senderUser.rol)) {
+      throw new Error("No tienes permiso para crear tramites");
     }
 
     const { agentUserId, messageIds, attachmentIds, task } = await req.json() as CreateTaskRequest;
@@ -56,11 +52,10 @@ Deno.serve(async (req) => {
       throw new Error("Faltan campos requeridos");
     }
 
-    if (!task.descripcion || !task.tipo_actividad || !task.fecha_vencimiento) {
-      throw new Error("La tarea requiere descripcion, tipo_actividad y fecha_vencimiento");
+    if (!task.instrucciones) {
+      throw new Error("El tramite requiere instrucciones");
     }
 
-    // Verify agent exists and user has access
     const { data: agent } = await supabase
       .from("usuarios")
       .select("id, oficina_id, nombre_completo")
@@ -70,75 +65,108 @@ Deno.serve(async (req) => {
     if (!agent) throw new Error("Agente no encontrado");
 
     if (senderUser.rol !== "Administrador" && agent.oficina_id !== senderUser.oficina_id) {
-      throw new Error("No tienes permiso para crear tareas para este agente");
+      throw new Error("No tienes permiso para crear tramites para este agente");
     }
 
-    // Create the task
-    const { data: createdTask, error: taskError } = await supabase
-      .from("crm_tareas")
-      .insert({
-        descripcion: task.descripcion,
-        tipo_actividad: task.tipo_actividad,
-        fecha_vencimiento: task.fecha_vencimiento,
-        prioridad: task.prioridad || "Media",
-        estatus: task.estatus || "Pendiente",
-        board_id: task.board_id || null,
-        asignado_a: task.asignado_a || null,
-        contacto_id: task.contacto_id || null,
-        creado_por: senderUser.id,
-      })
+    const { data: estatusIniciado } = await supabase
+      .from("ticket_estatus")
       .select("id")
+      .eq("nombre", "Iniciado")
+      .maybeSingle();
+
+    if (!estatusIniciado) throw new Error("No se encontro el estatus Iniciado");
+
+    const { data: folioData, error: folioError } = await supabase.rpc("generate_next_folio");
+    if (folioError || !folioData) throw new Error("Error generando folio: " + (folioError?.message || "unknown"));
+
+    const { data: createdTicket, error: ticketError } = await supabase
+      .from("tickets")
+      .insert({
+        folio: folioData,
+        tipo_tramite: task.tipo_tramite || "registro_actividad",
+        estatus_id: estatusIniciado.id,
+        prioridad: task.prioridad || "Media",
+        instrucciones: task.instrucciones,
+        agente_usuario_id: agentUserId,
+        creado_por: senderUser.id,
+        assigned_to_user_id: task.assigned_to_user_id || senderUser.id,
+        cerrado: false,
+        metadata: {
+          source: "centro_contacto",
+          created_from_messages: messageIds.length,
+        },
+      })
+      .select("id, folio")
       .single();
 
-    if (taskError || !createdTask) {
-      throw new Error(`Error al crear tarea: ${taskError?.message || "unknown"}`);
+    if (ticketError || !createdTicket) {
+      throw new Error(`Error al crear tramite: ${ticketError?.message || "unknown"}`);
     }
 
-    // Link messages to task
-    const linkItems = messageIds.map((msgId) => ({
-      task_id: createdTask.id,
+    const linkItems: Record<string, unknown>[] = messageIds.map((msgId) => ({
+      ticket_id: createdTicket.id,
       contact_center_message_id: msgId,
       agent_user_id: agentUserId,
       added_by_user_id: senderUser.id,
       item_type: "message",
       action_type: "created_task",
-      metadata: { task_created_at: new Date().toISOString() },
+      metadata: { folio: createdTicket.folio, created_at: new Date().toISOString() },
     }));
 
-    // Link attachments if any
     if (attachmentIds && attachmentIds.length > 0) {
       for (const attId of attachmentIds) {
         linkItems.push({
-          task_id: createdTask.id,
-          contact_center_message_id: attId,
+          ticket_id: createdTicket.id,
+          contact_center_attachment_id: attId,
           agent_user_id: agentUserId,
           added_by_user_id: senderUser.id,
           item_type: "attachment",
           action_type: "created_task",
-          metadata: { task_created_at: new Date().toISOString() },
+          metadata: { folio: createdTicket.folio, created_at: new Date().toISOString() },
         });
+
+        const { data: attachment } = await supabase
+          .from("contact_center_attachments")
+          .select("file_name, file_url, file_type, mime_type")
+          .eq("id", attId)
+          .maybeSingle();
+
+        if (attachment) {
+          await supabase.from("ticket_archivos").insert({
+            ticket_id: createdTicket.id,
+            usuario_id: senderUser.id,
+            nombre: attachment.file_name,
+            url: attachment.file_url || "",
+            tipo: attachment.mime_type || attachment.file_type,
+            tamano: 0,
+            metadata: {
+              source: "centro_contacto",
+              contact_center_attachment_id: attId,
+            },
+          });
+        }
       }
     }
 
     await supabase.from("task_contact_center_items").insert(linkItems);
 
-    // Audit log
     await supabase.from("contact_center_audit_log").insert({
       user_id: senderUser.id,
       agent_user_id: agentUserId,
-      action: "create_task_from_messages",
-      task_id: createdTask.id,
+      action: "create_tramite_from_messages",
+      task_id: createdTicket.id,
       message_ids: messageIds,
       attachment_ids: attachmentIds || [],
       result: "success",
       metadata: {
-        task_descripcion: task.descripcion.substring(0, 200),
+        folio: createdTicket.folio,
         agent_name: agent.nombre_completo,
+        instrucciones: task.instrucciones.substring(0, 200),
       },
     });
 
     return new Response(
-      JSON.stringify({ success: true, task_id: createdTask.id }),
+      JSON.stringify({ success: true, ticket_id: createdTicket.id, folio: createdTicket.folio }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {

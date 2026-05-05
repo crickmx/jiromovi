@@ -9,7 +9,8 @@ const corsHeaders = {
 
 interface AddToTaskRequest {
   agentUserId: string;
-  taskId: string;
+  ticketId?: string;
+  taskId?: string;
   messageIds: string[];
   attachmentIds?: string[];
   commentText?: string;
@@ -38,49 +39,49 @@ Deno.serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!senderUser || !["Administrador", "Gerente", "Empleado"].includes(senderUser.rol)) {
-      throw new Error("No tienes permiso para modificar tareas");
+    if (!senderUser || !["Administrador", "Gerente", "Empleado", "Ejecutivo"].includes(senderUser.rol)) {
+      throw new Error("No tienes permiso para modificar tramites");
     }
 
-    const { agentUserId, taskId, messageIds, attachmentIds, commentText } = await req.json() as AddToTaskRequest;
+    const body = await req.json() as AddToTaskRequest;
+    const agentUserId = body.agentUserId;
+    const ticketId = body.ticketId || body.taskId;
+    const messageIds = body.messageIds;
+    const attachmentIds = body.attachmentIds;
+    const commentText = body.commentText;
 
-    if (!agentUserId || !taskId || !messageIds || messageIds.length === 0) {
-      throw new Error("Faltan campos requeridos: agentUserId, taskId, messageIds");
+    if (!agentUserId || !ticketId || !messageIds || messageIds.length === 0) {
+      throw new Error("Faltan campos requeridos: agentUserId, ticketId, messageIds");
     }
 
-    // Verify task exists and user has access
-    const { data: task } = await supabase
-      .from("crm_tareas")
-      .select("id, creado_por, board_id")
-      .eq("id", taskId)
+    const { data: ticket } = await supabase
+      .from("tickets")
+      .select("id, folio, creado_por, agente_usuario_id, assigned_to_user_id")
+      .eq("id", ticketId)
       .maybeSingle();
 
-    if (!task) throw new Error("Tarea no encontrada");
+    if (!ticket) throw new Error("Tramite no encontrado");
 
-    // Check permission: creator or admin
-    if (senderUser.rol !== "Administrador" && task.creado_por !== senderUser.id) {
-      // Check if user is board member with edit access
-      if (task.board_id) {
-        const { data: membership } = await supabase
-          .from("crm_board_members")
-          .select("rol")
-          .eq("board_id", task.board_id)
-          .eq("user_id", senderUser.id)
+    if (senderUser.rol !== "Administrador") {
+      const isCreator = ticket.creado_por === senderUser.id;
+      const isAssigned = ticket.assigned_to_user_id === senderUser.id;
+      if (!isCreator && !isAssigned) {
+        const { data: agentData } = await supabase
+          .from("usuarios")
+          .select("oficina_id")
+          .eq("id", ticket.agente_usuario_id)
           .maybeSingle();
 
-        if (!membership || !["owner", "admin", "editor"].includes(membership.rol)) {
-          throw new Error("No tienes permiso para modificar esta tarea");
+        if (!agentData || agentData.oficina_id !== senderUser.oficina_id) {
+          throw new Error("No tienes permiso para modificar este tramite");
         }
-      } else {
-        throw new Error("No tienes permiso para modificar esta tarea");
       }
     }
 
-    // Check for duplicates
     const { data: existingLinks } = await supabase
       .from("task_contact_center_items")
       .select("contact_center_message_id")
-      .eq("task_id", taskId)
+      .eq("ticket_id", ticketId)
       .in("contact_center_message_id", messageIds);
 
     const existingMsgIds = new Set((existingLinks || []).map((l) => l.contact_center_message_id));
@@ -88,14 +89,13 @@ Deno.serve(async (req) => {
 
     if (newMessageIds.length === 0 && (!attachmentIds || attachmentIds.length === 0)) {
       return new Response(
-        JSON.stringify({ success: true, message: "Todos los mensajes ya estaban vinculados a esta tarea", added: 0 }),
+        JSON.stringify({ success: true, message: "Todos los mensajes ya estaban vinculados a este tramite", added: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Link new messages
     const linkItems: Record<string, unknown>[] = newMessageIds.map((msgId) => ({
-      task_id: taskId,
+      ticket_id: ticketId,
       contact_center_message_id: msgId,
       agent_user_id: agentUserId,
       added_by_user_id: senderUser.id,
@@ -107,8 +107,7 @@ Deno.serve(async (req) => {
     if (attachmentIds && attachmentIds.length > 0) {
       for (const attId of attachmentIds) {
         linkItems.push({
-          task_id: taskId,
-          contact_center_message_id: null,
+          ticket_id: ticketId,
           contact_center_attachment_id: attId,
           agent_user_id: agentUserId,
           added_by_user_id: senderUser.id,
@@ -116,6 +115,27 @@ Deno.serve(async (req) => {
           action_type: "added_to_existing_task",
           metadata: { added_at: new Date().toISOString() },
         });
+
+        const { data: attachment } = await supabase
+          .from("contact_center_attachments")
+          .select("file_name, file_url, file_type, mime_type")
+          .eq("id", attId)
+          .maybeSingle();
+
+        if (attachment) {
+          await supabase.from("ticket_archivos").insert({
+            ticket_id: ticketId,
+            usuario_id: senderUser.id,
+            nombre: attachment.file_name,
+            url: attachment.file_url || "",
+            tipo: attachment.mime_type || attachment.file_type,
+            tamano: 0,
+            metadata: {
+              source: "centro_contacto",
+              contact_center_attachment_id: attId,
+            },
+          });
+        }
       }
     }
 
@@ -123,33 +143,24 @@ Deno.serve(async (req) => {
       await supabase.from("task_contact_center_items").insert(linkItems);
     }
 
-    // Add comment to task description if provided
     if (commentText) {
-      const { data: currentTask } = await supabase
-        .from("crm_tareas")
-        .select("descripcion")
-        .eq("id", taskId)
-        .single();
-
-      if (currentTask) {
-        const updatedDesc = currentTask.descripcion + "\n\n---\n" + commentText;
-        await supabase
-          .from("crm_tareas")
-          .update({ descripcion: updatedDesc })
-          .eq("id", taskId);
-      }
+      await supabase.from("ticket_comentarios").insert({
+        ticket_id: ticketId,
+        usuario_id: senderUser.id,
+        mensaje: commentText,
+      });
     }
 
-    // Audit log
     await supabase.from("contact_center_audit_log").insert({
       user_id: senderUser.id,
       agent_user_id: agentUserId,
-      action: "add_messages_to_existing_task",
-      task_id: taskId,
+      action: "add_messages_to_existing_tramite",
+      task_id: ticketId,
       message_ids: newMessageIds,
       attachment_ids: attachmentIds || [],
       result: "success",
       metadata: {
+        folio: ticket.folio,
         total_added: linkItems.length,
         duplicates_skipped: messageIds.length - newMessageIds.length,
       },
