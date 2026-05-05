@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
         estatus_id: estatusIniciado.id,
         prioridad: task.prioridad || "Media",
         instrucciones: task.instrucciones,
+        agente_id: agentUserId,
         agente_usuario_id: agentUserId,
         creado_por: senderUser.id,
         assigned_to_user_id: senderUser.id,
