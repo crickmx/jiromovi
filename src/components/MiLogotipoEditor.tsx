@@ -3,6 +3,7 @@ import { Upload, X, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { uploadUserLogo, deleteUserLogo, getEffectiveUserLogo } from '../lib/logoUtils';
+import { trackLogoUpdated } from '../lib/activityLogger';
 
 interface MiLogotipoEditorProps {
   userId: string;
@@ -42,6 +43,7 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
     if (result.success && result.url) {
       setLogoUrl(result.url);
       onLogoChange?.(result.url);
+      trackLogoUpdated();
     } else {
       setError(result.error || 'Error al subir el logotipo');
     }

@@ -9,6 +9,7 @@ import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import GraficaColumnas from '../components/comisiones/GraficaColumnas';
 import GraficaCircular from '../components/comisiones/GraficaCircular';
 import { normalizarRegimenFiscal } from '../lib/commissionFiscalCalculations';
+import { trackCommissionsViewed, trackCommissionsDetailOpened, trackCommissionsPdfDownloaded } from '../lib/activityLogger';
 
 export default function MisComisiones() {
   const { usuario } = useAuth();
@@ -25,6 +26,7 @@ export default function MisComisiones() {
   const [desgloseFiscal, setDesgloseFiscal] = useState<Map<string, any>>(new Map());
 
   useEffect(() => {
+    trackCommissionsViewed();
     loadCommissions();
     loadEstatus();
   }, [usuario]);
@@ -319,6 +321,7 @@ export default function MisComisiones() {
       const pdfBlob = await generateOrdenDePagoPDF(details, batch);
       const fileName = `Orden_de_Pago_${batch.name.replace(/\s+/g, '_')}_${usuario?.nombre_completo?.replace(/\s+/g, '_')}.pdf`;
       downloadPDF(pdfBlob, fileName);
+      trackCommissionsPdfDownloaded(batch.id);
     } catch (error: any) {
       console.error('Error generating PDF:', error);
       alert('Error al generar el PDF: ' + error.message);
@@ -377,7 +380,11 @@ export default function MisComisiones() {
                 <div className="p-4 sm:p-5">
                   <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                     <div
-                      onClick={() => setSelectedBatch(selectedBatch === batch.id ? null : batch.id)}
+                      onClick={() => {
+                        const opening = selectedBatch !== batch.id;
+                        setSelectedBatch(opening ? batch.id : null);
+                        if (opening) trackCommissionsDetailOpened(batch.id, batch.name || '');
+                      }}
                       className="flex-1 cursor-pointer"
                     >
                       <div className="flex items-start space-x-3 mb-3">

@@ -12,6 +12,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
 import { ResponseMessage } from './assistant/ResponseMessage';
+import { trackAssistantOpened, trackAssistantPromptSent, trackAssistantQuickPrompt, trackAssistantResponse } from '../lib/activityLogger';
 
 export function AssistantModal() {
   const {
@@ -39,8 +40,8 @@ export function AssistantModal() {
 
   useEffect(() => {
     if (isOpen) {
+      trackAssistantOpened();
       loadSuggestions();
-      // Scroll al final cuando se abre el modal
       if (messages.length > 0) {
         setTimeout(() => {
           scrollToBottom('auto');
@@ -81,12 +82,16 @@ export function AssistantModal() {
     setInputText('');
     setAttachedFiles([]);
 
+    trackAssistantPromptSent(text);
     await sendMessage(text, undefined, files);
+    trackAssistantResponse();
   };
 
   const handleSuggestionClick = async (suggestion: AssistantSuggestion) => {
     if (isSendingMessage) return;
+    trackAssistantQuickPrompt(suggestion.texto_pregunta);
     await sendMessage(suggestion.texto_pregunta);
+    trackAssistantResponse();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

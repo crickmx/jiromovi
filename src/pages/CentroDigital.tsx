@@ -8,6 +8,7 @@ import { EmptyState } from '../components/ui/empty-state';
 import { useAuth } from '../contexts/AuthContext';
 import { CarpetaModal } from '../components/centroDigital/CarpetaModal';
 import { SubirArchivoModal } from '../components/centroDigital/SubirArchivoModal';
+import { trackDigitalCenterOpened, trackDigitalFolderOpened, trackDigitalFileViewed, trackDigitalFileDownloaded, trackDigitalFileUploaded, trackDigitalFileDeleted } from '../lib/activityLogger';
 import {
   obtenerCarpetas,
   obtenerArchivos,
@@ -102,15 +103,18 @@ export default function CentroDigital() {
   const handlePrevisualizar = (archivo: CentroDigitalArchivo) => {
     if (esPrevisualizable(archivo.tipo_mime)) {
       setArchivoPrevisualizar(archivo);
+      trackDigitalFileViewed(archivo.nombre);
     }
   };
 
   useEffect(() => {
+    trackDigitalCenterOpened();
     cargarCarpetas();
   }, []);
 
   useEffect(() => {
     if (carpetaSeleccionada) {
+      trackDigitalFolderOpened(carpetaSeleccionada.nombre);
       cargarArchivos(carpetaSeleccionada.id);
     }
   }, [carpetaSeleccionada]);
@@ -169,6 +173,7 @@ export default function CentroDigital() {
   async function handleDescargar(archivo: CentroDigitalArchivo) {
     try {
       await descargarArchivo(archivo);
+      trackDigitalFileDownloaded(archivo.nombre);
     } catch (error) {
       console.error('Error al descargar archivo:', error);
       alert('Error al descargar el archivo');
@@ -179,7 +184,9 @@ export default function CentroDigital() {
     if (!confirm('¿Mover este archivo a la papelera?')) return;
 
     try {
+      const archivo = archivos.find(a => a.id === archivoId);
       await eliminarArchivo(archivoId);
+      if (archivo) trackDigitalFileDeleted(archivo.nombre);
       if (carpetaSeleccionada) {
         await cargarArchivos(carpetaSeleccionada.id);
       }
@@ -551,6 +558,7 @@ export default function CentroDigital() {
             onSuccess={async () => {
               setShowSubirModal(false);
               await cargarArchivos(carpetaSeleccionada.id);
+              trackDigitalFileUploaded(carpetaSeleccionada.nombre);
             }}
           />
         )}

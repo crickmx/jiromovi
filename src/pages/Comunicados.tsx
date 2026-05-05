@@ -13,6 +13,7 @@ import type { ComunicadoPublicacion, ComunicadoCategoria } from '../lib/comunica
 import { extraerTextoPlano, formatearFecha } from '../lib/comunicadosUtils';
 import { cn } from '@/lib/utils';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
+import { trackAnnouncementListViewed, trackAnnouncementOpened } from '../lib/activityLogger';
 
 export default function Comunicados() {
   const { usuario } = useAuth();
@@ -82,6 +83,7 @@ export default function Comunicados() {
   }, [categoriaSeleccionada, fechaDesde, fechaHasta]);
 
   useEffect(() => {
+    trackAnnouncementListViewed();
     cargarComunicados(0);
   }, [cargarComunicados]);
 
@@ -303,7 +305,10 @@ export default function Comunicados() {
                           ? "border-t-4 border-t-primary-500 border-l-neutral-200 border-r-neutral-200 border-b-neutral-200"
                           : "border-neutral-200 hover:border-primary-300"
                       )}
-                      onClick={() => navigate(`/comunicados/${comunicado.id}`)}
+                      onClick={() => {
+                        trackAnnouncementOpened(comunicado.titulo, comunicado.id);
+                        navigate(`/comunicados/${comunicado.id}`);
+                      }}
                     >
                       {/* Imagen */}
                       <div className="w-full h-48 overflow-hidden bg-neutral-100">

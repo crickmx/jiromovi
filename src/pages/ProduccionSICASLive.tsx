@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
-import { trackDocumentView } from '../lib/activityLogger';
+import { trackDocumentView, trackDashboardView, trackDashboardTabOpened, trackDashboardFilterApplied, trackDashboardDrilldown } from '../lib/activityLogger';
 import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle } from 'lucide-react';
 import {
   type DashboardTab, type DashboardScope, type DashboardKPIs,
@@ -111,6 +111,7 @@ export default function ProduccionSICASLive() {
 
   useEffect(() => {
     if (!usuario?.id) return;
+    trackDashboardView();
     (async () => {
       try {
         const s = await fetchUserScope(usuario.id);
@@ -163,13 +164,17 @@ export default function ProduccionSICASLive() {
     }
   }, [usuario?.id, scope, isAdmin]);
 
-  const handleTabChange = (tab: DashboardTab) => setActiveTab(tab);
+  const handleTabChange = (tab: DashboardTab) => {
+    setActiveTab(tab);
+    trackDashboardTabOpened(tab);
+  };
   const handleDocumentClick = (docId: string) => {
     setSelectedDocId(docId);
     trackDocumentView(docId, docId);
   };
   const handleEntityClick = (dimension: EntityModalState['dimension'], entityName: string, entityId?: string) => {
     setEntityModal({ dimension, entityName, entityId });
+    trackDashboardDrilldown(dimension, entityName);
   };
 
   const scopeLabel = effectiveScope?.scope === 'admin'
@@ -268,7 +273,10 @@ export default function ProduccionSICASLive() {
         {showFilters && (
           <FiltersPanel
             filters={filters}
-            onChange={setFilters}
+            onChange={(newFilters) => {
+              setFilters(newFilters);
+              trackDashboardFilterApplied(newFilters as unknown as Record<string, unknown>);
+            }}
             options={filterOptions}
             onClose={() => setShowFilters(false)}
           />

@@ -13,6 +13,7 @@ import type { StoreProducto, StoreCategoria } from '../lib/storeTypes';
 import { ProductoCard } from '../components/store/ProductoCard';
 import { ProductoDetalleModal } from '../components/store/ProductoDetalleModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
+import { trackStoreOpened, trackStoreProductViewed, trackStorePurchaseStarted } from '../lib/activityLogger';
 
 export default function Store() {
   const { usuario } = useAuth();
@@ -25,6 +26,10 @@ export default function Store() {
   const [productoSeleccionado, setProductoSeleccionado] = useState<StoreProducto | null>(null);
   const [cantidadCarrito, setCantidadCarrito] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    trackStoreOpened();
+  }, []);
 
   useEffect(() => {
     cargarDatos();
@@ -53,6 +58,7 @@ export default function Store() {
     if (!usuario?.id) return;
 
     try {
+      trackStorePurchaseStarted(producto.titulo);
       await agregarAlCarrito(usuario.id, producto.id, cantidad);
       setCantidadCarrito(prev => prev + cantidad);
       alert(`${producto.titulo} agregado al carrito`);
@@ -190,7 +196,10 @@ export default function Store() {
                 key={producto.id}
                 producto={producto}
                 onAgregar={handleAgregarAlCarrito}
-                onVerDetalle={setProductoSeleccionado}
+                onVerDetalle={(p) => {
+                  setProductoSeleccionado(p);
+                  trackStoreProductViewed(p.titulo, p.id);
+                }}
               />
             ))}
           </div>

@@ -82,6 +82,7 @@ const MODULE_LABELS: Record<string, string> = {
   assistant: 'Asistente',
   centro_digital: 'Centro Digital',
   comisiones: 'Comisiones',
+  configuracion: 'Configuracion',
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -94,6 +95,12 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   tramites: 'Tramites',
   system: 'Sistema',
   navigation: 'Navegacion',
+  store: 'Tienda',
+  comunicados: 'Comunicados',
+  assistant: 'Asistente',
+  digital: 'Centro Digital',
+  comisiones: 'Comisiones',
+  configuracion: 'Configuracion',
 };
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {

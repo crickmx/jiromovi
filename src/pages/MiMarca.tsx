@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
 import { getDisplayName } from '../lib/utils';
+import { trackSettingsOpened, trackBrandingUpdated, trackProfileImageUpdated, trackLogoUpdated } from '../lib/activityLogger';
 
 export default function MiMarca() {
   const { usuario, refreshUsuario } = useAuth();
@@ -16,6 +17,10 @@ export default function MiMarca() {
     usuario?.nombre_publico ?? defaultDisplayName
   );
   const [savingName, setSavingName] = useState(false);
+
+  useEffect(() => {
+    trackSettingsOpened();
+  }, []);
 
   useEffect(() => {
     if (!usuario) return;
@@ -43,6 +48,7 @@ export default function MiMarca() {
       setMessage({ type: 'error', text: 'No se pudo guardar el nombre' });
     } else {
       setMessage({ type: 'success', text: 'Nombre actualizado correctamente' });
+      trackBrandingUpdated('nombre_publico');
       await refreshUsuario();
     }
     setSavingName(false);
@@ -109,6 +115,7 @@ export default function MiMarca() {
       setMessage({ type: 'error', text: 'Error al actualizar el perfil' });
     } else {
       setMessage({ type: 'success', text: 'Foto de perfil actualizada correctamente' });
+      trackProfileImageUpdated();
       await refreshUsuario();
     }
 
