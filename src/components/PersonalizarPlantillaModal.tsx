@@ -8,7 +8,7 @@ import { getDisplayName } from '../lib/utils';
 
 interface Plantilla {
   id: string;
-  titulo: string;
+  titulo: string | null;
   tipo: 'imagen' | 'video';
   archivo_url: string;
   ancho: number | null;
@@ -48,14 +48,16 @@ const FUENTES = [
   'Comic Sans MS'
 ];
 
-const DEFAULT_STYLE: TextStyle = {
-  font: 'Inter',
-  color: '#0E23E2',
-  size: 24,
-  align: 'center',
-  bold: false,
-  italic: false
-};
+function getDefaultStyle(accentColor: string): TextStyle {
+  return {
+    font: 'Inter',
+    color: accentColor,
+    size: 24,
+    align: 'center',
+    bold: false,
+    italic: false
+  };
+}
 
 const DEFAULT_URLS = {
   miPaginaWeb: 'agentedeseguros.website',
@@ -78,6 +80,9 @@ function normalizeUrlForDisplay(url: string): string {
 
 export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSuccess }: PersonalizarPlantillaModalProps) {
   const { usuario } = useAuth();
+  const accentColor = (usuario as any)?.oficina?.accent_color || '#1F2937';
+  const DEFAULT_STYLE = getDefaultStyle(accentColor);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -141,7 +146,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
         const style = plantilla.estilo_texto_default;
         const baseStyle = {
           font: style.font || 'Inter',
-          color: style.color || '#0E23E2',
+          color: style.color || accentColor,
           size: style.size || 24,
           align: style.align || 'center',
           bold: false,
@@ -471,7 +476,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = `${plantilla.titulo}-${Date.now()}.png`;
+      link.download = `diseno-${Date.now()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -641,7 +646,7 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
           <div className="sticky top-0 z-20 bg-white border-b border-neutral-200 px-3 py-2 rounded-t-xl flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-neutral-900">
-                Personalizar: {plantilla.titulo}
+                Personalizar Diseño
               </h2>
               <p className="text-[10px] text-neutral-600">
                 Vista previa en tiempo real

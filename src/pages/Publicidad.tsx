@@ -1,26 +1,29 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, Search, Filter, CreditCard as Edit, Trash2, Copy, Palette } from 'lucide-react';
+import { Image, Video, Plus, Filter, Trash2, Palette } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import { trackPublicityCreated } from '../lib/activityLogger';
 
-interface Categoria {
-  id: string;
-  nombre: string;
-  descripcion: string | null;
-  orden: number;
-}
+const CATEGORIAS_LIST = [
+  'Redes Sociales', 'Campanas', 'Promociones', 'Eventos', 'Presentaciones',
+  'Email Marketing', 'Banners', 'Tarjetas de Presentacion', 'Otro'
+];
+
+const RAMOS_LIST = [
+  'GMM', 'Vida', 'Autos', 'Danos', 'Ahorro e Inversion', 'Empresarial',
+  'Responsabilidad Civil', 'Transporte', 'Agropecuario', 'Fianzas', 'Multirramo', 'Otro'
+];
 
 interface Plantilla {
   id: string;
-  titulo: string;
-  descripcion: string | null;
+  titulo: string | null;
   tipo: 'imagen' | 'video';
-  categoria_id: string | null;
+  categoria: string;
+  ramo: string;
   archivo_url: string;
   miniatura_url: string | null;
   ancho: number | null;
@@ -30,7 +33,7 @@ interface Plantilla {
   zona_logo?: any;
   zona_texto?: any;
   estilo_texto_default?: any;
-  publicidad_categorias?: { nombre: string } | null;
+  visible_para_todas_las_oficinas: boolean;
 }
 
 interface Diseno {
@@ -39,21 +42,21 @@ interface Diseno {
   archivo_resultante_url: string | null;
   created_at: string;
   publicidad_plantillas?: {
-    titulo: string;
+    titulo: string | null;
     tipo: string;
-    publicidad_categorias?: { nombre: string } | null;
+    categoria: string;
+    ramo: string;
   } | null;
 }
 
 export function Publicidad() {
   const { usuario } = useAuth();
-  const [activeTab, setActiveTab] = useState<'biblioteca' | 'mis-disenos' | 'admin'>('biblioteca');
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [activeTab, setActiveTab] = useState<'biblioteca' | 'mis-disenos'>('biblioteca');
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [disenos, setDisenos] = useState<Diseno[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoria, setSelectedCategoria] = useState<string>('todas');
+  const [selectedRamo, setSelectedRamo] = useState<string>('todos');
   const [selectedTipo, setSelectedTipo] = useState<string>('todos');
   const [showNuevaPlantillaModal, setShowNuevaPlantillaModal] = useState(false);
   const [showPersonalizarModal, setShowPersonalizarModal] = useState(false);
@@ -70,31 +73,27 @@ export function Publicidad() {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([
-      loadCategorias(),
-      activeTab === 'biblioteca' && loadPlantillas(),
-      activeTab === 'mis-disenos' && loadDisenos(),
-    ]);
+    if (activeTab === 'biblioteca') {
+      await loadPlantillas();
+    } else {
+      await loadDisenos();
+    }
     setLoading(false);
-  };
-
-  const loadCategorias = async () => {
-    const { data } = await supabase
-      .from('publicidad_categorias')
-      .select('*')
-      .order('orden');
-    if (data) setCategorias(data);
   };
 
   const loadPlantillas = async () => {
     let query = supabase
       .from('publicidad_plantillas')
-      .select('*, publicidad_categorias(nombre)')
+      .select('*')
       .eq('activa', true)
       .order('created_at', { ascending: false });
 
     if (selectedCategoria !== 'todas') {
-      query = query.eq('categoria_id', selectedCategoria);
+      query = query.eq('categoria', selectedCategoria);
+    }
+
+    if (selectedRamo !== 'todos') {
+      query = query.eq('ramo', selectedRamo);
     }
 
     if (selectedTipo !== 'todos') {
@@ -102,7 +101,37 @@ export function Publicidad() {
     }
 
     const { data } = await query;
-    if (data) setPlantillas(data);
+    if (!data) {
+      setPlantillas([]);
+      return;
+    }
+
+    // Filter by office visibility
+    const userOfficeId = usuario?.oficina_id;
+    const filtered = await filterByOfficeVisibility(data, userOfficeId);
+    setPlantillas(filtered);
+  };
+
+  const filterByOfficeVisibility = async (items: Plantilla[], userOfficeId?: string): Promise<Plantilla[]> => {
+    if (!userOfficeId) return items.filter(p => p.visible_para_todas_las_oficinas);
+
+    const restrictedIds = items
+      .filter(p => !p.visible_para_todas_las_oficinas)
+      .map(p => p.id);
+
+    if (restrictedIds.length === 0) return items;
+
+    const { data: allowedMappings } = await supabase
+      .from('publicidad_plantilla_oficinas')
+      .select('plantilla_id')
+      .in('plantilla_id', restrictedIds)
+      .eq('oficina_id', userOfficeId);
+
+    const allowedSet = new Set((allowedMappings || []).map(m => m.plantilla_id));
+
+    return items.filter(p =>
+      p.visible_para_todas_las_oficinas || allowedSet.has(p.id)
+    );
   };
 
   const loadDisenos = async () => {
@@ -115,7 +144,8 @@ export function Publicidad() {
         publicidad_plantillas(
           titulo,
           tipo,
-          publicidad_categorias(nombre)
+          categoria,
+          ramo
         )
       `)
       .eq('usuario_id', usuario.id)
@@ -124,10 +154,11 @@ export function Publicidad() {
     if (data) setDisenos(data);
   };
 
-  const filteredPlantillas = plantillas.filter(p =>
-    p.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    if (activeTab === 'biblioteca') {
+      loadPlantillas();
+    }
+  }, [selectedCategoria, selectedRamo, selectedTipo]);
 
   const handleUsarPlantilla = (plantilla: Plantilla) => {
     if (isAgente && !hasPlanPremium) {
@@ -145,12 +176,12 @@ export function Publicidad() {
       return;
     }
 
-    if (!confirm(`¿Estás seguro de que deseas eliminar la plantilla "${plantilla.titulo}"? Esta acción no se puede deshacer.`)) {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta plantilla? Esta acción no se puede deshacer.')) {
       return;
     }
 
     try {
-      const { data, error } = await supabase.rpc('deactivate_plantilla', {
+      const { error } = await supabase.rpc('deactivate_plantilla', {
         plantilla_id: plantilla.id
       });
 
@@ -185,10 +216,10 @@ export function Publicidad() {
     }
   };
 
-  const handleDescargarDiseno = (url: string, titulo: string) => {
+  const handleDescargarDiseno = (url: string) => {
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${titulo}-${Date.now()}.png`;
+    link.download = `diseno-${Date.now()}.png`;
     link.click();
   };
 
@@ -242,59 +273,46 @@ export function Publicidad() {
               <span className="text-sm sm:text-base">Mis Diseños</span>
             </div>
           </button>
-          {isAdmin && (
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold transition-all min-h-[44px] ${
-                activeTab === 'admin'
-                  ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <Edit className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">Gestión</span>
-              </div>
-            </button>
-          )}
         </div>
       </div>
 
       {activeTab === 'biblioteca' && (
         <div className="space-y-4 sm:space-y-6">
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-3 sm:p-4">
-            <div className="flex flex-col gap-3 sm:gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4 sm:w-5 sm:h-5" />
-                <input
-                  type="text"
-                  placeholder="Buscar plantillas..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <select
-                  value={selectedCategoria}
-                  onChange={(e) => setSelectedCategoria(e.target.value)}
-                  className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
-                >
-                  <option value="todas">Todas las categorías</option>
-                  {categorias.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-                  ))}
-                </select>
-                <select
-                  value={selectedTipo}
-                  onChange={(e) => setSelectedTipo(e.target.value)}
-                  className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
-                >
-                  <option value="todos">Todos los tipos</option>
-                  <option value="imagen">Imágenes</option>
-                  <option value="video">Videos</option>
-                </select>
-              </div>
+            <div className="flex items-center gap-2 mb-3">
+              <Filter className="w-4 h-4 text-neutral-500" />
+              <span className="text-sm font-medium text-neutral-700">Filtros</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <select
+                value={selectedCategoria}
+                onChange={(e) => setSelectedCategoria(e.target.value)}
+                className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
+              >
+                <option value="todas">Todas las categorías</option>
+                {CATEGORIAS_LIST.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <select
+                value={selectedRamo}
+                onChange={(e) => setSelectedRamo(e.target.value)}
+                className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
+              >
+                <option value="todos">Todos los ramos</option>
+                {RAMOS_LIST.map(ramo => (
+                  <option key={ramo} value={ramo}>{ramo}</option>
+                ))}
+              </select>
+              <select
+                value={selectedTipo}
+                onChange={(e) => setSelectedTipo(e.target.value)}
+                className="px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all min-h-[44px]"
+              >
+                <option value="todos">Todos los tipos</option>
+                <option value="imagen">Imágenes</option>
+                <option value="video">Videos</option>
+              </select>
             </div>
           </div>
 
@@ -302,7 +320,7 @@ export function Publicidad() {
             <div className="flex justify-center py-12">
               <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
             </div>
-          ) : filteredPlantillas.length === 0 ? (
+          ) : plantillas.length === 0 ? (
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 p-8 sm:p-12 text-center">
               <Palette className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300 mx-auto mb-3 sm:mb-4" />
               <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
@@ -314,7 +332,7 @@ export function Publicidad() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {filteredPlantillas.map(plantilla => (
+              {plantillas.map(plantilla => (
                 <div
                   key={plantilla.id}
                   className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 active:scale-[0.98]"
@@ -323,7 +341,7 @@ export function Publicidad() {
                     {plantilla.miniatura_url ? (
                       <img
                         src={plantilla.miniatura_url}
-                        alt={plantilla.titulo}
+                        alt={plantilla.categoria}
                         className="w-full h-full object-contain"
                       />
                     ) : (
@@ -339,7 +357,7 @@ export function Publicidad() {
                       <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
                         plantilla.tipo === 'imagen'
                           ? 'bg-primary-100 text-primary-700'
-                          : 'bg-purple-100 text-purple-700'
+                          : 'bg-teal-100 text-teal-700'
                       }`}>
                         {plantilla.tipo === 'imagen' ? 'Imagen' : 'Video'}
                       </span>
@@ -358,15 +376,14 @@ export function Publicidad() {
                     </div>
                   </div>
                   <div className="p-3 sm:p-4">
-                    <h3 className="text-base sm:text-lg font-semibold text-neutral-900 mb-1 line-clamp-1">{plantilla.titulo}</h3>
-                    {plantilla.descripcion && (
-                      <p className="text-xs sm:text-sm text-neutral-600 mb-2 sm:mb-3 line-clamp-2">{plantilla.descripcion}</p>
-                    )}
-                    {plantilla.publicidad_categorias && (
-                      <span className="inline-block px-2 py-1 bg-neutral-100 text-neutral-700 text-xs rounded-lg mb-2 sm:mb-3">
-                        {plantilla.publicidad_categorias.nombre}
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      <span className="inline-block px-2 py-0.5 bg-neutral-100 text-neutral-700 text-xs rounded-lg font-medium">
+                        {plantilla.categoria}
                       </span>
-                    )}
+                      <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium">
+                        {plantilla.ramo}
+                      </span>
+                    </div>
                     <button
                       onClick={() => handleUsarPlantilla(plantilla)}
                       className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 sm:py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold text-sm sm:text-base min-h-[44px] active:scale-95"
@@ -427,9 +444,18 @@ export function Publicidad() {
                     )}
                   </div>
                   <div className="p-3 sm:p-4">
-                    <h3 className="text-base sm:text-lg font-semibold text-neutral-900 mb-1 line-clamp-1">
-                      {diseno.publicidad_plantillas?.titulo || 'Diseño'}
-                    </h3>
+                    <div className="flex flex-wrap gap-1.5 mb-1">
+                      {diseno.publicidad_plantillas?.categoria && (
+                        <span className="inline-block px-2 py-0.5 bg-neutral-100 text-neutral-700 text-xs rounded-lg font-medium">
+                          {diseno.publicidad_plantillas.categoria}
+                        </span>
+                      )}
+                      {diseno.publicidad_plantillas?.ramo && (
+                        <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium">
+                          {diseno.publicidad_plantillas.ramo}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs sm:text-sm text-neutral-600 mb-3">
                       {new Date(diseno.created_at).toLocaleDateString('es-MX', {
                         day: 'numeric',
@@ -439,7 +465,7 @@ export function Publicidad() {
                     </p>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleDescargarDiseno(diseno.archivo_resultante_url || '', diseno.publicidad_plantillas?.titulo || 'Diseño')}
+                        onClick={() => handleDescargarDiseno(diseno.archivo_resultante_url || '')}
                         className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white py-2.5 sm:py-3 rounded-xl hover:shadow-medium transition-all duration-200 hover:scale-105 font-semibold text-sm sm:text-base min-h-[44px] active:scale-95"
                       >
                         Descargar
@@ -460,17 +486,6 @@ export function Publicidad() {
         </div>
       )}
 
-      {activeTab === 'admin' && isAdmin && (
-        <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
-          <h2 className="text-2xl font-display font-bold text-neutral-900 mb-6">
-            Gestión de Plantillas
-          </h2>
-          <p className="text-neutral-600">
-            Herramientas de administración próximamente disponibles
-          </p>
-        </div>
-      )}
-
       <NuevaPlantillaModal
         isOpen={showNuevaPlantillaModal}
         onClose={() => setShowNuevaPlantillaModal(false)}
@@ -478,7 +493,6 @@ export function Publicidad() {
           setShowNuevaPlantillaModal(false);
           loadData();
         }}
-        categorias={categorias}
       />
 
       <PersonalizarPlantillaModal
@@ -490,7 +504,7 @@ export function Publicidad() {
         plantilla={selectedPlantilla}
         onSuccess={() => {
           setShowPersonalizarModal(false);
-          trackPublicityCreated(selectedPlantilla?.nombre || 'publicidad');
+          trackPublicityCreated(selectedPlantilla?.categoria || 'publicidad');
           setSelectedPlantilla(null);
           setActiveTab('mis-disenos');
           loadData();
