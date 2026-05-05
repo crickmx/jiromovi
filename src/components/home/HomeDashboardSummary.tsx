@@ -61,19 +61,19 @@ export function HomeDashboardSummary({ userId }: Props) {
       <ProductionComparisonCard
         data={productionData}
         loading={loadingProduction}
-        onClick={() => navigate('/produccion-sicas')}
+        onClick={() => navigate('/mi-produccion-sicas-live')}
       />
       <RenewalsCard
         data={renewalsData}
         loading={loadingRenewals}
-        onViewMore={() => navigate('/produccion-sicas?tab=renovaciones')}
-        onClickItem={(item) => navigate(`/produccion-sicas?tab=documentos&doc=${item.id_docto}`)}
+        onViewMore={() => navigate('/mi-produccion-sicas-live')}
+        onClickItem={() => navigate('/mi-produccion-sicas-live')}
       />
       <LatestEmissionsCard
         data={emissionsData}
         loading={loadingEmissions}
-        onViewMore={() => navigate('/produccion-sicas?tab=documentos')}
-        onClickItem={(item) => navigate(`/produccion-sicas?tab=documentos&doc=${item.id_docto}`)}
+        onViewMore={() => navigate('/mi-produccion-sicas-live')}
+        onClickItem={() => navigate('/mi-produccion-sicas-live')}
       />
     </div>
   );
