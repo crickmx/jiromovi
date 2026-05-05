@@ -21,6 +21,7 @@ import MoviPreloader from '../components/MoviPreloader';
 import { getSmartAnalysis } from '../lib/dashboardWelcomeService';
 import type { SmartAnalysisResult } from '../lib/dashboardWelcomeService';
 import { SmartAnalysisCard } from '../components/SmartAnalysisCard';
+import { HomeDashboardSummary } from '../components/home/HomeDashboardSummary';
 import { cn } from '@/lib/utils';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
@@ -370,6 +371,8 @@ export function Dashboard() {
           />
         </div>
 
+        {currentUser?.id && <HomeDashboardSummary userId={currentUser.id} />}
+
         <UltimoComunicado />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -491,6 +494,8 @@ export function Dashboard() {
             />
           </div>
         )}
+
+        {currentUser?.id && <HomeDashboardSummary userId={currentUser.id} />}
 
         <UltimoComunicado />
 
