@@ -7,10 +7,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+interface DirectAttachment {
+  file_name: string;
+  file_url: string;
+  file_type: string;
+  mime_type?: string | null;
+}
+
 interface CreateTaskRequest {
   agentUserId: string;
   messageIds: string[];
   attachmentIds?: string[];
+  directAttachments?: DirectAttachment[];
   task: {
     instrucciones: string;
     tipo_tramite?: string;
@@ -46,7 +54,7 @@ Deno.serve(async (req) => {
       throw new Error("No tienes permiso para crear tramites");
     }
 
-    const { agentUserId, messageIds, attachmentIds, task } = await req.json() as CreateTaskRequest;
+    const { agentUserId, messageIds, attachmentIds, directAttachments, task } = await req.json() as CreateTaskRequest;
 
     if (!agentUserId || !messageIds || messageIds.length === 0 || !task) {
       throw new Error("Faltan campos requeridos");
@@ -146,6 +154,24 @@ Deno.serve(async (req) => {
             },
           });
         }
+      }
+    }
+
+    // Handle direct attachments (from synthetic/fallback sources with URLs)
+    if (directAttachments && directAttachments.length > 0) {
+      for (const att of directAttachments) {
+        if (!att.file_url) continue;
+        await supabase.from("ticket_archivos").insert({
+          ticket_id: createdTicket.id,
+          usuario_id: senderUser.id,
+          nombre: att.file_name || "Archivo",
+          url: att.file_url,
+          tipo: att.mime_type || att.file_type || "document",
+          tamano: 0,
+          metadata: {
+            source: "centro_contacto_direct",
+          },
+        });
       }
     }
 

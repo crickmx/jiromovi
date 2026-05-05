@@ -1074,10 +1074,16 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
   const handleSave = async () => {
     if (!instrucciones.trim()) return;
     setSaving(true);
+    const allAtts = selectedMessages.flatMap(m => m.attachments || []);
+    const realAttIds = allAtts.filter(a => !a.id.includes('_synth_') && !a.id.includes('_meta') && !a.id.includes('_rt_')).map(a => a.id);
+    const directAtts = allAtts.filter(a => (a.id.includes('_synth_') || a.id.includes('_meta') || a.id.includes('_rt_')) && a.file_url)
+      .map(a => ({ file_name: a.file_name, file_url: a.file_url!, file_type: a.file_type, mime_type: a.mime_type }));
+
     const result = await callApi('create-task-from-contact-messages', {
       agentUserId,
       messageIds: selectedMessages.map(m => m.id),
-      attachmentIds: selectedMessages.flatMap(m => (m.attachments || []).map(a => a.id)),
+      attachmentIds: realAttIds,
+      directAttachments: directAtts,
       task: {
         instrucciones: instrucciones.trim(),
         tipo_tramite: tipoTramite,
@@ -1196,11 +1202,17 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
         `${i + 1}. [${new Date(m.created_at).toLocaleString('es-MX')}] ${m.direction === 'inbound' ? agentName : (m.sender_name || 'Usuario')}:\n${m.body}`
       ).join('\n\n');
 
+    const allAtts = selectedMessages.flatMap(m => m.attachments || []);
+    const realAttIds = allAtts.filter(a => !a.id.includes('_synth_') && !a.id.includes('_meta') && !a.id.includes('_rt_')).map(a => a.id);
+    const directAtts = allAtts.filter(a => (a.id.includes('_synth_') || a.id.includes('_meta') || a.id.includes('_rt_')) && a.file_url)
+      .map(a => ({ file_name: a.file_name, file_url: a.file_url!, file_type: a.file_type, mime_type: a.mime_type }));
+
     const result = await callApi('add-contact-messages-to-task', {
       agentUserId,
       ticketId: selectedTramiteId,
       messageIds: selectedMessages.map(m => m.id),
-      attachmentIds: selectedMessages.flatMap(m => (m.attachments || []).map(a => a.id)),
+      attachmentIds: realAttIds,
+      directAttachments: directAtts,
       commentText,
     });
     setSaving(false);
