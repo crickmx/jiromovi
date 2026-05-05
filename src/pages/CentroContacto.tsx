@@ -1160,32 +1160,22 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
     (async () => {
       if (!usuario) return;
       setLoadingTramites(true);
-      const { data } = await supabase
-        .from('tickets')
-        .select(`
-          id, folio, instrucciones, prioridad, tipo_tramite, fecha_creacion,
-          ticket_estatus(nombre),
-          agente:usuarios!tickets_agente_usuario_id_fkey(nombre_completo)
-        `)
-        .eq('cerrado', false)
-        .or(`agente_usuario_id.eq.${agentUserId},agente_id.eq.${agentUserId}`)
-        .order('fecha_creacion', { ascending: false })
-        .limit(50);
-      if (data) {
-        setTramites(data.map((t: Record<string, unknown>) => ({
+      const result = await callApi('get-agent-open-tickets', { agentUserId });
+      if (result.success && result.tickets) {
+        setTramites((result.tickets as Record<string, unknown>[]).map((t) => ({
           id: t.id as string,
           folio: (t.folio as string) || '',
           instrucciones: (t.instrucciones as string) || '',
           prioridad: (t.prioridad as string) || 'Media',
           tipo_tramite: (t.tipo_tramite as string) || '',
-          estatus_nombre: (t.ticket_estatus as Record<string, string>)?.nombre || '',
-          agente_nombre: (t.agente as Record<string, string>)?.nombre_completo || null,
+          estatus_nombre: (t.estatus_nombre as string) || '',
+          agente_nombre: agentName,
           fecha_creacion: t.fecha_creacion as string,
         })));
       }
       setLoadingTramites(false);
     })();
-  }, [usuario, agentUserId]);
+  }, [usuario, agentUserId, agentName]);
 
   const filteredTramites = tramites.filter(t =>
     !searchTramite ||
