@@ -1163,13 +1163,13 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
       const { data } = await supabase
         .from('tickets')
         .select(`
-          id, folio, instrucciones, prioridad, tipo_tramite, created_at,
+          id, folio, instrucciones, prioridad, tipo_tramite, fecha_creacion,
           ticket_estatus(nombre),
           agente:usuarios!tickets_agente_usuario_id_fkey(nombre_completo)
         `)
         .eq('cerrado', false)
-        .eq('agente_usuario_id', agentUserId)
-        .order('created_at', { ascending: false })
+        .or(`agente_usuario_id.eq.${agentUserId},agente_id.eq.${agentUserId}`)
+        .order('fecha_creacion', { ascending: false })
         .limit(50);
       if (data) {
         setTramites(data.map((t: Record<string, unknown>) => ({
@@ -1180,12 +1180,12 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onS
           tipo_tramite: (t.tipo_tramite as string) || '',
           estatus_nombre: (t.ticket_estatus as Record<string, string>)?.nombre || '',
           agente_nombre: (t.agente as Record<string, string>)?.nombre_completo || null,
-          fecha_creacion: t.created_at as string,
+          fecha_creacion: t.fecha_creacion as string,
         })));
       }
       setLoadingTramites(false);
     })();
-  }, [usuario]);
+  }, [usuario, agentUserId]);
 
   const filteredTramites = tramites.filter(t =>
     !searchTramite ||
