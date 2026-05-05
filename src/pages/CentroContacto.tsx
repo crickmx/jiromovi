@@ -136,6 +136,8 @@ export default function CentroContacto() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = usuario?.rol === 'Administrador';
+  const isGerente = usuario?.rol === 'Gerente';
+  const canFilterOffice = isAdmin || isGerente;
 
   // Load conversations
   const loadConversations = useCallback(async () => {
@@ -444,7 +446,7 @@ export default function CentroContacto() {
                   <option value="manual">Manual</option>
                   <option value="automatic">Automatico</option>
                 </select>
-                {isAdmin && (
+                {canFilterOffice && (
                   <select value={filterOffice} onChange={e => setFilterOffice(e.target.value)} className="text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-1.5 px-2 col-span-2">
                     <option value="">Todas oficinas</option>
                     {oficinas.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
@@ -530,7 +532,7 @@ export default function CentroContacto() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isUnassigned && isAdmin && (
+                  {isUnassigned && (isAdmin || isGerente) && (
                     <button onClick={() => setShowAssignModal(true)} className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400">
                       <UserPlus className="w-3 h-3" /> Asignar
                     </button>
