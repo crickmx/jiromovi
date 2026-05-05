@@ -8,56 +8,7 @@ const corsHeaders = {
     "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-interface WazzupMessage {
-  messageId: string;
-  channelId: string;
-  chatType: string;
-  chatId: string;
-  dateTime: string;
-  type: string;
-  status: string;
-  text?: string;
-  contentUri?: string;
-  contact?: {
-    name?: string;
-    avatarUri?: string;
-    phone?: string;
-    username?: string;
-  };
-  isEcho?: boolean;
-  isEdited?: boolean;
-  isDeleted?: boolean;
-  authorName?: string;
-}
-
-interface WazzupWebhookPayload {
-  messages?: WazzupMessage[];
-  statuses?: Array<{
-    messageId: string;
-    status: string;
-    dateTime: string;
-  }>;
-}
-
-function normalizePhone(phone: string): string[] {
-  const digits = phone.replace(/\D/g, "");
-  const variants: string[] = [digits];
-
-  if (digits.startsWith("521") && digits.length === 13) {
-    variants.push(digits.slice(3));
-    variants.push(digits.slice(2));
-  } else if (digits.startsWith("52") && digits.length === 12) {
-    variants.push(digits.slice(2));
-    variants.push("1" + digits.slice(2));
-  } else if (digits.length === 10) {
-    variants.push("52" + digits);
-    variants.push("521" + digits);
-  }
-
-  return [...new Set(variants)];
-}
-
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -69,138 +20,157 @@ Deno.serve(async (req) => {
     });
   }
 
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const logs: string[] = [];
+
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const rawBody = await req.text();
+    logs.push(`body_length=${rawBody.length}`);
 
-    const payload: WazzupWebhookPayload = await req.json();
-
-    if (payload.statuses && payload.statuses.length > 0) {
-      for (const statusUpdate of payload.statuses) {
-        if (
-          statusUpdate.status === "delivered" ||
-          statusUpdate.status === "read" ||
-          statusUpdate.status === "sent"
-        ) {
-          await supabase
-            .from("contact_center_messages")
-            .update({
-              status: statusUpdate.status,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("provider_message_id", statusUpdate.messageId);
-        }
-      }
+    if (!rawBody || rawBody.trim() === "") {
+      return new Response(JSON.stringify({ ok: true, logs }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (payload.messages && payload.messages.length > 0) {
+    const payload = JSON.parse(rawBody);
+    logs.push(`keys=${Object.keys(payload).join(",")}`);
+
+    // Handle status updates
+    if (payload.statuses && Array.isArray(payload.statuses)) {
+      for (const s of payload.statuses) {
+        if (["sent", "delivered", "read"].includes(s.status)) {
+          await supabase
+            .from("contact_center_messages")
+            .update({ status: s.status, updated_at: new Date().toISOString() })
+            .eq("provider_message_id", s.messageId);
+        }
+      }
+      logs.push(`statuses_processed=${payload.statuses.length}`);
+    }
+
+    // Handle messages
+    if (payload.messages && Array.isArray(payload.messages)) {
+      logs.push(`messages_count=${payload.messages.length}`);
+
       for (const msg of payload.messages) {
-        if (msg.isDeleted || msg.isEdited) continue;
+        if (msg.isDeleted || msg.isEdited) {
+          logs.push(`skip_${msg.messageId}_deleted_or_edited`);
+          continue;
+        }
 
         const isInbound = msg.status === "inbound" && !msg.isEcho;
+        logs.push(`msg_${msg.messageId}_status=${msg.status}_echo=${msg.isEcho}_inbound=${isInbound}`);
 
         if (!isInbound) {
-          if (msg.status === "sent" || msg.status === "delivered" || msg.status === "read") {
+          if (["sent", "delivered", "read"].includes(msg.status)) {
             await supabase
               .from("contact_center_messages")
-              .update({
-                status: msg.status,
-                updated_at: new Date().toISOString(),
-              })
+              .update({ status: msg.status, updated_at: new Date().toISOString() })
               .eq("provider_message_id", msg.messageId);
+            logs.push(`updated_outbound_${msg.messageId}`);
           }
           continue;
         }
 
-        const phoneVariants = normalizePhone(msg.chatId);
+        // Find user by phone - get last 10 digits
+        const chatDigits = (msg.chatId || "").replace(/\D/g, "");
+        const last10 = chatDigits.slice(-10);
+        logs.push(`chatId=${msg.chatId}_last10=${last10}`);
 
         let agentUserId: string | null = null;
-        let agentName: string | null = null;
 
-        for (const variant of phoneVariants) {
-          const { data: user } = await supabase
+        if (last10.length === 10) {
+          const { data: users, error: userErr } = await supabase
             .from("usuarios")
-            .select("id, nombre_completo")
-            .or(
-              `celular_laboral.eq.${variant},celular_personal.eq.${variant}`
-            )
-            .maybeSingle();
+            .select("id, nombre_completo, celular_laboral, celular_personal")
+            .eq("activo", true);
 
-          if (user) {
-            agentUserId = user.id;
-            agentName = user.nombre_completo;
-            break;
+          if (userErr) {
+            logs.push(`user_query_error=${userErr.message}`);
+          } else {
+            logs.push(`users_fetched=${users?.length || 0}`);
+            const match = users?.find((u: { celular_laboral?: string; celular_personal?: string }) => {
+              const cel1 = (u.celular_laboral || "").replace(/\D/g, "");
+              const cel2 = (u.celular_personal || "").replace(/\D/g, "");
+              return cel1.slice(-10) === last10 || cel2.slice(-10) === last10;
+            });
+            if (match) {
+              agentUserId = match.id;
+              logs.push(`matched_user=${match.id}_${match.nombre_completo}`);
+            } else {
+              logs.push(`no_user_match_for_${last10}`);
+            }
           }
         }
 
         if (!agentUserId) {
-          const { data: user } = await supabase
-            .from("usuarios")
-            .select("id, nombre_completo")
-            .or(
-              phoneVariants
-                .map(
-                  (v) =>
-                    `celular_laboral.like.%${v.slice(-10)},celular_personal.like.%${v.slice(-10)}`
-                )
-                .join(",")
-            )
-            .maybeSingle();
-
-          if (user) {
-            agentUserId = user.id;
-            agentName = user.nombre_completo;
-          }
+          logs.push(`skipping_no_agent`);
+          continue;
         }
 
-        if (!agentUserId) continue;
-
+        // Check duplicates
         const { data: existing } = await supabase
           .from("contact_center_messages")
           .select("id")
           .eq("provider_message_id", msg.messageId)
           .maybeSingle();
 
-        if (existing) continue;
+        if (existing) {
+          logs.push(`duplicate_${msg.messageId}`);
+          continue;
+        }
 
-        const messageBody = msg.text || (msg.contentUri ? `[${msg.type}]` : "");
+        const messageBody = msg.text || (msg.contentUri ? `[${msg.type}]` : `[${msg.type}]`);
 
-        await supabase.from("contact_center_messages").insert({
-          agent_user_id: agentUserId,
-          sender_user_id: null,
-          sender_type: "user",
-          channel: "whatsapp",
-          message_type: "manual",
-          direction: "inbound",
-          body: messageBody,
-          status: "received",
-          provider: "wazzup",
-          provider_message_id: msg.messageId,
-          provider_response: msg as unknown as Record<string, unknown>,
-          created_at: msg.dateTime || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          metadata: {
-            chat_id: msg.chatId,
-            channel_id: msg.channelId,
-            chat_type: msg.chatType,
-            message_type: msg.type,
-            content_uri: msg.contentUri || null,
-            contact_name: msg.contact?.name || agentName,
-            sender_name: msg.contact?.name || agentName,
-          },
-        });
+        const { error: insertErr } = await supabase
+          .from("contact_center_messages")
+          .insert({
+            agent_user_id: agentUserId,
+            sender_type: "user",
+            channel: "whatsapp",
+            message_type: "manual",
+            direction: "inbound",
+            body: messageBody,
+            status: "received",
+            provider: "wazzup",
+            provider_message_id: msg.messageId,
+            provider_response: msg,
+            created_at: msg.dateTime || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            metadata: {
+              chat_id: msg.chatId,
+              channel_id: msg.channelId,
+              chat_type: msg.chatType,
+              message_type: msg.type,
+              content_uri: msg.contentUri || null,
+              contact_name: msg.contact?.name || null,
+              sender_phone: msg.chatId,
+            },
+          });
+
+        if (insertErr) {
+          logs.push(`insert_error=${insertErr.message}`);
+        } else {
+          logs.push(`inserted_${msg.messageId}`);
+        }
       }
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify({ ok: true, logs }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : "Unknown error";
-    console.error("wazzup-webhook error:", errMsg);
-    return new Response(JSON.stringify({ ok: true, error: errMsg }), {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    logs.push(`catch_error=${errMsg}`);
+    return new Response(JSON.stringify({ ok: true, error: errMsg, logs }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
