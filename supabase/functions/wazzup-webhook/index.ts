@@ -85,6 +85,7 @@ Deno.serve(async (req: Request) => {
         logs.push(`chatId=${msg.chatId}_last10=${last10}`);
 
         let agentUserId: string | null = null;
+        let agentName: string | null = null;
 
         if (last10.length === 10) {
           const { data: users, error: userErr } = await supabase
@@ -103,6 +104,7 @@ Deno.serve(async (req: Request) => {
             });
             if (match) {
               agentUserId = match.id;
+              agentName = match.nombre_completo;
               logs.push(`matched_user=${match.id}_${match.nombre_completo}`);
             } else {
               logs.push(`no_user_match_for_${last10}`);
@@ -159,6 +161,73 @@ Deno.serve(async (req: Request) => {
           logs.push(`insert_error=${insertErr.message}`);
         } else {
           logs.push(`inserted_${msg.messageId}`);
+
+          // Notify employees/admins related to this agent's open tramites
+          const displayName = agentName || "Agente";
+          const { data: asignaciones } = await supabase
+            .from("ticket_asignaciones")
+            .select("ejecutivo_id, ticket_id, tickets!inner(cerrado, agente_usuario_id)")
+            .eq("tickets.agente_usuario_id", agentUserId)
+            .eq("tickets.cerrado", false);
+
+          const notifiedIds = new Set<string>();
+
+          if (asignaciones && asignaciones.length > 0) {
+            for (const asig of asignaciones) {
+              if (asig.ejecutivo_id && !notifiedIds.has(asig.ejecutivo_id)) {
+                notifiedIds.add(asig.ejecutivo_id);
+              }
+            }
+          }
+
+          // Also notify admins from the agent's office
+          if (agentUserId) {
+            const { data: agentInfo } = await supabase
+              .from("usuarios")
+              .select("oficina_id")
+              .eq("id", agentUserId)
+              .maybeSingle();
+
+            if (agentInfo?.oficina_id) {
+              const { data: admins } = await supabase
+                .from("usuarios")
+                .select("id")
+                .eq("oficina_id", agentInfo.oficina_id)
+                .in("rol", ["Administrador", "Gerente"])
+                .eq("activo", true);
+
+              if (admins) {
+                for (const admin of admins) {
+                  if (!notifiedIds.has(admin.id)) {
+                    notifiedIds.add(admin.id);
+                  }
+                }
+              }
+            }
+          }
+
+          // Insert bell notifications
+          if (notifiedIds.size > 0) {
+            const preview = messageBody.length > 60 ? messageBody.slice(0, 60) + "..." : messageBody;
+            const notifications = [...notifiedIds].map(uid => ({
+              usuario_id: uid,
+              titulo: `Mensaje de WhatsApp de ${displayName}`,
+              mensaje: preview,
+              tipo: "info",
+              modulo: "Centro de Contacto",
+              accion_url: "/centro-contacto",
+              accion_texto: "Ver conversacion",
+              leida: false,
+              prioridad: "normal",
+              metadata: { agent_user_id: agentUserId, message_id: msg.messageId },
+            }));
+
+            const { error: notifErr } = await supabase
+              .from("notificaciones")
+              .insert(notifications);
+
+            logs.push(`notified_${notifiedIds.size}_users${notifErr ? `_err=${notifErr.message}` : ""}`);
+          }
         }
       }
     }
