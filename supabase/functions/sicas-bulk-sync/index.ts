@@ -292,17 +292,13 @@ Deno.serve(async (req: Request) => {
       const result = await upsertDocuments(supabase, documents);
       syncState.totalUpserted += result.upserted;
       syncState.totalErrors += result.errors;
-      syncState.currentPage = 2; // Next page to fetch
+      syncState.currentPage = 2;
 
-      const percent =
-        syncState.totalPages > 0
-          ? Math.min(99, Math.round((1 / syncState.totalPages) * 100))
-          : 0;
-
+      // Create job record immediately so frontend can track
       const { data: job, error: jobError } = await supabase
         .from("sicas_sync_jobs")
         .insert({
-          mode: "full",
+          mode: mode || "full",
           status: "running",
           triggered_by: body.triggeredBy || null,
           keycode: "H03400_SOAP",
@@ -312,7 +308,7 @@ Deno.serve(async (req: Request) => {
           total_synced: syncState.totalUpserted,
           total_in_sicas: syncState.totalRecordsInSicas,
           total_errors: 0,
-          percent,
+          percent: syncState.totalPages > 0 ? Math.min(99, Math.round((1 / syncState.totalPages) * 100)) : 0,
           error_message: JSON.stringify(syncState),
         })
         .select("id")
@@ -324,13 +320,79 @@ Deno.serve(async (req: Request) => {
         `[BULK-SYNC] Created job ${job.id}, page 1 done (${firstPage.records.length} records, ${result.upserted} upserted)`
       );
 
+      // Continue processing more pages within this same invocation's time budget
+      const startBatchTime = Date.now();
+      while (
+        syncState.currentPage <= syncState.totalPages &&
+        (Date.now() - startBatchTime) / 1000 < MAX_SECONDS - 20 // Leave 20s buffer for overhead
+      ) {
+        const page = syncState.currentPage;
+        console.log(`[BULK-SYNC] start: Fetching page ${page}/${syncState.totalPages}...`);
+
+        try {
+          const pageResult = await fetchSoapPage(
+            soapEndpoint, sicasUsername, sicasPassword,
+            page, ITEMS_PER_PAGE, incrementalSince
+          );
+
+          if (pageResult.records.length === 0) {
+            syncState.currentPage++;
+            continue;
+          }
+
+          if (pageResult.totalPages > 0 && pageResult.totalPages !== syncState.totalPages) {
+            syncState.totalPages = pageResult.totalPages;
+            if (pageResult.totalRecords > 0) syncState.totalRecordsInSicas = pageResult.totalRecords;
+          }
+
+          syncState.totalFetched += pageResult.records.length;
+          const docs = pageResult.records
+            .map((raw) => mapDocument(raw, "H03400", despachoNameToOffice, vendorToUser, vendorToOficina))
+            .filter((d) => d !== null);
+          const upsertResult = await upsertDocuments(supabase, docs);
+          syncState.totalUpserted += upsertResult.upserted;
+          syncState.totalErrors += upsertResult.errors;
+
+          console.log(`[BULK-SYNC] start: Page ${page}: ${pageResult.records.length} fetched, ${upsertResult.upserted} upserted`);
+        } catch (e: unknown) {
+          console.error(`[BULK-SYNC] start: Page ${page} error: ${(e as Error).message}`);
+          syncState.totalErrors++;
+        }
+
+        syncState.currentPage++;
+
+        // Update job progress every 5 pages
+        if ((syncState.currentPage - 1) % 5 === 0 || syncState.currentPage > syncState.totalPages) {
+          const pct = syncState.currentPage > syncState.totalPages
+            ? 100
+            : Math.min(99, Math.round(((syncState.currentPage - 1) / syncState.totalPages) * 100));
+          await supabase.from("sicas_sync_jobs").update({
+            current_page: syncState.currentPage - 1,
+            total_pages: syncState.totalPages,
+            total_synced: syncState.totalUpserted,
+            total_in_sicas: syncState.totalRecordsInSicas,
+            total_errors: syncState.totalErrors,
+            percent: pct,
+            error_message: JSON.stringify(syncState),
+            updated_at: new Date().toISOString(),
+            ...(syncState.currentPage > syncState.totalPages ? { status: "completed", finished_at: new Date().toISOString() } : {}),
+          }).eq("id", job.id);
+        }
+      }
+
+      const isComplete = syncState.currentPage > syncState.totalPages;
+      if (isComplete) {
+        await markComplete(supabase, job.id, syncState);
+      }
+
       return jsonResponse(200, {
         ok: true,
         jobId: job.id,
-        status: "running",
+        status: isComplete ? "completed" : "running",
         totalPages: syncState.totalPages,
         totalRecordsInSicas: syncState.totalRecordsInSicas,
         firstPageRecords: firstPage.records.length,
+        pagesProcessed: syncState.currentPage - 1,
       });
     }
 

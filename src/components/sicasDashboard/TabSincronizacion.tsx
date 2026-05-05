@@ -77,14 +77,25 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
 
   useEffect(() => { loadSyncInfo(); checkActiveJob(); }, [loadSyncInfo, checkActiveJob]);
 
-  // Poll for progress and auto-continue stale jobs
+  // Auto-continue: aggressively call continue whenever job is running and no call is in-flight
+  const continueInFlightRef = useRef(false);
   const lastPageRef = useRef<number>(0);
-  const staleCountRef = useRef<number>(0);
 
   useEffect(() => {
     if (!syncing || !activeJobId) return;
+    continueInFlightRef.current = false;
     lastPageRef.current = 0;
-    staleCountRef.current = 0;
+
+    const triggerContinue = async () => {
+      if (continueInFlightRef.current) return;
+      continueInFlightRef.current = true;
+      try {
+        console.log('[SYNC] Calling continue...');
+        await callEdgeFunction('sicas-bulk-sync', { action: 'continue', jobId: activeJobId });
+      } catch { /* silent */ }
+      finally { continueInFlightRef.current = false; }
+    };
+
     const interval = setInterval(async () => {
       const { data: job } = await supabase
         .from('sicas_sync_jobs')
@@ -114,20 +125,14 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
         setSyncResult({ ok: false, error: 'Sincronizacion cancelada' });
         loadSyncInfo();
       } else if (job.status === 'running') {
-        // Auto-continue: if page hasn't advanced in 2 polls (6s), re-trigger continue
-        if (job.current_page === lastPageRef.current) {
-          staleCountRef.current++;
-          if (staleCountRef.current >= 3) {
-            staleCountRef.current = 0;
-            console.log('[SYNC] Job stale, triggering continue...');
-            callEdgeFunction('sicas-bulk-sync', { action: 'continue', jobId: activeJobId }).catch(() => {});
-          }
-        } else {
-          lastPageRef.current = job.current_page || 0;
-          staleCountRef.current = 0;
-        }
+        // Always trigger continue if not already in-flight
+        triggerContinue();
       }
-    }, 5000);
+    }, 4000);
+
+    // Also trigger continue immediately on mount (don't wait for first poll)
+    setTimeout(() => triggerContinue(), 500);
+
     return () => clearInterval(interval);
   }, [syncing, activeJobId, loadSyncInfo, onSyncComplete]);
 
