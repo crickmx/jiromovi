@@ -16,8 +16,8 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 const ITEMS_PER_PAGE = 1000;
-const MAX_SECONDS = 50;
-const PAGES_PER_BATCH = 25;
+const MAX_SECONDS = 140;
+const PAGES_PER_BATCH = 999;
 
 interface SyncState {
   currentPage: number;
@@ -201,6 +201,32 @@ Deno.serve(async (req: Request) => {
         .in("status", ["queued", "running"])
         .lt("updated_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
 
+      // Check if there's already a running job (not stale)
+      const { data: activeJob } = await supabase
+        .from("sicas_sync_jobs")
+        .select("id, status, percent, current_page, total_pages, total_synced, total_in_sicas")
+        .in("status", ["queued", "running"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeJob) {
+        return jsonResponse(200, {
+          ok: true,
+          jobId: activeJob.id,
+          status: activeJob.status,
+          message: "Ya hay una sincronizacion en progreso.",
+          alreadyRunning: true,
+          progress: {
+            percent: activeJob.percent,
+            currentPage: activeJob.current_page,
+            totalPages: activeJob.total_pages,
+            totalSynced: activeJob.total_synced,
+            totalInSicas: activeJob.total_in_sicas,
+          },
+        });
+      }
+
       // Determine incremental date filter
       const mode: string = body.mode || "full";
       let incrementalSince: string | undefined;
@@ -297,8 +323,6 @@ Deno.serve(async (req: Request) => {
       console.log(
         `[BULK-SYNC] Created job ${job.id}, page 1 done (${firstPage.records.length} records, ${result.upserted} upserted)`
       );
-
-      await selfChain(supabase, supabaseUrl, supabaseKey, job.id);
 
       return jsonResponse(200, {
         ok: true,
@@ -459,9 +483,7 @@ Deno.serve(async (req: Request) => {
           `${uniqueCount} unique docs in DB, ${percent}% complete`
       );
 
-      if (!isComplete) {
-        await selfChain(supabase, supabaseUrl, supabaseKey, jobId);
-      }
+      // Frontend auto-continues via polling when job is stale
 
       return jsonResponse(200, {
         ok: true,
@@ -536,28 +558,6 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-// ─── Self-chain using pg_net via database RPC (reliable async) ─────────
-async function selfChain(supabase: ReturnType<typeof createClient>, supabaseUrl: string, serviceKey: string, jobId: string): Promise<void> {
-  const url = `${supabaseUrl}/functions/v1/sicas-bulk-sync`;
-  const headers = JSON.stringify({
-    'Authorization': `Bearer ${serviceKey}`,
-    'Content-Type': 'application/json',
-    'Apikey': serviceKey,
-  });
-  const body = JSON.stringify({ action: 'continue', jobId });
-
-  const { error } = await supabase.rpc('net_http_post_wrapper', {
-    target_url: url,
-    headers_json: headers,
-    body_json: body,
-  });
-
-  if (error) {
-    console.error(`[BULK-SYNC] pg_net self-chain error: ${error.message}`);
-  } else {
-    console.log(`[BULK-SYNC] Self-chain queued via pg_net for job ${jobId}`);
-  }
-}
 
 async function markComplete(
   supabase: ReturnType<typeof createClient>,

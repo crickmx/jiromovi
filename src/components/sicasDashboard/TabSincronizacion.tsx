@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Cloud, Database, Clock, Loader2, Download, RefreshCw,
   CheckCircle2, XCircle, Info, StopCircle, Users,
@@ -77,9 +77,14 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
 
   useEffect(() => { loadSyncInfo(); checkActiveJob(); }, [loadSyncInfo, checkActiveJob]);
 
-  // Poll for progress
+  // Poll for progress and auto-continue stale jobs
+  const lastPageRef = useRef<number>(0);
+  const staleCountRef = useRef<number>(0);
+
   useEffect(() => {
     if (!syncing || !activeJobId) return;
+    lastPageRef.current = 0;
+    staleCountRef.current = 0;
     const interval = setInterval(async () => {
       const { data: job } = await supabase
         .from('sicas_sync_jobs')
@@ -108,8 +113,21 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
         setSyncing(false); setActiveJobId(null); setSyncProgress(null);
         setSyncResult({ ok: false, error: 'Sincronizacion cancelada' });
         loadSyncInfo();
+      } else if (job.status === 'running') {
+        // Auto-continue: if page hasn't advanced in 2 polls (6s), re-trigger continue
+        if (job.current_page === lastPageRef.current) {
+          staleCountRef.current++;
+          if (staleCountRef.current >= 3) {
+            staleCountRef.current = 0;
+            console.log('[SYNC] Job stale, triggering continue...');
+            callEdgeFunction('sicas-bulk-sync', { action: 'continue', jobId: activeJobId }).catch(() => {});
+          }
+        } else {
+          lastPageRef.current = job.current_page || 0;
+          staleCountRef.current = 0;
+        }
       }
-    }, 3000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [syncing, activeJobId, loadSyncInfo, onSyncComplete]);
 
