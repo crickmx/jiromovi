@@ -83,13 +83,13 @@ Deno.serve(async (req) => {
       .from("tickets")
       .insert({
         folio: folioData,
-        tipo_tramite: task.tipo_tramite || "registro_actividad",
+        tipo_tramite: task.tipo_tramite || "cotizacion_emision",
         estatus_id: estatusIniciado.id,
         prioridad: task.prioridad || "Media",
         instrucciones: task.instrucciones,
         agente_usuario_id: agentUserId,
         creado_por: senderUser.id,
-        assigned_to_user_id: task.assigned_to_user_id || senderUser.id,
+        assigned_to_user_id: agentUserId,
         cerrado: false,
         metadata: {
           source: "centro_contacto",
