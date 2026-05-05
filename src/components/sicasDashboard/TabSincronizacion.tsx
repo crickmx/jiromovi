@@ -43,11 +43,26 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
   const loadSyncInfo = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const [{ data: history }, { count }] = await Promise.all([
-        supabase.from('sicas_sync_runs').select('*').is('parent_run_id', null).order('started_at', { ascending: false }).limit(15),
-        supabase.from('sicas_documents').select('*', { count: 'exact', head: true }),
+      const [{ data: jobs }, { data: countData }] = await Promise.all([
+        supabase.from('sicas_sync_jobs').select('*').order('started_at', { ascending: false }).limit(15),
+        supabase.rpc('get_sicas_documents_count'),
       ]);
-      setSyncHistory(history || []);
+      const count = typeof countData === 'number' ? countData : 0;
+      // Map sicas_sync_jobs to SyncRun format for display
+      const mapped: SyncRun[] = (jobs || []).map(j => ({
+        run_id: j.id,
+        module: 'documents',
+        keycode: j.keycode || 'H03400_SOAP',
+        records_fetched: j.total_in_sicas || 0,
+        records_upserted: j.total_synced || 0,
+        records_failed: j.total_errors || 0,
+        status: j.status,
+        error_message: j.status === 'failed' ? (j.error_message?.startsWith('{') ? null : j.error_message) : null,
+        started_at: j.started_at,
+        finished_at: j.finished_at,
+        duration_seconds: j.started_at && j.finished_at ? Math.round((new Date(j.finished_at).getTime() - new Date(j.started_at).getTime()) / 1000) : null,
+      }));
+      setSyncHistory(mapped);
       setTotalDocs(count ?? 0);
     } catch { /* silent */ }
     finally { setLoadingHistory(false); }

@@ -610,6 +610,22 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ── ACTION: cancel ──────────────────────────────────────────────────
+    if (action === "cancel" && body.jobId) {
+      const jobId = body.jobId as string;
+      await supabase
+        .from("sicas_sync_jobs")
+        .update({
+          status: "cancelled",
+          finished_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId)
+        .in("status", ["queued", "running"]);
+
+      return jsonResponse(200, { ok: true, status: "cancelled" });
+    }
+
     return jsonResponse(400, {
       ok: false,
       error: `Unknown action: ${action}`,
