@@ -231,12 +231,17 @@ export default function CentroContacto() {
           linked_task_id: taskLinkMap[m.id] || null,
         })));
 
-        // Mark messages as read
+        // Mark messages as read and update local unread count
         if (usuario) {
-          supabase.rpc('mark_contact_messages_read', {
+          await supabase.rpc('mark_contact_messages_read', {
             p_agent_user_id: agentId,
             p_user_id: usuario.id,
           });
+          setConversations(prev =>
+            prev.map(c =>
+              c.agent_user_id === agentId ? { ...c, unread_count: 0 } : c
+            )
+          );
         }
       }
     } catch { /* silent */ }
@@ -283,12 +288,17 @@ export default function CentroContacto() {
             return [...prev, enriched];
           });
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 200);
-          // Mark as read
-          if (usuario) {
+          // Mark as read immediately
+          if (usuario && newMsg.direction === 'inbound') {
             supabase.rpc('mark_contact_messages_read', {
               p_agent_user_id: newMsg.agent_user_id,
               p_user_id: usuario.id,
             });
+            setConversations(prev =>
+              prev.map(c =>
+                c.agent_user_id === newMsg.agent_user_id ? { ...c, unread_count: 0 } : c
+              )
+            );
           }
         }
       })
