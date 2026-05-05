@@ -99,6 +99,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: isNotAgent },
     { path: '/directorio', label: 'Usuarios', icon: Users, show: isAdminOrGerente },
+    { path: '/actividad-usuarios', label: 'Actividad Usuarios', icon: Activity, show: isAdmin },
     { path: '/centro-notificaciones', label: 'Notificaciones', icon: Bell, show: isAdmin },
     { path: '/notificaciones-transaccionales', label: 'Notif. Transaccionales', icon: Mail, show: isAdmin },
     { path: '/gamificacion/admin', label: 'Gamificacion', icon: Trophy, show: isAdmin },

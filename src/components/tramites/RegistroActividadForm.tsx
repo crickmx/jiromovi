@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, User, Briefcase, Shield, Clock, Calendar, Building2, CheckCircle2, ChevronRight, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { trackTramiteAction } from '../../lib/activityLogger';
 import {
   getTramiteActivityTypes,
   getInsuranceTypes,
@@ -180,8 +181,10 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
     try {
       if (isEditMode && tramiteId) {
         await updateRegistroActividad(tramiteId, formData);
+        trackTramiteAction('tramite_update', tramiteId, 'Actualizo tramite');
       } else {
         await createRegistroActividad({ ...formData, creado_por: usuario!.id });
+        trackTramiteAction('tramite_create', 'new', 'Creo nuevo tramite');
       }
       await onSuccess();
       onClose();

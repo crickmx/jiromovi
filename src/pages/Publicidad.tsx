@@ -6,6 +6,7 @@ import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
+import { trackPublicityCreated } from '../lib/activityLogger';
 
 interface Categoria {
   id: string;
@@ -489,6 +490,7 @@ export function Publicidad() {
         plantilla={selectedPlantilla}
         onSuccess={() => {
           setShowPersonalizarModal(false);
+          trackPublicityCreated(selectedPlantilla?.nombre || 'publicidad');
           setSelectedPlantilla(null);
           setActiveTab('mis-disenos');
           loadData();

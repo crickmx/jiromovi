@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
+import { trackDocumentView } from '../lib/activityLogger';
 import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle } from 'lucide-react';
 import {
   type DashboardTab, type DashboardScope, type DashboardKPIs,
@@ -163,7 +164,10 @@ export default function ProduccionSICASLive() {
   }, [usuario?.id, scope, isAdmin]);
 
   const handleTabChange = (tab: DashboardTab) => setActiveTab(tab);
-  const handleDocumentClick = (docId: string) => setSelectedDocId(docId);
+  const handleDocumentClick = (docId: string) => {
+    setSelectedDocId(docId);
+    trackDocumentView(docId, docId);
+  };
   const handleEntityClick = (dimension: EntityModalState['dimension'], entityName: string, entityId?: string) => {
     setEntityModal({ dimension, entityName, entityId });
   };

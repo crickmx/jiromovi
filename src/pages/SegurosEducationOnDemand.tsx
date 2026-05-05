@@ -3,7 +3,8 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, Edit2, FileText } from 'lucide-react';
+import { trackCourseStart } from '../lib/activityLogger';
+import { Search, Plus, Video, Filter, Play, Clock, Award, Upload, X, Settings, ArrowLeft, Trash2, CreditCard as Edit2, FileText } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
 import { analyticsTracker } from '../lib/analyticsTracker';
@@ -793,6 +794,7 @@ export function SegurosEducationOnDemand() {
 
     // Track lesson view start
     analyticsTracker.trackLessonViewStart(lesson.id, lesson.duracion);
+    trackCourseStart(lesson.id, lesson.titulo);
   };
 
   const handleProgressUpdate = async (progress: number, currentTime: number) => {

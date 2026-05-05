@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { trackCrmAction } from '../../lib/activityLogger';
 import {
   crearContacto,
   actualizarContacto,
@@ -75,8 +76,10 @@ export default function ContactoModal({ contacto, onClose, onSave }: Props) {
       setLoading(true);
       if (contacto) {
         await actualizarContacto(contacto.id, formData);
+        trackCrmAction('contact_update', 'contacto', contacto.id, `Actualizo contacto: ${formData.nombre}`);
       } else {
         await crearContacto(formData, user.id);
+        trackCrmAction('contact_create', 'contacto', 'new', `Creo contacto: ${formData.nombre}`);
       }
       onSave();
     } catch (error) {

@@ -8,6 +8,7 @@ import { CorreoIONOSFields } from '../components/CorreoIONOSFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
 import { getMiPaginaWeb } from '../lib/webUrlUtils';
+import { trackProfileUpdate } from '../lib/activityLogger';
 import type { Database } from '../lib/database.types';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -108,6 +109,8 @@ export function Perfil() {
       setSaving(false);
       return;
     }
+
+    trackProfileUpdate('perfil general');
 
     // Detectar si cambió información de pago
     // Comparar con los valores actuales en formData, no con updateData

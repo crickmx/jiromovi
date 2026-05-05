@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';
 import { applyTheme } from '../lib/themeUtils';
+import { setActivityUserId, trackLogin, trackLogout } from '../lib/activityLogger';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   permisosAdicionales?: string[]; // Códigos de módulos con permisos admin
@@ -156,7 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(session?.user ?? null);
           if (session?.user) {
             await fetchUsuario(session.user.id);
+            setActivityUserId(session.user.id);
           } else {
+            setActivityUserId(null);
             setUsuario(null);
           }
         })();
@@ -174,7 +177,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         if (session?.user) {
           await fetchUsuario(session.user.id);
+          setActivityUserId(session.user.id);
         } else {
+          setActivityUserId(null);
           setUsuario(null);
         }
 
@@ -279,6 +284,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   try {
                     await fetchUsuario(retryData.user.id);
                     console.log('[AuthContext] Usuario loaded, ready to navigate');
+                    setActivityUserId(retryData.user.id);
+                    trackLogin();
                   } catch (fetchError) {
                     console.error('[AuthContext] Error loading usuario profile:', fetchError);
                     await supabase.auth.signOut();
@@ -316,6 +323,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           await fetchUsuario(data.user.id);
           console.log('[AuthContext] Usuario loaded, ready to navigate');
+          setActivityUserId(data.user.id);
+          trackLogin();
         } catch (fetchError) {
           console.error('[AuthContext] Error loading usuario profile:', fetchError);
           // Si falla cargar el perfil, cerramos la sesión
@@ -349,6 +358,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    trackLogout();
+    setActivityUserId(null);
     await supabase.auth.signOut();
     setUsuario(null);
   };

@@ -86,6 +86,7 @@ import CertificadoCedulaA from './pages/CertificadoCedulaA';
 import MiProgreso from './pages/MiProgreso';
 import GamificacionAdmin from './pages/GamificacionAdmin';
 import CargaMasivaUsuarios from './pages/CargaMasivaUsuarios';
+import { ActividadUsuarios } from './pages/ActividadUsuarios';
 import RegistroPersonal from './pages/RegistroPersonal';
 import RegimenFiscalAdmin from './pages/RegimenFiscalAdmin';
 import RegimenFiscalEditor from './pages/RegimenFiscalEditor';
@@ -870,6 +871,7 @@ function App() {
               <Route path="/mi-pagina-web" element={<Navigate to="/mercadotecnia/mi-pagina-web" replace />} />
               <Route path="/chatgpt-test" element={<ProtectedRoute><Layout><ChatGPTTest /></Layout></ProtectedRoute>} />
               <Route path="/carga-masiva-usuarios" element={<ProtectedRoute requireAdmin><Layout><CargaMasivaUsuarios /></Layout></ProtectedRoute>} />
+              <Route path="/actividad-usuarios" element={<ProtectedRoute requireAdmin><Layout><ActividadUsuarios /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/regimen-fiscal" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalAdmin /></Layout></ProtectedRoute>} />
               <Route path="/comisiones/regimen-fiscal/:id" element={<ProtectedRoute requireAdmin><Layout><RegimenFiscalEditor /></Layout></ProtectedRoute>} />
 
