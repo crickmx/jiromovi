@@ -194,7 +194,7 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
           {/* Status cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatusCard icon={Database} label="Documentos Locales" value={totalDocs !== null ? formatNumber(totalDocs) : '-'} color={accentColor} />
-            <StatusCard icon={Clock} label="Ultima Sincronizacion" value={lastSync?.started_at ? formatDate(lastSync.started_at) : 'Nunca'} color={accentColor} subtitle={lastSync ? (lastSync.status === 'success' || lastSync.status === 'completed' ? `${formatNumber(lastSync.records_upserted)} registros` : lastSync.status === 'running' ? 'En progreso...' : 'Error') : undefined} />
+            <StatusCard icon={Clock} label="Ultima Sincronizacion" value={lastSync?.started_at ? formatDate(lastSync.started_at) : 'Nunca'} color={accentColor} subtitle={lastSync ? (lastSync.status === 'success' || lastSync.status === 'completed' ? `${formatNumber(lastSync.records_upserted)} docs unicos` : lastSync.status === 'running' ? 'En progreso...' : 'Error') : undefined} />
             <StatusCard icon={Info} label="Estado" value={totalDocs === 0 ? 'Sin datos' : 'Datos disponibles'} color={totalDocs === 0 ? '#f59e0b' : '#10b981'} />
           </div>
 
@@ -222,12 +222,16 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
               <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 text-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                  <p className="font-medium">Sincronizando... {syncProgress.percent}%</p>
+                  <p className="font-medium">Sincronizando... {syncProgress.totalPages > 0 ? Math.round((syncProgress.page / syncProgress.totalPages) * 100) : syncProgress.percent}%</p>
                 </div>
                 <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 mb-2">
-                  <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${syncProgress.percent}%`, backgroundColor: accentColor }} />
+                  <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${syncProgress.totalPages > 0 ? Math.round((syncProgress.page / syncProgress.totalPages) * 100) : syncProgress.percent}%`, backgroundColor: accentColor }} />
                 </div>
-                <p className="text-xs opacity-80">Pagina {syncProgress.page}/{syncProgress.totalPages} - {formatNumber(syncProgress.fetched)} sincronizados{syncProgress.totalInSicas > 0 && ` de ${formatNumber(syncProgress.totalInSicas)}`}</p>
+                <p className="text-xs opacity-80">
+                  Pagina {syncProgress.page}/{syncProgress.totalPages}
+                  {syncProgress.totalInSicas > 0 && ` - ${formatNumber(syncProgress.totalInSicas)} registros en SICAS`}
+                  {syncProgress.fetched > 0 && ` - ${formatNumber(syncProgress.fetched)} documentos unicos en BD`}
+                </p>
               </div>
             )}
 
@@ -262,8 +266,8 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
                       <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
                       <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Reporte</th>
                       <th className="px-3 py-2 text-center text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Estado</th>
-                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Leidos</th>
-                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Guardados</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">En SICAS</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Unicos BD</th>
                       <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Duracion</th>
                     </tr>
                   </thead>
