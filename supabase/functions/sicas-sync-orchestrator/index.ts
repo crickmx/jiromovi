@@ -45,27 +45,43 @@ Deno.serve(async (req: Request) => {
       // Check if there's already a running job
       const { data: activeJob } = await supabase
         .from("sicas_sync_jobs")
-        .select("id, status, percent, current_page, total_pages, total_synced, total_in_sicas")
+        .select("id, status, percent, current_page, total_pages, total_synced, total_in_sicas, updated_at")
         .in("status", ["queued", "running"])
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (activeJob) {
-        return jsonResponse(200, {
-          ok: true,
-          jobId: activeJob.id,
-          status: activeJob.status,
-          message: "Ya hay una sincronizacion en progreso.",
-          alreadyRunning: true,
-          progress: {
-            percent: activeJob.percent,
-            currentPage: activeJob.current_page,
-            totalPages: activeJob.total_pages,
-            totalSynced: activeJob.total_synced,
-            totalInSicas: activeJob.total_in_sicas,
-          },
-        });
+        // Auto-recover stale jobs (stuck for more than 10 minutes without updates)
+        const lastUpdate = new Date(activeJob.updated_at).getTime();
+        const staleThreshold = 10 * 60 * 1000; // 10 minutes
+        if (Date.now() - lastUpdate > staleThreshold) {
+          console.log(`[ORCHESTRATOR] Stale job detected (${activeJob.id}), marking as failed and starting new sync`);
+          await supabase
+            .from("sicas_sync_jobs")
+            .update({
+              status: "failed",
+              error_message: "Auto-recovery: job stuck sin actualizacion por mas de 10 minutos",
+              finished_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", activeJob.id);
+        } else {
+          return jsonResponse(200, {
+            ok: true,
+            jobId: activeJob.id,
+            status: activeJob.status,
+            message: "Ya hay una sincronizacion en progreso.",
+            alreadyRunning: true,
+            progress: {
+              percent: activeJob.percent,
+              currentPage: activeJob.current_page,
+              totalPages: activeJob.total_pages,
+              totalSynced: activeJob.total_synced,
+              totalInSicas: activeJob.total_in_sicas,
+            },
+          });
+        }
       }
 
       // Get keycode from config
