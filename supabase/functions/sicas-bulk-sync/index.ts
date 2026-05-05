@@ -15,9 +15,9 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const ITEMS_PER_PAGE = 500;
+const ITEMS_PER_PAGE = 1000;
 const MAX_SECONDS = 50;
-const PAGES_PER_BATCH = 15;
+const PAGES_PER_BATCH = 25;
 
 interface SyncState {
   currentPage: number;
@@ -26,6 +26,7 @@ interface SyncState {
   totalFetched: number;
   totalUpserted: number;
   totalErrors: number;
+  incrementalSince?: string;
 }
 
 interface SoapPageResult {
@@ -49,10 +50,23 @@ async function fetchSoapPage(
   username: string,
   password: string,
   page: number,
-  itemsPerPage: number
+  itemsPerPage: number,
+  incrementalSince?: string
 ): Promise<SoapPageResult> {
   const escapedUser = xmlEscape(username);
   const escapedPass = xmlEscape(password);
+
+  // Build ConditionsAdd: always filter by Vigentes status
+  // If incremental, also add date filter for FCaptura
+  let conditionsAdd = "Estatus;0;0;0;Vigentes;-1;0;DatDocumentos.Status";
+  if (incrementalSince) {
+    // Format: DD/MM/YYYY HH:mm
+    const parts = incrementalSince.split("-");
+    const fromDate = `${parts[2]}/${parts[1]}/${parts[0]} 00:00`;
+    const today = new Date();
+    const toDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()} 23:59`;
+    conditionsAdd += `!Desde|Hasta|Captura;3;1;${fromDate}|${toDate};${fromDate}|${toDate};0;-1;DatDocumentos.FCaptura`;
+  }
 
   const envelope = `<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -70,7 +84,7 @@ async function fetchSoapPage(
         <tem:Page>${page}</tem:Page>
         <tem:ItemForPage>${itemsPerPage}</tem:ItemForPage>
         <tem:InfoSort>DatDocumentos.FCaptura DESC</tem:InfoSort>
-        <tem:ConditionsAdd>Estatus;0;0;0;Vigentes;-1;0;DatDocumentos.Status</tem:ConditionsAdd>
+        <tem:ConditionsAdd>${conditionsAdd}</tem:ConditionsAdd>
       </tem:oDataWS>
     </tem:ProcesarWS>
   </soapenv:Body>
@@ -175,14 +189,38 @@ Deno.serve(async (req: Request) => {
 
     // ── ACTION: start ──────────────────────────────────────────────────
     if (action === "start") {
+      // Auto-recover stale jobs (stuck for more than 10 minutes)
       await supabase
         .from("sicas_sync_jobs")
         .update({
-          status: "cancelled",
+          status: "failed",
+          error_message: "Auto-recovery: job stuck sin actualizacion por mas de 10 minutos",
           finished_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .in("status", ["queued", "running"]);
+        .in("status", ["queued", "running"])
+        .lt("updated_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
+
+      // Determine incremental date filter
+      const mode: string = body.mode || "full";
+      let incrementalSince: string | undefined;
+      if (mode === "incremental") {
+        const { data: lastJob } = await supabase
+          .from("sicas_sync_jobs")
+          .select("finished_at")
+          .eq("status", "completed")
+          .order("finished_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (lastJob?.finished_at) {
+          const since = new Date(lastJob.finished_at);
+          since.setDate(since.getDate() - 3);
+          incrementalSince = since.toISOString().split("T")[0];
+          console.log(`[BULK-SYNC] Incremental mode: fetching since ${incrementalSince}`);
+        } else {
+          console.log(`[BULK-SYNC] No previous sync, falling back to full mode`);
+        }
+      }
 
       // Fetch page 1 to discover total pages and records
       console.log("[BULK-SYNC] Fetching page 1 to discover totals...");
@@ -191,7 +229,8 @@ Deno.serve(async (req: Request) => {
         sicasUsername,
         sicasPassword,
         1,
-        ITEMS_PER_PAGE
+        ITEMS_PER_PAGE,
+        incrementalSince
       );
 
       const syncState: SyncState = {
@@ -201,6 +240,7 @@ Deno.serve(async (req: Request) => {
         totalFetched: firstPage.records.length,
         totalUpserted: 0,
         totalErrors: 0,
+        incrementalSince,
       };
 
       console.log(
@@ -322,7 +362,8 @@ Deno.serve(async (req: Request) => {
             sicasUsername,
             sicasPassword,
             page,
-            ITEMS_PER_PAGE
+            ITEMS_PER_PAGE,
+            syncState.incrementalSince
           );
 
           if (pageResult.records.length === 0) {

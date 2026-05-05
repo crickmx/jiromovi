@@ -117,7 +117,7 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
     setSyncing(true); setSyncResult(null);
     setSyncProgress({ percent: 0, page: 0, totalPages: 0, fetched: 0, totalInSicas: 0 });
     try {
-      const result = await callEdgeFunction('sicas-sync-orchestrator', { action: 'start', mode, triggeredBy: userId || null });
+      const result = await callEdgeFunction('sicas-bulk-sync', { action: 'start', mode, triggeredBy: userId || null });
       if (!result.ok) { setSyncResult(result); setSyncing(false); setSyncProgress(null); return; }
       setActiveJobId(result.jobId as string);
       if (result.alreadyRunning) {
@@ -132,7 +132,7 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
 
   const cancelSync = async () => {
     if (!activeJobId) return;
-    try { await callEdgeFunction('sicas-sync-orchestrator', { action: 'cancel', jobId: activeJobId }); } catch {}
+    try { await callEdgeFunction('sicas-bulk-sync', { action: 'cancel', jobId: activeJobId }); } catch {}
   };
 
   const lastSync = syncHistory[0];
