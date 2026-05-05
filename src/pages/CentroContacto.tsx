@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   MessageCircle, Mail, Search, Filter, Send, Phone, Building2,
   User, Clock, CheckCircle2, XCircle, AlertCircle, Loader2,
-  ChevronLeft, RefreshCw, X, MessageSquare, Zap,
+  ChevronLeft, RefreshCw, X, MessageSquare, Zap, Check,
+  ListTodo, Plus, Link2, FileText, Image, Music, Video,
+  Paperclip, UserX, UserPlus, Eye,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -24,6 +26,7 @@ interface ConversationSummary {
   last_message_at: string;
   last_message_status: string;
   total_messages: number;
+  unread_count: number;
 }
 
 interface Message {
@@ -45,12 +48,32 @@ interface Message {
   source_event: string | null;
   created_at: string;
   metadata: Record<string, unknown> | null;
+  read_at: string | null;
   sender_name?: string;
+  attachments?: Attachment[];
+}
+
+interface Attachment {
+  id: string;
+  file_name: string;
+  file_type: string;
+  mime_type: string | null;
+  file_url: string | null;
+  direction: string;
 }
 
 interface Oficina {
   id: string;
   nombre: string;
+}
+
+interface TaskOption {
+  id: string;
+  descripcion: string;
+  estatus: string;
+  prioridad: string;
+  fecha_vencimiento: string;
+  creado_por: string;
 }
 
 async function callApi(slug: string, body: Record<string, unknown>) {
@@ -85,8 +108,9 @@ export default function CentroContacto() {
   const [filterChannel, setFilterChannel] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('');
   const [filterOffice, setFilterOffice] = useState<string>('');
+  const [filterUnassigned, setFilterUnassigned] = useState(false);
 
-  // Message thread filters
+  // Thread filters
   const [threadFilterChannel, setThreadFilterChannel] = useState<string>('');
   const [threadFilterType, setThreadFilterType] = useState<string>('');
 
@@ -96,10 +120,21 @@ export default function CentroContacto() {
   const [composerSubject, setComposerSubject] = useState('');
   const [sending, setSending] = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Selection mode
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
 
+  // Task modals
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [showAddToTaskModal, setShowAddToTaskModal] = useState(false);
+
+  // Assign modal
+  const [showAssignModal, setShowAssignModal] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAdmin = usuario?.rol === 'Administrador';
 
+  // Load conversations
   const loadConversations = useCallback(async () => {
     if (!usuario) return;
     setLoading(true);
@@ -113,11 +148,21 @@ export default function CentroContacto() {
         p_limit: 100,
         p_offset: 0,
       });
-      if (!error && data) setConversations(data);
+      if (!error && data) {
+        let filtered = data as ConversationSummary[];
+        if (filterUnassigned) {
+          filtered = filtered.filter(c => {
+            const meta = c as unknown as Record<string, unknown>;
+            return meta.agent_activo === false || (c.last_message_status === 'received' && !c.agent_email);
+          });
+        }
+        setConversations(filtered);
+      }
     } catch { /* silent */ }
     setLoading(false);
-  }, [usuario, filterChannel, filterType, filterOffice, searchQuery]);
+  }, [usuario, filterChannel, filterType, filterOffice, searchQuery, filterUnassigned]);
 
+  // Load messages
   const loadMessages = useCallback(async (agentId: string) => {
     setLoadingMessages(true);
     try {
@@ -140,25 +185,49 @@ export default function CentroContacto() {
             .from('usuarios')
             .select('id, nombre_completo')
             .in('id', senderIds);
-          if (senders) {
-            senderMap = Object.fromEntries(senders.map(s => [s.id, s.nombre_completo || 'Usuario']));
+          if (senders) senderMap = Object.fromEntries(senders.map(s => [s.id, s.nombre_completo || 'Usuario']));
+        }
+
+        // Load attachments for messages
+        const msgIds = data.map(m => m.id);
+        const { data: attachments } = await supabase
+          .from('contact_center_attachments')
+          .select('id, message_id, file_name, file_type, mime_type, file_url, direction')
+          .in('message_id', msgIds);
+
+        const attachMap: Record<string, Attachment[]> = {};
+        if (attachments) {
+          for (const att of attachments) {
+            if (!attachMap[att.message_id]) attachMap[att.message_id] = [];
+            attachMap[att.message_id].push(att);
           }
         }
+
         setMessages(data.map(m => ({
           ...m,
-          sender_name: m.sender_type === 'system' ? 'Sistema' : (m.sender_user_id ? senderMap[m.sender_user_id] || 'Usuario' : 'Sistema'),
+          sender_name: m.direction === 'inbound'
+            ? ((m.metadata as Record<string, unknown>)?.sender_name as string || 'Agente')
+            : (m.sender_type === 'system' ? 'Sistema' : (m.sender_user_id ? senderMap[m.sender_user_id] || 'Usuario' : 'Sistema')),
+          attachments: attachMap[m.id] || [],
         })));
+
+        // Mark messages as read
+        if (usuario) {
+          supabase.rpc('mark_contact_messages_read', {
+            p_agent_user_id: agentId,
+            p_user_id: usuario.id,
+          });
+        }
       }
     } catch { /* silent */ }
     setLoadingMessages(false);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-  }, [threadFilterChannel, threadFilterType]);
+  }, [threadFilterChannel, threadFilterType, usuario]);
 
+  // Initial load
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
   useEffect(() => {
-    const { data: oficinasData } = supabase.from('oficinas').select('id, nombre').order('nombre');
-    oficinasData?.then?.(undefined);
     supabase.from('oficinas').select('id, nombre').order('nombre').then(({ data }) => {
       if (data) setOficinas(data);
     });
@@ -168,10 +237,52 @@ export default function CentroContacto() {
     if (selectedAgent) loadMessages(selectedAgent.agent_user_id);
   }, [selectedAgent, loadMessages]);
 
+  // Realtime subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel('contact-center-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'contact_center_messages',
+      }, (payload) => {
+        const newMsg = payload.new as Message;
+        // Update conversation list
+        loadConversations();
+        // If we're viewing this agent's thread, add the message
+        if (selectedAgent && newMsg.agent_user_id === selectedAgent.agent_user_id) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === newMsg.id)) return prev;
+            const enriched: Message = {
+              ...newMsg,
+              sender_name: newMsg.direction === 'inbound'
+                ? ((newMsg.metadata as Record<string, unknown>)?.sender_name as string || 'Agente')
+                : 'Sistema',
+              attachments: [],
+            };
+            return [...prev, enriched];
+          });
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 200);
+          // Mark as read
+          if (usuario) {
+            supabase.rpc('mark_contact_messages_read', {
+              p_agent_user_id: newMsg.agent_user_id,
+              p_user_id: usuario.id,
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedAgent, usuario, loadConversations]);
+
   const handleSelectAgent = (conv: ConversationSummary) => {
     setSelectedAgent(conv);
     setComposerMessage('');
     setComposerSubject('');
+    setSelectionMode(false);
+    setSelectedMessageIds(new Set());
   };
 
   const handleSend = async () => {
@@ -186,18 +297,14 @@ export default function CentroContacto() {
           agentUserId: selectedAgent.agent_user_id,
           message: composerMessage.trim(),
         });
-        if (!result.success) {
-          alert(result.error || 'No se pudo enviar el WhatsApp. Revisa la configuracion de Wazzup o el numero del agente.');
-        }
+        if (!result.success) alert(result.error || 'No se pudo enviar el WhatsApp.');
       } else {
         const result = await callApi('send-contact-email', {
           agentUserId: selectedAgent.agent_user_id,
           subject: composerSubject.trim(),
           body: composerMessage.trim(),
         });
-        if (!result.success) {
-          alert(result.error || 'No se pudo enviar el correo. Revisa la configuracion de Resend o el correo del agente.');
-        }
+        if (!result.success) alert(result.error || 'No se pudo enviar el correo.');
       }
       setComposerMessage('');
       setComposerSubject('');
@@ -212,24 +319,30 @@ export default function CentroContacto() {
   const handleRetry = async (msgId: string) => {
     const msg = messages.find(m => m.id === msgId);
     if (!msg || msg.status !== 'failed') return;
-
     setSending(true);
     try {
       if (msg.channel === 'whatsapp') {
-        await callApi('send-contact-whatsapp', {
-          agentUserId: msg.agent_user_id,
-          message: msg.body,
-        });
+        await callApi('send-contact-whatsapp', { agentUserId: msg.agent_user_id, message: msg.body });
       } else {
-        await callApi('send-contact-email', {
-          agentUserId: msg.agent_user_id,
-          subject: msg.subject || 'Reenvio',
-          body: msg.body,
-        });
+        await callApi('send-contact-email', { agentUserId: msg.agent_user_id, subject: msg.subject || 'Reenvio', body: msg.body });
       }
       loadMessages(msg.agent_user_id);
     } catch { /* silent */ }
     setSending(false);
+  };
+
+  const toggleMessageSelection = (msgId: string) => {
+    setSelectedMessageIds(prev => {
+      const next = new Set(prev);
+      if (next.has(msgId)) next.delete(msgId);
+      else next.add(msgId);
+      return next;
+    });
+  };
+
+  const cancelSelection = () => {
+    setSelectionMode(false);
+    setSelectedMessageIds(new Set());
   };
 
   const formatTime = (dateStr: string) => {
@@ -242,11 +355,10 @@ export default function CentroContacto() {
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
   };
 
-  const formatFullDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('es-MX', {
-      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
-  };
+  const formatFullDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  const isUnassigned = selectedAgent && selectedAgent.last_message_status === 'received' && !selectedAgent.agent_email;
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
@@ -260,6 +372,11 @@ export default function CentroContacto() {
           )}
           <MessageSquare className="w-5 h-5 text-teal-600" />
           <h1 className="text-lg font-bold text-gray-900 dark:text-white">Centro de Contacto</h1>
+          {conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0) > 0 && (
+            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              {conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0)}
+            </span>
+          )}
         </div>
         <button onClick={loadConversations} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
           <RefreshCw className="w-4 h-4" />
@@ -267,9 +384,8 @@ export default function CentroContacto() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel - Conversation List */}
+        {/* Left Panel */}
         <div className={`w-full lg:w-80 xl:w-96 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 ${selectedAgent ? 'hidden lg:flex' : 'flex'}`}>
-          {/* Search and Filters */}
           <div className="p-3 border-b border-gray-100 dark:border-gray-800 space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -304,6 +420,10 @@ export default function CentroContacto() {
                     {oficinas.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
                   </select>
                 )}
+                <label className="col-span-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
+                  <input type="checkbox" checked={filterUnassigned} onChange={e => setFilterUnassigned(e.target.checked)} className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
+                  <UserX className="w-3.5 h-3.5" /> No asignados
+                </label>
               </div>
             )}
           </div>
@@ -311,14 +431,11 @@ export default function CentroContacto() {
           {/* Conversation List */}
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
-              </div>
+              <div className="flex items-center justify-center h-32"><Loader2 className="w-6 h-6 text-teal-500 animate-spin" /></div>
             ) : conversations.length === 0 ? (
               <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p>Sin conversaciones</p>
-                <p className="text-xs mt-1">Los mensajes enviados apareceran aqui</p>
               </div>
             ) : (
               conversations.map(conv => (
@@ -328,17 +445,25 @@ export default function CentroContacto() {
                   className={`w-full text-left p-3 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedAgent?.agent_user_id === conv.agent_user_id ? 'bg-teal-50 dark:bg-teal-900/20 border-l-2 border-l-teal-500' : ''}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0 relative">
                       <span className="text-white text-xs font-bold">{conv.agent_name?.charAt(0) || '?'}</span>
+                      {(conv.unread_count || 0) > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {conv.unread_count > 9 ? '9+' : conv.unread_count}
+                        </span>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{conv.agent_name}</p>
+                        <p className={`text-sm font-medium truncate ${(conv.unread_count || 0) > 0 ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-700 dark:text-gray-300'}`}>{conv.agent_name}</p>
                         <span className="text-[10px] text-gray-400 shrink-0">{formatTime(conv.last_message_at)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <ChannelIcon channel={conv.last_message_channel} size={12} />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{conv.last_message_body}</p>
+                        {conv.last_message_status === 'received' && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                        )}
+                        <p className={`text-xs truncate ${(conv.unread_count || 0) > 0 ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>{conv.last_message_body}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         {conv.office_name && <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{conv.office_name}</span>}
@@ -352,7 +477,7 @@ export default function CentroContacto() {
           </div>
         </div>
 
-        {/* Center Panel - Thread */}
+        {/* Center Panel */}
         <div className={`flex-1 flex flex-col bg-gray-50 dark:bg-gray-950 ${!selectedAgent ? 'hidden lg:flex' : 'flex'}`}>
           {!selectedAgent ? (
             <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
@@ -371,10 +496,22 @@ export default function CentroContacto() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedAgent.agent_name}</p>
-                    <p className="text-[11px] text-gray-500">{selectedAgent.agent_email}</p>
+                    <p className="text-[11px] text-gray-500">{selectedAgent.agent_email || selectedAgent.agent_phone || 'Sin datos'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {isUnassigned && isAdmin && (
+                    <button onClick={() => setShowAssignModal(true)} className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400">
+                      <UserPlus className="w-3 h-3" /> Asignar
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setSelectionMode(!selectionMode); if (selectionMode) cancelSelection(); }}
+                    className={`p-1.5 rounded text-[11px] ${selectionMode ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400'}`}
+                    title="Seleccionar mensajes"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
                   <select value={threadFilterChannel} onChange={e => setThreadFilterChannel(e.target.value)} className="text-[11px] rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 py-1 px-1.5">
                     <option value="">Todos</option>
                     <option value="whatsapp">WhatsApp</option>
@@ -392,15 +529,44 @@ export default function CentroContacto() {
                 </div>
               </div>
 
+              {/* Selection toolbar */}
+              {selectionMode && selectedMessageIds.size > 0 && (
+                <div className="flex items-center justify-between px-4 py-2 bg-teal-50 dark:bg-teal-900/20 border-b border-teal-200 dark:border-teal-800">
+                  <span className="text-xs font-medium text-teal-700 dark:text-teal-300">
+                    {selectedMessageIds.size} {selectedMessageIds.size === 1 ? 'mensaje seleccionado' : 'mensajes seleccionados'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setShowCreateTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors">
+                      <Plus className="w-3 h-3" /> Crear tarea
+                    </button>
+                    <button onClick={() => setShowAddToTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors">
+                      <Link2 className="w-3 h-3" /> Agregar a tarea
+                    </button>
+                    <button onClick={cancelSelection} className="p-1.5 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-teal-600">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
                 {loadingMessages ? (
                   <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
                 ) : messages.length === 0 ? (
                   <div className="text-center py-8 text-sm text-gray-400">Sin mensajes</div>
                 ) : (
                   messages.map(msg => (
-                    <MessageBubble key={msg.id} message={msg} isAdmin={isAdmin} onRetry={handleRetry} formatDate={formatFullDate} />
+                    <MessageBubble
+                      key={msg.id}
+                      message={msg}
+                      isAdmin={isAdmin}
+                      onRetry={handleRetry}
+                      formatDate={formatFullDate}
+                      selectionMode={selectionMode}
+                      isSelected={selectedMessageIds.has(msg.id)}
+                      onToggleSelect={() => toggleMessageSelection(msg.id)}
+                    />
                   ))
                 )}
                 <div ref={messagesEndRef} />
@@ -450,15 +616,13 @@ export default function CentroContacto() {
                     {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
                 </div>
-                {composerChannel === 'whatsapp' && (
-                  <p className="text-[10px] text-gray-400 mt-1">Max 550 caracteres. Enter para enviar.</p>
-                )}
+                {composerChannel === 'whatsapp' && <p className="text-[10px] text-gray-400 mt-1">Max 550 caracteres. Enter para enviar.</p>}
               </div>
             </>
           )}
         </div>
 
-        {/* Right Panel - Agent Card */}
+        {/* Right Panel */}
         {selectedAgent && showAgentPanel && (
           <div className="hidden xl:flex w-72 flex-col border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-y-auto">
             <div className="p-4 border-b border-gray-100 dark:border-gray-800">
@@ -474,14 +638,13 @@ export default function CentroContacto() {
               <p className="text-sm font-semibold text-gray-900 dark:text-white text-center">{selectedAgent.agent_name}</p>
               <p className="text-xs text-gray-500 text-center mt-0.5">{selectedAgent.agent_rol}</p>
             </div>
-
             <div className="p-4 space-y-3">
               <InfoRow icon={Mail} label="Correo" value={selectedAgent.agent_email || 'Sin correo'} />
               <InfoRow icon={Phone} label="Telefono" value={selectedAgent.agent_phone || 'Sin telefono'} />
               <InfoRow icon={Building2} label="Oficina" value={selectedAgent.office_name || 'Sin asignar'} />
               <InfoRow icon={MessageSquare} label="Total mensajes" value={String(selectedAgent.total_messages)} />
+              <InfoRow icon={Eye} label="No leidos" value={String(selectedAgent.unread_count || 0)} />
               <InfoRow icon={Clock} label="Ultimo contacto" value={selectedAgent.last_message_at ? formatTime(selectedAgent.last_message_at) : 'Nunca'} />
-
               <div className="pt-2">
                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${selectedAgent.agent_activo ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${selectedAgent.agent_activo ? 'bg-emerald-500' : 'bg-red-500'}`} />
@@ -492,60 +655,437 @@ export default function CentroContacto() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-function MessageBubble({ message, isAdmin, onRetry, formatDate }: { message: Message; isAdmin: boolean; onRetry: (id: string) => void; formatDate: (s: string) => string }) {
-  const isSystem = message.sender_type === 'system';
-  const isFailed = message.status === 'failed';
+      {/* Create Task Modal */}
+      {showCreateTaskModal && selectedAgent && (
+        <CreateTaskModal
+          agentUserId={selectedAgent.agent_user_id}
+          agentName={selectedAgent.agent_name}
+          selectedMessages={messages.filter(m => selectedMessageIds.has(m.id))}
+          onClose={() => setShowCreateTaskModal(false)}
+          onSuccess={() => { setShowCreateTaskModal(false); cancelSelection(); }}
+        />
+      )}
 
-  return (
-    <div className={`flex flex-col ${isSystem ? 'items-center' : 'items-end'}`}>
-      {isSystem ? (
-        <div className="max-w-[85%] bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Zap className="w-3 h-3 text-amber-500" />
-            <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
-              {message.source_module || 'Sistema'} - {message.source_event || 'automatico'}
-            </span>
-            <ChannelIcon channel={message.channel} size={11} />
-          </div>
-          {message.subject && <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">{message.subject}</p>}
-          <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{message.body}</p>
-          <div className="flex items-center justify-between mt-1.5">
-            <span className="text-[10px] text-gray-400">{formatDate(message.created_at)}</span>
-            <StatusBadge status={message.status} />
-          </div>
-        </div>
-      ) : (
-        <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 ${isFailed ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm'}`}>
-          <div className="flex items-center gap-2 mb-1">
-            <ChannelIcon channel={message.channel} size={12} />
-            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{message.sender_name}</span>
-            {message.message_type === 'automatic' && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1 py-0.5 rounded">Auto</span>}
-          </div>
-          {message.subject && <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">{message.subject}</p>}
-          <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{message.body}</p>
-          <div className="flex items-center justify-between mt-2 gap-3">
-            <span className="text-[10px] text-gray-400">{formatDate(message.created_at)}</span>
-            <div className="flex items-center gap-2">
-              <StatusBadge status={message.status} />
-              {isFailed && (
-                <button onClick={() => onRetry(message.id)} className="text-[10px] text-red-600 hover:text-red-700 font-medium flex items-center gap-0.5">
-                  <RefreshCw className="w-3 h-3" /> Reintentar
-                </button>
-              )}
-            </div>
-          </div>
-          {isFailed && isAdmin && message.error_message && (
-            <p className="mt-1.5 text-[10px] text-red-500 bg-red-50 dark:bg-red-900/10 rounded px-2 py-1">{message.error_message}</p>
-          )}
-        </div>
+      {/* Add to Task Modal */}
+      {showAddToTaskModal && selectedAgent && (
+        <AddToTaskModal
+          agentUserId={selectedAgent.agent_user_id}
+          agentName={selectedAgent.agent_name}
+          selectedMessages={messages.filter(m => selectedMessageIds.has(m.id))}
+          onClose={() => setShowAddToTaskModal(false)}
+          onSuccess={() => { setShowAddToTaskModal(false); cancelSelection(); }}
+        />
+      )}
+
+      {/* Assign Modal */}
+      {showAssignModal && selectedAgent && (
+        <AssignConversationModal
+          currentAgentId={selectedAgent.agent_user_id}
+          onClose={() => setShowAssignModal(false)}
+          onSuccess={() => { setShowAssignModal(false); loadConversations(); }}
+        />
       )}
     </div>
   );
 }
+
+// ============================================================
+// MessageBubble Component
+// ============================================================
+
+function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, isSelected, onToggleSelect }: {
+  message: Message; isAdmin: boolean; onRetry: (id: string) => void; formatDate: (s: string) => string;
+  selectionMode: boolean; isSelected: boolean; onToggleSelect: () => void;
+}) {
+  const isInbound = message.direction === 'inbound';
+  const isSystem = message.sender_type === 'system' && !isInbound;
+  const isFailed = message.status === 'failed';
+
+  const align = isInbound ? 'items-start' : (isSystem ? 'items-center' : 'items-end');
+
+  return (
+    <div className={`flex flex-col ${align} group`}>
+      <div className={`flex items-start gap-2 ${isInbound ? '' : 'flex-row-reverse'}`}>
+        {selectionMode && (
+          <button onClick={onToggleSelect} className={`mt-2 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-teal-600 border-teal-600 text-white' : 'border-gray-300 dark:border-gray-600 hover:border-teal-500'}`}>
+            {isSelected && <Check className="w-3 h-3" />}
+          </button>
+        )}
+
+        {isSystem && !isInbound ? (
+          <div className="max-w-[85%] bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Zap className="w-3 h-3 text-amber-500" />
+              <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">{message.source_module || 'Sistema'} - {message.source_event || 'automatico'}</span>
+              <ChannelIcon channel={message.channel} size={11} />
+            </div>
+            {message.subject && <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">{message.subject}</p>}
+            <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{message.body}</p>
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-[10px] text-gray-400">{formatDate(message.created_at)}</span>
+              <StatusBadge status={message.status} />
+            </div>
+          </div>
+        ) : isInbound ? (
+          <div className={`max-w-[75%] rounded-xl rounded-tl-sm px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm ${isSelected ? 'ring-2 ring-teal-500' : ''}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <ChannelIcon channel={message.channel} size={12} />
+              <span className="text-[10px] font-medium text-green-600 dark:text-green-400">{message.sender_name}</span>
+              <span className="text-[9px] bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-1 py-0.5 rounded">Recibido</span>
+            </div>
+            {message.subject && <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">{message.subject}</p>}
+            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{message.body}</p>
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {message.attachments.map(att => (
+                  <AttachmentChip key={att.id} attachment={att} />
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-[10px] text-gray-400">{formatDate(message.created_at)}</span>
+              <StatusBadge status={message.status} />
+            </div>
+          </div>
+        ) : (
+          <div className={`max-w-[75%] rounded-xl rounded-tr-sm px-3.5 py-2.5 ${isFailed ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800'} ${isSelected ? 'ring-2 ring-teal-500' : ''}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <ChannelIcon channel={message.channel} size={12} />
+              <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{message.sender_name}</span>
+              {message.message_type === 'automatic' && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1 py-0.5 rounded">Auto</span>}
+            </div>
+            {message.subject && <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">{message.subject}</p>}
+            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{message.body}</p>
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {message.attachments.map(att => (
+                  <AttachmentChip key={att.id} attachment={att} />
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-between mt-2 gap-3">
+              <span className="text-[10px] text-gray-400">{formatDate(message.created_at)}</span>
+              <div className="flex items-center gap-2">
+                <StatusBadge status={message.status} />
+                {isFailed && (
+                  <button onClick={() => onRetry(message.id)} className="text-[10px] text-red-600 hover:text-red-700 font-medium flex items-center gap-0.5">
+                    <RefreshCw className="w-3 h-3" /> Reintentar
+                  </button>
+                )}
+              </div>
+            </div>
+            {isFailed && isAdmin && message.error_message && (
+              <p className="mt-1.5 text-[10px] text-red-500 bg-red-50 dark:bg-red-900/10 rounded px-2 py-1">{message.error_message}</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// AttachmentChip
+// ============================================================
+
+function AttachmentChip({ attachment }: { attachment: Attachment }) {
+  const iconMap: Record<string, typeof FileText> = { image: Image, audio: Music, video: Video, document: FileText };
+  const Icon = iconMap[attachment.file_type] || Paperclip;
+
+  return (
+    <a
+      href={attachment.file_url || '#'}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+    >
+      <Icon className="w-3.5 h-3.5 text-gray-500" />
+      <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate max-w-[150px]">{attachment.file_name}</span>
+    </a>
+  );
+}
+
+// ============================================================
+// Create Task Modal
+// ============================================================
+
+function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, onSuccess }: {
+  agentUserId: string; agentName: string; selectedMessages: Message[];
+  onClose: () => void; onSuccess: () => void;
+}) {
+  const [descripcion, setDescripcion] = useState(() => {
+    const header = `Informacion agregada desde Centro de Contacto:\nAgente: ${agentName}\nCanal: WhatsApp\nFecha de captura: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n`;
+    const msgs = selectedMessages.map((m, i) =>
+      `${i + 1}. [${new Date(m.created_at).toLocaleString('es-MX')}] ${m.direction === 'inbound' ? agentName : (m.sender_name || 'Usuario')}:\n${m.body}`
+    ).join('\n\n');
+    return header + msgs;
+  });
+  const [tipoActividad, setTipoActividad] = useState('Otro');
+  const [prioridad, setPrioridad] = useState('Media');
+  const [fechaVencimiento, setFechaVencimiento] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 16);
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!descripcion.trim() || !fechaVencimiento) return;
+    setSaving(true);
+    const result = await callApi('create-task-from-contact-messages', {
+      agentUserId,
+      messageIds: selectedMessages.map(m => m.id),
+      attachmentIds: selectedMessages.flatMap(m => (m.attachments || []).map(a => a.id)),
+      task: {
+        descripcion: descripcion.trim(),
+        tipo_actividad: tipoActividad,
+        fecha_vencimiento: fechaVencimiento,
+        prioridad,
+        estatus: 'Pendiente',
+      },
+    });
+    setSaving(false);
+    if (result.success) {
+      alert('Tarea creada correctamente con los mensajes seleccionados.');
+      onSuccess();
+    } else {
+      alert(result.error || 'Error al crear la tarea');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <ListTodo className="w-5 h-5 text-teal-600" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Crear tarea desde mensajes</h2>
+          </div>
+          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400">{selectedMessages.length} mensaje(s) de {agentName}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Tipo actividad</label>
+              <select value={tipoActividad} onChange={e => setTipoActividad(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3">
+                <option>Llamada</option><option>Email</option><option>Reunion</option><option>Otro</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Prioridad</label>
+              <select value={prioridad} onChange={e => setPrioridad(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3">
+                <option>Alta</option><option>Media</option><option>Baja</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Fecha limite</label>
+            <input type="datetime-local" value={fechaVencimiento} onChange={e => setFechaVencimiento(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Descripcion</label>
+            <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={8} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3 resize-none" />
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+          <button onClick={handleSave} disabled={saving || !descripcion.trim()} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
+            {saving ? 'Creando...' : 'Crear tarea'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Add to Task Modal
+// ============================================================
+
+function AddToTaskModal({ agentUserId, agentName, selectedMessages, onClose, onSuccess }: {
+  agentUserId: string; agentName: string; selectedMessages: Message[];
+  onClose: () => void; onSuccess: () => void;
+}) {
+  const { usuario } = useAuth();
+  const [tasks, setTasks] = useState<TaskOption[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+  const [searchTask, setSearchTask] = useState('');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      if (!usuario) return;
+      setLoadingTasks(true);
+      const { data } = await supabase
+        .from('crm_tareas')
+        .select('id, descripcion, estatus, prioridad, fecha_vencimiento, creado_por')
+        .in('estatus', ['Pendiente', 'En Proceso'])
+        .order('creado_en', { ascending: false })
+        .limit(50);
+      if (data) setTasks(data);
+      setLoadingTasks(false);
+    })();
+  }, [usuario]);
+
+  const filteredTasks = tasks.filter(t =>
+    !searchTask || t.descripcion.toLowerCase().includes(searchTask.toLowerCase())
+  );
+
+  const handleAdd = async () => {
+    if (!selectedTaskId) return;
+    setSaving(true);
+    const commentText = `Informacion agregada desde Centro de Contacto:\nAgente: ${agentName}\nCanal: WhatsApp\nAgregado por: ${usuario?.nombre_completo || 'Usuario'}\nFecha: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n` +
+      selectedMessages.map((m, i) =>
+        `${i + 1}. [${new Date(m.created_at).toLocaleString('es-MX')}] ${m.direction === 'inbound' ? agentName : (m.sender_name || 'Usuario')}:\n${m.body}`
+      ).join('\n\n');
+
+    const result = await callApi('add-contact-messages-to-task', {
+      agentUserId,
+      taskId: selectedTaskId,
+      messageIds: selectedMessages.map(m => m.id),
+      attachmentIds: selectedMessages.flatMap(m => (m.attachments || []).map(a => a.id)),
+      commentText,
+    });
+    setSaving(false);
+    if (result.success) {
+      alert('Mensajes agregados correctamente a la tarea.');
+      onSuccess();
+    } else {
+      alert(result.error || 'Error al agregar mensajes');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <Link2 className="w-5 h-5 text-teal-600" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Agregar a tarea existente</h2>
+          </div>
+          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400">{selectedMessages.length} mensaje(s) de {agentName}</p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchTask}
+              onChange={e => setSearchTask(e.target.value)}
+              placeholder="Buscar tarea por descripcion..."
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+            />
+          </div>
+          <div className="max-h-60 overflow-y-auto space-y-1 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+            {loadingTasks ? (
+              <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
+            ) : filteredTasks.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No se encontraron tareas</p>
+            ) : (
+              filteredTasks.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedTaskId(t.id)}
+                  className={`w-full text-left p-2.5 rounded-lg transition-colors ${selectedTaskId === t.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300 dark:border-teal-700' : 'hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent'}`}
+                >
+                  <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">{t.descripcion}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.estatus === 'Pendiente' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{t.estatus}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.prioridad === 'Alta' ? 'bg-red-100 text-red-700' : t.prioridad === 'Media' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>{t.prioridad}</span>
+                    <span className="text-[10px] text-gray-400">{new Date(t.fecha_vencimiento).toLocaleDateString('es-MX')}</span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+          <button onClick={handleAdd} disabled={saving || !selectedTaskId} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
+            {saving ? 'Agregando...' : 'Agregar a tarea'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Assign Conversation Modal
+// ============================================================
+
+function AssignConversationModal({ currentAgentId, onClose, onSuccess }: {
+  currentAgentId: string; onClose: () => void; onSuccess: () => void;
+}) {
+  const [users, setUsers] = useState<{ id: string; nombre_completo: string; rol: string }[]>([]);
+  const [search, setSearch] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const { usuario } = useAuth();
+
+  useEffect(() => {
+    supabase.from('usuarios').select('id, nombre_completo, rol').eq('activo', true).neq('id', currentAgentId).order('nombre_completo').then(({ data }) => {
+      if (data) setUsers(data);
+    });
+  }, [currentAgentId]);
+
+  const filtered = users.filter(u => !search || u.nombre_completo?.toLowerCase().includes(search.toLowerCase()));
+
+  const handleAssign = async () => {
+    if (!selectedUserId || !usuario) return;
+    setSaving(true);
+    const { error } = await supabase.rpc('assign_unassigned_conversation', {
+      p_old_agent_id: currentAgentId,
+      p_new_agent_id: selectedUserId,
+      p_assigned_by: usuario.id,
+    });
+    setSaving(false);
+    if (!error) {
+      alert('Conversacion asignada correctamente.');
+      onSuccess();
+    } else {
+      alert('Error: ' + error.message);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-teal-600" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Asignar conversacion</h2>
+          </div>
+          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar agente..." className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800" />
+          <div className="max-h-52 overflow-y-auto space-y-1 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+            {filtered.slice(0, 30).map(u => (
+              <button key={u.id} onClick={() => setSelectedUserId(u.id)} className={`w-full text-left p-2 rounded-lg text-sm ${selectedUserId === u.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent'}`}>
+                <span className="text-gray-800 dark:text-gray-200">{u.nombre_completo}</span>
+                <span className="text-[10px] text-gray-400 ml-2">{u.rol}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+          <button onClick={handleAssign} disabled={saving || !selectedUserId} className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 font-medium">
+            {saving ? 'Asignando...' : 'Asignar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Helper Components
+// ============================================================
 
 function ChannelIcon({ channel, size = 14 }: { channel: string; size?: number }) {
   if (channel === 'whatsapp') return <MessageCircle style={{ width: size, height: size }} className="text-green-500" />;
@@ -558,17 +1098,14 @@ function StatusBadge({ status }: { status: string }) {
     sent: { icon: CheckCircle2, color: 'text-emerald-500', label: 'Enviado' },
     delivered: { icon: CheckCircle2, color: 'text-blue-500', label: 'Entregado' },
     read: { icon: CheckCircle2, color: 'text-teal-500', label: 'Leido' },
+    received: { icon: CheckCircle2, color: 'text-green-500', label: 'Recibido' },
     pending: { icon: Clock, color: 'text-gray-400', label: 'Pendiente' },
     failed: { icon: XCircle, color: 'text-red-500', label: 'Error' },
     cancelled: { icon: AlertCircle, color: 'text-gray-400', label: 'Cancelado' },
   };
   const c = config[status] || config.pending;
   const Icon = c.icon;
-  return (
-    <span className={`flex items-center gap-0.5 text-[10px] ${c.color}`}>
-      <Icon className="w-3 h-3" /> {c.label}
-    </span>
-  );
+  return <span className={`flex items-center gap-0.5 text-[10px] ${c.color}`}><Icon className="w-3 h-3" /> {c.label}</span>;
 }
 
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
