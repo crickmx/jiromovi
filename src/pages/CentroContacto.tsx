@@ -1171,5 +1171,3 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
   );
 }
 
-
-export default CentroContacto
