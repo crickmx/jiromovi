@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Database, Link as LinkIcon, FolderOpen, Trophy, X } from 'lucide-react';
+import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Database, Link as LinkIcon, FolderOpen, Trophy, X, Headphones } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
@@ -97,6 +97,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
     { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, show: canAccessDirectorio },
     { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
+    { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, show: isAdmin || isGerente || isEmpleado },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: isNotAgent },
     { path: '/directorio', label: 'Usuarios', icon: Users, show: isAdminOrGerente },
     { path: '/actividad-usuarios', label: 'Actividad Usuarios', icon: Activity, show: isAdmin },

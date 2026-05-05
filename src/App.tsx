@@ -91,6 +91,7 @@ import RegistroPersonal from './pages/RegistroPersonal';
 import RegimenFiscalAdmin from './pages/RegimenFiscalAdmin';
 import RegimenFiscalEditor from './pages/RegimenFiscalEditor';
 import ProduccionSICASLive from './pages/ProduccionSICASLive';
+import CentroContacto from './pages/CentroContacto';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -797,6 +798,7 @@ function App() {
               <Route path="/configuracion" element={<ProtectedRoute requireAdmin><Layout><Configuracion /></Layout></ProtectedRoute>} />
               <Route path="/notificaciones-transaccionales" element={<ProtectedRoute requireAdmin><Layout><NotificacionesTransaccionales /></Layout></ProtectedRoute>} />
               <Route path="/centro-correos" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroCorreos /></Layout></ProtectedRoute>} />
+              <Route path="/centro-contacto" element={<ProtectedRoute excludeAgente><Layout><CentroContacto /></Layout></ProtectedRoute>} />
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
               <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
