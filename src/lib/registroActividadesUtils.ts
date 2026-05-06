@@ -130,7 +130,7 @@ export async function getUsersWhoCanAttend(): Promise<UsuarioOficina[]> {
 
 /**
  * Obtiene los estatus de registro de actividad desde la base de datos.
- * Solo devuelve los estatus aplicables a 'registro_actividad'.
+ * Solo devuelve los estatus aplicables a 'cotizacion_emision'.
  */
 export async function getTicketEstatusRegistroActividad(): Promise<Array<{
   id: string;
@@ -153,7 +153,7 @@ export async function getTicketEstatusRegistroActividad(): Promise<Array<{
 
   return data.filter((e: any) =>
     !e.tipo_aplicable ||
-    e.tipo_aplicable.includes('registro_actividad')
+    e.tipo_aplicable.includes('cotizacion_emision')
   );
 }
 
@@ -221,7 +221,7 @@ export async function createRegistroActividad(data: {
 
     const ticketData: any = {
       folio,
-      tipo_tramite: data.tipo_tramite || 'registro_actividad',
+      tipo_tramite: data.tipo_tramite || 'cotizacion_emision',
       activity_subtype_id: toUuid(data.activity_subtype_id),
       agente_usuario_id: toUuid(data.agente_usuario_id),
       insurance_type_id: toUuid(data.insurance_type_id),

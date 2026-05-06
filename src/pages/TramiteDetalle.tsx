@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, XCircle, RefreshCw, Save, ChevronDown } from 'lucide-react';
+import { ArrowLeft, XCircle, RefreshCw, Save, ChevronDown, AlertCircle } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
@@ -72,12 +72,19 @@ export function TramiteDetalle() {
   const [showCerrarMenu, setShowCerrarMenu] = useState(false);
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
 
+  const [userArea, setUserArea] = useState<string | null>(null);
+
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
   const isEmpleado = usuario?.rol === 'Empleado';
   const isOwner = tramite?.creado_por === usuario?.id;
   const isAssigned = tramite?.assigned_to_user_id === usuario?.id;
-  const canEdit = isAdmin || isGerente || isEmpleado || isOwner || isAssigned;
+
+  const OPERATIONAL_TYPES = ['correccion_comisiones', 'correccion_poliza_registrada'];
+  const isOperationalTicket = tramite ? OPERATIONAL_TYPES.includes(tramite.tipo_tramite) : false;
+  const isCommercialViewerOnly = userArea === 'Comercial' && isOperationalTicket && !isAdmin && !isOwner && !isAssigned;
+
+  const canEdit = (isAdmin || isGerente || isEmpleado || isOwner || isAssigned) && !isCommercialViewerOnly;
   const claimedRef = useRef(false);
   const isCerrado = tramite?.cerrado_en !== null;
 
@@ -96,6 +103,14 @@ export function TramiteDetalle() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showCerrarMenu]);
+
+  useEffect(() => {
+    if (usuario && !isAdmin && !isGerente) {
+      supabase.rpc('get_user_tramite_area', { p_user_id: usuario.id }).then(({ data }) => {
+        setUserArea(data || null);
+      });
+    }
+  }, [usuario?.id]);
 
   useEffect(() => {
     if (id) {
@@ -163,7 +178,7 @@ export function TramiteDetalle() {
     };
 
     // Si es un registro de actividad o cotizacion_emision, obtener datos adicionales
-    if (ticketData.tipo_tramite === 'registro_actividad' || ticketData.tipo_tramite === 'cotizacion_emision') {
+    if (ticketData.tipo_tramite === 'cotizacion_emision') {
       const [subtypeRes, agenteUsuarioRes, insuranceRes, attendingRes] = await Promise.all([
         ticketData.activity_subtype_id ? supabase.from('tramite_activity_types').select('id, nombre').eq('id', ticketData.activity_subtype_id).maybeSingle() : Promise.resolve({ data: null }),
         ticketData.agente_usuario_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.agente_usuario_id).maybeSingle() : Promise.resolve({ data: null }),
@@ -233,7 +248,9 @@ export function TramiteDetalle() {
     lead_registro_movi: 'general',
     solicitud_comisiones_pendientes: 'solicitud_comisiones',
     cambio_bancario: 'cambio_bancario',
-    registro_actividad: 'registro_actividad',
+    renovaciones: 'general',
+    cobranza: 'general',
+    otros_comercial: 'general',
   };
 
   const loadEstatus = async (tipoTramite?: string) => {
@@ -510,6 +527,15 @@ export function TramiteDetalle() {
             )}
           </div>
         </div>
+
+        {isCommercialViewerOnly && (
+          <div className="mt-4 flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <p className="text-sm text-amber-700">
+              Visualizacion de solo lectura. Puedes agregar comentarios pero no editar este tramite.
+            </p>
+          </div>
+        )}
 
         <div className="flex space-x-2 border-b border-neutral-200 mt-6">
           {(['detalles', 'comentarios', 'archivos', 'historial'] as const).map(tab => (

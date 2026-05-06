@@ -14,6 +14,7 @@ import { PerfilUsuario } from './pages/PerfilUsuario';
 import { Directorio } from './pages/Directorio';
 import { Oficinas } from './pages/Oficinas';
 import { Configuracion } from './pages/Configuracion';
+import ConfiguracionHub from './pages/ConfiguracionHub';
 import { CentroCorreos } from './pages/CentroCorreos';
 import { Vacaciones } from './pages/Vacaciones';
 import { EspacioJiro } from './pages/EspacioJiro';
@@ -92,6 +93,7 @@ import RegimenFiscalAdmin from './pages/RegimenFiscalAdmin';
 import RegimenFiscalEditor from './pages/RegimenFiscalEditor';
 import ProduccionSICASLive from './pages/ProduccionSICASLive';
 import CentroContacto from './pages/CentroContacto';
+import CentroContactoHub from './pages/CentroContactoHub';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -166,13 +168,7 @@ function AppRoutes() {
 
       <Route
         path="/oficinas"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <Oficinas />
-            </Layout>
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/configuracion" replace />}
       />
 
       <Route
@@ -180,7 +176,7 @@ function AppRoutes() {
         element={
           <ProtectedRoute requireAdmin>
             <Layout>
-              <Configuracion />
+              <ConfiguracionHub />
             </Layout>
           </ProtectedRoute>
         }
@@ -188,13 +184,7 @@ function AppRoutes() {
 
       <Route
         path="/notificaciones-transaccionales"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <NotificacionesTransaccionales />
-            </Layout>
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/centro-contacto" replace />}
       />
 
       <Route
@@ -267,13 +257,7 @@ function AppRoutes() {
 
       <Route
         path="/chat"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Chat />
-            </Layout>
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/centro-contacto" replace />}
       />
 
       <Route
@@ -342,11 +326,7 @@ function AppRoutes() {
 
       <Route
         path="/centro-notificaciones"
-        element={
-          <ProtectedRoute>
-            <CentroNotificaciones />
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/centro-contacto" replace />}
       />
 
       <Route
@@ -656,13 +636,7 @@ function AppRoutes() {
 
       <Route
         path="/gamificacion/admin"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <GamificacionAdmin />
-            </Layout>
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/configuracion" replace />}
       />
 
       <Route
@@ -711,11 +685,7 @@ function AppRoutes() {
 
       <Route
         path="/gmm/tarifas"
-        element={
-          <ProtectedRoute requireAdmin>
-            <GMMTarifasAdmin />
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/configuracion" replace />}
       />
 
       <Route
@@ -729,13 +699,7 @@ function AppRoutes() {
 
       <Route
         path="/catalogos-web"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Layout>
-              <CatalogosWeb />
-            </Layout>
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/configuracion" replace />}
       />
 
       <Route path="/mi-pagina-web" element={<Navigate to="/mercadotecnia/mi-pagina-web" replace />} />
@@ -794,11 +758,11 @@ function App() {
               <Route path="/directorio" element={<ProtectedRoute requireDirectorioAccess><Layout><Directorio /></Layout></ProtectedRoute>} />
               <Route path="/directorio-jiro" element={<ProtectedRoute requireDirectorioAccess><DirectorioJiro /></ProtectedRoute>} />
               <Route path="/usuario/:id" element={<ProtectedRoute requireAdminOrGerente><Layout><PerfilUsuario /></Layout></ProtectedRoute>} />
-              <Route path="/oficinas" element={<ProtectedRoute requireAdmin><Layout><Oficinas /></Layout></ProtectedRoute>} />
-              <Route path="/configuracion" element={<ProtectedRoute requireAdmin><Layout><Configuracion /></Layout></ProtectedRoute>} />
-              <Route path="/notificaciones-transaccionales" element={<ProtectedRoute requireAdmin><Layout><NotificacionesTransaccionales /></Layout></ProtectedRoute>} />
+              <Route path="/oficinas" element={<Navigate to="/configuracion" replace />} />
+              <Route path="/configuracion" element={<ProtectedRoute requireAdmin><Layout><ConfiguracionHub /></Layout></ProtectedRoute>} />
+              <Route path="/notificaciones-transaccionales" element={<Navigate to="/centro-contacto" replace />} />
               <Route path="/centro-correos" element={<ProtectedRoute requireAdminOrGerente><Layout><CentroCorreos /></Layout></ProtectedRoute>} />
-              <Route path="/centro-contacto" element={<ProtectedRoute excludeAgente><Layout><CentroContacto /></Layout></ProtectedRoute>} />
+              <Route path="/centro-contacto" element={<ProtectedRoute excludeAgente><Layout><CentroContactoHub /></Layout></ProtectedRoute>} />
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
               <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
@@ -809,7 +773,7 @@ function App() {
               <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Layout><Mercadotecnia section="publicidad" /></Layout></ProtectedRoute>} />
               <Route path="/gestor-emails" element={<ProtectedRoute><Layout><GestorEmails /></Layout></ProtectedRoute>} />
               <Route path="/centro-digital" element={<ProtectedRoute><CentroDigital /></ProtectedRoute>} />
-              <Route path="/chat" element={<ProtectedRoute><Layout><Chat /></Layout></ProtectedRoute>} />
+              <Route path="/chat" element={<Navigate to="/centro-contacto" replace />} />
               <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
               <Route path="/seguros-education" element={<ProtectedRoute><SegurosEducation /></ProtectedRoute>} />
               <Route path="/seguros-education/on-demand" element={<ProtectedRoute><SegurosEducationOnDemand /></ProtectedRoute>} />
@@ -822,7 +786,7 @@ function App() {
               <Route path="/seguros-education/cedula-a/examenes" element={<ProtectedRoute><Layout><CedulaAExamenes /></Layout></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a/examen/:examenId" element={<ProtectedRoute><Layout><ExamenInterface /></Layout></ProtectedRoute>} />
               <Route path="/seguros-education/cedula-a/certificado/:certificadoId" element={<ProtectedRoute><Layout><CertificadoCedulaA /></Layout></ProtectedRoute>} />
-              <Route path="/centro-notificaciones" element={<ProtectedRoute><CentroNotificaciones /></ProtectedRoute>} />
+              <Route path="/centro-notificaciones" element={<Navigate to="/centro-contacto" replace />} />
               <Route path="/tramites" element={<ProtectedRoute><Layout><Tramites /></Layout></ProtectedRoute>} />
               <Route path="/tramites/reportes" element={<ProtectedRoute><Layout><TramitesReportes /></Layout></ProtectedRoute>} />
               <Route path="/tramites/:id" element={<ProtectedRoute><Layout><TramiteDetalle /></Layout></ProtectedRoute>} />
@@ -853,7 +817,7 @@ function App() {
               <Route path="/comisiones/importar-documentos" element={<ProtectedRoute requireAdmin><Layout><DocumentosImportar /></Layout></ProtectedRoute>} />
               <Route path="/configuracion/mapeo-vendedores" element={<ProtectedRoute requireAdmin><Layout><MapeoVendedoresAdmin /></Layout></ProtectedRoute>} />
               <Route path="/mis-comisiones" element={<ProtectedRoute><Layout><MisComisiones /></Layout></ProtectedRoute>} />
-              <Route path="/gamificacion/admin" element={<ProtectedRoute requireAdmin><Layout><GamificacionAdmin /></Layout></ProtectedRoute>} />
+              <Route path="/gamificacion/admin" element={<Navigate to="/configuracion" replace />} />
               <Route path="/mi-progreso" element={<ProtectedRoute><Layout><MiProgreso /></Layout></ProtectedRoute>} />
               <Route path="/produccion/total" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionTotal /></Layout></ProtectedRoute>} />
               <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />
@@ -862,10 +826,10 @@ function App() {
               <Route path="/mi-produccion-sicas-soap" element={<ProtectedRoute><Layout><MiProduccionSICASMirror /></Layout></ProtectedRoute>} />
               <Route path="/mis-polizas" element={<ProtectedRoute><Layout><MisPolizas /></Layout></ProtectedRoute>} />
               <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />
-              <Route path="/gmm/tarifas" element={<ProtectedRoute requireAdmin><GMMTarifasAdmin /></ProtectedRoute>} />
+              <Route path="/gmm/tarifas" element={<Navigate to="/configuracion" replace />} />
               <Route path="/gmm/cotizador" element={<ProtectedRoute requireAdmin><GMMCotizador /></ProtectedRoute>} />
-              <Route path="/catalogos-web" element={<ProtectedRoute requireAdmin><Layout><CatalogosWeb /></Layout></ProtectedRoute>} />
-              <Route path="/sicas" element={<ProtectedRoute requireAdmin><Layout><SicasAdmin /></Layout></ProtectedRoute>} />
+              <Route path="/catalogos-web" element={<Navigate to="/configuracion" replace />} />
+              <Route path="/sicas" element={<Navigate to="/configuracion" replace />} />
               <Route path="/sicas/test-catalogs" element={<ProtectedRoute requireAdmin><Layout><SicasTestCatalogs /></Layout></ProtectedRoute>} />
               <Route path="/sicas/diagnostico" element={<ProtectedRoute requireAdmin><SicasDiagnostico /></ProtectedRoute>} />
               <Route path="/sicas/rest-test" element={<ProtectedRoute requireAdminOrGerente><Layout><SicasRestTest /></Layout></ProtectedRoute>} />

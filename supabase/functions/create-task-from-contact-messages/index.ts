@@ -24,6 +24,7 @@ interface CreateTaskRequest {
     tipo_tramite?: string;
     prioridad?: string;
     assigned_to_user_id?: string;
+    is_commercial?: boolean;
   };
 }
 
@@ -87,22 +88,31 @@ Deno.serve(async (req) => {
     const { data: folioData, error: folioError } = await supabase.rpc("generate_next_folio");
     if (folioError || !folioData) throw new Error("Error generando folio: " + (folioError?.message || "unknown"));
 
+    const COMMERCIAL_TYPES = ["renovaciones", "cobranza", "otros_comercial"];
+    const tipoTramite = task.tipo_tramite || "cotizacion_emision";
+    const isCommercial = task.is_commercial || COMMERCIAL_TYPES.includes(tipoTramite);
+
+    if (isCommercial && senderUser.rol === "Agente") {
+      throw new Error("Los agentes no pueden crear tramites comerciales");
+    }
+
     const { data: createdTicket, error: ticketError } = await supabase
       .from("tickets")
       .insert({
         folio: folioData,
-        tipo_tramite: task.tipo_tramite || "cotizacion_emision",
+        tipo_tramite: tipoTramite,
         estatus_id: estatusIniciado.id,
         prioridad: task.prioridad || "Media",
         instrucciones: task.instrucciones,
         agente_id: agentUserId,
         agente_usuario_id: agentUserId,
         creado_por: senderUser.id,
-        assigned_to_user_id: senderUser.id,
+        assigned_to_user_id: isCommercial ? senderUser.id : senderUser.id,
         cerrado: false,
         metadata: {
           source: "centro_contacto",
           created_from_messages: messageIds.length,
+          is_commercial: isCommercial,
         },
       })
       .select("id, folio")

@@ -641,17 +641,18 @@ INSTRUCCIONES ESTRICTAS:
 2. El mensaje debe tener entre 90 y 160 palabras. Maximo 2-3 parrafos cortos.
 3. NO uses listas, vinetas, markdown, negritas, asteriscos ni formato especial. Solo texto plano fluido.
 4. NO enumeres metricas una por una. Interpreta y sintetiza: que significan los datos, que senales positivas o de atencion hay, y que conviene hacer a continuacion.
-5. Si hay datos de varios modulos, integralos naturalmente en el mensaje. Prioriza lo mas importante.
-6. PRIORIDAD de contenido:
-   P1 (URGENTE): Renovaciones proximas, tramites vencidos, tareas CRM vencidas, leads sin seguimiento
-   P2 (IMPORTANTE): Produccion/emisiones del mes, comisiones, oportunidades de venta, cotizaciones activas
-   P3 (INFORMATIVO): Comunicados sin leer, capacitacion pendiente, mercadotecnia/pagina web
-   P4 (MOTIVACIONAL): Gamificacion, racha, resumen general cuando no hay alertas urgentes
-7. Siempre menciona el nombre del usuario al inicio.
-8. Si hay pocos datos, genera un mensaje amable indicando que conforme use la plataforma vera analisis mas completos. Sugiere 1-2 modulos que podria empezar a usar.
-9. NUNCA inventes datos. Solo usa lo proporcionado.
-10. Incluye al menos una recomendacion accionable especifica (ej: "te sugiero dar seguimiento a las 3 renovaciones de esta semana", "revisa los 2 leads pendientes de tu pagina web").
-11. Todos los textos en espanol.
+5. Si hay datos de varios modulos, integralos naturalmente en el mensaje.
+6. SIEMPRE incluye datos de PRODUCCION/SICAS y de TRAMITES cuando esten disponibles. Estos dos modulos son OBLIGATORIOS en el mensaje. Complementa con datos de los demas modulos que consideres relevantes para dar un panorama completo.
+7. PRIORIDAD de contenido:
+   P1 (OBLIGATORIO): Produccion SICAS (polizas, emisiones, renovaciones, cartera) y Tramites (abiertos, en proceso, vencidos)
+   P2 (URGENTE): Renovaciones proximas 7 dias, tramites vencidos, tareas CRM vencidas, leads sin seguimiento
+   P3 (IMPORTANTE): Comisiones, oportunidades de venta, cotizaciones activas, CRM
+   P4 (COMPLEMENTARIO): Comunicados, capacitacion, gamificacion, pagina web
+8. Siempre menciona el nombre del usuario al inicio.
+9. Si no hay datos de SICAS o Tramites, menciona brevemente que aun no hay informacion de produccion/tramites registrada y sugiere que sincronice o registre actividad.
+10. NUNCA inventes datos. Solo usa lo proporcionado.
+11. Incluye al menos una recomendacion accionable especifica basada en los datos de produccion o tramites.
+12. Todos los textos en espanol.
 
 Responde UNICAMENTE con un JSON asi:
 {"message": "tu mensaje en texto plano", "tone": "positive|neutral|attention"}

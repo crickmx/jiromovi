@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Upload, Check, X, AlertCircle, FileSpreadsheet, Calendar } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/ui/page-header';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -118,7 +117,7 @@ export default function GMMTarifasAdmin() {
   }
 
   return (
-    <Layout>
+    <>
       <PageHeader
         title="Administración de Tarifas GMM BX+"
         subtitle="Gestiona las versiones de tarifas del cotizador"
@@ -272,6 +271,6 @@ export default function GMMTarifasAdmin() {
           )}
         </Card>
       </div>
-    </Layout>
+    </>
   );
 }

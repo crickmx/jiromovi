@@ -132,7 +132,7 @@ export function RegistroActividadForm({ onClose, onSuccess, tramiteId, initialDa
         getInsuranceTypes(),
         getAseguradoras(),
         getUsersWhoCanAttend(),
-        getTicketEstatus('registro_actividad')
+        getTicketEstatus('cotizacion_emision')
       ]);
       setTramiteTypes(types);
       setInsuranceTypes(insurance);

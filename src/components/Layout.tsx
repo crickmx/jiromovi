@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, Building2, LayoutDashboard, Mail, Calendar, MapPin, Menu, Calculator, Palette, MessageSquare, Key, GraduationCap, Bell, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, ClipboardCheck, Car, Database, Link as LinkIcon, FolderOpen, Trophy, X, Headphones } from 'lucide-react';
+import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
@@ -91,22 +91,14 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/mercadotecnia/mi-marca', label: 'Mercadotecnia', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador', icon: Car, show: true },
     { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, show: isAdmin },
-    { path: '/gmm/tarifas', label: 'GMM Tarifas Admin', icon: Settings, show: isAdmin },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/store', label: 'MOVI Store', icon: ShoppingBag, show: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, show: isNotAgent },
     { path: '/directorio-jiro', label: 'Directorio JIRO', icon: BookUser, show: canAccessDirectorio },
-    { path: '/chat', label: 'Chat', icon: MessageSquare, show: isNotAgent },
-    { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, show: isAdmin || isGerente || isEmpleado },
+    { path: '/centro-contacto', label: 'Centro de Contacto', icon: Headphones, show: isNotAgent },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, show: isNotAgent },
     { path: '/directorio', label: 'Usuarios', icon: Users, show: isAdminOrGerente },
     { path: '/actividad-usuarios', label: 'Actividad Usuarios', icon: Activity, show: isAdmin },
-    { path: '/centro-notificaciones', label: 'Notificaciones', icon: Bell, show: isAdmin },
-    { path: '/notificaciones-transaccionales', label: 'Notif. Transaccionales', icon: Mail, show: isAdmin },
-    { path: '/gamificacion/admin', label: 'Gamificacion', icon: Trophy, show: isAdmin },
-    { path: '/oficinas', label: 'Oficinas', icon: Building2, show: isAdmin },
-    { path: '/catalogos-web', label: 'Catalogos Web', icon: Database, show: isAdmin },
-    { path: '/sicas', label: 'SICAS', icon: LinkIcon, show: isAdmin },
     { path: '/configuracion', label: 'Configuracion', icon: Settings, show: isAdmin },
   ];
 
@@ -127,6 +119,8 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
       (item.label === 'Comisiones' && (location.pathname.startsWith('/comisiones') || location.pathname.startsWith('/mis-comisiones'))) ||
       (item.label === 'Mi Produccion' && location.pathname === '/mi-produccion') ||
       (item.label === 'Mercadotecnia' && location.pathname.startsWith('/mercadotecnia')) ||
+      (item.label === 'Centro de Contacto' && (location.pathname.startsWith('/centro-contacto') || location.pathname === '/chat' || location.pathname === '/centro-notificaciones' || location.pathname === '/notificaciones-transaccionales')) ||
+      (item.label === 'Configuracion' && (location.pathname.startsWith('/configuracion') || location.pathname === '/oficinas' || location.pathname === '/catalogos-web' || location.pathname === '/sicas' || location.pathname.startsWith('/gamificacion') || location.pathname === '/gmm/tarifas')) ||
       (item.path === '/produccion/total' && location.pathname === '/produccion/total');
 
     return (

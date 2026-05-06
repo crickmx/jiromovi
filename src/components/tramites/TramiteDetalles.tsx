@@ -206,12 +206,12 @@ export function TramiteDetalles({
         </div>
       </div>
 
-      {/* Sección especial para Registro de Actividades */}
-      {tramite.tipo_tramite === 'registro_actividad' && (
+      {/* Sección especial para Cotización / Emisión */}
+      {tramite.tipo_tramite === 'cotizacion_emision' && (
         <div className="border-t border-neutral-200 pt-6">
           <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
             <Briefcase className="w-5 h-5" />
-            Detalles del Registro de Actividad
+            Detalles de Cotización / Emisión
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

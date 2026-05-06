@@ -106,10 +106,13 @@ export function Publicidad() {
       return;
     }
 
-    // Filter by office visibility
-    const userOfficeId = usuario?.oficina_id;
-    const filtered = await filterByOfficeVisibility(data, userOfficeId);
-    setPlantillas(filtered);
+    if (isAdmin) {
+      setPlantillas(data);
+    } else {
+      const userOfficeId = usuario?.oficina_id;
+      const filtered = await filterByOfficeVisibility(data, userOfficeId);
+      setPlantillas(filtered);
+    }
   };
 
   const filterByOfficeVisibility = async (items: Plantilla[], userOfficeId?: string): Promise<Plantilla[]> => {

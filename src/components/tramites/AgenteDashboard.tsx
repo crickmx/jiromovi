@@ -263,18 +263,30 @@ export function AgenteDashboard() {
           <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-5">
             <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4 text-neutral-400" />
-              Resumen
+              Por tipo
             </h3>
             <div className="space-y-3">
-              {data.estatusGroups.map(g => (
-                <div key={g.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
-                    <span className="text-sm text-neutral-700">{g.nombre}</span>
-                  </div>
-                  <span className="text-sm font-bold text-neutral-900">{g.count}</span>
-                </div>
-              ))}
+              {(() => {
+                const activos = data.estatusGroups.flatMap(g => g.tickets);
+                const byType: Record<string, number> = {};
+                for (const t of activos) {
+                  byType[t.tipo_tramite] = (byType[t.tipo_tramite] || 0) + 1;
+                }
+                const entries = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+                return entries.map(([tipo, count]) => {
+                  const area = getTipoTramiteArea(tipo);
+                  const ac = AREA_CONFIG[area];
+                  return (
+                    <div key={tipo} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ac.bg.replace('bg-', 'bg-')}`} style={{ backgroundColor: ac.color.includes('sky') ? '#0369a1' : '#b45309' }} />
+                        <span className="text-sm text-neutral-700 truncate">{TIPO_LABELS(tipo)}</span>
+                      </div>
+                      <span className="text-sm font-bold text-neutral-900 flex-shrink-0">{count}</span>
+                    </div>
+                  );
+                });
+              })()}
               {data.cerradosGroup && (
                 <div className="flex items-center justify-between pt-2 border-t border-neutral-100">
                   <div className="flex items-center gap-2">

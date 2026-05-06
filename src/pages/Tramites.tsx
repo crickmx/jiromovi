@@ -45,7 +45,7 @@ interface TramiteItem {
 }
 
 const TRAMITE_OPTIONS_FOR_FILTER = TIPO_TRAMITE_OPTIONS.filter(
-  t => t.value !== 'registro_actividad' && t.value !== 'cambio_bancario'
+  t => t.value !== 'cambio_bancario'
 );
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
@@ -82,7 +82,7 @@ export function Tramites() {
     );
   })();
 
-  // Prioridades available: for registro_actividad only Baja/Media/Alta are valid but same applies; no restriction needed
+  // All 3 prioridades always available
   // We keep all 3 always, just show them filtered to what makes sense
   const availablePrioridades = PRIORIDADES;
 
@@ -179,15 +179,21 @@ export function Tramites() {
 
   const getTipoTramiteLabel = (tipo: string) => centralGetLabel(tipo);
 
+  // Operational types that commercial employees can also view (read-only)
+  const OPERATIONAL_CROSS_VISIBLE = ['correccion_comisiones', 'correccion_poliza_registrada'];
+
   // Visibility filter based on user's group area
   const visibleTramites = tramites.filter(tramite => {
     if (isAdmin) return true;
 
     if (userArea === 'Comercial') {
       const tipoArea = getTipoTramiteArea(tramite.tipo_tramite);
-      if (tipoArea !== 'Comercial') return false;
       const agenteOficinaId = tramite.agente?.oficina_id ?? null;
-      return agenteOficinaId === usuario?.oficina_id;
+      const sameOffice = agenteOficinaId === usuario?.oficina_id;
+
+      if (tipoArea === 'Comercial') return sameOffice;
+      if (OPERATIONAL_CROSS_VISIBLE.includes(tramite.tipo_tramite)) return sameOffice;
+      return false;
     }
 
     if (userArea === 'Operaciones') {
@@ -335,6 +341,45 @@ export function Tramites() {
       </div>
 
       {isAgente && <AgenteDashboard />}
+
+      {/* KPI Summary for non-agent users */}
+      {!isAgente && visibleTramites.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {(() => {
+            const activos = visibleTramites.filter(t => !t.cerrado_en);
+            const byType: Record<string, number> = {};
+            for (const t of activos) {
+              byType[t.tipo_tramite] = (byType[t.tipo_tramite] || 0) + 1;
+            }
+            const kpiTypes = TIPO_TRAMITE_OPTIONS.filter(
+              opt => opt.value !== 'cambio_bancario'
+            );
+            const kpis = kpiTypes
+              .map(opt => ({ ...opt, count: byType[opt.value] || 0 }))
+              .filter(k => k.count > 0);
+
+            if (kpis.length === 0) return null;
+
+            return kpis.map(kpi => {
+              const ac = AREA_CONFIG[kpi.area];
+              return (
+                <button
+                  key={kpi.value}
+                  onClick={() => setSelectedTipo(kpi.value)}
+                  className={`rounded-xl border p-3 text-left transition-all hover:shadow-md ${
+                    selectedTipo === kpi.value
+                      ? `${ac.bg} ${ac.border} ring-2 ring-offset-1 ring-current ${ac.color}`
+                      : 'bg-white border-neutral-200 hover:border-neutral-300'
+                  }`}
+                >
+                  <p className="text-2xl font-bold text-neutral-900">{kpi.count}</p>
+                  <p className={`text-xs font-medium mt-0.5 ${ac.color}`}>{kpi.label}</p>
+                </button>
+              );
+            });
+          })()}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-4">

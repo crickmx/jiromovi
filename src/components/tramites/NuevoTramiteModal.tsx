@@ -3,7 +3,6 @@ import { X, Upload, User, AlertCircle, FileText, Package, DollarSign, Building2,
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
-import { RegistroActividadForm } from './RegistroActividadForm';
 import {
   canAccessRegistroActividades,
   getInsuranceTypes,
@@ -19,6 +18,7 @@ import {
   getTipoTramitesByArea,
   getTipoTramiteArea,
   AREA_CONFIG,
+  isCommercialTicketType,
   type InsuranceType,
   type Aseguradora as AseguradoraRA,
   type UsuarioOficina
@@ -131,6 +131,15 @@ export function NuevoTramiteModal({
   const [ceShowInsurerDropdown, setCeShowInsurerDropdown] = useState(false);
   const [ceInsurerSearchTerm, setCeInsurerSearchTerm] = useState('');
 
+  // --- Estado para trámites comerciales (Renovaciones/Cobranza/Otros) ---
+  const [comAgenteUserId, setComAgenteUserId] = useState('');
+  const [comCliente, setComCliente] = useState('');
+  const [comPoliza, setComPoliza] = useState('');
+  const [comAseguradora, setComAseguradora] = useState('');
+  const [comFechaVencimiento, setComFechaVencimiento] = useState('');
+  const [comMonto, setComMonto] = useState('');
+  const [comAsunto, setComAsunto] = useState('');
+
   const [ceInsuranceTypes, setCeInsuranceTypes] = useState<InsuranceType[]>([]);
   const [ceAseguradorasRA, setCeAseguradorasRA] = useState<AseguradoraRA[]>([]);
   const [ceAgenteUsers, setCeAgenteUsers] = useState<UsuarioOficina[]>([]);
@@ -141,7 +150,6 @@ export function NuevoTramiteModal({
   const isAgent = usuario?.rol === 'Agente';
   const canAssignOthers = !isAgent;
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
-  const [showRegistroActForm, setShowRegistroActForm] = useState(false);
 
   useEffect(() => {
     if (isOpen && usuario) {
@@ -167,9 +175,6 @@ export function NuevoTramiteModal({
 
   const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
 
-  useEffect(() => {
-    setShowRegistroActForm(tipoTramite === 'registro_actividad');
-  }, [tipoTramite]);
 
   useEffect(() => {
     if (tipoTramite === 'correccion_comisiones' && usuario) {
@@ -197,10 +202,10 @@ export function NuevoTramiteModal({
   }, [loteSeleccionado]);
 
   useEffect(() => {
-    if (tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes') {
+    if (tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes' || isCommercialTicketType(tipoTramite)) {
       loadAseguradoras();
     }
-    if (tipoTramite === 'cotizacion_emision') {
+    if (tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite)) {
       loadCeCatalogs();
     }
   }, [tipoTramite]);
@@ -269,6 +274,15 @@ export function NuevoTramiteModal({
     setCeEstatusNombre('Iniciado');
     setCeShowInsurerDropdown(false);
     setCeInsurerSearchTerm('');
+
+    // Reset commercial fields
+    setComAgenteUserId('');
+    setComCliente('');
+    setComPoliza('');
+    setComAseguradora('');
+    setComFechaVencimiento('');
+    setComMonto('');
+    setComAsunto('');
   };
 
   const loadUsuarios = async () => {
@@ -362,10 +376,10 @@ export function NuevoTramiteModal({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const maxFiles = 5;
+    const maxFiles = 20;
 
     if (archivos.length + files.length > maxFiles) {
-      setError(`Máximo ${maxFiles} archivos permitidos`);
+      setError('Este trámite permite un máximo de 20 documentos adjuntos. Elimina algún archivo o reduce la cantidad para continuar.');
       return;
     }
 
@@ -432,6 +446,14 @@ export function NuevoTramiteModal({
   };
 
   const validateForm = (): boolean => {
+    if (isCommercialTicketType(tipoTramite)) {
+      if (!comAgenteUserId) {
+        setError('Debe seleccionar un agente relacionado para trámites comerciales');
+        return false;
+      }
+      return true;
+    }
+
     if (!isAgent && !asignado) {
       setError('Debe seleccionar a quién asignar el trámite');
       return false;
@@ -476,6 +498,18 @@ export function NuevoTramiteModal({
     }
 
     return true;
+  };
+
+  const buildCommercialDescription = (): string => {
+    const parts: string[] = [];
+    if (comAsunto) parts.push(`Asunto: ${comAsunto}`);
+    if (comCliente) parts.push(`Cliente: ${comCliente}`);
+    if (comPoliza) parts.push(`Póliza: ${comPoliza}`);
+    if (comAseguradora) parts.push(`Aseguradora: ${comAseguradora}`);
+    if (comFechaVencimiento) parts.push(`Fecha: ${new Date(comFechaVencimiento).toLocaleDateString('es-MX')}`);
+    if (comMonto) parts.push(`Monto: $${comMonto}`);
+    if (descripcion.trim()) parts.push(descripcion.trim());
+    return parts.join('\n') || 'Sin descripción';
   };
 
   const handleSubmitCotizacionEmision = async () => {
@@ -532,17 +566,19 @@ export function NuevoTramiteModal({
         throw new Error('No se encontró el estatus "Iniciado"');
       }
 
-      const assignedTo = isAgent ? usuario.id : asignado;
+      const isCommercial = isCommercialTicketType(tipoTramite);
+      const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
       const ticketData: any = {
         tipo_tramite: tipoTramite,
         estatus_id: estatusNuevo.id,
         prioridad,
-        instrucciones: descripcion.trim() || 'Sin descripción',
+        instrucciones: isCommercial ? buildCommercialDescription() : (descripcion.trim() || 'Sin descripción'),
         creado_por: usuario.id,
         modificado_por: usuario.id,
-        agente_id: assignedTo,  // El agente asignado al trámite
-        assigned_to_user_id: usuario.id  // El responsable es quien crea el trámite
+        agente_id: isCommercial ? comAgenteUserId : assignedTo,
+        agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
+        assigned_to_user_id: usuario.id
       };
 
       if (tipoTramite === 'correccion_poliza_registrada') {
@@ -760,23 +796,16 @@ export function NuevoTramiteModal({
         return 'Registro de póliza';
       case 'solicitud_comisiones_pendientes':
         return 'Solicitud de comisiones pendientes';
-      case 'registro_actividad':
-        return 'Registro de Actividades - Control de cotizaciones, emisiones y más';
+      case 'renovaciones':
+        return 'Renovaciones - Seguimiento de renovación de pólizas';
+      case 'cobranza':
+        return 'Cobranza - Seguimiento de pagos y cobranza';
+      case 'otros_comercial':
+        return 'Otros - Trámite comercial general';
       default:
         return tipo;
     }
   };
-
-  // Si es Registro de Actividades o Cotizacion/Emision, mostrar formulario personalizado
-  if (showRegistroActForm && isOpen) {
-    return (
-      <RegistroActividadForm
-        onClose={onClose}
-        onSuccess={onSuccess}
-        initialData={tipoTramite === 'cotizacion_emision' ? { activity_subtype_id: COTIZACION_EMISION_SUBTYPE_ID } : undefined}
-      />
-    );
-  }
 
   // No renderizar nada si el modal está cerrado
   if (!isOpen) {
@@ -813,7 +842,8 @@ export function NuevoTramiteModal({
                 <option value="cotizacion_emision">Cotización / Emisión</option>
               )}
               {getTipoTramitesByArea('Comercial')
-                .filter(t => t.value !== 'cotizacion_emision' && t.value !== 'registro_actividad')
+                .filter(t => t.value !== 'cotizacion_emision')
+                .filter(t => !isAgent || !isCommercialTicketType(t.value))
                 .map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </optgroup>
             <optgroup label="Operaciones">
@@ -1029,7 +1059,66 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        {canAssignOthers && tipoTramite !== 'cotizacion_emision' && (
+        {/* ===== SECCIÓN TRÁMITES COMERCIALES (Renovaciones/Cobranza/Otros) ===== */}
+        {isCommercialTicketType(tipoTramite) && (
+          <div className="space-y-4">
+            <div className="bg-sky-50 border border-sky-200 rounded-xl p-3">
+              <p className="text-xs text-sky-700 font-medium">
+                Este trámite se asignará automáticamente a ti ({usuario?.nombre_completo}).
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                <User className="w-4 h-4 inline mr-1.5" />
+                Agente Relacionado *
+              </label>
+              <select
+                value={comAgenteUserId}
+                onChange={(e) => setComAgenteUserId(e.target.value)}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+              >
+                <option value="">Seleccione un agente...</option>
+                {ceAgenteUsers.map(user => (
+                  <option key={user.id} value={user.id}>{user.nombre_completo}</option>
+                ))}
+              </select>
+            </div>
+
+
+            {tipoTramite === 'otros_comercial' && (
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  Asunto
+                </label>
+                <input
+                  type="text"
+                  value={comAsunto}
+                  onChange={(e) => setComAsunto(e.target.value)}
+                  placeholder="Describe brevemente el asunto del trámite"
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                Prioridad
+              </label>
+              <select
+                value={prioridad}
+                onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="Baja">Baja</option>
+                <option value="Media">Media</option>
+                <option value="Alta">Alta</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {canAssignOthers && tipoTramite !== 'cotizacion_emision' && !isCommercialTicketType(tipoTramite) && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <User className="w-4 h-4 inline mr-2" />
@@ -1050,7 +1139,7 @@ export function NuevoTramiteModal({
           </div>
         )}
 
-        {!isAgent && tipoTramite !== 'cotizacion_emision' && (
+        {!isAgent && tipoTramite !== 'cotizacion_emision' && !isCommercialTicketType(tipoTramite) && (
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               Prioridad
@@ -1365,7 +1454,9 @@ export function NuevoTramiteModal({
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <Upload className="w-4 h-4 inline mr-2" />
               Archivos Adjuntos
-              <span className="text-xs font-normal text-neutral-500 ml-2">(Máximo 5)</span>
+              <span className="text-xs font-normal text-neutral-500 ml-2">
+                Documentos adjuntos: {archivos.length} / 20
+              </span>
             </label>
             <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-accent transition-all">
               <input
@@ -1384,7 +1475,7 @@ export function NuevoTramiteModal({
                   Haz clic para seleccionar archivos
                 </p>
                 <p className="text-xs text-neutral-500">
-                  PDF, imágenes, documentos (máx. 5 archivos)
+                  PDF, imágenes, documentos (máx. 20 archivos)
                 </p>
               </label>
             </div>

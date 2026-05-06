@@ -17,9 +17,17 @@ export const TIPO_TRAMITE_OPTIONS: TipoTramiteConfig[] = [
   { value: 'correccion_comisiones',           label: 'Corrección de comisiones', area: 'Operaciones',  tipoAplicable: 'general' },
   { value: 'registro_poliza',                 label: 'Registro de póliza',       area: 'Operaciones',  tipoAplicable: 'general' },
   { value: 'solicitud_comisiones_pendientes', label: 'Solicitud de comisiones',  area: 'Operaciones',  tipoAplicable: 'solicitud_comisiones' },
-  { value: 'registro_actividad',              label: 'Registro de actividades',  area: 'Comercial',    tipoAplicable: 'general' },
   { value: 'cambio_bancario',                 label: 'Cambio bancario',          area: 'Operaciones',  tipoAplicable: 'general' },
+  { value: 'renovaciones',                    label: 'Renovaciones',             area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'cobranza',                        label: 'Cobranza',                 area: 'Comercial',    tipoAplicable: 'general' },
+  { value: 'otros_comercial',                 label: 'Otros',                    area: 'Comercial',    tipoAplicable: 'general' },
 ];
+
+export const COMMERCIAL_TICKET_TYPES = ['renovaciones', 'cobranza', 'otros_comercial'] as const;
+
+export function isCommercialTicketType(tipo: string): boolean {
+  return COMMERCIAL_TICKET_TYPES.includes(tipo as typeof COMMERCIAL_TICKET_TYPES[number]);
+}
 
 export function getTipoTramiteLabel(tipo: string): string {
   return TIPO_TRAMITE_OPTIONS.find(t => t.value === tipo)?.label ?? tipo.replace(/_/g, ' ');

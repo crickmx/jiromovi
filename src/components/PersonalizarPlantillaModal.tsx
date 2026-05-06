@@ -96,6 +96,8 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
   const [urlJiro, setUrlJiro] = useState('');
   const [urlMulticotizador, setUrlMulticotizador] = useState('');
 
+  const [webColors, setWebColors] = useState<{ primary: string; secondary: string } | null>(null);
+
   const [styleNombre, setStyleNombre] = useState<TextStyle>(DEFAULT_STYLE);
   const [styleJiro, setStyleJiro] = useState<TextStyle>({ ...DEFAULT_STYLE, size: 20 });
   const [styleMulti, setStyleMulti] = useState<TextStyle>({ ...DEFAULT_STYLE, size: 20 });
@@ -114,50 +116,84 @@ export function PersonalizarPlantillaModal({ isOpen, onClose, plantilla, onSucce
       if (usuario) {
         setNombreCompleto(getDisplayName(usuario));
 
-        // Auto-rellenar Mi Página Web desde el slug
         const miPaginaWeb = getMiPaginaWeb(usuario.web_slug);
         setUrlJiro(miPaginaWeb || DEFAULT_URLS.miPaginaWeb);
 
-        // Auto-rellenar teléfono laboral
         setUrlMulticotizador(usuario.celular_laboral || DEFAULT_URLS.telefono);
 
-        // Cargar el logo efectivo del usuario
         getEffectiveUserLogo(usuario.id).then(logoUrl => {
-          // Siempre establecer el logo, incluso si es el logo de JIRO por defecto
           if (logoUrl) {
             setLogoPreview(logoUrl);
           }
         }).catch(error => {
           console.error('Error loading user logo:', error);
-          // En caso de error, usar logo por defecto
           setLogoPreview('/logojiro.png');
         });
+
+        // Load web page colors for defaults
+        supabase
+          .from('user_web_pages')
+          .select('primary_color, secondary_color')
+          .eq('user_id', usuario.id)
+          .maybeSingle()
+          .then(({ data: webPage }) => {
+            if (webPage) {
+              const colors = {
+                primary: webPage.primary_color || '#2563eb',
+                secondary: webPage.secondary_color || '#7c3aed'
+              };
+              setWebColors(colors);
+              applyDefaultStyles(plantilla, colors.primary, colors.secondary);
+            } else {
+              applyDefaultStyles(plantilla, accentColor, accentColor);
+            }
+          });
       } else {
         setUrlJiro(DEFAULT_URLS.miPaginaWeb);
         setUrlMulticotizador(DEFAULT_URLS.telefono);
-      }
-
-      if (plantilla.estilos_texto_default_individual) {
-        const estilos = plantilla.estilos_texto_default_individual;
-        if (estilos.nombreCompleto) setStyleNombre({ ...DEFAULT_STYLE, ...estilos.nombreCompleto });
-        if (estilos.urlJiro) setStyleJiro({ ...DEFAULT_STYLE, size: 20, ...estilos.urlJiro });
-        if (estilos.urlMulticotizador) setStyleMulti({ ...DEFAULT_STYLE, size: 20, ...estilos.urlMulticotizador });
-      } else if (plantilla.estilo_texto_default) {
-        const style = plantilla.estilo_texto_default;
-        const baseStyle = {
-          font: style.font || 'Inter',
-          color: style.color || accentColor,
-          size: style.size || 24,
-          align: style.align || 'center',
-          bold: false,
-          italic: false
-        };
-        setStyleNombre(baseStyle);
-        setStyleJiro({ ...baseStyle, size: 20 });
-        setStyleMulti({ ...baseStyle, size: 20 });
+        applyDefaultStyles(plantilla, accentColor, accentColor);
       }
     }
   }, [isOpen, plantilla, usuario]);
+
+  const applyDefaultStyles = (tpl: Plantilla, primaryColor: string, secondaryColor: string) => {
+    if (tpl.estilos_texto_default_individual) {
+      const estilos = tpl.estilos_texto_default_individual;
+      const primaryStyle = { ...DEFAULT_STYLE, color: primaryColor };
+      const secondaryStyle = { ...DEFAULT_STYLE, size: 20, color: secondaryColor };
+      if (estilos.nombreCompleto) setStyleNombre({ ...primaryStyle, ...estilos.nombreCompleto });
+      else setStyleNombre(primaryStyle);
+      if (estilos.urlJiro) setStyleJiro({ ...secondaryStyle, ...estilos.urlJiro });
+      else setStyleJiro(secondaryStyle);
+      if (estilos.urlMulticotizador) setStyleMulti({ ...secondaryStyle, ...estilos.urlMulticotizador });
+      else setStyleMulti(secondaryStyle);
+    } else if (tpl.estilo_texto_default) {
+      const style = tpl.estilo_texto_default;
+      const baseNombre: TextStyle = {
+        font: style.font || 'Inter',
+        color: primaryColor,
+        size: style.size || 24,
+        align: style.align || 'center',
+        bold: false,
+        italic: false
+      };
+      const baseContact: TextStyle = {
+        font: style.font || 'Inter',
+        color: secondaryColor,
+        size: 20,
+        align: style.align || 'center',
+        bold: false,
+        italic: false
+      };
+      setStyleNombre(baseNombre);
+      setStyleJiro(baseContact);
+      setStyleMulti(baseContact);
+    } else {
+      setStyleNombre({ ...DEFAULT_STYLE, color: primaryColor });
+      setStyleJiro({ ...DEFAULT_STYLE, size: 20, color: secondaryColor });
+      setStyleMulti({ ...DEFAULT_STYLE, size: 20, color: secondaryColor });
+    }
+  };
 
   useEffect(() => {
     if (isOpen && plantilla && canvasRef.current && imgRef.current) {

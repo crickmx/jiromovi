@@ -1060,6 +1060,7 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
   agentUserId: string; agentName: string; selectedMessages: Message[];
   onClose: () => void; onSuccess: () => void;
 }) {
+  const { usuario } = useAuth();
   const [instrucciones, setInstrucciones] = useState(() => {
     const header = `Informacion agregada desde Centro de Contacto:\nAgente: ${agentName}\nCanal: WhatsApp\nFecha de captura: ${new Date().toLocaleString('es-MX')}\n\nMensajes seleccionados:\n`;
     const msgs = selectedMessages.map((m, i) =>
@@ -1070,6 +1071,17 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
   const [tipoTramite, setTipoTramite] = useState('cotizacion_emision');
   const [prioridad, setPrioridad] = useState('Media');
   const [saving, setSaving] = useState(false);
+
+  const isAgent = usuario?.rol === 'Agente';
+  const COMMERCIAL_TYPES = ['renovaciones', 'cobranza', 'otros_comercial'];
+  const isCommercialType = COMMERCIAL_TYPES.includes(tipoTramite);
+
+  const tipoOptions = [
+    { value: 'cotizacion_emision', label: 'Cotizacion / Emision' },
+    { value: 'renovaciones', label: 'Renovaciones' },
+    { value: 'cobranza', label: 'Cobranza' },
+    { value: 'otros_comercial', label: 'Otros (Comercial)' },
+  ].filter(t => !isAgent || !COMMERCIAL_TYPES.includes(t.value));
 
   const handleSave = async () => {
     if (!instrucciones.trim()) return;
@@ -1088,6 +1100,7 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
         instrucciones: instrucciones.trim(),
         tipo_tramite: tipoTramite,
         prioridad,
+        is_commercial: isCommercialType,
       },
     });
     setSaving(false);
@@ -1115,7 +1128,9 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
             <div>
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Tipo de tramite</label>
               <select value={tipoTramite} onChange={e => setTipoTramite(e.target.value)} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3">
-                <option value="cotizacion_emision">Cotizacion / Emision</option>
+                {tipoOptions.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -1125,6 +1140,14 @@ function CreateTaskModal({ agentUserId, agentName, selectedMessages, onClose, on
               </select>
             </div>
           </div>
+          {isCommercialType && (
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800">
+              <AlertCircle className="w-4 h-4 text-sky-600 flex-shrink-0" />
+              <p className="text-xs text-sky-700 dark:text-sky-300">
+                Este tramite se te asignara automaticamente y se vinculara al agente <span className="font-medium">{agentName}</span>.
+              </p>
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Instrucciones</label>
             <textarea value={instrucciones} onChange={e => setInstrucciones(e.target.value)} rows={8} className="mt-1 w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 py-2 px-3 resize-none" />
