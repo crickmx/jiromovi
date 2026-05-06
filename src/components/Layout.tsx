@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones } from 'lucide-react';
+import { LogOut, User, Users, Settings, LayoutDashboard, Calendar, MapPin, Menu, Palette, Key, GraduationCap, ClipboardList, Briefcase, ShoppingBag, BookUser, FileText, DollarSign, TrendingUp, ChevronLeft, Building, Activity, Car, FolderOpen, Trophy, X, Headphones, Send } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { FloatingAssistantButton } from './FloatingAssistantButton';
@@ -91,6 +91,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/mercadotecnia/mi-marca', label: 'Mercadotecnia', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador', icon: Car, show: true },
     { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileText, show: true },
+    { path: '/entrega-polizas', label: 'Entrega Polizas', icon: Send, show: isNotAgent },
     { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, show: isAdmin },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/store', label: 'MOVI Store', icon: ShoppingBag, show: true },

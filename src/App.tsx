@@ -95,6 +95,7 @@ import ProduccionSICASLive from './pages/ProduccionSICASLive';
 import CentroContacto from './pages/CentroContacto';
 import CentroContactoHub from './pages/CentroContactoHub';
 import LectorQualitas from './pages/LectorQualitas';
+import EntregaPolizas from './pages/EntregaPolizas';
 
 function AppRoutes() {
   const { usuario, loading } = useAuth();
@@ -768,6 +769,7 @@ function App() {
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
               <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
               <Route path="/lector-qualitas" element={<ProtectedRoute><Layout><LectorQualitas /></Layout></ProtectedRoute>} />
+              <Route path="/entrega-polizas" element={<ProtectedRoute excludeAgente><Layout><EntregaPolizas /></Layout></ProtectedRoute>} />
               <Route path="/publicidad" element={<Navigate to="/mercadotecnia/publicidad" replace />} />
               <Route path="/mercadotecnia" element={<Navigate to="/mercadotecnia/mi-marca" replace />} />
               <Route path="/mercadotecnia/mi-marca" element={<ProtectedRoute><Layout><Mercadotecnia section="mi-marca" /></Layout></ProtectedRoute>} />
