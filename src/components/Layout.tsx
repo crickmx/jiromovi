@@ -90,6 +90,7 @@ export function Layout({ children, hideHeader = false }: LayoutProps) {
     { path: '/seguros-education', label: 'Seguros Education', icon: GraduationCap, show: true },
     { path: '/mercadotecnia/mi-marca', label: 'Mercadotecnia', icon: Palette, show: true },
     { path: '/multicotizador-digital', label: 'Multicotizador', icon: Car, show: true },
+    { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileText, show: true },
     { path: '/gmm/cotizador', label: 'GMM BX+', icon: Activity, show: isAdmin },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: MapPin, show: true },
     { path: '/store', label: 'MOVI Store', icon: ShoppingBag, show: true },
