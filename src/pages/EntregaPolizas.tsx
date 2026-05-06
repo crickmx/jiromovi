@@ -153,11 +153,40 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
   const loadVendors = useCallback(async () => {
     setVendorsLoading(true);
     try {
+      // Only load vendors that have a MOVI user mapping
+      const { data: mappings } = await supabase
+        .from('sicas_mapeo_vendedor_usuario')
+        .select('id_sicas_vendedor, movi_user_id');
+
+      if (!mappings || mappings.length === 0) {
+        setVendors([]);
+        setVendorsLoading(false);
+        return;
+      }
+
+      const mappedSicasIds = mappings.map(m => m.id_sicas_vendedor);
+      const mappingMap = new Map<string, string>();
+      mappings.forEach((m) => mappingMap.set(m.id_sicas_vendedor, m.movi_user_id));
+
+      // Get MOVI user details
+      const moviUserIds = [...new Set(mappings.map(m => m.movi_user_id).filter(Boolean))];
+      const userMap = new Map<string, { nombre: string; apellidos: string; email_laboral?: string }>();
+      if (moviUserIds.length > 0) {
+        const { data: users } = await supabase
+          .from('usuarios')
+          .select('id, nombre, apellidos, email_laboral')
+          .in('id', moviUserIds);
+        if (users) {
+          users.forEach((u) => userMap.set(u.id, u));
+        }
+      }
+
+      // Get SICAS vendor records for those with mappings
       const { data: vendorRecords } = await supabase
         .from('sicas_catalogos')
         .select('id, id_sicas, nombre, raw')
         .eq('catalog_type_id', 32)
-        .order('nombre');
+        .in('id_sicas', mappedSicasIds);
 
       if (!vendorRecords || vendorRecords.length === 0) {
         setVendors([]);
@@ -174,46 +203,32 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
         despachoRecords.forEach((d) => despachoMap.set(d.id_sicas, d.nombre));
       }
 
-      const { data: mappings } = await supabase
-        .from('sicas_mapeo_vendedor_usuario')
-        .select('id_sicas_vendedor, movi_user_id');
+      // Build options showing MOVI user name as primary, with SICAS vendor as secondary info
+      const options: SicasVendorOption[] = vendorRecords
+        .filter((v) => mappingMap.has(v.id_sicas))
+        .map((v) => {
+          const raw = v.raw || {};
+          const despachoId = raw.IDDespacho?.toString() || '';
+          const gerenciaId = raw.IDGerencia?.toString() || '';
+          const moviUserId = mappingMap.get(v.id_sicas) || '';
+          const moviUser = moviUserId ? userMap.get(moviUserId) : undefined;
+          const moviUserName = moviUser ? `${moviUser.nombre || ''} ${moviUser.apellidos || ''}`.trim() : '';
 
-      const mappingMap = new Map<string, string>();
-      if (mappings) {
-        mappings.forEach((m) => mappingMap.set(m.id_sicas_vendedor, m.movi_user_id));
-      }
-
-      const moviUserIds = [...new Set(mappings?.map(m => m.movi_user_id).filter(Boolean) || [])];
-      const userNameMap = new Map<string, string>();
-      if (moviUserIds.length > 0) {
-        const { data: users } = await supabase
-          .from('usuarios')
-          .select('id, nombre, apellidos')
-          .in('id', moviUserIds);
-        if (users) {
-          users.forEach((u) => userNameMap.set(u.id, `${u.nombre || ''} ${u.apellidos || ''}`.trim()));
-        }
-      }
-
-      const options: SicasVendorOption[] = vendorRecords.map((v) => {
-        const raw = v.raw || {};
-        const despachoId = raw.IDDespacho?.toString() || '';
-        const gerenciaId = raw.IDGerencia?.toString() || '';
-        const moviUserId = mappingMap.get(v.id_sicas) || '';
-        return {
-          id: v.id,
-          idSicas: v.id_sicas,
-          nombre: v.nombre || raw.VendNombre || '',
-          clave: raw.Clave || raw.VendAbreviacion || '',
-          tipoVend: raw.TipoVend || '',
-          gerenciaId,
-          gerenciaName: raw.NombreGerencia || '',
-          despachoId,
-          despachoName: despachoMap.get(despachoId) || '',
-          moviUserId,
-          moviUserName: moviUserId ? (userNameMap.get(moviUserId) || '') : '',
-        };
-      });
+          return {
+            id: v.id,
+            idSicas: v.id_sicas,
+            nombre: moviUserName || v.nombre || raw.VendNombre || '',
+            clave: raw.Clave || raw.VendAbreviacion || '',
+            tipoVend: raw.TipoVend || '',
+            gerenciaId,
+            gerenciaName: raw.NombreGerencia || '',
+            despachoId,
+            despachoName: despachoMap.get(despachoId) || '',
+            moviUserId,
+            moviUserName: v.nombre || raw.VendNombre || '',
+          };
+        })
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
       setVendors(options);
     } catch (err) {
@@ -265,8 +280,16 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
 
       const result = await response.json();
 
-      if (Array.isArray(result) && result.length > 0) {
-        const data = result[0];
+      // The lector-qualitas-proxy returns { success: boolean, data: [...] } or direct array
+      let extractedItems: any[] = [];
+      if (result.success && Array.isArray(result.data)) {
+        extractedItems = result.data;
+      } else if (Array.isArray(result)) {
+        extractedItems = result;
+      }
+
+      if (extractedItems.length > 0) {
+        const data = extractedItems[0];
         setExtractedData(data);
         setExtractionSuccess(true);
       } else if (result.error) {
@@ -365,11 +388,11 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
         vendor: {
           sicasId: selectedVendor.idSicas,
           sicasKey: selectedVendor.clave || undefined,
-          sicasName: selectedVendor.nombre,
+          sicasName: selectedVendor.moviUserName || selectedVendor.nombre,
           email: undefined as string | undefined,
           type: selectedVendor.tipoVend || undefined,
           moviUserId: selectedVendor.moviUserId || undefined,
-          moviUserName: selectedVendor.moviUserName || undefined,
+          moviUserName: selectedVendor.nombre,
           officeId: selectedVendor.despachoId || undefined,
           officeName: selectedVendor.despachoName || undefined,
           managementId: selectedVendor.gerenciaId || undefined,
@@ -622,7 +645,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
         {/* Vendor Selection */}
         <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-5">
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
-            3. Vendedor SICAS
+            3. Asignar a usuario
           </h3>
 
           {vendorsLoading ? (
@@ -635,13 +658,16 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
               vendors={vendors}
               selectedVendor={selectedVendor}
               onSelect={setSelectedVendor}
-              placeholder="Buscar vendedor..."
+              placeholder="Buscar usuario..."
             />
           )}
 
           {selectedVendor && (
             <div className="mt-3 p-3 bg-sky-50 dark:bg-sky-900/10 rounded-lg space-y-1">
               <p className="text-xs font-semibold text-sky-800 dark:text-sky-300">{selectedVendor.nombre}</p>
+              {selectedVendor.moviUserName && (
+                <p className="text-[10px] text-neutral-600 dark:text-white/50">Vendedor SICAS: {selectedVendor.moviUserName}</p>
+              )}
               {selectedVendor.clave && (
                 <p className="text-[10px] text-sky-600 dark:text-sky-400">Clave: {selectedVendor.clave}</p>
               )}
@@ -650,9 +676,6 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
               )}
               {selectedVendor.gerenciaName && (
                 <p className="text-[10px] text-sky-600 dark:text-sky-400">Gerencia: {selectedVendor.gerenciaName}</p>
-              )}
-              {selectedVendor.moviUserName && (
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-400">MOVI: {selectedVendor.moviUserName}</p>
               )}
             </div>
           )}
@@ -671,7 +694,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
             />
             <StatusItem
               ok={!!selectedVendor}
-              label={selectedVendor ? 'Vendedor asignado' : 'Falta asignar vendedor'}
+              label={selectedVendor ? 'Usuario asignado' : 'Falta asignar usuario'}
             />
           </div>
 
