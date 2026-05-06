@@ -25,6 +25,36 @@ export interface ExtractedPolizaData {
   finVigencia?: string;
   tipoVehiculo?: string;
   mensaje?: string;
+  // SICAS enrichment fields
+  sicasVendor?: SicasVendorSelection;
+}
+
+export interface SicasVendorSelection {
+  vendorId: string;
+  vendorIdSicas: string;
+  vendorName: string;
+  vendorKey?: string;
+  vendorType?: string;
+  gerenciaId?: string;
+  gerenciaName?: string;
+  despachoId?: string;
+  despachoName?: string;
+  moviUserId?: string;
+  moviUserName?: string;
+}
+
+export interface SicasVendorOption {
+  id: string;
+  idSicas: string;
+  nombre: string;
+  clave?: string;
+  tipoVend?: string;
+  gerenciaId?: string;
+  gerenciaName?: string;
+  despachoId?: string;
+  despachoName?: string;
+  moviUserId?: string;
+  moviUserName?: string;
 }
 
 export interface ExtractionResult {
