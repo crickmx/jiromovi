@@ -78,14 +78,15 @@ function formatDateSicas(dateStr: string | null): string {
 
 // Build the JSON payload for SICAS REST API document registration
 // Uses flat dot-notation keys matching the REST /Data/SaveData format
-function buildSicasPolicyPayload(delivery: PolicyDelivery): Record<string, unknown> {
+// All values MUST be strings - SICAS REST API does not accept numeric types
+function buildSicasPolicyPayload(delivery: PolicyDelivery): Record<string, string> {
   const policyNumber = getPolicyNumberFromDelivery(delivery) || "";
   const idVend = delivery.vendor_sicas_id || "";
   const idGerencia = delivery.sicas_management_id || "0";
   const idDespacho = delivery.sicas_office_id || "0";
 
   return {
-    "DatDocumentos.IDDocto": -1,
+    "DatDocumentos.IDDocto": "-1",
     "DatDocumentos.Documento": policyNumber,
     "DatDocumentos.IDVend": idVend,
     "DatDocumentos.IDCia": "1",
@@ -96,7 +97,7 @@ function buildSicasPolicyPayload(delivery: PolicyDelivery): Record<string, unkno
     "DatDocumentos.PrimaNeta": delivery.net_premium || "0",
     "DatDocumentos.PrimaTotal": delivery.total_premium || "0",
     "DatDocumentos.FormaPago": delivery.payment_method || "",
-    "DatDocumentos.Moneda": delivery.currency || "MXN",
+    "DatDocumentos.Moneda": delivery.currency || "Pesos",
     "DatDocumentos.NombreCliente": delivery.insured_name || "",
     "DatDocumentos.RFCCliente": delivery.insured_rfc || "",
     "DatDocumentos.IDGerencia": idGerencia,
@@ -204,29 +205,101 @@ async function getSicasToken(config: {
 }
 
 // Send document registration to SICAS
+// Attempts multiple payload/header combinations to find what SICAS accepts
 async function registerDocumentInSicas(config: {
   baseUrl: string;
   token: string;
-  payload: Record<string, unknown>;
+  payload: Record<string, string>;
 }): Promise<any> {
-  const response = await fetch(`${config.baseUrl}/Data/SaveData`, {
-    method: "POST",
-    headers: {
-      "Authorization": config.token,
-      "Content-Type": "application/json",
-      "Prop_KeyCode": "HWCAPTURE",
-      "Prop_KeyProcess": "DATA",
-      "Prop_TProc": "Save_Data",
+  // Strategy 1: Flat payload with full headers (original approach but all strings)
+  const strategies = [
+    {
+      name: "flat_json_full_headers",
+      headers: {
+        "Authorization": config.token,
+        "Content-Type": "application/json",
+        "Prop_KeyCode": "HWCAPTURE",
+        "Prop_KeyProcess": "DATA",
+        "Prop_TProc": "Save_Data",
+      },
+      body: config.payload,
     },
-    body: JSON.stringify(config.payload),
-  });
+    {
+      name: "values_wrapper",
+      headers: {
+        "Authorization": config.token,
+        "Content-Type": "application/json",
+        "Prop_KeyCode": "HWCAPTURE",
+        "Prop_KeyProcess": "DATA",
+        "Prop_TProc": "Save_Data",
+      },
+      body: { Values: config.payload },
+    },
+    {
+      name: "flat_json_minimal_headers",
+      headers: {
+        "Authorization": config.token,
+        "Content-Type": "application/json",
+        "Prop_KeyCode": "HWCAPTURE",
+      },
+      body: config.payload,
+    },
+  ];
 
-  if (!response.ok) {
-    const errBody = await response.text();
-    throw new Error(`SICAS HTTP ${response.status}: ${errBody}`);
+  let lastResponse: any = null;
+  let lastError: string | null = null;
+
+  for (const strategy of strategies) {
+    console.log(`[SICAS SaveData] Trying strategy: ${strategy.name}`);
+    console.log(`[SICAS SaveData] Body preview:`, JSON.stringify(strategy.body).substring(0, 200));
+
+    try {
+      const response = await fetch(`${config.baseUrl}/Data/SaveData`, {
+        method: "POST",
+        headers: strategy.headers,
+        body: JSON.stringify(strategy.body),
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.log(`[SICAS SaveData] Strategy ${strategy.name} HTTP error: ${response.status} - ${errBody}`);
+        lastError = `HTTP ${response.status}: ${errBody}`;
+        continue;
+      }
+
+      const data = await response.json();
+      console.log(`[SICAS SaveData] Strategy ${strategy.name} response:`, JSON.stringify(data));
+
+      // If success, return immediately
+      if (data.Sucess || data.Success) {
+        console.log(`[SICAS SaveData] Strategy ${strategy.name} SUCCEEDED`);
+        return data;
+      }
+
+      // If it's the same "No Existe" error, try next strategy
+      const msg = data.Message || data.Error || "";
+      if (msg.includes("No Existe") || msg.includes("No. de Documento")) {
+        console.log(`[SICAS SaveData] Strategy ${strategy.name} got document error, trying next...`);
+        lastResponse = data;
+        lastError = msg;
+        continue;
+      }
+
+      // Different error - return as-is for proper handling
+      lastResponse = data;
+      break;
+    } catch (err) {
+      console.log(`[SICAS SaveData] Strategy ${strategy.name} exception:`, err);
+      lastError = err instanceof Error ? err.message : String(err);
+      continue;
+    }
   }
 
-  return await response.json();
+  // If all strategies failed, return the last response or throw
+  if (lastResponse) {
+    return lastResponse;
+  }
+  throw new Error(`All SICAS SaveData strategies failed. Last error: ${lastError}`);
 }
 
 // Upload file to SICAS Centro Digital
