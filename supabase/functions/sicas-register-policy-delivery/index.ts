@@ -543,11 +543,16 @@ async function attemptClientAutoCreate(
   sicasUsername: string,
   sicasPassword: string
 ): Promise<{ success: boolean; clientId?: string; clientName?: string; error?: string; responseRaw?: any }> {
-  const clientName = delivery.insured_name || delivery.extracted_data?.nombreCliente || delivery.extracted_data?.contratante || "";
-  const clientRfc = delivery.insured_rfc || delivery.extracted_data?.rfcAsegurado || delivery.extracted_data?.rfc || "";
+  try {
+  const clientName = delivery.insured_name || delivery.extracted_data?.nombreCliente || delivery.extracted_data?.contratante || delivery.extracted_data?.customer_name || delivery.extracted_data?.asegurado || "";
+  const clientRfc = delivery.insured_rfc || delivery.extracted_data?.rfcAsegurado || delivery.extracted_data?.rfc || delivery.extracted_data?.RFCCliente || "";
 
   if (!clientName.trim()) {
     return { success: false, error: "No hay nombre de cliente para crear" };
+  }
+
+  if (!sicasEndpoint) {
+    return { success: false, error: "SICAS endpoint no configurado. No se puede crear cliente." };
   }
 
   console.log(`[SICAS Client] Attempting auto-create: name="${clientName}", rfc="${clientRfc}"`);
@@ -675,6 +680,10 @@ async function attemptClientAutoCreate(
   } catch (error: any) {
     clearTimeout(timeoutId);
     return { success: false, error: error.message };
+  }
+  } catch (outerError: any) {
+    console.error("[SICAS Client] Unexpected error in attemptClientAutoCreate:", outerError.message);
+    return { success: false, error: `Error inesperado: ${outerError.message}` };
   }
 }
 
@@ -1035,11 +1044,184 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    throw new Error(`Unknown action: ${action}. Use "resolve" or "register".`);
+    // === AUTO action: Full automatic flow (resolve + client + register) ===
+    if (action === "auto") {
+      const steps: Array<{ step: string; status: string; detail?: string }> = [];
+      let finalStatus = "unknown";
+
+      // Step 1: Resolve all fields
+      steps.push({ step: "resolving", status: "in_progress" });
+      await supabase.from("policy_deliveries").update({ sicas_registration_status: "resolving" }).eq("id", delivery_id);
+
+      const resolution = await resolveSicasHwcaptureRequiredFields(supabase, delivery, defaults);
+      steps[steps.length - 1].status = "completed";
+      steps[steps.length - 1].detail = `${Object.keys(resolution.resolved).length} campos resueltos, ${resolution.missing.length} pendientes`;
+
+      // Step 2: Handle client resolution/creation
+      if (resolution.missing.includes("Cliente SICAS (IDCli)")) {
+        if (resolution.logs.cliente?.auto_create_eligible) {
+          steps.push({ step: "creating_client", status: "in_progress" });
+          await supabase.from("policy_deliveries").update({ sicas_registration_status: "creating_client" }).eq("id", delivery_id);
+
+          const createResult = await attemptClientAutoCreate(supabase, delivery, sicasEndpoint, sicasUsername, sicasPassword);
+
+          if (createResult.success && createResult.clientId) {
+            resolution.resolved.IDCli = { value: createResult.clientId, source: "auto_created", label: createResult.clientName };
+            resolution.missing = resolution.missing.filter(m => !m.includes("IDCli"));
+
+            await supabase.from("policy_deliveries").update({
+              sicas_client_id: createResult.clientId,
+              sicas_client_name: createResult.clientName,
+              sicas_client_auto_created: true,
+              sicas_client_created_at: new Date().toISOString(),
+              sicas_client_create_response_raw: createResult.responseRaw,
+              sicas_client_match_method: "auto_created",
+              sicas_client_match_confidence: "high",
+            }).eq("id", delivery_id);
+
+            steps[steps.length - 1].status = "completed";
+            steps[steps.length - 1].detail = `Cliente creado: ${createResult.clientName} (ID: ${createResult.clientId})`;
+          } else {
+            steps[steps.length - 1].status = "failed";
+            steps[steps.length - 1].detail = createResult.error || "Error desconocido";
+
+            await supabase.from("policy_deliveries").update({
+              sicas_client_create_response_raw: createResult.responseRaw || { error: createResult.error },
+              sicas_client_match_method: "auto_create_failed",
+            }).eq("id", delivery_id);
+
+            resolution.warnings.push(`Cliente: Auto-creacion fallo: ${createResult.error}`);
+          }
+        } else if (resolution.logs.cliente?.candidates_count > 1) {
+          steps.push({ step: "client_ambiguous", status: "manual_required", detail: `${resolution.logs.cliente.candidates_count} candidatos encontrados` });
+        } else {
+          steps.push({ step: "client_missing", status: "manual_required", detail: "No hay datos de cliente para buscar o crear" });
+        }
+      } else if (resolution.resolved.IDCli) {
+        steps.push({ step: "client_found", status: "completed", detail: `${resolution.resolved.IDCli.label || resolution.resolved.IDCli.value} (${resolution.resolved.IDCli.source})` });
+      }
+
+      // Step 3: Check if we can proceed to registration
+      if (resolution.missing.length > 0) {
+        finalStatus = "manual_review_required";
+        await supabase.from("policy_deliveries").update({
+          sicas_resolved_fields: resolution.resolved,
+          sicas_resolution_warnings: resolution.warnings,
+          sicas_registration_status: "manual_review_required",
+          sicas_error_message: `Campos faltantes: ${resolution.missing.join(", ")}`,
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            action: "auto",
+            status: "manual_review_required",
+            message: `No se pudo completar el registro. Campos faltantes: ${resolution.missing.join(", ")}`,
+            steps,
+            missing: resolution.missing,
+            warnings: resolution.warnings,
+            resolved: resolution.resolved,
+            logs: resolution.logs,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Step 4: Register with HWCAPTURE
+      steps.push({ step: "registering", status: "in_progress" });
+      const attempts = (delivery.sicas_registration_attempts || 0) + 1;
+
+      await supabase.from("policy_deliveries").update({
+        sicas_registration_status: "registering",
+        sicas_registration_attempts: attempts,
+        sicas_last_attempt_at: new Date().toISOString(),
+        sicas_resolved_fields: resolution.resolved,
+        sicas_request_payload: resolution.resolved,
+      }).eq("id", delivery_id);
+
+      const hwResult = await registerWithHwcapture(resolution.resolved, delivery, sicasEndpoint, sicasUsername, sicasPassword);
+
+      if (hwResult.success) {
+        finalStatus = "registered";
+        steps[steps.length - 1].status = "completed";
+        steps[steps.length - 1].detail = hwResult.documentId ? `Documento SICAS: ${hwResult.documentId}` : "Registro exitoso";
+
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "registered",
+          sicas_document_id: hwResult.documentId || null,
+          sicas_registered_at: new Date().toISOString(),
+          sicas_response_raw: { raw: hwResult.responseRaw?.substring(0, 5000) },
+          sicas_error_message: null,
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: "auto",
+            status: "registered",
+            message: "Poliza registrada en SICAS correctamente.",
+            document_id: hwResult.documentId,
+            steps,
+            resolved: resolution.resolved,
+            logs: resolution.logs,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else if (hwResult.isDuplicate) {
+        finalStatus = "duplicate_found";
+        steps[steps.length - 1].status = "duplicate";
+        steps[steps.length - 1].detail = "La poliza ya existe en SICAS";
+
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "duplicate",
+          sicas_duplicate_detected: true,
+          sicas_duplicate_document_id: hwResult.duplicateId || null,
+          sicas_duplicate_message: hwResult.duplicateMessage,
+          sicas_response_raw: { raw: hwResult.responseRaw?.substring(0, 5000) },
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            action: "auto",
+            status: "duplicate_found",
+            message: "La poliza ya existe en SICAS.",
+            duplicate_id: hwResult.duplicateId,
+            steps,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        finalStatus = "error";
+        steps[steps.length - 1].status = "failed";
+        steps[steps.length - 1].detail = hwResult.error || "Error desconocido";
+
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "error",
+          sicas_error_message: hwResult.error,
+          sicas_response_raw: { raw: hwResult.responseRaw?.substring(0, 5000) },
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            action: "auto",
+            status: "error",
+            message: hwResult.error || "Error al registrar en SICAS",
+            steps,
+            resolved: resolution.resolved,
+            logs: resolution.logs,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    throw new Error(`Unknown action: ${action}. Use "resolve", "register", or "auto".`);
   } catch (error: any) {
     console.error("[SICAS Register] Fatal error:", error.message);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error.message, status: "error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

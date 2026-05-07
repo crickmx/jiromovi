@@ -892,17 +892,21 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
 
 const SICAS_STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   not_started: { label: 'Sin iniciar', color: 'bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-white/40', icon: Clock },
+  pending_fields: { label: 'Pendiente', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400', icon: Clock },
   ready_to_register: { label: 'Listo', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: UploadCloud },
+  resolving: { label: 'Resolviendo...', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
+  creating_client: { label: 'Creando cliente...', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
   validating: { label: 'Validando', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400', icon: Loader2 },
   duplicate_found: { label: 'Duplicado', color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400', icon: Ban },
-  registering: { label: 'Enviando', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
+  duplicate: { label: 'Duplicado', color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400', icon: Ban },
+  registering: { label: 'Registrando...', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
   registered: { label: 'Registrado', color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400', icon: CheckCircle2 },
   uploading_files: { label: 'Subiendo docs', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
   completed: { label: 'Completado', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300', icon: CheckCircle2 },
   error: { label: 'Error', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   timeout: { label: 'Timeout', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   sicas_rejected: { label: 'Rechazado', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
-  manual_review_required: { label: 'Revision', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300', icon: ShieldAlert },
+  manual_review_required: { label: 'Revision manual', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300', icon: ShieldAlert },
 };
 
 function HistorialTab({ usuario }: { usuario: any }) {
@@ -1010,22 +1014,26 @@ function HistorialTab({ usuario }: { usuario: any }) {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ delivery_id: record.id, action: 'resolve' }),
+        body: JSON.stringify({ delivery_id: record.id, action: 'auto' }),
       });
 
       const result = await res.json();
 
-      if (result.success && result.action === 'resolve') {
+      if (result.success && result.status === 'registered') {
+        setRegisterResult({ id: record.id, success: true, message: result.message || 'Registrado en SICAS correctamente.' });
+        loadRecords();
+      } else if (result.status === 'duplicate_found') {
+        setRegisterResult({ id: record.id, success: false, message: result.message || 'La poliza ya existe en SICAS.' });
+        loadRecords();
+      } else if (result.status === 'manual_review_required') {
         setPreRegistrationModal({ record, data: result });
-        if (result.missing && result.missing.length === 0) {
-          setRegisterResult({ id: record.id, success: true, message: 'Datos SICAS resueltos automaticamente.' });
-        }
+        setRegisterResult({ id: record.id, success: false, message: result.message || 'Requiere revision manual.' });
         loadRecords();
       } else {
         setRegisterResult({
           id: record.id,
           success: false,
-          message: result.error || 'Error resolviendo datos SICAS',
+          message: result.message || result.error || 'Error al registrar en SICAS',
         });
         loadRecords();
       }
@@ -1314,22 +1322,18 @@ function HistorialTab({ usuario }: { usuario: any }) {
                         <td className="px-3 py-2.5 text-center">
                           {isCurrentlyRegistering || resolving === r.id ? (
                             <span className="inline-flex items-center gap-1 text-[10px] text-sky-600 dark:text-sky-400">
-                              <Loader2 className="w-3 h-3 animate-spin" /> {resolving === r.id ? 'Resolviendo...' : 'Registrando...'}
+                              <Loader2 className="w-3 h-3 animate-spin" /> Registrando en SICAS...
                             </span>
                           ) : r.sicas_registration_status === 'manual_review_required' ? (
                             <div className="flex items-center gap-1 justify-center">
                               <button
                                 onClick={() => handleResolveSicas(r)}
                                 disabled={resolving === r.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors disabled:opacity-50"
-                                title="Resolver datos SICAS automaticamente"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors disabled:opacity-50"
+                                title="Reintentar registro automatico en SICAS"
                               >
-                                {resolving === r.id ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <Zap className="w-3 h-3" />
-                                )}
-                                {resolving === r.id ? 'Resolviendo...' : 'Resolver'}
+                                <Zap className="w-3 h-3" />
+                                Reintentar
                               </button>
                             </div>
                           ) : canAttemptRegistration(r) ? (
@@ -1338,14 +1342,10 @@ function HistorialTab({ usuario }: { usuario: any }) {
                                 onClick={() => handleResolveSicas(r)}
                                 disabled={resolving === r.id}
                                 className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors disabled:opacity-50"
-                                title="Resolver datos y registrar en SICAS"
+                                title="Registrar poliza en SICAS automaticamente"
                               >
-                                {resolving === r.id ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <Zap className="w-3 h-3" />
-                                )}
-                                {resolving === r.id ? 'Resolviendo...' : 'Resolver'}
+                                <Zap className="w-3 h-3" />
+                                Registrar SICAS
                               </button>
                             </div>
                           ) : (
