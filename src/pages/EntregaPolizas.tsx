@@ -88,6 +88,12 @@ interface DeliveryRecord {
   sicas_duplicate_document_id: string | null;
   sicas_registered_at: string | null;
   sicas_manual_review_reason: string | null;
+  ticket_action_type: string | null;
+  ticket_was_existing: boolean;
+  ticket_closed_as_won: boolean;
+  ticket_close_status: string | null;
+  ticket_closed_at: string | null;
+  ticket_closed_by: string | null;
 }
 
 export default function EntregaPolizas() {
@@ -137,6 +143,20 @@ export default function EntregaPolizas() {
 // NUEVA ENTREGA TAB
 // ========================
 
+interface ExistingTicket {
+  id: string;
+  folio: string;
+  tipo_tramite: string;
+  instrucciones: string | null;
+  poliza: string | null;
+  prioridad: string;
+  created_at: string;
+  updated_at: string;
+  estatus_nombre: string | null;
+  agente_nombre: string | null;
+  insurance_type_nombre: string | null;
+}
+
 function NuevaEntregaTab({ usuario }: { usuario: any }) {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverDragActive, setCoverDragActive] = useState(false);
@@ -151,6 +171,13 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
   const [vendors, setVendors] = useState<SicasVendorOption[]>([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
 
+  const [ticketAction, setTicketAction] = useState<'new' | 'existing' | null>(null);
+  const [existingTickets, setExistingTickets] = useState<ExistingTicket[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [selectedExistingTicket, setSelectedExistingTicket] = useState<ExistingTicket | null>(null);
+  const [ticketSearchTerm, setTicketSearchTerm] = useState('');
+  const [showClosedTickets, setShowClosedTickets] = useState(false);
+
   const [isDelivering, setIsDelivering] = useState(false);
   const [deliveryResult, setDeliveryResult] = useState<{
     success: boolean;
@@ -158,6 +185,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
     ticketId?: string;
     emailSent?: boolean;
     emailError?: string;
+    wasExistingTicket?: boolean;
   } | null>(null);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -253,6 +281,60 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
 
   useEffect(() => { loadVendors(); }, [loadVendors]);
 
+  // Load existing tickets when vendor changes
+  const loadVendorTickets = useCallback(async (vendorMoviUserId: string) => {
+    setTicketsLoading(true);
+    setExistingTickets([]);
+    setSelectedExistingTicket(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select(`
+          id, folio, tipo_tramite, instrucciones, poliza, prioridad, created_at, updated_at,
+          ticket_estatus:estatus_id(nombre),
+          agente:agente_usuario_id(nombre, apellidos),
+          insurance_type:insurance_type_id(nombre)
+        `)
+        .or(`agente_usuario_id.eq.${vendorMoviUserId},agente_id.eq.${vendorMoviUserId}`)
+        .order('updated_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const mapped: ExistingTicket[] = (data || []).map((t: any) => ({
+        id: t.id,
+        folio: t.folio,
+        tipo_tramite: t.tipo_tramite || '',
+        instrucciones: t.instrucciones,
+        poliza: t.poliza,
+        prioridad: t.prioridad,
+        created_at: t.created_at,
+        updated_at: t.updated_at,
+        estatus_nombre: t.ticket_estatus?.nombre || null,
+        agente_nombre: t.agente ? `${t.agente.nombre || ''} ${t.agente.apellidos || ''}`.trim() : null,
+        insurance_type_nombre: t.insurance_type?.nombre || null,
+      }));
+
+      setExistingTickets(mapped);
+    } catch (err) {
+      console.error('Error loading vendor tickets:', err);
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedVendor?.moviUserId) {
+      loadVendorTickets(selectedVendor.moviUserId);
+    } else {
+      setExistingTickets([]);
+      setSelectedExistingTicket(null);
+    }
+    setTicketAction(null);
+    setSelectedExistingTicket(null);
+  }, [selectedVendor, loadVendorTickets]);
+
   const handleCoverDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setCoverDragActive(false);
@@ -340,10 +422,11 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
     setAdditionalFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
-  const canDeliver = coverFile && selectedVendor && !isDelivering;
+  const ticketActionValid = ticketAction === 'new' || (ticketAction === 'existing' && !!selectedExistingTicket);
+  const canDeliver = coverFile && selectedVendor && ticketActionValid && !isDelivering;
 
   const handleDeliver = async () => {
-    if (!canDeliver || !usuario) return;
+    if (!canDeliver || !usuario || !coverFile || !selectedVendor) return;
 
     setIsDelivering(true);
     setDeliveryResult(null);
@@ -420,6 +503,9 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
           name: coverFile.name,
         },
         additionalFiles: uploadedAdditional,
+        ticketAction: ticketAction,
+        existingTicketId: ticketAction === 'existing' ? selectedExistingTicket?.id : undefined,
+        existingTicketFolio: ticketAction === 'existing' ? selectedExistingTicket?.folio : undefined,
       };
 
       const res = await fetch(`${supabaseUrl}/functions/v1/process-policy-delivery`, {
@@ -443,6 +529,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
         ticketId: result.ticket?.id,
         emailSent: result.emailSent,
         emailError: result.emailError || undefined,
+        wasExistingTicket: ticketAction === 'existing',
       });
     } catch (err) {
       setDeliveryResult({
@@ -462,6 +549,9 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
     setAdditionalFiles([]);
     setSelectedVendor(null);
     setDeliveryResult(null);
+    setTicketAction(null);
+    setSelectedExistingTicket(null);
+    setTicketSearchTerm('');
   };
 
   if (deliveryResult?.success) {
@@ -473,7 +563,11 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
           </div>
           <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Entrega completada</h2>
           <p className="text-sm text-neutral-600 dark:text-white/60">
-            Se creo el tramite <span className="font-semibold text-neutral-900 dark:text-white">{deliveryResult.folio}</span> con los documentos adjuntos.
+            {deliveryResult.wasExistingTicket ? (
+              <>Se agrego la poliza al tramite <span className="font-semibold text-neutral-900 dark:text-white">{deliveryResult.folio}</span> y fue cerrado como Emitido (Ganado).</>
+            ) : (
+              <>Se creo el tramite <span className="font-semibold text-neutral-900 dark:text-white">{deliveryResult.folio}</span> como Emitido (Ganado) con los documentos adjuntos.</>
+            )}
           </p>
           {deliveryResult.emailSent && (
             <p className="text-xs text-emerald-600 dark:text-emerald-400">Se envio correo de notificacion al vendedor.</p>
@@ -694,22 +788,119 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
           )}
         </div>
 
+        {/* Ticket Action Selection */}
+        {selectedVendor && (
+          <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-5">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
+              4. Tramite relacionado
+            </h3>
+
+            <div className="space-y-2">
+              {/* Option A: Existing ticket */}
+              <button
+                onClick={() => { setTicketAction('existing'); setSelectedExistingTicket(null); }}
+                className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                  ticketAction === 'existing'
+                    ? 'border-sky-400 dark:border-sky-500 bg-sky-50/50 dark:bg-sky-900/10'
+                    : 'border-neutral-200 dark:border-white/10 hover:border-neutral-300 dark:hover:border-white/20'
+                }`}
+              >
+                <p className="text-xs font-semibold text-neutral-800 dark:text-white">Agregar a tramite existente</p>
+                <p className="text-[10px] text-neutral-500 dark:text-white/40 mt-0.5">
+                  Busca un tramite abierto del vendedor y agrega esta poliza a ese expediente.
+                </p>
+              </button>
+
+              {/* Option B: New ticket */}
+              <button
+                onClick={() => { setTicketAction('new'); setSelectedExistingTicket(null); }}
+                className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                  ticketAction === 'new'
+                    ? 'border-sky-400 dark:border-sky-500 bg-sky-50/50 dark:bg-sky-900/10'
+                    : 'border-neutral-200 dark:border-white/10 hover:border-neutral-300 dark:hover:border-white/20'
+                }`}
+              >
+                <p className="text-xs font-semibold text-neutral-800 dark:text-white">Crear nuevo tramite</p>
+                <p className="text-[10px] text-neutral-500 dark:text-white/40 mt-0.5">
+                  Crea un nuevo tramite de Emision para esta poliza.
+                </p>
+              </button>
+            </div>
+
+            {/* Existing ticket selector */}
+            {ticketAction === 'existing' && (
+              <div className="mt-3 space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                  <input
+                    type="text"
+                    value={ticketSearchTerm}
+                    onChange={(e) => setTicketSearchTerm(e.target.value)}
+                    placeholder="Buscar por folio, cliente, poliza..."
+                    className="w-full pl-8 pr-3 py-2 text-xs bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg outline-none focus:border-sky-300 dark:focus:border-sky-500/40 text-neutral-800 dark:text-white placeholder:text-neutral-400"
+                  />
+                </div>
+
+                {(usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente') && (
+                  <label className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-white/40 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showClosedTickets}
+                      onChange={(e) => setShowClosedTickets(e.target.checked)}
+                      className="rounded border-neutral-300 text-sky-600 w-3 h-3"
+                    />
+                    Incluir tramites cerrados
+                  </label>
+                )}
+
+                {ticketsLoading ? (
+                  <div className="flex items-center gap-2 py-4 justify-center">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-400" />
+                    <span className="text-[10px] text-neutral-500 dark:text-white/40">Cargando tramites...</span>
+                  </div>
+                ) : (
+                  <TicketList
+                    tickets={existingTickets}
+                    searchTerm={ticketSearchTerm}
+                    showClosed={showClosedTickets}
+                    selectedId={selectedExistingTicket?.id || null}
+                    onSelect={setSelectedExistingTicket}
+                  />
+                )}
+              </div>
+            )}
+
+            {!ticketAction && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2">
+                Selecciona si deseas agregar esta poliza a un tramite existente o crear un nuevo tramite.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Deliver Button */}
         <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-5">
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
-            4. Entregar poliza
+            {selectedVendor ? '5.' : '4.'} Entregar poliza
           </h3>
 
           <div className="space-y-2 mb-4">
-            <StatusItem
-              ok={!!coverFile}
-              label={coverFile ? 'Caratula cargada' : 'Falta caratula de poliza'}
-            />
-            <StatusItem
-              ok={!!selectedVendor}
-              label={selectedVendor ? 'Usuario asignado' : 'Falta asignar usuario'}
-            />
+            <StatusItem ok={!!coverFile} label={coverFile ? 'Caratula cargada' : 'Falta caratula de poliza'} />
+            <StatusItem ok={!!selectedVendor} label={selectedVendor ? 'Usuario asignado' : 'Falta asignar usuario'} />
+            <StatusItem ok={ticketActionValid} label={
+              ticketAction === 'new' ? 'Crear nuevo tramite' :
+              ticketAction === 'existing' && selectedExistingTicket ? `Tramite ${selectedExistingTicket.folio}` :
+              'Falta elegir opcion de tramite'
+            } />
           </div>
+
+          {ticketAction && (
+            <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-500/20 rounded-lg">
+              <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                Al entregar, el tramite quedara cerrado como Emitido (Ganado).
+              </p>
+            </div>
+          )}
 
           {deliveryResult && !deliveryResult.success && (
             <div className="mb-3 p-2.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/20 rounded-lg">
@@ -742,7 +933,9 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
           </button>
 
           <p className="text-[10px] text-neutral-400 dark:text-white/30 text-center mt-2">
-            Se creara un tramite de emision y se notificara al vendedor
+            {ticketAction === 'existing'
+              ? 'Se agregara la poliza al tramite existente y se cerrara como Emitido (Ganado)'
+              : 'Se creara un tramite de emision cerrado como Emitido (Ganado)'}
           </p>
         </div>
       </div>
@@ -878,6 +1071,9 @@ function HistorialTab({ usuario }: { usuario: any }) {
         'Vigencia inicio': r.start_date || '',
         'Vigencia fin': r.end_date || '',
         'Folio tramite': r.ticket_folio || '',
+        'Accion tramite': r.ticket_action_type === 'existing_ticket' ? 'Existente' : 'Nuevo',
+        'Cerrado como ganado': r.ticket_closed_as_won ? 'Si' : 'No',
+        'Cerrado en': r.ticket_closed_at ? new Date(r.ticket_closed_at).toLocaleString('es-MX') : '',
         'Estado': r.status,
         'Email enviado': r.email_sent ? 'Si' : 'No',
         'Notificado': r.notification_sent ? 'Si' : 'No',
@@ -1027,6 +1223,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                   <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Asegurado</th>
                   <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Prima</th>
                   <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Folio</th>
+                  <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Accion</th>
                   <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Estado</th>
                   <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">SICAS</th>
                   {canRegisterSicas && <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Accion</th>}
@@ -1060,6 +1257,15 @@ function HistorialTab({ usuario }: { usuario: any }) {
                         ) : (
                           <span className="text-neutral-400">-</span>
                         )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                          r.ticket_action_type === 'existing_ticket'
+                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
+                            : 'bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/50'
+                        }`}>
+                          {r.ticket_action_type === 'existing_ticket' ? 'Existente' : 'Nuevo'}
+                        </span>
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
@@ -1239,6 +1445,86 @@ function StatusItem({ ok, label }: { ok: boolean; label: string }) {
       <span className={`text-xs ${ok ? 'text-neutral-700 dark:text-white/70' : 'text-neutral-400 dark:text-white/30'}`}>
         {label}
       </span>
+    </div>
+  );
+}
+
+const CLOSED_STATUSES = ['Emitido (Ganado)', 'No Emitido (Perdido)', 'Cerrado', 'Cancelado', 'Emitido'];
+
+function TicketList({ tickets, searchTerm, showClosed, selectedId, onSelect }: {
+  tickets: ExistingTicket[];
+  searchTerm: string;
+  showClosed: boolean;
+  selectedId: string | null;
+  onSelect: (ticket: ExistingTicket) => void;
+}) {
+  const filtered = tickets.filter((t) => {
+    if (!showClosed && CLOSED_STATUSES.includes(t.estatus_nombre || '')) return false;
+    if (!searchTerm) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      t.folio?.toLowerCase().includes(q) ||
+      t.poliza?.toLowerCase().includes(q) ||
+      t.instrucciones?.toLowerCase().includes(q) ||
+      t.agente_nombre?.toLowerCase().includes(q) ||
+      t.insurance_type_nombre?.toLowerCase().includes(q)
+    );
+  });
+
+  if (filtered.length === 0) {
+    return (
+      <div className="py-4 text-center">
+        <p className="text-[10px] text-neutral-400 dark:text-white/30">
+          {tickets.length === 0 ? 'Este vendedor no tiene tramites registrados.' : 'No se encontraron tramites con ese criterio.'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-h-[240px] overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+      {filtered.map((t) => {
+        const isSelected = selectedId === t.id;
+        const isClosed = CLOSED_STATUSES.includes(t.estatus_nombre || '');
+
+        return (
+          <button
+            key={t.id}
+            onClick={() => onSelect(t)}
+            className={`w-full text-left p-2.5 rounded-lg border transition-all ${
+              isSelected
+                ? 'border-sky-400 dark:border-sky-500 bg-sky-50/70 dark:bg-sky-900/15 ring-1 ring-sky-200 dark:ring-sky-500/30'
+                : 'border-neutral-150 dark:border-white/10 hover:border-neutral-300 dark:hover:border-white/20 hover:bg-neutral-50 dark:hover:bg-white/5'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-neutral-800 dark:text-white">{t.folio}</span>
+                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                    isClosed
+                      ? 'bg-neutral-100 dark:bg-white/10 text-neutral-500 dark:text-white/40'
+                      : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                  }`}>
+                    {t.estatus_nombre || 'Sin estado'}
+                  </span>
+                </div>
+                {t.poliza && (
+                  <p className="text-[10px] text-neutral-600 dark:text-white/60 mt-0.5 truncate">Poliza: {t.poliza}</p>
+                )}
+                {t.insurance_type_nombre && (
+                  <p className="text-[10px] text-neutral-500 dark:text-white/40 truncate">{t.insurance_type_nombre}</p>
+                )}
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-[9px] text-neutral-400 dark:text-white/30">
+                  {new Date(t.updated_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                </p>
+              </div>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }

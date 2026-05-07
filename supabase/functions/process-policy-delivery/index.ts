@@ -32,6 +32,9 @@ interface DeliveryPayload {
     name: string;
   };
   additionalFiles: Array<{ path: string; name: string; type: string; size: number }>;
+  ticketAction: "new" | "existing";
+  existingTicketId?: string;
+  existingTicketFolio?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -52,7 +55,6 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify user from JWT
     const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
@@ -63,7 +65,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user role (no agents allowed)
     const { data: usuario } = await supabase
       .from("usuarios")
       .select("id, rol, nombre, apellidos, oficina_id")
@@ -78,157 +79,252 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload: DeliveryPayload = await req.json();
+    const ext = payload.extraction.data;
+    const agentUserId = payload.vendor.moviUserId || user.id;
+    const isExistingTicket = payload.ticketAction === "existing" && !!payload.existingTicketId;
 
-    // 1. Generate folio for the ticket
-    const { data: folioData } = await supabase.rpc("generate_next_folio");
-    const folio = folioData || `RA-${Date.now()}`;
-
-    // 2. Get status ID for "Emitido"
-    const { data: estatusData } = await supabase
+    // Get status ID for "Emitido (Ganado)" - this is the final close status
+    const { data: estatusGanadoData } = await supabase
       .from("ticket_estatus")
       .select("id")
-      .eq("nombre", "Emitido")
+      .eq("nombre", "Emitido (Ganado)")
       .eq("activo", true)
       .maybeSingle();
 
-    const estatusId = estatusData?.id;
-
-    // 3. Get activity subtype "Emision"
-    const { data: activityType } = await supabase
-      .from("tramite_activity_types")
-      .select("id")
-      .eq("nombre", "Emisión")
-      .maybeSingle();
-
-    const activitySubtypeId = activityType?.id;
-
-    // 4. Get insurance type "Seguro de auto"
-    const { data: insuranceType } = await supabase
-      .from("insurance_types")
-      .select("id")
-      .eq("nombre", "Seguro de auto")
-      .maybeSingle();
-
-    const insuranceTypeId = insuranceType?.id;
-
-    // 5. Get Qualitas insurer ID
-    const { data: insurer } = await supabase
-      .from("aseguradoras")
-      .select("id")
-      .eq("nombre", "Qualitas")
-      .maybeSingle();
-
-    const insurerId = insurer?.id;
-
-    // 6. Build ticket description
-    const ext = payload.extraction.data;
-    let descripcion = `Entrega de poliza generada desde el modulo Entrega de Polizas.\n\n`;
-
-    if (payload.extraction.successful) {
-      descripcion += `Datos extraidos de la caratula:\n`;
-      descripcion += `- Aseguradora: Qualitas\n`;
-      if (ext.tipoPoliza) descripcion += `- Tipo de poliza: ${ext.tipoPoliza}\n`;
-      if (ext.numeroPoliza) descripcion += `- Numero de poliza: ${ext.numeroPoliza}\n`;
-      if (ext.nombreCliente) descripcion += `- Cliente / asegurado: ${ext.nombreCliente}\n`;
-      if (ext.rfcAsegurado) descripcion += `- RFC: ${ext.rfcAsegurado}\n`;
-      if (ext.descripcionVehiculo) descripcion += `- Vehiculo: ${ext.descripcionVehiculo}\n`;
-      if (ext.placas) descripcion += `- Placas: ${ext.placas}\n`;
-      if (ext.serie) descripcion += `- Serie: ${ext.serie}\n`;
-      if (ext.motor) descripcion += `- Motor: ${ext.motor}\n`;
-      if (ext.inicioVigencia && ext.finVigencia) descripcion += `- Vigencia: ${ext.inicioVigencia} al ${ext.finVigencia}\n`;
-      if (ext.formaPago) descripcion += `- Forma de pago: ${ext.formaPago}\n`;
-      if (ext.moneda) descripcion += `- Moneda: ${ext.moneda}\n`;
-      if (ext.primaNeta) descripcion += `- Prima neta: ${ext.primaNeta}\n`;
-      if (ext.primaTotal) descripcion += `- Prima total: ${ext.primaTotal}\n`;
-    } else {
-      descripcion += `NOTA: No se pudieron extraer los datos de la caratula automaticamente.\n`;
+    // Fallback to "Emitido" if "Emitido (Ganado)" doesn't exist
+    let estatusId = estatusGanadoData?.id;
+    if (!estatusId) {
+      const { data: estatusFallback } = await supabase
+        .from("ticket_estatus")
+        .select("id")
+        .eq("nombre", "Emitido")
+        .eq("activo", true)
+        .maybeSingle();
+      estatusId = estatusFallback?.id;
     }
 
-    descripcion += `\nVendedor asignado:\n`;
-    descripcion += `- Vendedor SICAS: ${payload.vendor.sicasName}\n`;
-    if (payload.vendor.sicasKey) descripcion += `- Clave vendedor: ${payload.vendor.sicasKey}\n`;
-    if (payload.vendor.officeName) descripcion += `- Oficina: ${payload.vendor.officeName}\n`;
-    if (payload.vendor.managementName) descripcion += `- Gerencia: ${payload.vendor.managementName}\n`;
+    let ticketId: string;
+    let ticketFolio: string;
 
-    descripcion += `\nDocumentos adjuntos:\n`;
-    descripcion += `- Caratula de seguro: ${payload.coverFile.name}\n`;
-    descripcion += `- Documentos adicionales: ${payload.additionalFiles.length}\n`;
+    if (isExistingTicket) {
+      // ===== FLOW A: Attach to existing ticket =====
+      ticketId = payload.existingTicketId!;
+      ticketFolio = payload.existingTicketFolio || "";
 
-    // 7. Determine agent user ID (use movi user mapping or create without)
-    const agentUserId = payload.vendor.moviUserId || user.id;
+      // Verify the ticket exists
+      const { data: existingTicket, error: ticketCheckErr } = await supabase
+        .from("tickets")
+        .select("id, folio, estatus_id, cerrado")
+        .eq("id", ticketId)
+        .maybeSingle();
 
-    // 8. Create ticket
-    const ticketInsert: Record<string, unknown> = {
-      folio,
-      tipo_tramite: "cotizacion_emision",
-      activity_subtype_id: activitySubtypeId,
-      agente_usuario_id: agentUserId,
-      agente_id: agentUserId,
-      insurance_type_id: insuranceTypeId,
-      insurers: insurerId ? [insurerId] : [],
-      attending_user_id: user.id,
-      assigned_to_user_id: user.id,
-      request_datetime: new Date().toISOString(),
-      prioridad: "Media",
-      instrucciones: descripcion,
-      estatus_id: estatusId,
-      creado_por: user.id,
-      poliza: ext.numeroPoliza || null,
-      cerrado: false,
-      progress_percent: 50,
-      resultado: "en_progreso",
-    };
+      if (ticketCheckErr || !existingTicket) {
+        return new Response(
+          JSON.stringify({ success: false, error: "El tramite seleccionado no existe o fue eliminado" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    const { data: ticket, error: ticketError } = await supabase
-      .from("tickets")
-      .insert(ticketInsert)
-      .select("id, folio")
-      .single();
+      ticketFolio = existingTicket.folio || ticketFolio;
 
-    if (ticketError) {
-      return new Response(
-        JSON.stringify({ success: false, error: `Error al crear tramite: ${ticketError.message}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+      // Close ticket as "Emitido (Ganado)"
+      const updateFields: Record<string, unknown> = {
+        resultado: "ganado",
+        cerrado: true,
+        cerrado_en: new Date().toISOString(),
+        cerrado_por: user.id,
+        poliza: ext.numeroPoliza || existingTicket.id,
+      };
+      if (estatusId) updateFields.estatus_id = estatusId;
 
-    // 9. Attach files to ticket
-    const fileInserts = [];
+      await supabase.from("tickets").update(updateFields).eq("id", ticketId);
 
-    // Cover file
-    fileInserts.push({
-      ticket_id: ticket.id,
-      usuario_id: user.id,
-      nombre: `[Caratula] ${payload.coverFile.name}`,
-      url: payload.coverFile.path,
-      tipo: "application/pdf",
-      tamano: 0,
-    });
+      // Add comment with delivery details
+      let comentario = `Poliza entregada por ${payload.createdByName}.\n\n`;
+      if (payload.extraction.successful) {
+        comentario += `Datos extraidos de caratula:\n`;
+        if (ext.numeroPoliza) comentario += `- Poliza: ${ext.numeroPoliza}\n`;
+        if (ext.nombreCliente) comentario += `- Asegurado: ${ext.nombreCliente}\n`;
+        if (ext.descripcionVehiculo) comentario += `- Vehiculo: ${ext.descripcionVehiculo}\n`;
+        if (ext.placas) comentario += `- Placas: ${ext.placas}\n`;
+        if (ext.inicioVigencia && ext.finVigencia) comentario += `- Vigencia: ${ext.inicioVigencia} al ${ext.finVigencia}\n`;
+        if (ext.primaTotal) comentario += `- Prima total: ${ext.primaTotal}\n`;
+      } else {
+        comentario += `(Los datos de la caratula no pudieron ser extraidos automaticamente)\n`;
+      }
+      comentario += `\nDocumentos adjuntos: Caratula + ${payload.additionalFiles.length} archivos adicionales.`;
+      comentario += `\nTramite cerrado como Emitido (Ganado).`;
 
-    // Additional files
-    for (const file of payload.additionalFiles) {
-      fileInserts.push({
-        ticket_id: ticket.id,
+      await supabase.from("ticket_comentarios").insert({
+        ticket_id: ticketId,
         usuario_id: user.id,
-        nombre: file.name,
-        url: file.path,
-        tipo: file.type,
-        tamano: file.size,
+        contenido: comentario,
+      });
+
+      // Add historial entry
+      await supabase.from("ticket_historial").insert({
+        ticket_id: ticketId,
+        usuario_id: user.id,
+        accion: "entrega_poliza",
+        detalle: {
+          tipo: "entrega_poliza_agregada",
+          poliza: ext.numeroPoliza || null,
+          asegurado: ext.nombreCliente || null,
+          prima_total: ext.primaTotal || null,
+          archivos_adjuntos: 1 + payload.additionalFiles.length,
+          cerrado_como: "Emitido (Ganado)",
+        },
+      });
+
+      // Attach files
+      const fileInserts = [];
+      fileInserts.push({
+        ticket_id: ticketId,
+        usuario_id: user.id,
+        nombre: `[Caratula] ${payload.coverFile.name}`,
+        url: payload.coverFile.path,
+        tipo: "application/pdf",
+        tamano: 0,
+      });
+      for (const file of payload.additionalFiles) {
+        fileInserts.push({
+          ticket_id: ticketId,
+          usuario_id: user.id,
+          nombre: file.name,
+          url: file.path,
+          tipo: file.type,
+          tamano: file.size,
+        });
+      }
+      if (fileInserts.length > 0) {
+        await supabase.from("ticket_archivos").insert(fileInserts);
+      }
+
+    } else {
+      // ===== FLOW B: Create new ticket =====
+
+      const { data: folioData } = await supabase.rpc("generate_next_folio");
+      const folio = folioData || `RA-${Date.now()}`;
+
+      const { data: activityType } = await supabase
+        .from("tramite_activity_types")
+        .select("id")
+        .eq("nombre", "Emisión")
+        .maybeSingle();
+
+      const { data: insuranceType } = await supabase
+        .from("insurance_types")
+        .select("id")
+        .eq("nombre", "Seguro de auto")
+        .maybeSingle();
+
+      const { data: insurer } = await supabase
+        .from("aseguradoras")
+        .select("id")
+        .eq("nombre", "Qualitas")
+        .maybeSingle();
+
+      let descripcion = `Entrega de poliza generada desde el modulo Entrega de Polizas.\n\n`;
+      if (payload.extraction.successful) {
+        descripcion += `Datos extraidos de la caratula:\n`;
+        descripcion += `- Aseguradora: Qualitas\n`;
+        if (ext.tipoPoliza) descripcion += `- Tipo de poliza: ${ext.tipoPoliza}\n`;
+        if (ext.numeroPoliza) descripcion += `- Numero de poliza: ${ext.numeroPoliza}\n`;
+        if (ext.nombreCliente) descripcion += `- Cliente / asegurado: ${ext.nombreCliente}\n`;
+        if (ext.rfcAsegurado) descripcion += `- RFC: ${ext.rfcAsegurado}\n`;
+        if (ext.descripcionVehiculo) descripcion += `- Vehiculo: ${ext.descripcionVehiculo}\n`;
+        if (ext.placas) descripcion += `- Placas: ${ext.placas}\n`;
+        if (ext.serie) descripcion += `- Serie: ${ext.serie}\n`;
+        if (ext.motor) descripcion += `- Motor: ${ext.motor}\n`;
+        if (ext.inicioVigencia && ext.finVigencia) descripcion += `- Vigencia: ${ext.inicioVigencia} al ${ext.finVigencia}\n`;
+        if (ext.formaPago) descripcion += `- Forma de pago: ${ext.formaPago}\n`;
+        if (ext.moneda) descripcion += `- Moneda: ${ext.moneda}\n`;
+        if (ext.primaNeta) descripcion += `- Prima neta: ${ext.primaNeta}\n`;
+        if (ext.primaTotal) descripcion += `- Prima total: ${ext.primaTotal}\n`;
+      } else {
+        descripcion += `NOTA: No se pudieron extraer los datos de la caratula automaticamente.\n`;
+      }
+
+      descripcion += `\nVendedor asignado:\n`;
+      descripcion += `- Vendedor SICAS: ${payload.vendor.sicasName}\n`;
+      if (payload.vendor.sicasKey) descripcion += `- Clave vendedor: ${payload.vendor.sicasKey}\n`;
+      if (payload.vendor.officeName) descripcion += `- Oficina: ${payload.vendor.officeName}\n`;
+      if (payload.vendor.managementName) descripcion += `- Gerencia: ${payload.vendor.managementName}\n`;
+      descripcion += `\nDocumentos adjuntos:\n`;
+      descripcion += `- Caratula de seguro: ${payload.coverFile.name}\n`;
+      descripcion += `- Documentos adicionales: ${payload.additionalFiles.length}\n`;
+
+      const ticketInsert: Record<string, unknown> = {
+        folio,
+        tipo_tramite: "cotizacion_emision",
+        activity_subtype_id: activityType?.id,
+        agente_usuario_id: agentUserId,
+        agente_id: agentUserId,
+        insurance_type_id: insuranceType?.id,
+        insurers: insurer?.id ? [insurer.id] : [],
+        attending_user_id: user.id,
+        assigned_to_user_id: user.id,
+        request_datetime: new Date().toISOString(),
+        prioridad: "Media",
+        instrucciones: descripcion,
+        estatus_id: estatusId,
+        creado_por: user.id,
+        poliza: ext.numeroPoliza || null,
+        cerrado: true,
+        cerrado_en: new Date().toISOString(),
+        cerrado_por: user.id,
+        resultado: "ganado",
+      };
+
+      const { data: ticket, error: ticketError } = await supabase
+        .from("tickets")
+        .insert(ticketInsert)
+        .select("id, folio")
+        .single();
+
+      if (ticketError) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Error al crear tramite: ${ticketError.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      ticketId = ticket.id;
+      ticketFolio = ticket.folio;
+
+      // Attach files
+      const fileInserts = [];
+      fileInserts.push({
+        ticket_id: ticketId,
+        usuario_id: user.id,
+        nombre: `[Caratula] ${payload.coverFile.name}`,
+        url: payload.coverFile.path,
+        tipo: "application/pdf",
+        tamano: 0,
+      });
+      for (const file of payload.additionalFiles) {
+        fileInserts.push({
+          ticket_id: ticketId,
+          usuario_id: user.id,
+          nombre: file.name,
+          url: file.path,
+          tipo: file.type,
+          tamano: file.size,
+        });
+      }
+      if (fileInserts.length > 0) {
+        await supabase.from("ticket_archivos").insert(fileInserts);
+      }
+
+      // Create ticket assignment
+      await supabase.from("ticket_asignaciones").insert({
+        ticket_id: ticketId,
+        ejecutivo_id: user.id,
+        asignado_por: user.id,
       });
     }
 
-    if (fileInserts.length > 0) {
-      await supabase.from("ticket_archivos").insert(fileInserts);
-    }
-
-    // 10. Create ticket assignment
-    await supabase.from("ticket_asignaciones").insert({
-      ticket_id: ticket.id,
-      ejecutivo_id: user.id,
-      asignado_por: user.id,
-    });
-
-    // 11. Determine initial SICAS registration status based on data completeness
+    // ===== COMMON: SICAS registration status =====
     const hasMinimumSicasData = !!(
       ext.numeroPoliza &&
       ext.nombreCliente &&
@@ -249,7 +345,7 @@ Deno.serve(async (req: Request) => {
           !payload.vendor.sicasId && "Vendedor SICAS",
         ].filter(Boolean).join(", ");
 
-    // 12. Save delivery record
+    // ===== Save delivery record =====
     const deliveryInsert = {
       created_by: user.id,
       created_by_name: payload.createdByName,
@@ -284,12 +380,18 @@ Deno.serve(async (req: Request) => {
       cover_file_name: payload.coverFile.name,
       additional_files: payload.additionalFiles,
       additional_files_count: payload.additionalFiles.length,
-      ticket_id: ticket.id,
-      ticket_folio: ticket.folio,
-      ticket_status: "Emitido",
+      ticket_id: ticketId,
+      ticket_folio: ticketFolio,
+      ticket_status: "Emitido (Ganado)",
       status: "completado",
       sicas_registration_status: initialSicasStatus,
       sicas_manual_review_reason: reviewReason,
+      ticket_action_type: isExistingTicket ? "existing_ticket" : "new_ticket",
+      ticket_was_existing: isExistingTicket,
+      ticket_closed_as_won: true,
+      ticket_close_status: "Emitido (Ganado)",
+      ticket_closed_at: new Date().toISOString(),
+      ticket_closed_by: user.id,
     };
 
     const { data: delivery, error: deliveryError } = await supabase
@@ -302,15 +404,19 @@ Deno.serve(async (req: Request) => {
       console.error("Error saving delivery:", deliveryError);
     }
 
-    // 12. Send notification (in-app)
+    // ===== Notification (in-app) =====
     let notificationSent = false;
     try {
+      const notifMsg = isExistingTicket
+        ? `Se agrego una poliza a tu tramite ${ticketFolio} y fue cerrado como Emitido (Ganado).`
+        : `Se te ha entregado una nueva poliza. Revisa el tramite de Emision ${ticketFolio}.`;
+
       await supabase.from("notificaciones").insert({
         usuario_id: agentUserId,
         tipo: "tramite",
-        titulo: "Nueva poliza entregada",
-        mensaje: `Se te ha entregado una nueva poliza. Revisa el tramite de Emision ${folio}.`,
-        url: `/tramites/${ticket.id}`,
+        titulo: "Poliza entregada",
+        mensaje: notifMsg,
+        url: `/tramites/${ticketId}`,
         leida: false,
       });
       notificationSent = true;
@@ -318,7 +424,7 @@ Deno.serve(async (req: Request) => {
       console.error("Notification error:", notifErr);
     }
 
-    // 13. Send email to vendor (best-effort)
+    // ===== Email to vendor (best-effort) =====
     let emailSent = false;
     let emailError: string | null = null;
 
@@ -339,7 +445,7 @@ Datos principales:
 - Prima total: ${ext.primaTotal || "N/A"}
 
 Puedes consultar el tramite completo en MOVI:
-https://app.movi.digital/tramites/${ticket.id}
+https://app.movi.digital/tramites/${ticketId}
 
 Adjuntamos la caratula de seguro y los documentos adicionales incluidos en la entrega.
 
@@ -377,7 +483,7 @@ MOVI Digital
       emailError = "El vendedor no tiene correo registrado";
     }
 
-    // 14. Update delivery with notification/email status
+    // Update delivery with notification/email status
     if (delivery?.id) {
       await supabase
         .from("policy_deliveries")
@@ -392,11 +498,12 @@ MOVI Digital
     return new Response(
       JSON.stringify({
         success: true,
-        ticket: { id: ticket.id, folio: ticket.folio },
+        ticket: { id: ticketId, folio: ticketFolio },
         deliveryId: delivery?.id,
         emailSent,
         emailError,
         notificationSent,
+        wasExistingTicket: isExistingTicket,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
