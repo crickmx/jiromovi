@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, CheckCircle2, Loader2, AlertTriangle, Shield, ArrowRight, Zap, Search, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, CheckCircle2, Loader2, AlertTriangle, Shield, ArrowRight, Zap, Search, ChevronDown, RefreshCw, Save, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -145,6 +145,10 @@ export default function SicasPreRegistrationModal({
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
   const [userOverrides, setUserOverrides] = useState<Record<string, { value: string; label: string }>>({});
   const [savingOverrides, setSavingOverrides] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const policyNumber =
     resolutionData.policy_number ||
@@ -185,6 +189,43 @@ export default function SicasPreRegistrationModal({
     setLoadingCatalogs(false);
   }
 
+  async function handleSyncCatalogs() {
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No hay sesion activa');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-sync-hwcapture-catalogs`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+        }
+      );
+
+      const result = await response.json();
+      if (result.success) {
+        const s = result.summary;
+        setSyncMessage({
+          type: 'success',
+          text: `Sincronizados ${s.total_records} registros (${s.success} catalogos OK, ${s.errors} errores)`,
+        });
+        await loadCatalogsForMissing();
+      } else {
+        setSyncMessage({ type: 'error', text: result.error || 'Error desconocido' });
+      }
+    } catch (err: any) {
+      setSyncMessage({ type: 'error', text: err.message });
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   async function handleSaveOverridesAndRegister() {
     if (!allMissingFilled && hasMissing) return;
 
@@ -223,11 +264,43 @@ export default function SicasPreRegistrationModal({
         if (error) throw error;
       }
 
+      // Save as HWCAPTURE defaults if checkbox is checked
+      if (saveAsDefault) {
+        await saveSelectedAsDefaults();
+      }
+
       onReResolve();
     } catch (err: any) {
       console.error('Error saving overrides:', err);
     } finally {
       setSavingOverrides(false);
+    }
+  }
+
+  async function saveSelectedAsDefaults() {
+    const FIELD_TO_DEFAULT: Record<string, string> = {
+      IDTipoDocto: 'IDTipoDocto',
+      IDCia: 'IDCia',
+      IDRamo: 'IDRamo',
+      IDSubRamo: 'IDSubRamo',
+      IDMon: 'IDMon',
+      IDFPago: 'IDFPago',
+      IDEjecutivo: 'IDEjecutivo',
+      IDGrupo: 'IDGrupo',
+      Estatus: 'Estatus',
+    };
+
+    for (const [fieldKey, { value, label }] of Object.entries(userOverrides)) {
+      const fieldName = FIELD_TO_DEFAULT[fieldKey];
+      if (!fieldName || !value || fieldKey === 'IDCli') continue;
+
+      await supabase
+        .from('sicas_hwcapture_defaults')
+        .update({
+          default_value: value,
+          default_label: label || value,
+        })
+        .eq('field_name', fieldName);
     }
   }
 
@@ -261,23 +334,47 @@ export default function SicasPreRegistrationModal({
           </button>
         </div>
 
-        {/* Warnings */}
-        {hasWarnings && (
-          <div className="px-5 pt-4">
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200">Advertencias</p>
-                  <ul className="mt-1 space-y-0.5">
-                    {resolutionData.warnings.map((warning, i) => (
-                      <li key={i} className="text-[11px] text-amber-700 dark:text-amber-300">
-                        {warning}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+        {/* Sync bar + Diagnostics toggle */}
+        {hasMissing && (
+          <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncCatalogs}
+              disabled={syncing}
+              className="h-7 text-[11px] gap-1.5"
+            >
+              {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              Sincronizar catalogos SICAS
+            </Button>
+            <button
+              onClick={() => setShowDiagnostics(!showDiagnostics)}
+              className="h-7 px-2.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 border rounded-md transition-colors"
+            >
+              <Info className="h-3 w-3" />
+              {showDiagnostics ? 'Ocultar diagnostico' : 'Ver diagnostico'}
+            </button>
+            {syncMessage && (
+              <span className={`text-[11px] ${syncMessage.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                {syncMessage.text}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Diagnostics panel */}
+        {showDiagnostics && hasWarnings && (
+          <div className="px-5 pt-3">
+            <div className="p-3 bg-neutral-50 dark:bg-neutral-800/50 border dark:border-neutral-700 rounded-xl">
+              <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Diagnostico de resolucion</p>
+              <ul className="space-y-1">
+                {resolutionData.warnings.map((warning, i) => (
+                  <li key={i} className="text-[11px] text-neutral-600 dark:text-neutral-400 flex items-start gap-1.5">
+                    <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
+                    {warning}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         )}
@@ -338,17 +435,30 @@ export default function SicasPreRegistrationModal({
               ) : (
                 <div className="space-y-3">
                   {missingFieldKeys.map((fieldKey) => {
+                    if (fieldKey === 'IDCli') {
+                      return (
+                        <ClientSearchField
+                          key={fieldKey}
+                          selectedValue={userOverrides[fieldKey]?.value || ''}
+                          selectedLabel={userOverrides[fieldKey]?.label || ''}
+                          onSelect={(value, label) => {
+                            setUserOverrides(prev => ({ ...prev, [fieldKey]: { value, label } }));
+                          }}
+                        />
+                      );
+                    }
+
                     const catalogTypeId = FIELD_CATALOG_MAP[fieldKey];
                     const options = catalogTypeId ? catalogs[catalogTypeId] || [] : [];
-                    const userVal = userOverrides[fieldKey];
 
                     return (
                       <MissingFieldSelector
                         key={fieldKey}
+                        fieldKey={fieldKey}
                         fieldLabel={getFieldDisplayName(fieldKey)}
                         options={options}
-                        selectedValue={userVal?.value || ''}
-                        selectedLabel={userVal?.label || ''}
+                        selectedValue={userOverrides[fieldKey]?.value || ''}
+                        selectedLabel={userOverrides[fieldKey]?.label || ''}
                         onSelect={(value, label) => {
                           setUserOverrides(prev => ({ ...prev, [fieldKey]: { value, label } }));
                         }}
@@ -363,6 +473,21 @@ export default function SicasPreRegistrationModal({
 
         {/* Footer */}
         <div className="border-t dark:border-neutral-800 p-5">
+          {/* Save as default checkbox */}
+          {hasMissing && Object.keys(userOverrides).length > 0 && (
+            <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={saveAsDefault}
+                onChange={(e) => setSaveAsDefault(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-neutral-300 dark:border-neutral-600 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-[11px] text-neutral-600 dark:text-neutral-400">
+                Guardar selecciones como default HWCAPTURE (se usaran automaticamente en futuras polizas)
+              </span>
+            </label>
+          )}
+
           <div className="flex items-center justify-between">
             <p className="text-[10px] text-muted-foreground max-w-[50%]">
               {hasMissing
@@ -388,7 +513,7 @@ export default function SicasPreRegistrationModal({
                     </>
                   ) : (
                     <>
-                      <Zap className="h-4 w-4 mr-2" />
+                      <Save className="h-4 w-4 mr-2" />
                       Guardar y re-resolver
                     </>
                   )}
@@ -420,9 +545,191 @@ export default function SicasPreRegistrationModal({
   );
 }
 
-// ---- Missing Field Selector ----
+// ---- Client Search Field (live search via edge function) ----
+
+interface ClientSearchFieldProps {
+  selectedValue: string;
+  selectedLabel: string;
+  onSelect: (value: string, label: string) => void;
+}
+
+function ClientSearchField({ selectedValue, selectedLabel, onSelect }: ClientSearchFieldProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<Array<{ id_sicas: string; nombre: string; rfc?: string }>>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [manualValue, setManualValue] = useState('');
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  const handleSearch = useCallback(async (query: string) => {
+    if (query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+
+    setSearching(true);
+    setSearchError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sin sesion');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-search-client`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: query.trim(), limit: 15 }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        setResults(data.results || []);
+        setShowResults(true);
+      } else {
+        setSearchError(data.error || 'Error buscando');
+      }
+    } catch (err: any) {
+      setSearchError(err.message);
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm.trim().length >= 2) {
+        handleSearch(searchTerm);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm, handleSearch]);
+
+  if (showManual) {
+    return (
+      <div className={`border rounded-xl p-3 transition-colors ${selectedValue ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/10' : 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/10'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
+            Cliente SICAS
+            {!selectedValue && <Badge variant="destructive" className="text-[9px] px-1 py-0">Requerido</Badge>}
+          </span>
+          {selectedValue && (
+            <Badge className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
+              {selectedLabel} ({selectedValue})
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Ingresar ID SICAS del cliente"
+            value={manualValue}
+            onChange={(e) => setManualValue(e.target.value)}
+            className="h-8 text-xs flex-1"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs px-2"
+            disabled={!manualValue.trim()}
+            onClick={() => {
+              onSelect(manualValue.trim(), `ID: ${manualValue.trim()}`);
+              setManualValue('');
+            }}
+          >
+            Usar
+          </Button>
+        </div>
+        <button
+          onClick={() => setShowManual(false)}
+          className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2"
+        >
+          Volver a buscar cliente
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`border rounded-xl p-3 transition-colors ${selectedValue ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/10' : 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/10'}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
+          Cliente SICAS
+          {!selectedValue && <Badge variant="destructive" className="text-[9px] px-1 py-0">Requerido</Badge>}
+        </span>
+        {selectedValue && (
+          <Badge className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
+            {selectedLabel} ({selectedValue})
+          </Badge>
+        )}
+      </div>
+
+      <div className="relative">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre o RFC del cliente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-8 pl-8 text-xs"
+            />
+          </div>
+          {searching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </div>
+
+        {showResults && results.length > 0 && (
+          <div className="absolute z-20 top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto border dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 shadow-xl">
+            {results.map((client) => (
+              <button
+                key={client.id_sicas}
+                className={`w-full text-left px-3 py-2 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors border-b dark:border-neutral-800 last:border-b-0 ${selectedValue === client.id_sicas ? 'bg-emerald-50 dark:bg-emerald-950/30 font-medium' : ''}`}
+                onClick={() => {
+                  onSelect(client.id_sicas, client.nombre);
+                  setShowResults(false);
+                  setSearchTerm('');
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="truncate">{client.nombre}</span>
+                  <span className="text-[10px] text-muted-foreground ml-2 shrink-0 font-mono">{client.id_sicas}</span>
+                </div>
+                {client.rfc && (
+                  <span className="text-[10px] text-muted-foreground">RFC: {client.rfc}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {showResults && results.length === 0 && searchTerm.trim().length >= 2 && !searching && (
+          <div className="absolute z-20 top-full left-0 right-0 mt-1 p-3 border dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 shadow-xl">
+            <p className="text-xs text-muted-foreground text-center">Sin resultados para "{searchTerm}"</p>
+          </div>
+        )}
+
+        {searchError && (
+          <p className="mt-1 text-[10px] text-red-500">{searchError}</p>
+        )}
+
+        <button
+          onClick={() => setShowManual(true)}
+          className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2"
+        >
+          Capturar ID manualmente
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---- Missing Field Selector (catalog-based) ----
 
 interface MissingFieldSelectorProps {
+  fieldKey: string;
   fieldLabel: string;
   options: CatalogOption[];
   selectedValue: string;
@@ -430,7 +737,7 @@ interface MissingFieldSelectorProps {
   onSelect: (value: string, label: string) => void;
 }
 
-function MissingFieldSelector({ fieldLabel, options, selectedValue, selectedLabel, onSelect }: MissingFieldSelectorProps) {
+function MissingFieldSelector({ fieldKey, fieldLabel, options, selectedValue, selectedLabel, onSelect }: MissingFieldSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showManual, setShowManual] = useState(false);

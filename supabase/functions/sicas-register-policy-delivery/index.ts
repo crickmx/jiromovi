@@ -181,22 +181,30 @@ function normalizeText(text: string): string {
 }
 
 function findCatalogMatch(records: CatalogRecord[], searchTerms: string[]): CatalogRecord | null {
-  const normalizedTerms = searchTerms.map(t => normalizeText(t));
+  const normalizedTerms = searchTerms.map(t => normalizeText(t)).filter(t => t.length > 0);
 
-  // Exact match first
+  // Exact match on nombre first
   for (const term of normalizedTerms) {
     const exact = records.find(r => normalizeText(r.nombre) === term);
     if (exact) return exact;
   }
 
-  // Contains match
+  // Exact match on id_sicas (for numeric IDs like "1", "2", etc.)
+  for (const term of searchTerms) {
+    const idMatch = records.find(r => r.id_sicas === term);
+    if (idMatch) return idMatch;
+  }
+
+  // Contains match (catalog nombre contains search term)
   for (const term of normalizedTerms) {
+    if (term.length < 2) continue;
     const contains = records.find(r => normalizeText(r.nombre).includes(term));
     if (contains) return contains;
   }
 
-  // Any record contains any term
+  // Bidirectional contains (search term contains catalog nombre or vice versa)
   for (const term of normalizedTerms) {
+    if (term.length < 3) continue;
     for (const r of records) {
       const normalized = normalizeText(r.nombre);
       if (normalized.includes(term) || term.includes(normalized)) return r;
@@ -276,7 +284,7 @@ async function resolveSicasHwcaptureRequiredFields(
   } else {
     const cias = catalogCache[12] || [];
     // Since this module is for Qualitas policies, try matching Qualitas
-    const qualitasMatch = findCatalogMatch(cias, ["QUALITAS", "QUALITAS COMPANIA", "QUALITAS COMPANIA DE SEGUROS"]);
+    const qualitasMatch = findCatalogMatch(cias, ["QUALITAS", "QUALITAS COMPANIA DE SEGUROS", "QUALITAS COMPANIA", "QUALITAS SEGUROS", "QCS", "QUALITAS CIA"]);
     if (qualitasMatch) {
       resolved.IDCia = { value: qualitasMatch.id_sicas, source: "catalog_match_qualitas", label: qualitasMatch.nombre };
     } else {
@@ -306,8 +314,8 @@ async function resolveSicasHwcaptureRequiredFields(
     // Detect if vehicle data exists -> assume Autos
     const hasVehicleData = !!(delivery.vehicle_description || delivery.plates || delivery.vin || delivery.engine);
     const searchTerms = hasVehicleData
-      ? ["AUTOS", "AUTOMOVILES", "VEHICULOS", "DANOS AUTOS", "AUTO"]
-      : ["AUTOS", "AUTOMOVILES"];
+      ? ["AUTOS", "AUTOMOVILES", "VEHICULOS", "DANOS AUTOS", "AUTO", "AUTO INDIVIDUAL", "AUTOS RESIDENTES"]
+      : ["AUTOS", "AUTOMOVILES", "VEHICULOS"];
 
     const ramoMatch = findCatalogMatch(ramos, searchTerms);
     if (ramoMatch) {
@@ -324,7 +332,7 @@ async function resolveSicasHwcaptureRequiredFields(
     resolved.IDSubRamo = { value: getDefault("IDSubRamo")!, source: "default" };
   } else {
     const subRamos = catalogCache[10] || [];
-    const subRamoMatch = findCatalogMatch(subRamos, ["AUTOS", "AUTOMOVILES", "VEHICULOS", "AUTO INDIVIDUAL", "RESIDENTES", "AUTOS RESIDENTES"]);
+    const subRamoMatch = findCatalogMatch(subRamos, ["AUTOMOVILES", "AUTOS RESIDENTES", "AUTO INDIVIDUAL", "AUTOS", "VEHICULOS", "RESIDENTES", "AUTOS IND"]);
     if (subRamoMatch) {
       resolved.IDSubRamo = { value: subRamoMatch.id_sicas, source: "catalog_match_autos", label: subRamoMatch.nombre };
     } else if (subRamos.length === 1) {
@@ -343,7 +351,7 @@ async function resolveSicasHwcaptureRequiredFields(
     const monedas = catalogCache[6] || [];
     // Check extracted currency text
     const extractedCurrency = delivery.currency || delivery.extracted_data?.moneda;
-    let searchTermsMoneda = ["PESOS", "MXN", "M.N.", "MONEDA NACIONAL", "MN"];
+    let searchTermsMoneda = ["PESOS", "PESOS MEXICANOS", "PESO MEXICANO", "MXN", "MONEDA NACIONAL", "M.N.", "MN", "NACIONAL"];
     if (extractedCurrency) {
       searchTermsMoneda = [extractedCurrency, ...searchTermsMoneda];
     }
@@ -365,7 +373,7 @@ async function resolveSicasHwcaptureRequiredFields(
     const extractedFPago = delivery.payment_method || delivery.extracted_data?.formaPago || delivery.extracted_data?.forma_pago;
 
     if (extractedFPago) {
-      const fpagoMatch = findCatalogMatch(fpagos, [extractedFPago, extractedFPago.toUpperCase()]);
+      const fpagoMatch = findCatalogMatch(fpagos, [extractedFPago, "CONTADO", "PAGO DE CONTADO", "ANUAL", "UNA EXHIBICION", "SEMESTRAL", "TRIMESTRAL", "MENSUAL"]);
       if (fpagoMatch) {
         resolved.IDFPago = { value: fpagoMatch.id_sicas, source: "catalog_match_extracted", label: fpagoMatch.nombre };
       } else if (getDefault("IDFPago")) {
@@ -379,7 +387,7 @@ async function resolveSicasHwcaptureRequiredFields(
       resolved.IDFPago = { value: getDefault("IDFPago")!, source: "default" };
     } else {
       // Try common defaults
-      const contadoMatch = findCatalogMatch(fpagos, ["CONTADO", "ANUAL", "UN SOLO PAGO"]);
+      const contadoMatch = findCatalogMatch(fpagos, ["CONTADO", "PAGO DE CONTADO", "ANUAL", "UNA EXHIBICION", "1 PAGO", "UN PAGO", "UN SOLO PAGO"]);
       if (contadoMatch) {
         resolved.IDFPago = { value: contadoMatch.id_sicas, source: "catalog_match_contado", label: contadoMatch.nombre };
         warnings.push(`IDFPago: No se detecto forma de pago en documento. Se asigno "${contadoMatch.nombre}" por defecto.`);
@@ -432,7 +440,7 @@ async function resolveSicasHwcaptureRequiredFields(
     resolved.Estatus = { value: getDefault("Estatus")!, source: "default" };
   } else {
     const estatuses = catalogCache[40] || [];
-    const estatusMatch = findCatalogMatch(estatuses, ["VIGENTE", "V", "ACTIVA", "EN VIGOR"]);
+    const estatusMatch = findCatalogMatch(estatuses, ["VIGENTE", "VIGENTES", "V", "VIG", "ACTIVA", "EN VIGOR"]);
     if (estatusMatch) {
       resolved.Estatus = { value: estatusMatch.id_sicas, source: "catalog_match_vigente", label: estatusMatch.nombre };
     } else {

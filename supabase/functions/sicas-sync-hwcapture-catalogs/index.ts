@@ -44,10 +44,14 @@ Deno.serve(async (req: Request) => {
 
     const sicasUsername = Deno.env.get("SICAS_USERNAME");
     const sicasPassword = Deno.env.get("SICAS_PASSWORD");
-    const sicasEndpoint = Deno.env.get("SICAS_ENDPOINT") || "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
+    const sicasEndpoint = Deno.env.get("SICAS_SOAP_ENDPOINT") || Deno.env.get("SICAS_ENDPOINT");
 
     if (!sicasUsername || !sicasPassword) {
       throw new Error("SICAS credentials not configured (SICAS_USERNAME / SICAS_PASSWORD)");
+    }
+
+    if (!sicasEndpoint) {
+      throw new Error("Falta configurar SICAS_SOAP_ENDPOINT o SICAS_ENDPOINT en secrets de Supabase.");
     }
 
     let body: any = {};
