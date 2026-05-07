@@ -170,7 +170,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [selectedExistingTicket, setSelectedExistingTicket] = useState<ExistingTicket | null>(null);
   const [ticketSearchTerm, setTicketSearchTerm] = useState('');
-  const [showClosedTickets, setShowClosedTickets] = useState(false);
+  const [showClosedTickets, setShowClosedTickets] = useState(true);
 
   const [isDelivering, setIsDelivering] = useState(false);
   const [deliveryResult, setDeliveryResult] = useState<{
@@ -292,7 +292,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
         `)
         .or(`agente_usuario_id.eq.${vendorMoviUserId},agente_id.eq.${vendorMoviUserId},assigned_to_user_id.eq.${vendorMoviUserId},creado_por.eq.${vendorMoviUserId}`)
         .order('ultima_modificacion', { ascending: false })
-        .limit(50);
+        .limit(200);
 
       if (error) throw error;
 
