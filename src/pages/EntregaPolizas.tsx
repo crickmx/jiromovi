@@ -13,6 +13,7 @@ import {
   UploadCloud,
   ShieldAlert,
   Ban,
+  Zap,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
@@ -20,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { PageHeader } from '../components/ui/page-header';
 import VendorSearchCombobox from '../components/lectorQualitas/VendorSearchCombobox';
 import CompletarDatosSicasModal from '../components/tramites/CompletarDatosSicasModal';
+import SicasPreRegistrationModal from '../components/tramites/SicasPreRegistrationModal';
 import type { SicasVendorOption } from '../lib/lectorQualitasTypes';
 
 interface ExtractedCoverData {
@@ -915,6 +917,8 @@ function HistorialTab({ usuario }: { usuario: any }) {
   const [completarDatosRecord, setCompletarDatosRecord] = useState<DeliveryRecord | null>(null);
   const [registering, setRegistering] = useState<string | null>(null);
   const [registerResult, setRegisterResult] = useState<{ id: string; success: boolean; message: string } | null>(null);
+  const [resolving, setResolving] = useState<string | null>(null);
+  const [preRegistrationModal, setPreRegistrationModal] = useState<{ record: DeliveryRecord; data: any } | null>(null);
 
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
@@ -990,6 +994,58 @@ function HistorialTab({ usuario }: { usuario: any }) {
     } finally {
       setRegistering(null);
     }
+  };
+
+  const handleResolveSicas = async (record: DeliveryRecord) => {
+    setResolving(record.id);
+    setRegisterResult(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Sesion no valida');
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/sicas-register-policy-delivery`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ policy_delivery_id: record.id, resolve_only: true }),
+      });
+
+      const result = await res.json();
+
+      if (result.success && result.resolve_only) {
+        if (result.all_resolved) {
+          setPreRegistrationModal({ record, data: result });
+        } else {
+          setRegisterResult({
+            id: record.id,
+            success: false,
+            message: `Faltan campos por resolver: ${result.missing?.join(', ') || 'desconocido'}. Use "Completar" para asignarlos manualmente.`,
+          });
+          loadRecords();
+        }
+      } else {
+        setRegisterResult({
+          id: record.id,
+          success: false,
+          message: result.error || 'Error resolviendo datos SICAS',
+        });
+        loadRecords();
+      }
+    } catch (err) {
+      setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
+    } finally {
+      setResolving(null);
+    }
+  };
+
+  const handleConfirmRegistration = async () => {
+    if (!preRegistrationModal) return;
+    const record = preRegistrationModal.record;
+    setPreRegistrationModal(null);
+    await handleRegisterSicas(record);
   };
 
   const canAttemptRegistration = (r: DeliveryRecord): boolean => {
@@ -1261,28 +1317,40 @@ function HistorialTab({ usuario }: { usuario: any }) {
                       </td>
                       {canRegisterSicas && (
                         <td className="px-3 py-2.5 text-center">
-                          {isCurrentlyRegistering ? (
+                          {isCurrentlyRegistering || resolving === r.id ? (
                             <span className="inline-flex items-center gap-1 text-[10px] text-sky-600 dark:text-sky-400">
-                              <Loader2 className="w-3 h-3 animate-spin" /> Registrando...
+                              <Loader2 className="w-3 h-3 animate-spin" /> {resolving === r.id ? 'Resolviendo...' : 'Registrando...'}
                             </span>
                           ) : r.sicas_registration_status === 'manual_review_required' ? (
-                            <button
-                              onClick={() => setCompletarDatosRecord(r)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors"
-                              title="Completar datos faltantes para registrar en SICAS"
-                            >
-                              <ShieldAlert className="w-3 h-3" />
-                              Completar
-                            </button>
+                            <div className="flex items-center gap-1 justify-center">
+                              <button
+                                onClick={() => setCompletarDatosRecord(r)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors"
+                                title="Completar datos faltantes manualmente"
+                              >
+                                <ShieldAlert className="w-3 h-3" />
+                                Completar
+                              </button>
+                              <button
+                                onClick={() => handleResolveSicas(r)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors"
+                                title="Resolver datos SICAS automaticamente"
+                              >
+                                <Zap className="w-3 h-3" />
+                                Resolver
+                              </button>
+                            </div>
                           ) : canAttemptRegistration(r) ? (
-                            <button
-                              onClick={() => setConfirmModal(r)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-md transition-colors"
-                              title="Registrar esta poliza en SICAS"
-                            >
-                              <UploadCloud className="w-3 h-3" />
-                              {r.sicas_registration_attempts > 0 ? 'Reintentar' : 'Registrar'}
-                            </button>
+                            <div className="flex items-center gap-1 justify-center">
+                              <button
+                                onClick={() => handleResolveSicas(r)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors"
+                                title="Resolver datos y registrar en SICAS"
+                              >
+                                <Zap className="w-3 h-3" />
+                                Resolver
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-[10px] text-neutral-400 dark:text-white/30" title={!r.policy_number ? 'Sin numero de poliza' : 'No disponible'}>
                               {!r.policy_number ? 'Sin poliza' : '-'}
@@ -1321,6 +1389,16 @@ function HistorialTab({ usuario }: { usuario: any }) {
           record={completarDatosRecord}
           onClose={() => setCompletarDatosRecord(null)}
           onSaved={() => loadRecords()}
+        />
+      )}
+
+      {preRegistrationModal && (
+        <SicasPreRegistrationModal
+          record={preRegistrationModal.record}
+          resolutionData={preRegistrationModal.data}
+          onConfirm={handleConfirmRegistration}
+          onClose={() => setPreRegistrationModal(null)}
+          isRegistering={!!registering}
         />
       )}
     </div>
