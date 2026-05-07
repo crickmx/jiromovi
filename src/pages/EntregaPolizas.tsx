@@ -290,7 +290,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
           agente:agente_usuario_id(nombre, apellidos),
           insurance_type:insurance_type_id(nombre)
         `)
-        .or(`agente_usuario_id.eq.${vendorMoviUserId},agente_id.eq.${vendorMoviUserId}`)
+        .or(`agente_usuario_id.eq.${vendorMoviUserId},agente_id.eq.${vendorMoviUserId},assigned_to_user_id.eq.${vendorMoviUserId},creado_por.eq.${vendorMoviUserId}`)
         .order('updated_at', { ascending: false })
         .limit(50);
 
