@@ -81,6 +81,7 @@ interface DeliveryRecord {
   sicas_duplicate_document_id: string | null;
   sicas_registered_at: string | null;
   sicas_manual_review_reason: string | null;
+  sicas_last_attempt_at: string | null;
   ticket_action_type: string | null;
   ticket_was_existing: boolean;
   ticket_closed_as_won: boolean;
@@ -886,6 +887,8 @@ const SICAS_STATUS_CONFIG: Record<string, { label: string; color: string; icon: 
   uploading_files: { label: 'Subiendo docs', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
   completed: { label: 'Completado', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300', icon: CheckCircle2 },
   error: { label: 'Error', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
+  timeout: { label: 'Timeout', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
+  sicas_rejected: { label: 'Rechazado', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   manual_review_required: { label: 'Revision', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300', icon: ShieldAlert },
 };
 
@@ -978,8 +981,15 @@ function HistorialTab({ usuario }: { usuario: any }) {
   };
 
   const canAttemptRegistration = (r: DeliveryRecord): boolean => {
-    const blockedStates = ['registered', 'completed', 'validating', 'registering', 'uploading_files'];
-    if (blockedStates.includes(r.sicas_registration_status || '')) return false;
+    const status = r.sicas_registration_status || '';
+    const blockedStates = ['registered', 'completed', 'validating', 'uploading_files'];
+    if (blockedStates.includes(status)) return false;
+    // Allow retry on stale "registering" (older than 3 minutes)
+    if (status === 'registering') {
+      const lastAttempt = r.sicas_last_attempt_at ? new Date(r.sicas_last_attempt_at).getTime() : 0;
+      if (lastAttempt && Date.now() - lastAttempt > 3 * 60 * 1000) return true;
+      return false;
+    }
     if (!r.policy_number) return false;
     return true;
   };
@@ -1163,7 +1173,14 @@ function HistorialTab({ usuario }: { usuario: any }) {
               </thead>
               <tbody>
                 {filtered.map((r) => {
-                  const sicasStatus = r.sicas_registration_status || 'not_started';
+                  let sicasStatus = r.sicas_registration_status || 'not_started';
+                  // Detect stale "registering" status (stuck for more than 3 minutes)
+                  if (sicasStatus === 'registering' && registering !== r.id) {
+                    const lastAttempt = r.sicas_last_attempt_at ? new Date(r.sicas_last_attempt_at).getTime() : 0;
+                    if (lastAttempt && Date.now() - lastAttempt > 3 * 60 * 1000) {
+                      sicasStatus = 'timeout';
+                    }
+                  }
                   const statusConfig = SICAS_STATUS_CONFIG[sicasStatus] || SICAS_STATUS_CONFIG.not_started;
                   const StatusIcon = statusConfig.icon;
                   const isCurrentlyRegistering = registering === r.id;

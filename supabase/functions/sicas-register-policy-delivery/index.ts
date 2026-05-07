@@ -681,12 +681,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Prevent concurrent
+    // Prevent concurrent - but allow retry if stuck for more than 3 minutes
     if (delivery.sicas_registration_status === "registering") {
-      return new Response(
-        JSON.stringify({ success: false, error: "Ya hay un registro en proceso. Espera.", status: "registering" }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const lastAttempt = delivery.sicas_last_attempt_at ? new Date(delivery.sicas_last_attempt_at).getTime() : 0;
+      const threeMinutesAgo = Date.now() - 3 * 60 * 1000;
+      if (lastAttempt > threeMinutesAgo) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Ya hay un registro en proceso. Espera.", status: "registering" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // Stale "registering" status - allow retry
+      console.log(`[SICAS] Stale registering status detected (last attempt: ${delivery.sicas_last_attempt_at}). Allowing retry.`);
     }
 
     // ===== RESOLVE POLICY NUMBER =====
