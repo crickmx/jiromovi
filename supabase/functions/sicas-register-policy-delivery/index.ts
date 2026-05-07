@@ -65,62 +65,51 @@ function validateMinimumData(delivery: PolicyDelivery): { valid: boolean; missin
   return { valid: missing.length === 0, missing };
 }
 
-// Build the XML payload for SICAS HWCAPTURE document registration
-function buildSicasPolicyPayload(delivery: PolicyDelivery): string {
+// Format a date string for SICAS (DD/MM/YYYY)
+function formatDateSicas(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+// Build the JSON payload for SICAS REST API document registration
+// Uses flat dot-notation keys matching the REST /Data/SaveData format
+function buildSicasPolicyPayload(delivery: PolicyDelivery): Record<string, unknown> {
   const policyNumber = getPolicyNumberFromDelivery(delivery) || "";
   const idVend = delivery.vendor_sicas_id || "";
-  const idGerencia = delivery.sicas_management_id || "";
-  const idDespacho = delivery.sicas_office_id || "";
+  const idGerencia = delivery.sicas_management_id || "0";
+  const idDespacho = delivery.sicas_office_id || "0";
 
-  // Format dates for SICAS (DD/MM/YYYY)
-  const formatDateSicas = (dateStr: string | null): string => {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
+  return {
+    "DatDocumentos.IDDocto": -1,
+    "DatDocumentos.Documento": policyNumber,
+    "DatDocumentos.IDVend": idVend,
+    "DatDocumentos.IDCia": "1",
+    "DatDocumentos.IDRamo": "1",
+    "DatDocumentos.IDSubRamo": "1",
+    "DatDocumentos.FDesde": formatDateSicas(delivery.start_date),
+    "DatDocumentos.FHasta": formatDateSicas(delivery.end_date),
+    "DatDocumentos.PrimaNeta": delivery.net_premium || "0",
+    "DatDocumentos.PrimaTotal": delivery.total_premium || "0",
+    "DatDocumentos.FormaPago": delivery.payment_method || "",
+    "DatDocumentos.Moneda": delivery.currency || "MXN",
+    "DatDocumentos.NombreCliente": delivery.insured_name || "",
+    "DatDocumentos.RFCCliente": delivery.insured_rfc || "",
+    "DatDocumentos.IDGerencia": idGerencia,
+    "DatDocumentos.IDDespacho": idDespacho,
+    "DatDocumentos.Estatus": "V",
+    "DatDocumentos.Observaciones": "Registrado desde MOVI Digital - Entrega de Polizas",
+    "DatDoctoDetail.Descripcion": delivery.vehicle_description || "",
+    "DatDoctoDetail.Serie": delivery.vin || "",
+    "DatDoctoDetail.Motor": delivery.engine || "",
+    "DatDoctoDetail.Placas": delivery.plates || "",
   };
-
-  const xml = `<InfoData>
-  <DatDocumentos>
-    <IDDocto>-1</IDDocto>
-    <Documento>${escapeXml(policyNumber)}</Documento>
-    <IDVend>${escapeXml(idVend)}</IDVend>
-    <IDCia>1</IDCia>
-    <IDRamo>1</IDRamo>
-    <IDSubRamo>1</IDSubRamo>
-    <FDesde>${formatDateSicas(delivery.start_date)}</FDesde>
-    <FHasta>${formatDateSicas(delivery.end_date)}</FHasta>
-    <PrimaNeta>${escapeXml(delivery.net_premium || "0")}</PrimaNeta>
-    <PrimaTotal>${escapeXml(delivery.total_premium || "0")}</PrimaTotal>
-    <FormaPago>${escapeXml(delivery.payment_method || "")}</FormaPago>
-    <Moneda>${escapeXml(delivery.currency || "MXN")}</Moneda>
-    <NombreCliente>${escapeXml(delivery.insured_name || "")}</NombreCliente>
-    <RFCCliente>${escapeXml(delivery.insured_rfc || "")}</RFCCliente>
-    <IDGerencia>${escapeXml(idGerencia)}</IDGerencia>
-    <IDDespacho>${escapeXml(idDespacho)}</IDDespacho>
-    <Estatus>V</Estatus>
-    <Observaciones>Registrado desde MOVI Digital - Entrega de Polizas</Observaciones>
-  </DatDocumentos>
-  <DatDoctoDetail>
-    <Descripcion>${escapeXml(delivery.vehicle_description || "")}</Descripcion>
-    <Serie>${escapeXml(delivery.vin || "")}</Serie>
-    <Motor>${escapeXml(delivery.engine || "")}</Motor>
-    <Placas>${escapeXml(delivery.plates || "")}</Placas>
-  </DatDoctoDetail>
-</InfoData>`;
-
-  return xml;
 }
 
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
 
 function getPolicyNumberFromDelivery(delivery: PolicyDelivery): string | null {
   if (delivery.policy_number) return delivery.policy_number.trim();
@@ -163,9 +152,10 @@ function parseSicasRegisterResponse(responseData: any): {
 
     // JSON response
     if (responseData.Sucess || responseData.Success) {
+      const docId = responseData.IDDocto || responseData.DocumentId || responseData.Id || responseData.Response?.IDDocto;
       return {
         success: true,
-        documentId: responseData.IDDocto || responseData.DocumentId || responseData.Id,
+        documentId: docId ? String(docId) : undefined,
         message: responseData.Message || "Registro exitoso",
       };
     }
@@ -217,9 +207,8 @@ async function getSicasToken(config: {
 async function registerDocumentInSicas(config: {
   baseUrl: string;
   token: string;
-  dataXml: string;
+  payload: Record<string, unknown>;
 }): Promise<any> {
-  // Use the Data/SaveData endpoint for document creation
   const response = await fetch(`${config.baseUrl}/Data/SaveData`, {
     method: "POST",
     headers: {
@@ -229,9 +218,7 @@ async function registerDocumentInSicas(config: {
       "Prop_KeyProcess": "DATA",
       "Prop_TProc": "Save_Data",
     },
-    body: JSON.stringify({
-      DataXML: config.dataXml,
-    }),
+    body: JSON.stringify(config.payload),
   });
 
   if (!response.ok) {
@@ -525,8 +512,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Build SICAS payload
-    const dataXml = buildSicasPolicyPayload(delivery as PolicyDelivery);
+    // Build SICAS payload (flat JSON with dot-notation keys for REST API)
+    const sicasPayload = buildSicasPolicyPayload(delivery as PolicyDelivery);
 
     await logAction(supabase, {
       policyDeliveryId: delivery.id,
@@ -535,7 +522,7 @@ Deno.serve(async (req: Request) => {
       action: "payload_built",
       status: "ready",
       requestPayload: {
-        dataXml,
+        sicasPayload,
         resolvedPolicyNumber: resolvedPolicyNumber || delivery.policy_number,
         vendorSicasId: delivery.vendor_sicas_id,
         endpoint: `${Deno.env.get("SICAS_REST_API_URL") || "https://security-services.sicasonline.info/api"}/Data/SaveData`,
@@ -547,7 +534,7 @@ Deno.serve(async (req: Request) => {
       .from("policy_deliveries")
       .update({
         sicas_registration_status: "registering",
-        sicas_request_payload: { dataXml, timestamp: new Date().toISOString() },
+        sicas_request_payload: { payload: sicasPayload, timestamp: new Date().toISOString() },
       })
       .eq("id", delivery.id);
 
@@ -630,7 +617,7 @@ Deno.serve(async (req: Request) => {
       sicasResponse = await registerDocumentInSicas({
         baseUrl: sicasBaseUrl,
         token: sicasToken,
-        dataXml: dataXml,
+        payload: sicasPayload,
       });
     } catch (regErr) {
       const errMsg = `Error enviando a SICAS: ${regErr instanceof Error ? regErr.message : "unknown"}`;
@@ -690,7 +677,7 @@ Deno.serve(async (req: Request) => {
         status: "error",
         errorMessage: errMsg,
         responseRaw: sicasResponse,
-        requestPayload: { dataXml, policyNumber: getPolicyNumberFromDelivery(delivery as PolicyDelivery) },
+        requestPayload: { sicasPayload, policyNumber: getPolicyNumberFromDelivery(delivery as PolicyDelivery) },
         durationMs: Date.now() - startTime,
       });
 
