@@ -1240,8 +1240,8 @@ function HistorialTab({ usuario }: { usuario: any }) {
                           {r.sicas_document_id && (
                             <span className="text-[9px] text-neutral-400 dark:text-white/30">ID: {r.sicas_document_id}</span>
                           )}
-                          {r.sicas_error_message && isAdmin && (
-                            <span className="text-[9px] text-red-500 dark:text-red-400 max-w-[120px] truncate" title={r.sicas_error_message}>
+                          {r.sicas_error_message && (
+                            <span className="text-[9px] text-red-500 dark:text-red-400 max-w-[140px] truncate" title={r.sicas_error_message}>
                               {r.sicas_error_message}
                             </span>
                           )}

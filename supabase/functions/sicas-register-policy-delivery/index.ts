@@ -43,10 +43,29 @@ interface PolicyDelivery {
   sicas_registration_status: string | null;
   sicas_document_id: string | null;
   sicas_registration_attempts: number;
+  sicas_last_attempt_at: string | null;
+  // Manual override fields (set from UI when completing missing data)
+  sicas_override_tipo_docto: string | null;
+  sicas_override_cia: string | null;
+  sicas_override_ramo: string | null;
+  sicas_override_subramo: string | null;
+  sicas_override_moneda: string | null;
+  sicas_override_fpago: string | null;
+  sicas_override_ejecutivo: string | null;
+  sicas_override_grupo: string | null;
+  sicas_override_cliente: string | null;
+  sicas_override_estatus: string | null;
+}
+
+interface HwcaptureDefault {
+  field_name: string;
+  field_label: string;
+  default_value: string | null;
+  is_required: boolean;
 }
 
 // ============================================================
-// Policy Number Extraction - Priority Chain
+// Helpers
 // ============================================================
 
 function getPolicyNumberFromDelivery(delivery: PolicyDelivery): string | null {
@@ -81,12 +100,10 @@ function cleanPolicyNumber(raw: string): string | null {
     .replace(/\s+/g, " ")
     .trim();
 
-  // Remove invisible characters
   cleaned = cleaned.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "");
 
   if (cleaned.length === 0) return null;
 
-  // Reject MOVI internal folios (e.g. RA-2026-0082, TRA-2025-0001, EMI-2026-0001)
   if (looksLikeMoviFolio(cleaned)) {
     console.warn(`[cleanPolicyNumber] Rejected MOVI folio pattern: "${cleaned}"`);
     return null;
@@ -110,18 +127,227 @@ function looksLikeMoviFolio(value: string): boolean {
   return MOVI_FOLIO_PATTERNS.some((pattern) => pattern.test(value));
 }
 
+/**
+ * Normalize amount: remove commas, $, spaces. Return decimal string.
+ */
+function normalizeSicasAmount(value: string | null): string {
+  if (!value) return "0";
+  const cleaned = value.replace(/[$,\s]/g, "").trim();
+  const num = parseFloat(cleaned);
+  if (isNaN(num)) return "0";
+  return num.toFixed(2);
+}
+
+/**
+ * Format date for SICAS: accepts multiple formats, outputs dd/mm/yyyy
+ */
+function formatSicasDate(dateStr: string | null): string {
+  if (!dateStr) return "";
+
+  // Already dd/mm/yyyy
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+
+  // Try dd/MMM/yyyy (e.g., 03/OCT/2023)
+  const monthMap: Record<string, string> = {
+    ENE: "01", FEB: "02", MAR: "03", ABR: "04", MAY: "05", JUN: "06",
+    JUL: "07", AGO: "08", SEP: "09", OCT: "10", NOV: "11", DIC: "12",
+    JAN: "01", APR: "04", AUG: "08", DEC: "12",
+  };
+  const mmmMatch = dateStr.match(/^(\d{1,2})\/([A-Z]{3})\/(\d{4})$/i);
+  if (mmmMatch) {
+    const dd = mmmMatch[1].padStart(2, "0");
+    const mm = monthMap[mmmMatch[2].toUpperCase()] || "01";
+    return `${dd}/${mm}/${mmmMatch[3]}`;
+  }
+
+  // Try ISO format yyyy-mm-dd
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+  }
+
+  // Try Date object parsing as last resort
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `${dd}/${mm}/${d.getFullYear()}`;
+  }
+
+  return dateStr;
+}
+
 // ============================================================
-// Date formatting for SICAS
+// Build HWCAPTURE form-urlencoded payload
 // ============================================================
 
-function formatDateSicas(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+interface BuildPayloadResult {
+  valid: boolean;
+  payload: URLSearchParams | null;
+  missingFields: string[];
+  fieldValues: Record<string, string>;
+}
+
+function buildSicasHwcaptureFormPayload(
+  delivery: PolicyDelivery,
+  policyNumber: string,
+  defaults: HwcaptureDefault[]
+): BuildPayloadResult {
+  const missingFields: string[] = [];
+  const fieldValues: Record<string, string> = {};
+
+  // Get default value for a field, with override priority
+  const getFieldValue = (fieldName: string, overrideValue: string | null | undefined, fallbackFromDelivery?: string | null): string | null => {
+    // Priority 1: Manual override from UI
+    if (overrideValue && overrideValue.trim()) return overrideValue.trim();
+    // Priority 2: Value from delivery data
+    if (fallbackFromDelivery && fallbackFromDelivery.trim()) return fallbackFromDelivery.trim();
+    // Priority 3: Default from configuration
+    const def = defaults.find(d => d.field_name === fieldName);
+    if (def?.default_value) return def.default_value;
+    return null;
+  };
+
+  // === Required fields ===
+
+  // Documento (policy number) - always required
+  fieldValues["Documento"] = policyNumber;
+
+  // IDDocto = -1 for new documents
+  fieldValues["IDDocto"] = "-1";
+
+  // Tipo Documento
+  const tipoDocto = getFieldValue("IDTipoDocto", delivery.sicas_override_tipo_docto);
+  if (tipoDocto) {
+    fieldValues["IDTipoDocto"] = tipoDocto;
+  } else {
+    missingFields.push("Tipo de Documento (IDTipoDocto)");
+  }
+
+  // Cliente
+  const cliente = getFieldValue("IDCli", delivery.sicas_override_cliente);
+  if (cliente) {
+    fieldValues["IDCli"] = cliente;
+  } else {
+    missingFields.push("Cliente SICAS (IDCli)");
+  }
+
+  // Aseguradora
+  const cia = getFieldValue("IDCia", delivery.sicas_override_cia);
+  if (cia) {
+    fieldValues["IDCia"] = cia;
+  } else {
+    missingFields.push("Aseguradora (IDCia)");
+  }
+
+  // Ramo
+  const ramo = getFieldValue("IDRamo", delivery.sicas_override_ramo);
+  if (ramo) {
+    fieldValues["IDRamo"] = ramo;
+  } else {
+    missingFields.push("Ramo (IDRamo)");
+  }
+
+  // SubRamo
+  const subRamo = getFieldValue("IDSubRamo", delivery.sicas_override_subramo);
+  if (subRamo) {
+    fieldValues["IDSubRamo"] = subRamo;
+  } else {
+    missingFields.push("SubRamo (IDSubRamo)");
+  }
+
+  // Agente / Vendedor
+  const vendedor = delivery.vendor_sicas_id;
+  if (vendedor) {
+    fieldValues["IDVend"] = vendedor;
+  } else {
+    missingFields.push("Agente/Vendedor (IDVend)");
+  }
+
+  // Grupo
+  const grupo = getFieldValue("IDGrupo", delivery.sicas_override_grupo);
+  if (grupo) {
+    fieldValues["IDGrupo"] = grupo;
+  } else {
+    missingFields.push("Grupo (IDGrupo)");
+  }
+
+  // Ejecutivo
+  const ejecutivo = getFieldValue("IDEjecutivo", delivery.sicas_override_ejecutivo);
+  if (ejecutivo) {
+    fieldValues["IDEjecutivo"] = ejecutivo;
+  } else {
+    missingFields.push("Ejecutivo (IDEjecutivo)");
+  }
+
+  // Forma de pago
+  const fpago = getFieldValue("IDFPago", delivery.sicas_override_fpago, delivery.payment_method);
+  if (fpago) {
+    fieldValues["IDFPago"] = fpago;
+  } else {
+    missingFields.push("Forma de Pago (IDFPago)");
+  }
+
+  // Moneda
+  const moneda = getFieldValue("IDMon", delivery.sicas_override_moneda);
+  if (moneda) {
+    fieldValues["IDMon"] = moneda;
+  } else {
+    missingFields.push("Moneda (IDMon)");
+  }
+
+  // Estatus
+  const estatus = getFieldValue("Estatus", delivery.sicas_override_estatus);
+  if (estatus) {
+    fieldValues["Estatus"] = estatus;
+  } else {
+    missingFields.push("Estatus");
+  }
+
+  // === Optional fields (always include if available) ===
+
+  // Fechas
+  const fDesde = formatSicasDate(delivery.start_date);
+  const fHasta = formatSicasDate(delivery.end_date);
+  if (fDesde) fieldValues["FDesde"] = fDesde;
+  if (fHasta) fieldValues["FHasta"] = fHasta;
+
+  // Primas (cleaned)
+  fieldValues["PrimaNeta"] = normalizeSicasAmount(delivery.net_premium);
+  fieldValues["PrimaTotal"] = normalizeSicasAmount(delivery.total_premium);
+
+  // Despacho / Oficina
+  if (delivery.sicas_office_id) fieldValues["IDDespacho"] = delivery.sicas_office_id;
+
+  // Gerencia
+  if (delivery.sicas_management_id && delivery.sicas_management_id !== "0") {
+    fieldValues["IDGerencia"] = delivery.sicas_management_id;
+  }
+
+  // Cliente nombre (as backup, SICAS may use it)
+  if (delivery.insured_name) fieldValues["NombreCliente"] = delivery.insured_name;
+  if (delivery.insured_rfc) fieldValues["RFCCliente"] = delivery.insured_rfc;
+
+  // Observaciones
+  fieldValues["Observaciones"] = "Registrado desde MOVI Digital";
+
+  // Vehicle details
+  if (delivery.vehicle_description) fieldValues["Descripcion"] = delivery.vehicle_description;
+  if (delivery.vin) fieldValues["Serie"] = delivery.vin;
+  if (delivery.engine) fieldValues["Motor"] = delivery.engine;
+  if (delivery.plates) fieldValues["Placas"] = delivery.plates;
+
+  // Build URLSearchParams
+  if (missingFields.length > 0) {
+    return { valid: false, payload: null, missingFields, fieldValues };
+  }
+
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(fieldValues)) {
+    params.append(key, value);
+  }
+
+  return { valid: true, payload: params, missingFields: [], fieldValues };
 }
 
 // ============================================================
@@ -156,340 +382,6 @@ async function getSicasToken(config: {
   }
 
   return data.Token;
-}
-
-// ============================================================
-// SICAS SaveData - Multi-format strategy
-// ============================================================
-
-interface SaveDataStrategy {
-  name: string;
-  description: string;
-  buildPayload: (policyNumber: string, delivery: PolicyDelivery) => Record<string, string>;
-}
-
-// The strategies try different field naming conventions that SICAS might accept
-const SAVE_DATA_STRATEGIES: SaveDataStrategy[] = [
-  {
-    name: "minimal_no_prefix",
-    description: "Minimal payload: IDDocto + Documento without table prefix",
-    buildPayload: (policyNumber: string) => ({
-      IDDocto: "-1",
-      Documento: policyNumber,
-    }),
-  },
-  {
-    name: "minimal_DatDocumentos",
-    description: "Minimal payload: DatDocumentos.IDDocto + DatDocumentos.Documento",
-    buildPayload: (policyNumber: string) => ({
-      "DatDocumentos.IDDocto": "-1",
-      "DatDocumentos.Documento": policyNumber,
-    }),
-  },
-  {
-    name: "minimal_DatDocumento_singular",
-    description: "Minimal payload: DatDocumento.IDDocto + DatDocumento.Documento (singular)",
-    buildPayload: (policyNumber: string) => ({
-      "DatDocumento.IDDocto": "-1",
-      "DatDocumento.Documento": policyNumber,
-    }),
-  },
-  {
-    name: "full_no_prefix",
-    description: "Full payload without table prefix on document fields, with prefix on detail",
-    buildPayload: (policyNumber: string, delivery: PolicyDelivery) => ({
-      IDDocto: "-1",
-      Documento: policyNumber,
-      IDVend: delivery.vendor_sicas_id || "",
-      IDCia: "1",
-      IDRamo: "1",
-      IDSubRamo: "1",
-      FDesde: formatDateSicas(delivery.start_date),
-      FHasta: formatDateSicas(delivery.end_date),
-      PrimaNeta: delivery.net_premium || "0",
-      PrimaTotal: delivery.total_premium || "0",
-      FormaPago: delivery.payment_method || "",
-      Moneda: delivery.currency || "Pesos",
-      NombreCliente: delivery.insured_name || "",
-      RFCCliente: delivery.insured_rfc || "",
-      IDGerencia: delivery.sicas_management_id || "0",
-      IDDespacho: delivery.sicas_office_id || "0",
-      Estatus: "V",
-      Observaciones: "Registrado desde MOVI Digital",
-      "DatDoctoDetail.Descripcion": delivery.vehicle_description || "",
-      "DatDoctoDetail.Serie": delivery.vin || "",
-      "DatDoctoDetail.Motor": delivery.engine || "",
-      "DatDoctoDetail.Placas": delivery.plates || "",
-    }),
-  },
-  {
-    name: "full_DatDocumentos_prefix",
-    description: "Full payload with DatDocumentos prefix (original approach)",
-    buildPayload: (policyNumber: string, delivery: PolicyDelivery) => ({
-      "DatDocumentos.IDDocto": "-1",
-      "DatDocumentos.Documento": policyNumber,
-      "DatDocumentos.IDVend": delivery.vendor_sicas_id || "",
-      "DatDocumentos.IDCia": "1",
-      "DatDocumentos.IDRamo": "1",
-      "DatDocumentos.IDSubRamo": "1",
-      "DatDocumentos.FDesde": formatDateSicas(delivery.start_date),
-      "DatDocumentos.FHasta": formatDateSicas(delivery.end_date),
-      "DatDocumentos.PrimaNeta": delivery.net_premium || "0",
-      "DatDocumentos.PrimaTotal": delivery.total_premium || "0",
-      "DatDocumentos.FormaPago": delivery.payment_method || "",
-      "DatDocumentos.Moneda": delivery.currency || "Pesos",
-      "DatDocumentos.NombreCliente": delivery.insured_name || "",
-      "DatDocumentos.RFCCliente": delivery.insured_rfc || "",
-      "DatDocumentos.IDGerencia": delivery.sicas_management_id || "0",
-      "DatDocumentos.IDDespacho": delivery.sicas_office_id || "0",
-      "DatDocumentos.Estatus": "V",
-      "DatDocumentos.Observaciones": "Registrado desde MOVI Digital",
-      "DatDoctoDetail.Descripcion": delivery.vehicle_description || "",
-      "DatDoctoDetail.Serie": delivery.vin || "",
-      "DatDoctoDetail.Motor": delivery.engine || "",
-      "DatDoctoDetail.Placas": delivery.plates || "",
-    }),
-  },
-];
-
-// Additional strategies that try alternative body structures
-const ALTERNATIVE_STRATEGIES: Array<{
-  name: string;
-  description: string;
-  buildRequest: (policyNumber: string, delivery: PolicyDelivery, baseUrl: string, token: string) => {
-    url: string;
-    method: string;
-    headers: Record<string, string>;
-    body: string;
-  };
-}> = [
-  {
-    name: "wrapped_Records_array",
-    description: "Body wrapped in { Records: [{ fields }] } structure",
-    buildRequest: (policyNumber, delivery, baseUrl, token) => ({
-      url: `${baseUrl}/Data/SaveData`,
-      method: "POST",
-      headers: {
-        Authorization: token,
-        "Content-Type": "application/json",
-        Prop_KeyCode: "HWCAPTURE",
-        Prop_KeyProcess: "DATA",
-        Prop_TProc: "Save_Data",
-      },
-      body: JSON.stringify({
-        Records: [{
-          IDDocto: "-1",
-          Documento: policyNumber,
-          IDVend: delivery.vendor_sicas_id || "",
-          IDCia: "1",
-          IDRamo: "1",
-          IDSubRamo: "1",
-          FDesde: formatDateSicas(delivery.start_date),
-          FHasta: formatDateSicas(delivery.end_date),
-          PrimaNeta: delivery.net_premium || "0",
-          PrimaTotal: delivery.total_premium || "0",
-          NombreCliente: delivery.insured_name || "",
-          IDGerencia: delivery.sicas_management_id || "0",
-          IDDespacho: delivery.sicas_office_id || "0",
-          Estatus: "V",
-        }],
-      }),
-    }),
-  },
-  {
-    name: "query_params_documento",
-    description: "Documento as URL query parameter, minimal body",
-    buildRequest: (policyNumber, delivery, baseUrl, token) => {
-      const params = new URLSearchParams({ Documento: policyNumber });
-      return {
-        url: `${baseUrl}/Data/SaveData?${params.toString()}`,
-        method: "POST",
-        headers: {
-          Authorization: token,
-          "Content-Type": "application/json",
-          Prop_KeyCode: "HWCAPTURE",
-          Prop_KeyProcess: "DATA",
-          Prop_TProc: "Save_Data",
-        },
-        body: JSON.stringify({
-          IDDocto: "-1",
-          Documento: policyNumber,
-          IDVend: delivery.vendor_sicas_id || "",
-          IDCia: "1",
-          IDRamo: "1",
-          Estatus: "V",
-        }),
-      };
-    },
-  },
-  {
-    name: "form_urlencoded",
-    description: "Body as application/x-www-form-urlencoded instead of JSON",
-    buildRequest: (policyNumber, delivery, baseUrl, token) => {
-      const formData = new URLSearchParams();
-      formData.append("IDDocto", "-1");
-      formData.append("Documento", policyNumber);
-      formData.append("IDVend", delivery.vendor_sicas_id || "");
-      formData.append("IDCia", "1");
-      formData.append("IDRamo", "1");
-      formData.append("IDSubRamo", "1");
-      formData.append("FDesde", formatDateSicas(delivery.start_date));
-      formData.append("FHasta", formatDateSicas(delivery.end_date));
-      formData.append("PrimaNeta", delivery.net_premium || "0");
-      formData.append("PrimaTotal", delivery.total_premium || "0");
-      formData.append("NombreCliente", delivery.insured_name || "");
-      formData.append("Estatus", "V");
-      return {
-        url: `${baseUrl}/Data/SaveData`,
-        method: "POST",
-        headers: {
-          Authorization: token,
-          "Content-Type": "application/x-www-form-urlencoded",
-          Prop_KeyCode: "HWCAPTURE",
-          Prop_KeyProcess: "DATA",
-          Prop_TProc: "Save_Data",
-        },
-        body: formData.toString(),
-      };
-    },
-  },
-  {
-    name: "nested_DataInfo_xml_style",
-    description: "Body with DataInfo wrapper mimicking XML table structure",
-    buildRequest: (policyNumber, delivery, baseUrl, token) => ({
-      url: `${baseUrl}/Data/SaveData`,
-      method: "POST",
-      headers: {
-        Authorization: token,
-        "Content-Type": "application/json",
-        Prop_KeyCode: "HWCAPTURE",
-        Prop_KeyProcess: "DATA",
-        Prop_TProc: "Save_Data",
-      },
-      body: JSON.stringify({
-        DataInfo: {
-          DatDocumentos: {
-            IDDocto: "-1",
-            Documento: policyNumber,
-            IDVend: delivery.vendor_sicas_id || "",
-            IDCia: "1",
-            IDRamo: "1",
-            IDSubRamo: "1",
-            FDesde: formatDateSicas(delivery.start_date),
-            FHasta: formatDateSicas(delivery.end_date),
-            PrimaNeta: delivery.net_premium || "0",
-            PrimaTotal: delivery.total_premium || "0",
-            NombreCliente: delivery.insured_name || "",
-            IDGerencia: delivery.sicas_management_id || "0",
-            IDDespacho: delivery.sicas_office_id || "0",
-            Estatus: "V",
-          },
-        },
-      }),
-    }),
-  },
-];
-
-interface StrategyResult {
-  strategyName: string;
-  description: string;
-  httpStatus: number;
-  success: boolean;
-  payload: Record<string, string>;
-  responseRaw: any;
-  error?: string;
-  documentId?: string;
-}
-
-async function tryRegisterWithStrategy(
-  baseUrl: string,
-  token: string,
-  strategy: SaveDataStrategy,
-  policyNumber: string,
-  delivery: PolicyDelivery
-): Promise<StrategyResult> {
-  const payload = strategy.buildPayload(policyNumber, delivery);
-
-  console.log(`\n[SICAS] === Strategy: ${strategy.name} ===`);
-  console.log(`[SICAS] Description: ${strategy.description}`);
-  console.log(`[SICAS] Payload keys: ${Object.keys(payload).join(", ")}`);
-  console.log(`[SICAS] Documento value: "${payload.Documento || payload["DatDocumentos.Documento"] || payload["DatDocumento.Documento"]}"`);
-  console.log(`[SICAS] Full payload: ${JSON.stringify(payload)}`);
-
-  const headers: Record<string, string> = {
-    Authorization: token,
-    "Content-Type": "application/json",
-    Prop_KeyCode: "HWCAPTURE",
-    Prop_KeyProcess: "DATA",
-    Prop_TProc: "Save_Data",
-  };
-
-  try {
-    const response = await fetch(`${baseUrl}/Data/SaveData`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    const httpStatus = response.status;
-
-    if (!response.ok) {
-      const errBody = await response.text();
-      console.log(`[SICAS] Strategy ${strategy.name}: HTTP ${httpStatus} - ${errBody}`);
-      return {
-        strategyName: strategy.name,
-        description: strategy.description,
-        httpStatus,
-        success: false,
-        payload,
-        responseRaw: errBody,
-        error: `HTTP ${httpStatus}: ${errBody}`,
-      };
-    }
-
-    const data = await response.json();
-    console.log(`[SICAS] Strategy ${strategy.name} response: ${JSON.stringify(data)}`);
-
-    // Check for success
-    if (data.Sucess || data.Success) {
-      const docId = data.IDDocto || data.DocumentId || data.Id || data.Response?.IDDocto;
-      console.log(`[SICAS] Strategy ${strategy.name}: SUCCESS! DocumentId: ${docId}`);
-      return {
-        strategyName: strategy.name,
-        description: strategy.description,
-        httpStatus,
-        success: true,
-        payload,
-        responseRaw: data,
-        documentId: docId ? String(docId) : undefined,
-      };
-    }
-
-    // Error from SICAS
-    const msg = data.Message || data.Error || JSON.stringify(data);
-    console.log(`[SICAS] Strategy ${strategy.name}: SICAS error: ${msg}`);
-    return {
-      strategyName: strategy.name,
-      description: strategy.description,
-      httpStatus,
-      success: false,
-      payload,
-      responseRaw: data,
-      error: msg,
-    };
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    console.log(`[SICAS] Strategy ${strategy.name}: Exception: ${errMsg}`);
-    return {
-      strategyName: strategy.name,
-      description: strategy.description,
-      httpStatus: 0,
-      success: false,
-      payload,
-      responseRaw: { exception: errMsg },
-      error: errMsg,
-    };
-  }
 }
 
 // ============================================================
@@ -615,7 +507,7 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ success: false, error: "No authorization header" }),
+        JSON.stringify({ success: false, error: "Authorization header requerido" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -691,7 +583,6 @@ Deno.serve(async (req: Request) => {
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      // Stale "registering" status - allow retry
       console.log(`[SICAS] Stale registering status detected (last attempt: ${delivery.sicas_last_attempt_at}). Allowing retry.`);
     }
 
@@ -701,30 +592,75 @@ Deno.serve(async (req: Request) => {
     console.log(`[SICAS] Policy number resolution:`);
     console.log(`  manual_policy_number: "${delivery.manual_policy_number}"`);
     console.log(`  policy_number: "${delivery.policy_number}"`);
-    console.log(`  extracted_data.numeroPoliza: "${delivery.extracted_data?.numeroPoliza}"`);
-    console.log(`  extracted_data.poliza: "${delivery.extracted_data?.poliza}"`);
     console.log(`  => Resolved: "${policyNumber}"`);
 
     if (!policyNumber) {
-      // Determine if rejection was due to folio pattern
-      const rawCandidates = [
-        delivery.manual_policy_number, delivery.policy_number,
-        delivery.extracted_data?.numeroPoliza, delivery.extracted_data?.poliza,
-      ].filter(Boolean);
-      const hadFolioRejection = rawCandidates.some((c) => c && looksLikeMoviFolio(c.trim()));
-      const errMsg = hadFolioRejection
-        ? "El valor detectado parece ser un folio interno de MOVI (ej. RA-2026-xxxx), no un numero de poliza real. Captura el numero de poliza correcto."
-        : "Falta numero de poliza/documento. Capturalo antes de registrar en SICAS.";
-      const reviewReason = hadFolioRejection
-        ? "Se detecto un folio interno de MOVI en lugar de un numero de poliza real"
-        : "No se encontro numero de poliza en ningun campo disponible";
+      const errMsg = "No se pudo resolver un numero de poliza valido. Verifica el numero de poliza.";
+      await supabase
+        .from("policy_deliveries")
+        .update({
+          sicas_registration_status: "manual_review_required",
+          sicas_error_message: errMsg,
+          sicas_manual_review_reason: "No se detecto un numero de poliza valido en los datos de la entrega.",
+        })
+        .eq("id", delivery.id);
+
+      return new Response(
+        JSON.stringify({ success: false, error: errMsg, status: "manual_review_required" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ===== CHECK DUPLICATES IN MOVI =====
+    const dupCheck = await checkDuplicateInMovi(supabase, delivery as PolicyDelivery);
+    if (dupCheck.isDuplicate) {
+      await supabase
+        .from("policy_deliveries")
+        .update({
+          sicas_registration_status: "duplicate_found",
+          sicas_duplicate_detected: true,
+          sicas_duplicate_document_id: dupCheck.existingId || null,
+          sicas_error_message: dupCheck.message || "Duplicado detectado en MOVI",
+        })
+        .eq("id", delivery.id);
+
+      return new Response(
+        JSON.stringify({ success: false, error: dupCheck.message, status: "duplicate_found" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ===== LOAD HWCAPTURE DEFAULTS =====
+    const { data: defaults } = await supabase
+      .from("sicas_hwcapture_defaults")
+      .select("field_name, field_label, default_value, is_required");
+
+    const hwcaptureDefaults: HwcaptureDefault[] = defaults || [];
+
+    // ===== BUILD PAYLOAD =====
+    const payloadResult = buildSicasHwcaptureFormPayload(
+      delivery as PolicyDelivery,
+      policyNumber,
+      hwcaptureDefaults
+    );
+
+    // If missing required fields, mark as manual_review_required
+    if (!payloadResult.valid) {
+      const missingList = payloadResult.missingFields.join(", ");
+      const errMsg = `Faltan datos obligatorios para registrar en SICAS: ${missingList}. Configura los defaults en Configuracion SICAS o completa los datos manualmente.`;
 
       await supabase
         .from("policy_deliveries")
         .update({
           sicas_registration_status: "manual_review_required",
-          sicas_manual_review_reason: reviewReason,
           sicas_error_message: errMsg,
+          sicas_manual_review_reason: `Campos faltantes: ${missingList}`,
+          sicas_request_payload: {
+            validation_failed: true,
+            missing_fields: payloadResult.missingFields,
+            available_values: payloadResult.fieldValues,
+            policy_number: policyNumber,
+          },
         })
         .eq("id", delivery.id);
 
@@ -732,56 +668,24 @@ Deno.serve(async (req: Request) => {
         policyDeliveryId: delivery.id,
         ticketId: delivery.ticket_id,
         userId: user.id,
-        action: "validation_no_policy_number",
+        action: "validation_failed",
         status: "manual_review_required",
+        requestPayload: { missing_fields: payloadResult.missingFields, field_values: payloadResult.fieldValues },
         errorMessage: errMsg,
-        requestPayload: {
-          manual_policy_number: delivery.manual_policy_number,
-          policy_number: delivery.policy_number,
-          extracted_data_keys: delivery.extracted_data ? Object.keys(delivery.extracted_data) : [],
-        },
       });
 
       return new Response(
         JSON.stringify({
           success: false,
           status: "manual_review_required",
-          message: errMsg,
-          debug: {
-            manual_policy_number: delivery.manual_policy_number || null,
-            policy_number: delivery.policy_number || null,
-            extracted_numeroPoliza: delivery.extracted_data?.numeroPoliza || null,
-          },
+          error: errMsg,
+          missing_fields: payloadResult.missingFields,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check duplicates
-    const duplicateCheck = await checkDuplicateInMovi(supabase, delivery as PolicyDelivery);
-    if (duplicateCheck.isDuplicate) {
-      await supabase
-        .from("policy_deliveries")
-        .update({
-          sicas_registration_status: "duplicate_found",
-          sicas_duplicate_detected: true,
-          sicas_duplicate_document_id: duplicateCheck.existingId || null,
-          sicas_duplicate_message: duplicateCheck.message || null,
-        })
-        .eq("id", delivery.id);
-
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: duplicateCheck.message,
-          status: "duplicate_found",
-          existingDocumentId: duplicateCheck.existingId,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Mark as registering
+    // ===== MARK AS REGISTERING =====
     await supabase
       .from("policy_deliveries")
       .update({
@@ -840,235 +744,146 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // ===== TRY REGISTRATION STRATEGIES =====
+    // ===== SEND REGISTRATION (form-urlencoded ONLY) =====
     console.log(`\n[SICAS] ========================================`);
     console.log(`[SICAS] Starting registration for delivery: ${delivery.id}`);
     console.log(`[SICAS] Policy number: "${policyNumber}"`);
-    console.log(`[SICAS] Vendor SICAS ID: "${delivery.vendor_sicas_id}"`);
+    console.log(`[SICAS] Content-Type: application/x-www-form-urlencoded`);
     console.log(`[SICAS] Endpoint: ${sicasBaseUrl}/Data/SaveData`);
+    console.log(`[SICAS] Payload fields: ${Object.keys(payloadResult.fieldValues).join(", ")}`);
+    console.log(`[SICAS] Payload values: ${JSON.stringify(payloadResult.fieldValues)}`);
     console.log(`[SICAS] ========================================\n`);
 
-    const strategyResults: StrategyResult[] = [];
-    let successResult: StrategyResult | null = null;
+    const saveDataHeaders: Record<string, string> = {
+      Authorization: sicasToken,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Prop_KeyCode: "HWCAPTURE",
+      Prop_KeyProcess: "DATA",
+      Prop_TProc: "Save_Data",
+    };
 
-    for (const strategy of SAVE_DATA_STRATEGIES) {
-      const result = await tryRegisterWithStrategy(
-        sicasBaseUrl,
-        sicasToken,
-        strategy,
-        policyNumber,
-        delivery as PolicyDelivery
+    let saveResponse: Response;
+    try {
+      saveResponse = await fetch(`${sicasBaseUrl}/Data/SaveData`, {
+        method: "POST",
+        headers: saveDataHeaders,
+        body: payloadResult.payload!.toString(),
+      });
+    } catch (fetchErr) {
+      const errMsg = `Error de conexion con SICAS: ${fetchErr instanceof Error ? fetchErr.message : "unknown"}`;
+      await supabase
+        .from("policy_deliveries")
+        .update({ sicas_registration_status: "error", sicas_error_message: errMsg })
+        .eq("id", delivery.id);
+
+      return new Response(
+        JSON.stringify({ success: false, error: errMsg, status: "error" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-
-      strategyResults.push(result);
-
-      if (result.success) {
-        successResult = result;
-        break;
-      }
-
-      // If the error is NOT the "No Existe" document error, stop trying
-      // (e.g., auth error, network error, different business error)
-      const isDocumentError = result.error &&
-        (result.error.includes("No Existe") || result.error.includes("No. de Documento") || result.error.includes("documento"));
-
-      if (!isDocumentError && result.httpStatus !== 0) {
-        console.log(`[SICAS] Non-document error encountered, stopping strategies`);
-        break;
-      }
-
-      // Small delay between strategy attempts
-      await new Promise((r) => setTimeout(r, 300));
     }
 
-    // ===== TRY ALTERNATIVE STRATEGIES (different body formats) =====
-    if (!successResult) {
-      console.log(`\n[SICAS] Primary strategies exhausted, trying alternative formats...`);
+    const httpStatus = saveResponse.status;
+    let responseData: any;
 
-      for (const altStrategy of ALTERNATIVE_STRATEGIES) {
-        console.log(`\n[SICAS] === Alt Strategy: ${altStrategy.name} ===`);
-        console.log(`[SICAS] Description: ${altStrategy.description}`);
-
-        const req = altStrategy.buildRequest(policyNumber, delivery as PolicyDelivery, sicasBaseUrl, sicasToken);
-        console.log(`[SICAS] URL: ${req.url}`);
-        console.log(`[SICAS] Content-Type: ${req.headers["Content-Type"]}`);
-        console.log(`[SICAS] Body (first 300): ${req.body.substring(0, 300)}`);
-
-        try {
-          const response = await fetch(req.url, {
-            method: req.method,
-            headers: req.headers,
-            body: req.body,
-          });
-
-          const httpStatus = response.status;
-          let responseData: any;
-
-          try {
-            responseData = await response.json();
-          } catch {
-            responseData = await response.text();
-          }
-
-          console.log(`[SICAS] Alt ${altStrategy.name}: HTTP ${httpStatus}, Response: ${JSON.stringify(responseData).substring(0, 300)}`);
-
-          const altResult: StrategyResult = {
-            strategyName: altStrategy.name,
-            description: altStrategy.description,
-            httpStatus,
-            success: false,
-            payload: { _format: altStrategy.name, body_preview: req.body.substring(0, 200) } as any,
-            responseRaw: responseData,
-          };
-
-          if (responseData?.Sucess || responseData?.Success) {
-            const docId = responseData.IDDocto || responseData.DocumentId || responseData.Id;
-            altResult.success = true;
-            altResult.documentId = docId ? String(docId) : undefined;
-            successResult = altResult;
-            console.log(`[SICAS] Alt ${altStrategy.name}: SUCCESS! DocId: ${docId}`);
-          } else {
-            altResult.error = responseData?.Message || responseData?.Error || JSON.stringify(responseData);
-          }
-
-          strategyResults.push(altResult);
-
-          if (successResult) break;
-
-          const isDocErr = altResult.error && (altResult.error.includes("No Existe") || altResult.error.includes("Documento"));
-          if (!isDocErr && httpStatus !== 0 && httpStatus !== 200) break;
-
-        } catch (err) {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          console.log(`[SICAS] Alt ${altStrategy.name}: Exception: ${errMsg}`);
-          strategyResults.push({
-            strategyName: altStrategy.name,
-            description: altStrategy.description,
-            httpStatus: 0,
-            success: false,
-            payload: {} as any,
-            responseRaw: { exception: errMsg },
-            error: errMsg,
-          });
-        }
-
-        await new Promise((r) => setTimeout(r, 300));
-      }
+    try {
+      responseData = await saveResponse.json();
+    } catch {
+      const rawText = await saveResponse.text();
+      responseData = { raw_text: rawText };
     }
 
-    // ===== SAVE COMPREHENSIVE LOGS =====
+    console.log(`[SICAS] Response HTTP ${httpStatus}: ${JSON.stringify(responseData).substring(0, 500)}`);
+
+    // Save comprehensive log
     const logPayload = {
-      policy_delivery_id: delivery.id,
-      policy_number_detected: policyNumber,
-      method_used: "REST_SaveData",
-      key_code: "HWCAPTURE",
-      type_process: "DATA",
-      t_proc: "Save_Data",
-      strategies_tried: strategyResults.map((r) => ({
-        name: r.strategyName,
-        description: r.description,
-        success: r.success,
-        httpStatus: r.httpStatus,
-        error: r.error,
-        documentId: r.documentId,
-        payload_keys: Object.keys(r.payload),
-        payload_contains_Documento: "Documento" in r.payload,
-        payload_contains_DatDocumentos_Documento: "DatDocumentos.Documento" in r.payload,
-        payload_contains_DatDocumento_Documento: "DatDocumento.Documento" in r.payload,
-        payload_contains_IDDocto: "IDDocto" in r.payload || "DatDocumentos.IDDocto" in r.payload || "DatDocumento.IDDocto" in r.payload,
-      })),
-      successful_strategy: successResult?.strategyName || null,
+      content_type: "application/x-www-form-urlencoded",
+      form_body: payloadResult.fieldValues,
+      policy_number: policyNumber,
+      vendor_sicas_id: delivery.vendor_sicas_id,
+      office_sicas_id: delivery.sicas_office_id,
+      http_status: httpStatus,
+      sicas_response: responseData,
     };
 
     await supabase
       .from("policy_deliveries")
       .update({
         sicas_request_payload: logPayload,
-        sicas_response_raw: successResult?.responseRaw || strategyResults[strategyResults.length - 1]?.responseRaw || null,
+        sicas_response_raw: responseData,
       })
       .eq("id", delivery.id);
 
-    await logRegistration(supabase, {
-      policyDeliveryId: delivery.id,
-      ticketId: delivery.ticket_id,
-      userId: user.id,
-      action: successResult ? "sicas_register_success" : "sicas_register_failed",
-      status: successResult ? "registered" : "error",
-      requestPayload: logPayload,
-      responseRaw: strategyResults,
-      errorMessage: successResult ? undefined : strategyResults[strategyResults.length - 1]?.error,
-      durationMs: Date.now() - startTime,
-    });
+    // ===== PARSE SICAS RESPONSE =====
+    const sicasSuccess = responseData?.Sucess === true || responseData?.Success === true;
+    const sicasMessage = responseData?.Message || responseData?.Error || "";
 
-    // ===== HANDLE FAILURE =====
-    if (!successResult) {
-      const lastResult = strategyResults[strategyResults.length - 1];
-      const rawSicasError = lastResult?.error || "";
-      const httpStatus = lastResult?.httpStatus || 0;
-
-      // Build a user-friendly error message from the SICAS response
-      let userFriendlyError: string;
-      let errorCategory: string;
-
-      if (!rawSicasError || rawSicasError === "Error desconocido de SICAS") {
-        userFriendlyError = `SICAS no respondio correctamente (HTTP ${httpStatus}). Verifica la conexion con SICAS e intenta de nuevo.`;
-        errorCategory = "sin_respuesta";
-      } else if (rawSicasError.includes("No Existe") || rawSicasError.includes("No. de Documento")) {
-        userFriendlyError = `SICAS rechazo el numero de documento "${policyNumber}". Respuesta SICAS: "${rawSicasError}". Verifica que el numero de poliza sea correcto.`;
-        errorCategory = "documento_rechazado";
-      } else if (rawSicasError.includes("Token") || rawSicasError.includes("Unauthorized") || rawSicasError.includes("401")) {
-        userFriendlyError = `Error de autenticacion con SICAS: "${rawSicasError}". La sesion puede haber expirado.`;
-        errorCategory = "autenticacion";
-      } else if (rawSicasError.includes("timeout") || rawSicasError.includes("Timeout") || rawSicasError.includes("ETIMEDOUT")) {
-        userFriendlyError = `SICAS no respondio a tiempo (timeout). Intenta de nuevo en unos minutos.`;
-        errorCategory = "timeout";
-      } else if (rawSicasError.includes("IDVend") || rawSicasError.includes("Vendedor")) {
-        userFriendlyError = `SICAS rechazo el vendedor asignado. Respuesta: "${rawSicasError}". Verifica el mapeo de vendedores.`;
-        errorCategory = "vendedor_invalido";
-      } else if (rawSicasError.includes("IDCia") || rawSicasError.includes("Compania") || rawSicasError.includes("Aseguradora")) {
-        userFriendlyError = `SICAS rechazo la aseguradora. Respuesta: "${rawSicasError}".`;
-        errorCategory = "aseguradora_invalida";
-      } else if (rawSicasError.includes("IDRamo") || rawSicasError.includes("Ramo")) {
-        userFriendlyError = `SICAS rechazo el ramo de seguro. Respuesta: "${rawSicasError}".`;
-        errorCategory = "ramo_invalido";
-      } else if (rawSicasError.includes("Fecha") || rawSicasError.includes("FDesde") || rawSicasError.includes("FHasta")) {
-        userFriendlyError = `SICAS rechazo las fechas de vigencia. Respuesta: "${rawSicasError}". Verifica formato de fechas.`;
-        errorCategory = "fecha_invalida";
-      } else if (httpStatus >= 500) {
-        userFriendlyError = `Error interno de SICAS (HTTP ${httpStatus}): "${rawSicasError}". Intenta de nuevo mas tarde.`;
-        errorCategory = "error_servidor_sicas";
-      } else {
-        userFriendlyError = `SICAS respondio con error: "${rawSicasError}" (HTTP ${httpStatus}).`;
-        errorCategory = "error_general";
-      }
-
-      const isDocumentError = errorCategory === "documento_rechazado";
-
+    // Case: "Ya existe el Registro que se desea adicionar"
+    if (!sicasSuccess && sicasMessage.includes("Ya existe el Registro")) {
       await supabase
         .from("policy_deliveries")
         .update({
-          sicas_registration_status: isDocumentError ? "sicas_rejected" : "error",
-          sicas_error_message: userFriendlyError,
-          sicas_manual_review_reason: isDocumentError
-            ? "SICAS no reconoce el numero de documento. Se probaron multiples formatos de campo."
-            : null,
+          sicas_registration_status: "duplicate_found",
+          sicas_duplicate_detected: true,
+          sicas_error_message: `SICAS: ${sicasMessage}`,
         })
         .eq("id", delivery.id);
+
+      await logRegistration(supabase, {
+        policyDeliveryId: delivery.id,
+        ticketId: delivery.ticket_id,
+        userId: user.id,
+        action: "sicas_duplicate_found",
+        status: "duplicate_found",
+        requestPayload: logPayload,
+        responseRaw: responseData,
+        durationMs: Date.now() - startTime,
+      });
 
       return new Response(
         JSON.stringify({
           success: false,
-          status: isDocumentError ? "sicas_rejected" : "error",
-          error: userFriendlyError,
-          error_category: errorCategory,
-          sicas_raw_error: rawSicasError,
+          status: "duplicate_found",
+          error: `La poliza ya existe en SICAS. No se creo un nuevo documento para evitar duplicados.`,
+          sicas_message: sicasMessage,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Case: Failure - show SICAS message verbatim
+    if (!sicasSuccess) {
+      const userError = sicasMessage
+        ? `SICAS respondio: "${sicasMessage}"`
+        : `SICAS no acepto el registro (HTTP ${httpStatus}). Revisa los datos enviados.`;
+
+      await supabase
+        .from("policy_deliveries")
+        .update({
+          sicas_registration_status: "error",
+          sicas_error_message: userError,
+        })
+        .eq("id", delivery.id);
+
+      await logRegistration(supabase, {
+        policyDeliveryId: delivery.id,
+        ticketId: delivery.ticket_id,
+        userId: user.id,
+        action: "sicas_register_failed",
+        status: "error",
+        requestPayload: logPayload,
+        responseRaw: responseData,
+        errorMessage: userError,
+        durationMs: Date.now() - startTime,
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          status: "error",
+          error: userError,
+          sicas_message: sicasMessage,
           http_status: httpStatus,
-          strategies_tried: strategyResults.map((r) => ({
-            name: r.strategyName,
-            success: r.success,
-            error: r.error,
-            httpStatus: r.httpStatus,
-          })),
+          fields_sent: Object.keys(payloadResult.fieldValues),
           policy_number_used: policyNumber,
           durationMs: Date.now() - startTime,
         }),
@@ -1076,19 +891,30 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // ===== SUCCESS - REGISTRATION COMPLETE =====
-    const documentId = successResult.documentId || "";
+    // ===== SUCCESS =====
+    const documentId = responseData.IDDocto || responseData.DocumentId || responseData.Id || responseData.Response?.IDDocto || "";
 
     await supabase
       .from("policy_deliveries")
       .update({
         sicas_registration_status: "registered",
-        sicas_document_id: documentId,
+        sicas_document_id: documentId ? String(documentId) : null,
         sicas_registered_at: new Date().toISOString(),
         sicas_error_message: null,
         sicas_manual_review_reason: null,
       })
       .eq("id", delivery.id);
+
+    await logRegistration(supabase, {
+      policyDeliveryId: delivery.id,
+      ticketId: delivery.ticket_id,
+      userId: user.id,
+      action: "sicas_register_success",
+      status: "registered",
+      requestPayload: logPayload,
+      responseRaw: responseData,
+      durationMs: Date.now() - startTime,
+    });
 
     // ===== UPLOAD FILES (only if document was created) =====
     let filesUploaded = false;
@@ -1105,7 +931,7 @@ Deno.serve(async (req: Request) => {
         const coverResult = await uploadFileToCentroDigital({
           baseUrl: sicasBaseUrl,
           token: sicasToken,
-          documentId,
+          documentId: String(documentId),
           fileUrl: delivery.cover_file_path,
           fileName: delivery.cover_file_name || "caratula.pdf",
         });
@@ -1121,7 +947,7 @@ Deno.serve(async (req: Request) => {
           const result = await uploadFileToCentroDigital({
             baseUrl: sicasBaseUrl,
             token: sicasToken,
-            documentId,
+            documentId: String(documentId),
             fileUrl: file.path,
             fileName: file.name || "documento.pdf",
           });
@@ -1156,22 +982,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const durationMs = Date.now() - startTime;
-
     return new Response(
       JSON.stringify({
         success: true,
         status: filesUploaded ? "completed" : "registered",
-        documentId,
-        successful_strategy: successResult.strategyName,
+        documentId: documentId ? String(documentId) : null,
         filesUploaded,
         filesError,
-        message: filesUploaded
-          ? `Poliza registrada en SICAS (IDDocto: ${documentId}). Documentos enviados al Centro Digital.`
-          : documentId
-            ? `Poliza registrada en SICAS (IDDocto: ${documentId}).${filesError ? " Algunos archivos no se pudieron subir." : ""}`
-            : "Poliza registrada en SICAS.",
-        durationMs,
+        message: documentId
+          ? `Poliza registrada en SICAS (IDDocto: ${documentId}).${filesUploaded ? " Documentos subidos al Centro Digital." : ""}${filesError ? " Algunos archivos no se pudieron subir." : ""}`
+          : "Poliza registrada en SICAS.",
+        durationMs: Date.now() - startTime,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
