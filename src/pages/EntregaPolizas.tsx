@@ -976,7 +976,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ policy_delivery_id: record.id }),
+        body: JSON.stringify({ delivery_id: record.id, action: 'register' }),
       });
 
       const result = await res.json();
@@ -1010,15 +1010,14 @@ function HistorialTab({ usuario }: { usuario: any }) {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ policy_delivery_id: record.id, resolve_only: true }),
+        body: JSON.stringify({ delivery_id: record.id, action: 'resolve' }),
       });
 
       const result = await res.json();
 
-      if (result.success && result.resolve_only) {
-        // Always open the modal - it handles both fully resolved and partial cases
+      if (result.success && result.action === 'resolve') {
         setPreRegistrationModal({ record, data: result });
-        if (result.all_resolved) {
+        if (result.missing && result.missing.length === 0) {
           setRegisterResult({ id: record.id, success: true, message: 'Datos SICAS resueltos automaticamente.' });
         }
         loadRecords();

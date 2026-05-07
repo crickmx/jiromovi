@@ -47,10 +47,21 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: CreateClientRequest = await req.json();
-    const { delivery_id, client_name, client_rfc, client_email, client_phone, client_address, client_cp, force_create } = body;
+    const delivery_id = (body as any).delivery_id || (body as any).policy_delivery_id || (body as any).policyDeliveryId || (body as any).deliveryId || (body as any).id;
+    const { client_name, client_rfc, client_email, client_phone, client_address, client_cp, force_create } = body;
+
+    console.log(`[sicas-create-client] Received body keys: ${Object.keys(body).join(", ")}`);
+    console.log(`[sicas-create-client] Resolved delivery_id: ${delivery_id}`);
 
     if (!delivery_id) {
-      throw new Error("delivery_id is required");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "delivery_id is required. Send delivery_id, policy_delivery_id, policyDeliveryId, deliveryId, or id in the request body.",
+          debug_received_keys: Object.keys(body),
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (!client_name || !client_name.trim()) {

@@ -812,10 +812,22 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    const { delivery_id, action = "resolve" } = body;
+    const { action = "resolve" } = body;
+    const delivery_id = body.delivery_id || body.policy_delivery_id || body.policyDeliveryId || body.deliveryId || body.id;
+
+    console.log(`[SICAS Register] Received body keys: ${Object.keys(body).join(", ")}`);
+    console.log(`[SICAS Register] Resolved delivery_id: ${delivery_id}, action: ${action}`);
 
     if (!delivery_id) {
-      throw new Error("delivery_id is required");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "delivery_id is required. Send delivery_id, policy_delivery_id, policyDeliveryId, deliveryId, or id in the request body.",
+          debug_received_keys: Object.keys(body),
+          debug_body_preview: JSON.stringify(body).substring(0, 500),
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Fetch the policy delivery
