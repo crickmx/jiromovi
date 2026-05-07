@@ -8,17 +8,17 @@ interface Props {
 }
 
 export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
+  const PLACEHOLDER_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Cpath d='M80 120l20-30 20 30M110 120l15-20 15 20' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3Ccircle cx='90' cy='80' r='8' fill='%239ca3af'/%3E%3Crect x='60' y='60' width='80' height='80' rx='4' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3C/svg%3E";
+
   const getImageUrl = (imagenUrl: string) => {
     if (!imagenUrl) {
-      return '/placeholder-product.png';
+      return PLACEHOLDER_SVG;
     }
 
-    // Si ya es una URL completa, usarla directamente
     if (imagenUrl.startsWith('http://') || imagenUrl.startsWith('https://')) {
       return imagenUrl;
     }
 
-    // Si es una ruta relativa, construir URL completa
     return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/store-productos/${imagenUrl}`;
   };
 
@@ -34,7 +34,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = '/placeholder-product.png';
+            target.src = PLACEHOLDER_SVG;
           }}
         />
       </div>

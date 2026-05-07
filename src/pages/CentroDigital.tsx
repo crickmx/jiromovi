@@ -417,10 +417,19 @@ export default function CentroDigital() {
                   <div className="aspect-square bg-gray-50 flex items-center justify-center relative overflow-hidden">
                     {esImagen(archivo.tipo_mime) ? (
                       <img
-                        src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital/${archivo.ruta_storage}`}
+                        src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital-files/${archivo.ruta_storage}`}
                         alt={archivo.nombre}
                         className="w-full h-full object-cover"
                         loading="lazy"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                          const fallback = document.createElement('div');
+                          fallback.className = 'flex flex-col items-center justify-center p-4 text-neutral-400';
+                          fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+                          target.parentElement?.appendChild(fallback);
+                        }}
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center p-4">
@@ -615,16 +624,32 @@ export default function CentroDigital() {
                 {esImagen(archivoPrevisualizar.tipo_mime) ? (
                   <div className="flex items-center justify-center h-full">
                     <img
-                      src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital/${archivoPrevisualizar.ruta_storage}`}
+                      src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital-files/${archivoPrevisualizar.ruta_storage}`}
                       alt={archivoPrevisualizar.nombre}
                       className="max-w-full max-h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.className = 'flex flex-col items-center justify-center p-8 text-neutral-400';
+                        fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg><p class="mt-2 text-sm">No se pudo cargar la imagen</p>';
+                        target.parentElement?.appendChild(fallback);
+                      }}
                     />
                   </div>
                 ) : esPDF(archivoPrevisualizar.tipo_mime) ? (
                   <iframe
-                    src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital/${archivoPrevisualizar.ruta_storage}`}
+                    src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/centro-digital-files/${archivoPrevisualizar.ruta_storage}`}
                     className="w-full h-full min-h-[600px] rounded-lg"
                     title={archivoPrevisualizar.nombre}
+                    onError={(e) => {
+                      const target = e.target as HTMLIFrameElement;
+                      target.style.display = 'none';
+                      const fallback = document.createElement('div');
+                      fallback.className = 'flex flex-col items-center justify-center p-8 text-neutral-400 h-[600px]';
+                      fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg><p class="mt-2 text-sm">No se pudo cargar el PDF</p>';
+                      target.parentElement?.appendChild(fallback);
+                    }}
                   />
                 ) : null}
               </div>

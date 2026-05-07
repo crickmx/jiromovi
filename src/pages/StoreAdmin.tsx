@@ -31,8 +31,10 @@ export default function StoreAdmin() {
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [categoriaEditando, setCategoriaEditando] = useState<StoreCategoria | null>(null);
 
+  const PLACEHOLDER_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Cpath d='M80 120l20-30 20 30M110 120l15-20 15 20' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3Ccircle cx='90' cy='80' r='8' fill='%239ca3af'/%3E%3Crect x='60' y='60' width='80' height='80' rx='4' stroke='%239ca3af' stroke-width='2' fill='none'/%3E%3C/svg%3E";
+
   const getImageUrl = (imagenUrl: string) => {
-    if (!imagenUrl) return '/placeholder-product.png';
+    if (!imagenUrl) return PLACEHOLDER_SVG;
 
     if (imagenUrl.startsWith('http://') || imagenUrl.startsWith('https://')) {
       return imagenUrl;
@@ -218,7 +220,7 @@ export default function StoreAdmin() {
                             className="w-16 h-16 object-cover rounded-lg"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
-                              target.src = '/placeholder-product.png';
+                              target.src = PLACEHOLDER_SVG;
                             }}
                           />
                         </td>
