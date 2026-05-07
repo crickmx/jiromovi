@@ -1016,16 +1016,12 @@ function HistorialTab({ usuario }: { usuario: any }) {
       const result = await res.json();
 
       if (result.success && result.resolve_only) {
+        // Always open the modal - it handles both fully resolved and partial cases
+        setPreRegistrationModal({ record, data: result });
         if (result.all_resolved) {
-          setPreRegistrationModal({ record, data: result });
-        } else {
-          setRegisterResult({
-            id: record.id,
-            success: false,
-            message: `Faltan campos por resolver: ${result.missing?.join(', ') || 'desconocido'}. Use "Completar" para asignarlos manualmente.`,
-          });
-          loadRecords();
+          setRegisterResult({ id: record.id, success: true, message: 'Datos SICAS resueltos automaticamente.' });
         }
+        loadRecords();
       } else {
         setRegisterResult({
           id: record.id,
@@ -1324,31 +1320,33 @@ function HistorialTab({ usuario }: { usuario: any }) {
                           ) : r.sicas_registration_status === 'manual_review_required' ? (
                             <div className="flex items-center gap-1 justify-center">
                               <button
-                                onClick={() => setCompletarDatosRecord(r)}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors"
-                                title="Completar datos faltantes manualmente"
-                              >
-                                <ShieldAlert className="w-3 h-3" />
-                                Completar
-                              </button>
-                              <button
                                 onClick={() => handleResolveSicas(r)}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors"
+                                disabled={resolving === r.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors disabled:opacity-50"
                                 title="Resolver datos SICAS automaticamente"
                               >
-                                <Zap className="w-3 h-3" />
-                                Resolver
+                                {resolving === r.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Zap className="w-3 h-3" />
+                                )}
+                                {resolving === r.id ? 'Resolviendo...' : 'Resolver'}
                               </button>
                             </div>
                           ) : canAttemptRegistration(r) ? (
                             <div className="flex items-center gap-1 justify-center">
                               <button
                                 onClick={() => handleResolveSicas(r)}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors"
+                                disabled={resolving === r.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors disabled:opacity-50"
                                 title="Resolver datos y registrar en SICAS"
                               >
-                                <Zap className="w-3 h-3" />
-                                Resolver
+                                {resolving === r.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Zap className="w-3 h-3" />
+                                )}
+                                {resolving === r.id ? 'Resolviendo...' : 'Resolver'}
                               </button>
                             </div>
                           ) : (
@@ -1398,6 +1396,11 @@ function HistorialTab({ usuario }: { usuario: any }) {
           resolutionData={preRegistrationModal.data}
           onConfirm={handleConfirmRegistration}
           onClose={() => setPreRegistrationModal(null)}
+          onReResolve={() => {
+            const rec = preRegistrationModal.record;
+            setPreRegistrationModal(null);
+            handleResolveSicas(rec);
+          }}
           isRegistering={!!registering}
         />
       )}
