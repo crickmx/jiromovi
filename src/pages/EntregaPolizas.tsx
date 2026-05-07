@@ -973,7 +973,9 @@ function HistorialTab({ usuario }: { usuario: any }) {
 
   const canAttemptRegistration = (r: DeliveryRecord): boolean => {
     const blockedStates = ['registered', 'completed', 'validating', 'registering', 'uploading_files'];
-    return !blockedStates.includes(r.sicas_registration_status || '');
+    if (blockedStates.includes(r.sicas_registration_status || '')) return false;
+    if (!r.policy_number) return false;
+    return true;
   };
 
   const handleExport = async () => {
@@ -1233,7 +1235,9 @@ function HistorialTab({ usuario }: { usuario: any }) {
                               {r.sicas_registration_attempts > 0 ? 'Reintentar' : 'Registrar'}
                             </button>
                           ) : (
-                            <span className="text-[10px] text-neutral-400 dark:text-white/30">-</span>
+                            <span className="text-[10px] text-neutral-400 dark:text-white/30" title={!r.policy_number ? 'Sin numero de poliza' : 'No disponible'}>
+                              {!r.policy_number ? 'Sin poliza' : '-'}
+                            </span>
                           )}
                         </td>
                       )}
@@ -1252,6 +1256,14 @@ function HistorialTab({ usuario }: { usuario: any }) {
           record={confirmModal}
           onConfirm={() => handleRegisterSicas(confirmModal)}
           onCancel={() => setConfirmModal(null)}
+          onUpdatePolicyNumber={async (newNumber) => {
+            await supabase
+              .from('policy_deliveries')
+              .update({ policy_number: newNumber })
+              .eq('id', confirmModal.id);
+            setConfirmModal({ ...confirmModal, policy_number: newNumber });
+            loadRecords();
+          }}
         />
       )}
     </div>
@@ -1262,11 +1274,14 @@ function HistorialTab({ usuario }: { usuario: any }) {
 // SICAS CONFIRM MODAL
 // ========================
 
-function SicasConfirmModal({ record, onConfirm, onCancel }: {
+function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }: {
   record: DeliveryRecord;
   onConfirm: () => void;
   onCancel: () => void;
+  onUpdatePolicyNumber?: (newNumber: string) => void;
 }) {
+  const [editingPolicyNumber, setEditingPolicyNumber] = useState(false);
+  const [policyNumberInput, setPolicyNumberInput] = useState(record.policy_number || '');
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onCancel} />
@@ -1284,7 +1299,41 @@ function SicasConfirmModal({ record, onConfirm, onCancel }: {
         </div>
 
         <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3 space-y-1.5">
-          <SummaryRow label="Poliza" value={record.policy_number || 'Sin numero'} />
+          {editingPolicyNumber ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-medium text-neutral-500 dark:text-white/40 w-20">Poliza:</span>
+              <input
+                type="text"
+                value={policyNumberInput}
+                onChange={(e) => setPolicyNumberInput(e.target.value)}
+                className="flex-1 px-2 py-1 text-xs bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-white/10 rounded-md"
+                autoFocus
+              />
+              <button
+                onClick={() => {
+                  if (policyNumberInput.trim() && onUpdatePolicyNumber) {
+                    onUpdatePolicyNumber(policyNumberInput.trim());
+                  }
+                  setEditingPolicyNumber(false);
+                }}
+                className="px-2 py-1 text-[10px] font-medium text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 rounded"
+              >
+                Guardar
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <SummaryRow label="Poliza" value={record.policy_number || 'Sin numero'} />
+              {onUpdatePolicyNumber && (
+                <button
+                  onClick={() => setEditingPolicyNumber(true)}
+                  className="ml-auto text-[10px] text-sky-600 dark:text-sky-400 hover:underline"
+                >
+                  Editar
+                </button>
+              )}
+            </div>
+          )}
           <SummaryRow label="Asegurado" value={record.insured_name || 'Sin nombre'} />
           <SummaryRow label="Vendedor" value={record.vendor_sicas_name} />
           <SummaryRow label="Oficina" value={record.sicas_office_name || 'Sin asignar'} />

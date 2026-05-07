@@ -67,6 +67,7 @@ function validateMinimumData(delivery: PolicyDelivery): { valid: boolean; missin
 
 // Build the XML payload for SICAS HWCAPTURE document registration
 function buildSicasPolicyPayload(delivery: PolicyDelivery): string {
+  const policyNumber = getPolicyNumberFromDelivery(delivery) || "";
   const idVend = delivery.vendor_sicas_id || "";
   const idGerencia = delivery.sicas_management_id || "";
   const idDespacho = delivery.sicas_office_id || "";
@@ -74,7 +75,6 @@ function buildSicasPolicyPayload(delivery: PolicyDelivery): string {
   // Format dates for SICAS (DD/MM/YYYY)
   const formatDateSicas = (dateStr: string | null): string => {
     if (!dateStr) return "";
-    // Try to parse various date formats
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     const dd = String(d.getDate()).padStart(2, "0");
@@ -86,7 +86,7 @@ function buildSicasPolicyPayload(delivery: PolicyDelivery): string {
   const xml = `<InfoData>
   <DatDocumentos>
     <IDDocto>-1</IDDocto>
-    <Documento>${escapeXml(delivery.policy_number || "")}</Documento>
+    <Documento>${escapeXml(policyNumber)}</Documento>
     <IDVend>${escapeXml(idVend)}</IDVend>
     <IDCia>1</IDCia>
     <IDRamo>1</IDRamo>
@@ -119,9 +119,14 @@ function escapeXml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+    .replace(/>/g, "&gt;");
+}
+
+function getPolicyNumberFromDelivery(delivery: PolicyDelivery): string | null {
+  if (delivery.policy_number) return delivery.policy_number.trim();
+  if (delivery.extracted_data?.numeroPoliza) return delivery.extracted_data.numeroPoliza.trim();
+  if (delivery.extracted_data?.poliza) return delivery.extracted_data.poliza.trim();
+  return null;
 }
 
 // Parse SICAS registration response
@@ -445,6 +450,16 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", delivery.id);
 
+    // Resolve policy number from multiple sources
+    const resolvedPolicyNumber = getPolicyNumberFromDelivery(delivery as PolicyDelivery);
+    if (resolvedPolicyNumber && !delivery.policy_number) {
+      await supabase
+        .from("policy_deliveries")
+        .update({ policy_number: resolvedPolicyNumber })
+        .eq("id", delivery.id);
+      delivery.policy_number = resolvedPolicyNumber;
+    }
+
     // Validate minimum data
     const validation = validateMinimumData(delivery as PolicyDelivery);
     if (!validation.valid) {
@@ -519,7 +534,12 @@ Deno.serve(async (req: Request) => {
       userId: user.id,
       action: "payload_built",
       status: "ready",
-      requestPayload: { dataXml },
+      requestPayload: {
+        dataXml,
+        resolvedPolicyNumber: resolvedPolicyNumber || delivery.policy_number,
+        vendorSicasId: delivery.vendor_sicas_id,
+        endpoint: `${Deno.env.get("SICAS_REST_API_URL") || "https://security-services.sicasonline.info/api"}/Data/SaveData`,
+      },
     });
 
     // Save payload and mark as registering
@@ -591,8 +611,8 @@ Deno.serve(async (req: Request) => {
       });
 
       return new Response(
-        JSON.stringify({ success: false, error: errMsg, status: "error" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: errMsg, error_type: "sicas_auth", status: "error" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -634,8 +654,8 @@ Deno.serve(async (req: Request) => {
       });
 
       return new Response(
-        JSON.stringify({ success: false, error: errMsg, status: "error" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: errMsg, error_type: "sicas_network", status: "error" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -650,11 +670,15 @@ Deno.serve(async (req: Request) => {
 
     if (!parsed.success) {
       const errMsg = parsed.error || "SICAS respondio con error";
+      const isDocumentoError = errMsg.toLowerCase().includes("no existe") || errMsg.toLowerCase().includes("documento");
+      const errorType = isDocumentoError ? "sicas_business_documento" : "sicas_business";
+
       await supabase
         .from("policy_deliveries")
         .update({
-          sicas_registration_status: "error",
+          sicas_registration_status: isDocumentoError ? "manual_review_required" : "error",
           sicas_error_message: errMsg,
+          sicas_manual_review_reason: isDocumentoError ? "SICAS no reconoce el numero de documento enviado. Verifica el numero de poliza." : null,
         })
         .eq("id", delivery.id);
 
@@ -662,16 +686,26 @@ Deno.serve(async (req: Request) => {
         policyDeliveryId: delivery.id,
         ticketId: delivery.ticket_id,
         userId: user.id,
-        action: "sicas_error",
+        action: "sicas_business_error",
         status: "error",
         errorMessage: errMsg,
         responseRaw: sicasResponse,
+        requestPayload: { dataXml, policyNumber: getPolicyNumberFromDelivery(delivery as PolicyDelivery) },
         durationMs: Date.now() - startTime,
       });
 
       return new Response(
-        JSON.stringify({ success: false, error: errMsg, status: "error", sicasResponse }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: false,
+          error: errMsg,
+          error_type: errorType,
+          status: isDocumentoError ? "manual_review_required" : "error",
+          sicasResponse,
+          hint: isDocumentoError
+            ? "El numero de poliza enviado no fue reconocido por SICAS. Puedes corregirlo manualmente y reintentar."
+            : undefined,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
