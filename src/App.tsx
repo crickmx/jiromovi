@@ -768,7 +768,7 @@ function App() {
               <Route path="/vacaciones" element={<ProtectedRoute excludeAgente><Layout><Vacaciones /></Layout></ProtectedRoute>} />
               <Route path="/espacio-jiro" element={<ProtectedRoute><Layout><EspacioJiro /></Layout></ProtectedRoute>} />
               <Route path="/multicotizador-digital" element={<ProtectedRoute><Layout><MulticotizadorDigital /></Layout></ProtectedRoute>} />
-              <Route path="/lector-qualitas" element={<ProtectedRoute><Layout><LectorQualitas /></Layout></ProtectedRoute>} />
+              <Route path="/lector-qualitas" element={<ProtectedRoute excludeAgente><Layout><LectorQualitas /></Layout></ProtectedRoute>} />
               <Route path="/entrega-polizas" element={<ProtectedRoute excludeAgente><Layout><EntregaPolizas /></Layout></ProtectedRoute>} />
               <Route path="/publicidad" element={<Navigate to="/mercadotecnia/publicidad" replace />} />
               <Route path="/mercadotecnia" element={<Navigate to="/mercadotecnia/mi-marca" replace />} />
@@ -826,7 +826,7 @@ function App() {
               <Route path="/produccion/total" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionTotal /></Layout></ProtectedRoute>} />
               <Route path="/produccion/convenio" element={<ProtectedRoute requireAdmin={false} requireGerente><Layout><ProduccionConvenio /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion" element={<ProtectedRoute><Layout><MiProduccion /></Layout></ProtectedRoute>} />
-              <Route path="/mi-produccion-sicas-live" element={<ProtectedRoute><Layout><ProduccionSICASLive /></Layout></ProtectedRoute>} />
+              <Route path="/mi-produccion-sicas-live" element={<ProtectedRoute requireAdmin><Layout><ProduccionSICASLive /></Layout></ProtectedRoute>} />
               <Route path="/mi-produccion-sicas-soap" element={<ProtectedRoute><Layout><MiProduccionSICASMirror /></Layout></ProtectedRoute>} />
               <Route path="/mis-polizas" element={<ProtectedRoute><Layout><MisPolizas /></Layout></ProtectedRoute>} />
               <Route path="/produccion/configuracion" element={<ProtectedRoute requireAdmin><Layout><ProduccionConfiguracion /></Layout></ProtectedRoute>} />

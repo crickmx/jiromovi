@@ -340,22 +340,28 @@ export function Publicidad() {
                   key={plantilla.id}
                   className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 active:scale-[0.98]"
                 >
-                  <div className="relative aspect-video bg-neutral-100">
+                  <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
                     {plantilla.miniatura_url ? (
                       <img
                         src={plantilla.miniatura_url}
-                        alt={plantilla.categoria}
-                        className="w-full h-full object-contain"
+                        alt={plantilla.titulo || plantilla.categoria}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const fallback = target.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
                       />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        {plantilla.tipo === 'imagen' ? (
-                          <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
-                        ) : (
-                          <Video className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
-                        )}
-                      </div>
-                    )}
+                    ) : null}
+                    <div className={`w-full h-full items-center justify-center absolute inset-0 ${plantilla.miniatura_url ? 'hidden' : 'flex'}`}>
+                      {plantilla.tipo === 'imagen' ? (
+                        <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
+                      ) : (
+                        <Video className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
+                      )}
+                    </div>
                     <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 flex items-center justify-between">
                       <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
                         plantilla.tipo === 'imagen'
@@ -433,18 +439,24 @@ export function Publicidad() {
                   key={diseno.id}
                   className="bg-white rounded-xl sm:rounded-2xl shadow-soft border border-neutral-200 overflow-hidden hover:shadow-medium transition-all duration-200 active:scale-[0.98]"
                 >
-                  <div className="relative aspect-video bg-neutral-100">
+                  <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
                     {diseno.archivo_resultante_url ? (
                       <img
                         src={diseno.archivo_resultante_url}
                         alt="Diseño personalizado"
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const fallback = target.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
                       />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
-                      </div>
-                    )}
+                    ) : null}
+                    <div className={`w-full h-full items-center justify-center absolute inset-0 ${diseno.archivo_resultante_url ? 'hidden' : 'flex'}`}>
+                      <Image className="w-12 h-12 sm:w-16 sm:h-16 text-neutral-300" />
+                    </div>
                   </div>
                   <div className="p-3 sm:p-4">
                     <div className="flex flex-wrap gap-1.5 mb-1">
