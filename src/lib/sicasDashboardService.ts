@@ -1,6 +1,57 @@
 import { supabase } from './supabase';
 import type { DashboardKPIs, DashboardCharts, TopItem, SicasDocRow, DashboardScope, DashboardDimension, OficinaOption, AvanceComercialData } from './sicasDashboardTypes';
 
+// === Cartera Module Types ===
+
+export interface CustomerProfile {
+  id: string;
+  usuario_id: string;
+  normalized_name: string;
+  display_name: string;
+  rfc: string | null;
+  total_policies: number;
+  active_policies: number;
+  total_prima_neta: number;
+  total_prima_total: number;
+  ramos: string[];
+  aseguradoras: string[];
+  first_policy_date: string | null;
+  last_policy_date: string | null;
+  next_renewal_date: string | null;
+  renewal_count_90d: number;
+  risk_score: number;
+  lifetime_value: number;
+  updated_at: string;
+}
+
+export interface AgentAlert {
+  id: string;
+  usuario_id: string;
+  alert_type: string;
+  priority: 'high' | 'medium' | 'low';
+  title: string;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  is_read: boolean;
+  is_dismissed: boolean;
+  created_at: string;
+  expires_at: string | null;
+}
+
+export interface CrossSellOpportunity {
+  id: string;
+  usuario_id: string;
+  customer_name: string;
+  opportunity_type: string;
+  description: string;
+  estimated_prima: number;
+  confidence: 'high' | 'medium' | 'low';
+  current_ramos: string[];
+  suggested_ramo: string | null;
+  is_actioned: boolean;
+  created_at: string;
+}
+
 export async function fetchUserScope(userId: string): Promise<DashboardScope> {
   const { data, error } = await supabase.rpc('get_sicas_user_scope', { p_user_id: userId });
   if (error) throw new Error(error.message);
@@ -254,4 +305,98 @@ export async function fetchAvanceComercial(
   const { data, error } = await supabase.rpc('get_sicas_avance_comercial', params);
   if (error) throw new Error(error.message);
   return data as AvanceComercialData;
+}
+
+// === Cartera Module Functions ===
+
+export async function fetchCustomerProfiles(
+  userId: string,
+  options?: { search?: string; sortBy?: string; sortAsc?: boolean; limit?: number; offset?: number }
+): Promise<{ data: CustomerProfile[]; count: number }> {
+  let query = supabase
+    .from('sicas_customer_profiles')
+    .select('*', { count: 'exact' })
+    .eq('usuario_id', userId);
+
+  if (options?.search) {
+    query = query.or(`display_name.ilike.%${options.search}%,rfc.ilike.%${options.search}%`);
+  }
+
+  const sortCol = options?.sortBy || 'total_prima_neta';
+  const sortAsc = options?.sortAsc ?? false;
+  query = query.order(sortCol, { ascending: sortAsc });
+
+  if (options?.limit) query = query.limit(options.limit);
+  if (options?.offset) query = query.range(options.offset, options.offset + (options.limit || 20) - 1);
+
+  const { data, error, count } = await query;
+  if (error) throw new Error(error.message);
+  return { data: (data || []) as CustomerProfile[], count: count || 0 };
+}
+
+export async function refreshCustomerProfiles(userId: string): Promise<void> {
+  const { error } = await supabase.rpc('refresh_sicas_customer_profiles', { p_usuario_id: userId });
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchAgentAlerts(
+  userId: string,
+  options?: { unreadOnly?: boolean; priority?: string; limit?: number }
+): Promise<AgentAlert[]> {
+  let query = supabase
+    .from('sicas_agent_alerts')
+    .select('*')
+    .eq('usuario_id', userId)
+    .eq('is_dismissed', false);
+
+  if (options?.unreadOnly) query = query.eq('is_read', false);
+  if (options?.priority) query = query.eq('priority', options.priority);
+
+  query = query.order('created_at', { ascending: false });
+  if (options?.limit) query = query.limit(options.limit);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data || []) as AgentAlert[];
+}
+
+export async function markAlertRead(alertId: string): Promise<void> {
+  await supabase.from('sicas_agent_alerts').update({ is_read: true }).eq('id', alertId);
+}
+
+export async function dismissAlert(alertId: string): Promise<void> {
+  await supabase.from('sicas_agent_alerts').update({ is_dismissed: true }).eq('id', alertId);
+}
+
+export async function generateAlerts(userId: string): Promise<void> {
+  const { error } = await supabase.rpc('generate_sicas_agent_alerts', { p_usuario_id: userId });
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchCrossSellOpportunities(
+  userId: string,
+  options?: { limit?: number; confidence?: string }
+): Promise<CrossSellOpportunity[]> {
+  let query = supabase
+    .from('sicas_cross_sell_opportunities')
+    .select('*')
+    .eq('usuario_id', userId)
+    .eq('is_actioned', false);
+
+  if (options?.confidence) query = query.eq('confidence', options.confidence);
+  query = query.order('estimated_prima', { ascending: false });
+  if (options?.limit) query = query.limit(options.limit);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data || []) as CrossSellOpportunity[];
+}
+
+export async function detectCrossSell(userId: string): Promise<void> {
+  const { error } = await supabase.rpc('detect_sicas_cross_sell', { p_usuario_id: userId });
+  if (error) throw new Error(error.message);
+}
+
+export async function markOpportunityActioned(opportunityId: string): Promise<void> {
+  await supabase.from('sicas_cross_sell_opportunities').update({ is_actioned: true }).eq('id', opportunityId);
 }
