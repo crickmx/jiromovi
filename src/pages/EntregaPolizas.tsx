@@ -8,19 +8,11 @@ import {
   AlertCircle,
   X,
   Send,
-  Plus,
-  Trash2,
   Search,
-  Calendar,
-  Eye,
   Clock,
-  Filter,
-  ChevronDown,
   UploadCloud,
-  RefreshCw,
   ShieldAlert,
   Ban,
-  Info,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
@@ -142,6 +134,8 @@ export default function EntregaPolizas() {
 // ========================
 // NUEVA ENTREGA TAB
 // ========================
+
+const CLOSED_STATUSES = ['Emitido (Ganado)', 'No Emitido (Perdido)', 'Cerrado', 'Cancelado', 'Emitido'];
 
 interface ExistingTicket {
   id: string;
@@ -554,28 +548,38 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
     setTicketSearchTerm('');
   };
 
+  // Auto-select ticketAction when tickets load
+  useEffect(() => {
+    if (existingTickets.length > 0 && !ticketAction) {
+      const openTickets = existingTickets.filter(t => !CLOSED_STATUSES.includes(t.estatus_nombre || ''));
+      if (openTickets.length > 0) {
+        setTicketAction('existing');
+      }
+    }
+  }, [existingTickets, ticketAction]);
+
   if (deliveryResult?.success) {
     return (
-      <div className="max-w-lg mx-auto">
-        <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-8 text-center space-y-4">
-          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+      <div className="max-w-md mx-auto">
+        <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-6 text-center space-y-3">
+          <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Entrega completada</h2>
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Entrega completada</h2>
           <p className="text-sm text-neutral-600 dark:text-white/60">
             {deliveryResult.wasExistingTicket ? (
-              <>Se agrego la poliza al tramite <span className="font-semibold text-neutral-900 dark:text-white">{deliveryResult.folio}</span> y fue cerrado como Emitido (Ganado).</>
+              <>Poliza agregada al tramite <span className="font-semibold text-neutral-900 dark:text-white">{deliveryResult.folio}</span> - Emitido (Ganado).</>
             ) : (
-              <>Se creo el tramite <span className="font-semibold text-neutral-900 dark:text-white">{deliveryResult.folio}</span> como Emitido (Ganado) con los documentos adjuntos.</>
+              <>Tramite <span className="font-semibold text-neutral-900 dark:text-white">{deliveryResult.folio}</span> creado - Emitido (Ganado).</>
             )}
           </p>
           {deliveryResult.emailSent && (
-            <p className="text-xs text-emerald-600 dark:text-emerald-400">Se envio correo de notificacion al vendedor.</p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400">Correo de notificacion enviado.</p>
           )}
           {deliveryResult.emailError && !deliveryResult.emailSent && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">Nota: {deliveryResult.emailError}</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">{deliveryResult.emailError}</p>
           )}
-          <div className="flex gap-3 justify-center pt-4">
+          <div className="flex gap-2 justify-center pt-2">
             <button
               onClick={resetForm}
               className="px-4 py-2 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/80 rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-white/15 transition-colors"
@@ -597,14 +601,12 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Left Column - File Upload */}
-      <div className="lg:col-span-2 space-y-5">
-        {/* Cover File Upload */}
-        <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-5">
-          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
-            1. Caratula de poliza (PDF)
-          </h3>
+    <div className="max-w-4xl mx-auto space-y-4">
+      {/* Row 1: PDF + Vendor side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Cover File */}
+        <div className="bg-white dark:bg-neutral-800/80 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+          <p className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-2">Caratula PDF</p>
 
           {!coverFile ? (
             <div
@@ -612,153 +614,67 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
               onDragLeave={() => setCoverDragActive(false)}
               onDrop={handleCoverDrop}
               onClick={() => coverInputRef.current?.click()}
-              className={`
-                border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
-                ${coverDragActive
+              className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all ${
+                coverDragActive
                   ? 'border-sky-400 bg-sky-50 dark:bg-sky-900/10'
-                  : 'border-neutral-200 dark:border-white/15 hover:border-sky-300 dark:hover:border-sky-500/40 hover:bg-neutral-50 dark:hover:bg-white/5'
-                }
-              `}
+                  : 'border-neutral-200 dark:border-white/15 hover:border-sky-300 dark:hover:border-sky-500/40'
+              }`}
             >
-              <Upload className="w-10 h-10 text-neutral-300 dark:text-white/20 mx-auto mb-3" />
-              <p className="text-sm font-medium text-neutral-600 dark:text-white/60">
-                Arrastra la caratula PDF aqui o haz clic para seleccionar
-              </p>
-              <p className="text-xs text-neutral-400 dark:text-white/30 mt-1">Solo archivos PDF</p>
+              <Upload className="w-8 h-8 text-neutral-300 dark:text-white/20 mx-auto mb-2" />
+              <p className="text-xs text-neutral-500 dark:text-white/50">Arrastra o selecciona el PDF</p>
             </div>
           ) : (
-            <div className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-white/5 rounded-xl">
-              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <FileText className="w-5 h-5 text-red-600 dark:text-red-400" />
-              </div>
+            <div className="flex items-center gap-2 p-2.5 bg-neutral-50 dark:bg-white/5 rounded-lg">
+              <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-800 dark:text-white truncate">{coverFile.name}</p>
-                <p className="text-xs text-neutral-500 dark:text-white/40">
-                  {(coverFile.size / 1024).toFixed(0)} KB
-                </p>
+                <p className="text-xs font-medium text-neutral-800 dark:text-white truncate">{coverFile.name}</p>
+                <p className="text-[10px] text-neutral-400">{(coverFile.size / 1024).toFixed(0)} KB</p>
               </div>
-              {isExtracting && <Loader2 className="w-4 h-4 text-sky-500 animate-spin" />}
-              {extractionSuccess && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-              {extractionError && <AlertCircle className="w-4 h-4 text-amber-500" />}
+              {isExtracting && <Loader2 className="w-3.5 h-3.5 text-sky-500 animate-spin" />}
+              {extractionSuccess && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+              {extractionError && <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
               <button
                 onClick={() => { setCoverFile(null); setExtractedData(null); setExtractionError(null); setExtractionSuccess(false); }}
-                className="p-1 hover:bg-neutral-200 dark:hover:bg-white/10 rounded-md transition-colors"
+                className="p-0.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded"
               >
-                <X className="w-4 h-4 text-neutral-400" />
+                <X className="w-3.5 h-3.5 text-neutral-400" />
               </button>
             </div>
           )}
 
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept=".pdf"
-            onChange={handleCoverSelect}
-            className="hidden"
-          />
+          <input ref={coverInputRef} type="file" accept=".pdf" onChange={handleCoverSelect} className="hidden" />
 
-          {/* Extraction Results */}
           {extractionError && (
-            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-500/20 rounded-lg">
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                <AlertCircle className="w-3 h-3 inline mr-1" />
-                {extractionError}. Puedes continuar asignando vendedor manualmente.
-              </p>
-            </div>
+            <p className="mt-2 text-[10px] text-amber-600 dark:text-amber-400">
+              {extractionError}. Continua manualmente.
+            </p>
           )}
 
           {extractedData && extractionSuccess && (
-            <div className="mt-4 space-y-2">
-              <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Datos extraidos automaticamente
+            <div className="mt-3 space-y-1">
+              <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="w-2.5 h-2.5" /> Datos extraidos
               </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
                 {extractedData.numeroPoliza && <DataField label="Poliza" value={extractedData.numeroPoliza} />}
-                {extractedData.tipoPoliza && <DataField label="Tipo" value={extractedData.tipoPoliza} />}
                 {extractedData.nombreCliente && <DataField label="Asegurado" value={extractedData.nombreCliente} />}
-                {extractedData.rfcAsegurado && <DataField label="RFC" value={extractedData.rfcAsegurado} />}
                 {extractedData.descripcionVehiculo && <DataField label="Vehiculo" value={extractedData.descripcionVehiculo} />}
                 {extractedData.placas && <DataField label="Placas" value={extractedData.placas} />}
-                {extractedData.serie && <DataField label="Serie" value={extractedData.serie} />}
-                {extractedData.formaPago && <DataField label="Forma pago" value={extractedData.formaPago} />}
-                {extractedData.inicioVigencia && <DataField label="Inicio vigencia" value={extractedData.inicioVigencia} />}
-                {extractedData.finVigencia && <DataField label="Fin vigencia" value={extractedData.finVigencia} />}
-                {extractedData.primaNeta && <DataField label="Prima neta" value={extractedData.primaNeta} />}
+                {extractedData.inicioVigencia && <DataField label="Vigencia" value={`${extractedData.inicioVigencia} - ${extractedData.finVigencia || ''}`} />}
                 {extractedData.primaTotal && <DataField label="Prima total" value={extractedData.primaTotal} />}
               </div>
             </div>
           )}
         </div>
 
-        {/* Additional Files */}
-        <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
-              2. Documentos adicionales <span className="text-neutral-400 font-normal">(opcional, max 10)</span>
-            </h3>
-            {additionalFiles.length < 10 && (
-              <button
-                onClick={() => additionalInputRef.current?.click()}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" /> Agregar
-              </button>
-            )}
-          </div>
-
-          <input
-            ref={additionalInputRef}
-            type="file"
-            multiple
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-            onChange={handleAdditionalFiles}
-            className="hidden"
-          />
-
-          {additionalFiles.length === 0 ? (
-            <div
-              onClick={() => additionalInputRef.current?.click()}
-              className="border border-dashed border-neutral-200 dark:border-white/15 rounded-xl p-5 text-center cursor-pointer hover:border-neutral-300 dark:hover:border-white/25 transition-colors"
-            >
-              <p className="text-xs text-neutral-500 dark:text-white/40">
-                Recibo de pago, endosos, tarjeta de circulacion, etc.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {additionalFiles.map((af) => (
-                <div key={af.id} className="flex items-center gap-2 p-2 bg-neutral-50 dark:bg-white/5 rounded-lg">
-                  <FileText className="w-4 h-4 text-neutral-400 flex-shrink-0" />
-                  <span className="text-xs text-neutral-700 dark:text-white/70 truncate flex-1">{af.name}</span>
-                  <span className="text-[10px] text-neutral-400">{(af.size / 1024).toFixed(0)}KB</span>
-                  <button
-                    onClick={() => removeAdditionalFile(af.id)}
-                    className="p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-neutral-400 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-              {additionalFiles.length >= 10 && (
-                <p className="text-[10px] text-amber-600 dark:text-amber-400">Maximo de 10 archivos alcanzado.</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right Column - Vendor & Deliver */}
-      <div className="space-y-5">
         {/* Vendor Selection */}
-        <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-5">
-          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
-            3. Asignar a usuario
-          </h3>
+        <div className="bg-white dark:bg-neutral-800/80 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+          <p className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-2">Asignar a usuario</p>
 
           {vendorsLoading ? (
-            <div className="flex items-center gap-2 py-4 justify-center">
+            <div className="flex items-center gap-2 py-6 justify-center">
               <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
-              <span className="text-xs text-neutral-500 dark:text-white/40">Cargando vendedores...</span>
+              <span className="text-xs text-neutral-500 dark:text-white/40">Cargando...</span>
             </div>
           ) : (
             <VendorSearchCombobox
@@ -770,173 +686,181 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
           )}
 
           {selectedVendor && (
-            <div className="mt-3 p-3 bg-sky-50 dark:bg-sky-900/10 rounded-lg space-y-1">
-              <p className="text-xs font-semibold text-sky-800 dark:text-sky-300">{selectedVendor.nombre}</p>
-              {selectedVendor.moviUserName && (
-                <p className="text-[10px] text-neutral-600 dark:text-white/50">Vendedor SICAS: {selectedVendor.moviUserName}</p>
-              )}
-              {selectedVendor.clave && (
-                <p className="text-[10px] text-sky-600 dark:text-sky-400">Clave: {selectedVendor.clave}</p>
-              )}
-              {selectedVendor.despachoName && (
-                <p className="text-[10px] text-sky-600 dark:text-sky-400">Oficina: {selectedVendor.despachoName}</p>
-              )}
-              {selectedVendor.gerenciaName && (
-                <p className="text-[10px] text-sky-600 dark:text-sky-400">Gerencia: {selectedVendor.gerenciaName}</p>
-              )}
+            <div className="mt-2 p-2 bg-sky-50 dark:bg-sky-900/10 rounded-lg flex items-center gap-2">
+              <div className="w-7 h-7 bg-sky-100 dark:bg-sky-800/40 rounded-full flex items-center justify-center text-[10px] font-bold text-sky-700 dark:text-sky-300">
+                {selectedVendor.nombre.charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-sky-800 dark:text-sky-300 truncate">{selectedVendor.nombre}</p>
+                <p className="text-[10px] text-sky-600/70 dark:text-sky-400/60 truncate">
+                  {[selectedVendor.clave, selectedVendor.despachoName].filter(Boolean).join(' - ')}
+                </p>
+              </div>
             </div>
           )}
+
+          {/* Additional Files inline */}
+          <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-white/5">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] text-neutral-500 dark:text-white/40">
+                Documentos extra ({additionalFiles.length}/10)
+              </p>
+              {additionalFiles.length < 10 && (
+                <button
+                  onClick={() => additionalInputRef.current?.click()}
+                  className="text-[10px] font-medium text-sky-600 dark:text-sky-400 hover:text-sky-700"
+                >
+                  + Agregar
+                </button>
+              )}
+            </div>
+            <input ref={additionalInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" onChange={handleAdditionalFiles} className="hidden" />
+            {additionalFiles.length > 0 && (
+              <div className="space-y-1">
+                {additionalFiles.map((af) => (
+                  <div key={af.id} className="flex items-center gap-1.5 text-[10px]">
+                    <FileText className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                    <span className="text-neutral-600 dark:text-white/60 truncate flex-1">{af.name}</span>
+                    <button onClick={() => removeAdditionalFile(af.id)} className="text-neutral-400 hover:text-red-500">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+      </div>
 
-        {/* Ticket Action Selection */}
-        {selectedVendor && (
-          <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-5">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
-              4. Tramite relacionado
-            </h3>
-
-            <div className="space-y-2">
-              {/* Option A: Existing ticket */}
+      {/* Row 2: Ticket selection + Deliver (appears after vendor is selected) */}
+      {selectedVendor && (
+        <div className="bg-white dark:bg-neutral-800/80 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wider">Tramite destino</p>
+            <div className="flex gap-1">
               <button
                 onClick={() => { setTicketAction('existing'); setSelectedExistingTicket(null); }}
-                className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   ticketAction === 'existing'
-                    ? 'border-sky-400 dark:border-sky-500 bg-sky-50/50 dark:bg-sky-900/10'
-                    : 'border-neutral-200 dark:border-white/10 hover:border-neutral-300 dark:hover:border-white/20'
+                    ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300'
+                    : 'text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5'
                 }`}
               >
-                <p className="text-xs font-semibold text-neutral-800 dark:text-white">Agregar a tramite existente</p>
-                <p className="text-[10px] text-neutral-500 dark:text-white/40 mt-0.5">
-                  Busca un tramite abierto del vendedor y agrega esta poliza a ese expediente.
-                </p>
+                Existente
               </button>
-
-              {/* Option B: New ticket */}
               <button
                 onClick={() => { setTicketAction('new'); setSelectedExistingTicket(null); }}
-                className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   ticketAction === 'new'
-                    ? 'border-sky-400 dark:border-sky-500 bg-sky-50/50 dark:bg-sky-900/10'
-                    : 'border-neutral-200 dark:border-white/10 hover:border-neutral-300 dark:hover:border-white/20'
+                    ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300'
+                    : 'text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5'
                 }`}
               >
-                <p className="text-xs font-semibold text-neutral-800 dark:text-white">Crear nuevo tramite</p>
-                <p className="text-[10px] text-neutral-500 dark:text-white/40 mt-0.5">
-                  Crea un nuevo tramite de Emision para esta poliza.
-                </p>
+                + Nuevo
               </button>
             </div>
+          </div>
 
-            {/* Existing ticket selector */}
-            {ticketAction === 'existing' && (
-              <div className="mt-3 space-y-2">
+          {ticketAction === 'new' && (
+            <div className="p-3 bg-neutral-50 dark:bg-white/5 rounded-lg text-center">
+              <p className="text-xs text-neutral-600 dark:text-white/60">Se creara un nuevo tramite de Emision con los datos extraidos.</p>
+            </div>
+          )}
+
+          {ticketAction === 'existing' && (
+            <div className="space-y-2">
+              {existingTickets.length > 3 && (
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-400" />
                   <input
                     type="text"
                     value={ticketSearchTerm}
                     onChange={(e) => setTicketSearchTerm(e.target.value)}
-                    placeholder="Buscar por folio, cliente, poliza..."
-                    className="w-full pl-8 pr-3 py-2 text-xs bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg outline-none focus:border-sky-300 dark:focus:border-sky-500/40 text-neutral-800 dark:text-white placeholder:text-neutral-400"
+                    placeholder="Filtrar tramites..."
+                    className="w-full pl-7 pr-3 py-1.5 text-[11px] bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg outline-none focus:border-sky-300 dark:focus:border-sky-500/40 text-neutral-800 dark:text-white placeholder:text-neutral-400"
                   />
                 </div>
+              )}
 
-                {(usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente') && (
-                  <label className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-white/40 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showClosedTickets}
-                      onChange={(e) => setShowClosedTickets(e.target.checked)}
-                      className="rounded border-neutral-300 text-sky-600 w-3 h-3"
-                    />
-                    Incluir tramites cerrados
-                  </label>
-                )}
-
-                {ticketsLoading ? (
-                  <div className="flex items-center gap-2 py-4 justify-center">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-400" />
-                    <span className="text-[10px] text-neutral-500 dark:text-white/40">Cargando tramites...</span>
-                  </div>
-                ) : (
-                  <TicketList
-                    tickets={existingTickets}
-                    searchTerm={ticketSearchTerm}
-                    showClosed={showClosedTickets}
-                    selectedId={selectedExistingTicket?.id || null}
-                    onSelect={setSelectedExistingTicket}
+              {(usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente') && (
+                <label className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-white/40 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showClosedTickets}
+                    onChange={(e) => setShowClosedTickets(e.target.checked)}
+                    className="rounded border-neutral-300 text-sky-600 w-3 h-3"
                   />
-                )}
-              </div>
-            )}
+                  Incluir cerrados
+                </label>
+              )}
 
-            {!ticketAction && (
-              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2">
-                Selecciona si deseas agregar esta poliza a un tramite existente o crear un nuevo tramite.
-              </p>
-            )}
+              {ticketsLoading ? (
+                <div className="flex items-center gap-2 py-4 justify-center">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-400" />
+                  <span className="text-[10px] text-neutral-500 dark:text-white/40">Cargando...</span>
+                </div>
+              ) : (
+                <TicketList
+                  tickets={existingTickets}
+                  searchTerm={ticketSearchTerm}
+                  showClosed={showClosedTickets}
+                  selectedId={selectedExistingTicket?.id || null}
+                  onSelect={setSelectedExistingTicket}
+                />
+              )}
+            </div>
+          )}
+
+          {!ticketAction && (
+            <p className="text-[10px] text-amber-600 dark:text-amber-400">
+              Elige si agregar a un tramite existente o crear uno nuevo.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Row 3: Deliver button */}
+      <div className="bg-white dark:bg-neutral-800/80 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+        {deliveryResult && !deliveryResult.success && (
+          <div className="mb-3 p-2.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/20 rounded-lg">
+            <p className="text-xs text-red-700 dark:text-red-400">{deliveryResult.emailError}</p>
           </div>
         )}
 
-        {/* Deliver Button */}
-        <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-5">
-          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">
-            {selectedVendor ? '5.' : '4.'} Entregar poliza
-          </h3>
-
-          <div className="space-y-2 mb-4">
-            <StatusItem ok={!!coverFile} label={coverFile ? 'Caratula cargada' : 'Falta caratula de poliza'} />
-            <StatusItem ok={!!selectedVendor} label={selectedVendor ? 'Usuario asignado' : 'Falta asignar usuario'} />
-            <StatusItem ok={ticketActionValid} label={
-              ticketAction === 'new' ? 'Crear nuevo tramite' :
-              ticketAction === 'existing' && selectedExistingTicket ? `Tramite ${selectedExistingTicket.folio}` :
-              'Falta elegir opcion de tramite'
-            } />
+        <div className="flex items-center gap-4">
+          <div className="flex-1 flex items-center gap-3">
+            <StatusDot ok={!!coverFile} />
+            <StatusDot ok={!!selectedVendor} />
+            <StatusDot ok={ticketActionValid} />
+            <span className="text-[10px] text-neutral-400 dark:text-white/30">
+              {!coverFile ? 'Falta caratula' :
+               !selectedVendor ? 'Falta usuario' :
+               !ticketActionValid ? 'Falta tramite' :
+               ticketAction === 'existing' ? `Agregar a ${selectedExistingTicket?.folio}` : 'Nuevo tramite'}
+            </span>
           </div>
-
-          {ticketAction && (
-            <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-500/20 rounded-lg">
-              <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
-                Al entregar, el tramite quedara cerrado como Emitido (Ganado).
-              </p>
-            </div>
-          )}
-
-          {deliveryResult && !deliveryResult.success && (
-            <div className="mb-3 p-2.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/20 rounded-lg">
-              <p className="text-xs text-red-700 dark:text-red-400">{deliveryResult.emailError}</p>
-            </div>
-          )}
 
           <button
             onClick={handleDeliver}
             disabled={!canDeliver}
-            className={`
-              w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all
-              ${canDeliver
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              canDeliver
                 ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-lg shadow-sky-600/20'
                 : 'bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30 cursor-not-allowed'
-              }
-            `}
+            }`}
           >
             {isDelivering ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Procesando entrega...
+                Procesando...
               </>
             ) : (
               <>
                 <Send className="w-4 h-4" />
-                Entregar poliza
+                Entregar
               </>
             )}
           </button>
-
-          <p className="text-[10px] text-neutral-400 dark:text-white/30 text-center mt-2">
-            {ticketAction === 'existing'
-              ? 'Se agregara la poliza al tramite existente y se cerrara como Emitido (Ganado)'
-              : 'Se creara un tramite de emision cerrado como Emitido (Ganado)'}
-          </p>
         </div>
       </div>
     </div>
@@ -1434,22 +1358,13 @@ function DataField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatusItem({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      {ok ? (
-        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-      ) : (
-        <div className="w-3.5 h-3.5 border-2 border-neutral-200 dark:border-white/20 rounded-full" />
-      )}
-      <span className={`text-xs ${ok ? 'text-neutral-700 dark:text-white/70' : 'text-neutral-400 dark:text-white/30'}`}>
-        {label}
-      </span>
-    </div>
+function StatusDot({ ok }: { ok: boolean }) {
+  return ok ? (
+    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+  ) : (
+    <div className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-white/20" />
   );
 }
-
-const CLOSED_STATUSES = ['Emitido (Ganado)', 'No Emitido (Perdido)', 'Cerrado', 'Cancelado', 'Emitido'];
 
 function TicketList({ tickets, searchTerm, showClosed, selectedId, onSelect }: {
   tickets: ExistingTicket[];
