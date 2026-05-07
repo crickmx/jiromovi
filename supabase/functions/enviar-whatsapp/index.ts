@@ -19,8 +19,18 @@ async function getSignedUrl(
   supabase: ReturnType<typeof createClient>,
   filePath: string
 ): Promise<string | null> {
-  if (filePath.startsWith("http://") || filePath.startsWith("https://"))
+  // For full URLs, extract storage path and create a signed URL (bucket is private)
+  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+    const publicMatch = filePath.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+    if (publicMatch) {
+      const bucket = publicMatch[1];
+      const path = decodeURIComponent(publicMatch[2]);
+      const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+      return data?.signedUrl || null;
+    }
+    // Already a signed URL or external URL - return as-is
     return filePath;
+  }
   const { data } = await supabase.storage
     .from("ticket-archivos")
     .createSignedUrl(filePath, 3600);

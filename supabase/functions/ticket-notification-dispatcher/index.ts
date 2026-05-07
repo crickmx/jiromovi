@@ -285,15 +285,19 @@ async function resolveFileUrl(
   if (fileUrlOrPath.startsWith("http://") || fileUrlOrPath.startsWith("https://")) {
     const parsed = extractStoragePath(fileUrlOrPath);
     if (parsed) {
-      // Create a signed URL (accessible by external services like Wazzup)
-      const { data } = await supabase.storage
+      console.log(`[resolveFileUrl] Parsed URL -> bucket: "${parsed.bucket}", path: "${parsed.path}"`);
+      const { data, error } = await supabase.storage
         .from(parsed.bucket)
         .createSignedUrl(parsed.path, SIGNED_URL_DURATION_SECONDS);
+      if (error) {
+        console.error(`[resolveFileUrl] createSignedUrl error for ${parsed.bucket}/${parsed.path}:`, error.message);
+      }
       if (data?.signedUrl) {
-        return { downloadUrl: fileUrlOrPath, signedUrl: data.signedUrl };
+        // ALWAYS use signed URL for both download and external access (bucket may be private)
+        return { downloadUrl: data.signedUrl, signedUrl: data.signedUrl };
       }
     }
-    // Fallback: use the public URL directly
+    // Fallback: try the original URL directly (might work for truly public buckets)
     return { downloadUrl: fileUrlOrPath, signedUrl: fileUrlOrPath };
   }
 
@@ -429,7 +433,7 @@ async function sendEmailWithAttachments(
 
     try {
       const rawUrl = att.fileUrl || att.filePath || "";
-      console.log(`[Email] Resolving URL for ${att.fileName}: ${rawUrl.substring(0, 80)}...`);
+      console.log(`[Email] Resolving URL for "${att.fileName}": ${rawUrl.substring(0, 100)}...`);
 
       const resolved = await resolveFileUrl(supabase, rawUrl);
       if (!resolved) {
@@ -439,8 +443,10 @@ async function sendEmailWithAttachments(
         continue;
       }
 
-      console.log(`[Email] Downloading ${att.fileName}...`);
-      const response = await fetch(resolved.downloadUrl);
+      // Always use signed URL for download (bucket is private)
+      const downloadUrl = resolved.signedUrl;
+      console.log(`[Email] Downloading "${att.fileName}" from signed URL: ${downloadUrl.substring(0, 100)}...`);
+      const response = await fetch(downloadUrl);
       if (!response.ok) {
         console.log(`[Email] Download failed for ${att.fileName}: HTTP ${response.status}`);
         failedAttachments.push(att.fileName);
@@ -664,7 +670,8 @@ async function sendWhatsAppWithDocuments(
 
   console.log(`[WhatsApp] Sending ${attachments.length} documents...`);
 
-  for (const att of attachments) {
+  for (let i = 0; i < attachments.length; i++) {
+    const att = attachments[i];
     try {
       const rawUrl = att.fileUrl || att.filePath || "";
       if (!rawUrl) {
@@ -685,17 +692,36 @@ async function sendWhatsAppWithDocuments(
 
       // Use signed URL for Wazzup (external service needs accessible URL)
       const accessibleUrl = resolved.signedUrl;
-      console.log(`[WhatsApp] Sending document ${att.fileName}: ${accessibleUrl.substring(0, 80)}...`);
 
+      // Verify the signed URL is accessible before sending to Wazzup
+      console.log(`[WhatsApp] Verifying signed URL for "${att.fileName}"...`);
+      const verifyRes = await fetch(accessibleUrl, { method: "HEAD" });
+      if (!verifyRes.ok) {
+        console.error(`[WhatsApp] Signed URL not accessible for ${att.fileName}: HTTP ${verifyRes.status}`);
+        failedDocuments.push(att.fileName);
+        attachmentDetails.push({ fileName: att.fileName, channel: "whatsapp", status: "failed", reason: `Signed URL not accessible: HTTP ${verifyRes.status}` });
+        continue;
+      }
+      console.log(`[WhatsApp] Signed URL verified OK for "${att.fileName}" (${verifyRes.headers.get("content-length") || "?"} bytes)`);
+
+      // Sanitize fileName: remove brackets, special chars that Wazzup might reject
+      const sanitizedFileName = att.fileName
+        .replace(/^\[Carátula\]\s*/i, "Caratula-")
+        .replace(/[^\w\s.\-()]/g, "")
+        .replace(/\s+/g, " ")
+        .trim() || "documento.pdf";
+
+      // Wazzup document payload: do NOT include "text" field with contentUri
+      // (sending both text and contentUri causes INVALID_MESSAGE_DATA error)
       const docPayload = {
         channelId,
         chatType: "whatsapp",
         chatId,
         contentUri: accessibleUrl,
-        fileName: att.fileName,
-        text: `📎 ${att.fileName}`,
+        fileName: sanitizedFileName,
       };
 
+      console.log(`[WhatsApp] Sending document "${sanitizedFileName}" to Wazzup...`);
       const docRes = await fetch("https://api.wazzup24.com/v3/message", {
         method: "POST",
         headers: {
@@ -712,8 +738,9 @@ async function sendWhatsAppWithDocuments(
       } else {
         const errText = await docRes.text();
         console.error(`[WhatsApp] Document failed ${att.fileName}: ${docRes.status} ${errText}`);
+        console.error(`[WhatsApp] Payload was: ${JSON.stringify({ ...docPayload, contentUri: docPayload.contentUri.substring(0, 80) + "..." })}`);
         failedDocuments.push(att.fileName);
-        attachmentDetails.push({ fileName: att.fileName, channel: "whatsapp", status: "failed", reason: `Wazzup ${docRes.status}: ${errText.substring(0, 100)}` });
+        attachmentDetails.push({ fileName: att.fileName, channel: "whatsapp", status: "failed", reason: `Wazzup ${docRes.status}: ${errText.substring(0, 200)}` });
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -723,7 +750,7 @@ async function sendWhatsAppWithDocuments(
     }
 
     // Small delay between document sends to avoid rate limiting
-    if (attachments.indexOf(att) < attachments.length - 1) {
+    if (i < attachments.length - 1) {
       await new Promise((r) => setTimeout(r, 500));
     }
   }
@@ -763,10 +790,67 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const payload: TicketNotificationPayload = await req.json();
+    const rawPayload = await req.json();
+
+    // === TEST MODE: diagnose attachment resolution without sending ===
+    if (rawPayload.testMode === true) {
+      console.log("[Dispatcher] TEST MODE activated");
+      const testTicketId = rawPayload.ticket_id;
+      const testFileIds = rawPayload.attachment_file_ids;
+
+      if (!testTicketId) {
+        return new Response(
+          JSON.stringify({ success: false, error: "ticket_id required for test mode" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const attachments = await getTicketNotificationAttachments(supabase, testTicketId, testFileIds);
+      const results: Array<{ fileName: string; rawUrl: string; signedUrl?: string; downloadStatus?: number; contentLength?: string; error?: string }> = [];
+
+      for (const att of attachments) {
+        const rawUrl = att.fileUrl || att.filePath || "";
+        const resolved = await resolveFileUrl(supabase, rawUrl);
+        if (!resolved) {
+          results.push({ fileName: att.fileName, rawUrl, error: "Could not resolve URL" });
+          continue;
+        }
+        try {
+          const headRes = await fetch(resolved.signedUrl, { method: "HEAD" });
+          results.push({
+            fileName: att.fileName,
+            rawUrl: rawUrl.substring(0, 100),
+            signedUrl: resolved.signedUrl.substring(0, 100) + "...",
+            downloadStatus: headRes.status,
+            contentLength: headRes.headers.get("content-length") || "unknown",
+          });
+        } catch (err) {
+          results.push({ fileName: att.fileName, rawUrl: rawUrl.substring(0, 100), signedUrl: resolved.signedUrl.substring(0, 80), error: String(err) });
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          testMode: true,
+          ticketId: testTicketId,
+          fileIdsRequested: testFileIds || "all",
+          attachmentsFound: attachments.length,
+          results,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const payload: TicketNotificationPayload = rawPayload;
     const { event_key, ticket_id, triggered_by_user_id, extra_variables, attachment_file_ids, skip_email, skip_whatsapp } = payload;
 
-    console.log(`[Dispatcher] Event: ${event_key}, Ticket: ${ticket_id}, FileIDs: ${attachment_file_ids?.length || "all"}`);
+    console.log(`[Dispatcher] ========== START ==========`);
+    console.log(`[Dispatcher] eventType: ${event_key}`);
+    console.log(`[Dispatcher] ticketId: ${ticket_id}`);
+    console.log(`[Dispatcher] triggeredBy: ${triggered_by_user_id}`);
+    console.log(`[Dispatcher] attachmentFileIds received: ${attachment_file_ids ? JSON.stringify(attachment_file_ids) : "none (will fetch all)"}`);
+    console.log(`[Dispatcher] skip_email: ${skip_email || false}, skip_whatsapp: ${skip_whatsapp || false}`);
 
     if (!event_key || !ticket_id) {
       return new Response(
@@ -886,7 +970,13 @@ Deno.serve(async (req: Request) => {
       attachment_file_ids
     );
 
-    console.log(`[Dispatcher] Attachments found: ${attachments.length}${attachments.length > 0 ? ` (${attachments.map(a => a.fileName).join(", ")})` : ""}`);
+    console.log(`[Dispatcher] resolved attachments count: ${attachments.length}`);
+    if (attachments.length > 0) {
+      console.log(`[Dispatcher] attachment files: ${attachments.map(a => `"${a.fileName}" (${a.filePath?.substring(0, 60)}...)`).join(", ")}`);
+    }
+    if (attachment_file_ids && attachment_file_ids.length > 0 && attachments.length === 0) {
+      console.error(`[Dispatcher] WARNING: Received ${attachment_file_ids.length} file IDs but found 0 attachments in ticket_archivos! IDs: ${JSON.stringify(attachment_file_ids)}`);
+    }
 
     // 9. Send email
     let emailResult = {
@@ -1015,7 +1105,12 @@ Deno.serve(async (req: Request) => {
       historyId: historyRecord?.id,
     };
 
-    console.log(`[Dispatcher] Complete. Email: ${emailResult.sent ? "OK" : "FAIL"} (${emailResult.attachmentsSent} files), WA: ${whatsappResult.messageSent ? "OK" : "FAIL"} (${whatsappResult.documentsSent} docs)`);
+    console.log(`[Dispatcher] ========== RESULT ==========`);
+    console.log(`[Dispatcher] email sent: ${emailResult.sent}, attachments sent: ${emailResult.attachmentsSent}, failed: ${emailResult.failedAttachments.length}`);
+    console.log(`[Dispatcher] whatsapp sent: ${whatsappResult.messageSent}, documents sent: ${whatsappResult.documentsSent}, failed: ${whatsappResult.failedDocuments.length}`);
+    if (emailResult.error) console.log(`[Dispatcher] email error: ${emailResult.error}`);
+    if (whatsappResult.error) console.log(`[Dispatcher] whatsapp error: ${whatsappResult.error}`);
+    console.log(`[Dispatcher] ========== END ==========`);
 
     return new Response(
       JSON.stringify(response),
