@@ -384,6 +384,63 @@ async function getTicketNotificationAttachments(
 }
 
 // ============================================================
+// Helper: Fetch global email layout (header + footer)
+// ============================================================
+
+async function getGlobalEmailLayout(
+  supabase: ReturnType<typeof createClient>
+): Promise<{ header: string; footer: string }> {
+  try {
+    const { data, error } = await supabase
+      .from("email_global_settings")
+      .select("header_html, footer_html")
+      .eq("activo", true)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.log("[Layout] No active email_global_settings found, using empty layout");
+      return { header: "", footer: "" };
+    }
+
+    return { header: data.header_html || "", footer: data.footer_html || "" };
+  } catch (err) {
+    console.error("[Layout] Error fetching global layout:", err);
+    return { header: "", footer: "" };
+  }
+}
+
+function wrapWithGlobalLayout(body: string, header: string, footer: string): string {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>MOVI Digital</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4; padding:20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+          ${header ? `<tr><td>${header}</td></tr>` : ""}
+          <tr>
+            <td style="padding:32px;">
+              ${body}
+            </td>
+          </tr>
+          ${footer ? `<tr><td>${footer}</td></tr>` : ""}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+// ============================================================
 // Helper: Send email with attachments via Resend
 // ============================================================
 
@@ -513,11 +570,16 @@ async function sendEmailWithAttachments(
     finalBody = finalBody.replace("{{adjuntos_lista_html}}", "");
   }
 
+  // Apply global email layout (header + footer)
+  const { header, footer } = await getGlobalEmailLayout(supabase);
+  const wrappedBody = wrapWithGlobalLayout(finalBody, header, footer);
+  console.log(`[Email] Global layout applied: header=${header.length > 0}, footer=${footer.length > 0}`);
+
   const emailPayload: Record<string, unknown> = {
     from: "MOVI Digital <notificaciones@movi.digital>",
     to: [to],
     subject,
-    html: finalBody,
+    html: wrappedBody,
   };
 
   if (emailAttachments.length > 0) {

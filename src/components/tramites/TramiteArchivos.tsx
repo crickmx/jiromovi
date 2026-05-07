@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { supabaseUrl } from '../../lib/supabase';
 import { FileText, Download, Upload, Eye, FolderDown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
@@ -82,6 +83,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
 
     setUploading(true);
     const tempFiles: Archivo[] = [];
+    const uploadedFileIds: string[] = [];
 
     try {
       for (const file of Array.from(files)) {
@@ -114,7 +116,6 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
           .from('ticket-archivos')
           .getPublicUrl(fileName);
 
-        // Insertar el archivo sin JOIN para evitar errores de GROUP BY
         const { data: insertData, error: dbError } = await supabase
           .from('ticket_archivos')
           .insert({
@@ -130,7 +131,8 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
 
         if (dbError) throw dbError;
 
-        // Luego obtener el archivo con el JOIN
+        uploadedFileIds.push(insertData.id);
+
         const { data, error: fetchError } = await supabase
           .from('ticket_archivos')
           .select('*, usuarios!usuario_id(nombre_completo)')
@@ -143,6 +145,11 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
           prev.map(a => a.id === tempId ? data as Archivo : a)
         );
       }
+
+      // Dispatch notification for newly uploaded documents
+      if (uploadedFileIds.length > 0) {
+        dispatchDocumentNotification(uploadedFileIds, files);
+      }
     } catch (err: any) {
       console.error('Error uploading file:', err);
       alert('Error al subir el archivo');
@@ -152,6 +159,47 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     } finally {
       setUploading(false);
       e.target.value = '';
+    }
+  };
+
+  const dispatchDocumentNotification = async (fileIds: string[], files: FileList) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const fileNames = Array.from(files).map(f => f.name).join(', ');
+      const totalSize = Array.from(files).reduce((sum, f) => sum + f.size, 0);
+      const sizeLabel = totalSize < 1024 * 1024
+        ? `${(totalSize / 1024).toFixed(1)} KB`
+        : `${(totalSize / (1024 * 1024)).toFixed(1)} MB`;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/ticket-notification-dispatcher`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            event_key: 'tramite_documento_cargado',
+            ticket_id: tramiteId,
+            triggered_by_user_id: usuario!.id,
+            attachment_file_ids: fileIds,
+            extra_variables: {
+              nombre_archivo: fileIds.length === 1 ? fileNames : `${fileIds.length} archivos`,
+              tamano_archivo: sizeLabel,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.text();
+        console.error('Notification dispatch failed:', err);
+      }
+    } catch (err) {
+      console.error('Error dispatching document notification:', err);
     }
   };
 
