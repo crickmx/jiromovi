@@ -411,34 +411,47 @@ Deno.serve(async (req: Request) => {
     let emailError: string | null = null;
 
     try {
+      const dispatchBody = {
+        event_key: "tramite_entrega_poliza",
+        ticket_id: ticketId,
+        triggered_by_user_id: user.id,
+        extra_variables: {
+          entregado_por: payload.createdByName,
+          accion_tramite: isExistingTicket ? "Agregado a trámite existente" : "Nuevo trámite creado",
+          descripcion_breve: `Emisión auto - ${ext.nombreCliente || "Sin nombre"}`,
+        },
+      };
+
+      console.log("[process-policy-delivery] Dispatching notification:", JSON.stringify(dispatchBody));
+
       const dispatchRes = await fetch(`${supabaseUrl}/functions/v1/ticket-notification-dispatcher`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${supabaseServiceKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          event_key: "tramite_entrega_poliza",
-          ticket_id: ticketId,
-          triggered_by_user_id: user.id,
-          extra_variables: {
-            entregado_por: payload.createdByName,
-            accion_tramite: isExistingTicket ? "Agregado a trámite existente" : "Nuevo trámite creado",
-            descripcion_breve: `Emisión auto - ${ext.nombreCliente || "Sin nombre"}`,
-          },
-        }),
+        body: JSON.stringify(dispatchBody),
       });
 
+      const dispatchText = await dispatchRes.text();
+      console.log("[process-policy-delivery] Dispatch response:", dispatchRes.status, dispatchText);
+
       if (dispatchRes.ok) {
-        const dispatchResult = await dispatchRes.json();
-        notificationSent = dispatchResult.email?.sent || dispatchResult.whatsapp?.messageSent || false;
-        emailSent = dispatchResult.email?.sent || false;
-        emailError = dispatchResult.email?.error || null;
+        try {
+          const dispatchResult = JSON.parse(dispatchText);
+          notificationSent = dispatchResult.email?.sent || dispatchResult.whatsapp?.messageSent || false;
+          emailSent = dispatchResult.email?.sent || false;
+          emailError = dispatchResult.email?.error || null;
+        } catch (parseErr) {
+          emailError = `Dispatch response parse error: ${dispatchText.substring(0, 200)}`;
+        }
       } else {
-        console.error("Notification dispatch failed:", await dispatchRes.text());
+        emailError = `Dispatch HTTP ${dispatchRes.status}: ${dispatchText.substring(0, 300)}`;
+        console.error("[process-policy-delivery] Notification dispatch failed:", dispatchRes.status, dispatchText);
       }
     } catch (notifErr) {
-      console.error("Notification dispatch error:", notifErr);
+      emailError = `Dispatch exception: ${notifErr instanceof Error ? notifErr.message : String(notifErr)}`;
+      console.error("[process-policy-delivery] Notification dispatch error:", notifErr);
     }
 
     // ===== Update delivery with notification status =====

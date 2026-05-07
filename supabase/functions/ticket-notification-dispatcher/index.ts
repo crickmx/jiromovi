@@ -176,6 +176,7 @@ async function buildTicketNotificationContext(
       id, folio, tipo_tramite, instrucciones, poliza, prioridad,
       registro_aseguradora, registro_cliente, registro_numero_poliza,
       estatus_id, insurers, insurance_type_id,
+      agente_usuario_id, agente_id,
       ticket_estatus:estatus_id(nombre),
       activity_subtype:activity_subtype_id(nombre),
       insurance_type:insurance_type_id(nombre)
