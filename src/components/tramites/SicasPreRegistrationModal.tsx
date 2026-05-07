@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, CheckCircle2, Loader2, AlertTriangle, Shield, ArrowRight, Zap, Search, ChevronDown, RefreshCw, Save, Info } from 'lucide-react';
+import { X, CheckCircle2, Loader2, AlertTriangle, Shield, ArrowRight, Save, Search, ChevronDown, RefreshCw, Info, UserPlus } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -10,6 +10,7 @@ interface DeliveryRecord {
   policy_number: string | null;
   manual_policy_number: string | null;
   insured_name: string | null;
+  insured_rfc: string | null;
   vendor_sicas_name: string | null;
   sicas_office_name: string | null;
   total_premium: string | null;
@@ -27,6 +28,7 @@ interface ResolutionData {
   resolved: Record<string, ResolvedField>;
   missing: string[];
   warnings: string[];
+  logs?: Record<string, any>;
   policy_number: string | null;
 }
 
@@ -54,12 +56,16 @@ const SOURCE_LABELS: Record<string, string> = {
   catalog_match_pesos: 'Match catalogo (Pesos)',
   catalog_match_contado: 'Match catalogo (Contado)',
   catalog_match_vigente: 'Match catalogo (Vigente)',
+  catalog_match_general: 'Match catalogo (General)',
+  matched_to_vendor_name: 'Coincide con vendedor',
   single_catalog_item: 'Unico item en catalogo',
   inferred_from_vehicle_data: 'Inferido (datos vehiculo)',
   vendor: 'Datos del vendedor',
   matched_by_rfc: 'Match por RFC',
   matched_by_name: 'Match por nombre',
   matched_by_name_partial: 'Match parcial por nombre',
+  auto_created: 'Creado automaticamente',
+  previously_resolved: 'Resuelto previamente',
   policy_delivery: 'Datos de la entrega',
   user_override: 'Seleccion manual',
 };
@@ -76,11 +82,6 @@ const FIELD_DISPLAY_NAMES: Record<string, string> = {
   IDCli: 'Cliente SICAS',
   Estatus: 'Estatus',
   IDVend: 'Vendedor',
-  IDOficina: 'Oficina',
-  FechaInicio: 'Fecha Inicio',
-  FechaFin: 'Fecha Fin',
-  PrimaTotal: 'Prima Total',
-  NumeroPoliza: 'Numero Poliza',
 };
 
 const FIELD_CATALOG_MAP: Record<string, number> = {
@@ -103,7 +104,10 @@ function getSourceColorClasses(source: string): string {
   if (source === 'override' || source === 'vendor' || source === 'user_override') {
     return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
   }
-  if (source.startsWith('catalog_match') || source === 'single_catalog_item' || source.startsWith('matched_by') || source === 'inferred_from_vehicle_data') {
+  if (source === 'auto_created') {
+    return 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border-teal-200 dark:border-teal-800';
+  }
+  if (source.startsWith('catalog_match') || source === 'single_catalog_item' || source.startsWith('matched_by') || source === 'inferred_from_vehicle_data' || source === 'matched_to_vendor_name') {
     return 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800';
   }
   if (source === 'default') {
@@ -149,6 +153,8 @@ export default function SicasPreRegistrationModal({
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [saveAsDefault, setSaveAsDefault] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [creatingClient, setCreatingClient] = useState(false);
+  const [clientCreateStatus, setClientCreateStatus] = useState<string | null>(null);
 
   const policyNumber =
     resolutionData.policy_number ||
@@ -161,6 +167,10 @@ export default function SicasPreRegistrationModal({
   const missingFieldKeys = resolutionData.missing.map(extractFieldKey);
   const hasMissing = missingFieldKeys.length > 0;
   const allMissingFilled = hasMissing && missingFieldKeys.every(key => userOverrides[key]?.value);
+
+  // Check if client is the only missing field and auto-create is eligible
+  const clientAutoCreateEligible = resolutionData.logs?.cliente?.auto_create_eligible && missingFieldKeys.includes('IDCli');
+  const onlyClientMissing = missingFieldKeys.length === 1 && missingFieldKeys[0] === 'IDCli';
 
   useEffect(() => {
     if (hasMissing) {
@@ -213,7 +223,7 @@ export default function SicasPreRegistrationModal({
         const s = result.summary;
         setSyncMessage({
           type: 'success',
-          text: `Sincronizados ${s.total_records} registros (${s.success} catalogos OK, ${s.errors} errores)`,
+          text: `Sincronizados ${s.total_records} registros (${s.success} catalogos OK)`,
         });
         await loadCatalogsForMissing();
       } else {
@@ -223,6 +233,66 @@ export default function SicasPreRegistrationModal({
       setSyncMessage({ type: 'error', text: err.message });
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleAutoCreateClient() {
+    setCreatingClient(true);
+    setClientCreateStatus('Buscando cliente en SICAS...');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No hay sesion activa');
+
+      setClientCreateStatus('Creando cliente en SICAS...');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-create-client`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            delivery_id: record.id,
+            client_name: record.insured_name || '',
+            client_rfc: record.insured_rfc || '',
+            force_create: false,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        setClientCreateStatus(`Cliente creado: ${result.client_name} (ID: ${result.client_id})`);
+        // Set the override so it gets saved
+        setUserOverrides(prev => ({
+          ...prev,
+          IDCli: { value: result.client_id, label: result.client_name },
+        }));
+      } else if (result.error === 'duplicate_found' || result.error === 'probable_duplicate') {
+        // Show candidates for selection
+        if (result.candidates && result.candidates.length > 0) {
+          setClientCreateStatus(`Se encontraron clientes existentes. Selecciona uno.`);
+          // Auto-select if only one candidate
+          if (result.candidates.length === 1) {
+            setUserOverrides(prev => ({
+              ...prev,
+              IDCli: { value: result.candidates[0].id_sicas, label: result.candidates[0].nombre },
+            }));
+            setClientCreateStatus(`Cliente encontrado: ${result.candidates[0].nombre} (ID: ${result.candidates[0].id_sicas})`);
+          }
+        } else {
+          setClientCreateStatus(result.message || 'Duplicado detectado');
+        }
+      } else {
+        setClientCreateStatus(`Error: ${result.error || 'No se pudo crear cliente'}`);
+      }
+    } catch (err: any) {
+      setClientCreateStatus(`Error: ${err.message}`);
+    } finally {
+      setCreatingClient(false);
     }
   }
 
@@ -264,7 +334,7 @@ export default function SicasPreRegistrationModal({
         if (error) throw error;
       }
 
-      // Save as HWCAPTURE defaults if checkbox is checked
+      // Save as defaults if checked
       if (saveAsDefault) {
         await saveSelectedAsDefaults();
       }
@@ -278,29 +348,12 @@ export default function SicasPreRegistrationModal({
   }
 
   async function saveSelectedAsDefaults() {
-    const FIELD_TO_DEFAULT: Record<string, string> = {
-      IDTipoDocto: 'IDTipoDocto',
-      IDCia: 'IDCia',
-      IDRamo: 'IDRamo',
-      IDSubRamo: 'IDSubRamo',
-      IDMon: 'IDMon',
-      IDFPago: 'IDFPago',
-      IDEjecutivo: 'IDEjecutivo',
-      IDGrupo: 'IDGrupo',
-      Estatus: 'Estatus',
-    };
-
     for (const [fieldKey, { value, label }] of Object.entries(userOverrides)) {
-      const fieldName = FIELD_TO_DEFAULT[fieldKey];
-      if (!fieldName || !value || fieldKey === 'IDCli') continue;
-
+      if (!value || fieldKey === 'IDCli') continue;
       await supabase
         .from('sicas_hwcapture_defaults')
-        .update({
-          default_value: value,
-          default_label: label || value,
-        })
-        .eq('field_name', fieldName);
+        .update({ default_value: value, default_label: label || value })
+        .eq('field_name', fieldKey);
     }
   }
 
@@ -319,9 +372,7 @@ export default function SicasPreRegistrationModal({
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Poliza: <span className="font-medium text-neutral-700 dark:text-neutral-300">{policyNumber}</span>
-                {record.insured_name && (
-                  <span className="ml-2">- {record.insured_name}</span>
-                )}
+                {record.insured_name && <span className="ml-2">- {record.insured_name}</span>}
               </p>
             </div>
           </div>
@@ -334,19 +385,19 @@ export default function SicasPreRegistrationModal({
           </button>
         </div>
 
-        {/* Sync bar + Diagnostics toggle */}
+        {/* Toolbar */}
         {hasMissing && (
           <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSyncCatalogs}
-              disabled={syncing}
-              className="h-7 text-[11px] gap-1.5"
-            >
+            <Button variant="outline" size="sm" onClick={handleSyncCatalogs} disabled={syncing} className="h-7 text-[11px] gap-1.5">
               {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              Sincronizar catalogos SICAS
+              Sincronizar catalogos
             </Button>
+            {clientAutoCreateEligible && (
+              <Button variant="outline" size="sm" onClick={handleAutoCreateClient} disabled={creatingClient} className="h-7 text-[11px] gap-1.5">
+                {creatingClient ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+                Crear cliente automaticamente
+              </Button>
+            )}
             <button
               onClick={() => setShowDiagnostics(!showDiagnostics)}
               className="h-7 px-2.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 border rounded-md transition-colors"
@@ -359,6 +410,22 @@ export default function SicasPreRegistrationModal({
                 {syncMessage.text}
               </span>
             )}
+          </div>
+        )}
+
+        {/* Client create status */}
+        {clientCreateStatus && (
+          <div className="px-5 pt-2">
+            <div className={`p-2.5 rounded-lg text-[11px] ${
+              clientCreateStatus.startsWith('Error')
+                ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+                : clientCreateStatus.startsWith('Cliente creado') || clientCreateStatus.startsWith('Cliente encontrado')
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+            }`}>
+              {creatingClient && <Loader2 className="h-3 w-3 animate-spin inline mr-1.5" />}
+              {clientCreateStatus}
+            </div>
           </div>
         )}
 
@@ -381,7 +448,7 @@ export default function SicasPreRegistrationModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Resolved fields section */}
+          {/* Resolved fields */}
           {resolvedEntries.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -419,7 +486,7 @@ export default function SicasPreRegistrationModal({
             </div>
           )}
 
-          {/* Missing fields section with catalog selectors */}
+          {/* Missing fields */}
           {hasMissing && (
             <div>
               <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -439,6 +506,7 @@ export default function SicasPreRegistrationModal({
                       return (
                         <ClientSearchField
                           key={fieldKey}
+                          record={record}
                           selectedValue={userOverrides[fieldKey]?.value || ''}
                           selectedLabel={userOverrides[fieldKey]?.label || ''}
                           onSelect={(value, label) => {
@@ -454,7 +522,6 @@ export default function SicasPreRegistrationModal({
                     return (
                       <MissingFieldSelector
                         key={fieldKey}
-                        fieldKey={fieldKey}
                         fieldLabel={getFieldDisplayName(fieldKey)}
                         options={options}
                         selectedValue={userOverrides[fieldKey]?.value || ''}
@@ -473,7 +540,6 @@ export default function SicasPreRegistrationModal({
 
         {/* Footer */}
         <div className="border-t dark:border-neutral-800 p-5">
-          {/* Save as default checkbox */}
           {hasMissing && Object.keys(userOverrides).length > 0 && (
             <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
               <input
@@ -492,8 +558,8 @@ export default function SicasPreRegistrationModal({
             <p className="text-[10px] text-muted-foreground max-w-[50%]">
               {hasMissing
                 ? allMissingFilled
-                  ? 'Todos los campos completados. Guarde y reintente la resolucion.'
-                  : `${missingFieldKeys.length} campo(s) pendientes de seleccion.`
+                  ? 'Todos los campos completados. Guarde y reintente.'
+                  : `${missingFieldKeys.length} campo(s) pendientes.`
                 : `${resolvedEntries.length} campos resueltos. Confirme para registrar.`}
             </p>
             <div className="flex items-center gap-2">
@@ -507,33 +573,17 @@ export default function SicasPreRegistrationModal({
                   disabled={!allMissingFilled || savingOverrides}
                 >
                   {savingOverrides ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Guardando...
-                    </>
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Guardando...</>
                   ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Guardar y re-resolver
-                    </>
+                    <><Save className="h-4 w-4 mr-2" />Guardar y re-resolver</>
                   )}
                 </Button>
               ) : (
-                <Button
-                  onClick={onConfirm}
-                  disabled={isRegistering}
-                >
+                <Button onClick={onConfirm} disabled={isRegistering}>
                   {isRegistering ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Registrando...
-                    </>
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Registrando...</>
                   ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Confirmar y registrar en SICAS
-                      <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-                    </>
+                    <><CheckCircle2 className="h-4 w-4 mr-2" />Confirmar y registrar en SICAS<ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>
                   )}
                 </Button>
               )}
@@ -545,15 +595,16 @@ export default function SicasPreRegistrationModal({
   );
 }
 
-// ---- Client Search Field (live search via edge function) ----
+// ---- Client Search Field ----
 
 interface ClientSearchFieldProps {
+  record: DeliveryRecord;
   selectedValue: string;
   selectedLabel: string;
   onSelect: (value: string, label: string) => void;
 }
 
-function ClientSearchField({ selectedValue, selectedLabel, onSelect }: ClientSearchFieldProps) {
+function ClientSearchField({ record, selectedValue, selectedLabel, onSelect }: ClientSearchFieldProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<Array<{ id_sicas: string; nombre: string; rfc?: string }>>([]);
@@ -624,30 +675,13 @@ function ClientSearchField({ selectedValue, selectedLabel, onSelect }: ClientSea
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Input
-            placeholder="Ingresar ID SICAS del cliente"
-            value={manualValue}
-            onChange={(e) => setManualValue(e.target.value)}
-            className="h-8 text-xs flex-1"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs px-2"
-            disabled={!manualValue.trim()}
-            onClick={() => {
-              onSelect(manualValue.trim(), `ID: ${manualValue.trim()}`);
-              setManualValue('');
-            }}
-          >
+          <Input placeholder="Ingresar ID SICAS del cliente" value={manualValue} onChange={(e) => setManualValue(e.target.value)} className="h-8 text-xs flex-1" />
+          <Button size="sm" variant="outline" className="h-8 text-xs px-2" disabled={!manualValue.trim()} onClick={() => { onSelect(manualValue.trim(), `ID: ${manualValue.trim()}`); setManualValue(''); }}>
             Usar
           </Button>
         </div>
-        <button
-          onClick={() => setShowManual(false)}
-          className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2"
-        >
-          Volver a buscar cliente
+        <button onClick={() => setShowManual(false)} className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
+          Volver a buscar
         </button>
       </div>
     );
@@ -672,7 +706,7 @@ function ClientSearchField({ selectedValue, selectedLabel, onSelect }: ClientSea
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre o RFC del cliente..."
+              placeholder="Buscar por nombre o RFC..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="h-8 pl-8 text-xs"
@@ -687,19 +721,13 @@ function ClientSearchField({ selectedValue, selectedLabel, onSelect }: ClientSea
               <button
                 key={client.id_sicas}
                 className={`w-full text-left px-3 py-2 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors border-b dark:border-neutral-800 last:border-b-0 ${selectedValue === client.id_sicas ? 'bg-emerald-50 dark:bg-emerald-950/30 font-medium' : ''}`}
-                onClick={() => {
-                  onSelect(client.id_sicas, client.nombre);
-                  setShowResults(false);
-                  setSearchTerm('');
-                }}
+                onClick={() => { onSelect(client.id_sicas, client.nombre); setShowResults(false); setSearchTerm(''); }}
               >
                 <div className="flex items-center justify-between">
                   <span className="truncate">{client.nombre}</span>
                   <span className="text-[10px] text-muted-foreground ml-2 shrink-0 font-mono">{client.id_sicas}</span>
                 </div>
-                {client.rfc && (
-                  <span className="text-[10px] text-muted-foreground">RFC: {client.rfc}</span>
-                )}
+                {client.rfc && <span className="text-[10px] text-muted-foreground">RFC: {client.rfc}</span>}
               </button>
             ))}
           </div>
@@ -711,14 +739,9 @@ function ClientSearchField({ selectedValue, selectedLabel, onSelect }: ClientSea
           </div>
         )}
 
-        {searchError && (
-          <p className="mt-1 text-[10px] text-red-500">{searchError}</p>
-        )}
+        {searchError && <p className="mt-1 text-[10px] text-red-500">{searchError}</p>}
 
-        <button
-          onClick={() => setShowManual(true)}
-          className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2"
-        >
+        <button onClick={() => setShowManual(true)} className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
           Capturar ID manualmente
         </button>
       </div>
@@ -726,10 +749,9 @@ function ClientSearchField({ selectedValue, selectedLabel, onSelect }: ClientSea
   );
 }
 
-// ---- Missing Field Selector (catalog-based) ----
+// ---- Missing Field Selector ----
 
 interface MissingFieldSelectorProps {
-  fieldKey: string;
   fieldLabel: string;
   options: CatalogOption[];
   selectedValue: string;
@@ -737,7 +759,7 @@ interface MissingFieldSelectorProps {
   onSelect: (value: string, label: string) => void;
 }
 
-function MissingFieldSelector({ fieldKey, fieldLabel, options, selectedValue, selectedLabel, onSelect }: MissingFieldSelectorProps) {
+function MissingFieldSelector({ fieldLabel, options, selectedValue, selectedLabel, onSelect }: MissingFieldSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showManual, setShowManual] = useState(false);
@@ -769,20 +791,14 @@ function MissingFieldSelector({ fieldKey, fieldLabel, options, selectedValue, se
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder={`Buscar en catalogo (${options.length} items)...`}
+                placeholder={`Buscar (${options.length} items)...`}
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  if (!isOpen) setIsOpen(true);
-                }}
+                onChange={(e) => { setSearchTerm(e.target.value); if (!isOpen) setIsOpen(true); }}
                 onFocus={() => setIsOpen(true)}
                 className="h-8 pl-8 text-xs"
               />
             </div>
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
-            >
+            <button onClick={() => setIsOpen(!isOpen)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors">
               <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
           </div>
@@ -796,11 +812,7 @@ function MissingFieldSelector({ fieldKey, fieldLabel, options, selectedValue, se
                   <button
                     key={opt.id_sicas}
                     className={`w-full text-left px-3 py-2 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors border-b dark:border-neutral-800 last:border-b-0 flex items-center justify-between ${selectedValue === opt.id_sicas ? 'bg-emerald-50 dark:bg-emerald-950/30 font-medium' : ''}`}
-                    onClick={() => {
-                      onSelect(opt.id_sicas, opt.nombre);
-                      setIsOpen(false);
-                      setSearchTerm('');
-                    }}
+                    onClick={() => { onSelect(opt.id_sicas, opt.nombre); setIsOpen(false); setSearchTerm(''); }}
                   >
                     <span className="truncate">{opt.nombre}</span>
                     <span className="text-[10px] text-muted-foreground ml-2 shrink-0 font-mono">{opt.id_sicas}</span>
@@ -810,40 +822,20 @@ function MissingFieldSelector({ fieldKey, fieldLabel, options, selectedValue, se
             </div>
           )}
 
-          <button
-            onClick={() => setShowManual(true)}
-            className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2"
-          >
+          <button onClick={() => setShowManual(true)} className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
             Capturar ID manualmente
           </button>
         </div>
       ) : (
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Input
-              placeholder={`Ingresar ID SICAS para ${fieldLabel}`}
-              value={manualValue}
-              onChange={(e) => setManualValue(e.target.value)}
-              className="h-8 text-xs flex-1"
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs px-2"
-              disabled={!manualValue.trim()}
-              onClick={() => {
-                onSelect(manualValue.trim(), `Manual: ${manualValue.trim()}`);
-                setManualValue('');
-              }}
-            >
+            <Input placeholder={`ID SICAS para ${fieldLabel}`} value={manualValue} onChange={(e) => setManualValue(e.target.value)} className="h-8 text-xs flex-1" />
+            <Button size="sm" variant="outline" className="h-8 text-xs px-2" disabled={!manualValue.trim()} onClick={() => { onSelect(manualValue.trim(), `Manual: ${manualValue.trim()}`); setManualValue(''); }}>
               Usar
             </Button>
           </div>
           {options.length > 0 && (
-            <button
-              onClick={() => setShowManual(false)}
-              className="text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2"
-            >
+            <button onClick={() => setShowManual(false)} className="text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
               Volver a buscar en catalogo
             </button>
           )}
