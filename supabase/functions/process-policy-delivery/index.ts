@@ -104,6 +104,7 @@ Deno.serve(async (req: Request) => {
 
     let ticketId: string;
     let ticketFolio: string;
+    let insertedFileIds: string[] = [];
 
     if (isExistingTicket) {
       // ===== FLOW A: Attach to existing ticket =====
@@ -198,7 +199,13 @@ Deno.serve(async (req: Request) => {
         });
       }
       if (fileInserts.length > 0) {
-        await supabase.from("ticket_archivos").insert(fileInserts);
+        const { data: insertedFiles } = await supabase
+          .from("ticket_archivos")
+          .insert(fileInserts)
+          .select("id");
+        if (insertedFiles) {
+          insertedFileIds = insertedFiles.map((f: any) => f.id);
+        }
       }
 
     } else {
@@ -315,7 +322,13 @@ Deno.serve(async (req: Request) => {
         });
       }
       if (fileInserts.length > 0) {
-        await supabase.from("ticket_archivos").insert(fileInserts);
+        const { data: insertedFiles } = await supabase
+          .from("ticket_archivos")
+          .insert(fileInserts)
+          .select("id");
+        if (insertedFiles) {
+          insertedFileIds = insertedFiles.map((f: any) => f.id);
+        }
       }
 
       await supabase.from("ticket_asignaciones").insert({
@@ -411,7 +424,7 @@ Deno.serve(async (req: Request) => {
     let emailError: string | null = null;
 
     try {
-      const dispatchBody = {
+      const dispatchBody: Record<string, unknown> = {
         event_key: "tramite_entrega_poliza",
         ticket_id: ticketId,
         triggered_by_user_id: user.id,
@@ -421,6 +434,11 @@ Deno.serve(async (req: Request) => {
           descripcion_breve: `Emisión auto - ${ext.nombreCliente || "Sin nombre"}`,
         },
       };
+
+      // Pass specific file IDs so dispatcher sends only the delivery files
+      if (insertedFileIds.length > 0) {
+        dispatchBody.attachment_file_ids = insertedFileIds;
+      }
 
       console.log("[process-policy-delivery] Dispatching notification:", JSON.stringify(dispatchBody));
 

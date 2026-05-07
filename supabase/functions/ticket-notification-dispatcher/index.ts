@@ -12,6 +12,7 @@ const MAX_SUBJECT_LENGTH = 140;
 const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024; // 20MB per file
 const MAX_TOTAL_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024; // 25MB total for email
 const BASE_URL = "https://app.movi.digital";
+const SIGNED_URL_DURATION_SECONDS = 3600; // 1 hour
 
 // ============================================================
 // Types
@@ -48,6 +49,13 @@ interface AttachmentInfo {
   source: "ticket" | "comment" | "policy_delivery" | "contact_center";
 }
 
+interface AttachmentResult {
+  fileName: string;
+  channel: "email" | "whatsapp";
+  status: "sent" | "failed" | "skipped";
+  reason?: string;
+}
+
 // ============================================================
 // Helper: Build short ticket description
 // ============================================================
@@ -56,7 +64,6 @@ function getShortTicketDescription(
   ticket: Record<string, unknown>,
   maxLength = 70
 ): string {
-  // Priority: activity subtype name > tipo_tramite label > instrucciones truncated
   const tipoTramiteLabels: Record<string, string> = {
     cotizacion_emision: "Cotización / Emisión",
     correccion_comisiones: "Corrección de comisiones",
@@ -70,25 +77,19 @@ function getShortTicketDescription(
     endoso: "Endoso",
   };
 
-  // Use activity subtype name if available
   if (ticket.activity_subtype_name && typeof ticket.activity_subtype_name === "string") {
     return truncateClean(ticket.activity_subtype_name, maxLength);
   }
 
-  // Use tipo_tramite label
   const tipoTramite = ticket.tipo_tramite as string;
   if (tipoTramite && tipoTramiteLabels[tipoTramite]) {
     return tipoTramiteLabels[tipoTramite];
   }
 
-  // Fallback to instrucciones (first line, cleaned)
   const instrucciones = ticket.instrucciones as string;
   if (instrucciones) {
     const firstLine = instrucciones.split("\n")[0].trim();
-    const cleaned = firstLine
-      .replace(/<[^>]*>/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    const cleaned = firstLine.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
     if (cleaned.length > 0) {
       return truncateClean(cleaned, maxLength);
     }
@@ -141,16 +142,12 @@ function buildTicketEmailSubject(
 
   let subject = parts.join(" - ");
 
-  // Enforce max length: trim description first, keep folio/client/policy/insurer
   if (subject.length > MAX_SUBJECT_LENGTH) {
-    // Try removing description
     const partsWithoutDesc = [`Trámite #${context.folio}`];
     if (eventLabel) partsWithoutDesc.push(eventLabel);
     if (context.clientName) partsWithoutDesc.push(context.clientName);
-    if (context.policyNumber)
-      partsWithoutDesc.push(`Póliza ${context.policyNumber}`);
-    if (context.insuranceCompany)
-      partsWithoutDesc.push(context.insuranceCompany);
+    if (context.policyNumber) partsWithoutDesc.push(`Póliza ${context.policyNumber}`);
+    if (context.insuranceCompany) partsWithoutDesc.push(context.insuranceCompany);
 
     subject = partsWithoutDesc.join(" - ");
     if (subject.length > MAX_SUBJECT_LENGTH) {
@@ -194,7 +191,6 @@ async function buildTicketNotificationContext(
     };
   }
 
-  // Resolve insurer name from insurers array
   let insurerName: string | undefined;
   if (ticket.registro_aseguradora) {
     insurerName = ticket.registro_aseguradora;
@@ -211,8 +207,7 @@ async function buildTicketNotificationContext(
 
   const rawTicket = {
     ...ticket,
-    activity_subtype_name:
-      (ticket.activity_subtype as any)?.nombre || undefined,
+    activity_subtype_name: (ticket.activity_subtype as any)?.nombre || undefined,
   };
 
   return {
@@ -235,44 +230,97 @@ async function buildTicketNotificationContext(
 function buildSegmentVariables(context: TicketNotificationContext): Record<string, string> {
   const vars: Record<string, string> = {};
 
-  // Subject segments (empty string if not available, so template removes them)
   vars.cliente_segmento = context.clientName ? ` - ${context.clientName}` : "";
-  vars.poliza_segmento = context.policyNumber
-    ? ` - Póliza ${context.policyNumber}`
-    : "";
-  vars.aseguradora_segmento = context.insuranceCompany
-    ? ` - ${context.insuranceCompany}`
-    : "";
+  vars.poliza_segmento = context.policyNumber ? ` - Póliza ${context.policyNumber}` : "";
+  vars.aseguradora_segmento = context.insuranceCompany ? ` - ${context.insuranceCompany}` : "";
 
-  // Body identification data
   const htmlRows: string[] = [];
   const textLines: string[] = [];
 
   if (context.clientName) {
-    htmlRows.push(
-      `<tr><td style="padding:4px 8px; color:#666;">Cliente:</td><td style="padding:4px 8px;">${context.clientName}</td></tr>`
-    );
+    htmlRows.push(`<tr><td style="padding:4px 8px; color:#666;">Cliente:</td><td style="padding:4px 8px;">${context.clientName}</td></tr>`);
     textLines.push(`Cliente: ${context.clientName}`);
   }
   if (context.policyNumber) {
-    htmlRows.push(
-      `<tr><td style="padding:4px 8px; color:#666;">Póliza:</td><td style="padding:4px 8px;">${context.policyNumber}</td></tr>`
-    );
+    htmlRows.push(`<tr><td style="padding:4px 8px; color:#666;">Póliza:</td><td style="padding:4px 8px;">${context.policyNumber}</td></tr>`);
     textLines.push(`Póliza: ${context.policyNumber}`);
   }
   if (context.insuranceCompany) {
-    htmlRows.push(
-      `<tr><td style="padding:4px 8px; color:#666;">Aseguradora:</td><td style="padding:4px 8px;">${context.insuranceCompany}</td></tr>`
-    );
+    htmlRows.push(`<tr><td style="padding:4px 8px; color:#666;">Aseguradora:</td><td style="padding:4px 8px;">${context.insuranceCompany}</td></tr>`);
     textLines.push(`Aseguradora: ${context.insuranceCompany}`);
   }
 
   vars.datos_identificacion_html = htmlRows.join("\n");
-  vars.datos_identificacion_texto =
-    textLines.length > 0 ? "\n" + textLines.join("\n") + "\n" : "";
+  vars.datos_identificacion_texto = textLines.length > 0 ? "\n" + textLines.join("\n") + "\n" : "";
   vars.descripcion_breve = context.shortDescription || "";
 
   return vars;
+}
+
+// ============================================================
+// Helper: Resolve downloadable URL from stored path/URL
+// ============================================================
+
+function extractStoragePath(fullUrl: string): { bucket: string; path: string } | null {
+  // Pattern: .../storage/v1/object/public/<bucket>/<path>
+  const publicMatch = fullUrl.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+  if (publicMatch) {
+    return { bucket: publicMatch[1], path: decodeURIComponent(publicMatch[2]) };
+  }
+  // Pattern: .../storage/v1/object/sign/<bucket>/<path>
+  const signedMatch = fullUrl.match(/\/storage\/v1\/object\/sign\/([^/]+)\/(.+?)(\?|$)/);
+  if (signedMatch) {
+    return { bucket: signedMatch[1], path: decodeURIComponent(signedMatch[2]) };
+  }
+  return null;
+}
+
+async function resolveFileUrl(
+  supabase: ReturnType<typeof createClient>,
+  fileUrlOrPath: string
+): Promise<{ downloadUrl: string; signedUrl: string } | null> {
+  if (!fileUrlOrPath) return null;
+
+  // For full URLs, extract the storage path and create a signed URL
+  if (fileUrlOrPath.startsWith("http://") || fileUrlOrPath.startsWith("https://")) {
+    const parsed = extractStoragePath(fileUrlOrPath);
+    if (parsed) {
+      // Create a signed URL (accessible by external services like Wazzup)
+      const { data } = await supabase.storage
+        .from(parsed.bucket)
+        .createSignedUrl(parsed.path, SIGNED_URL_DURATION_SECONDS);
+      if (data?.signedUrl) {
+        return { downloadUrl: fileUrlOrPath, signedUrl: data.signedUrl };
+      }
+    }
+    // Fallback: use the public URL directly
+    return { downloadUrl: fileUrlOrPath, signedUrl: fileUrlOrPath };
+  }
+
+  // For relative paths, try known buckets
+  const buckets = ["ticket-archivos", "lector-qualitas", "documents", "entregas"];
+  for (const bucket of buckets) {
+    if (fileUrlOrPath.startsWith(`${bucket}/`) || fileUrlOrPath.includes(`/${bucket}/`)) {
+      const cleanPath = fileUrlOrPath.replace(new RegExp(`^${bucket}/`), "");
+      const { data } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(cleanPath, SIGNED_URL_DURATION_SECONDS);
+      if (data?.signedUrl) {
+        return { downloadUrl: data.signedUrl, signedUrl: data.signedUrl };
+      }
+    }
+  }
+
+  // Default: try ticket-archivos
+  const { data } = await supabase.storage
+    .from("ticket-archivos")
+    .createSignedUrl(fileUrlOrPath, SIGNED_URL_DURATION_SECONDS);
+
+  if (data?.signedUrl) {
+    return { downloadUrl: data.signedUrl, signedUrl: data.signedUrl };
+  }
+
+  return null;
 }
 
 // ============================================================
@@ -294,54 +342,41 @@ async function getTicketNotificationAttachments(
     query = query.in("id", specificFileIds);
   }
 
-  const { data: files } = await query;
+  const { data: files, error } = await query;
 
-  if (!files || files.length === 0) return [];
-
-  return files.map((f) => ({
-    id: f.id,
-    fileName: f.nombre || "documento",
-    filePath: f.url || "",
-    fileUrl: f.url || undefined,
-    mimeType: f.tipo || "application/octet-stream",
-    size: f.tamano || 0,
-    source: "ticket" as const,
-  }));
-}
-
-// ============================================================
-// Helper: Generate signed URL for private files
-// ============================================================
-
-async function getSignedUrl(
-  supabase: ReturnType<typeof createClient>,
-  filePath: string
-): Promise<string | null> {
-  if (!filePath) return null;
-
-  // If it's already a full public URL, return as-is
-  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
-    return filePath;
+  if (error) {
+    console.error("[Attachments] Error querying ticket_archivos:", error.message);
+    return [];
   }
 
-  // Detect bucket from path pattern
-  const buckets = ["ticket-archivos", "lector-qualitas", "documents"];
-  for (const bucket of buckets) {
-    if (filePath.startsWith(`${bucket}/`) || filePath.includes(`/${bucket}/`)) {
-      const cleanPath = filePath.replace(`${bucket}/`, "");
-      const { data } = await supabase.storage
-        .from(bucket)
-        .createSignedUrl(cleanPath, 3600);
-      if (data?.signedUrl) return data.signedUrl;
-    }
+  if (!files || files.length === 0) {
+    console.log(`[Attachments] No files found for ticket ${ticketId}${specificFileIds ? ` (filtered to ${specificFileIds.length} IDs)` : ""}`);
+    return [];
   }
 
-  // Default: try ticket-archivos
-  const { data } = await supabase.storage
-    .from("ticket-archivos")
-    .createSignedUrl(filePath, 3600);
+  console.log(`[Attachments] Found ${files.length} files for ticket ${ticketId}`);
 
-  return data?.signedUrl || null;
+  // Deduplicate by url to avoid sending the same file twice
+  const seen = new Set<string>();
+  const deduped: AttachmentInfo[] = [];
+
+  for (const f of files) {
+    const key = f.url || f.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    deduped.push({
+      id: f.id,
+      fileName: f.nombre || "documento",
+      filePath: f.url || "",
+      fileUrl: f.url || undefined,
+      mimeType: f.tipo || "application/octet-stream",
+      size: f.tamano || 0,
+      source: "ticket" as const,
+    });
+  }
+
+  return deduped;
 }
 
 // ============================================================
@@ -359,79 +394,117 @@ async function sendEmailWithAttachments(
   error?: string;
   attachmentsSent: number;
   failedAttachments: string[];
+  attachmentDetails: AttachmentResult[];
 }> {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) {
-    return { sent: false, error: "RESEND_API_KEY not configured", attachmentsSent: 0, failedAttachments: [] };
+    return {
+      sent: false,
+      error: "RESEND_API_KEY not configured",
+      attachmentsSent: 0,
+      failedAttachments: [],
+      attachmentDetails: [],
+    };
   }
 
   const emailAttachments: Array<{ filename: string; content: string }> = [];
   const failedAttachments: string[] = [];
+  const attachmentDetails: AttachmentResult[] = [];
   let totalSize = 0;
 
   for (const att of attachments) {
     if (totalSize >= MAX_TOTAL_ATTACHMENT_SIZE_BYTES) {
       console.log(`[Email] Skipping ${att.fileName}: total size limit reached`);
       failedAttachments.push(att.fileName);
+      attachmentDetails.push({ fileName: att.fileName, channel: "email", status: "skipped", reason: "Total email size limit exceeded" });
       continue;
     }
 
     if (att.size && att.size > MAX_ATTACHMENT_SIZE_BYTES) {
       console.log(`[Email] Skipping ${att.fileName}: file too large (${att.size} bytes)`);
       failedAttachments.push(att.fileName);
+      attachmentDetails.push({ fileName: att.fileName, channel: "email", status: "skipped", reason: `File too large: ${(att.size / 1024 / 1024).toFixed(1)}MB` });
       continue;
     }
 
     try {
-      const rawPath = att.filePath || att.fileUrl || "";
-      const url = await getSignedUrl(supabase, rawPath);
-      if (!url) {
-        console.log(`[Email] Skipping ${att.fileName}: could not resolve URL from path: ${rawPath}`);
+      const rawUrl = att.fileUrl || att.filePath || "";
+      console.log(`[Email] Resolving URL for ${att.fileName}: ${rawUrl.substring(0, 80)}...`);
+
+      const resolved = await resolveFileUrl(supabase, rawUrl);
+      if (!resolved) {
+        console.log(`[Email] Could not resolve URL for ${att.fileName}`);
         failedAttachments.push(att.fileName);
+        attachmentDetails.push({ fileName: att.fileName, channel: "email", status: "failed", reason: "Could not resolve file URL" });
         continue;
       }
 
-      console.log(`[Email] Downloading ${att.fileName} from: ${url.substring(0, 100)}...`);
-      const response = await fetch(url);
+      console.log(`[Email] Downloading ${att.fileName}...`);
+      const response = await fetch(resolved.downloadUrl);
       if (!response.ok) {
-        console.log(`[Email] Skipping ${att.fileName}: download failed HTTP ${response.status}`);
+        console.log(`[Email] Download failed for ${att.fileName}: HTTP ${response.status}`);
         failedAttachments.push(att.fileName);
+        attachmentDetails.push({ fileName: att.fileName, channel: "email", status: "failed", reason: `Download HTTP ${response.status}` });
         continue;
       }
 
       const buffer = await response.arrayBuffer();
       console.log(`[Email] Downloaded ${att.fileName}: ${buffer.byteLength} bytes`);
 
+      if (buffer.byteLength === 0) {
+        console.log(`[Email] Empty file: ${att.fileName}`);
+        failedAttachments.push(att.fileName);
+        attachmentDetails.push({ fileName: att.fileName, channel: "email", status: "failed", reason: "Empty file (0 bytes)" });
+        continue;
+      }
+
       if (totalSize + buffer.byteLength > MAX_TOTAL_ATTACHMENT_SIZE_BYTES) {
         console.log(`[Email] Skipping ${att.fileName}: would exceed total size limit`);
         failedAttachments.push(att.fileName);
+        attachmentDetails.push({ fileName: att.fileName, channel: "email", status: "skipped", reason: "Would exceed total size limit" });
         continue;
       }
 
       totalSize += buffer.byteLength;
+
+      // Convert to base64
       const bytes = new Uint8Array(buffer);
+      const chunkSize = 8192;
       let binary = "";
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+        binary += String.fromCharCode(...chunk);
       }
       const base64 = btoa(binary);
+
       emailAttachments.push({
         filename: att.fileName,
         content: base64,
       });
+      attachmentDetails.push({ fileName: att.fileName, channel: "email", status: "sent" });
     } catch (err) {
-      console.log(`[Email] Error processing ${att.fileName}:`, err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[Email] Error processing ${att.fileName}:`, errMsg);
       failedAttachments.push(att.fileName);
+      attachmentDetails.push({ fileName: att.fileName, channel: "email", status: "failed", reason: errMsg });
     }
   }
 
-  // Add warning about failed attachments to body
+  // Build warning message if some attachments failed
   let finalBody = htmlBody;
-  if (failedAttachments.length > 0) {
+  if (failedAttachments.length > 0 && attachments.length > 0) {
     const warning = `<p style="margin-top:15px; padding:10px; background:#fef3c7; border:1px solid #f59e0b; border-radius:4px; font-size:12px; color:#92400e;">Algunos documentos no pudieron adjuntarse por tamaño o disponibilidad. Puedes consultarlos desde el trámite en MOVI.</p>`;
     finalBody = finalBody.replace("{{adjuntos_advertencia_html}}", warning);
   } else {
     finalBody = finalBody.replace("{{adjuntos_advertencia_html}}", "");
+  }
+
+  // Add attachment list reference in body if attachments exist
+  if (emailAttachments.length > 0) {
+    const attachListHtml = `<p style="margin-top:10px; font-size:13px; color:#374151;">Se adjuntan ${emailAttachments.length} documento(s) a este correo.</p>`;
+    finalBody = finalBody.replace("{{adjuntos_lista_html}}", attachListHtml);
+  } else {
+    finalBody = finalBody.replace("{{adjuntos_lista_html}}", "");
   }
 
   const emailPayload: Record<string, unknown> = {
@@ -443,6 +516,9 @@ async function sendEmailWithAttachments(
 
   if (emailAttachments.length > 0) {
     emailPayload.attachments = emailAttachments;
+    console.log(`[Email] Sending email to ${to} with ${emailAttachments.length} attachments (total: ${(totalSize / 1024).toFixed(0)}KB)`);
+  } else {
+    console.log(`[Email] Sending email to ${to} without attachments`);
   }
 
   try {
@@ -456,27 +532,25 @@ async function sendEmailWithAttachments(
     });
 
     if (res.ok) {
-      return {
-        sent: true,
-        attachmentsSent: emailAttachments.length,
-        failedAttachments,
-      };
+      const resBody = await res.json();
+      console.log(`[Email] Sent successfully. ID: ${resBody?.id || "N/A"}`);
+      return { sent: true, attachmentsSent: emailAttachments.length, failedAttachments, attachmentDetails };
     } else {
       const errText = await res.text();
-      return {
-        sent: false,
-        error: `Resend ${res.status}: ${errText}`,
-        attachmentsSent: 0,
-        failedAttachments,
-      };
+      console.error(`[Email] Resend error ${res.status}: ${errText}`);
+      // Mark all as failed since the whole email failed
+      for (const detail of attachmentDetails) {
+        if (detail.status === "sent") {
+          detail.status = "failed";
+          detail.reason = `Email delivery failed: Resend ${res.status}`;
+        }
+      }
+      return { sent: false, error: `Resend ${res.status}: ${errText}`, attachmentsSent: 0, failedAttachments: attachments.map(a => a.fileName), attachmentDetails };
     }
   } catch (err) {
-    return {
-      sent: false,
-      error: err instanceof Error ? err.message : "Email send error",
-      attachmentsSent: 0,
-      failedAttachments,
-    };
+    const errMsg = err instanceof Error ? err.message : "Email send error";
+    console.error("[Email] Exception:", errMsg);
+    return { sent: false, error: errMsg, attachmentsSent: 0, failedAttachments: attachments.map(a => a.fileName), attachmentDetails };
   }
 }
 
@@ -494,8 +568,8 @@ async function sendWhatsAppWithDocuments(
   documentsSent: number;
   error?: string;
   failedDocuments: string[];
+  attachmentDetails: AttachmentResult[];
 }> {
-  // Get Wazzup config
   const { data: wazzupConfig } = await supabase
     .from("whatsapp_configuracion")
     .select("api_key, channel_id_uuid, activo")
@@ -503,12 +577,13 @@ async function sendWhatsAppWithDocuments(
     .maybeSingle();
 
   if (!wazzupConfig || !wazzupConfig.api_key) {
-    return { messageSent: false, documentsSent: 0, error: "WhatsApp not configured", failedDocuments: [] };
+    return { messageSent: false, documentsSent: 0, error: "WhatsApp not configured", failedDocuments: [], attachmentDetails: [] };
   }
 
   const apiKey = wazzupConfig.api_key;
   const channelId = wazzupConfig.channel_id_uuid;
   const failedDocuments: string[] = [];
+  const attachmentDetails: AttachmentResult[] = [];
   let messageSent = false;
   let documentsSent = 0;
 
@@ -525,7 +600,9 @@ async function sendWhatsAppWithDocuments(
     chatId = "521" + cleanPhone.replace(/^(521|52)/, "");
   }
 
-  // 1. Send text message (truncate to 4000 chars but always keep the URL at the end)
+  console.log(`[WhatsApp] Sending to chatId: ${chatId} (original: ${phone})`);
+
+  // 1. Send text message (always keep URL at the end)
   const MAX_WA_LENGTH = 4000;
   let finalMessage = message;
   if (finalMessage.length > MAX_WA_LENGTH) {
@@ -536,59 +613,88 @@ async function sendWhatsAppWithDocuments(
   }
 
   try {
+    const msgPayload = {
+      channelId,
+      chatType: "whatsapp",
+      chatId,
+      text: finalMessage,
+    };
+
+    console.log(`[WhatsApp] Sending text message (${finalMessage.length} chars)`);
     const msgRes = await fetch("https://api.wazzup24.com/v3/message", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        channelId,
-        chatType: "whatsapp",
-        chatId,
-        text: finalMessage,
-      }),
+      body: JSON.stringify(msgPayload),
     });
 
     if (msgRes.ok) {
       messageSent = true;
+      console.log("[WhatsApp] Text message sent successfully");
     } else {
       const errText = await msgRes.text();
+      console.error(`[WhatsApp] Text message failed ${msgRes.status}: ${errText}`);
       return {
         messageSent: false,
         documentsSent: 0,
         error: `Wazzup message ${msgRes.status}: ${errText}`,
         failedDocuments: attachments.map((a) => a.fileName),
+        attachmentDetails: attachments.map(a => ({ fileName: a.fileName, channel: "whatsapp" as const, status: "failed" as const, reason: "Text message delivery failed" })),
       };
     }
   } catch (err) {
+    const errMsg = err instanceof Error ? err.message : "WhatsApp error";
+    console.error("[WhatsApp] Text message exception:", errMsg);
     return {
       messageSent: false,
       documentsSent: 0,
-      error: err instanceof Error ? err.message : "WhatsApp error",
+      error: errMsg,
       failedDocuments: attachments.map((a) => a.fileName),
+      attachmentDetails: attachments.map(a => ({ fileName: a.fileName, channel: "whatsapp" as const, status: "failed" as const, reason: errMsg })),
     };
   }
 
   // 2. Send documents one by one
+  if (attachments.length === 0) {
+    console.log("[WhatsApp] No documents to send");
+    return { messageSent, documentsSent: 0, failedDocuments: [], attachmentDetails: [] };
+  }
+
+  console.log(`[WhatsApp] Sending ${attachments.length} documents...`);
+
   for (const att of attachments) {
     try {
-      const url = att.fileUrl || att.filePath;
-      if (!url) {
+      const rawUrl = att.fileUrl || att.filePath || "";
+      if (!rawUrl) {
+        console.log(`[WhatsApp] Skipping ${att.fileName}: no URL`);
         failedDocuments.push(att.fileName);
+        attachmentDetails.push({ fileName: att.fileName, channel: "whatsapp", status: "failed", reason: "No file URL available" });
         continue;
       }
 
-      // Get accessible URL
-      let accessibleUrl = url;
-      if (!url.startsWith("http")) {
-        const signed = await getSignedUrl(supabase, url);
-        if (!signed) {
-          failedDocuments.push(att.fileName);
-          continue;
-        }
-        accessibleUrl = signed;
+      // Resolve to a signed URL that Wazzup can access
+      const resolved = await resolveFileUrl(supabase, rawUrl);
+      if (!resolved) {
+        console.log(`[WhatsApp] Could not resolve URL for ${att.fileName}`);
+        failedDocuments.push(att.fileName);
+        attachmentDetails.push({ fileName: att.fileName, channel: "whatsapp", status: "failed", reason: "Could not resolve file URL" });
+        continue;
       }
+
+      // Use signed URL for Wazzup (external service needs accessible URL)
+      const accessibleUrl = resolved.signedUrl;
+      console.log(`[WhatsApp] Sending document ${att.fileName}: ${accessibleUrl.substring(0, 80)}...`);
+
+      const docPayload = {
+        channelId,
+        chatType: "whatsapp",
+        chatId,
+        contentUri: accessibleUrl,
+        fileName: att.fileName,
+        text: `📎 ${att.fileName}`,
+      };
 
       const docRes = await fetch("https://api.wazzup24.com/v3/message", {
         method: "POST",
@@ -596,26 +702,34 @@ async function sendWhatsAppWithDocuments(
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          channelId,
-          chatType: "whatsapp",
-          chatId,
-          contentUri: accessibleUrl,
-          fileName: att.fileName,
-        }),
+        body: JSON.stringify(docPayload),
       });
 
       if (docRes.ok) {
         documentsSent++;
+        attachmentDetails.push({ fileName: att.fileName, channel: "whatsapp", status: "sent" });
+        console.log(`[WhatsApp] Document sent: ${att.fileName}`);
       } else {
+        const errText = await docRes.text();
+        console.error(`[WhatsApp] Document failed ${att.fileName}: ${docRes.status} ${errText}`);
         failedDocuments.push(att.fileName);
+        attachmentDetails.push({ fileName: att.fileName, channel: "whatsapp", status: "failed", reason: `Wazzup ${docRes.status}: ${errText.substring(0, 100)}` });
       }
-    } catch {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[WhatsApp] Document exception ${att.fileName}:`, errMsg);
       failedDocuments.push(att.fileName);
+      attachmentDetails.push({ fileName: att.fileName, channel: "whatsapp", status: "failed", reason: errMsg });
+    }
+
+    // Small delay between document sends to avoid rate limiting
+    if (attachments.indexOf(att) < attachments.length - 1) {
+      await new Promise((r) => setTimeout(r, 500));
     }
   }
 
-  return { messageSent, documentsSent, failedDocuments };
+  console.log(`[WhatsApp] Documents result: ${documentsSent} sent, ${failedDocuments.length} failed`);
+  return { messageSent, documentsSent, failedDocuments, attachmentDetails };
 }
 
 // ============================================================
@@ -651,6 +765,8 @@ Deno.serve(async (req: Request) => {
 
     const payload: TicketNotificationPayload = await req.json();
     const { event_key, ticket_id, triggered_by_user_id, extra_variables, attachment_file_ids, skip_email, skip_whatsapp } = payload;
+
+    console.log(`[Dispatcher] Event: ${event_key}, Ticket: ${ticket_id}, FileIDs: ${attachment_file_ids?.length || "all"}`);
 
     if (!event_key || !ticket_id) {
       return new Response(
@@ -739,13 +855,7 @@ Deno.serve(async (req: Request) => {
       ...(extra_variables || {}),
     };
 
-    // 6. Render subject
-    const renderedSubject = renderTemplate(
-      template.email_subject_template || "",
-      allVariables
-    );
-
-    // Build a clean subject using our helper (as fallback / override)
+    // 6. Build subject
     const eventLabels: Record<string, string> = {
       tramite_creado: "Nuevo trámite",
       tramite_actualizado: context.shortDescription,
@@ -757,13 +867,7 @@ Deno.serve(async (req: Request) => {
       tramite_asignado: "Asignado a ti",
     };
 
-    const cleanSubject = buildTicketEmailSubject(
-      context,
-      eventLabels[event_key]
-    );
-
-    // Use the clean subject (it respects max length and formatting)
-    const finalSubject = cleanSubject;
+    const finalSubject = buildTicketEmailSubject(context, eventLabels[event_key]);
 
     // 7. Render body templates
     const renderedEmailBody = renderTemplate(
@@ -782,8 +886,16 @@ Deno.serve(async (req: Request) => {
       attachment_file_ids
     );
 
+    console.log(`[Dispatcher] Attachments found: ${attachments.length}${attachments.length > 0 ? ` (${attachments.map(a => a.fileName).join(", ")})` : ""}`);
+
     // 9. Send email
-    let emailResult = { sent: false, error: undefined as string | undefined, attachmentsSent: 0, failedAttachments: [] as string[] };
+    let emailResult = {
+      sent: false,
+      error: undefined as string | undefined,
+      attachmentsSent: 0,
+      failedAttachments: [] as string[],
+      attachmentDetails: [] as AttachmentResult[],
+    };
     if (!skip_email && agentEmail) {
       emailResult = await sendEmailWithAttachments(
         agentEmail,
@@ -794,10 +906,18 @@ Deno.serve(async (req: Request) => {
       );
     } else if (!agentEmail) {
       emailResult.error = "El usuario no tiene correo registrado";
+    } else if (skip_email) {
+      emailResult.error = "Email skipped by request";
     }
 
     // 10. Send WhatsApp
-    let whatsappResult = { messageSent: false, documentsSent: 0, error: undefined as string | undefined, failedDocuments: [] as string[] };
+    let whatsappResult = {
+      messageSent: false,
+      documentsSent: 0,
+      error: undefined as string | undefined,
+      failedDocuments: [] as string[],
+      attachmentDetails: [] as AttachmentResult[],
+    };
     if (!skip_whatsapp && agentPhone) {
       whatsappResult = await sendWhatsAppWithDocuments(
         supabase,
@@ -807,6 +927,8 @@ Deno.serve(async (req: Request) => {
       );
     } else if (!agentPhone) {
       whatsappResult.error = "El usuario no tiene teléfono registrado";
+    } else if (skip_whatsapp) {
+      whatsappResult.error = "WhatsApp skipped by request";
     }
 
     // 11. Log to history
@@ -838,71 +960,65 @@ Deno.serve(async (req: Request) => {
 
     // 12. Log individual attachments
     if (historyRecord?.id && attachments.length > 0) {
-      const attachLogs = [];
+      const allAttachmentDetails = [
+        ...emailResult.attachmentDetails,
+        ...whatsappResult.attachmentDetails,
+      ];
 
-      for (const att of attachments) {
-        const emailFailed = emailResult.failedAttachments.includes(att.fileName);
-        const whatsappFailed = whatsappResult.failedDocuments.includes(att.fileName);
-
-        if (!skip_email) {
-          attachLogs.push({
+      if (allAttachmentDetails.length > 0) {
+        const attachLogs = allAttachmentDetails.map((detail) => {
+          const att = attachments.find((a) => a.fileName === detail.fileName);
+          return {
             notification_history_id: historyRecord.id,
             ticket_id,
-            file_name: att.fileName,
-            file_path: att.filePath,
-            file_url: att.fileUrl,
-            mime_type: att.mimeType,
-            file_size: att.size || 0,
-            source: att.source,
-            channel: "email",
-            sent_successfully: !emailFailed && emailResult.sent,
-            error_message: emailFailed ? "File too large or unavailable" : null,
-          });
-        }
+            file_name: detail.fileName,
+            file_path: att?.filePath || null,
+            file_url: att?.fileUrl || null,
+            mime_type: att?.mimeType || null,
+            file_size: att?.size || 0,
+            source: att?.source || "ticket",
+            channel: detail.channel,
+            sent_successfully: detail.status === "sent",
+            error_message: detail.reason || null,
+          };
+        });
 
-        if (!skip_whatsapp && agentPhone) {
-          attachLogs.push({
-            notification_history_id: historyRecord.id,
-            ticket_id,
-            file_name: att.fileName,
-            file_path: att.filePath,
-            file_url: att.fileUrl,
-            mime_type: att.mimeType,
-            file_size: att.size || 0,
-            source: att.source,
-            channel: "whatsapp",
-            sent_successfully: !whatsappFailed && whatsappResult.messageSent,
-            error_message: whatsappFailed ? "Document send failed" : null,
-          });
+        const { error: logError } = await supabase.from("notification_attachments_log").insert(attachLogs);
+        if (logError) {
+          console.error("[Dispatcher] Error logging attachments:", logError.message);
         }
-      }
-
-      if (attachLogs.length > 0) {
-        await supabase.from("notification_attachments_log").insert(attachLogs);
       }
     }
 
+    const response = {
+      success: true,
+      email: {
+        sent: emailResult.sent,
+        subject: finalSubject,
+        attachmentsSent: emailResult.attachmentsSent,
+        failedAttachments: emailResult.failedAttachments,
+        error: emailResult.error,
+      },
+      whatsapp: {
+        messageSent: whatsappResult.messageSent,
+        documentsSent: whatsappResult.documentsSent,
+        failedDocuments: whatsappResult.failedDocuments,
+        error: whatsappResult.error,
+      },
+      attachments: {
+        total: attachments.length,
+        emailSent: emailResult.attachmentsSent,
+        emailFailed: emailResult.failedAttachments,
+        whatsappSent: whatsappResult.documentsSent,
+        whatsappFailed: whatsappResult.failedDocuments,
+      },
+      historyId: historyRecord?.id,
+    };
+
+    console.log(`[Dispatcher] Complete. Email: ${emailResult.sent ? "OK" : "FAIL"} (${emailResult.attachmentsSent} files), WA: ${whatsappResult.messageSent ? "OK" : "FAIL"} (${whatsappResult.documentsSent} docs)`);
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        email: {
-          sent: emailResult.sent,
-          subject: finalSubject,
-          attachmentsSent: emailResult.attachmentsSent,
-          error: emailResult.error,
-        },
-        whatsapp: {
-          messageSent: whatsappResult.messageSent,
-          documentsSent: whatsappResult.documentsSent,
-          error: whatsappResult.error,
-        },
-        attachments: {
-          total: attachments.length,
-          emailFailed: emailResult.failedAttachments,
-          whatsappFailed: whatsappResult.failedDocuments,
-        },
-        historyId: historyRecord?.id,
-      }),
+      JSON.stringify(response),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
