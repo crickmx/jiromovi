@@ -317,15 +317,29 @@ async function getSignedUrl(
   supabase: ReturnType<typeof createClient>,
   filePath: string
 ): Promise<string | null> {
+  if (!filePath) return null;
+
   // If it's already a full public URL, return as-is
   if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
     return filePath;
   }
 
-  // Try to generate a signed URL from storage
+  // Detect bucket from path pattern
+  const buckets = ["ticket-archivos", "lector-qualitas", "documents"];
+  for (const bucket of buckets) {
+    if (filePath.startsWith(`${bucket}/`) || filePath.includes(`/${bucket}/`)) {
+      const cleanPath = filePath.replace(`${bucket}/`, "");
+      const { data } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(cleanPath, 3600);
+      if (data?.signedUrl) return data.signedUrl;
+    }
+  }
+
+  // Default: try ticket-archivos
   const { data } = await supabase.storage
     .from("ticket-archivos")
-    .createSignedUrl(filePath, 3600); // 1 hour expiry
+    .createSignedUrl(filePath, 3600);
 
   return data?.signedUrl || null;
 }
@@ -357,43 +371,56 @@ async function sendEmailWithAttachments(
 
   for (const att of attachments) {
     if (totalSize >= MAX_TOTAL_ATTACHMENT_SIZE_BYTES) {
+      console.log(`[Email] Skipping ${att.fileName}: total size limit reached`);
       failedAttachments.push(att.fileName);
       continue;
     }
 
-    if ((att.size || 0) > MAX_ATTACHMENT_SIZE_BYTES) {
+    if (att.size && att.size > MAX_ATTACHMENT_SIZE_BYTES) {
+      console.log(`[Email] Skipping ${att.fileName}: file too large (${att.size} bytes)`);
       failedAttachments.push(att.fileName);
       continue;
     }
 
     try {
-      const url = await getSignedUrl(supabase, att.filePath || att.fileUrl || "");
+      const rawPath = att.filePath || att.fileUrl || "";
+      const url = await getSignedUrl(supabase, rawPath);
       if (!url) {
+        console.log(`[Email] Skipping ${att.fileName}: could not resolve URL from path: ${rawPath}`);
         failedAttachments.push(att.fileName);
         continue;
       }
 
+      console.log(`[Email] Downloading ${att.fileName} from: ${url.substring(0, 100)}...`);
       const response = await fetch(url);
       if (!response.ok) {
+        console.log(`[Email] Skipping ${att.fileName}: download failed HTTP ${response.status}`);
         failedAttachments.push(att.fileName);
         continue;
       }
 
       const buffer = await response.arrayBuffer();
+      console.log(`[Email] Downloaded ${att.fileName}: ${buffer.byteLength} bytes`);
+
       if (totalSize + buffer.byteLength > MAX_TOTAL_ATTACHMENT_SIZE_BYTES) {
+        console.log(`[Email] Skipping ${att.fileName}: would exceed total size limit`);
         failedAttachments.push(att.fileName);
         continue;
       }
 
       totalSize += buffer.byteLength;
-      const base64 = btoa(
-        String.fromCharCode(...new Uint8Array(buffer))
-      );
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
       emailAttachments.push({
         filename: att.fileName,
         content: base64,
       });
-    } catch {
+    } catch (err) {
+      console.log(`[Email] Error processing ${att.fileName}:`, err);
       failedAttachments.push(att.fileName);
     }
   }
@@ -485,11 +512,29 @@ async function sendWhatsAppWithDocuments(
   let messageSent = false;
   let documentsSent = 0;
 
-  // Normalize phone
+  // Normalize phone for Mexican WhatsApp (must be 521 + 10 digits)
   const cleanPhone = phone.replace(/[^0-9]/g, "");
-  const chatId = cleanPhone.startsWith("52") ? cleanPhone : `52${cleanPhone}`;
+  let chatId: string;
+  if (cleanPhone.startsWith("521") && cleanPhone.length === 13) {
+    chatId = cleanPhone;
+  } else if (cleanPhone.startsWith("52") && cleanPhone.length === 12) {
+    chatId = "521" + cleanPhone.substring(2);
+  } else if (cleanPhone.length === 10) {
+    chatId = "521" + cleanPhone;
+  } else {
+    chatId = "521" + cleanPhone.replace(/^(521|52)/, "");
+  }
 
-  // 1. Send text message first
+  // 1. Send text message (truncate to 4000 chars but always keep the URL at the end)
+  const MAX_WA_LENGTH = 4000;
+  let finalMessage = message;
+  if (finalMessage.length > MAX_WA_LENGTH) {
+    const urlMatch = finalMessage.match(/https?:\/\/[^\s]+$/);
+    const url = urlMatch ? urlMatch[0] : "";
+    const maxBody = MAX_WA_LENGTH - url.length - 20;
+    finalMessage = finalMessage.substring(0, maxBody) + "...\n\n" + url;
+  }
+
   try {
     const msgRes = await fetch("https://api.wazzup24.com/v3/message", {
       method: "POST",
@@ -501,7 +546,7 @@ async function sendWhatsAppWithDocuments(
         channelId,
         chatType: "whatsapp",
         chatId,
-        text: message,
+        text: finalMessage,
       }),
     });
 

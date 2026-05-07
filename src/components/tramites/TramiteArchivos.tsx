@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { FileText, Download, Upload, Eye } from 'lucide-react';
+import { FileText, Download, Upload, Eye, FolderDown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
+import JSZip from 'jszip';
 
 interface Archivo {
   id: string;
@@ -25,6 +26,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
   const [archivos, setArchivos] = useState<Archivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [previewFile, setPreviewFile] = useState<Archivo | null>(null);
 
   useEffect(() => {
@@ -178,6 +180,53 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     return <FileText className="w-8 h-8 text-neutral-400" />;
   };
 
+  const handleDownloadAll = async () => {
+    if (archivos.length === 0) return;
+    setDownloading(true);
+
+    try {
+      const zip = new JSZip();
+
+      for (const archivo of archivos) {
+        try {
+          let downloadUrl = archivo.url;
+
+          const urlObj = new URL(archivo.url);
+          const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
+          if (pathParts.length > 1) {
+            const filePath = pathParts[1];
+            const { data } = await supabase.storage
+              .from('ticket-archivos')
+              .createSignedUrl(filePath, 3600);
+            if (data) downloadUrl = data.signedUrl;
+          }
+
+          const response = await fetch(downloadUrl);
+          if (!response.ok) continue;
+          const blob = await response.blob();
+          zip.file(archivo.nombre, blob);
+        } catch {
+          continue;
+        }
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `archivos-tramite.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading all files:', err);
+      alert('Error al descargar los archivos');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -192,21 +241,33 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
         <h3 className="text-lg font-semibold text-neutral-900">
           Archivos Adjuntos ({archivos.length})
         </h3>
-        <label
-          htmlFor="file-upload-archivos"
-          className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl cursor-pointer transition-all font-semibold"
-        >
-          <Upload className="w-5 h-5" />
-          <span>{uploading ? 'Subiendo...' : 'Subir Archivo'}</span>
-          <input
-            id="file-upload-archivos"
-            type="file"
-            multiple
-            onChange={handleFileUpload}
-            disabled={uploading}
-            className="hidden"
-          />
-        </label>
+        <div className="flex items-center space-x-2">
+          {archivos.length > 0 && (
+            <button
+              onClick={handleDownloadAll}
+              disabled={downloading}
+              className="flex items-center space-x-2 px-4 py-2 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded-xl transition-all font-semibold disabled:opacity-50"
+            >
+              <FolderDown className="w-5 h-5" />
+              <span>{downloading ? 'Descargando...' : 'Descargar todo'}</span>
+            </button>
+          )}
+          <label
+            htmlFor="file-upload-archivos"
+            className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl cursor-pointer transition-all font-semibold"
+          >
+            <Upload className="w-5 h-5" />
+            <span>{uploading ? 'Subiendo...' : 'Subir Archivo'}</span>
+            <input
+              id="file-upload-archivos"
+              type="file"
+              multiple
+              onChange={handleFileUpload}
+              disabled={uploading}
+              className="hidden"
+            />
+          </label>
+        </div>
       </div>
 
       {archivos.length === 0 ? (
