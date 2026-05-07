@@ -19,6 +19,7 @@ import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeader } from '../components/ui/page-header';
 import VendorSearchCombobox from '../components/lectorQualitas/VendorSearchCombobox';
+import CompletarDatosSicasModal from '../components/tramites/CompletarDatosSicasModal';
 import type { SicasVendorOption } from '../lib/lectorQualitasTypes';
 
 interface ExtractedCoverData {
@@ -82,6 +83,16 @@ interface DeliveryRecord {
   sicas_registered_at: string | null;
   sicas_manual_review_reason: string | null;
   sicas_last_attempt_at: string | null;
+  sicas_override_tipo_docto: string | null;
+  sicas_override_cia: string | null;
+  sicas_override_ramo: string | null;
+  sicas_override_subramo: string | null;
+  sicas_override_moneda: string | null;
+  sicas_override_fpago: string | null;
+  sicas_override_ejecutivo: string | null;
+  sicas_override_grupo: string | null;
+  sicas_override_cliente: string | null;
+  sicas_override_estatus: string | null;
   ticket_action_type: string | null;
   ticket_was_existing: boolean;
   ticket_closed_as_won: boolean;
@@ -901,6 +912,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
   const [dateTo, setDateTo] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [confirmModal, setConfirmModal] = useState<DeliveryRecord | null>(null);
+  const [completarDatosRecord, setCompletarDatosRecord] = useState<DeliveryRecord | null>(null);
   const [registering, setRegistering] = useState<string | null>(null);
   const [registerResult, setRegisterResult] = useState<{ id: string; success: boolean; message: string } | null>(null);
 
@@ -1253,6 +1265,15 @@ function HistorialTab({ usuario }: { usuario: any }) {
                             <span className="inline-flex items-center gap-1 text-[10px] text-sky-600 dark:text-sky-400">
                               <Loader2 className="w-3 h-3 animate-spin" /> Registrando...
                             </span>
+                          ) : r.sicas_registration_status === 'manual_review_required' ? (
+                            <button
+                              onClick={() => setCompletarDatosRecord(r)}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors"
+                              title="Completar datos faltantes para registrar en SICAS"
+                            >
+                              <ShieldAlert className="w-3 h-3" />
+                              Completar
+                            </button>
                           ) : canAttemptRegistration(r) ? (
                             <button
                               onClick={() => setConfirmModal(r)}
@@ -1292,6 +1313,14 @@ function HistorialTab({ usuario }: { usuario: any }) {
             setConfirmModal({ ...confirmModal, manual_policy_number: newNumber });
             loadRecords();
           }}
+        />
+      )}
+
+      {completarDatosRecord && (
+        <CompletarDatosSicasModal
+          record={completarDatosRecord}
+          onClose={() => setCompletarDatosRecord(null)}
+          onSaved={() => loadRecords()}
         />
       )}
     </div>

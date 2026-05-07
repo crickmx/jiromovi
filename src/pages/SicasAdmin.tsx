@@ -25,6 +25,7 @@ import {
   unmapVendedor,
 } from '../lib/sicasUtils';
 import type { SicasConfig, SicasDespachoWithMapping, SicasVendedorWithMapping } from '../lib/sicasTypes';
+import HwcaptureConfigSection from '../components/produccion/HwcaptureConfigSection';
 
 export default function SicasAdmin() {
   const navigate = useNavigate();
@@ -967,7 +968,7 @@ export default function SicasAdmin() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5 mb-6">
+        <TabsList className="grid w-full grid-cols-6 mb-6">
           <TabsTrigger value="conexion">Conexión</TabsTrigger>
           <TabsTrigger value="despachos" className="relative">
             Mapeo Despachos
@@ -993,6 +994,7 @@ export default function SicasAdmin() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="hwcapture">HWCAPTURE</TabsTrigger>
           <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
         </TabsList>
 
@@ -2253,6 +2255,12 @@ export default function SicasAdmin() {
                 )}
               </CardContent>
             </Card>
+          </Section>
+        </TabsContent>
+
+        <TabsContent value="hwcapture">
+          <Section>
+            <HwcaptureConfigSection />
           </Section>
         </TabsContent>
 
