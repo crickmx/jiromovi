@@ -285,13 +285,13 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
       const { data, error } = await supabase
         .from('tickets')
         .select(`
-          id, folio, tipo_tramite, instrucciones, poliza, prioridad, created_at, updated_at,
+          id, folio, tipo_tramite, instrucciones, poliza, prioridad, fecha_creacion, ultima_modificacion,
           ticket_estatus:estatus_id(nombre),
           agente:agente_usuario_id(nombre, apellidos),
           insurance_type:insurance_type_id(nombre)
         `)
         .or(`agente_usuario_id.eq.${vendorMoviUserId},agente_id.eq.${vendorMoviUserId},assigned_to_user_id.eq.${vendorMoviUserId},creado_por.eq.${vendorMoviUserId}`)
-        .order('updated_at', { ascending: false })
+        .order('ultima_modificacion', { ascending: false })
         .limit(50);
 
       if (error) throw error;
@@ -303,8 +303,8 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
         instrucciones: t.instrucciones,
         poliza: t.poliza,
         prioridad: t.prioridad,
-        created_at: t.created_at,
-        updated_at: t.updated_at,
+        created_at: t.fecha_creacion,
+        updated_at: t.ultima_modificacion,
         estatus_nombre: t.ticket_estatus?.nombre || null,
         agente_nombre: t.agente ? `${t.agente.nombre || ''} ${t.agente.apellidos || ''}`.trim() : null,
         insurance_type_nombre: t.insurance_type?.nombre || null,
