@@ -966,7 +966,8 @@ function HistorialTab({ usuario }: { usuario: any }) {
         setRegisterResult({ id: record.id, success: true, message: result.message || 'Registro exitoso' });
         loadRecords();
       } else {
-        setRegisterResult({ id: record.id, success: false, message: result.error || 'Error desconocido' });
+        const errorMsg = result.error || result.message || result.sicas_raw_error || 'Error desconocido al comunicarse con SICAS';
+        setRegisterResult({ id: record.id, success: false, message: errorMsg });
         loadRecords();
       }
     } catch (err) {

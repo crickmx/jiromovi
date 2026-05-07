@@ -997,14 +997,52 @@ Deno.serve(async (req: Request) => {
     // ===== HANDLE FAILURE =====
     if (!successResult) {
       const lastResult = strategyResults[strategyResults.length - 1];
-      const sicasMessage = lastResult?.error || "Error desconocido de SICAS";
-      const isDocumentError = sicasMessage.includes("No Existe") || sicasMessage.includes("No. de Documento");
+      const rawSicasError = lastResult?.error || "";
+      const httpStatus = lastResult?.httpStatus || 0;
+
+      // Build a user-friendly error message from the SICAS response
+      let userFriendlyError: string;
+      let errorCategory: string;
+
+      if (!rawSicasError || rawSicasError === "Error desconocido de SICAS") {
+        userFriendlyError = `SICAS no respondio correctamente (HTTP ${httpStatus}). Verifica la conexion con SICAS e intenta de nuevo.`;
+        errorCategory = "sin_respuesta";
+      } else if (rawSicasError.includes("No Existe") || rawSicasError.includes("No. de Documento")) {
+        userFriendlyError = `SICAS rechazo el numero de documento "${policyNumber}". Respuesta SICAS: "${rawSicasError}". Verifica que el numero de poliza sea correcto.`;
+        errorCategory = "documento_rechazado";
+      } else if (rawSicasError.includes("Token") || rawSicasError.includes("Unauthorized") || rawSicasError.includes("401")) {
+        userFriendlyError = `Error de autenticacion con SICAS: "${rawSicasError}". La sesion puede haber expirado.`;
+        errorCategory = "autenticacion";
+      } else if (rawSicasError.includes("timeout") || rawSicasError.includes("Timeout") || rawSicasError.includes("ETIMEDOUT")) {
+        userFriendlyError = `SICAS no respondio a tiempo (timeout). Intenta de nuevo en unos minutos.`;
+        errorCategory = "timeout";
+      } else if (rawSicasError.includes("IDVend") || rawSicasError.includes("Vendedor")) {
+        userFriendlyError = `SICAS rechazo el vendedor asignado. Respuesta: "${rawSicasError}". Verifica el mapeo de vendedores.`;
+        errorCategory = "vendedor_invalido";
+      } else if (rawSicasError.includes("IDCia") || rawSicasError.includes("Compania") || rawSicasError.includes("Aseguradora")) {
+        userFriendlyError = `SICAS rechazo la aseguradora. Respuesta: "${rawSicasError}".`;
+        errorCategory = "aseguradora_invalida";
+      } else if (rawSicasError.includes("IDRamo") || rawSicasError.includes("Ramo")) {
+        userFriendlyError = `SICAS rechazo el ramo de seguro. Respuesta: "${rawSicasError}".`;
+        errorCategory = "ramo_invalido";
+      } else if (rawSicasError.includes("Fecha") || rawSicasError.includes("FDesde") || rawSicasError.includes("FHasta")) {
+        userFriendlyError = `SICAS rechazo las fechas de vigencia. Respuesta: "${rawSicasError}". Verifica formato de fechas.`;
+        errorCategory = "fecha_invalida";
+      } else if (httpStatus >= 500) {
+        userFriendlyError = `Error interno de SICAS (HTTP ${httpStatus}): "${rawSicasError}". Intenta de nuevo mas tarde.`;
+        errorCategory = "error_servidor_sicas";
+      } else {
+        userFriendlyError = `SICAS respondio con error: "${rawSicasError}" (HTTP ${httpStatus}).`;
+        errorCategory = "error_general";
+      }
+
+      const isDocumentError = errorCategory === "documento_rechazado";
 
       await supabase
         .from("policy_deliveries")
         .update({
           sicas_registration_status: isDocumentError ? "sicas_rejected" : "error",
-          sicas_error_message: sicasMessage,
+          sicas_error_message: userFriendlyError,
           sicas_manual_review_reason: isDocumentError
             ? "SICAS no reconoce el numero de documento. Se probaron multiples formatos de campo."
             : null,
@@ -1014,14 +1052,16 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          status: "sicas_rejected",
-          message: "SICAS no recibio el numero de documento. Revisa el payload enviado.",
-          sicas_message: sicasMessage,
-          debug_hint: "Se probaron formatos: Documento, DatDocumentos.Documento, DatDocumento.Documento. Ninguno fue aceptado.",
+          status: isDocumentError ? "sicas_rejected" : "error",
+          error: userFriendlyError,
+          error_category: errorCategory,
+          sicas_raw_error: rawSicasError,
+          http_status: httpStatus,
           strategies_tried: strategyResults.map((r) => ({
             name: r.strategyName,
             success: r.success,
             error: r.error,
+            httpStatus: r.httpStatus,
           })),
           policy_number_used: policyNumber,
           durationMs: Date.now() - startTime,
