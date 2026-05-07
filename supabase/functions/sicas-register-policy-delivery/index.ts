@@ -85,7 +85,29 @@ function cleanPolicyNumber(raw: string): string | null {
   cleaned = cleaned.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "");
 
   if (cleaned.length === 0) return null;
+
+  // Reject MOVI internal folios (e.g. RA-2026-0082, TRA-2025-0001, EMI-2026-0001)
+  if (looksLikeMoviFolio(cleaned)) {
+    console.warn(`[cleanPolicyNumber] Rejected MOVI folio pattern: "${cleaned}"`);
+    return null;
+  }
+
   return cleaned;
+}
+
+const MOVI_FOLIO_PATTERNS = [
+  /^RA-\d{4}-\d+$/i,
+  /^TRA-\d{4}-\d+$/i,
+  /^EMI-\d{4}-\d+$/i,
+  /^COT-\d{4}-\d+$/i,
+  /^REN-\d{4}-\d+$/i,
+  /^COB-\d{4}-\d+$/i,
+  /^OTR-\d{4}-\d+$/i,
+  /^[A-Z]{2,4}-\d{4}-\d{3,6}$/i,
+];
+
+function looksLikeMoviFolio(value: string): boolean {
+  return MOVI_FOLIO_PATTERNS.some((pattern) => pattern.test(value));
 }
 
 // ============================================================
@@ -226,6 +248,144 @@ const SAVE_DATA_STRATEGIES: SaveDataStrategy[] = [
       "DatDoctoDetail.Serie": delivery.vin || "",
       "DatDoctoDetail.Motor": delivery.engine || "",
       "DatDoctoDetail.Placas": delivery.plates || "",
+    }),
+  },
+];
+
+// Additional strategies that try alternative body structures
+const ALTERNATIVE_STRATEGIES: Array<{
+  name: string;
+  description: string;
+  buildRequest: (policyNumber: string, delivery: PolicyDelivery, baseUrl: string, token: string) => {
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+  };
+}> = [
+  {
+    name: "wrapped_Records_array",
+    description: "Body wrapped in { Records: [{ fields }] } structure",
+    buildRequest: (policyNumber, delivery, baseUrl, token) => ({
+      url: `${baseUrl}/Data/SaveData`,
+      method: "POST",
+      headers: {
+        Authorization: token,
+        "Content-Type": "application/json",
+        Prop_KeyCode: "HWCAPTURE",
+        Prop_KeyProcess: "DATA",
+        Prop_TProc: "Save_Data",
+      },
+      body: JSON.stringify({
+        Records: [{
+          IDDocto: "-1",
+          Documento: policyNumber,
+          IDVend: delivery.vendor_sicas_id || "",
+          IDCia: "1",
+          IDRamo: "1",
+          IDSubRamo: "1",
+          FDesde: formatDateSicas(delivery.start_date),
+          FHasta: formatDateSicas(delivery.end_date),
+          PrimaNeta: delivery.net_premium || "0",
+          PrimaTotal: delivery.total_premium || "0",
+          NombreCliente: delivery.insured_name || "",
+          IDGerencia: delivery.sicas_management_id || "0",
+          IDDespacho: delivery.sicas_office_id || "0",
+          Estatus: "V",
+        }],
+      }),
+    }),
+  },
+  {
+    name: "query_params_documento",
+    description: "Documento as URL query parameter, minimal body",
+    buildRequest: (policyNumber, delivery, baseUrl, token) => {
+      const params = new URLSearchParams({ Documento: policyNumber });
+      return {
+        url: `${baseUrl}/Data/SaveData?${params.toString()}`,
+        method: "POST",
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+          Prop_KeyCode: "HWCAPTURE",
+          Prop_KeyProcess: "DATA",
+          Prop_TProc: "Save_Data",
+        },
+        body: JSON.stringify({
+          IDDocto: "-1",
+          Documento: policyNumber,
+          IDVend: delivery.vendor_sicas_id || "",
+          IDCia: "1",
+          IDRamo: "1",
+          Estatus: "V",
+        }),
+      };
+    },
+  },
+  {
+    name: "form_urlencoded",
+    description: "Body as application/x-www-form-urlencoded instead of JSON",
+    buildRequest: (policyNumber, delivery, baseUrl, token) => {
+      const formData = new URLSearchParams();
+      formData.append("IDDocto", "-1");
+      formData.append("Documento", policyNumber);
+      formData.append("IDVend", delivery.vendor_sicas_id || "");
+      formData.append("IDCia", "1");
+      formData.append("IDRamo", "1");
+      formData.append("IDSubRamo", "1");
+      formData.append("FDesde", formatDateSicas(delivery.start_date));
+      formData.append("FHasta", formatDateSicas(delivery.end_date));
+      formData.append("PrimaNeta", delivery.net_premium || "0");
+      formData.append("PrimaTotal", delivery.total_premium || "0");
+      formData.append("NombreCliente", delivery.insured_name || "");
+      formData.append("Estatus", "V");
+      return {
+        url: `${baseUrl}/Data/SaveData`,
+        method: "POST",
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Prop_KeyCode: "HWCAPTURE",
+          Prop_KeyProcess: "DATA",
+          Prop_TProc: "Save_Data",
+        },
+        body: formData.toString(),
+      };
+    },
+  },
+  {
+    name: "nested_DataInfo_xml_style",
+    description: "Body with DataInfo wrapper mimicking XML table structure",
+    buildRequest: (policyNumber, delivery, baseUrl, token) => ({
+      url: `${baseUrl}/Data/SaveData`,
+      method: "POST",
+      headers: {
+        Authorization: token,
+        "Content-Type": "application/json",
+        Prop_KeyCode: "HWCAPTURE",
+        Prop_KeyProcess: "DATA",
+        Prop_TProc: "Save_Data",
+      },
+      body: JSON.stringify({
+        DataInfo: {
+          DatDocumentos: {
+            IDDocto: "-1",
+            Documento: policyNumber,
+            IDVend: delivery.vendor_sicas_id || "",
+            IDCia: "1",
+            IDRamo: "1",
+            IDSubRamo: "1",
+            FDesde: formatDateSicas(delivery.start_date),
+            FHasta: formatDateSicas(delivery.end_date),
+            PrimaNeta: delivery.net_premium || "0",
+            PrimaTotal: delivery.total_premium || "0",
+            NombreCliente: delivery.insured_name || "",
+            IDGerencia: delivery.sicas_management_id || "0",
+            IDDespacho: delivery.sicas_office_id || "0",
+            Estatus: "V",
+          },
+        },
+      }),
     }),
   },
 ];
@@ -540,12 +700,24 @@ Deno.serve(async (req: Request) => {
     console.log(`  => Resolved: "${policyNumber}"`);
 
     if (!policyNumber) {
-      const errMsg = "Falta numero de poliza/documento. Capturalo antes de registrar en SICAS.";
+      // Determine if rejection was due to folio pattern
+      const rawCandidates = [
+        delivery.manual_policy_number, delivery.policy_number,
+        delivery.extracted_data?.numeroPoliza, delivery.extracted_data?.poliza,
+      ].filter(Boolean);
+      const hadFolioRejection = rawCandidates.some((c) => c && looksLikeMoviFolio(c.trim()));
+      const errMsg = hadFolioRejection
+        ? "El valor detectado parece ser un folio interno de MOVI (ej. RA-2026-xxxx), no un numero de poliza real. Captura el numero de poliza correcto."
+        : "Falta numero de poliza/documento. Capturalo antes de registrar en SICAS.";
+      const reviewReason = hadFolioRejection
+        ? "Se detecto un folio interno de MOVI en lugar de un numero de poliza real"
+        : "No se encontro numero de poliza en ningun campo disponible";
+
       await supabase
         .from("policy_deliveries")
         .update({
           sicas_registration_status: "manual_review_required",
-          sicas_manual_review_reason: "No se encontro numero de poliza en ningun campo disponible",
+          sicas_manual_review_reason: reviewReason,
           sicas_error_message: errMsg,
         })
         .eq("id", delivery.id);
@@ -701,6 +873,81 @@ Deno.serve(async (req: Request) => {
 
       // Small delay between strategy attempts
       await new Promise((r) => setTimeout(r, 300));
+    }
+
+    // ===== TRY ALTERNATIVE STRATEGIES (different body formats) =====
+    if (!successResult) {
+      console.log(`\n[SICAS] Primary strategies exhausted, trying alternative formats...`);
+
+      for (const altStrategy of ALTERNATIVE_STRATEGIES) {
+        console.log(`\n[SICAS] === Alt Strategy: ${altStrategy.name} ===`);
+        console.log(`[SICAS] Description: ${altStrategy.description}`);
+
+        const req = altStrategy.buildRequest(policyNumber, delivery as PolicyDelivery, sicasBaseUrl, sicasToken);
+        console.log(`[SICAS] URL: ${req.url}`);
+        console.log(`[SICAS] Content-Type: ${req.headers["Content-Type"]}`);
+        console.log(`[SICAS] Body (first 300): ${req.body.substring(0, 300)}`);
+
+        try {
+          const response = await fetch(req.url, {
+            method: req.method,
+            headers: req.headers,
+            body: req.body,
+          });
+
+          const httpStatus = response.status;
+          let responseData: any;
+
+          try {
+            responseData = await response.json();
+          } catch {
+            responseData = await response.text();
+          }
+
+          console.log(`[SICAS] Alt ${altStrategy.name}: HTTP ${httpStatus}, Response: ${JSON.stringify(responseData).substring(0, 300)}`);
+
+          const altResult: StrategyResult = {
+            strategyName: altStrategy.name,
+            description: altStrategy.description,
+            httpStatus,
+            success: false,
+            payload: { _format: altStrategy.name, body_preview: req.body.substring(0, 200) } as any,
+            responseRaw: responseData,
+          };
+
+          if (responseData?.Sucess || responseData?.Success) {
+            const docId = responseData.IDDocto || responseData.DocumentId || responseData.Id;
+            altResult.success = true;
+            altResult.documentId = docId ? String(docId) : undefined;
+            successResult = altResult;
+            console.log(`[SICAS] Alt ${altStrategy.name}: SUCCESS! DocId: ${docId}`);
+          } else {
+            altResult.error = responseData?.Message || responseData?.Error || JSON.stringify(responseData);
+          }
+
+          strategyResults.push(altResult);
+
+          if (successResult) break;
+
+          const isDocErr = altResult.error && (altResult.error.includes("No Existe") || altResult.error.includes("Documento"));
+          if (!isDocErr && httpStatus !== 0 && httpStatus !== 200) break;
+
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.log(`[SICAS] Alt ${altStrategy.name}: Exception: ${errMsg}`);
+          strategyResults.push({
+            strategyName: altStrategy.name,
+            description: altStrategy.description,
+            httpStatus: 0,
+            success: false,
+            payload: {} as any,
+            responseRaw: { exception: errMsg },
+            error: errMsg,
+          });
+        }
+
+        await new Promise((r) => setTimeout(r, 300));
+      }
     }
 
     // ===== SAVE COMPREHENSIVE LOGS =====

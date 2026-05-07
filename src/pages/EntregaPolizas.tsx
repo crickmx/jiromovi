@@ -58,6 +58,7 @@ interface DeliveryRecord {
   vendor_sicas_key: string | null;
   sicas_office_name: string | null;
   policy_number: string | null;
+  manual_policy_number: string | null;
   insured_name: string | null;
   vehicle_description: string | null;
   total_premium: string | null;
@@ -86,6 +87,10 @@ interface DeliveryRecord {
   ticket_close_status: string | null;
   ticket_closed_at: string | null;
   ticket_closed_by: string | null;
+}
+
+function looksLikeMoviFolio(value: string): boolean {
+  return /^[A-Z]{2,4}-\d{4}-\d{3,6}$/i.test(value.trim());
 }
 
 export default function EntregaPolizas() {
@@ -1145,10 +1150,10 @@ function HistorialTab({ usuario }: { usuario: any }) {
                 <tr className="border-b border-neutral-100 dark:border-white/5 bg-neutral-50 dark:bg-white/5">
                   <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Fecha</th>
                   <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Vendedor</th>
-                  <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Poliza</th>
+                  <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">No. Poliza</th>
                   <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Asegurado</th>
                   <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Prima</th>
-                  <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Folio</th>
+                  <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Folio MOVI</th>
                   <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Accion</th>
                   <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Estado</th>
                   <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">SICAS</th>
@@ -1172,7 +1177,12 @@ function HistorialTab({ usuario }: { usuario: any }) {
                         <p className="font-medium text-neutral-800 dark:text-white truncate max-w-[140px]">{r.vendor_sicas_name}</p>
                         {r.vendor_sicas_key && <p className="text-[10px] text-neutral-400">{r.vendor_sicas_key}</p>}
                       </td>
-                      <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70">{r.policy_number || '-'}</td>
+                      <td className="px-3 py-2.5">
+                        <span className="text-neutral-700 dark:text-white/70">{r.manual_policy_number || r.policy_number || '-'}</span>
+                        {r.manual_policy_number && r.policy_number && r.manual_policy_number !== r.policy_number && (
+                          <p className="text-[9px] text-neutral-400 dark:text-white/30 line-through">{r.policy_number}</p>
+                        )}
+                      </td>
                       <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70 truncate max-w-[120px]">{r.insured_name || '-'}</td>
                       <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70">{r.total_premium || '-'}</td>
                       <td className="px-3 py-2.5">
@@ -1259,9 +1269,9 @@ function HistorialTab({ usuario }: { usuario: any }) {
           onUpdatePolicyNumber={async (newNumber) => {
             await supabase
               .from('policy_deliveries')
-              .update({ policy_number: newNumber })
+              .update({ manual_policy_number: newNumber })
               .eq('id', confirmModal.id);
-            setConfirmModal({ ...confirmModal, policy_number: newNumber });
+            setConfirmModal({ ...confirmModal, manual_policy_number: newNumber });
             loadRecords();
           }}
         />
@@ -1281,7 +1291,27 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
   onUpdatePolicyNumber?: (newNumber: string) => void;
 }) {
   const [editingPolicyNumber, setEditingPolicyNumber] = useState(false);
-  const [policyNumberInput, setPolicyNumberInput] = useState(record.policy_number || '');
+  const effectivePolicyNumber = record.manual_policy_number || record.policy_number || '';
+  const [policyNumberInput, setPolicyNumberInput] = useState(effectivePolicyNumber);
+  const [folioWarning, setFolioWarning] = useState('');
+
+  const handlePolicyNumberChange = (val: string) => {
+    setPolicyNumberInput(val);
+    if (looksLikeMoviFolio(val)) {
+      setFolioWarning('Esto parece un folio interno de MOVI, no un numero de poliza real.');
+    } else {
+      setFolioWarning('');
+    }
+  };
+
+  const handleSavePolicyNumber = () => {
+    const trimmed = policyNumberInput.trim();
+    if (trimmed && !looksLikeMoviFolio(trimmed) && onUpdatePolicyNumber) {
+      onUpdatePolicyNumber(trimmed);
+    }
+    setEditingPolicyNumber(false);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onCancel} />
@@ -1300,30 +1330,40 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
 
         <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3 space-y-1.5">
           {editingPolicyNumber ? (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-medium text-neutral-500 dark:text-white/40 w-20">Poliza:</span>
-              <input
-                type="text"
-                value={policyNumberInput}
-                onChange={(e) => setPolicyNumberInput(e.target.value)}
-                className="flex-1 px-2 py-1 text-xs bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-white/10 rounded-md"
-                autoFocus
-              />
-              <button
-                onClick={() => {
-                  if (policyNumberInput.trim() && onUpdatePolicyNumber) {
-                    onUpdatePolicyNumber(policyNumberInput.trim());
-                  }
-                  setEditingPolicyNumber(false);
-                }}
-                className="px-2 py-1 text-[10px] font-medium text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 rounded"
-              >
-                Guardar
-              </button>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-medium text-neutral-500 dark:text-white/40 w-20">No. Poliza:</span>
+                <input
+                  type="text"
+                  value={policyNumberInput}
+                  onChange={(e) => handlePolicyNumberChange(e.target.value)}
+                  placeholder="Ej: 8650098597"
+                  className={`flex-1 px-2 py-1 text-xs bg-white dark:bg-neutral-700 border rounded-md ${
+                    folioWarning ? 'border-amber-400 dark:border-amber-500' : 'border-neutral-200 dark:border-white/10'
+                  }`}
+                  autoFocus
+                />
+                <button
+                  onClick={handleSavePolicyNumber}
+                  disabled={!policyNumberInput.trim() || !!folioWarning}
+                  className="px-2 py-1 text-[10px] font-medium text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 rounded disabled:opacity-40"
+                >
+                  Guardar
+                </button>
+              </div>
+              {folioWarning && (
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 pl-[84px] flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                  {folioWarning}
+                </p>
+              )}
+              <p className="text-[9px] text-neutral-400 dark:text-white/30 pl-[84px]">
+                Ingresa el numero de poliza de la aseguradora (NO el folio MOVI como RA-2026-xxxx).
+              </p>
             </div>
           ) : (
             <div className="flex items-center gap-1">
-              <SummaryRow label="Poliza" value={record.policy_number || 'Sin numero'} />
+              <SummaryRow label="No. Poliza" value={effectivePolicyNumber || 'Sin numero'} />
               {onUpdatePolicyNumber && (
                 <button
                   onClick={() => setEditingPolicyNumber(true)}
@@ -1334,12 +1374,14 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
               )}
             </div>
           )}
+          {record.ticket_folio && (
+            <SummaryRow label="Folio MOVI" value={record.ticket_folio} />
+          )}
           <SummaryRow label="Asegurado" value={record.insured_name || 'Sin nombre'} />
           <SummaryRow label="Vendedor" value={record.vendor_sicas_name} />
           <SummaryRow label="Oficina" value={record.sicas_office_name || 'Sin asignar'} />
           <SummaryRow label="Prima total" value={record.total_premium || '-'} />
           <SummaryRow label="Vigencia" value={record.start_date && record.end_date ? `${record.start_date} - ${record.end_date}` : 'Sin vigencia'} />
-          <SummaryRow label="Tramite" value={record.ticket_folio || 'Sin tramite'} />
           {record.sicas_registration_attempts > 0 && (
             <SummaryRow label="Intentos previos" value={`${record.sicas_registration_attempts}`} highlight />
           )}
