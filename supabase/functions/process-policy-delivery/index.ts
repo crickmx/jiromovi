@@ -228,7 +228,28 @@ Deno.serve(async (req: Request) => {
       asignado_por: user.id,
     });
 
-    // 11. Save delivery record
+    // 11. Determine initial SICAS registration status based on data completeness
+    const hasMinimumSicasData = !!(
+      ext.numeroPoliza &&
+      ext.nombreCliente &&
+      ext.inicioVigencia &&
+      ext.finVigencia &&
+      payload.vendor.sicasId &&
+      payload.coverFile.path
+    );
+
+    const initialSicasStatus = hasMinimumSicasData ? "ready_to_register" : "manual_review_required";
+    const reviewReason = hasMinimumSicasData
+      ? null
+      : [
+          !ext.numeroPoliza && "Numero de poliza",
+          !ext.nombreCliente && "Nombre del asegurado",
+          !ext.inicioVigencia && "Inicio de vigencia",
+          !ext.finVigencia && "Fin de vigencia",
+          !payload.vendor.sicasId && "Vendedor SICAS",
+        ].filter(Boolean).join(", ");
+
+    // 12. Save delivery record
     const deliveryInsert = {
       created_by: user.id,
       created_by_name: payload.createdByName,
@@ -267,6 +288,8 @@ Deno.serve(async (req: Request) => {
       ticket_folio: ticket.folio,
       ticket_status: "Emitido",
       status: "completado",
+      sicas_registration_status: initialSicasStatus,
+      sicas_manual_review_reason: reviewReason,
     };
 
     const { data: delivery, error: deliveryError } = await supabase

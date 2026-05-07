@@ -16,6 +16,11 @@ import {
   Clock,
   Filter,
   ChevronDown,
+  UploadCloud,
+  RefreshCw,
+  ShieldAlert,
+  Ban,
+  Info,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
@@ -75,6 +80,14 @@ interface DeliveryRecord {
   additional_files_count: number;
   exported_at: string | null;
   exported_by_name: string | null;
+  sicas_registration_status: string | null;
+  sicas_document_id: string | null;
+  sicas_registration_attempts: number;
+  sicas_error_message: string | null;
+  sicas_duplicate_detected: boolean;
+  sicas_duplicate_document_id: string | null;
+  sicas_registered_at: string | null;
+  sicas_manual_review_reason: string | null;
 }
 
 export default function EntregaPolizas() {
@@ -741,6 +754,19 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
 // HISTORIAL TAB
 // ========================
 
+const SICAS_STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+  not_started: { label: 'Sin iniciar', color: 'bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-white/40', icon: Clock },
+  ready_to_register: { label: 'Listo', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: UploadCloud },
+  validating: { label: 'Validando', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400', icon: Loader2 },
+  duplicate_found: { label: 'Duplicado', color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400', icon: Ban },
+  registering: { label: 'Enviando', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
+  registered: { label: 'Registrado', color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400', icon: CheckCircle2 },
+  uploading_files: { label: 'Subiendo docs', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
+  completed: { label: 'Completado', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300', icon: CheckCircle2 },
+  error: { label: 'Error', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
+  manual_review_required: { label: 'Revision', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300', icon: ShieldAlert },
+};
+
 function HistorialTab({ usuario }: { usuario: any }) {
   const [records, setRecords] = useState<DeliveryRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -749,6 +775,13 @@ function HistorialTab({ usuario }: { usuario: any }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<DeliveryRecord | null>(null);
+  const [registering, setRegistering] = useState<string | null>(null);
+  const [registerResult, setRegisterResult] = useState<{ id: string; success: boolean; message: string } | null>(null);
+
+  const isAdmin = usuario?.rol === 'Administrador';
+  const isGerente = usuario?.rol === 'Gerente';
+  const canRegisterSicas = isAdmin || isGerente || usuario?.rol === 'Empleado' || usuario?.rol === 'Ejecutivo';
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
@@ -787,6 +820,45 @@ function HistorialTab({ usuario }: { usuario: any }) {
       })
     : records;
 
+  const handleRegisterSicas = async (record: DeliveryRecord) => {
+    setConfirmModal(null);
+    setRegistering(record.id);
+    setRegisterResult(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Sesion no valida');
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/sicas-register-policy-delivery`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ policy_delivery_id: record.id }),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        setRegisterResult({ id: record.id, success: true, message: result.message || 'Registro exitoso' });
+        loadRecords();
+      } else {
+        setRegisterResult({ id: record.id, success: false, message: result.error || 'Error desconocido' });
+        loadRecords();
+      }
+    } catch (err) {
+      setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
+    } finally {
+      setRegistering(null);
+    }
+  };
+
+  const canAttemptRegistration = (r: DeliveryRecord): boolean => {
+    const blockedStates = ['registered', 'completed', 'validating', 'registering', 'uploading_files'];
+    return !blockedStates.includes(r.sicas_registration_status || '');
+  };
+
   const handleExport = async () => {
     if (filtered.length === 0) return;
     setIsExporting(true);
@@ -810,6 +882,12 @@ function HistorialTab({ usuario }: { usuario: any }) {
         'Email enviado': r.email_sent ? 'Si' : 'No',
         'Notificado': r.notification_sent ? 'Si' : 'No',
         'Docs adicionales': r.additional_files_count,
+        'SICAS Estado': SICAS_STATUS_CONFIG[r.sicas_registration_status || 'not_started']?.label || r.sicas_registration_status || '',
+        'SICAS IDDocto': r.sicas_document_id || '',
+        'SICAS Duplicado': r.sicas_duplicate_detected ? 'Si' : 'No',
+        'SICAS Intentos': r.sicas_registration_attempts || 0,
+        'SICAS Error': r.sicas_error_message || '',
+        'SICAS Registrado': r.sicas_registered_at ? new Date(r.sicas_registered_at).toLocaleString('es-MX') : '',
       }));
 
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -821,7 +899,6 @@ function HistorialTab({ usuario }: { usuario: any }) {
 
       XLSX.writeFile(wb, `entregas_polizas_${new Date().toISOString().slice(0, 10)}.xlsx`);
 
-      // Mark records as exported
       const ids = filtered.filter((r) => !r.exported_at).map((r) => r.id);
       if (ids.length > 0 && usuario) {
         await supabase
@@ -902,6 +979,32 @@ function HistorialTab({ usuario }: { usuario: any }) {
         </div>
       </div>
 
+      {/* Registration Result Toast */}
+      {registerResult && (
+        <div className={`p-3 rounded-xl border flex items-start gap-2 ${
+          registerResult.success
+            ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-500/20'
+            : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-500/20'
+        }`}>
+          {registerResult.success ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className={`text-xs font-medium ${registerResult.success ? 'text-emerald-800 dark:text-emerald-300' : 'text-red-800 dark:text-red-300'}`}>
+              {registerResult.success ? 'Registro SICAS exitoso' : 'Error en registro SICAS'}
+            </p>
+            <p className={`text-[11px] mt-0.5 ${registerResult.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              {registerResult.message}
+            </p>
+          </div>
+          <button onClick={() => setRegisterResult(null)} className="p-0.5 hover:bg-black/5 dark:hover:bg-white/10 rounded">
+            <X className="w-3.5 h-3.5 text-neutral-400" />
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 overflow-hidden">
         {loading ? (
@@ -925,52 +1028,189 @@ function HistorialTab({ usuario }: { usuario: any }) {
                   <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Prima</th>
                   <th className="text-left px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Folio</th>
                   <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Estado</th>
-                  <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Docs</th>
+                  <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">SICAS</th>
+                  {canRegisterSicas && <th className="text-center px-3 py-2.5 font-semibold text-neutral-600 dark:text-white/50">Accion</th>}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} className="border-b border-neutral-50 dark:border-white/5 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors">
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <p className="text-neutral-800 dark:text-white">{new Date(r.created_at).toLocaleDateString('es-MX')}</p>
-                      <p className="text-[10px] text-neutral-400">{new Date(r.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</p>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <p className="font-medium text-neutral-800 dark:text-white truncate max-w-[140px]">{r.vendor_sicas_name}</p>
-                      {r.vendor_sicas_key && <p className="text-[10px] text-neutral-400">{r.vendor_sicas_key}</p>}
-                    </td>
-                    <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70">{r.policy_number || '-'}</td>
-                    <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70 truncate max-w-[120px]">{r.insured_name || '-'}</td>
-                    <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70">{r.total_premium || '-'}</td>
-                    <td className="px-3 py-2.5">
-                      {r.ticket_id ? (
-                        <a href={`/tramites/${r.ticket_id}`} className="text-sky-600 dark:text-sky-400 hover:underline font-medium">
-                          {r.ticket_folio}
-                        </a>
-                      ) : (
-                        <span className="text-neutral-400">-</span>
+                {filtered.map((r) => {
+                  const sicasStatus = r.sicas_registration_status || 'not_started';
+                  const statusConfig = SICAS_STATUS_CONFIG[sicasStatus] || SICAS_STATUS_CONFIG.not_started;
+                  const StatusIcon = statusConfig.icon;
+                  const isCurrentlyRegistering = registering === r.id;
+
+                  return (
+                    <tr key={r.id} className="border-b border-neutral-50 dark:border-white/5 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors">
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <p className="text-neutral-800 dark:text-white">{new Date(r.created_at).toLocaleDateString('es-MX')}</p>
+                        <p className="text-[10px] text-neutral-400">{new Date(r.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</p>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <p className="font-medium text-neutral-800 dark:text-white truncate max-w-[140px]">{r.vendor_sicas_name}</p>
+                        {r.vendor_sicas_key && <p className="text-[10px] text-neutral-400">{r.vendor_sicas_key}</p>}
+                      </td>
+                      <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70">{r.policy_number || '-'}</td>
+                      <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70 truncate max-w-[120px]">{r.insured_name || '-'}</td>
+                      <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70">{r.total_premium || '-'}</td>
+                      <td className="px-3 py-2.5">
+                        {r.ticket_id ? (
+                          <a href={`/tramites/${r.ticket_id}`} className="text-sky-600 dark:text-sky-400 hover:underline font-medium">
+                            {r.ticket_folio}
+                          </a>
+                        ) : (
+                          <span className="text-neutral-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                          r.status === 'completado'
+                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                        }`}>
+                          {r.status === 'completado' ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${statusConfig.color}`}>
+                            <StatusIcon className={`w-2.5 h-2.5 ${(sicasStatus === 'validating' || sicasStatus === 'registering' || sicasStatus === 'uploading_files') ? 'animate-spin' : ''}`} />
+                            {statusConfig.label}
+                          </span>
+                          {r.sicas_document_id && (
+                            <span className="text-[9px] text-neutral-400 dark:text-white/30">ID: {r.sicas_document_id}</span>
+                          )}
+                          {r.sicas_error_message && isAdmin && (
+                            <span className="text-[9px] text-red-500 dark:text-red-400 max-w-[120px] truncate" title={r.sicas_error_message}>
+                              {r.sicas_error_message}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {canRegisterSicas && (
+                        <td className="px-3 py-2.5 text-center">
+                          {isCurrentlyRegistering ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-sky-600 dark:text-sky-400">
+                              <Loader2 className="w-3 h-3 animate-spin" /> Registrando...
+                            </span>
+                          ) : canAttemptRegistration(r) ? (
+                            <button
+                              onClick={() => setConfirmModal(r)}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-md transition-colors"
+                              title="Registrar esta poliza en SICAS"
+                            >
+                              <UploadCloud className="w-3 h-3" />
+                              {r.sicas_registration_attempts > 0 ? 'Reintentar' : 'Registrar'}
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-neutral-400 dark:text-white/30">-</span>
+                          )}
+                        </td>
                       )}
-                    </td>
-                    <td className="px-3 py-2.5 text-center">
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                        r.status === 'completado'
-                          ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                      }`}>
-                        {r.status === 'completado' ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 text-center text-neutral-600 dark:text-white/60">
-                      {r.additional_files_count + 1}
-                    </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <SicasConfirmModal
+          record={confirmModal}
+          onConfirm={() => handleRegisterSicas(confirmModal)}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ========================
+// SICAS CONFIRM MODAL
+// ========================
+
+function SicasConfirmModal({ record, onConfirm, onCancel }: {
+  record: DeliveryRecord;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onCancel} />
+      <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-xl">
+            <UploadCloud className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Registrar en SICAS</h3>
+            <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5">
+              Se enviara la informacion de esta entrega a SICAS para crear el documento (HWCAPTURE).
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3 space-y-1.5">
+          <SummaryRow label="Poliza" value={record.policy_number || 'Sin numero'} />
+          <SummaryRow label="Asegurado" value={record.insured_name || 'Sin nombre'} />
+          <SummaryRow label="Vendedor" value={record.vendor_sicas_name} />
+          <SummaryRow label="Oficina" value={record.sicas_office_name || 'Sin asignar'} />
+          <SummaryRow label="Prima total" value={record.total_premium || '-'} />
+          <SummaryRow label="Vigencia" value={record.start_date && record.end_date ? `${record.start_date} - ${record.end_date}` : 'Sin vigencia'} />
+          <SummaryRow label="Tramite" value={record.ticket_folio || 'Sin tramite'} />
+          {record.sicas_registration_attempts > 0 && (
+            <SummaryRow label="Intentos previos" value={`${record.sicas_registration_attempts}`} highlight />
+          )}
+        </div>
+
+        {record.sicas_error_message && (
+          <div className="p-2.5 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-500/20 rounded-lg">
+            <p className="text-[10px] text-red-700 dark:text-red-400">
+              <AlertCircle className="w-3 h-3 inline mr-1" />
+              Error previo: {record.sicas_error_message}
+            </p>
+          </div>
+        )}
+
+        {record.sicas_duplicate_detected && (
+          <div className="p-2.5 bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-500/20 rounded-lg">
+            <p className="text-[10px] text-orange-700 dark:text-orange-400">
+              <Ban className="w-3 h-3 inline mr-1" />
+              Se detecto un posible duplicado anteriormente (IDDocto: {record.sicas_duplicate_document_id}).
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-3 py-2.5 text-xs font-medium text-neutral-700 dark:text-white/70 bg-neutral-100 dark:bg-white/10 hover:bg-neutral-200 dark:hover:bg-white/15 rounded-xl transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors shadow-lg shadow-sky-600/20"
+          >
+            <UploadCloud className="w-3.5 h-3.5" />
+            Confirmar registro
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-[10px] text-neutral-500 dark:text-white/40">{label}</span>
+      <span className={`text-[11px] font-medium ${highlight ? 'text-amber-700 dark:text-amber-400' : 'text-neutral-800 dark:text-white/80'} max-w-[200px] truncate text-right`}>
+        {value}
+      </span>
     </div>
   );
 }
