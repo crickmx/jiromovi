@@ -168,7 +168,7 @@ export default function SicasPreRegistrationModal({
 
   // Filter out IDEjecutivo and IDCli from missing - these are auto-resolved
   const AUTO_RESOLVED_FIELDS = ['IDEjecutivo', 'IDCli'];
-  const allMissingFieldKeys = resolutionData.missing.map(extractFieldKey);
+  const allMissingFieldKeys = [...new Set(resolutionData.missing.map(extractFieldKey))];
   const missingFieldKeys = allMissingFieldKeys.filter(k => !AUTO_RESOLVED_FIELDS.includes(k));
   const hasMissing = missingFieldKeys.length > 0;
   const allMissingFilled = hasMissing && missingFieldKeys.every(key => userOverrides[key]?.value);

@@ -65,6 +65,20 @@ interface ResolutionResult {
 }
 
 // ============================================================
+// Deduplication Helper
+// ============================================================
+
+function uniqueMissingFields(fields: string[]): string[] {
+  const seen = new Set<string>();
+  return fields.filter((field) => {
+    const key = field.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// ============================================================
 // Text Normalization
 // ============================================================
 
@@ -866,6 +880,7 @@ Deno.serve(async (req: Request) => {
     // === RESOLVE action ===
     if (action === "resolve") {
       const resolution = await resolveSicasHwcaptureRequiredFields(supabase, delivery, defaults);
+      const dedupedMissingResolve = uniqueMissingFields(resolution.missing);
 
       // Save resolution state to delivery
       await supabase
@@ -873,7 +888,7 @@ Deno.serve(async (req: Request) => {
         .update({
           sicas_resolved_fields: resolution.resolved,
           sicas_resolution_warnings: resolution.warnings,
-          sicas_registration_status: resolution.missing.length === 0 ? "ready_to_register" : "pending_fields",
+          sicas_registration_status: dedupedMissingResolve.length === 0 ? "ready_to_register" : "pending_fields",
         })
         .eq("id", delivery_id);
 
@@ -882,7 +897,7 @@ Deno.serve(async (req: Request) => {
           success: true,
           action: "resolve",
           resolved: resolution.resolved,
-          missing: resolution.missing,
+          missing: dedupedMissingResolve,
           warnings: resolution.warnings,
           logs: resolution.logs,
           policy_number: delivery.manual_policy_number || delivery.policy_number,
@@ -925,7 +940,9 @@ Deno.serve(async (req: Request) => {
         } else {
           console.error(`[SICAS] Client auto-creation failed: ${createResult.error}`);
           resolution.warnings.push(`IDCli: Auto-creacion fallo: ${createResult.error}`);
-          resolution.missing.push("Cliente SICAS (IDCli)");
+          if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
+            resolution.missing.push("Cliente SICAS (IDCli)");
+          }
 
           // Save the failure info
           await supabase
@@ -939,17 +956,20 @@ Deno.serve(async (req: Request) => {
       }
 
       // Check if all required fields are resolved (also check sentinel)
-      if (resolution.missing.length > 0 || resolution.resolved.IDCli?.value === "__auto_create__") {
-        if (resolution.resolved.IDCli?.value === "__auto_create__") {
+      if (resolution.resolved.IDCli?.value === "__auto_create__") {
+        if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
           resolution.missing.push("Cliente SICAS (IDCli)");
         }
+      }
+      const dedupedMissing = uniqueMissingFields(resolution.missing);
+      if (dedupedMissing.length > 0) {
         await supabase
           .from("policy_deliveries")
           .update({
             sicas_resolved_fields: resolution.resolved,
             sicas_resolution_warnings: resolution.warnings,
             sicas_registration_status: "pending_fields",
-            sicas_error_message: `Campos faltantes: ${resolution.missing.join(", ")}`,
+            sicas_error_message: `Campos faltantes: ${dedupedMissing.join(", ")}`,
           })
           .eq("id", delivery_id);
 
@@ -958,7 +978,7 @@ Deno.serve(async (req: Request) => {
             success: false,
             action: "register",
             error: "missing_fields",
-            missing: resolution.missing,
+            missing: dedupedMissing,
             warnings: resolution.warnings,
             resolved: resolution.resolved,
             logs: resolution.logs,
@@ -1104,30 +1124,40 @@ Deno.serve(async (req: Request) => {
             }).eq("id", delivery_id);
 
             resolution.warnings.push(`Cliente: Auto-creacion fallo: ${createResult.error}`);
-            resolution.missing.push("Cliente SICAS (IDCli)");
+            // Ensure IDCli is in missing only once
+            if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
+              resolution.missing.push("Cliente SICAS (IDCli)");
+            }
           }
         } else if (resolution.logs.cliente?.candidates_count > 1) {
           steps.push({ step: "client_ambiguous", status: "manual_required", detail: `${resolution.logs.cliente.candidates_count} candidatos encontrados` });
-          resolution.missing.push("Cliente SICAS (IDCli)");
+          if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
+            resolution.missing.push("Cliente SICAS (IDCli)");
+          }
         } else {
           steps.push({ step: "client_missing", status: "manual_required", detail: "No hay datos de cliente para buscar o crear" });
-          resolution.missing.push("Cliente SICAS (IDCli)");
+          if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
+            resolution.missing.push("Cliente SICAS (IDCli)");
+          }
         }
       } else if (resolution.resolved.IDCli) {
         steps.push({ step: "client_found", status: "completed", detail: `${resolution.resolved.IDCli.label || resolution.resolved.IDCli.value} (${resolution.resolved.IDCli.source})` });
       }
 
       // Step 3: Check if we can proceed to registration (also check for sentinel values)
-      if (resolution.missing.length > 0 || resolution.resolved.IDCli?.value === "__auto_create__") {
-        if (resolution.resolved.IDCli?.value === "__auto_create__") {
+      if (resolution.resolved.IDCli?.value === "__auto_create__") {
+        if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
           resolution.missing.push("Cliente SICAS (IDCli)");
         }
+      }
+      const dedupedMissingAuto = uniqueMissingFields(resolution.missing);
+      if (dedupedMissingAuto.length > 0) {
         finalStatus = "manual_review_required";
         await supabase.from("policy_deliveries").update({
           sicas_resolved_fields: resolution.resolved,
           sicas_resolution_warnings: resolution.warnings,
           sicas_registration_status: "manual_review_required",
-          sicas_error_message: `Campos faltantes: ${resolution.missing.join(", ")}`,
+          sicas_error_message: `Algunos campos requieren atencion: ${dedupedMissingAuto.join(", ")}`,
         }).eq("id", delivery_id);
 
         return new Response(
@@ -1135,9 +1165,9 @@ Deno.serve(async (req: Request) => {
             success: false,
             action: "auto",
             status: "manual_review_required",
-            message: `No se pudo completar el registro. Campos faltantes: ${resolution.missing.join(", ")}`,
+            message: `No se pudo completar el registro. Campos faltantes: ${dedupedMissingAuto.join(", ")}`,
             steps,
-            missing: resolution.missing,
+            missing: dedupedMissingAuto,
             warnings: resolution.warnings,
             resolved: resolution.resolved,
             logs: resolution.logs,
