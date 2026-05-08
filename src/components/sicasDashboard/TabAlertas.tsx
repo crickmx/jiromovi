@@ -211,9 +211,11 @@ export default function TabAlertas({ userId, scope, accentColor }: Props) {
             <CheckCircle2 className="w-10 h-10 text-emerald-300 dark:text-emerald-700 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Sin alertas pendientes</p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              {showRead
-                ? 'No hay alertas registradas. Haz clic en "Actualizar analisis" para generar alertas de renovaciones, polizas vencidas y concentracion de cartera.'
-                : 'Todas las alertas han sido atendidas. Haz clic en "Actualizar analisis" para buscar nuevas.'}
+              {diagnostics?.message
+                ? String(diagnostics.message)
+                : showRead
+                  ? 'No hay alertas registradas. Haz clic en "Actualizar analisis" para generar alertas de renovaciones, polizas vencidas y concentracion de cartera.'
+                  : 'Todas las alertas han sido atendidas. Haz clic en "Actualizar analisis" para buscar nuevas.'}
             </p>
             {diagnostics && (
               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">

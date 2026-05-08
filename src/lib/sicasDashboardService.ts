@@ -468,12 +468,13 @@ export interface InsightsResult {
   ai_summary: string | null;
   source: 'cache' | 'fresh';
   diagnostics: Record<string, unknown> | null;
+  scope?: { role: string; office_id?: string; vendor_ids?: string[] };
   error?: string;
 }
 
 export async function callProductionInsights(forceRefresh = false): Promise<InsightsResult> {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error('No authenticated session');
+  if (!session?.access_token) throw new Error('Tu sesion expiro. Vuelve a iniciar sesion.');
 
   const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-production-insights`;
   const response = await fetch(apiUrl, {
@@ -487,11 +488,31 @@ export async function callProductionInsights(forceRefresh = false): Promise<Insi
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Insights API error: ${response.status} - ${text}`);
+    if (response.status === 401) {
+      throw new Error('Tu sesion expiro. Vuelve a iniciar sesion.');
+    }
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      throw new Error(data.error || `Error del servidor (${response.status})`);
+    }
+    throw new Error(`Error del servidor (${response.status}). La funcion puede no estar disponible.`);
   }
 
-  return await response.json();
+  const result = await response.json();
+
+  // Handle success:false responses (profile_missing, user_inactive, etc.)
+  if (!result.success && result.status === 'profile_missing') {
+    throw new Error('No se encontro el perfil MOVI de tu usuario. Revisa configuracion de usuario.');
+  }
+  if (!result.success && result.status === 'user_inactive') {
+    throw new Error(result.error || 'Tu cuenta esta inactiva.');
+  }
+  if (!result.success && result.error) {
+    throw new Error(result.error);
+  }
+
+  return result;
 }
 
 export async function fetchInsightsDiagnostics(userId: string): Promise<Record<string, unknown> | null> {

@@ -34,6 +34,28 @@ interface LocalOpportunity {
   recommended_message: string | null;
 }
 
+interface VendorScope {
+  type: "all" | "oficina" | "vend_ids";
+  ids: string[];
+  oficina_id?: string;
+}
+
+function jsonResponse(data: unknown, status: number) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function normalizeRole(rol: string | null): string {
+  if (!rol) return "agente";
+  const r = rol.toLowerCase().trim();
+  if (r === "admin" || r === "administrador") return "administrador";
+  if (r === "gerente" || r === "manager") return "gerente";
+  if (r === "empleado" || r === "employee" || r === "ejecutivo") return "empleado";
+  return "agente";
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -42,157 +64,221 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // 1. Authenticate user from JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ success: false, error: "No authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, status: "unauthenticated", error: "No authorization header" }, 401);
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Usuario no autenticado" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.log("[sicas-production-insights] Auth failed:", authError?.message);
+      return jsonResponse({ success: false, status: "unauthenticated", error: "No autenticado. Tu sesion pudo haber expirado." }, 401);
     }
+
+    console.log("[sicas-production-insights] auth user id:", user.id);
+    console.log("[sicas-production-insights] auth user email:", user.email);
 
     const body: InsightsRequest = await req.json().catch(() => ({}));
     const forceRefresh = body.forceRefresh ?? false;
 
-    // Get user info for scope resolution
-    const { data: usuarioData } = await supabase
+    // 2. Look up user profile using service role (bypasses RLS)
+    const { data: usuarioData, error: profileError } = await supabase
       .from("usuarios")
-      .select("id, rol, oficina_id, nombre_completo, nombres, apellido_paterno")
+      .select("id, rol, oficina_id, nombre_completo, nombre, apellidos, email_laboral, activo")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!usuarioData) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Usuario no encontrado" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    console.log("[sicas-production-insights] profile lookup by id:", user.id);
+    console.log("[sicas-production-insights] profile found:", !!usuarioData);
+    console.log("[sicas-production-insights] profile error:", profileError?.message || "none");
+
+    // If not found by id, try email fallback
+    let profile = usuarioData;
+    if (!profile && user.email) {
+      const { data: byEmail } = await supabase
+        .from("usuarios")
+        .select("id, rol, oficina_id, nombre_completo, nombre, apellidos, email_laboral, activo")
+        .eq("email_laboral", user.email)
+        .maybeSingle();
+      if (byEmail) {
+        console.log("[sicas-production-insights] profile found via email fallback, usuario_id:", byEmail.id);
+        profile = byEmail;
+      }
     }
 
-    const userRole = usuarioData.rol;
-    const oficinaId = usuarioData.oficina_id;
+    if (!profile) {
+      return jsonResponse({
+        success: false,
+        status: "profile_missing",
+        error: "No se encontro perfil MOVI para este usuario. Configura su perfil antes de generar insights.",
+        auth_user_id: user.id,
+        email: user.email,
+      }, 200);
+    }
 
-    // Check cache (TTL 30 min) unless forceRefresh
+    if (profile.activo === false) {
+      return jsonResponse({
+        success: false,
+        status: "user_inactive",
+        error: "Tu cuenta esta inactiva. Contacta a tu administrador.",
+      }, 200);
+    }
+
+    const role = normalizeRole(profile.rol);
+    const oficinaId = profile.oficina_id;
+    const userName = profile.nombre_completo || profile.nombre || "Agente";
+
+    console.log("[sicas-production-insights] resolved role:", role, "(raw:", profile.rol, ")");
+    console.log("[sicas-production-insights] oficina_id:", oficinaId);
+
+    // 3. Check cache (TTL 30 min) unless forceRefresh
     if (!forceRefresh) {
       const { data: cached } = await supabase
         .from("sicas_production_insights_cache")
         .select("*")
-        .eq("usuario_id", user.id)
+        .eq("usuario_id", profile.id)
         .maybeSingle();
 
       if (cached) {
         const cacheAge = Date.now() - new Date(cached.updated_at).getTime();
-        const TTL_MS = 30 * 60 * 1000; // 30 minutes
+        const TTL_MS = 30 * 60 * 1000;
         if (cacheAge < TTL_MS) {
-          console.log(`[Insights] Returning cached result (age=${Math.round(cacheAge / 1000)}s)`);
-          return new Response(
-            JSON.stringify({
-              success: true,
-              alerts: cached.alerts,
-              opportunities: cached.opportunities,
-              ai_summary: cached.ai_summary,
-              source: "cache",
-              cached_at: cached.updated_at,
-              diagnostics: cached.diagnostics,
-            }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          console.log(`[sicas-production-insights] Returning cached result (age=${Math.round(cacheAge / 1000)}s)`);
+          return jsonResponse({
+            success: true,
+            alerts: cached.alerts,
+            opportunities: cached.opportunities,
+            ai_summary: cached.ai_summary,
+            source: "cache",
+            cached_at: cached.updated_at,
+            diagnostics: cached.diagnostics,
+            scope: { role, office_id: oficinaId },
+          }, 200);
         }
       }
     }
 
-    // Resolve vendor IDs for this user (scope-aware)
-    const vendorFilter = await resolveVendorScope(supabase, user.id, userRole, oficinaId);
+    // 4. Resolve vendor scope based on role
+    const vendorScope = await resolveVendorScope(supabase, profile.id, role, oficinaId);
 
-    console.log(`[Insights] User=${user.id}, role=${userRole}, vendorFilter=${JSON.stringify(vendorFilter)}`);
+    console.log("[sicas-production-insights] vendor scope:", JSON.stringify(vendorScope));
 
-    // Query sicas_documents directly for insights data
+    // 5. If agent has no vendor mapping, return helpful diagnostic instead of error
+    if (vendorScope.type === "vend_ids" && vendorScope.ids.length === 0) {
+      const emptyResult = {
+        success: true,
+        alerts: [],
+        opportunities: [],
+        ai_summary: null,
+        source: "fresh",
+        scope: { role, office_id: oficinaId },
+        diagnostics: {
+          reason: "missing_vendor_mapping",
+          message: "Tu usuario no tiene vendedor SICAS relacionado. Solicita a tu administrador que mapee tu usuario a un vendedor SICAS.",
+          total_vigentes: 0,
+          renewals_30: 0,
+          renewals_60: 0,
+          expired_recent: 0,
+          active_clients: 0,
+          alerts_generated: 0,
+          opportunities_generated: 0,
+          ai_available: !!Deno.env.get("OPENAI_API_KEY"),
+          ai_used: false,
+          role,
+          generated_at: new Date().toISOString(),
+        },
+      };
+
+      // Cache empty result too
+      await supabase.from("sicas_production_insights_cache").upsert({
+        usuario_id: profile.id,
+        alerts: [],
+        opportunities: [],
+        ai_summary: null,
+        diagnostics: emptyResult.diagnostics,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "usuario_id" });
+
+      return jsonResponse(emptyResult, 200);
+    }
+
+    // 6. Query sicas_documents with scope
     const now = new Date();
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-    // Build base query conditions
-    let baseQuery = supabase.from("sicas_documents").select("*");
-    if (vendorFilter.type === "vend_ids") {
-      baseQuery = baseQuery.in("vend_id", vendorFilter.ids);
-    } else if (vendorFilter.type === "oficina") {
-      baseQuery = baseQuery.eq("oficina_id", vendorFilter.oficina_id);
-    }
-    // admin: no filter
-
-    // 1. Renewals in next 30 days (high priority alerts)
-    const { data: renewals30 } = await supabase
-      .from("sicas_documents")
-      .select("id, id_docto, cliente, poliza, compania, ramo, prima_neta, prima_total, vigencia_hasta, vend_nombre")
+    // Renewals 30 days
+    const { data: renewals30 } = await buildScopedQuery(
+      supabase, vendorScope,
+      "id, id_docto, cliente, poliza, compania, ramo, prima_neta, prima_total, vigencia_hasta, vend_nombre"
+    )
       .eq("is_vigente", true)
       .eq("is_renewable", true)
       .gte("vigencia_hasta", now.toISOString())
       .lte("vigencia_hasta", thirtyDaysFromNow.toISOString())
       .order("vigencia_hasta", { ascending: true })
-      .limit(100)
-      .then(r => applyVendorFilter(r, vendorFilter));
+      .limit(100);
 
-    // 2. Renewals 30-60 days (medium priority)
-    const { data: renewals60 } = await supabase
-      .from("sicas_documents")
-      .select("id, id_docto, cliente, poliza, compania, ramo, prima_neta, prima_total, vigencia_hasta, vend_nombre")
+    // Renewals 30-60 days
+    const { data: renewals60 } = await buildScopedQuery(
+      supabase, vendorScope,
+      "id, id_docto, cliente, poliza, compania, ramo, prima_neta, prima_total, vigencia_hasta, vend_nombre"
+    )
       .eq("is_vigente", true)
       .eq("is_renewable", true)
       .gt("vigencia_hasta", thirtyDaysFromNow.toISOString())
       .lte("vigencia_hasta", sixtyDaysFromNow.toISOString())
       .order("vigencia_hasta", { ascending: true })
-      .limit(50)
-      .then(r => applyVendorFilter(r, vendorFilter));
+      .limit(50);
 
-    // 3. Recently expired (last 30 days - reactivation opportunity)
-    const { data: recentExpired } = await supabase
-      .from("sicas_documents")
-      .select("id, id_docto, cliente, poliza, compania, ramo, prima_neta, prima_total, vigencia_hasta, vend_nombre")
+    // Recently expired
+    const { data: recentExpired } = await buildScopedQuery(
+      supabase, vendorScope,
+      "id, id_docto, cliente, poliza, compania, ramo, prima_neta, prima_total, vigencia_hasta, vend_nombre"
+    )
       .eq("is_vigente", false)
       .eq("is_cancelada", false)
       .gte("vigencia_hasta", thirtyDaysAgo.toISOString())
       .lte("vigencia_hasta", now.toISOString())
       .order("prima_neta", { ascending: false })
-      .limit(50)
-      .then(r => applyVendorFilter(r, vendorFilter));
+      .limit(50);
 
-    // 4. Active policies by client (for cross-sell detection)
-    const { data: activeByClient } = await supabase
-      .from("sicas_documents")
-      .select("cliente, ramo, compania, prima_neta, prima_total")
+    // Active by client (for cross-sell)
+    const { data: activeByClient } = await buildScopedQuery(
+      supabase, vendorScope,
+      "cliente, ramo, compania, prima_neta, prima_total"
+    )
       .eq("is_vigente", true)
       .order("prima_neta", { ascending: false })
-      .limit(2000)
-      .then(r => applyVendorFilter(r, vendorFilter));
+      .limit(2000);
 
-    // 5. Concentration analysis
-    const { data: topClients } = await supabase
-      .from("sicas_documents")
-      .select("cliente, prima_neta")
+    // Top clients for concentration
+    const { data: topClients } = await buildScopedQuery(
+      supabase, vendorScope,
+      "cliente, prima_neta"
+    )
       .eq("is_vigente", true)
       .order("prima_neta", { ascending: false })
-      .limit(500)
-      .then(r => applyVendorFilter(r, vendorFilter));
+      .limit(500);
 
-    // 6. Total vigente count for diagnostics
-    const { count: totalVigentes } = await supabase
-      .from("sicas_documents")
-      .select("id", { count: "exact", head: true })
-      .eq("is_vigente", true);
+    // Total vigentes for diagnostics (within scope)
+    const { count: totalVigentes } = await buildScopedQuery(
+      supabase, vendorScope,
+      "id", { count: "exact", head: true }
+    ).eq("is_vigente", true);
 
-    // Generate local alerts
+    console.log("[sicas-production-insights] documents queried - vigentes:", totalVigentes, "renewals30:", renewals30?.length, "renewals60:", renewals60?.length, "expired:", recentExpired?.length);
+
+    // 7. Generate local alerts
     const alerts = generateLocalAlerts(
       renewals30 || [],
       renewals60 || [],
@@ -201,40 +287,38 @@ Deno.serve(async (req: Request) => {
       topClients || []
     );
 
-    // Generate local opportunities
+    // 8. Generate local opportunities
     const opportunities = generateLocalOpportunities(
       activeByClient || [],
       recentExpired || [],
       renewals30 || []
     );
 
-    // Try AI enhancement (non-blocking)
+    // 9. Try AI enhancement (non-blocking)
     let aiSummary: string | null = null;
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
     if (openaiKey && (alerts.length > 0 || opportunities.length > 0)) {
       try {
         aiSummary = await generateAISummary(
-          openaiKey,
-          alerts,
-          opportunities,
+          openaiKey, alerts, opportunities,
           {
             totalVigentes: totalVigentes || 0,
             renewals30Count: renewals30?.length || 0,
             renewals60Count: renewals60?.length || 0,
             expiredCount: recentExpired?.length || 0,
-            userName: usuarioData.nombre_completo || usuarioData.nombres || "Agente",
+            userName,
           }
         );
       } catch (aiErr: any) {
-        console.error("[Insights] AI summary failed (non-blocking):", aiErr.message);
+        console.error("[sicas-production-insights] AI summary failed (non-blocking):", aiErr.message);
       }
     }
 
-    // Persist alerts and opportunities to tables
-    await persistAlerts(supabase, user.id, vendorFilter, oficinaId, alerts);
-    await persistOpportunities(supabase, user.id, vendorFilter, oficinaId, opportunities);
+    // 10. Persist alerts and opportunities
+    await persistAlerts(supabase, profile.id, vendorScope, oficinaId, alerts);
+    await persistOpportunities(supabase, profile.id, vendorScope, oficinaId, opportunities);
 
-    // Update cache
+    // 11. Build diagnostics
     const diagnostics = {
       total_vigentes: totalVigentes || 0,
       renewals_30: renewals30?.length || 0,
@@ -245,12 +329,13 @@ Deno.serve(async (req: Request) => {
       opportunities_generated: opportunities.length,
       ai_available: !!openaiKey,
       ai_used: !!aiSummary,
-      role: userRole,
+      role,
       generated_at: now.toISOString(),
     };
 
+    // 12. Update cache
     await supabase.from("sicas_production_insights_cache").upsert({
-      usuario_id: user.id,
+      usuario_id: profile.id,
       alerts,
       opportunities,
       ai_summary: aiSummary,
@@ -258,35 +343,24 @@ Deno.serve(async (req: Request) => {
       updated_at: now.toISOString(),
     }, { onConflict: "usuario_id" });
 
-    console.log(`[Insights] Generated ${alerts.length} alerts, ${opportunities.length} opportunities, AI=${!!aiSummary}`);
+    console.log(`[sicas-production-insights] Generated ${alerts.length} alerts, ${opportunities.length} opportunities, AI=${!!aiSummary}`);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        alerts,
-        opportunities,
-        ai_summary: aiSummary,
-        source: "fresh",
-        diagnostics,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({
+      success: true,
+      alerts,
+      opportunities,
+      ai_summary: aiSummary,
+      source: "fresh",
+      scope: { role, office_id: oficinaId, vendor_ids: vendorScope.ids.length > 0 ? vendorScope.ids : undefined },
+      diagnostics,
+    }, 200);
   } catch (error: any) {
-    console.error("[Insights] Error:", error.message);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("[sicas-production-insights] Unhandled error:", error.message, error.stack);
+    return jsonResponse({ success: false, status: "internal_error", error: error.message }, 500);
   }
 });
 
 // === Vendor Scope Resolution ===
-
-interface VendorScope {
-  type: "all" | "oficina" | "vend_ids";
-  ids: string[];
-  oficina_id?: string;
-}
 
 async function resolveVendorScope(
   supabase: any,
@@ -294,35 +368,46 @@ async function resolveVendorScope(
   role: string,
   oficinaId: string | null
 ): Promise<VendorScope> {
-  if (role === "Administrador") {
+  // Admin: sees everything
+  if (role === "administrador") {
     return { type: "all", ids: [] };
   }
 
-  if (role === "Gerente" && oficinaId) {
+  // Gerente / Empleado: sees their office
+  if ((role === "gerente" || role === "empleado") && oficinaId) {
     return { type: "oficina", ids: [], oficina_id: oficinaId };
   }
 
-  // Agent: resolve vend_ids from vendor_mappings
+  // Agent: resolve vend_ids from sicas_mapeo_vendedor_usuario
   const { data: mappings } = await supabase
-    .from("vendor_mappings")
-    .select("vendor_sicas_id")
-    .eq("usuario_id", userId)
-    .not("vendor_sicas_id", "is", null);
+    .from("sicas_mapeo_vendedor_usuario")
+    .select("id_sicas_vendedor")
+    .eq("movi_user_id", userId);
 
-  const ids = (mappings || []).map((m: any) => m.vendor_sicas_id).filter(Boolean);
+  const ids = (mappings || []).map((m: any) => m.id_sicas_vendedor).filter(Boolean);
+
+  console.log("[sicas-production-insights] vendor mappings for user:", userId, "->", ids);
+
   return { type: "vend_ids", ids };
 }
 
-function applyVendorFilter(result: any, scope: VendorScope): any {
-  if (!result.data) return { data: [] };
-  if (scope.type === "all") return result;
-  if (scope.type === "oficina") {
-    return { data: result.data.filter((d: any) => d.oficina_id === scope.oficina_id) };
-  }
+// Build a query on sicas_documents pre-filtered by scope
+function buildScopedQuery(
+  supabase: any,
+  scope: VendorScope,
+  columns: string,
+  options?: { count?: "exact"; head?: boolean }
+) {
+  let query = supabase.from("sicas_documents").select(columns, options || {});
+
   if (scope.type === "vend_ids" && scope.ids.length > 0) {
-    return { data: result.data.filter((d: any) => scope.ids.includes(d.vend_id)) };
+    query = query.in("vend_id", scope.ids);
+  } else if (scope.type === "oficina" && scope.oficina_id) {
+    query = query.eq("oficina_id", scope.oficina_id);
   }
-  return result;
+  // admin: no filter
+
+  return query;
 }
 
 // === Local Alert Generation ===
@@ -335,10 +420,10 @@ function generateLocalAlerts(
   topClients: any[]
 ): LocalAlert[] {
   const alerts: LocalAlert[] = [];
-
-  // 1. Renewals in 7 days (critical)
   const now = new Date();
   const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  // 1. Renewals in 7 days (critical)
   const critical = renewals30.filter(d => new Date(d.vigencia_hasta) <= sevenDays);
   for (const doc of critical.slice(0, 10)) {
     const daysLeft = Math.ceil((new Date(doc.vigencia_hasta).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -387,7 +472,7 @@ function generateLocalAlerts(
     });
   }
 
-  // 4. Concentration risk (if top client > 30% of portfolio)
+  // 4. Concentration risk
   if (topClients.length > 5) {
     const totalPrima = topClients.reduce((s, d) => s + (d.prima_neta || 0), 0);
     if (totalPrima > 0) {
@@ -413,7 +498,7 @@ function generateLocalAlerts(
     }
   }
 
-  // 5. High-value renewals (top 20% by prima)
+  // 5. High-value renewals
   if (renewals60.length > 0) {
     const allRenewals = [...renewals30, ...renewals60];
     const avgPrima = allRenewals.reduce((s, d) => s + (d.prima_neta || 0), 0) / (allRenewals.length || 1);
@@ -441,11 +526,10 @@ function generateLocalAlerts(
 function generateLocalOpportunities(
   activeByClient: any[],
   recentExpired: any[],
-  renewals: any[]
+  _renewals: any[]
 ): LocalOpportunity[] {
   const opportunities: LocalOpportunity[] = [];
 
-  // Group active policies by client
   const clientProducts = new Map<string, { ramos: Set<string>; prima: number; aseguradoras: Set<string> }>();
   for (const doc of activeByClient) {
     const name = doc.cliente || "Sin nombre";
@@ -459,11 +543,6 @@ function generateLocalOpportunities(
   }
 
   // Cross-sell: clients with only 1 product type
-  const allRamos = new Set<string>();
-  for (const [, v] of clientProducts) {
-    for (const r of v.ramos) allRamos.add(r);
-  }
-
   for (const [clientName, data] of clientProducts) {
     if (data.ramos.size === 1 && data.prima > 5000) {
       const currentRamo = [...data.ramos][0];
@@ -501,7 +580,7 @@ function generateLocalOpportunities(
     }
   }
 
-  // High-value clients (potential upgrades)
+  // High-value clients
   const sortedClients = [...clientProducts.entries()].sort((a, b) => b[1].prima - a[1].prima);
   for (const [clientName, data] of sortedClients.slice(0, 5)) {
     if (data.prima > 50000 && data.ramos.size >= 2) {
@@ -520,7 +599,7 @@ function generateLocalOpportunities(
     }
   }
 
-  // Reactivation opportunities (recently expired high-value)
+  // Reactivation opportunities
   for (const doc of recentExpired.slice(0, 8)) {
     if ((doc.prima_neta || 0) > 5000 && opportunities.length < 50) {
       opportunities.push({
@@ -601,7 +680,6 @@ async function persistAlerts(
   oficinaId: string | null,
   alerts: LocalAlert[]
 ): Promise<void> {
-  // Clear old alerts for this user (keep dismissed)
   await supabase
     .from("sicas_agent_alerts")
     .delete()
@@ -638,7 +716,6 @@ async function persistOpportunities(
   oficinaId: string | null,
   opportunities: LocalOpportunity[]
 ): Promise<void> {
-  // Clear old opportunities for this user (keep contacted)
   await supabase
     .from("sicas_cross_sell_opportunities")
     .delete()

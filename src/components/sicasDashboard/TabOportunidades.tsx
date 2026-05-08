@@ -78,7 +78,7 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
     try {
       const result = await callProductionInsights(true);
       if (result.ai_summary) setAiSummary(result.ai_summary);
-      if (result.diagnostics) setDiagnostics(result.diagnostics);
+      if (result.diagnostics) setDiagnostics(result.diagnostics as Record<string, unknown>);
       await loadOpportunities();
     } catch (err: any) {
       console.error('[TabOportunidades] Detect error:', err);
@@ -196,7 +196,9 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
             <Lightbulb className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No hay oportunidades pendientes</p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              Haz clic en "Actualizar analisis" para detectar oportunidades de venta cruzada y reactivacion en tu cartera SICAS
+              {diagnostics?.message
+                ? String(diagnostics.message)
+                : 'Haz clic en "Actualizar analisis" para detectar oportunidades de venta cruzada y reactivacion en tu cartera SICAS'}
             </p>
             {diagnostics && (
               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
