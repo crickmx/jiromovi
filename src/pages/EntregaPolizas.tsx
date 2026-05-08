@@ -526,9 +526,18 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
         },
         body: JSON.stringify(payload),
       });
+
+      if (res.status === 404) {
+        throw new Error('Funcion process-policy-delivery no encontrada (404). Verifica que este desplegada en Supabase.');
+      }
+
+      if (!res.ok && res.headers.get('content-type')?.includes('text/html')) {
+        throw new Error(`Error HTTP ${res.status}. La funcion puede no estar disponible temporalmente.`);
+      }
 
       const result = await res.json();
 
@@ -979,9 +988,19 @@ function HistorialTab({ usuario }: { usuario: any }) {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
         },
         body: JSON.stringify({ delivery_id: record.id, action: 'register' }),
       });
+
+      if (res.status === 404) {
+        console.error('[EntregaPolizas] 404 en sicas-register-policy-delivery. URL:', `${supabaseUrl}/functions/v1/sicas-register-policy-delivery`, 'delivery_id:', record.id);
+        throw new Error('Funcion de registro SICAS no encontrada (404). Verifica que sicas-register-policy-delivery este desplegada.');
+      }
+
+      if (!res.ok && res.headers.get('content-type')?.includes('text/html')) {
+        throw new Error(`Error HTTP ${res.status} del servidor. La funcion puede no estar disponible temporalmente.`);
+      }
 
       const result = await res.json();
 
@@ -1013,9 +1032,19 @@ function HistorialTab({ usuario }: { usuario: any }) {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
         },
         body: JSON.stringify({ delivery_id: record.id, action: 'auto' }),
       });
+
+      if (res.status === 404) {
+        console.error('[EntregaPolizas] 404 en sicas-register-policy-delivery (auto). URL:', `${supabaseUrl}/functions/v1/sicas-register-policy-delivery`, 'delivery_id:', record.id);
+        throw new Error('Funcion de registro SICAS no encontrada (404). Verifica que sicas-register-policy-delivery este desplegada.');
+      }
+
+      if (!res.ok && res.headers.get('content-type')?.includes('text/html')) {
+        throw new Error(`Error HTTP ${res.status} del servidor. La funcion puede no estar disponible temporalmente.`);
+      }
 
       const result = await res.json();
 
