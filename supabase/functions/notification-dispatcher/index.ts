@@ -358,8 +358,15 @@ Deno.serve(async (req: Request) => {
 
             if (waConfig?.api_key && job.payload?.phone) {
               const message = renderTemplate(template.whatsapp_body_template || "", vars);
-              const cleanPhone = (job.payload.phone as string).replace(/[^0-9]/g, "");
-              const chatId = cleanPhone.startsWith("52") ? cleanPhone : `52${cleanPhone}`;
+              let normalizedPhone = (job.payload.phone as string).replace(/[^0-9]/g, "");
+              if (normalizedPhone.length === 10) {
+                normalizedPhone = "521" + normalizedPhone;
+              } else if (normalizedPhone.length === 12 && normalizedPhone.startsWith("52")) {
+                normalizedPhone = "521" + normalizedPhone.substring(2);
+              } else if (normalizedPhone.length === 13 && !normalizedPhone.startsWith("521")) {
+                normalizedPhone = "521" + normalizedPhone.substring(3);
+              }
+              const chatId = normalizedPhone;
 
               // Send text message
               const msgRes = await fetch("https://api.wazzup24.com/v3/message", {
