@@ -133,12 +133,37 @@ function sanitizeField(value: any): string | null {
   return str;
 }
 
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 function cleanClientName(name: string): string {
   return name
     .trim()
     .replace(/\s+/g, " ")
-    .replace(/[^\w\sáéíóúñÁÉÍÓÚÑ.,\-&/()]/g, "")
     .substring(0, 200);
+}
+
+function parseSoapFault(responseText: string): { faultcode: string; faultstring: string; detail: string } {
+  const extractBetween = (xml: string, startTag: string, endTag: string): string => {
+    const startIdx = xml.indexOf(startTag);
+    if (startIdx === -1) return "";
+    const contentStart = startIdx + startTag.length;
+    const endIdx = xml.indexOf(endTag, contentStart);
+    if (endIdx === -1) return xml.substring(contentStart, contentStart + 500);
+    return xml.substring(contentStart, endIdx);
+  };
+
+  return {
+    faultcode: extractBetween(responseText, "<faultcode>", "</faultcode>"),
+    faultstring: extractBetween(responseText, "<faultstring>", "</faultstring>"),
+    detail: extractBetween(responseText, "<detail>", "</detail>"),
+  };
 }
 
 function buildStepError(step: RegistrationStep, message: string, details?: Partial<StepError>): StepError {
@@ -584,13 +609,35 @@ async function attemptClientAutoCreate(
   }
 
   const cleanedName = cleanClientName(clientName);
+
+  // Pre-validation: name must be at least 3 characters
+  if (cleanedName.length < 3) {
+    return {
+      success: false,
+      error: `Nombre de cliente muy corto: "${cleanedName}" (minimo 3 caracteres)`,
+      stepError: buildStepError("create_client_if_needed", `Nombre de cliente muy corto: "${cleanedName}"`, {
+        payloadSanitized: { CliNombre: cleanedName },
+      }),
+    };
+  }
+
+  // Pre-validation: RFC format if provided
+  if (clientRfc) {
+    const rfcClean = clientRfc.trim().toUpperCase().replace(/[-\s]/g, "");
+    if (rfcClean.length > 0 && (rfcClean.length < 10 || rfcClean.length > 13)) {
+      console.warn(`[SICAS Client] RFC con longitud invalida (${rfcClean.length}): "${rfcClean}". Se omitira.`);
+    }
+  }
+
   console.log(`[SICAS Client] Creating: name="${cleanedName}", rfc="${clientRfc || "N/A"}"`);
 
   const contactData: string[] = [];
   contactData.push(`CliNombre|${cleanedName}`);
   if (clientRfc) {
     const rfcClean = sanitizeField(clientRfc);
-    if (rfcClean) contactData.push(`CliRFC|${rfcClean.toUpperCase()}`);
+    if (rfcClean && rfcClean.length >= 10 && rfcClean.length <= 13) {
+      contactData.push(`CliRFC|${rfcClean.toUpperCase()}`);
+    }
   }
 
   const email = sanitizeField(delivery.extracted_data?.email || delivery.extracted_data?.correo);
@@ -601,7 +648,8 @@ async function attemptClientAutoCreate(
   const isEmpresa = /^(S\.?A\.?|S\.?C\.?|S\.? DE R\.?L\.?|SOCIEDAD|EMPRESA|CORPORAT|CIA|COMPAÑIA)/i.test(cleanedName);
   contactData.push(`CliTipoPersona|${isEmpresa ? "M" : "F"}`);
 
-  const dataString = contactData.join("\n");
+  // XML-escape the entire PropertyData content to prevent malformed SOAP XML
+  const dataString = escapeXml(contactData.join("\n"));
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -609,8 +657,8 @@ async function attemptClientAutoCreate(
   <soap:Body>
     <tem:Procesar_String>
       <tem:oConfigAuth>
-        <tem:UserName>${sicasUsername}</tem:UserName>
-        <tem:Password>${sicasPassword}</tem:Password>
+        <tem:UserName>${escapeXml(sicasUsername)}</tem:UserName>
+        <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
       </tem:oConfigAuth>
       <tem:oConfigData>
         <tem:PropertyNameTransaction>WS_SaveData</tem:PropertyNameTransaction>
@@ -644,7 +692,12 @@ async function attemptClientAutoCreate(
     console.log(`[SICAS Client] Response body (first 500):`, responseText.substring(0, 500));
 
     if (!response.ok) {
-      const stepError = buildStepError("create_client_if_needed", `SICAS HTTP ${response.status}: ${response.statusText}`, {
+      const fault = parseSoapFault(responseText);
+      const faultMessage = fault.faultstring
+        ? `SOAP Fault [${fault.faultcode}]: ${fault.faultstring}`
+        : `SICAS HTTP ${response.status}: ${response.statusText}`;
+
+      const stepError = buildStepError("create_client_if_needed", faultMessage, {
         endpoint: sicasEndpoint,
         contentType: "text/xml; charset=utf-8",
         statusCode: response.status,
@@ -652,7 +705,9 @@ async function attemptClientAutoCreate(
         responseBody: responseText.substring(0, 3000),
         payloadSanitized: Object.fromEntries(contactData.map(f => { const [k, v] = f.split("|"); return [k, v]; })),
       });
-      return { success: false, error: `SICAS HTTP ${response.status}: ${response.statusText}. Body: ${responseText.substring(0, 300)}`, stepError };
+
+      console.error(`[SICAS Client] SOAP Fault: code=${fault.faultcode}, string=${fault.faultstring}, detail=${fault.detail}`);
+      return { success: false, error: faultMessage, stepError };
     }
 
     const decoded = responseText
@@ -755,7 +810,8 @@ async function registerDocument(
     docFields.push(`${key}|${value}`);
   }
 
-  const dataString = docFields.join("\n");
+  // XML-escape the entire PropertyData content to prevent malformed SOAP XML
+  const dataString = escapeXml(docFields.join("\n"));
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -763,8 +819,8 @@ async function registerDocument(
   <soap:Body>
     <tem:Procesar_String>
       <tem:oConfigAuth>
-        <tem:UserName>${sicasUsername}</tem:UserName>
-        <tem:Password>${sicasPassword}</tem:Password>
+        <tem:UserName>${escapeXml(sicasUsername)}</tem:UserName>
+        <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
       </tem:oConfigAuth>
       <tem:oConfigData>
         <tem:PropertyNameTransaction>WS_SaveData</tem:PropertyNameTransaction>
@@ -798,7 +854,12 @@ async function registerDocument(
     console.log(`[SICAS Register] Response body (first 800):`, responseText.substring(0, 800));
 
     if (!response.ok) {
-      const stepError = buildStepError("save_hwcapture", `SICAS HTTP ${response.status}: ${response.statusText}`, {
+      const fault = parseSoapFault(responseText);
+      const faultMessage = fault.faultstring
+        ? `SOAP Fault [${fault.faultcode}]: ${fault.faultstring}`
+        : `SICAS HTTP ${response.status}: ${response.statusText}`;
+
+      const stepError = buildStepError("save_hwcapture", faultMessage, {
         endpoint: sicasEndpoint,
         contentType: "text/xml; charset=utf-8",
         statusCode: response.status,
@@ -806,7 +867,9 @@ async function registerDocument(
         responseBody: responseText.substring(0, 3000),
         payloadSanitized: sanitizedPayload,
       });
-      return { success: false, error: `SICAS HTTP ${response.status}: ${response.statusText}. Body: ${responseText.substring(0, 300)}`, stepError };
+
+      console.error(`[SICAS Register] SOAP Fault: code=${fault.faultcode}, string=${fault.faultstring}, detail=${fault.detail}`);
+      return { success: false, error: faultMessage, stepError };
     }
 
     const decoded = responseText
