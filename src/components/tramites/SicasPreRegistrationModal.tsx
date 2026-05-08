@@ -86,6 +86,16 @@ const FIELD_DISPLAY_NAMES: Record<string, string> = {
   IDVend: 'Vendedor',
 };
 
+const STEP_LABELS: Record<string, string> = {
+  authenticate_sicas: 'Autenticacion SICAS',
+  resolve_required_fields: 'Resolucion de campos',
+  search_client: 'Busqueda de cliente',
+  create_client_if_needed: 'Creacion de cliente',
+  validate_payload: 'Validacion de payload',
+  save_hwcapture: 'Registro de poliza',
+  completed: 'Completado',
+};
+
 const FIELD_CATALOG_MAP: Record<string, number> = {
   IDTipoDocto: 24,
   IDCia: 12,
@@ -156,6 +166,8 @@ export default function SicasPreRegistrationModal({
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [creatingClient, setCreatingClient] = useState(false);
   const [clientCreateStatus, setClientCreateStatus] = useState<string | null>(null);
+  const [stepErrorDetail, setStepErrorDetail] = useState<{ step: string; message: string; endpoint?: string; statusCode?: number; responseBody?: string; payloadSanitized?: Record<string, string> } | null>(null);
+  const [showTechnicalDetail, setShowTechnicalDetail] = useState(false);
 
   const policyNumber =
     resolutionData.policy_number ||
@@ -268,6 +280,8 @@ export default function SicasPreRegistrationModal({
       }
 
       setClientCreateStatus('Ejecutando registro automatico...');
+      setStepErrorDetail(null);
+      setShowTechnicalDetail(false);
 
       // Call the auto action - this handles ejecutivo fallback + client creation + registration
       const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-register-policy-delivery', {
@@ -283,7 +297,20 @@ export default function SicasPreRegistrationModal({
         setClientCreateStatus(`Algunos campos requieren atencion: ${result.missing?.join(', ') || 'desconocido'}`);
         setTimeout(() => onReResolve(), 1500);
       } else {
-        setClientCreateStatus(`Error: ${result.error || result.message || 'No se pudo registrar'}`);
+        const stepLabel = result.step ? STEP_LABELS[result.step as keyof typeof STEP_LABELS] || result.step : '';
+        const errorMsg = result.message || result.error || 'No se pudo registrar';
+        setClientCreateStatus(`Error${stepLabel ? ` en ${stepLabel}` : ''}: ${errorMsg}`);
+
+        if (result.step_error || result.step) {
+          setStepErrorDetail({
+            step: result.step || 'unknown',
+            message: errorMsg,
+            endpoint: result.step_error?.endpoint,
+            statusCode: result.step_error?.statusCode,
+            responseBody: result.step_error?.responseBody?.substring(0, 500),
+            payloadSanitized: result.step_error?.payloadSanitized || result.sanitized_payload,
+          });
+        }
       }
     } catch (err: any) {
       setClientCreateStatus(`Error: ${err.message}`);
@@ -366,13 +393,46 @@ export default function SicasPreRegistrationModal({
             <div className={`p-2.5 rounded-lg text-[11px] ${
               clientCreateStatus.startsWith('Error')
                 ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
-                : clientCreateStatus.startsWith('Cliente creado') || clientCreateStatus.startsWith('Cliente encontrado')
+                : clientCreateStatus.startsWith('Registrado')
                   ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                   : 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
             }`}>
               {creatingClient && <Loader2 className="h-3 w-3 animate-spin inline mr-1.5" />}
               {clientCreateStatus}
             </div>
+
+            {/* Step error technical detail */}
+            {stepErrorDetail && clientCreateStatus.startsWith('Error') && (
+              <div className="mt-2">
+                <button
+                  onClick={() => setShowTechnicalDetail(!showTechnicalDetail)}
+                  className="text-[10px] text-red-600 dark:text-red-400 underline hover:no-underline"
+                >
+                  {showTechnicalDetail ? 'Ocultar detalle tecnico' : 'Ver detalle tecnico'}
+                </button>
+                {showTechnicalDetail && (
+                  <div className="mt-1.5 p-2.5 bg-neutral-900 dark:bg-neutral-950 text-neutral-200 rounded-lg font-mono text-[10px] space-y-1 overflow-x-auto max-h-48 overflow-y-auto">
+                    <p><span className="text-neutral-500">Etapa:</span> {STEP_LABELS[stepErrorDetail.step] || stepErrorDetail.step}</p>
+                    {stepErrorDetail.endpoint && <p><span className="text-neutral-500">Endpoint:</span> {stepErrorDetail.endpoint}</p>}
+                    {stepErrorDetail.statusCode && <p><span className="text-neutral-500">HTTP Status:</span> {stepErrorDetail.statusCode}</p>}
+                    {stepErrorDetail.payloadSanitized && (
+                      <div>
+                        <p className="text-neutral-500 mt-1">Payload enviado:</p>
+                        {Object.entries(stepErrorDetail.payloadSanitized).map(([k, v]) => (
+                          <p key={k} className="pl-2">{k}={v}</p>
+                        ))}
+                      </div>
+                    )}
+                    {stepErrorDetail.responseBody && (
+                      <div>
+                        <p className="text-neutral-500 mt-1">Respuesta SICAS:</p>
+                        <pre className="whitespace-pre-wrap break-all text-[9px] text-neutral-400">{stepErrorDetail.responseBody}</pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
