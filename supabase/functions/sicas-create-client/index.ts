@@ -37,6 +37,12 @@ function escapeXml(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
+const SICAS_TYPE_DATA = {
+  TABLE: "0",
+  JSON: "1",
+  XML: "2",
+} as const;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -164,7 +170,7 @@ Deno.serve(async (req: Request) => {
       </tem:oConfigAuth>
       <tem:oConfigData>
         <tem:PropertyNameTransaction>WS_SaveData_Contacto</tem:PropertyNameTransaction>
-        <tem:PropertyTypeData>Data_XML</tem:PropertyTypeData>
+        <tem:PropertyTypeData>2</tem:PropertyTypeData>
         <tem:PropertyData>${dataString}</tem:PropertyData>
       </tem:oConfigData>
     </tem:Procesar_String>

@@ -170,6 +170,18 @@ function buildStepError(step: RegistrationStep, message: string, details?: Parti
   return { step, message, ...details };
 }
 
+const SICAS_TYPE_DATA = {
+  TABLE: "0",
+  JSON: "1",
+  XML: "2",
+} as const;
+
+type SicasTypeDataValue = typeof SICAS_TYPE_DATA[keyof typeof SICAS_TYPE_DATA];
+
+function validatePropertyTypeData(value: string): value is SicasTypeDataValue {
+  return ["0", "1", "2"].includes(value);
+}
+
 // ============================================================
 // Catalog Matching
 // ============================================================
@@ -662,7 +674,7 @@ async function attemptClientAutoCreate(
       </tem:oConfigAuth>
       <tem:oConfigData>
         <tem:PropertyNameTransaction>WS_SaveData_Contacto</tem:PropertyNameTransaction>
-        <tem:PropertyTypeData>Data_XML</tem:PropertyTypeData>
+        <tem:PropertyTypeData>2</tem:PropertyTypeData>
         <tem:PropertyData>${dataString}</tem:PropertyData>
       </tem:oConfigData>
     </tem:Procesar_String>
@@ -825,7 +837,7 @@ async function registerDocument(
       </tem:oConfigAuth>
       <tem:oConfigData>
         <tem:PropertyNameTransaction>WS_SaveData_Documento</tem:PropertyNameTransaction>
-        <tem:PropertyTypeData>Data_XML</tem:PropertyTypeData>
+        <tem:PropertyTypeData>2</tem:PropertyTypeData>
         <tem:PropertyData>${dataString}</tem:PropertyData>
       </tem:oConfigData>
     </tem:Procesar_String>
