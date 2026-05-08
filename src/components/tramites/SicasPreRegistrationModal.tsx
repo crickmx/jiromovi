@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { X, CheckCircle2, Loader2, AlertTriangle, Shield, ArrowRight, Save, Search, ChevronDown, RefreshCw, Info, UserPlus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, CheckCircle2, Loader2, AlertTriangle, Shield, ArrowRight, Search, ChevronDown, RefreshCw, Info, UserPlus, Zap, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -65,9 +65,11 @@ const SOURCE_LABELS: Record<string, string> = {
   matched_by_name: 'Match por nombre',
   matched_by_name_partial: 'Match parcial por nombre',
   auto_created: 'Creado automaticamente',
+  auto_create_pending: 'Se creara automaticamente',
   previously_resolved: 'Resuelto previamente',
   policy_delivery: 'Datos de la entrega',
   user_override: 'Seleccion manual',
+  fallback_vendor_id: 'Ejecutivo = Vendedor',
 };
 
 const FIELD_DISPLAY_NAMES: Record<string, string> = {
@@ -104,7 +106,7 @@ function getSourceColorClasses(source: string): string {
   if (source === 'override' || source === 'vendor' || source === 'user_override') {
     return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
   }
-  if (source === 'auto_created') {
+  if (source === 'auto_created' || source === 'auto_create_pending' || source === 'fallback_vendor_id') {
     return 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border-teal-200 dark:border-teal-800';
   }
   if (source.startsWith('catalog_match') || source === 'single_catalog_item' || source.startsWith('matched_by') || source === 'inferred_from_vehicle_data' || source === 'matched_to_vendor_name') {
@@ -148,7 +150,6 @@ export default function SicasPreRegistrationModal({
   const [catalogs, setCatalogs] = useState<Record<number, CatalogOption[]>>({});
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
   const [userOverrides, setUserOverrides] = useState<Record<string, { value: string; label: string }>>({});
-  const [savingOverrides, setSavingOverrides] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [saveAsDefault, setSaveAsDefault] = useState(false);
@@ -164,16 +165,25 @@ export default function SicasPreRegistrationModal({
 
   const resolvedEntries = Object.entries(resolutionData.resolved);
   const hasWarnings = resolutionData.warnings.length > 0;
-  const missingFieldKeys = resolutionData.missing.map(extractFieldKey);
+
+  // Filter out IDEjecutivo and IDCli from missing - these are auto-resolved
+  const AUTO_RESOLVED_FIELDS = ['IDEjecutivo', 'IDCli'];
+  const allMissingFieldKeys = resolutionData.missing.map(extractFieldKey);
+  const missingFieldKeys = allMissingFieldKeys.filter(k => !AUTO_RESOLVED_FIELDS.includes(k));
   const hasMissing = missingFieldKeys.length > 0;
   const allMissingFilled = hasMissing && missingFieldKeys.every(key => userOverrides[key]?.value);
 
-  // Check if client is the only missing field and auto-create is eligible
-  const clientAutoCreateEligible = resolutionData.logs?.cliente?.auto_create_eligible && missingFieldKeys.includes('IDCli');
-  const onlyClientMissing = missingFieldKeys.length === 1 && missingFieldKeys[0] === 'IDCli';
+  // Auto-resolution info for ejecutivo and client
+  const ejecutivoResolved = resolutionData.resolved.IDEjecutivo;
+  const clienteResolved = resolutionData.resolved.IDCli;
+  const clientAutoCreatePending = clienteResolved?.source === 'auto_create_pending';
+  const ejecutivoAutoAssigned = ejecutivoResolved?.source === 'fallback_vendor_id';
+
+  // Show auto-resolution section when either field is auto-assigned
+  const hasAutoResolution = ejecutivoAutoAssigned || clientAutoCreatePending;
 
   useEffect(() => {
-    if (hasMissing) {
+    if (hasMissing && missingFieldKeys.length > 0) {
       loadCatalogsForMissing();
     }
   }, [resolutionData.missing]);
@@ -236,17 +246,45 @@ export default function SicasPreRegistrationModal({
     }
   }
 
-  async function handleAutoCreateClient() {
+  async function handleAutoResolveAndRegister() {
     setCreatingClient(true);
-    setClientCreateStatus('Buscando cliente en SICAS...');
+    setClientCreateStatus('Resolviendo datos y registrando en SICAS...');
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No hay sesion activa');
 
-      setClientCreateStatus('Creando cliente en SICAS...');
+      // First save any manual overrides for truly missing fields
+      if (Object.keys(userOverrides).length > 0) {
+        const OVERRIDE_COLUMNS: Record<string, string> = {
+          IDTipoDocto: 'sicas_override_tipo_docto',
+          IDCia: 'sicas_override_cia',
+          IDRamo: 'sicas_override_ramo',
+          IDSubRamo: 'sicas_override_subramo',
+          IDMon: 'sicas_override_moneda',
+          IDFPago: 'sicas_override_fpago',
+          IDGrupo: 'sicas_override_grupo',
+          Estatus: 'sicas_override_estatus',
+        };
+        const updateData: Record<string, string> = {};
+        for (const [fieldKey, { value }] of Object.entries(userOverrides)) {
+          const col = OVERRIDE_COLUMNS[fieldKey];
+          if (col && value) updateData[col] = value;
+        }
+        if (Object.keys(updateData).length > 0) {
+          await supabase.from('policy_deliveries').update(updateData).eq('id', record.id);
+        }
+      }
 
+      // Save defaults if checked
+      if (saveAsDefault) {
+        await saveSelectedAsDefaults();
+      }
+
+      setClientCreateStatus('Ejecutando registro automatico...');
+
+      // Call the auto action - this handles ejecutivo fallback + client creation + registration
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-create-client`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-register-policy-delivery`,
         {
           method: 'POST',
           headers: {
@@ -255,9 +293,7 @@ export default function SicasPreRegistrationModal({
           },
           body: JSON.stringify({
             delivery_id: record.id,
-            client_name: record.insured_name || '',
-            client_rfc: record.insured_rfc || '',
-            force_create: false,
+            action: 'auto',
           }),
         }
       );
@@ -265,29 +301,13 @@ export default function SicasPreRegistrationModal({
       const result = await response.json();
 
       if (result.success) {
-        setClientCreateStatus(`Cliente creado: ${result.client_name} (ID: ${result.client_id})`);
-        // Set the override so it gets saved
-        setUserOverrides(prev => ({
-          ...prev,
-          IDCli: { value: result.client_id, label: result.client_name },
-        }));
-      } else if (result.error === 'duplicate_found' || result.error === 'probable_duplicate') {
-        // Show candidates for selection
-        if (result.candidates && result.candidates.length > 0) {
-          setClientCreateStatus(`Se encontraron clientes existentes. Selecciona uno.`);
-          // Auto-select if only one candidate
-          if (result.candidates.length === 1) {
-            setUserOverrides(prev => ({
-              ...prev,
-              IDCli: { value: result.candidates[0].id_sicas, label: result.candidates[0].nombre },
-            }));
-            setClientCreateStatus(`Cliente encontrado: ${result.candidates[0].nombre} (ID: ${result.candidates[0].id_sicas})`);
-          }
-        } else {
-          setClientCreateStatus(result.message || 'Duplicado detectado');
-        }
+        setClientCreateStatus(`Registrado exitosamente${result.document_id ? ` (Doc: ${result.document_id})` : ''}`);
+        setTimeout(() => onConfirm(), 1200);
+      } else if (result.status === 'manual_review_required') {
+        setClientCreateStatus(`Algunos campos requieren atencion: ${result.missing?.join(', ') || 'desconocido'}`);
+        setTimeout(() => onReResolve(), 1500);
       } else {
-        setClientCreateStatus(`Error: ${result.error || 'No se pudo crear cliente'}`);
+        setClientCreateStatus(`Error: ${result.error || result.message || 'No se pudo registrar'}`);
       }
     } catch (err: any) {
       setClientCreateStatus(`Error: ${err.message}`);
@@ -298,53 +318,8 @@ export default function SicasPreRegistrationModal({
 
   async function handleSaveOverridesAndRegister() {
     if (!allMissingFilled && hasMissing) return;
-
-    setSavingOverrides(true);
-    try {
-      const OVERRIDE_COLUMNS: Record<string, string> = {
-        IDTipoDocto: 'sicas_override_tipo_docto',
-        IDCia: 'sicas_override_cia',
-        IDRamo: 'sicas_override_ramo',
-        IDSubRamo: 'sicas_override_subramo',
-        IDMon: 'sicas_override_moneda',
-        IDFPago: 'sicas_override_fpago',
-        IDEjecutivo: 'sicas_override_ejecutivo',
-        IDGrupo: 'sicas_override_grupo',
-        IDCli: 'sicas_override_cliente',
-        Estatus: 'sicas_override_estatus',
-      };
-
-      const updateData: Record<string, string | null> = {};
-      for (const [fieldKey, { value }] of Object.entries(userOverrides)) {
-        const col = OVERRIDE_COLUMNS[fieldKey];
-        if (col && value) {
-          updateData[col] = value;
-        }
-      }
-
-      if (Object.keys(updateData).length > 0) {
-        updateData['sicas_registration_status'] = 'ready_to_register';
-        updateData['sicas_error_message'] = null;
-
-        const { error } = await supabase
-          .from('policy_deliveries')
-          .update(updateData)
-          .eq('id', record.id);
-
-        if (error) throw error;
-      }
-
-      // Save as defaults if checked
-      if (saveAsDefault) {
-        await saveSelectedAsDefaults();
-      }
-
-      onReResolve();
-    } catch (err: any) {
-      console.error('Error saving overrides:', err);
-    } finally {
-      setSavingOverrides(false);
-    }
+    // Use the auto-resolve flow directly
+    await handleAutoResolveAndRegister();
   }
 
   async function saveSelectedAsDefaults() {
@@ -378,7 +353,7 @@ export default function SicasPreRegistrationModal({
           </div>
           <button
             onClick={onClose}
-            disabled={isRegistering || savingOverrides}
+            disabled={isRegistering || creatingClient}
             className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors disabled:opacity-50"
           >
             <X className="h-5 w-5" />
@@ -386,16 +361,12 @@ export default function SicasPreRegistrationModal({
         </div>
 
         {/* Toolbar */}
-        {hasMissing && (
+        {(hasMissing || hasWarnings) && (
           <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={handleSyncCatalogs} disabled={syncing} className="h-7 text-[11px] gap-1.5">
-              {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              Sincronizar catalogos
-            </Button>
-            {clientAutoCreateEligible && (
-              <Button variant="outline" size="sm" onClick={handleAutoCreateClient} disabled={creatingClient} className="h-7 text-[11px] gap-1.5">
-                {creatingClient ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
-                Crear cliente automaticamente
+            {hasMissing && (
+              <Button variant="outline" size="sm" onClick={handleSyncCatalogs} disabled={syncing} className="h-7 text-[11px] gap-1.5">
+                {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Sincronizar catalogos
               </Button>
             )}
             <button
@@ -448,12 +419,49 @@ export default function SicasPreRegistrationModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Auto-resolution info */}
+          {hasAutoResolution && (
+            <div className="bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-xl p-4">
+              <h3 className="text-xs font-semibold text-teal-800 dark:text-teal-300 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5" />
+                Resolucion automatica
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {ejecutivoAutoAssigned && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-neutral-800 rounded-lg border border-teal-200 dark:border-teal-700">
+                    <User className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                    <span className="text-[11px] text-neutral-700 dark:text-neutral-300">
+                      <span className="font-medium">Ejecutivo</span> = {ejecutivoResolved?.label || 'Vendedor'}
+                    </span>
+                    <Badge className="text-[9px] px-1.5 py-0 bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800">
+                      Auto
+                    </Badge>
+                  </div>
+                )}
+                {clientAutoCreatePending && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-neutral-800 rounded-lg border border-teal-200 dark:border-teal-700">
+                    <UserPlus className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                    <span className="text-[11px] text-neutral-700 dark:text-neutral-300">
+                      <span className="font-medium">Cliente</span> = {clienteResolved?.label || 'Se creara'}
+                    </span>
+                    <Badge className="text-[9px] px-1.5 py-0 bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800">
+                      Auto
+                    </Badge>
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-teal-700/70 dark:text-teal-400/70 mt-2">
+                MOVI resolvera estos campos automaticamente al registrar en SICAS.
+              </p>
+            </div>
+          )}
+
           {/* Resolved fields */}
           {resolvedEntries.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                Datos resueltos automaticamente ({resolvedEntries.length})
+                Datos resueltos ({resolvedEntries.length})
               </h3>
               <div className="border dark:border-neutral-800 rounded-xl overflow-hidden">
                 <div className="grid grid-cols-[1fr_1.2fr_1fr] bg-neutral-50 dark:bg-neutral-800/50 px-4 py-2 border-b dark:border-neutral-800">
@@ -472,9 +480,15 @@ export default function SicasPreRegistrationModal({
                       {getFieldDisplayName(fieldKey)}
                     </span>
                     <span className="text-xs text-neutral-900 dark:text-white truncate" title={field.label || field.value}>
-                      {field.label || field.value}
-                      {field.label && field.value && field.label !== field.value && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">({field.value})</span>
+                      {field.source === 'auto_create_pending' ? (
+                        <span className="italic text-teal-700 dark:text-teal-400">{field.label || 'Se creara automaticamente'}</span>
+                      ) : (
+                        <>
+                          {field.label || field.value}
+                          {field.label && field.value && field.label !== field.value && field.value !== '__auto_create__' && (
+                            <span className="ml-1 text-[10px] text-muted-foreground">({field.value})</span>
+                          )}
+                        </>
                       )}
                     </span>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[10px] font-medium w-fit ${getSourceColorClasses(field.source)}`}>
@@ -486,7 +500,7 @@ export default function SicasPreRegistrationModal({
             </div>
           )}
 
-          {/* Missing fields */}
+          {/* Missing fields (only non-auto-resolved ones) */}
           {hasMissing && (
             <div>
               <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -502,20 +516,6 @@ export default function SicasPreRegistrationModal({
               ) : (
                 <div className="space-y-3">
                   {missingFieldKeys.map((fieldKey) => {
-                    if (fieldKey === 'IDCli') {
-                      return (
-                        <ClientSearchField
-                          key={fieldKey}
-                          record={record}
-                          selectedValue={userOverrides[fieldKey]?.value || ''}
-                          selectedLabel={userOverrides[fieldKey]?.label || ''}
-                          onSelect={(value, label) => {
-                            setUserOverrides(prev => ({ ...prev, [fieldKey]: { value, label } }));
-                          }}
-                        />
-                      );
-                    }
-
                     const catalogTypeId = FIELD_CATALOG_MAP[fieldKey];
                     const options = catalogTypeId ? catalogs[catalogTypeId] || [] : [];
 
@@ -558,32 +558,32 @@ export default function SicasPreRegistrationModal({
             <p className="text-[10px] text-muted-foreground max-w-[50%]">
               {hasMissing
                 ? allMissingFilled
-                  ? 'Todos los campos completados. Guarde y reintente.'
-                  : `${missingFieldKeys.length} campo(s) pendientes.`
-                : `${resolvedEntries.length} campos resueltos. Confirme para registrar.`}
+                  ? 'Campos completados. Listo para registrar.'
+                  : `${missingFieldKeys.length} campo(s) pendientes de seleccionar.`
+                : `${resolvedEntries.length} campos resueltos. Listo para registrar.`}
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={onClose} disabled={isRegistering || savingOverrides}>
+              <Button variant="outline" onClick={onClose} disabled={isRegistering || creatingClient}>
                 Cancelar
               </Button>
 
               {hasMissing ? (
                 <Button
                   onClick={handleSaveOverridesAndRegister}
-                  disabled={!allMissingFilled || savingOverrides}
+                  disabled={!allMissingFilled || creatingClient}
                 >
-                  {savingOverrides ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Guardando...</>
+                  {creatingClient ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Registrando...</>
                   ) : (
-                    <><Save className="h-4 w-4 mr-2" />Guardar y re-resolver</>
+                    <><Zap className="h-4 w-4 mr-2" />Resolver y registrar en SICAS<ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>
                   )}
                 </Button>
               ) : (
-                <Button onClick={onConfirm} disabled={isRegistering}>
-                  {isRegistering ? (
+                <Button onClick={handleAutoResolveAndRegister} disabled={isRegistering || creatingClient}>
+                  {isRegistering || creatingClient ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Registrando...</>
                   ) : (
-                    <><CheckCircle2 className="h-4 w-4 mr-2" />Confirmar y registrar en SICAS<ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>
+                    <><Zap className="h-4 w-4 mr-2" />Resolver y registrar en SICAS<ArrowRight className="h-3.5 w-3.5 ml-1.5" /></>
                   )}
                 </Button>
               )}
@@ -595,159 +595,6 @@ export default function SicasPreRegistrationModal({
   );
 }
 
-// ---- Client Search Field ----
-
-interface ClientSearchFieldProps {
-  record: DeliveryRecord;
-  selectedValue: string;
-  selectedLabel: string;
-  onSelect: (value: string, label: string) => void;
-}
-
-function ClientSearchField({ record, selectedValue, selectedLabel, onSelect }: ClientSearchFieldProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<Array<{ id_sicas: string; nombre: string; rfc?: string }>>([]);
-  const [showResults, setShowResults] = useState(false);
-  const [showManual, setShowManual] = useState(false);
-  const [manualValue, setManualValue] = useState('');
-  const [searchError, setSearchError] = useState<string | null>(null);
-
-  const handleSearch = useCallback(async (query: string) => {
-    if (query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
-
-    setSearching(true);
-    setSearchError(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Sin sesion');
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-search-client`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ query: query.trim(), limit: 15 }),
-        }
-      );
-
-      const data = await response.json();
-      if (data.success) {
-        setResults(data.results || []);
-        setShowResults(true);
-      } else {
-        setSearchError(data.error || 'Error buscando');
-      }
-    } catch (err: any) {
-      setSearchError(err.message);
-    } finally {
-      setSearching(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm.trim().length >= 2) {
-        handleSearch(searchTerm);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchTerm, handleSearch]);
-
-  if (showManual) {
-    return (
-      <div className={`border rounded-xl p-3 transition-colors ${selectedValue ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/10' : 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/10'}`}>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-            Cliente SICAS
-            {!selectedValue && <Badge variant="destructive" className="text-[9px] px-1 py-0">Requerido</Badge>}
-          </span>
-          {selectedValue && (
-            <Badge className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
-              {selectedLabel} ({selectedValue})
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Input placeholder="Ingresar ID SICAS del cliente" value={manualValue} onChange={(e) => setManualValue(e.target.value)} className="h-8 text-xs flex-1" />
-          <Button size="sm" variant="outline" className="h-8 text-xs px-2" disabled={!manualValue.trim()} onClick={() => { onSelect(manualValue.trim(), `ID: ${manualValue.trim()}`); setManualValue(''); }}>
-            Usar
-          </Button>
-        </div>
-        <button onClick={() => setShowManual(false)} className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
-          Volver a buscar
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`border rounded-xl p-3 transition-colors ${selectedValue ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/10' : 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/10'}`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-          Cliente SICAS
-          {!selectedValue && <Badge variant="destructive" className="text-[9px] px-1 py-0">Requerido</Badge>}
-        </span>
-        {selectedValue && (
-          <Badge className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
-            {selectedLabel} ({selectedValue})
-          </Badge>
-        )}
-      </div>
-
-      <div className="relative">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre o RFC..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8 pl-8 text-xs"
-            />
-          </div>
-          {searching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-        </div>
-
-        {showResults && results.length > 0 && (
-          <div className="absolute z-20 top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto border dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 shadow-xl">
-            {results.map((client) => (
-              <button
-                key={client.id_sicas}
-                className={`w-full text-left px-3 py-2 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors border-b dark:border-neutral-800 last:border-b-0 ${selectedValue === client.id_sicas ? 'bg-emerald-50 dark:bg-emerald-950/30 font-medium' : ''}`}
-                onClick={() => { onSelect(client.id_sicas, client.nombre); setShowResults(false); setSearchTerm(''); }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="truncate">{client.nombre}</span>
-                  <span className="text-[10px] text-muted-foreground ml-2 shrink-0 font-mono">{client.id_sicas}</span>
-                </div>
-                {client.rfc && <span className="text-[10px] text-muted-foreground">RFC: {client.rfc}</span>}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {showResults && results.length === 0 && searchTerm.trim().length >= 2 && !searching && (
-          <div className="absolute z-20 top-full left-0 right-0 mt-1 p-3 border dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 shadow-xl">
-            <p className="text-xs text-muted-foreground text-center">Sin resultados para "{searchTerm}"</p>
-          </div>
-        )}
-
-        {searchError && <p className="mt-1 text-[10px] text-red-500">{searchError}</p>}
-
-        <button onClick={() => setShowManual(true)} className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
-          Capturar ID manualmente
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ---- Missing Field Selector ----
 

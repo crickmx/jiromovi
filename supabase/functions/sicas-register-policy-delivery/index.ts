@@ -401,11 +401,18 @@ async function resolveSicasHwcaptureRequiredFields(
       logs.ejecutivo.executive_match_found = false;
       logs.ejecutivo.source = "default";
     }
-    // Priority 5: Missing
+    // Priority 5: Fallback to vendor's own ID as ejecutivo
+    else if (delivery.vendor_sicas_id) {
+      resolved.IDEjecutivo = { value: delivery.vendor_sicas_id, source: "fallback_vendor_id", label: vendorName || undefined };
+      logs.ejecutivo.executive_match_found = false;
+      logs.ejecutivo.source = "fallback_vendor_id";
+      warnings.push(`IDEjecutivo: Se asigno el ID del vendedor (${delivery.vendor_sicas_id}) como ejecutivo.`);
+    }
+    // Priority 6: Last resort - mark as missing (should rarely reach here)
     else {
       missing.push("Ejecutivo (IDEjecutivo)");
       logs.ejecutivo.executive_match_found = false;
-      warnings.push(`IDEjecutivo: No se encontro ejecutivo con nombre "${vendorName}". Seleccione manualmente.`);
+      warnings.push(`IDEjecutivo: No se encontro ejecutivo con nombre "${vendorName}" y no hay vendedor asignado.`);
     }
   }
 
@@ -508,12 +515,12 @@ async function resolveSicasHwcaptureRequiredFields(
     // If no local results, mark for auto-creation attempt
     if (!clientFound) {
       if (nameToSearch) {
-        // Mark that we need to attempt auto-creation
         logs.cliente.auto_create_eligible = true;
         logs.cliente.auto_create_name = nameToSearch;
         logs.cliente.auto_create_rfc = rfcToSearch || null;
-        missing.push("Cliente SICAS (IDCli)");
-        warnings.push(`IDCli: No se encontro cliente SICAS. Se intentara crear automaticamente al registrar.`);
+        // Do NOT push to missing - auto-creation will handle it
+        resolved.IDCli = { value: "__auto_create__", source: "auto_create_pending", label: nameToSearch };
+        warnings.push(`IDCli: No se encontro cliente SICAS. Se creara automaticamente al registrar.`);
       } else {
         missing.push("Cliente SICAS (IDCli)");
         logs.cliente.auto_create_eligible = false;
@@ -890,8 +897,9 @@ Deno.serve(async (req: Request) => {
       const resolution = await resolveSicasHwcaptureRequiredFields(supabase, delivery, defaults);
 
       // If client is missing but auto-create eligible, attempt creation
-      if (resolution.missing.includes("Cliente SICAS (IDCli)") && resolution.logs.cliente?.auto_create_eligible) {
-        console.log("[SICAS] Client missing but auto-create eligible. Attempting creation...");
+      const clientNeedsAutoCreate = (resolution.resolved.IDCli?.value === "__auto_create__") || (resolution.missing.includes("Cliente SICAS (IDCli)") && resolution.logs.cliente?.auto_create_eligible);
+      if (clientNeedsAutoCreate) {
+        console.log("[SICAS] Client needs auto-creation. Attempting...");
 
         const createResult = await attemptClientAutoCreate(supabase, delivery, sicasEndpoint, sicasUsername, sicasPassword);
 
@@ -917,6 +925,7 @@ Deno.serve(async (req: Request) => {
         } else {
           console.error(`[SICAS] Client auto-creation failed: ${createResult.error}`);
           resolution.warnings.push(`IDCli: Auto-creacion fallo: ${createResult.error}`);
+          resolution.missing.push("Cliente SICAS (IDCli)");
 
           // Save the failure info
           await supabase
@@ -929,8 +938,11 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Check if all required fields are resolved
-      if (resolution.missing.length > 0) {
+      // Check if all required fields are resolved (also check sentinel)
+      if (resolution.missing.length > 0 || resolution.resolved.IDCli?.value === "__auto_create__") {
+        if (resolution.resolved.IDCli?.value === "__auto_create__") {
+          resolution.missing.push("Cliente SICAS (IDCli)");
+        }
         await supabase
           .from("policy_deliveries")
           .update({
@@ -1058,7 +1070,8 @@ Deno.serve(async (req: Request) => {
       steps[steps.length - 1].detail = `${Object.keys(resolution.resolved).length} campos resueltos, ${resolution.missing.length} pendientes`;
 
       // Step 2: Handle client resolution/creation
-      if (resolution.missing.includes("Cliente SICAS (IDCli)")) {
+      const clientNeedsCreation = resolution.resolved.IDCli?.value === "__auto_create__" || resolution.missing.includes("Cliente SICAS (IDCli)");
+      if (clientNeedsCreation) {
         if (resolution.logs.cliente?.auto_create_eligible) {
           steps.push({ step: "creating_client", status: "in_progress" });
           await supabase.from("policy_deliveries").update({ sicas_registration_status: "creating_client" }).eq("id", delivery_id);
@@ -1091,18 +1104,24 @@ Deno.serve(async (req: Request) => {
             }).eq("id", delivery_id);
 
             resolution.warnings.push(`Cliente: Auto-creacion fallo: ${createResult.error}`);
+            resolution.missing.push("Cliente SICAS (IDCli)");
           }
         } else if (resolution.logs.cliente?.candidates_count > 1) {
           steps.push({ step: "client_ambiguous", status: "manual_required", detail: `${resolution.logs.cliente.candidates_count} candidatos encontrados` });
+          resolution.missing.push("Cliente SICAS (IDCli)");
         } else {
           steps.push({ step: "client_missing", status: "manual_required", detail: "No hay datos de cliente para buscar o crear" });
+          resolution.missing.push("Cliente SICAS (IDCli)");
         }
       } else if (resolution.resolved.IDCli) {
         steps.push({ step: "client_found", status: "completed", detail: `${resolution.resolved.IDCli.label || resolution.resolved.IDCli.value} (${resolution.resolved.IDCli.source})` });
       }
 
-      // Step 3: Check if we can proceed to registration
-      if (resolution.missing.length > 0) {
+      // Step 3: Check if we can proceed to registration (also check for sentinel values)
+      if (resolution.missing.length > 0 || resolution.resolved.IDCli?.value === "__auto_create__") {
+        if (resolution.resolved.IDCli?.value === "__auto_create__") {
+          resolution.missing.push("Cliente SICAS (IDCli)");
+        }
         finalStatus = "manual_review_required";
         await supabase.from("policy_deliveries").update({
           sicas_resolved_fields: resolution.resolved,
