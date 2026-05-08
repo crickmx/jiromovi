@@ -28,6 +28,15 @@ function normalizeText(text: string): string {
     .trim();
 }
 
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -142,7 +151,7 @@ Deno.serve(async (req: Request) => {
     const isEmpresa = /^(S\.?A\.?|S\.?C\.?|S\.? DE R\.?L\.?|SOCIEDAD|EMPRESA|CORPORAT|CIA|COMPAÑIA)/i.test(client_name.trim());
     contactData.push(`CliTipoPersona|${isEmpresa ? "M" : "F"}`);
 
-    const dataString = contactData.join("\n");
+    const dataString = escapeXml(contactData.join("\n"));
 
     const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -150,12 +159,12 @@ Deno.serve(async (req: Request) => {
   <soap:Body>
     <tem:Procesar_String>
       <tem:oConfigAuth>
-        <tem:UserName>${sicasUsername}</tem:UserName>
-        <tem:Password>${sicasPassword}</tem:Password>
+        <tem:UserName>${escapeXml(sicasUsername)}</tem:UserName>
+        <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
       </tem:oConfigAuth>
       <tem:oConfigData>
-        <tem:PropertyNameTransaction>WS_SaveData</tem:PropertyNameTransaction>
-        <tem:PropertyTypeData>Contacto</tem:PropertyTypeData>
+        <tem:PropertyNameTransaction>WS_SaveData_Contacto</tem:PropertyNameTransaction>
+        <tem:PropertyTypeData>Data_XML</tem:PropertyTypeData>
         <tem:PropertyData>${dataString}</tem:PropertyData>
       </tem:oConfigData>
     </tem:Procesar_String>
@@ -163,6 +172,7 @@ Deno.serve(async (req: Request) => {
 </soap:Envelope>`;
 
     console.log(`[sicas-create-client] Sending SOAP request to ${sicasEndpoint}`);
+    console.log(`[sicas-create-client] Full SOAP Request:`, soapEnvelope);
     console.log(`[sicas-create-client] Data fields: ${contactData.join(", ")}`);
 
     const controller = new AbortController();

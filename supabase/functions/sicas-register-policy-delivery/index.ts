@@ -661,8 +661,8 @@ async function attemptClientAutoCreate(
         <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
       </tem:oConfigAuth>
       <tem:oConfigData>
-        <tem:PropertyNameTransaction>WS_SaveData</tem:PropertyNameTransaction>
-        <tem:PropertyTypeData>Contacto</tem:PropertyTypeData>
+        <tem:PropertyNameTransaction>WS_SaveData_Contacto</tem:PropertyNameTransaction>
+        <tem:PropertyTypeData>Data_XML</tem:PropertyTypeData>
         <tem:PropertyData>${dataString}</tem:PropertyData>
       </tem:oConfigData>
     </tem:Procesar_String>
@@ -674,6 +674,7 @@ async function attemptClientAutoCreate(
 
   try {
     console.log(`[SICAS Client] POST ${sicasEndpoint} (Contacto)`);
+    console.log(`[SICAS Client] Full SOAP Request:`, soapEnvelope);
     console.log(`[SICAS Client] Payload fields: ${contactData.join(", ")}`);
 
     const response = await fetch(sicasEndpoint, {
@@ -823,8 +824,8 @@ async function registerDocument(
         <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
       </tem:oConfigAuth>
       <tem:oConfigData>
-        <tem:PropertyNameTransaction>WS_SaveData</tem:PropertyNameTransaction>
-        <tem:PropertyTypeData>Documento</tem:PropertyTypeData>
+        <tem:PropertyNameTransaction>WS_SaveData_Documento</tem:PropertyNameTransaction>
+        <tem:PropertyTypeData>Data_XML</tem:PropertyTypeData>
         <tem:PropertyData>${dataString}</tem:PropertyData>
       </tem:oConfigData>
     </tem:Procesar_String>
@@ -832,6 +833,7 @@ async function registerDocument(
 </soap:Envelope>`;
 
   console.log(`[SICAS Register] POST ${sicasEndpoint} (Documento)`);
+  console.log(`[SICAS Register] Full SOAP Request:`, soapEnvelope);
   console.log(`[SICAS Register] Payload: ${docFields.join(", ")}`);
 
   const controller = new AbortController();
