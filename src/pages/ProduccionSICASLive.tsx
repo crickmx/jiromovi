@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { trackDocumentView, trackDashboardView, trackDashboardTabOpened, trackDashboardFilterApplied, trackDashboardDrilldown } from '../lib/activityLogger';
-import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle, Briefcase, Lightbulb, Bell } from 'lucide-react';
+import { TrendingUp, Database, Loader2, AlertTriangle, Users, BarChart3, RefreshCcw, Shield, FileText, Building2, Layers, CalendarClock, GitCompare, Cloud, Search, X, Filter, MapPin, CircleUser as UserCircle, Lightbulb, Bell } from 'lucide-react';
 import {
   type DashboardTab, type DashboardScope, type DashboardKPIs,
   type DashboardCharts, type GlobalFilters, type OficinaOption,
@@ -18,7 +18,6 @@ import TabRenovaciones from '../components/sicasDashboard/TabRenovaciones';
 import TabEntidades from '../components/sicasDashboard/TabEntidades';
 import TabDocumentos from '../components/sicasDashboard/TabDocumentos';
 import TabComparativos from '../components/sicasDashboard/TabComparativos';
-import TabCartera from '../components/sicasDashboard/TabCartera';
 import TabOportunidades from '../components/sicasDashboard/TabOportunidades';
 import TabAlertas from '../components/sicasDashboard/TabAlertas';
 import TabSincronizacion from '../components/sicasDashboard/TabSincronizacion';
@@ -29,7 +28,6 @@ import { tienePermisoAdminEnModulo } from '../lib/permisosUtils';
 const TAB_CONFIG: { key: DashboardTab; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
   { key: 'resumen', label: 'Resumen', icon: BarChart3 },
   { key: 'produccion', label: 'Produccion', icon: TrendingUp },
-  { key: 'cartera', label: 'Mi Cartera', icon: Briefcase },
   { key: 'renovaciones', label: 'Renovaciones', icon: CalendarClock },
   { key: 'clientes', label: 'Clientes', icon: Users },
   { key: 'aseguradoras', label: 'Aseguradoras', icon: Building2 },
@@ -401,14 +399,6 @@ export default function ProduccionSICASLive() {
             isAdmin={isAdmin}
             vendedorId={effectiveVendedorId}
             onEntityClick={handleEntityClick}
-          />
-        )}
-        {activeTab === 'cartera' && (
-          <TabCartera
-            userId={usuario?.id || ''}
-            scope={effectiveScope}
-            accentColor={accentColor}
-            onClientClick={(name) => handleEntityClick('cliente', name)}
           />
         )}
         {activeTab === 'oportunidades' && (

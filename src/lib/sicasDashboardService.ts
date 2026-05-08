@@ -323,6 +323,37 @@ export async function fetchAvanceComercial(
 
 // === Cartera Module Functions ===
 
+export interface EntityAggregates {
+  total_docs: number;
+  prima_neta_total: number;
+  prima_vigente: number;
+  unique_count: number;
+  polizas_vigentes: number;
+  polizas_canceladas: number;
+}
+
+export async function fetchEntityAggregates(
+  userId: string,
+  dimension: string,
+  entityName: string,
+  entityId?: string,
+  fechaDesde?: string,
+  fechaHasta?: string
+): Promise<EntityAggregates> {
+  const params: Record<string, unknown> = {
+    p_user_id: userId,
+    p_dimension: dimension,
+    p_entity_name: entityName,
+  };
+  if (entityId) params.p_entity_id = entityId;
+  if (fechaDesde) params.p_fecha_desde = fechaDesde;
+  if (fechaHasta) params.p_fecha_hasta = fechaHasta;
+
+  const { data, error } = await supabase.rpc('get_sicas_entity_aggregates', params);
+  if (error) throw new Error(error.message);
+  return (data || { total_docs: 0, prima_neta_total: 0, prima_vigente: 0, unique_count: 0, polizas_vigentes: 0, polizas_canceladas: 0 }) as EntityAggregates;
+}
+
 export async function fetchCustomerProfiles(
   userId: string,
   options?: { search?: string; sortBy?: string; sortAsc?: boolean; limit?: number; offset?: number; scope?: string; oficinaId?: string }
@@ -393,6 +424,8 @@ export async function dismissAlert(alertId: string): Promise<void> {
 }
 
 export async function generateAlerts(userId: string): Promise<void> {
+  // First refresh customer profiles so high-value detection works
+  await supabase.rpc('refresh_sicas_customer_profiles', { p_usuario_id: userId });
   const { error } = await supabase.rpc('generate_sicas_agent_alerts', { p_usuario_id: userId });
   if (error) throw new Error(error.message);
 }
@@ -422,6 +455,8 @@ export async function fetchCrossSellOpportunities(
 }
 
 export async function detectCrossSell(userId: string): Promise<void> {
+  // Must refresh customer profiles before cross-sell detection (depends on profile data)
+  await supabase.rpc('refresh_sicas_customer_profiles', { p_usuario_id: userId });
   const { error } = await supabase.rpc('detect_sicas_cross_sell', { p_usuario_id: userId });
   if (error) throw new Error(error.message);
 }

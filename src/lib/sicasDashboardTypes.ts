@@ -145,7 +145,6 @@ export type DashboardTab =
   | 'ramos'
   | 'documentos'
   | 'comparativos'
-  | 'cartera'
   | 'oportunidades'
   | 'alertas'
   | 'sincronizacion';

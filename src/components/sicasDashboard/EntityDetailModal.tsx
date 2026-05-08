@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
-import { X, Users, Building2, Layers, MapPin, CircleUser as UserCircle, Loader2, FileText, ChevronLeft, ChevronRight, Eye, DollarSign, Hash, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Users, Building2, Layers, MapPin, CircleUser as UserCircle, Loader2, FileText, ChevronLeft, ChevronRight, Eye, DollarSign, Hash } from 'lucide-react';
 import { formatCurrency, formatFullCurrency, formatNumber, formatDate } from '../../lib/sicasDashboardTypes';
-import { fetchDocuments, type DocQueryParams } from '../../lib/sicasDashboardService';
+import { fetchDocuments, fetchEntityAggregates, type DocQueryParams } from '../../lib/sicasDashboardService';
 import type { SicasDocRow } from '../../lib/sicasDashboardTypes';
 
 interface Props {
@@ -39,12 +39,22 @@ export default function EntityDetailModal({
   const [totalDocs, setTotalDocs] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [kpis, setKpis] = useState<{ primaNeta: number; primaVigente: number; uniqueKey: number } | null>(null);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
+
+  useEffect(() => {
+    fetchEntityAggregates(userId, dimension, entityName, entityId, fechaDesde, fechaHasta)
+      .then(agg => {
+        setKpis({ primaNeta: agg.prima_neta_total, primaVigente: agg.prima_vigente, uniqueKey: agg.unique_count });
+        setTotalDocs(agg.total_docs);
+      })
+      .catch(() => setKpis(null));
+  }, [userId, dimension, entityName, entityId, fechaDesde, fechaHasta]);
 
   useEffect(() => {
     setLoading(true);
@@ -63,20 +73,10 @@ export default function EntityDetailModal({
     else if (dimension === 'vendedor') params.vendedorId = entityId;
 
     fetchDocuments(params)
-      .then(({ data, count }) => { setDocs(data); setTotalDocs(count); })
-      .catch(() => { setDocs([]); setTotalDocs(0); })
+      .then(({ data, count }) => { setDocs(data); if (!kpis) setTotalDocs(count); })
+      .catch(() => { setDocs([]); if (!kpis) setTotalDocs(0); })
       .finally(() => setLoading(false));
-  }, [dimension, entityName, entityId, userId, scope, oficinaId, fechaDesde, fechaHasta, page]);
-
-  const kpis = useMemo(() => {
-    if (loading && docs.length === 0) return null;
-    const primaNeta = docs.reduce((s, d) => s + (d.prima_neta || 0), 0);
-    const primaVigente = docs.filter(d => d.is_vigente).reduce((s, d) => s + (d.prima_neta || 0), 0);
-    const uniqueKey = dimension === 'cliente'
-      ? new Set(docs.map(d => d.compania).filter(Boolean)).size
-      : new Set(docs.map(d => d.cliente).filter(Boolean)).size;
-    return { primaNeta, primaVigente, uniqueKey };
-  }, [docs, loading, dimension]);
+  }, [dimension, entityName, entityId, userId, scope, oficinaId, fechaDesde, fechaHasta, page, kpis]);
 
   const totalPages = Math.max(1, Math.ceil(totalDocs / PAGE_SIZE));
 
