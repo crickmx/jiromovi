@@ -751,7 +751,7 @@ async function attemptClientAutoCreate(
 }
 
 // ============================================================
-// HWCAPTURE Registration (form-urlencoded)
+// SICAS Document Registration via SOAP WS_SaveData
 // ============================================================
 
 async function registerWithHwcapture(
@@ -766,62 +766,86 @@ async function registerWithHwcapture(
   const endDate = normalizeDate(delivery.end_date);
   const premium = delivery.total_premium || delivery.extracted_data?.primaTotal || "0";
 
-  const formData = new URLSearchParams();
-  formData.append("UserName", sicasUsername);
-  formData.append("Password", sicasPassword);
-  formData.append("IDTipoDocto", resolved.IDTipoDocto?.value || "");
-  formData.append("IDCia", resolved.IDCia?.value || "");
-  formData.append("IDRamo", resolved.IDRamo?.value || "");
-  formData.append("IDSubRamo", resolved.IDSubRamo?.value || "");
-  formData.append("IDMon", resolved.IDMon?.value || "");
-  formData.append("IDFPago", resolved.IDFPago?.value || "");
-  formData.append("IDEjecutivo", resolved.IDEjecutivo?.value || "");
-  formData.append("IDGrupo", resolved.IDGrupo?.value || "");
-  formData.append("IDCli", resolved.IDCli?.value || "");
-  formData.append("IDVend", resolved.IDVend?.value || "");
-  formData.append("Estatus", resolved.Estatus?.value || "V");
-  formData.append("Documento", policyNumber);
-  formData.append("FechaInicio", startDate);
-  formData.append("FechaFin", endDate);
-  formData.append("PrimaTotal", premium);
+  // Build pipe-delimited field data for SICAS WS_SaveData (Documento)
+  const docFields: string[] = [];
+  if (resolved.IDTipoDocto?.value) docFields.push(`IDTipoDocto|${resolved.IDTipoDocto.value}`);
+  if (resolved.IDCia?.value) docFields.push(`IDCia|${resolved.IDCia.value}`);
+  if (resolved.IDRamo?.value) docFields.push(`IDRamo|${resolved.IDRamo.value}`);
+  if (resolved.IDSubRamo?.value) docFields.push(`IDSubRamo|${resolved.IDSubRamo.value}`);
+  if (resolved.IDMon?.value) docFields.push(`IDMon|${resolved.IDMon.value}`);
+  if (resolved.IDFPago?.value) docFields.push(`IDFPago|${resolved.IDFPago.value}`);
+  if (resolved.IDEjecutivo?.value) docFields.push(`IDEjecutivo|${resolved.IDEjecutivo.value}`);
+  if (resolved.IDGrupo?.value) docFields.push(`IDGrupo|${resolved.IDGrupo.value}`);
+  if (resolved.IDCli?.value && resolved.IDCli.value !== "0") docFields.push(`IDCli|${resolved.IDCli.value}`);
+  if (resolved.IDVend?.value) docFields.push(`IDVend|${resolved.IDVend.value}`);
+  if (resolved.Estatus?.value) docFields.push(`Estatus|${resolved.Estatus.value}`);
+  if (policyNumber) docFields.push(`Documento|${policyNumber}`);
+  if (startDate) docFields.push(`FechaInicio|${startDate}`);
+  if (endDate) docFields.push(`FechaFin|${endDate}`);
+  if (premium && premium !== "0") docFields.push(`PrimaTotal|${premium}`);
+  if (delivery.sicas_office_id) docFields.push(`IDOficina|${delivery.sicas_office_id}`);
 
-  // Add office if available
-  if (delivery.sicas_office_id) {
-    formData.append("IDOficina", delivery.sicas_office_id);
-  }
+  // Add vehicle data if available
+  if (delivery.vehicle_description) docFields.push(`Descripcion|${delivery.vehicle_description}`);
+  if (delivery.plates) docFields.push(`Placas|${delivery.plates}`);
+  if (delivery.vin) docFields.push(`NumSerie|${delivery.vin}`);
+  if (delivery.engine) docFields.push(`Motor|${delivery.engine}`);
 
-  const hwcaptureEndpoint = sicasEndpoint.replace(/\/[^/]*$/, "/") + "HWCAPTURE";
-  const targetEndpoint = /HWCAPTURE/i.test(sicasEndpoint) ? sicasEndpoint : hwcaptureEndpoint;
+  const dataString = docFields.join("\n");
 
-  console.log(`[SICAS HWCAPTURE] POST to ${targetEndpoint}`);
-  console.log(`[SICAS HWCAPTURE] Payload: ${formData.toString().substring(0, 500)}...`);
+  const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soap:Header/>
+  <soap:Body>
+    <tem:Procesar_String>
+      <tem:oConfigAuth>
+        <tem:UserName>${sicasUsername}</tem:UserName>
+        <tem:Password>${sicasPassword}</tem:Password>
+      </tem:oConfigAuth>
+      <tem:oConfigData>
+        <tem:PropertyNameTransaction>WS_SaveData</tem:PropertyNameTransaction>
+        <tem:PropertyTypeData>Documento</tem:PropertyTypeData>
+        <tem:PropertyData>${dataString}</tem:PropertyData>
+      </tem:oConfigData>
+    </tem:Procesar_String>
+  </soap:Body>
+</soap:Envelope>`;
+
+  console.log(`[SICAS Register] SOAP POST to ${sicasEndpoint}`);
+  console.log(`[SICAS Register] Fields: ${docFields.join(", ")}`);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 45000);
 
   try {
-    const response = await fetch(targetEndpoint, {
+    const response = await fetch(sicasEndpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Prop_KeyCode": "HWCAPTURE",
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://tempuri.org/Procesar_String",
       },
-      body: formData.toString(),
+      body: soapEnvelope,
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
     const responseText = await response.text();
-    console.log(`[SICAS HWCAPTURE] Response (${response.status}):`, responseText.substring(0, 800));
+    console.log(`[SICAS Register] Response (${response.status}):`, responseText.substring(0, 800));
 
     if (!response.ok) {
-      return { success: false, error: `HTTP ${response.status}: ${response.statusText}`, responseRaw: responseText };
+      return { success: false, error: `SICAS HTTP ${response.status}: ${response.statusText}`, responseRaw: responseText };
     }
 
+    // Decode the SOAP response
+    const decoded = responseText
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&");
+
     // Check for duplicate
-    const isDuplicate = /duplicad|ya existe|already exists/i.test(responseText);
+    const isDuplicate = /duplicad|ya existe|already exists/i.test(decoded);
     if (isDuplicate) {
-      const dupIdMatch = responseText.match(/IDDocto["\s:=]+(\d+)/i) || responseText.match(/<ID>(\d+)<\/ID>/i);
+      const dupIdMatch = decoded.match(/IDDocto["\s:=]*>?(\d+)/i) || decoded.match(/<ID>(\d+)<\/ID>/i);
       return {
         success: false,
         isDuplicate: true,
@@ -831,22 +855,24 @@ async function registerWithHwcapture(
       };
     }
 
-    // Check for success
-    const docIdMatch = responseText.match(/IDDocto["\s:=]+(\d+)/i) ||
-                       responseText.match(/<IDDocto>(\d+)<\/IDDocto>/i) ||
-                       responseText.match(/"IDDocto"\s*:\s*"?(\d+)"?/i);
+    // Extract document ID from response
+    const docIdMatch = decoded.match(/<IDDocto>(\d+)<\/IDDocto>/i) ||
+                       decoded.match(/<RESPONSENBR>\s*(\d+)\s*<\/RESPONSENBR>/i) ||
+                       decoded.match(/<ID>(\d+)<\/ID>/i) ||
+                       decoded.match(/IDDocto["\s:=]*>?(\d+)/i);
 
-    const hasSuccess = /success|exito|guardado|ok/i.test(responseText);
-    const hasError = /error|fallo|failed/i.test(responseText) && !hasSuccess;
+    const hasSuccess = /SUCESS|SUCCESS|OK|GUARDADO|CREADO|REGISTRADO/i.test(decoded);
+    const hasError = /ERROR|FALLO|FAILED/i.test(decoded) && !/SUCESS/i.test(decoded);
 
     if (hasError) {
-      const errorMsg = responseText.match(/<Message>(.*?)<\/Message>/i)?.[1] ||
-                       responseText.match(/"Error"\s*:\s*"([^"]+)"/i)?.[1] ||
+      const errorMsg = decoded.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i)?.[1] ||
+                       decoded.match(/<Message>(.*?)<\/Message>/i)?.[1] ||
+                       decoded.match(/<faultstring>(.*?)<\/faultstring>/i)?.[1] ||
                        responseText.substring(0, 300);
       return { success: false, error: errorMsg, responseRaw: responseText };
     }
 
-    if (docIdMatch?.[1]) {
+    if (docIdMatch?.[1] && parseInt(docIdMatch[1]) > 0) {
       return { success: true, documentId: docIdMatch[1], responseRaw: responseText };
     }
 
@@ -854,9 +880,22 @@ async function registerWithHwcapture(
       return { success: true, responseRaw: responseText };
     }
 
-    return { success: false, error: "Respuesta no reconocida", responseRaw: responseText };
+    // If no clear success/error indicator, check RESPONSENBR
+    const responseNbr = decoded.match(/<RESPONSENBR>\s*(-?\d+)\s*<\/RESPONSENBR>/i);
+    if (responseNbr && parseInt(responseNbr[1]) > 0) {
+      return { success: true, documentId: responseNbr[1], responseRaw: responseText };
+    }
+    if (responseNbr && parseInt(responseNbr[1]) === 0) {
+      const txt = decoded.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i)?.[1] || "SICAS retorno 0 sin mensaje de error";
+      return { success: false, error: txt, responseRaw: responseText };
+    }
+
+    return { success: false, error: "Respuesta SICAS no reconocida. Verifica en SICAS si el documento fue creado.", responseRaw: responseText };
   } catch (error: any) {
     clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      return { success: false, error: "Timeout: SICAS no respondio en 45 segundos" };
+    }
     return { success: false, error: error.message };
   }
 }
