@@ -213,22 +213,12 @@ export default function SicasPreRegistrationModal({
     setSyncing(true);
     setSyncMessage(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No hay sesion activa');
+      const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-sync-hwcapture-catalogs', {
+        body: {},
+      });
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-sync-hwcapture-catalogs`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({}),
-        }
-      );
+      if (invokeError) throw new Error(invokeError.message || 'Error al sincronizar catalogos');
 
-      const result = await response.json();
       if (result.success) {
         const s = result.summary;
         setSyncMessage({
@@ -250,9 +240,6 @@ export default function SicasPreRegistrationModal({
     setCreatingClient(true);
     setClientCreateStatus('Resolviendo datos y registrando en SICAS...');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No hay sesion activa');
-
       // First save any manual overrides for truly missing fields
       if (Object.keys(userOverrides).length > 0) {
         const OVERRIDE_COLUMNS: Record<string, string> = {
@@ -283,22 +270,11 @@ export default function SicasPreRegistrationModal({
       setClientCreateStatus('Ejecutando registro automatico...');
 
       // Call the auto action - this handles ejecutivo fallback + client creation + registration
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-register-policy-delivery`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            delivery_id: record.id,
-            action: 'auto',
-          }),
-        }
-      );
+      const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-register-policy-delivery', {
+        body: { delivery_id: record.id, policy_delivery_id: record.id, action: 'auto' },
+      });
 
-      const result = await response.json();
+      if (invokeError) throw new Error(invokeError.message || 'Error al comunicarse con SICAS');
 
       if (result.success) {
         setClientCreateStatus(`Registrado exitosamente${result.document_id ? ` (Doc: ${result.document_id})` : ''}`);
