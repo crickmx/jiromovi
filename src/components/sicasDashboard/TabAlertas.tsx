@@ -45,6 +45,8 @@ export default function TabAlertas({ userId, scope, accentColor }: Props) {
         unreadOnly: !showRead,
         priority: filterPriority || undefined,
         limit: 100,
+        scope: scope?.scope,
+        oficinaId: scope?.oficina_id,
       });
       setAlerts(data);
     } catch (err) {
@@ -53,7 +55,7 @@ export default function TabAlertas({ userId, scope, accentColor }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [userId, filterPriority, showRead]);
+  }, [userId, filterPriority, showRead, scope]);
 
   useEffect(() => { loadAlerts(); }, [loadAlerts]);
 
@@ -71,7 +73,7 @@ export default function TabAlertas({ userId, scope, accentColor }: Props) {
 
   const handleMarkRead = async (id: string) => {
     await markAlertRead(id);
-    setAlerts(prev => prev.map(a => a.id === id ? { ...a, is_read: true } : a));
+    setAlerts(prev => prev.map(a => a.id === id ? { ...a, status: 'seen' } : a));
   };
 
   const handleDismiss = async (id: string) => {
@@ -79,7 +81,7 @@ export default function TabAlertas({ userId, scope, accentColor }: Props) {
     setAlerts(prev => prev.filter(a => a.id !== id));
   };
 
-  const unreadCount = alerts.filter(a => !a.is_read).length;
+  const unreadCount = alerts.filter(a => a.status === 'new').length;
   const highCount = alerts.filter(a => a.priority === 'high').length;
   const mediumCount = alerts.filter(a => a.priority === 'medium').length;
 
@@ -181,7 +183,7 @@ export default function TabAlertas({ userId, scope, accentColor }: Props) {
                 key={alert.id}
                 className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 transition-all hover:shadow-sm ${
                   PRIORITY_STYLES[alert.priority] || ''
-                } ${alert.is_read ? 'opacity-60' : ''}`}
+                } ${alert.status !== 'new' ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-start gap-3">
                   <div
@@ -193,7 +195,7 @@ export default function TabAlertas({ userId, scope, accentColor }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className={`text-sm font-medium ${alert.is_read ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                        <p className={`text-sm font-medium ${alert.status !== 'new' ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                           {alert.title}
                         </p>
                         {alert.description && (
@@ -201,7 +203,7 @@ export default function TabAlertas({ userId, scope, accentColor }: Props) {
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {!alert.is_read && (
+                        {alert.status === 'new' && (
                           <button
                             onClick={() => handleMarkRead(alert.id)}
                             className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 transition-colors"
@@ -226,9 +228,9 @@ export default function TabAlertas({ userId, scope, accentColor }: Props) {
                       <span className="text-[10px] text-gray-400 dark:text-gray-500">
                         {formatTimeAgo(alert.created_at)}
                       </span>
-                      {alert.expires_at && (
+                      {alert.due_date && (
                         <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                          Expira: {new Date(alert.expires_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                          Vence: {new Date(alert.due_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
                         </span>
                       )}
                     </div>

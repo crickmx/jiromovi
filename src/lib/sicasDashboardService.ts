@@ -6,50 +6,64 @@ import type { DashboardKPIs, DashboardCharts, TopItem, SicasDocRow, DashboardSco
 export interface CustomerProfile {
   id: string;
   usuario_id: string;
+  sicas_vendor_id: string | null;
+  oficina_id: string | null;
+  client_name: string;
   normalized_name: string;
-  display_name: string;
   rfc: string | null;
-  total_policies: number;
-  active_policies: number;
-  total_prima_neta: number;
-  total_prima_total: number;
-  ramos: string[];
-  aseguradoras: string[];
-  first_policy_date: string | null;
-  last_policy_date: string | null;
+  total_policies_active: number;
+  total_policies_expired: number;
+  total_premium_active: number;
+  total_premium_expired: number;
+  ramos_activos: string[];
+  aseguradoras_activas: string[];
   next_renewal_date: string | null;
-  renewal_count_90d: number;
-  risk_score: number;
-  lifetime_value: number;
+  last_emission_date: string | null;
+  last_activity_at: string | null;
+  portfolio_status: string;
+  is_high_value: boolean;
+  created_at: string;
   updated_at: string;
 }
 
 export interface AgentAlert {
   id: string;
   usuario_id: string;
+  sicas_vendor_id: string | null;
+  oficina_id: string | null;
   alert_type: string;
   priority: 'high' | 'medium' | 'low';
   title: string;
   description: string | null;
-  metadata: Record<string, unknown> | null;
-  is_read: boolean;
-  is_dismissed: boolean;
+  client_name: string | null;
+  document_id: string | null;
+  policy_number: string | null;
+  recommended_action: string | null;
+  related_data: Record<string, unknown> | null;
+  status: string;
+  due_date: string | null;
+  resolved_at: string | null;
   created_at: string;
-  expires_at: string | null;
+  updated_at: string;
 }
 
 export interface CrossSellOpportunity {
   id: string;
   usuario_id: string;
-  customer_name: string;
+  sicas_vendor_id: string | null;
+  oficina_id: string | null;
+  client_name: string;
   opportunity_type: string;
-  description: string;
-  estimated_prima: number;
-  confidence: 'high' | 'medium' | 'low';
-  current_ramos: string[];
-  suggested_ramo: string | null;
-  is_actioned: boolean;
+  description: string | null;
+  current_products: string[];
+  suggested_product: string | null;
+  priority: 'high' | 'medium' | 'low';
+  recommended_message: string | null;
+  premium_current: number;
+  status: string;
+  contacted_at: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export async function fetchUserScope(userId: string): Promise<DashboardScope> {
@@ -311,18 +325,23 @@ export async function fetchAvanceComercial(
 
 export async function fetchCustomerProfiles(
   userId: string,
-  options?: { search?: string; sortBy?: string; sortAsc?: boolean; limit?: number; offset?: number }
+  options?: { search?: string; sortBy?: string; sortAsc?: boolean; limit?: number; offset?: number; scope?: string; oficinaId?: string }
 ): Promise<{ data: CustomerProfile[]; count: number }> {
   let query = supabase
     .from('sicas_customer_profiles')
-    .select('*', { count: 'exact' })
-    .eq('usuario_id', userId);
+    .select('*', { count: 'exact' });
 
-  if (options?.search) {
-    query = query.or(`display_name.ilike.%${options.search}%,rfc.ilike.%${options.search}%`);
+  if (options?.scope === 'office' && options?.oficinaId) {
+    query = query.eq('oficina_id', options.oficinaId);
+  } else if (options?.scope !== 'admin') {
+    query = query.eq('usuario_id', userId);
   }
 
-  const sortCol = options?.sortBy || 'total_prima_neta';
+  if (options?.search) {
+    query = query.or(`client_name.ilike.%${options.search}%,rfc.ilike.%${options.search}%`);
+  }
+
+  const sortCol = options?.sortBy || 'total_premium_active';
   const sortAsc = options?.sortAsc ?? false;
   query = query.order(sortCol, { ascending: sortAsc });
 
@@ -341,15 +360,20 @@ export async function refreshCustomerProfiles(userId: string): Promise<void> {
 
 export async function fetchAgentAlerts(
   userId: string,
-  options?: { unreadOnly?: boolean; priority?: string; limit?: number }
+  options?: { unreadOnly?: boolean; priority?: string; limit?: number; scope?: string; oficinaId?: string }
 ): Promise<AgentAlert[]> {
   let query = supabase
     .from('sicas_agent_alerts')
     .select('*')
-    .eq('usuario_id', userId)
-    .eq('is_dismissed', false);
+    .neq('status', 'dismissed');
 
-  if (options?.unreadOnly) query = query.eq('is_read', false);
+  if (options?.scope === 'office' && options?.oficinaId) {
+    query = query.eq('oficina_id', options.oficinaId);
+  } else if (options?.scope !== 'admin') {
+    query = query.eq('usuario_id', userId);
+  }
+
+  if (options?.unreadOnly) query = query.eq('status', 'new');
   if (options?.priority) query = query.eq('priority', options.priority);
 
   query = query.order('created_at', { ascending: false });
@@ -361,11 +385,11 @@ export async function fetchAgentAlerts(
 }
 
 export async function markAlertRead(alertId: string): Promise<void> {
-  await supabase.from('sicas_agent_alerts').update({ is_read: true }).eq('id', alertId);
+  await supabase.from('sicas_agent_alerts').update({ status: 'seen' }).eq('id', alertId);
 }
 
 export async function dismissAlert(alertId: string): Promise<void> {
-  await supabase.from('sicas_agent_alerts').update({ is_dismissed: true }).eq('id', alertId);
+  await supabase.from('sicas_agent_alerts').update({ status: 'dismissed' }).eq('id', alertId);
 }
 
 export async function generateAlerts(userId: string): Promise<void> {
@@ -375,16 +399,21 @@ export async function generateAlerts(userId: string): Promise<void> {
 
 export async function fetchCrossSellOpportunities(
   userId: string,
-  options?: { limit?: number; confidence?: string }
+  options?: { limit?: number; confidence?: string; scope?: string; oficinaId?: string }
 ): Promise<CrossSellOpportunity[]> {
   let query = supabase
     .from('sicas_cross_sell_opportunities')
     .select('*')
-    .eq('usuario_id', userId)
-    .eq('is_actioned', false);
+    .eq('status', 'new');
 
-  if (options?.confidence) query = query.eq('confidence', options.confidence);
-  query = query.order('estimated_prima', { ascending: false });
+  if (options?.scope === 'office' && options?.oficinaId) {
+    query = query.eq('oficina_id', options.oficinaId);
+  } else if (options?.scope !== 'admin') {
+    query = query.eq('usuario_id', userId);
+  }
+
+  if (options?.confidence) query = query.eq('priority', options.confidence);
+  query = query.order('premium_current', { ascending: false });
   if (options?.limit) query = query.limit(options.limit);
 
   const { data, error } = await query;
@@ -398,5 +427,5 @@ export async function detectCrossSell(userId: string): Promise<void> {
 }
 
 export async function markOpportunityActioned(opportunityId: string): Promise<void> {
-  await supabase.from('sicas_cross_sell_opportunities').update({ is_actioned: true }).eq('id', opportunityId);
+  await supabase.from('sicas_cross_sell_opportunities').update({ status: 'contacted', contacted_at: new Date().toISOString() }).eq('id', opportunityId);
 }

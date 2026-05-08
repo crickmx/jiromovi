@@ -43,6 +43,8 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
       const data = await fetchCrossSellOpportunities(userId, {
         confidence: filter || undefined,
         limit: 50,
+        scope: scope?.scope,
+        oficinaId: scope?.oficina_id,
       });
       setOpportunities(data);
     } catch (err) {
@@ -51,7 +53,7 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
     } finally {
       setLoading(false);
     }
-  }, [userId, filter]);
+  }, [userId, filter, scope]);
 
   useEffect(() => { loadOpportunities(); }, [loadOpportunities]);
 
@@ -72,8 +74,8 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
     setOpportunities(prev => prev.filter(o => o.id !== id));
   };
 
-  const totalEstimatedPrima = opportunities.reduce((sum, o) => sum + o.estimated_prima, 0);
-  const highConfidence = opportunities.filter(o => o.confidence === 'high').length;
+  const totalEstimatedPrima = opportunities.reduce((sum, o) => sum + (o.premium_current || 0), 0);
+  const highConfidence = opportunities.filter(o => o.priority === 'high').length;
 
   return (
     <div className="space-y-4">
@@ -169,12 +171,12 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{opp.customer_name}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{opp.client_name}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{opp.description}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${CONFIDENCE_STYLES[opp.confidence] || CONFIDENCE_STYLES.low}`}>
-                          {opp.confidence === 'high' ? 'Alta' : opp.confidence === 'medium' ? 'Media' : 'Baja'}
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${CONFIDENCE_STYLES[opp.priority] || CONFIDENCE_STYLES.low}`}>
+                          {opp.priority === 'high' ? 'Alta' : opp.priority === 'medium' ? 'Media' : 'Baja'}
                         </span>
                       </div>
                     </div>
@@ -183,14 +185,14 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-medium">
                           {config.label}
                         </span>
-                        {opp.suggested_ramo && (
+                        {opp.suggested_product && (
                           <span className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <Layers className="w-3 h-3" /> {opp.suggested_ramo}
+                            <Layers className="w-3 h-3" /> {opp.suggested_product}
                           </span>
                         )}
-                        {opp.estimated_prima > 0 && (
+                        {opp.premium_current > 0 && (
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-0.5">
-                            <DollarSign className="w-3 h-3" /> ~{formatCurrency(opp.estimated_prima)}
+                            <DollarSign className="w-3 h-3" /> ~{formatCurrency(opp.premium_current)}
                           </span>
                         )}
                       </div>

@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Users, Search, RefreshCcw, Loader2, ChevronLeft, ChevronRight,
-  ArrowUpDown, TrendingUp, Calendar, Shield, AlertTriangle, DollarSign,
+  ArrowUpDown, Calendar,
 } from 'lucide-react';
 import type { DashboardScope } from '../../lib/sicasDashboardTypes';
-import { formatCurrency, formatFullCurrency, formatDate } from '../../lib/sicasDashboardTypes';
+import { formatCurrency, formatDate } from '../../lib/sicasDashboardTypes';
 import { fetchCustomerProfiles, refreshCustomerProfiles, type CustomerProfile } from '../../lib/sicasDashboardService';
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
   onClientClick?: (clientName: string) => void;
 }
 
-type SortField = 'total_prima_neta' | 'active_policies' | 'next_renewal_date' | 'risk_score' | 'lifetime_value';
+type SortField = 'total_premium_active' | 'total_policies_active' | 'next_renewal_date' | 'portfolio_status' | 'last_emission_date';
 
 export default function TabCartera({ userId, scope, accentColor, onClientClick }: Props) {
   const [profiles, setProfiles] = useState<CustomerProfile[]>([]);
@@ -22,7 +22,7 @@ export default function TabCartera({ userId, scope, accentColor, onClientClick }
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<SortField>('total_prima_neta');
+  const [sortBy, setSortBy] = useState<SortField>('total_premium_active');
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -37,6 +37,8 @@ export default function TabCartera({ userId, scope, accentColor, onClientClick }
         sortAsc,
         limit: pageSize,
         offset: (page - 1) * pageSize,
+        scope: scope?.scope,
+        oficinaId: scope?.oficina_id,
       });
       setProfiles(result.data);
       setTotalCount(result.count);
@@ -46,7 +48,7 @@ export default function TabCartera({ userId, scope, accentColor, onClientClick }
     } finally {
       setLoading(false);
     }
-  }, [userId, search, sortBy, sortAsc, page]);
+  }, [userId, search, sortBy, sortAsc, page, scope]);
 
   useEffect(() => { loadProfiles(); }, [loadProfiles]);
 
@@ -74,17 +76,6 @@ export default function TabCartera({ userId, scope, accentColor, onClientClick }
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const riskColor = (score: number) => {
-    if (score >= 7) return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20';
-    if (score >= 4) return 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20';
-    return 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20';
-  };
-
-  const riskLabel = (score: number) => {
-    if (score >= 7) return 'Alto';
-    if (score >= 4) return 'Medio';
-    return 'Bajo';
-  };
 
   return (
     <div className="space-y-4">
@@ -147,34 +138,35 @@ export default function TabCartera({ userId, scope, accentColor, onClientClick }
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
                     <th className="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400">Cliente</th>
-                    <SortableHeader field="active_policies" label="Polizas" current={sortBy} asc={sortAsc} onSort={handleSort} />
-                    <SortableHeader field="total_prima_neta" label="Prima Neta" current={sortBy} asc={sortAsc} onSort={handleSort} />
+                    <SortableHeader field="total_policies_active" label="Polizas" current={sortBy} asc={sortAsc} onSort={handleSort} />
+                    <SortableHeader field="total_premium_active" label="Prima Activa" current={sortBy} asc={sortAsc} onSort={handleSort} />
                     <SortableHeader field="next_renewal_date" label="Prox. Renovacion" current={sortBy} asc={sortAsc} onSort={handleSort} />
                     <th className="text-left px-4 py-2.5 font-medium text-gray-500 dark:text-gray-400 hidden lg:table-cell">Ramos</th>
-                    <SortableHeader field="risk_score" label="Riesgo" current={sortBy} asc={sortAsc} onSort={handleSort} />
-                    <SortableHeader field="lifetime_value" label="LTV" current={sortBy} asc={sortAsc} onSort={handleSort} />
+                    <SortableHeader field="portfolio_status" label="Estatus" current={sortBy} asc={sortAsc} onSort={handleSort} />
+                    <SortableHeader field="last_emission_date" label="Ultima Emision" current={sortBy} asc={sortAsc} onSort={handleSort} />
                   </tr>
                 </thead>
                 <tbody>
                   {profiles.map(p => (
                     <tr
                       key={p.id}
-                      onClick={() => onClientClick?.(p.display_name)}
+                      onClick={() => onClientClick?.(p.client_name)}
                       className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-colors"
                     >
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white truncate max-w-[200px]">{p.display_name}</p>
+                          <p className="font-medium text-gray-900 dark:text-white truncate max-w-[200px]">{p.client_name}</p>
                           {p.rfc && <p className="text-[10px] text-gray-400 mt-0.5">{p.rfc}</p>}
+                          {p.is_high_value && <span className="inline-block px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded text-[9px] font-medium mt-0.5">Alto valor</span>}
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-gray-900 dark:text-white">{p.active_policies}</span>
-                          <span className="text-gray-400">/ {p.total_policies}</span>
+                          <span className="font-semibold text-gray-900 dark:text-white">{p.total_policies_active}</span>
+                          {p.total_policies_expired > 0 && <span className="text-gray-400">+{p.total_policies_expired} venc.</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{formatCurrency(p.total_prima_neta)}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{formatCurrency(p.total_premium_active)}</td>
                       <td className="px-4 py-3">
                         {p.next_renewal_date ? (
                           <RenewalBadge date={p.next_renewal_date} />
@@ -184,22 +176,22 @@ export default function TabCartera({ userId, scope, accentColor, onClientClick }
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <div className="flex flex-wrap gap-1 max-w-[180px]">
-                          {p.ramos.slice(0, 3).map(r => (
+                          {(p.ramos_activos || []).slice(0, 3).map(r => (
                             <span key={r} className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-[10px] text-gray-600 dark:text-gray-300 truncate max-w-[80px]">
                               {r}
                             </span>
                           ))}
-                          {p.ramos.length > 3 && (
-                            <span className="text-[10px] text-gray-400">+{p.ramos.length - 3}</span>
+                          {(p.ramos_activos || []).length > 3 && (
+                            <span className="text-[10px] text-gray-400">+{p.ramos_activos.length - 3}</span>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${riskColor(p.risk_score)}`}>
-                          {riskLabel(p.risk_score)}
-                        </span>
+                        <PortfolioStatusBadge status={p.portfolio_status} />
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{formatCurrency(p.lifetime_value)}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                        {p.last_emission_date ? formatDate(p.last_emission_date) : '-'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -273,6 +265,24 @@ function RenewalBadge({ date }: { date: string }) {
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${color}`}>
       <Calendar className="w-3 h-3" />
       {days <= 0 ? 'Vencida' : `${days}d`}
+    </span>
+  );
+}
+
+function PortfolioStatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    active: 'text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20',
+    renewing: 'text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20',
+    expired: 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20',
+    lost: 'text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-700',
+    no_followup: 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20',
+  };
+  const labels: Record<string, string> = {
+    active: 'Activo', renewing: 'Por renovar', expired: 'Vencido', lost: 'Perdido', no_followup: 'Sin seguimiento',
+  };
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${styles[status] || styles.active}`}>
+      {labels[status] || status}
     </span>
   );
 }
