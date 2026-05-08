@@ -1,174 +1,240 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createSicasRestClientWithDbAuth } from '../_shared/sicasRestClient.ts';
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
 interface GetDigitalFilesRequest {
   idDocto: string;
   identity?: string;
   valuePK?: string;
-  skipCache?: boolean;
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Authenticate user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Usuario no autenticado" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const body: GetDigitalFilesRequest = await req.json();
 
     if (!body.idDocto) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'idDocto es requerido',
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        JSON.stringify({ success: false, error: "idDocto es requerido" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { idDocto, identity = 'Documento', valuePK, skipCache = false } = body;
-    const actualValuePK = valuePK || idDocto;
+    const { idDocto } = body;
+    const actualValuePK = body.valuePK || idDocto;
 
-    console.log('[Digital Files] Solicitando archivos para:', idDocto);
-    console.log('[Digital Files] Identity:', identity, 'ValuePK:', actualValuePK);
+    console.log(`[Digital Files] User=${user.id}, IDDocto=${idDocto}, ValuePK=${actualValuePK}`);
 
-    if (!skipCache) {
-      const { data: cached, error: cacheError } = await supabase
-        .from('sicas_digital_cache')
-        .select('*')
-        .eq('id_docto', idDocto)
-        .eq('identity_type', identity)
-        .eq('value_pk', actualValuePK)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+    // Permission check
+    const { data: usuarioData } = await supabase
+      .from("usuarios")
+      .select("id, rol, oficina_id")
+      .eq("id", user.id)
+      .maybeSingle();
 
-      if (cached && !cacheError) {
-        console.log('[Digital Files] ✅ Cache hit:', idDocto);
-        return new Response(
-          JSON.stringify({
-            success: true,
-            files: cached.files,
-            cached: true,
-            cached_at: cached.cached_at,
-            expires_at: cached.expires_at,
-          }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      }
-
-      console.log('[Digital Files] Cache miss, consultando SICAS...');
-    } else {
-      console.log('[Digital Files] Omitiendo cache, consultando SICAS directamente...');
+    if (!usuarioData) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Usuario no encontrado" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const client = await createSicasRestClientWithDbAuth();
+    const { data: documento } = await supabase
+      .from("sicas_documents")
+      .select("id, usuario_id, oficina_id, vend_id")
+      .eq("id_docto", idDocto)
+      .maybeSingle();
 
-    const response = await client.getDigitalFiles({
-      identity,
-      valuePK: actualValuePK,
+    if (documento) {
+      const esAdmin = usuarioData.rol === "Administrador";
+      const esGerente = usuarioData.rol === "Gerente" && documento.oficina_id === usuarioData.oficina_id;
+      const esPropietario = documento.usuario_id === user.id;
+
+      let esVendedorAsignado = false;
+      if (!esAdmin && !esGerente && !esPropietario && documento.vend_id) {
+        const { data: mapping } = await supabase
+          .from("vendor_mappings")
+          .select("id")
+          .eq("usuario_id", user.id)
+          .eq("vendor_sicas_id", documento.vend_id)
+          .maybeSingle();
+        esVendedorAsignado = !!mapping;
+      }
+
+      if (!esAdmin && !esGerente && !esPropietario && !esVendedorAsignado) {
+        return new Response(
+          JSON.stringify({ success: false, error: "No tienes permisos para ver archivos de este documento" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Query SICAS live using REST API with CDIGITAL KeyProcess
+    const sicasRestUrl = Deno.env.get("SICAS_REST_API_URL") || "https://security-services.sicasonline.info/api";
+    const sicasUsername = Deno.env.get("SICAS_USERNAME") || "";
+    const sicasPassword = Deno.env.get("SICAS_PASSWORD") || "";
+    const sicasCodeAuth = Deno.env.get("SICAS_CODE_AUTH") || "";
+
+    if (!sicasUsername || !sicasPassword) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Credenciales SICAS no configuradas" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get auth token
+    const tokenParams = new URLSearchParams({ sUserName: sicasUsername, sPassword: sicasPassword });
+    if (sicasCodeAuth) tokenParams.append("sCodeAuth", sicasCodeAuth);
+
+    const tokenResponse = await fetch(`${sicasRestUrl}/Security/GetToken?${tokenParams.toString()}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
     });
 
-    if (!response.Sucess) {
-      const sicasMsg = response.Error || response.Message || '';
-      console.warn('[Digital Files] SICAS respondio sin exito:', sicasMsg);
+    if (!tokenResponse.ok) {
+      throw new Error(`SICAS auth failed: HTTP ${tokenResponse.status}`);
+    }
 
-      const isNotFound = sicasMsg.toLowerCase().includes('no se localizo')
-        || sicasMsg.toLowerCase().includes('not found');
+    const tokenData = await tokenResponse.json();
+    if (!tokenData.Sucess || !tokenData.Token) {
+      throw new Error(`SICAS auth failed: ${tokenData.Message || "No token"}`);
+    }
+
+    const sicasToken = tokenData.Token;
+
+    // Query Centro Digital: KeyProcess=CDIGITAL, ActionCDigital=GETFiles, TypeDestinoCDigital=DOCUMENT
+    const cdRequestBody = {
+      PageRequested: 1,
+      ItemsForPage: 200,
+      FormatResponse: 2,
+      Conditions: "",
+      ConditionsDirect: `ActionCDigital=GETFiles|TypeDestinoCDigital=DOCUMENT|IDValuePK=${actualValuePK}`,
+    };
+
+    const cdResponse = await fetch(`${sicasRestUrl}/Report/ReadData`, {
+      method: "POST",
+      headers: {
+        Authorization: sicasToken,
+        "Content-Type": "application/json",
+        Prop_KeyCode: "CDIGITAL",
+      },
+      body: JSON.stringify(cdRequestBody),
+    });
+
+    if (!cdResponse.ok) {
+      throw new Error(`SICAS Centro Digital HTTP ${cdResponse.status}`);
+    }
+
+    const cdResult = await cdResponse.json();
+
+    if (cdResult.Sucess === false) {
+      const errorMsg = cdResult.Error || cdResult.Message || "";
+      const isNotFound = /no se localizo|not found|sin archivos|no files/i.test(errorMsg);
 
       if (isNotFound) {
         return new Response(
-          JSON.stringify({
-            success: true,
-            files: [],
-            cached: false,
-            sicas_message: sicasMsg,
-          }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
+          JSON.stringify({ success: true, files: [], cached: false, sicas_message: errorMsg }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: sicasMsg || 'Error desconocido',
-        }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      throw new Error(`SICAS error: ${errorMsg}`);
+    }
+
+    // Parse records from response
+    let rawRecords: Record<string, string>[] = [];
+
+    if (typeof cdResult.Response === "string" && cdResult.Response.includes("<")) {
+      const xmlStr = cdResult.Response;
+      const rowRegex = /<(Table_\w+)>([\s\S]*?)<\/\1>/g;
+      let rowMatch;
+      while ((rowMatch = rowRegex.exec(xmlStr)) !== null) {
+        const tagName = rowMatch[1];
+        if (tagName.endsWith("_Control") || tagName === "Table_Paginacion") continue;
+        const rowXml = rowMatch[2];
+        const record: Record<string, string> = {};
+        const fieldRegex = /<(\w+)>([\s\S]*?)<\/\1>/g;
+        let fieldMatch;
+        while ((fieldMatch = fieldRegex.exec(rowXml)) !== null) {
+          record[fieldMatch[1]] = fieldMatch[2].trim();
         }
-      );
+        rawRecords.push(record);
+      }
+    } else if (Array.isArray(cdResult.Response)) {
+      const tableInfo = cdResult.Response?.[0]?.TableInfo;
+      if (Array.isArray(tableInfo)) {
+        rawRecords = tableInfo;
+      }
+    } else if (cdResult.Files && Array.isArray(cdResult.Files)) {
+      rawRecords = cdResult.Files.map((f: any) => ({
+        IDFile: f.IDFile || f.Id || "",
+        FileName: f.FileName || f.Nombre || "",
+        FileExtension: f.FileExtension || f.Extension || "",
+        FileSize: String(f.FileSize || f.Tamanio || 0),
+        Folder: f.Folder || f.Carpeta || "General",
+        UploadDate: f.UploadDate || f.FechaSubida || "",
+        Description: f.Description || "",
+      }));
     }
 
-    const files = response.Files || [];
-    console.log('[Digital Files] Archivos obtenidos:', files.length);
+    // Normalize into files array (compatible with DocumentoModal expectations)
+    const files = rawRecords.map((record, idx) => {
+      const fileName = record.FileName || record.NombreArchivo || record.Nombre || record.nombre || "";
+      if (!fileName) return null;
+      const ext = (record.FileExtension || record.Extension || fileName.split(".").pop() || "").replace(".", "");
+      return {
+        IDFile: record.IDFile || record.IDArchivo || `file_${idx}`,
+        FileName: fileName,
+        FileExtension: ext,
+        FileSize: parseInt(record.FileSize || record.Tamanio || "0", 10),
+        Folder: record.Folder || record.Carpeta || "General",
+        UploadDate: record.UploadDate || record.FechaSubida || "",
+        Description: record.Description || record.Descripcion || "",
+      };
+    }).filter(Boolean);
 
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
-    const { error: upsertError } = await supabase
-      .from('sicas_digital_cache')
-      .upsert({
-        id_docto: idDocto,
-        identity_type: identity,
-        value_pk: actualValuePK,
-        files: files,
-        cached_at: now.toISOString(),
-        expires_at: expiresAt.toISOString(),
-      }, {
-        onConflict: 'id_docto,identity_type,value_pk',
-      });
-
-    if (upsertError) {
-      console.error('[Digital Files] Error guardando en cache:', upsertError);
-    } else {
-      console.log('[Digital Files] ✅ Cache actualizado');
-    }
+    console.log(`[Digital Files] Returning ${files.length} files`);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        files,
-        cached: false,
-        cached_at: now.toISOString(),
-        expires_at: expiresAt.toISOString(),
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ success: true, files, cached: false }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
-    console.error('[Digital Files] ❌ Error:', error);
-
+  } catch (error: any) {
+    console.error("[Digital Files] Error:", error.message);
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: (error as Error).message,
-        stack: (error as Error).stack,
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

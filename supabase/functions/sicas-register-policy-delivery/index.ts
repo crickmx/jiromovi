@@ -446,18 +446,37 @@ async function resolveSicasHwcaptureRequiredFields(
   }
 
   // === 10. IDCli (Cliente) - Auto search/create ===
+  // BUSINESS RULE: IDCli must NEVER block registration in the normal flow.
+  // Priority: override > previously_resolved > RFC match > name match > auto_create > fallback "0"
   logs.cliente = {};
 
   if (delivery.sicas_override_cliente) {
     resolved.IDCli = { value: delivery.sicas_override_cliente, source: "override" };
     logs.cliente.source = "override";
   } else if (delivery.sicas_client_id) {
-    // Already resolved from a previous attempt
     resolved.IDCli = { value: delivery.sicas_client_id, source: "previously_resolved" };
     logs.cliente.source = "previously_resolved";
   } else {
-    const rfcToSearch = delivery.insured_rfc || delivery.extracted_data?.rfcAsegurado || delivery.extracted_data?.rfc || delivery.extracted_data?.RFCCliente;
-    const nameToSearch = delivery.insured_name || delivery.extracted_data?.nombreCliente || delivery.extracted_data?.asegurado || delivery.extracted_data?.contratante || delivery.extracted_data?.customer_name;
+    // Extract client name from ALL available sources
+    const nameToSearch = delivery.insured_name
+      || delivery.extracted_data?.nombreCliente
+      || delivery.extracted_data?.insured_name
+      || delivery.extracted_data?.asegurado
+      || delivery.extracted_data?.contratante
+      || delivery.extracted_data?.cliente
+      || delivery.extracted_data?.customer_name
+      || delivery.extracted_data?.titular
+      || delivery.extracted_data?.nombre_asegurado
+      || "";
+
+    // Extract RFC from ALL available sources
+    const rfcToSearch = delivery.insured_rfc
+      || delivery.extracted_data?.rfcAsegurado
+      || delivery.extracted_data?.insured_rfc
+      || delivery.extracted_data?.rfc
+      || delivery.extracted_data?.RFCCliente
+      || delivery.extracted_data?.rfc_asegurado
+      || "";
 
     logs.cliente.client_search_rfc = rfcToSearch || null;
     logs.cliente.client_search_name = nameToSearch || null;
@@ -467,78 +486,86 @@ async function resolveSicasHwcaptureRequiredFields(
     // Search by RFC in local contacts catalog (type 17)
     if (rfcToSearch) {
       const rfcNormalized = rfcToSearch.trim().toUpperCase().replace(/[-\s]/g, "");
-      const { data: byRfc } = await supabase
-        .from("sicas_catalogos")
-        .select("id_sicas, nombre, raw")
-        .eq("catalog_type_id", 17)
-        .ilike("raw->>RFC", rfcNormalized)
-        .limit(5);
+      if (rfcNormalized.length >= 10) {
+        const { data: byRfc } = await supabase
+          .from("sicas_catalogos")
+          .select("id_sicas, nombre, raw")
+          .eq("catalog_type_id", 17)
+          .ilike("raw->>RFC", rfcNormalized)
+          .limit(5);
 
-      if (byRfc && byRfc.length === 1) {
-        resolved.IDCli = { value: byRfc[0].id_sicas, source: "matched_by_rfc", label: byRfc[0].nombre };
-        logs.cliente.selected_client_id = byRfc[0].id_sicas;
-        logs.cliente.candidates_count = 1;
-        logs.cliente.auto_created = false;
-        clientFound = true;
-      } else if (byRfc && byRfc.length > 1) {
-        logs.cliente.candidates_count = byRfc.length;
-        warnings.push(`IDCli: RFC "${rfcToSearch}" tiene ${byRfc.length} coincidencias en SICAS. Requiere seleccion manual.`);
-        missing.push("Cliente SICAS (IDCli)");
-        clientFound = true;
+        if (byRfc && byRfc.length === 1) {
+          resolved.IDCli = { value: byRfc[0].id_sicas, source: "matched_by_rfc", label: byRfc[0].nombre };
+          logs.cliente.selected_client_id = byRfc[0].id_sicas;
+          logs.cliente.candidates_count = 1;
+          clientFound = true;
+        } else if (byRfc && byRfc.length > 1) {
+          // Multiple RFC matches: pick first one (most likely the correct one)
+          resolved.IDCli = { value: byRfc[0].id_sicas, source: "matched_by_rfc_first", label: byRfc[0].nombre };
+          logs.cliente.selected_client_id = byRfc[0].id_sicas;
+          logs.cliente.candidates_count = byRfc.length;
+          logs.cliente.auto_selected_first = true;
+          clientFound = true;
+          warnings.push(`IDCli: RFC "${rfcToSearch}" tiene ${byRfc.length} coincidencias. Se selecciono el primero: "${byRfc[0].nombre}".`);
+        }
       }
     }
 
     // Search by name in local contacts
-    if (!clientFound && nameToSearch) {
+    if (!clientFound && nameToSearch.trim()) {
       const normalizedName = normalizeText(nameToSearch);
-      const { data: byName } = await supabase
-        .from("sicas_catalogos")
-        .select("id_sicas, nombre, raw")
-        .eq("catalog_type_id", 17)
-        .limit(500);
+      if (normalizedName.length >= 3) {
+        const { data: byName } = await supabase
+          .from("sicas_catalogos")
+          .select("id_sicas, nombre, raw")
+          .eq("catalog_type_id", 17)
+          .limit(500);
 
-      if (byName && byName.length > 0) {
-        const exactMatch = byName.find((r: CatalogRecord) => normalizeText(r.nombre) === normalizedName);
-        if (exactMatch) {
-          resolved.IDCli = { value: exactMatch.id_sicas, source: "matched_by_name", label: exactMatch.nombre };
-          logs.cliente.selected_client_id = exactMatch.id_sicas;
-          logs.cliente.candidates_count = 1;
-          logs.cliente.auto_created = false;
-          clientFound = true;
-        } else {
-          const partialMatches = byName.filter((r: CatalogRecord) => {
-            const normalized = normalizeText(r.nombre);
-            return normalized.includes(normalizedName) || normalizedName.includes(normalized);
-          });
-          if (partialMatches.length === 1) {
-            resolved.IDCli = { value: partialMatches[0].id_sicas, source: "matched_by_name_partial", label: partialMatches[0].nombre };
-            logs.cliente.selected_client_id = partialMatches[0].id_sicas;
-            logs.cliente.auto_created = false;
+        if (byName && byName.length > 0) {
+          const exactMatch = byName.find((r: CatalogRecord) => normalizeText(r.nombre) === normalizedName);
+          if (exactMatch) {
+            resolved.IDCli = { value: exactMatch.id_sicas, source: "matched_by_name", label: exactMatch.nombre };
+            logs.cliente.selected_client_id = exactMatch.id_sicas;
+            logs.cliente.candidates_count = 1;
             clientFound = true;
-            warnings.push(`IDCli: Match parcial por nombre "${nameToSearch}" -> "${partialMatches[0].nombre}".`);
-          } else if (partialMatches.length > 1) {
-            logs.cliente.candidates_count = partialMatches.length;
-            missing.push("Cliente SICAS (IDCli)");
-            warnings.push(`IDCli: Nombre "${nameToSearch}" tiene ${partialMatches.length} coincidencias parciales. Requiere seleccion manual.`);
-            clientFound = true;
+          } else {
+            const partialMatches = byName.filter((r: CatalogRecord) => {
+              const normalized = normalizeText(r.nombre);
+              return normalized.includes(normalizedName) || normalizedName.includes(normalized);
+            });
+            if (partialMatches.length === 1) {
+              resolved.IDCli = { value: partialMatches[0].id_sicas, source: "matched_by_name_partial", label: partialMatches[0].nombre };
+              logs.cliente.selected_client_id = partialMatches[0].id_sicas;
+              clientFound = true;
+              warnings.push(`IDCli: Match parcial "${nameToSearch}" -> "${partialMatches[0].nombre}".`);
+            } else if (partialMatches.length > 1) {
+              // Multiple name matches: pick first one instead of blocking
+              resolved.IDCli = { value: partialMatches[0].id_sicas, source: "matched_by_name_first", label: partialMatches[0].nombre };
+              logs.cliente.selected_client_id = partialMatches[0].id_sicas;
+              logs.cliente.candidates_count = partialMatches.length;
+              logs.cliente.auto_selected_first = true;
+              clientFound = true;
+              warnings.push(`IDCli: "${nameToSearch}" tiene ${partialMatches.length} coincidencias. Se selecciono: "${partialMatches[0].nombre}".`);
+            }
           }
         }
       }
     }
 
-    // If no local results, mark for auto-creation attempt
+    // If no local results, mark for auto-creation (never push to missing)
     if (!clientFound) {
-      if (nameToSearch) {
+      if (nameToSearch.trim()) {
         logs.cliente.auto_create_eligible = true;
-        logs.cliente.auto_create_name = nameToSearch;
+        logs.cliente.auto_create_name = nameToSearch.trim();
         logs.cliente.auto_create_rfc = rfcToSearch || null;
-        // Do NOT push to missing - auto-creation will handle it
-        resolved.IDCli = { value: "__auto_create__", source: "auto_create_pending", label: nameToSearch };
-        warnings.push(`IDCli: No se encontro cliente SICAS. Se creara automaticamente al registrar.`);
+        resolved.IDCli = { value: "__auto_create__", source: "auto_create_pending", label: nameToSearch.trim() };
+        warnings.push(`IDCli: No se encontro cliente. Se creara automaticamente.`);
       } else {
-        missing.push("Cliente SICAS (IDCli)");
+        // No name available at all - use fallback "0" so registration is not blocked
         logs.cliente.auto_create_eligible = false;
-        warnings.push(`IDCli: No hay nombre de cliente disponible para buscar o crear en SICAS.`);
+        logs.cliente.fallback_used = true;
+        resolved.IDCli = { value: "0", source: "fallback_no_name", label: "Sin cliente identificado" };
+        warnings.push(`IDCli: No hay nombre de cliente disponible. Se registrara con cliente generico (0).`);
       }
     }
   }
@@ -565,8 +592,23 @@ async function attemptClientAutoCreate(
   sicasPassword: string
 ): Promise<{ success: boolean; clientId?: string; clientName?: string; error?: string; responseRaw?: any }> {
   try {
-  const clientName = delivery.insured_name || delivery.extracted_data?.nombreCliente || delivery.extracted_data?.contratante || delivery.extracted_data?.customer_name || delivery.extracted_data?.asegurado || "";
-  const clientRfc = delivery.insured_rfc || delivery.extracted_data?.rfcAsegurado || delivery.extracted_data?.rfc || delivery.extracted_data?.RFCCliente || "";
+  const clientName = delivery.insured_name
+    || delivery.extracted_data?.nombreCliente
+    || delivery.extracted_data?.insured_name
+    || delivery.extracted_data?.asegurado
+    || delivery.extracted_data?.contratante
+    || delivery.extracted_data?.cliente
+    || delivery.extracted_data?.customer_name
+    || delivery.extracted_data?.titular
+    || delivery.extracted_data?.nombre_asegurado
+    || "";
+  const clientRfc = delivery.insured_rfc
+    || delivery.extracted_data?.rfcAsegurado
+    || delivery.extracted_data?.insured_rfc
+    || delivery.extracted_data?.rfc
+    || delivery.extracted_data?.RFCCliente
+    || delivery.extracted_data?.rfc_asegurado
+    || "";
 
   if (!clientName.trim()) {
     return { success: false, error: "No hay nombre de cliente para crear" };
@@ -911,9 +953,8 @@ Deno.serve(async (req: Request) => {
       // Re-resolve to make sure everything is up to date
       const resolution = await resolveSicasHwcaptureRequiredFields(supabase, delivery, defaults);
 
-      // If client is missing but auto-create eligible, attempt creation
-      const clientNeedsAutoCreate = (resolution.resolved.IDCli?.value === "__auto_create__") || (resolution.missing.includes("Cliente SICAS (IDCli)") && resolution.logs.cliente?.auto_create_eligible);
-      if (clientNeedsAutoCreate) {
+      // If client needs auto-creation, attempt it; on failure use fallback "0"
+      if (resolution.resolved.IDCli?.value === "__auto_create__") {
         console.log("[SICAS] Client needs auto-creation. Attempting...");
 
         const createResult = await attemptClientAutoCreate(supabase, delivery, sicasEndpoint, sicasUsername, sicasPassword);
@@ -922,7 +963,6 @@ Deno.serve(async (req: Request) => {
           resolution.resolved.IDCli = { value: createResult.clientId, source: "auto_created", label: createResult.clientName };
           resolution.missing = resolution.missing.filter(m => !m.includes("IDCli"));
 
-          // Save client info to delivery
           await supabase
             .from("policy_deliveries")
             .update({
@@ -938,29 +978,28 @@ Deno.serve(async (req: Request) => {
 
           console.log(`[SICAS] Client auto-created successfully: ID=${createResult.clientId}`);
         } else {
-          console.error(`[SICAS] Client auto-creation failed: ${createResult.error}`);
-          resolution.warnings.push(`IDCli: Auto-creacion fallo: ${createResult.error}`);
-          if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
-            resolution.missing.push("Cliente SICAS (IDCli)");
-          }
+          // Fallback: use "0" so registration is not blocked
+          console.warn(`[SICAS] Client auto-creation failed: ${createResult.error}. Using fallback 0.`);
+          resolution.resolved.IDCli = { value: "0", source: "fallback_create_failed", label: resolution.resolved.IDCli?.label || "Cliente no creado" };
+          resolution.missing = resolution.missing.filter(m => !m.includes("IDCli"));
+          resolution.warnings.push(`IDCli: Auto-creacion fallo (${createResult.error}). Se registra con cliente generico (0).`);
 
-          // Save the failure info
           await supabase
             .from("policy_deliveries")
             .update({
               sicas_client_create_response_raw: createResult.responseRaw || { error: createResult.error },
-              sicas_client_match_method: "auto_create_failed",
+              sicas_client_match_method: "fallback_zero",
             })
             .eq("id", delivery_id);
         }
       }
 
-      // Check if all required fields are resolved (also check sentinel)
+      // Clean up any remaining IDCli sentinel or missing entries (IDCli never blocks)
       if (resolution.resolved.IDCli?.value === "__auto_create__") {
-        if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
-          resolution.missing.push("Cliente SICAS (IDCli)");
-        }
+        resolution.resolved.IDCli = { value: "0", source: "fallback_sentinel_cleanup", label: "Cliente no resuelto" };
+        resolution.warnings.push("IDCli: Sentinel residual limpiado. Se registra con cliente generico (0).");
       }
+      resolution.missing = resolution.missing.filter(m => !m.includes("IDCli"));
       const dedupedMissing = uniqueMissingFields(resolution.missing);
       if (dedupedMissing.length > 0) {
         await supabase
@@ -1090,66 +1129,58 @@ Deno.serve(async (req: Request) => {
       steps[steps.length - 1].detail = `${Object.keys(resolution.resolved).length} campos resueltos, ${resolution.missing.length} pendientes`;
 
       // Step 2: Handle client resolution/creation
-      const clientNeedsCreation = resolution.resolved.IDCli?.value === "__auto_create__" || resolution.missing.includes("Cliente SICAS (IDCli)");
+      // BUSINESS RULE: IDCli must NEVER block registration. If auto-creation fails, use fallback "0".
+      const clientNeedsCreation = resolution.resolved.IDCli?.value === "__auto_create__";
       if (clientNeedsCreation) {
-        if (resolution.logs.cliente?.auto_create_eligible) {
-          steps.push({ step: "creating_client", status: "in_progress" });
-          await supabase.from("policy_deliveries").update({ sicas_registration_status: "creating_client" }).eq("id", delivery_id);
+        steps.push({ step: "creating_client", status: "in_progress" });
+        await supabase.from("policy_deliveries").update({ sicas_registration_status: "creating_client" }).eq("id", delivery_id);
 
-          const createResult = await attemptClientAutoCreate(supabase, delivery, sicasEndpoint, sicasUsername, sicasPassword);
+        const createResult = await attemptClientAutoCreate(supabase, delivery, sicasEndpoint, sicasUsername, sicasPassword);
 
-          if (createResult.success && createResult.clientId) {
-            resolution.resolved.IDCli = { value: createResult.clientId, source: "auto_created", label: createResult.clientName };
-            resolution.missing = resolution.missing.filter(m => !m.includes("IDCli"));
+        if (createResult.success && createResult.clientId) {
+          resolution.resolved.IDCli = { value: createResult.clientId, source: "auto_created", label: createResult.clientName };
+          resolution.missing = resolution.missing.filter(m => !m.includes("IDCli"));
 
-            await supabase.from("policy_deliveries").update({
-              sicas_client_id: createResult.clientId,
-              sicas_client_name: createResult.clientName,
-              sicas_client_auto_created: true,
-              sicas_client_created_at: new Date().toISOString(),
-              sicas_client_create_response_raw: createResult.responseRaw,
-              sicas_client_match_method: "auto_created",
-              sicas_client_match_confidence: "high",
-            }).eq("id", delivery_id);
+          await supabase.from("policy_deliveries").update({
+            sicas_client_id: createResult.clientId,
+            sicas_client_name: createResult.clientName,
+            sicas_client_auto_created: true,
+            sicas_client_created_at: new Date().toISOString(),
+            sicas_client_create_response_raw: createResult.responseRaw,
+            sicas_client_match_method: "auto_created",
+            sicas_client_match_confidence: "high",
+          }).eq("id", delivery_id);
 
-            steps[steps.length - 1].status = "completed";
-            steps[steps.length - 1].detail = `Cliente creado: ${createResult.clientName} (ID: ${createResult.clientId})`;
-          } else {
-            steps[steps.length - 1].status = "failed";
-            steps[steps.length - 1].detail = createResult.error || "Error desconocido";
-
-            await supabase.from("policy_deliveries").update({
-              sicas_client_create_response_raw: createResult.responseRaw || { error: createResult.error },
-              sicas_client_match_method: "auto_create_failed",
-            }).eq("id", delivery_id);
-
-            resolution.warnings.push(`Cliente: Auto-creacion fallo: ${createResult.error}`);
-            // Ensure IDCli is in missing only once
-            if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
-              resolution.missing.push("Cliente SICAS (IDCli)");
-            }
-          }
-        } else if (resolution.logs.cliente?.candidates_count > 1) {
-          steps.push({ step: "client_ambiguous", status: "manual_required", detail: `${resolution.logs.cliente.candidates_count} candidatos encontrados` });
-          if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
-            resolution.missing.push("Cliente SICAS (IDCli)");
-          }
+          steps[steps.length - 1].status = "completed";
+          steps[steps.length - 1].detail = `Cliente creado: ${createResult.clientName} (ID: ${createResult.clientId})`;
         } else {
-          steps.push({ step: "client_missing", status: "manual_required", detail: "No hay datos de cliente para buscar o crear" });
-          if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
-            resolution.missing.push("Cliente SICAS (IDCli)");
-          }
+          // Auto-creation failed - use fallback "0" so registration proceeds
+          steps[steps.length - 1].status = "warning";
+          steps[steps.length - 1].detail = `Auto-creacion fallo: ${createResult.error}. Se usara cliente generico.`;
+
+          resolution.resolved.IDCli = { value: "0", source: "fallback_create_failed", label: resolution.resolved.IDCli?.label || "Cliente no creado" };
+          resolution.missing = resolution.missing.filter(m => !m.includes("IDCli"));
+          resolution.warnings.push(`IDCli: Auto-creacion fallo (${createResult.error}). Se registra con cliente generico (0).`);
+
+          await supabase.from("policy_deliveries").update({
+            sicas_client_create_response_raw: createResult.responseRaw || { error: createResult.error },
+            sicas_client_match_method: "fallback_zero",
+          }).eq("id", delivery_id);
+
+          console.log(`[SICAS Auto] Client creation failed, using fallback 0. Error: ${createResult.error}`);
         }
       } else if (resolution.resolved.IDCli) {
         steps.push({ step: "client_found", status: "completed", detail: `${resolution.resolved.IDCli.label || resolution.resolved.IDCli.value} (${resolution.resolved.IDCli.source})` });
       }
 
-      // Step 3: Check if we can proceed to registration (also check for sentinel values)
+      // Step 3: Check if we can proceed to registration
+      // If IDCli still has sentinel (shouldn't happen after step 2), use fallback
       if (resolution.resolved.IDCli?.value === "__auto_create__") {
-        if (!resolution.missing.includes("Cliente SICAS (IDCli)")) {
-          resolution.missing.push("Cliente SICAS (IDCli)");
-        }
+        resolution.resolved.IDCli = { value: "0", source: "fallback_sentinel_cleanup", label: "Cliente no resuelto" };
+        resolution.warnings.push("IDCli: Sentinel residual limpiado. Se registra con cliente generico (0).");
       }
+      // Remove any IDCli entries from missing (IDCli never blocks)
+      resolution.missing = resolution.missing.filter(m => !m.includes("IDCli"));
       const dedupedMissingAuto = uniqueMissingFields(resolution.missing);
       if (dedupedMissingAuto.length > 0) {
         finalStatus = "manual_review_required";
