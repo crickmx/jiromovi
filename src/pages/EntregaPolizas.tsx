@@ -488,9 +488,6 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
       }
 
       // 3. Call edge function
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Sesion no valida');
-
       const payload = {
         createdBy: usuario.id,
         createdByName: `${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim(),
@@ -521,28 +518,23 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
         existingTicketFolio: ticketAction === 'existing' ? selectedExistingTicket?.folio : undefined,
       };
 
-      const res = await fetch(`${supabaseUrl}/functions/v1/process-policy-delivery`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey,
-        },
-        body: JSON.stringify(payload),
+      console.log('[EntregaPolizas] Calling process-policy-delivery', { ticketAction, hasFiles: !!coverFile });
+
+      const { data: result, error: invokeError } = await supabase.functions.invoke('process-policy-delivery', {
+        body: payload,
       });
 
-      if (res.status === 404) {
-        throw new Error('Funcion process-policy-delivery no encontrada (404). Verifica que este desplegada en Supabase.');
+      if (invokeError) {
+        console.error('[EntregaPolizas] process-policy-delivery error:', invokeError);
+        const msg = invokeError.message || 'Error de conexion';
+        if (msg.includes('404') || msg.includes('Not Found')) {
+          throw new Error('Funcion process-policy-delivery no encontrada. Verifica que este desplegada en Supabase.');
+        }
+        throw new Error(msg);
       }
 
-      if (!res.ok && res.headers.get('content-type')?.includes('text/html')) {
-        throw new Error(`Error HTTP ${res.status}. La funcion puede no estar disponible temporalmente.`);
-      }
-
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || 'Error procesando entrega');
+      if (!result?.success) {
+        throw new Error(result?.error || 'Error procesando entrega');
       }
 
       setDeliveryResult({
@@ -980,35 +972,26 @@ function HistorialTab({ usuario }: { usuario: any }) {
     setRegisterResult(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Sesion no valida');
+      console.log('[EntregaPolizas][SICAS] Calling sicas-register-policy-delivery', { delivery_id: record.id, action: 'register' });
 
-      const res = await fetch(`${supabaseUrl}/functions/v1/sicas-register-policy-delivery`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey,
-        },
-        body: JSON.stringify({ delivery_id: record.id, action: 'register' }),
+      const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-register-policy-delivery', {
+        body: { delivery_id: record.id, policy_delivery_id: record.id, action: 'register' },
       });
 
-      if (res.status === 404) {
-        console.error('[EntregaPolizas] 404 en sicas-register-policy-delivery. URL:', `${supabaseUrl}/functions/v1/sicas-register-policy-delivery`, 'delivery_id:', record.id);
-        throw new Error('Funcion de registro SICAS no encontrada (404). Verifica que sicas-register-policy-delivery este desplegada.');
+      if (invokeError) {
+        console.error('[EntregaPolizas][SICAS] invoke error:', invokeError);
+        const msg = invokeError.message || 'Error de conexion con la funcion SICAS';
+        if (msg.includes('404') || msg.includes('Not Found') || msg.includes('not found')) {
+          throw new Error('Funcion sicas-register-policy-delivery no encontrada. Revisa que este desplegada en Supabase.');
+        }
+        throw new Error(msg);
       }
 
-      if (!res.ok && res.headers.get('content-type')?.includes('text/html')) {
-        throw new Error(`Error HTTP ${res.status} del servidor. La funcion puede no estar disponible temporalmente.`);
-      }
-
-      const result = await res.json();
-
-      if (result.success) {
+      if (result?.success) {
         setRegisterResult({ id: record.id, success: true, message: result.message || 'Registro exitoso' });
         loadRecords();
       } else {
-        const errorMsg = result.error || result.message || result.sicas_raw_error || 'Error desconocido al comunicarse con SICAS';
+        const errorMsg = result?.error || result?.message || result?.sicas_raw_error || 'Error desconocido al comunicarse con SICAS';
         setRegisterResult({ id: record.id, success: false, message: errorMsg });
         loadRecords();
       }
@@ -1024,37 +1007,28 @@ function HistorialTab({ usuario }: { usuario: any }) {
     setRegisterResult(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Sesion no valida');
+      console.log('[EntregaPolizas][SICAS] Calling sicas-register-policy-delivery (auto)', { delivery_id: record.id, action: 'auto' });
 
-      const res = await fetch(`${supabaseUrl}/functions/v1/sicas-register-policy-delivery`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey,
-        },
-        body: JSON.stringify({ delivery_id: record.id, action: 'auto' }),
+      const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-register-policy-delivery', {
+        body: { delivery_id: record.id, policy_delivery_id: record.id, action: 'auto' },
       });
 
-      if (res.status === 404) {
-        console.error('[EntregaPolizas] 404 en sicas-register-policy-delivery (auto). URL:', `${supabaseUrl}/functions/v1/sicas-register-policy-delivery`, 'delivery_id:', record.id);
-        throw new Error('Funcion de registro SICAS no encontrada (404). Verifica que sicas-register-policy-delivery este desplegada.');
+      if (invokeError) {
+        console.error('[EntregaPolizas][SICAS] invoke error (auto):', invokeError);
+        const msg = invokeError.message || 'Error de conexion con la funcion SICAS';
+        if (msg.includes('404') || msg.includes('Not Found') || msg.includes('not found')) {
+          throw new Error('Funcion sicas-register-policy-delivery no encontrada. Revisa que este desplegada en Supabase.');
+        }
+        throw new Error(msg);
       }
 
-      if (!res.ok && res.headers.get('content-type')?.includes('text/html')) {
-        throw new Error(`Error HTTP ${res.status} del servidor. La funcion puede no estar disponible temporalmente.`);
-      }
-
-      const result = await res.json();
-
-      if (result.success && result.status === 'registered') {
+      if (result?.success && result?.status === 'registered') {
         setRegisterResult({ id: record.id, success: true, message: result.message || 'Registrado en SICAS correctamente.' });
         loadRecords();
-      } else if (result.status === 'duplicate_found') {
+      } else if (result?.status === 'duplicate_found') {
         setRegisterResult({ id: record.id, success: false, message: result.message || 'La poliza ya existe en SICAS.' });
         loadRecords();
-      } else if (result.status === 'manual_review_required') {
+      } else if (result?.status === 'manual_review_required') {
         setPreRegistrationModal({ record, data: result });
         setRegisterResult({ id: record.id, success: false, message: result.message || 'Requiere revision manual.' });
         loadRecords();
@@ -1062,7 +1036,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
         setRegisterResult({
           id: record.id,
           success: false,
-          message: result.message || result.error || 'Error al registrar en SICAS',
+          message: result?.message || result?.error || 'Error al registrar en SICAS',
         });
         loadRecords();
       }
