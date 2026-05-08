@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Lightbulb, RefreshCcw, Loader2, DollarSign, CheckCircle2,
-  TrendingUp, Shield, Layers, ChevronRight, Sparkles,
+  TrendingUp, Shield, Layers, Sparkles, AlertCircle, Zap,
 } from 'lucide-react';
 import type { DashboardScope } from '../../lib/sicasDashboardTypes';
 import { formatCurrency } from '../../lib/sicasDashboardTypes';
-import { fetchCrossSellOpportunities, detectCrossSell, markOpportunityActioned, type CrossSellOpportunity } from '../../lib/sicasDashboardService';
+import {
+  fetchCrossSellOpportunities, callProductionInsights,
+  markOpportunityActioned, fetchInsightsDiagnostics,
+  type CrossSellOpportunity,
+} from '../../lib/sicasDashboardService';
 
 interface Props {
   userId: string;
@@ -35,20 +39,31 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<string>('');
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<Record<string, unknown> | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadOpportunities = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
+    setError(null);
     try {
       const data = await fetchCrossSellOpportunities(userId, {
         confidence: filter || undefined,
         limit: 50,
         scope: scope?.scope,
-        oficinaId: scope?.oficina_id,
+        oficinaId: scope?.oficina_id || undefined,
       });
       setOpportunities(data);
-    } catch (err) {
+
+      // Load diagnostics for admin
+      if (scope?.scope === 'admin' || scope?.rol === 'Administrador') {
+        const diag = await fetchInsightsDiagnostics(userId);
+        setDiagnostics(diag);
+      }
+    } catch (err: any) {
       console.error('[TabOportunidades]', err);
+      setError(err.message);
       setOpportunities([]);
     } finally {
       setLoading(false);
@@ -59,11 +74,15 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
 
   const handleDetect = async () => {
     setRefreshing(true);
+    setError(null);
     try {
-      await detectCrossSell(userId);
+      const result = await callProductionInsights(true);
+      if (result.ai_summary) setAiSummary(result.ai_summary);
+      if (result.diagnostics) setDiagnostics(result.diagnostics);
       await loadOpportunities();
-    } catch (err) {
+    } catch (err: any) {
       console.error('[TabOportunidades] Detect error:', err);
+      setError(err.message);
     } finally {
       setRefreshing(false);
     }
@@ -79,6 +98,19 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
 
   return (
     <div className="space-y-4">
+      {/* AI Summary */}
+      {aiSummary && (
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-4">
+          <div className="flex items-start gap-3">
+            <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">Analisis Inteligente</p>
+              <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">{aiSummary}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
@@ -138,10 +170,20 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
             style={{ backgroundColor: accentColor }}
           >
             <RefreshCcw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            Detectar oportunidades
+            {refreshing ? 'Analizando...' : 'Actualizar analisis'}
           </button>
         </div>
       </div>
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-4">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-red-700 dark:text-red-300">{error}</p>
+          </div>
+        </div>
+      )}
 
       {/* Opportunities List */}
       <div className="space-y-2">
@@ -153,7 +195,19 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center">
             <Lightbulb className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No hay oportunidades pendientes</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Haz clic en "Detectar oportunidades" para analizar tu cartera</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              Haz clic en "Actualizar analisis" para detectar oportunidades de venta cruzada y reactivacion en tu cartera SICAS
+            </p>
+            {diagnostics && (
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                  Vigentes: {String(diagnostics.total_vigentes || 0)} |
+                  Clientes activos: {String(diagnostics.active_clients || 0)} |
+                  AI: {diagnostics.ai_available ? 'Disponible' : 'No configurado'} |
+                  Ultimo analisis: {diagnostics.generated_at ? new Date(String(diagnostics.generated_at)).toLocaleString('es-MX') : 'Nunca'}
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           opportunities.map(opp => {
@@ -210,6 +264,21 @@ export default function TabOportunidades({ userId, scope, accentColor }: Props) 
           })
         )}
       </div>
+
+      {/* Admin Diagnostics */}
+      {diagnostics && (scope?.scope === 'admin' || scope?.rol === 'Administrador') && opportunities.length > 0 && (
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+          <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">Diagnostico (solo admin)</p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500">
+            Vigentes: {String(diagnostics.total_vigentes || 0)} |
+            Renovaciones 30d: {String(diagnostics.renewals_30 || 0)} |
+            Expiradas recientes: {String(diagnostics.expired_recent || 0)} |
+            Clientes: {String(diagnostics.active_clients || 0)} |
+            AI usado: {diagnostics.ai_used ? 'Si' : 'No'} |
+            Fuente: {String(diagnostics.cached_at ? 'Cache' : 'Fresco')}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

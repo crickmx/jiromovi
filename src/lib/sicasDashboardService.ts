@@ -424,10 +424,7 @@ export async function dismissAlert(alertId: string): Promise<void> {
 }
 
 export async function generateAlerts(userId: string): Promise<void> {
-  // First refresh customer profiles so high-value detection works
-  await supabase.rpc('refresh_sicas_customer_profiles', { p_usuario_id: userId });
-  const { error } = await supabase.rpc('generate_sicas_agent_alerts', { p_usuario_id: userId });
-  if (error) throw new Error(error.message);
+  await callProductionInsights(true);
 }
 
 export async function fetchCrossSellOpportunities(
@@ -455,12 +452,53 @@ export async function fetchCrossSellOpportunities(
 }
 
 export async function detectCrossSell(userId: string): Promise<void> {
-  // Must refresh customer profiles before cross-sell detection (depends on profile data)
-  await supabase.rpc('refresh_sicas_customer_profiles', { p_usuario_id: userId });
-  const { error } = await supabase.rpc('detect_sicas_cross_sell', { p_usuario_id: userId });
-  if (error) throw new Error(error.message);
+  await callProductionInsights(true);
 }
 
 export async function markOpportunityActioned(opportunityId: string): Promise<void> {
   await supabase.from('sicas_cross_sell_opportunities').update({ status: 'contacted', contacted_at: new Date().toISOString() }).eq('id', opportunityId);
+}
+
+// === Production Insights Edge Function ===
+
+export interface InsightsResult {
+  success: boolean;
+  alerts: AgentAlert[];
+  opportunities: CrossSellOpportunity[];
+  ai_summary: string | null;
+  source: 'cache' | 'fresh';
+  diagnostics: Record<string, unknown> | null;
+  error?: string;
+}
+
+export async function callProductionInsights(forceRefresh = false): Promise<InsightsResult> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('No authenticated session');
+
+  const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sicas-production-insights`;
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ forceRefresh }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Insights API error: ${response.status} - ${text}`);
+  }
+
+  return await response.json();
+}
+
+export async function fetchInsightsDiagnostics(userId: string): Promise<Record<string, unknown> | null> {
+  const { data } = await supabase
+    .from('sicas_production_insights_cache')
+    .select('diagnostics, updated_at')
+    .eq('usuario_id', userId)
+    .maybeSingle();
+  return data ? { ...data.diagnostics, cached_at: data.updated_at } : null;
 }
