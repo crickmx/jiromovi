@@ -7,6 +7,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+// Valid SICAS EnumTypeData values for Procesar_String method
+const VALID_ENUM_TYPE_DATA = [
+  "WS_Contactos",
+  "WS_Poliza",
+  "WS_Recibo",
+  "WS_Catalogo",
+  "WS_Consulta",
+] as const;
+
+type ValidTypeData = typeof VALID_ENUM_TYPE_DATA[number];
+
+function assertValidTypeData(value: string): asserts value is ValidTypeData {
+  if (!VALID_ENUM_TYPE_DATA.includes(value as ValidTypeData)) {
+    throw new Error(
+      `PropertyTypeData "${value}" no es un valor valido para EnumTypeData de SICAS. ` +
+      `Valores permitidos: ${VALID_ENUM_TYPE_DATA.join(", ")}`
+    );
+  }
+}
+
 // ============================================================
 // Types
 // ============================================================
@@ -671,6 +691,8 @@ async function attemptClientAutoCreate(
 
   const oDataString = catContactosFields.join(",");
 
+  assertValidTypeData("WS_Contactos");
+
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
   <soapenv:Header/>
@@ -828,14 +850,17 @@ async function registerDocument(
   sicasUsername: string,
   sicasPassword: string
 ): Promise<{ success: boolean; documentId?: string; error?: string; stepError?: StepError; isDuplicate?: boolean; duplicateId?: string; duplicateMessage?: string }> {
-  // Build pipe-delimited field|value pairs for document registration
-  // Per SICAS WS 2.0: PropertyTypeProcess=WS_SaveData, PropertyTypeData=WS_Documento
+  // Build pipe-delimited field|value pairs for policy registration
+  // Per SICAS WS 2.0: PropertyTypeProcess=WS_SaveData, PropertyTypeData=WS_Poliza
+  // Valid EnumTypeData values: WS_Contactos, WS_Poliza, WS_Recibo, WS_Catalogo, WS_Consulta
   const docFields: string[] = [];
   for (const [key, value] of Object.entries(sanitizedPayload)) {
     docFields.push(`DatDocumentos.${key}|${value}`);
   }
 
   const oDataStringDoc = docFields.join(",");
+
+  assertValidTypeData("WS_Poliza");
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -845,7 +870,7 @@ async function registerDocument(
       <tem:oDataString><![CDATA[${oDataStringDoc}]]></tem:oDataString>
       <tem:oConfigData>
         <tem:PropertyTypeProcess>WS_SaveData</tem:PropertyTypeProcess>
-        <tem:PropertyTypeData>WS_Documento</tem:PropertyTypeData>
+        <tem:PropertyTypeData>WS_Poliza</tem:PropertyTypeData>
       </tem:oConfigData>
       <tem:oConfigAuth>
         <tem:UserName>${escapeXml(sicasUsername)}</tem:UserName>
