@@ -170,17 +170,6 @@ function buildStepError(step: RegistrationStep, message: string, details?: Parti
   return { step, message, ...details };
 }
 
-const SICAS_TYPE_DATA = {
-  TABLE: "0",
-  JSON: "1",
-  XML: "2",
-} as const;
-
-type SicasTypeDataValue = typeof SICAS_TYPE_DATA[keyof typeof SICAS_TYPE_DATA];
-
-function validatePropertyTypeData(value: string): value is SicasTypeDataValue {
-  return ["0", "1", "2"].includes(value);
-}
 
 // ============================================================
 // Catalog Matching
@@ -643,43 +632,64 @@ async function attemptClientAutoCreate(
 
   console.log(`[SICAS Client] Creating: name="${cleanedName}", rfc="${clientRfc || "N/A"}"`);
 
-  const contactData: string[] = [];
-  contactData.push(`CliNombre|${cleanedName}`);
-  if (clientRfc) {
-    const rfcClean = sanitizeField(clientRfc);
-    if (rfcClean && rfcClean.length >= 10 && rfcClean.length <= 13) {
-      contactData.push(`CliRFC|${rfcClean.toUpperCase()}`);
-    }
+  const isEmpresa = /^(S\.?A\.?|S\.?C\.?|S\.? DE R\.?L\.?|SOCIEDAD|EMPRESA|CORPORAT|CIA|COMPAÑIA)/i.test(cleanedName);
+
+  // Build CatContactos fields for Procesar_String WS 2.0
+  // Per documentation: PropertyTypeProcess=WS_SaveData, PropertyTypeData=WS_Contactos
+  const nameParts = cleanedName.split(/\s+/);
+  let apellidoP = "";
+  let apellidoM = "";
+  let nombre = "";
+  if (nameParts.length === 1) {
+    nombre = nameParts[0];
+  } else if (nameParts.length === 2) {
+    nombre = nameParts[0];
+    apellidoP = nameParts[1];
+  } else if (nameParts.length === 3) {
+    nombre = nameParts[0];
+    apellidoP = nameParts[1];
+    apellidoM = nameParts[2];
+  } else {
+    apellidoM = nameParts[nameParts.length - 1];
+    apellidoP = nameParts[nameParts.length - 2];
+    nombre = nameParts.slice(0, nameParts.length - 2).join(" ");
   }
 
-  const email = sanitizeField(delivery.extracted_data?.email || delivery.extracted_data?.correo);
-  const phone = sanitizeField(delivery.extracted_data?.telefono || delivery.extracted_data?.phone);
-  if (email) contactData.push(`CliEmail|${email}`);
-  if (phone) contactData.push(`CliTelefono|${phone}`);
+  const catContactosFields: string[] = [];
+  catContactosFields.push(`CatContactos.TipoEnt|${isEmpresa ? "1" : "0"}`);
+  catContactosFields.push(`CatContactos.ApellidoP|${apellidoP}`);
+  if (apellidoM) catContactosFields.push(`CatContactos.ApellidoM|${apellidoM}`);
+  catContactosFields.push(`CatContactos.Nombre|${nombre}`);
 
-  const isEmpresa = /^(S\.?A\.?|S\.?C\.?|S\.? DE R\.?L\.?|SOCIEDAD|EMPRESA|CORPORAT|CIA|COMPAÑIA)/i.test(cleanedName);
-  contactData.push(`CliTipoPersona|${isEmpresa ? "M" : "F"}`);
+  const rfcForSicas = clientRfc || "XXXX000000XXX";
+  catContactosFields.push(`CatContactos.RFC|${rfcForSicas}`);
 
-  // XML-escape the entire PropertyData content to prevent malformed SOAP XML
-  const dataString = escapeXml(contactData.join("\n"));
+  const emailVal = sanitizeField(delivery.extracted_data?.email || delivery.extracted_data?.correo);
+  const phoneVal = sanitizeField(delivery.extracted_data?.telefono || delivery.extracted_data?.phone);
+  if (phoneVal) catContactosFields.push(`CatContactos.Telefono3|Celular|${phoneVal}`);
+  if (emailVal) catContactosFields.push(`CatContactos.EMail1|${emailVal}`);
+
+  const oDataString = catContactosFields.join(",");
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
-  <soap:Header/>
-  <soap:Body>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soapenv:Header/>
+  <soapenv:Body>
     <tem:Procesar_String>
+      <tem:oDataString><![CDATA[${oDataString}]]></tem:oDataString>
+      <tem:oConfigData>
+        <tem:PropertyTypeProcess>WS_SaveData</tem:PropertyTypeProcess>
+        <tem:PropertyTypeData>WS_Contactos</tem:PropertyTypeData>
+        <tem:PropertyWhatMakeExist>WS_UsarloNoUpdate</tem:PropertyWhatMakeExist>
+        <tem:PropertyVerifyContact>WS_NombreCompleto</tem:PropertyVerifyContact>
+      </tem:oConfigData>
       <tem:oConfigAuth>
         <tem:UserName>${escapeXml(sicasUsername)}</tem:UserName>
         <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
       </tem:oConfigAuth>
-      <tem:oConfigData>
-        <tem:PropertyNameTransaction>WS_SaveData_Contacto</tem:PropertyNameTransaction>
-        <tem:PropertyTypeData>2</tem:PropertyTypeData>
-        <tem:PropertyData>${dataString}</tem:PropertyData>
-      </tem:oConfigData>
     </tem:Procesar_String>
-  </soap:Body>
-</soap:Envelope>`;
+  </soapenv:Body>
+</soapenv:Envelope>`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -687,7 +697,7 @@ async function attemptClientAutoCreate(
   try {
     console.log(`[SICAS Client] POST ${sicasEndpoint} (Contacto)`);
     console.log(`[SICAS Client] Full SOAP Request:`, soapEnvelope);
-    console.log(`[SICAS Client] Payload fields: ${contactData.join(", ")}`);
+    console.log(`[SICAS Client] Payload fields: ${catContactosFields.join(", ")}`);
 
     const response = await fetch(sicasEndpoint, {
       method: "POST",
@@ -716,7 +726,7 @@ async function attemptClientAutoCreate(
         statusCode: response.status,
         statusText: response.statusText,
         responseBody: responseText.substring(0, 3000),
-        payloadSanitized: Object.fromEntries(contactData.map(f => { const [k, v] = f.split("|"); return [k, v]; })),
+        payloadSanitized: Object.fromEntries(catContactosFields.map(f => { const [k, v] = f.split("|"); return [k, v]; })),
       });
 
       console.error(`[SICAS Client] SOAP Fault: code=${fault.faultcode}, string=${fault.faultstring}, detail=${fault.detail}`);
@@ -818,31 +828,32 @@ async function registerDocument(
   sicasUsername: string,
   sicasPassword: string
 ): Promise<{ success: boolean; documentId?: string; error?: string; stepError?: StepError; isDuplicate?: boolean; duplicateId?: string; duplicateMessage?: string }> {
+  // Build pipe-delimited field|value pairs for document registration
+  // Per SICAS WS 2.0: PropertyTypeProcess=WS_SaveData, PropertyTypeData=WS_Documento
   const docFields: string[] = [];
   for (const [key, value] of Object.entries(sanitizedPayload)) {
-    docFields.push(`${key}|${value}`);
+    docFields.push(`DatDocumentos.${key}|${value}`);
   }
 
-  // XML-escape the entire PropertyData content to prevent malformed SOAP XML
-  const dataString = escapeXml(docFields.join("\n"));
+  const oDataStringDoc = docFields.join(",");
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
-  <soap:Header/>
-  <soap:Body>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soapenv:Header/>
+  <soapenv:Body>
     <tem:Procesar_String>
+      <tem:oDataString><![CDATA[${oDataStringDoc}]]></tem:oDataString>
+      <tem:oConfigData>
+        <tem:PropertyTypeProcess>WS_SaveData</tem:PropertyTypeProcess>
+        <tem:PropertyTypeData>WS_Documento</tem:PropertyTypeData>
+      </tem:oConfigData>
       <tem:oConfigAuth>
         <tem:UserName>${escapeXml(sicasUsername)}</tem:UserName>
         <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
       </tem:oConfigAuth>
-      <tem:oConfigData>
-        <tem:PropertyNameTransaction>WS_SaveData_Documento</tem:PropertyNameTransaction>
-        <tem:PropertyTypeData>2</tem:PropertyTypeData>
-        <tem:PropertyData>${dataString}</tem:PropertyData>
-      </tem:oConfigData>
     </tem:Procesar_String>
-  </soap:Body>
-</soap:Envelope>`;
+  </soapenv:Body>
+</soapenv:Envelope>`;
 
   console.log(`[SICAS Register] POST ${sicasEndpoint} (Documento)`);
   console.log(`[SICAS Register] Full SOAP Request:`, soapEnvelope);
