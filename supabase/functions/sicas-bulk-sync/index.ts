@@ -16,11 +16,12 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 const ITEMS_PER_PAGE = 500;
-const MAX_SECONDS = 50;
+const MAX_SECONDS = 45;
 const PAGES_PER_BATCH = 999;
 const MAX_RETRIES_PER_PAGE = 3;
-const RETRY_DELAY_MS = 2000;
-const PAGE_FETCH_TIMEOUT_MS = 45000;
+const RETRY_DELAY_MS = 3000;
+const PAGE_FETCH_TIMEOUT_MS = 40000;
+const INTER_PAGE_DELAY_MS = 1000;
 
 interface SyncState {
   currentPage: number;
@@ -53,6 +54,24 @@ function xmlEscape(str: string): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function triggerSelfContinuation(jobId: string): Promise<void> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const url = `${supabaseUrl}/functions/v1/sicas-bulk-sync`;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({ action: "continue", jobId }),
+    });
+  } catch (e) {
+    console.error(`[BULK-SYNC] Self-continuation failed: ${(e as Error).message}`);
+  }
 }
 
 async function fetchSoapPage(
@@ -216,12 +235,12 @@ Deno.serve(async (req: Request) => {
         .from("sicas_sync_jobs")
         .update({
           status: "failed",
-          error_message: "Auto-recovery: job stuck sin actualizacion por mas de 5 minutos",
+          error_message: "Auto-recovery: job stuck sin actualizacion por mas de 10 minutos",
           finished_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .in("status", ["queued", "running"])
-        .lt("updated_at", new Date(Date.now() - 5 * 60 * 1000).toISOString());
+        .lt("updated_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
 
       // Check if there's already a running job (not stale)
       const { data: activeJob } = await supabase
@@ -391,23 +410,27 @@ Deno.serve(async (req: Request) => {
 
       let pagesThisBatch = 0;
 
-      // Retry mode: process failed pages
+      // Retry mode: process failed pages with staggered delays
       if (syncState.currentPage === -1) {
         const pagesToRetry = [...syncState.failedPages];
         syncState.failedPages = [];
+        let retryIdx = 0;
 
         for (const page of pagesToRetry) {
           const elapsed = (Date.now() - batchStart) / 1000;
           if (elapsed >= MAX_SECONDS) {
             // Put remaining back into failedPages for next batch
-            const idx = pagesToRetry.indexOf(page);
-            syncState.failedPages.push(...pagesToRetry.slice(idx));
+            syncState.failedPages.push(...pagesToRetry.slice(retryIdx));
             break;
           }
 
-          console.log(`[BULK-SYNC] RETRY: Fetching failed page ${page}...`);
-          try {
+          // Staggered delay between retries to avoid overwhelming SICAS
+          if (retryIdx > 0) {
             await sleep(RETRY_DELAY_MS);
+          }
+
+          console.log(`[BULK-SYNC] RETRY: Fetching failed page ${page} (${retryIdx + 1}/${pagesToRetry.length})...`);
+          try {
             const pageResult = await fetchSoapPage(
               soapEndpoint, sicasUsername, sicasPassword,
               page, ITEMS_PER_PAGE, syncState.incrementalSince
@@ -423,11 +446,15 @@ Deno.serve(async (req: Request) => {
               syncState.totalUpserted += result.upserted;
               console.log(`[BULK-SYNC] RETRY page ${page}: ${pageResult.records.length} fetched, ${result.upserted} upserted`);
             } else {
-              console.log(`[BULK-SYNC] RETRY page ${page}: still empty, giving up.`);
+              // Still empty - queue for one more attempt in next batch
+              console.log(`[BULK-SYNC] RETRY page ${page}: still empty, re-queuing.`);
+              syncState.failedPages.push(page);
             }
           } catch (e: unknown) {
             console.error(`[BULK-SYNC] RETRY page ${page} error: ${(e as Error).message}`);
+            syncState.failedPages.push(page);
           }
+          retryIdx++;
           pagesThisBatch++;
         }
 
@@ -448,6 +475,11 @@ Deno.serve(async (req: Request) => {
 
           const page = syncState.currentPage;
 
+          // Throttle: wait between page requests to avoid overwhelming SICAS
+          if (pagesThisBatch > 0) {
+            await sleep(INTER_PAGE_DELAY_MS);
+          }
+
           try {
             const pageResult = await fetchSoapPage(
               soapEndpoint, sicasUsername, sicasPassword,
@@ -455,13 +487,11 @@ Deno.serve(async (req: Request) => {
             );
 
             if (pageResult.records.length === 0) {
-              // Don't just skip: this is likely a SICAS server timeout for deep pages
-              // Retry immediately once with a short delay
               console.log(`[BULK-SYNC] Page ${page} returned 0 records, retrying after delay...`);
               syncState.emptyPages++;
 
               const retryElapsed = (Date.now() - batchStart) / 1000;
-              if (retryElapsed < MAX_SECONDS - 10) {
+              if (retryElapsed < MAX_SECONDS - 8) {
                 await sleep(RETRY_DELAY_MS);
                 try {
                   const retryResult = await fetchSoapPage(
@@ -478,23 +508,15 @@ Deno.serve(async (req: Request) => {
                     syncState.totalUpserted += result.upserted;
                     console.log(`[BULK-SYNC] Page ${page} RETRY success: ${retryResult.records.length} fetched`);
                   } else {
-                    // Still empty after retry - save for later retry pass
                     console.log(`[BULK-SYNC] Page ${page} still empty after retry, queuing for later.`);
-                    if (syncState.failedPages.length < 200) {
-                      syncState.failedPages.push(page);
-                    }
+                    syncState.failedPages.push(page);
                   }
                 } catch (retryErr: unknown) {
                   console.error(`[BULK-SYNC] Page ${page} retry error: ${(retryErr as Error).message}`);
-                  if (syncState.failedPages.length < 200) {
-                    syncState.failedPages.push(page);
-                  }
-                }
-              } else {
-                // No time to retry, queue for later
-                if (syncState.failedPages.length < 200) {
                   syncState.failedPages.push(page);
                 }
+              } else {
+                syncState.failedPages.push(page);
               }
 
               syncState.currentPage++;
@@ -544,10 +566,7 @@ Deno.serve(async (req: Request) => {
               `[BULK-SYNC] Page ${page} error: ${(e as Error).message}`
             );
             syncState.totalErrors++;
-            // Queue failed page for retry instead of losing it
-            if (syncState.failedPages.length < 200) {
-              syncState.failedPages.push(page);
-            }
+            syncState.failedPages.push(page);
           }
 
           syncState.currentPage++;
@@ -593,6 +612,14 @@ Deno.serve(async (req: Request) => {
           `${uniqueCount} unique docs in DB, ${percent}% complete, ` +
           `${syncState.failedPages.length} pages pending retry, ${syncState.emptyPages} empty, ${syncState.retriedPages} retried`
       );
+
+      // Self-continuation: automatically trigger next batch if not complete
+      if (!isComplete) {
+        EdgeRuntime.waitUntil(
+          sleep(2000).then(() => triggerSelfContinuation(jobId))
+        );
+        console.log(`[BULK-SYNC] Self-continuation scheduled for job ${jobId}`);
+      }
 
       return jsonResponse(200, {
         ok: true,
