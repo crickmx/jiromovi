@@ -19,9 +19,9 @@ const ITEMS_PER_PAGE = 500;
 const MAX_SECONDS = 45;
 const PAGES_PER_BATCH = 999;
 const MAX_RETRIES_PER_PAGE = 3;
-const RETRY_DELAY_MS = 3000;
+const RETRY_DELAY_MS = 5000;
 const PAGE_FETCH_TIMEOUT_MS = 40000;
-const INTER_PAGE_DELAY_MS = 1000;
+const INTER_PAGE_DELAY_MS = 1500;
 
 interface SyncState {
   currentPage: number;
@@ -33,6 +33,8 @@ interface SyncState {
   emptyPages: number;
   retriedPages: number;
   failedPages: number[];
+  droppedPages: number[];
+  retryAttempts: Record<string, number>;
   incrementalSince?: string;
 }
 
@@ -310,6 +312,8 @@ Deno.serve(async (req: Request) => {
         emptyPages: 0,
         retriedPages: 0,
         failedPages: [],
+        droppedPages: [],
+        retryAttempts: {},
         incrementalSince,
       };
 
@@ -385,6 +389,8 @@ Deno.serve(async (req: Request) => {
       if (syncState.emptyPages === undefined) syncState.emptyPages = 0;
       if (syncState.retriedPages === undefined) syncState.retriedPages = 0;
       if (!Array.isArray(syncState.failedPages)) syncState.failedPages = [];
+      if (!Array.isArray(syncState.droppedPages)) syncState.droppedPages = [];
+      if (!syncState.retryAttempts || typeof syncState.retryAttempts !== "object") syncState.retryAttempts = {};
 
       if (syncState.currentPage > syncState.totalPages) {
         // Before marking complete, check if there are failed pages to retry
@@ -410,7 +416,7 @@ Deno.serve(async (req: Request) => {
 
       let pagesThisBatch = 0;
 
-      // Retry mode: process failed pages with staggered delays
+      // Retry mode: process failed pages with staggered delays and max attempts
       if (syncState.currentPage === -1) {
         const pagesToRetry = [...syncState.failedPages];
         syncState.failedPages = [];
@@ -424,12 +430,25 @@ Deno.serve(async (req: Request) => {
             break;
           }
 
+          // Check retry attempts - drop page if exceeded max
+          const pageKey = String(page);
+          const attempts = (syncState.retryAttempts[pageKey] || 0) + 1;
+          syncState.retryAttempts[pageKey] = attempts;
+
+          if (attempts > MAX_RETRIES_PER_PAGE) {
+            console.log(`[BULK-SYNC] DROPPING page ${page} after ${MAX_RETRIES_PER_PAGE} failed attempts.`);
+            syncState.droppedPages.push(page);
+            retryIdx++;
+            pagesThisBatch++;
+            continue;
+          }
+
           // Staggered delay between retries to avoid overwhelming SICAS
           if (retryIdx > 0) {
             await sleep(RETRY_DELAY_MS);
           }
 
-          console.log(`[BULK-SYNC] RETRY: Fetching failed page ${page} (${retryIdx + 1}/${pagesToRetry.length})...`);
+          console.log(`[BULK-SYNC] RETRY: page ${page} attempt ${attempts}/${MAX_RETRIES_PER_PAGE} (${retryIdx + 1}/${pagesToRetry.length})...`);
           try {
             const pageResult = await fetchSoapPage(
               soapEndpoint, sicasUsername, sicasPassword,
@@ -439,6 +458,7 @@ Deno.serve(async (req: Request) => {
             if (pageResult.records.length > 0) {
               syncState.totalFetched += pageResult.records.length;
               syncState.retriedPages++;
+              delete syncState.retryAttempts[pageKey];
               const documents = pageResult.records
                 .map((raw) => mapDocument(raw, "H03400", despachoNameToOffice, vendorToUser, vendorToOficina))
                 .filter((d) => d !== null);
@@ -446,12 +466,11 @@ Deno.serve(async (req: Request) => {
               syncState.totalUpserted += result.upserted;
               console.log(`[BULK-SYNC] RETRY page ${page}: ${pageResult.records.length} fetched, ${result.upserted} upserted`);
             } else {
-              // Still empty - queue for one more attempt in next batch
-              console.log(`[BULK-SYNC] RETRY page ${page}: still empty, re-queuing.`);
+              console.log(`[BULK-SYNC] RETRY page ${page}: still empty (attempt ${attempts}).`);
               syncState.failedPages.push(page);
             }
           } catch (e: unknown) {
-            console.error(`[BULK-SYNC] RETRY page ${page} error: ${(e as Error).message}`);
+            console.error(`[BULK-SYNC] RETRY page ${page} error (attempt ${attempts}): ${(e as Error).message}`);
             syncState.failedPages.push(page);
           }
           retryIdx++;
@@ -574,22 +593,26 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      const isComplete = syncState.currentPage > syncState.totalPages && syncState.failedPages.length === 0;
+      const isComplete = (syncState.currentPage > syncState.totalPages || syncState.currentPage === -1) && syncState.failedPages.length === 0;
 
       const { count: uniqueCount } = await supabase
         .from("sicas_documents")
         .select("*", { count: "exact", head: true });
 
-      const percent = isComplete
-        ? 100
-        : syncState.totalPages > 0
-          ? Math.min(
-              99,
-              Math.round(
-                (Math.max(0, syncState.currentPage - 1) / syncState.totalPages) * 100
-              )
-            )
-          : 0;
+      // In retry mode, percent is based on how many failed pages remain vs total
+      let percent: number;
+      if (isComplete) {
+        percent = 100;
+      } else if (syncState.currentPage === -1) {
+        // Retry mode: base progress on pages processed vs pages remaining
+        const totalFailedOriginal = syncState.failedPages.length + syncState.droppedPages.length + syncState.retriedPages;
+        const processed = syncState.droppedPages.length + syncState.retriedPages;
+        percent = Math.min(99, Math.round(90 + (processed / Math.max(1, totalFailedOriginal)) * 10));
+      } else if (syncState.totalPages > 0) {
+        percent = Math.min(89, Math.round((Math.max(0, syncState.currentPage - 1) / syncState.totalPages) * 90));
+      } else {
+        percent = 0;
+      }
 
       await supabase
         .from("sicas_sync_jobs")
@@ -610,7 +633,7 @@ Deno.serve(async (req: Request) => {
       console.log(
         `[BULK-SYNC] Batch done: page ${Math.max(0, syncState.currentPage - 1)}/${syncState.totalPages}, ` +
           `${uniqueCount} unique docs in DB, ${percent}% complete, ` +
-          `${syncState.failedPages.length} pages pending retry, ${syncState.emptyPages} empty, ${syncState.retriedPages} retried`
+          `${syncState.failedPages.length} pending retry, ${syncState.droppedPages.length} dropped, ${syncState.retriedPages} retried`
       );
 
       // Self-continuation: automatically trigger next batch if not complete
@@ -636,6 +659,7 @@ Deno.serve(async (req: Request) => {
           emptyPages: syncState.emptyPages,
           retriedPages: syncState.retriedPages,
           failedPagesRemaining: syncState.failedPages.length,
+          droppedPages: syncState.droppedPages.length,
         },
       });
     }
