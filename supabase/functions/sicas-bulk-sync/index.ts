@@ -20,7 +20,7 @@ const MAX_SECONDS = 45;
 const PAGES_PER_BATCH = 999;
 const MAX_RETRIES_PER_PAGE = 3;
 const RETRY_DELAY_MS = 5000;
-const PAGE_FETCH_TIMEOUT_MS = 40000;
+const PAGE_FETCH_TIMEOUT_MS = 90000;
 const INTER_PAGE_DELAY_MS = 1500;
 
 interface SyncState {
@@ -291,16 +291,27 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Fetch page 1 to discover total pages and records
+      // Fetch page 1 to discover total pages and records (with retries)
       console.log("[BULK-SYNC] Fetching page 1 to discover totals...");
-      const firstPage = await fetchSoapPage(
-        soapEndpoint,
-        sicasUsername,
-        sicasPassword,
-        1,
-        ITEMS_PER_PAGE,
-        incrementalSince
-      );
+      let firstPage: SoapPageResult | null = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          firstPage = await fetchSoapPage(
+            soapEndpoint,
+            sicasUsername,
+            sicasPassword,
+            1,
+            ITEMS_PER_PAGE,
+            incrementalSince
+          );
+          break;
+        } catch (e: unknown) {
+          console.error(`[BULK-SYNC] Page 1 attempt ${attempt}/3 failed: ${(e as Error).message}`);
+          if (attempt === 3) throw e;
+          await sleep(5000 * attempt);
+        }
+      }
+      if (!firstPage) throw new Error("Failed to fetch page 1 after 3 attempts");
 
       const syncState: SyncState = {
         currentPage: 1,
@@ -614,7 +625,8 @@ Deno.serve(async (req: Request) => {
         percent = 0;
       }
 
-      await supabase
+      // Only update if job is still running (respect cancellation)
+      const { data: updateResult } = await supabase
         .from("sicas_sync_jobs")
         .update({
           status: isComplete ? "completed" : "running",
@@ -628,7 +640,9 @@ Deno.serve(async (req: Request) => {
           updated_at: new Date().toISOString(),
           ...(isComplete ? { finished_at: new Date().toISOString() } : {}),
         })
-        .eq("id", jobId);
+        .eq("id", jobId)
+        .eq("status", "running")
+        .select("id");
 
       console.log(
         `[BULK-SYNC] Batch done: page ${Math.max(0, syncState.currentPage - 1)}/${syncState.totalPages}, ` +
@@ -636,12 +650,15 @@ Deno.serve(async (req: Request) => {
           `${syncState.failedPages.length} pending retry, ${syncState.droppedPages.length} dropped, ${syncState.retriedPages} retried`
       );
 
-      // Self-continuation: automatically trigger next batch if not complete
-      if (!isComplete) {
+      // Self-continuation: only if job is still running (update succeeded = not cancelled)
+      const wasCancelled = !updateResult || updateResult.length === 0;
+      if (!isComplete && !wasCancelled) {
         EdgeRuntime.waitUntil(
           sleep(2000).then(() => triggerSelfContinuation(jobId))
         );
         console.log(`[BULK-SYNC] Self-continuation scheduled for job ${jobId}`);
+      } else if (wasCancelled) {
+        console.log(`[BULK-SYNC] Job ${jobId} was cancelled externally, stopping continuation.`);
       }
 
       return jsonResponse(200, {
