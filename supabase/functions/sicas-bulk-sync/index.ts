@@ -291,33 +291,12 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Fetch page 1 to discover total pages and records (with retries)
-      console.log("[BULK-SYNC] Fetching page 1 to discover totals...");
-      let firstPage: SoapPageResult | null = null;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          firstPage = await fetchSoapPage(
-            soapEndpoint,
-            sicasUsername,
-            sicasPassword,
-            1,
-            ITEMS_PER_PAGE,
-            incrementalSince
-          );
-          break;
-        } catch (e: unknown) {
-          console.error(`[BULK-SYNC] Page 1 attempt ${attempt}/3 failed: ${(e as Error).message}`);
-          if (attempt === 3) throw e;
-          await sleep(5000 * attempt);
-        }
-      }
-      if (!firstPage) throw new Error("Failed to fetch page 1 after 3 attempts");
-
+      // Create the job record IMMEDIATELY so the UI can track it
       const syncState: SyncState = {
-        currentPage: 1,
-        totalPages: firstPage.totalPages,
-        totalRecordsInSicas: firstPage.totalRecords,
-        totalFetched: firstPage.records.length,
+        currentPage: 0,
+        totalPages: 0,
+        totalRecordsInSicas: 0,
+        totalFetched: 0,
         totalUpserted: 0,
         totalErrors: 0,
         emptyPages: 0,
@@ -328,13 +307,6 @@ Deno.serve(async (req: Request) => {
         incrementalSince,
       };
 
-      console.log(
-        `[BULK-SYNC] Discovered: ${syncState.totalRecordsInSicas} total records, ${syncState.totalPages} pages`
-      );
-
-      // Create job record immediately (don't upsert page 1 here - let continue do all the work)
-      syncState.currentPage = 1; // Start from page 1
-
       const { data: job, error: jobError } = await supabase
         .from("sicas_sync_jobs")
         .insert({
@@ -343,10 +315,10 @@ Deno.serve(async (req: Request) => {
           triggered_by: body.triggeredBy || null,
           keycode: "H03400_SOAP",
           started_at: new Date().toISOString(),
-          total_pages: syncState.totalPages,
+          total_pages: 0,
           current_page: 0,
           total_synced: 0,
-          total_in_sicas: syncState.totalRecordsInSicas,
+          total_in_sicas: 0,
           total_errors: 0,
           percent: 0,
           error_message: JSON.stringify(syncState),
@@ -356,16 +328,17 @@ Deno.serve(async (req: Request) => {
 
       if (jobError) throw new Error(`Error creating job: ${jobError.message}`);
 
-      console.log(
-        `[BULK-SYNC] Created job ${job.id}, discovered ${syncState.totalPages} pages, ${syncState.totalRecordsInSicas} records. Frontend will call continue.`
+      console.log(`[BULK-SYNC] Created job ${job.id} immediately. Continue handler will fetch page 1.`);
+
+      // Trigger self-continuation to begin actual sync work
+      EdgeRuntime.waitUntil(
+        sleep(500).then(() => triggerSelfContinuation(job.id))
       );
 
       return jsonResponse(200, {
         ok: true,
         jobId: job.id,
         status: "running",
-        totalPages: syncState.totalPages,
-        totalRecordsInSicas: syncState.totalRecordsInSicas,
       });
     }
 
@@ -392,10 +365,6 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(200, { ok: true, status: "invalid_state" });
       }
 
-      if (!syncState.currentPage || !syncState.totalPages) {
-        return jsonResponse(200, { ok: true, status: "invalid_state" });
-      }
-
       // Initialize new fields for backward compat with existing jobs
       if (syncState.emptyPages === undefined) syncState.emptyPages = 0;
       if (syncState.retriedPages === undefined) syncState.retriedPages = 0;
@@ -403,23 +372,79 @@ Deno.serve(async (req: Request) => {
       if (!Array.isArray(syncState.droppedPages)) syncState.droppedPages = [];
       if (!syncState.retryAttempts || typeof syncState.retryAttempts !== "object") syncState.retryAttempts = {};
 
-      if (syncState.currentPage > syncState.totalPages) {
+      // Mark as actively running so auto-recovery won't kill it
+      await supabase
+        .from("sicas_sync_jobs")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", jobId);
+
+      // Discovery phase: totalPages === 0 means we still need to fetch page 1
+      if (syncState.totalPages === 0) {
+        console.log("[BULK-SYNC] Discovery phase: fetching page 1...");
+        let firstPage: SoapPageResult | null = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            firstPage = await fetchSoapPage(
+              soapEndpoint, sicasUsername, sicasPassword,
+              1, ITEMS_PER_PAGE, syncState.incrementalSince
+            );
+            break;
+          } catch (e: unknown) {
+            console.error(`[BULK-SYNC] Page 1 attempt ${attempt}/3 failed: ${(e as Error).message}`);
+            if (attempt === 3) {
+              // Mark job as failed
+              await supabase.from("sicas_sync_jobs").update({
+                status: "failed",
+                error_message: `Error en pagina 1 despues de 3 intentos: ${(e as Error).message}`,
+                finished_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }).eq("id", jobId);
+              return jsonResponse(200, { ok: true, status: "failed", error: (e as Error).message });
+            }
+            await sleep(5000 * attempt);
+          }
+        }
+        if (!firstPage) {
+          await supabase.from("sicas_sync_jobs").update({
+            status: "failed", error_message: "No se pudo obtener pagina 1",
+            finished_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+          }).eq("id", jobId);
+          return jsonResponse(200, { ok: true, status: "failed" });
+        }
+
+        syncState.totalPages = firstPage.totalPages;
+        syncState.totalRecordsInSicas = firstPage.totalRecords;
+        syncState.totalFetched = firstPage.records.length;
+        syncState.currentPage = 1;
+
+        console.log(`[BULK-SYNC] Discovered: ${syncState.totalRecordsInSicas} records, ${syncState.totalPages} pages`);
+
+        // Update job with discovery info
+        await supabase.from("sicas_sync_jobs").update({
+          total_pages: syncState.totalPages,
+          total_in_sicas: syncState.totalRecordsInSicas,
+          error_message: JSON.stringify(syncState),
+          updated_at: new Date().toISOString(),
+        }).eq("id", jobId).eq("status", "running");
+
+        // Trigger next batch to start actual processing
+        EdgeRuntime.waitUntil(sleep(1000).then(() => triggerSelfContinuation(jobId)));
+        return jsonResponse(200, { ok: true, jobId, status: "running", progress: {
+          percent: 0, currentPage: 0, totalPages: syncState.totalPages,
+          totalRecordsInSicas: syncState.totalRecordsInSicas,
+        }});
+      }
+
+      if (syncState.currentPage > syncState.totalPages && syncState.totalPages > 0) {
         // Before marking complete, check if there are failed pages to retry
         if (syncState.failedPages.length > 0) {
           console.log(`[BULK-SYNC] All pages visited, retrying ${syncState.failedPages.length} failed pages...`);
-          // Move failed pages into the retry pass
           syncState.currentPage = -1; // Signal retry mode
         } else {
           await markComplete(supabase, jobId, syncState);
           return jsonResponse(200, { ok: true, status: "completed" });
         }
       }
-
-      // Mark as actively running so auto-recovery won't kill it
-      await supabase
-        .from("sicas_sync_jobs")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", jobId);
 
       const batchStart = Date.now();
       const despachoNameToOffice = await loadDespachoNameMap(supabase);

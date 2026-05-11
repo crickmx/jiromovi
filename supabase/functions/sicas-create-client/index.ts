@@ -210,9 +210,12 @@ Deno.serve(async (req: Request) => {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-    console.log(`[sicas-create-client] Sending Procesar_String to ${sicasEndpoint}`);
+    // Pre-send diagnostic logging
+    console.log(`[sicas-create-client] SOAP Method: Procesar_String`);
+    console.log(`[sicas-create-client] PropertyTypeProcess: WS_SaveData`);
+    console.log(`[sicas-create-client] PropertyTypeData: WS_Contactos`);
+    console.log(`[sicas-create-client] Endpoint: ${sicasEndpoint}`);
     console.log(`[sicas-create-client] oDataString: ${oDataString}`);
-    console.log(`[sicas-create-client] SOAP Request:`, soapEnvelope);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);

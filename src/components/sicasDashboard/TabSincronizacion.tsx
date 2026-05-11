@@ -222,18 +222,26 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
               <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 text-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                  <p className="font-medium">Sincronizando... {syncProgress.totalPages > 0 ? Math.round((syncProgress.page / syncProgress.totalPages) * 100) : syncProgress.percent}%</p>
+                  <p className="font-medium">
+                    {syncProgress.totalPages === 0
+                      ? 'Conectando con SICAS...'
+                      : `Sincronizando... ${Math.round((syncProgress.page / syncProgress.totalPages) * 100)}%`}
+                  </p>
                 </div>
                 <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 mb-2">
-                  <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${syncProgress.totalPages > 0 ? Math.round((syncProgress.page / syncProgress.totalPages) * 100) : syncProgress.percent}%`, backgroundColor: accentColor }} />
+                  <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${syncProgress.totalPages > 0 ? Math.round((syncProgress.page / syncProgress.totalPages) * 100) : 2}%`, backgroundColor: accentColor }} />
                 </div>
                 <p className="text-xs opacity-80">
-                  Pagina {syncProgress.page}/{syncProgress.totalPages}
-                  {syncProgress.totalInSicas > 0 && ` - ${formatNumber(syncProgress.totalInSicas)} registros en SICAS`}
-                  {syncProgress.fetched > 0 && ` - ${formatNumber(syncProgress.fetched)} documentos unicos en BD`}
-                  {syncProgress.page > 0 && syncProgress.totalPages > 0 && syncProgress.page < syncProgress.totalPages && (
-                    ` - ~${Math.round((syncProgress.totalPages - syncProgress.page) * 1.1)} min restantes`
-                  )}
+                  {syncProgress.totalPages === 0
+                    ? 'Obteniendo informacion del servidor SICAS...'
+                    : <>
+                        Pagina {syncProgress.page}/{syncProgress.totalPages}
+                        {syncProgress.totalInSicas > 0 && ` - ${formatNumber(syncProgress.totalInSicas)} registros en SICAS`}
+                        {syncProgress.fetched > 0 && ` - ${formatNumber(syncProgress.fetched)} documentos unicos en BD`}
+                        {syncProgress.page > 0 && syncProgress.totalPages > 0 && syncProgress.page < syncProgress.totalPages && (
+                          ` - ~${Math.round((syncProgress.totalPages - syncProgress.page) * 1.1)} min restantes`
+                        )}
+                      </>}
                 </p>
               </div>
             )}

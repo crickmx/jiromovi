@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { trackDocumentView, trackDashboardView, trackDashboardTabOpened, trackDashboardFilterApplied, trackDashboardDrilldown } from '../lib/activityLogger';
@@ -68,7 +69,9 @@ interface EntityModalState {
 
 export default function ProduccionSICASLive() {
   const { usuario } = useAuth();
-  const [activeTab, setActiveTab] = useState<DashboardTab>('resumen');
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as DashboardTab) || 'resumen';
+  const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
   const [scope, setScope] = useState<DashboardScope | null>(null);
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [charts, setCharts] = useState<DashboardCharts | null>(null);

@@ -7,22 +7,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// Valid SICAS EnumTypeData values for Procesar_String method
-const VALID_ENUM_TYPE_DATA = [
-  "WS_Contactos",
-  "WS_Poliza",
-  "WS_Recibo",
-  "WS_Catalogo",
-  "WS_Consulta",
-] as const;
+// ============================================================
+// SICAS SOAP Contract Definitions
+// ============================================================
+// SICAS WS has two distinct Procesar_String contracts:
+//
+// 1. CONTACT CREATION: Uses PropertyTypeData with enum value "WS_Contactos"
+//    - PropertyTypeProcess: WS_SaveData
+//    - PropertyTypeData: WS_Contactos (the ONLY valid value for this field)
+//    - PropertyWhatMakeExist: WS_UsarloNoUpdate
+//    - PropertyVerifyContact: WS_NombreCompleto
+//    - Data prefix: CatContactos.*
+//
+// 2. DOCUMENT REGISTRATION: Does NOT use PropertyTypeData at all.
+//    The document entity type is implied by the DatDocumentos.* field prefix.
+//    - PropertyTypeProcess: WS_SaveData
+//    - NO PropertyTypeData (sending WS_Documentos/WS_Poliza causes enum error)
+//    - Data prefix: DatDocumentos.*
+//
+// CRITICAL: Never send values starting with "WS_" in PropertyTypeData
+// EXCEPT for "WS_Contactos" which is the only proven valid enum value.
+// ============================================================
 
-type ValidTypeData = typeof VALID_ENUM_TYPE_DATA[number];
+const SICAS_CONTACT_TYPE_DATA = "WS_Contactos" as const;
 
-function assertValidTypeData(value: string): asserts value is ValidTypeData {
-  if (!VALID_ENUM_TYPE_DATA.includes(value as ValidTypeData)) {
+function validateNoWsPrefix(fieldName: string, value: string): void {
+  if (value.startsWith("WS_") && value !== SICAS_CONTACT_TYPE_DATA) {
     throw new Error(
-      `PropertyTypeData "${value}" no es un valor valido para EnumTypeData de SICAS. ` +
-      `Valores permitidos: ${VALID_ENUM_TYPE_DATA.join(", ")}`
+      `Contrato SOAP invalido: ${fieldName} no puede recibir operaciones internas WS_*. ` +
+      `Valor recibido: "${value}". Solo "WS_Contactos" es valido como PropertyTypeData. ` +
+      `Para documentos/polizas, PropertyTypeData no debe enviarse.`
     );
   }
 }
@@ -691,7 +705,8 @@ async function attemptClientAutoCreate(
 
   const oDataString = catContactosFields.join(",");
 
-  assertValidTypeData("WS_Contactos");
+  // Defensive validation: only WS_Contactos is valid for PropertyTypeData
+  validateNoWsPrefix("PropertyTypeData", SICAS_CONTACT_TYPE_DATA);
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -701,7 +716,7 @@ async function attemptClientAutoCreate(
       <tem:oDataString><![CDATA[${oDataString}]]></tem:oDataString>
       <tem:oConfigData>
         <tem:PropertyTypeProcess>WS_SaveData</tem:PropertyTypeProcess>
-        <tem:PropertyTypeData>WS_Contactos</tem:PropertyTypeData>
+        <tem:PropertyTypeData>${SICAS_CONTACT_TYPE_DATA}</tem:PropertyTypeData>
         <tem:PropertyWhatMakeExist>WS_UsarloNoUpdate</tem:PropertyWhatMakeExist>
         <tem:PropertyVerifyContact>WS_NombreCompleto</tem:PropertyVerifyContact>
       </tem:oConfigData>
@@ -717,7 +732,11 @@ async function attemptClientAutoCreate(
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
-    console.log(`[SICAS Client] POST ${sicasEndpoint} (Contacto)`);
+    console.log(`[SICAS Client] SOAP Method: Procesar_String`);
+    console.log(`[SICAS Client] PropertyTypeProcess: WS_SaveData`);
+    console.log(`[SICAS Client] PropertyTypeData: ${SICAS_CONTACT_TYPE_DATA}`);
+    console.log(`[SICAS Client] Endpoint: ${sicasEndpoint}`);
+    console.log(`[SICAS Client] Fields count: ${catContactosFields.length}`);
     console.log(`[SICAS Client] Full SOAP Request:`, soapEnvelope);
     console.log(`[SICAS Client] Payload fields: ${catContactosFields.join(", ")}`);
 
@@ -841,48 +860,996 @@ function validatePayload(resolved: Record<string, ResolvedField>, delivery: Poli
 }
 
 // ============================================================
-// SICAS Document Registration via SOAP WS_SaveData
+// Enhanced Document ID Extraction
 // ============================================================
+
+function extractFirstValidId(responseText: string, fieldNames: string[]): string | null {
+  const decoded = responseText
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+
+  for (const field of fieldNames) {
+    // XML tag format: <FieldName>12345</FieldName>
+    const xmlRegex = new RegExp(`<${field}>\\s*(\\d+)\\s*</${field}>`, "i");
+    const xmlMatch = decoded.match(xmlRegex);
+    if (xmlMatch?.[1] && parseInt(xmlMatch[1]) > 0) return xmlMatch[1];
+
+    // JSON format: "FieldName": "12345" or "FieldName": 12345
+    const jsonRegex = new RegExp(`"${field}"\\s*:\\s*"?(\\d+)"?`, "i");
+    const jsonMatch = decoded.match(jsonRegex);
+    if (jsonMatch?.[1] && parseInt(jsonMatch[1]) > 0) return jsonMatch[1];
+
+    // Attribute format: FieldName="12345"
+    const attrRegex = new RegExp(`${field}["\s:=]*>?(\\d+)`, "i");
+    const attrMatch = decoded.match(attrRegex);
+    if (attrMatch?.[1] && parseInt(attrMatch[1]) > 0) return attrMatch[1];
+  }
+
+  // Also check for PROCESSDATA or NewDataSet wrappers
+  const processDataMatch = decoded.match(/<PROCESSDATA[^>]*>([\s\S]*?)<\/PROCESSDATA>/i);
+  if (processDataMatch) {
+    for (const field of fieldNames) {
+      const innerRegex = new RegExp(`<${field}>\\s*(\\d+)\\s*</${field}>`, "i");
+      const innerMatch = processDataMatch[1].match(innerRegex);
+      if (innerMatch?.[1] && parseInt(innerMatch[1]) > 0) return innerMatch[1];
+    }
+  }
+
+  const newDataSetMatch = decoded.match(/<NewDataSet[^>]*>([\s\S]*?)<\/NewDataSet>/i);
+  if (newDataSetMatch) {
+    for (const field of fieldNames) {
+      const innerRegex = new RegExp(`<${field}>\\s*(\\d+)\\s*</${field}>`, "i");
+      const innerMatch = newDataSetMatch[1].match(innerRegex);
+      if (innerMatch?.[1] && parseInt(innerMatch[1]) > 0) return innerMatch[1];
+    }
+  }
+
+  // Check DATAINFO wrapper
+  const dataInfoMatch = decoded.match(/<DATAINFO[^>]*>([\s\S]*?)<\/DATAINFO>/i);
+  if (dataInfoMatch) {
+    for (const field of fieldNames) {
+      const innerRegex = new RegExp(`<${field}>\\s*(\\d+)\\s*</${field}>`, "i");
+      const innerMatch = dataInfoMatch[1].match(innerRegex);
+      if (innerMatch?.[1] && parseInt(innerMatch[1]) > 0) return innerMatch[1];
+    }
+  }
+
+  return null;
+}
+
+const DOCUMENT_ID_FIELDS = [
+  "IDDocto",
+  "IDDocumento",
+  "ID_Docto",
+  "DocumentoID",
+  "NewIDValue",
+  "NewSubIDValue",
+  "RESPONSENBR",
+  "DATA",
+  "ID",
+];
+
+// ============================================================
+// Post-Save Document Lookup via SICAS ReadInfoData
+// ============================================================
+
+interface LookupResult {
+  found: boolean;
+  documentId?: string;
+  documentData?: Record<string, string>;
+  rawResponse?: string;
+  error?: string;
+  method?: string;
+  score?: number;
+  diagnostics?: StrategyDiagnostic[];
+  multipleMatches?: ScoredMatch[];
+}
+
+interface StrategyDiagnostic {
+  strategy: string;
+  request_summary: Record<string, string>;
+  results_count: number;
+  best_match_score: number;
+  matched_id_docto: string | null;
+  error?: string;
+  duration_ms?: number;
+}
+
+interface ScoredMatch {
+  id_docto: string;
+  documento: string;
+  cliente: string;
+  score: number;
+  method: string;
+}
+
+interface LookupContext {
+  policyNumber: string;
+  clientId: string | null;
+  vendorId: string | null;
+  insuredName: string | null;
+  premium: string | null;
+  startDate: string | null;
+  registrationDate: string | null;
+}
+
+function normalizePolicyNumber(pn: string): string {
+  return pn.replace(/[\s\-_.\/\\]/g, "").toUpperCase();
+}
+
+function scoreSicasDocumentMatch(ctx: LookupContext, doc: Record<string, string>): number {
+  let score = 0;
+
+  const docPoliza = doc.Documento || doc.NumPoliza || doc.Poliza || "";
+  if (docPoliza && ctx.policyNumber) {
+    const normDoc = normalizePolicyNumber(docPoliza);
+    const normCtx = normalizePolicyNumber(ctx.policyNumber);
+    if (normDoc === normCtx) {
+      score += 60;
+    } else if (normDoc.endsWith(normCtx) || normCtx.endsWith(normDoc)) {
+      score += 45;
+    } else if (normDoc.includes(normCtx) || normCtx.includes(normDoc)) {
+      score += 35;
+    }
+  }
+
+  const docCliente = doc.CliNombre || doc.Cliente || doc.Asegurado || doc.Nombre || "";
+  if (docCliente && ctx.insuredName) {
+    const normDocCli = normalizeText(docCliente);
+    const normCtxCli = normalizeText(ctx.insuredName);
+    if (normDocCli === normCtxCli) {
+      score += 30;
+    } else {
+      const docParts = normDocCli.split(" ").filter(p => p.length > 2);
+      const ctxParts = normCtxCli.split(" ").filter(p => p.length > 2);
+      if (docParts.length > 0 && ctxParts.length > 0) {
+        const common = docParts.filter(p => ctxParts.includes(p));
+        const ratio = common.length / Math.max(docParts.length, ctxParts.length);
+        if (ratio >= 0.6) score += 20;
+        else if (ratio >= 0.3) score += 10;
+      }
+    }
+  }
+
+  const docPrima = doc.PrimaNeta || doc.Prima || doc.PrimaTotal || "";
+  if (docPrima && ctx.premium) {
+    const normDocP = parseFloat(docPrima.replace(/[,$]/g, "")) || 0;
+    const normCtxP = parseFloat(ctx.premium.replace(/[,$]/g, "")) || 0;
+    if (normDocP > 0 && normCtxP > 0) {
+      const tolerance = Math.max(normDocP, normCtxP) * 0.02;
+      if (Math.abs(normDocP - normCtxP) <= tolerance) score += 20;
+    }
+  }
+
+  const docVendor = doc.IDVend || doc.Vendedor || "";
+  if (docVendor && ctx.vendorId) {
+    if (docVendor === ctx.vendorId) score += 20;
+  }
+
+  const docFCaptura = doc.FCaptura || doc.FechaCaptura || doc.FEmision || "";
+  if (docFCaptura && ctx.registrationDate) {
+    try {
+      const docDate = new Date(docFCaptura.includes("/") ? docFCaptura.split("/").reverse().join("-") : docFCaptura);
+      const regDate = new Date(ctx.registrationDate);
+      const diffDays = Math.abs((docDate.getTime() - regDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 1) score += 15;
+      else if (diffDays <= 3) score += 10;
+      else if (diffDays <= 7) score += 5;
+    } catch { /* ignore parse errors */ }
+  }
+
+  const docVigIni = doc.VigIni || doc.FVigIni || doc.VigenciaInicio || "";
+  if (docVigIni && ctx.startDate) {
+    try {
+      const docVig = new Date(docVigIni.includes("/") ? docVigIni.split("/").reverse().join("-") : docVigIni);
+      const ctxVig = new Date(ctx.startDate);
+      const diffDays = Math.abs((docVig.getTime() - ctxVig.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 1) score += 15;
+      else if (diffDays <= 7) score += 8;
+    } catch { /* ignore */ }
+  }
+
+  return score;
+}
+
+async function findSicasDocumentAfterSave(
+  policyNumber: string,
+  clientId: string | null,
+  vendorId: string | null,
+  sicasEndpoint: string,
+  sicasUsername: string,
+  sicasPassword: string,
+  extraContext?: { insuredName?: string; premium?: string; startDate?: string; registrationDate?: string },
+): Promise<LookupResult> {
+  if (!policyNumber) {
+    return { found: false, error: "No policy number to search", diagnostics: [] };
+  }
+
+  const ctx: LookupContext = {
+    policyNumber,
+    clientId,
+    vendorId,
+    insuredName: extraContext?.insuredName || null,
+    premium: extraContext?.premium || null,
+    startDate: extraContext?.startDate || null,
+    registrationDate: extraContext?.registrationDate || null,
+  };
+
+  const diagnostics: StrategyDiagnostic[] = [];
+  const allScoredMatches: ScoredMatch[] = [];
+
+  // Strategy 1: Search documents by client
+  if (clientId && clientId !== "0") {
+    const t0 = Date.now();
+    console.log(`[SICAS Lookup] Strategy 1: eDocumentos_Cliente for IDCli=${clientId}...`);
+    const byClientResult = await readDocumentsByClient(clientId, sicasEndpoint, sicasUsername, sicasPassword);
+    const duration = Date.now() - t0;
+
+    let bestScore = 0;
+    let bestMatch: Record<string, string> | null = null;
+
+    for (const doc of byClientResult.documents) {
+      const docScore = scoreSicasDocumentMatch(ctx, doc);
+      if (docScore > bestScore) {
+        bestScore = docScore;
+        bestMatch = doc;
+      }
+      if (doc.IDDocto && docScore >= 60) {
+        allScoredMatches.push({
+          id_docto: doc.IDDocto,
+          documento: doc.Documento || doc.NumPoliza || "",
+          cliente: doc.CliNombre || doc.Cliente || "",
+          score: docScore,
+          method: "client_documents",
+        });
+      }
+    }
+
+    diagnostics.push({
+      strategy: "read_documents_by_client",
+      request_summary: { property_type_read_data: "eDocumentos_Cliente", property_id_data: clientId },
+      results_count: byClientResult.documents.length,
+      best_match_score: bestScore,
+      matched_id_docto: bestMatch?.IDDocto || null,
+      duration_ms: duration,
+    });
+
+    if (bestMatch && bestScore >= 80 && bestMatch.IDDocto) {
+      console.log(`[SICAS Lookup] Strategy 1 match: IDDocto=${bestMatch.IDDocto}, score=${bestScore}`);
+      return {
+        found: true,
+        documentId: bestMatch.IDDocto,
+        documentData: bestMatch,
+        rawResponse: byClientResult.rawResponse,
+        method: "client_documents",
+        score: bestScore,
+        diagnostics,
+      };
+    }
+  }
+
+  // Strategy 2: Report-based search (H03117) with date range
+  {
+    const t0 = Date.now();
+    console.log(`[SICAS Lookup] Strategy 2: Report H03117 for "${policyNumber}"...`);
+    const reportResult = await searchDocumentByReportEnhanced(
+      policyNumber, vendorId, ctx, sicasEndpoint, sicasUsername, sicasPassword,
+    );
+    const duration = Date.now() - t0;
+
+    let bestScore = 0;
+    let bestMatch: Record<string, string> | null = null;
+
+    for (const doc of reportResult.documents) {
+      const docScore = scoreSicasDocumentMatch(ctx, doc);
+      if (docScore > bestScore) {
+        bestScore = docScore;
+        bestMatch = doc;
+      }
+      if (doc.IDDocto && docScore >= 60) {
+        allScoredMatches.push({
+          id_docto: doc.IDDocto,
+          documento: doc.Documento || doc.NumPoliza || "",
+          cliente: doc.CliNombre || doc.Cliente || "",
+          score: docScore,
+          method: "report_h03117",
+        });
+      }
+    }
+
+    diagnostics.push({
+      strategy: "report_h03117",
+      request_summary: { key_code: "H03117", policy_number: policyNumber, conditions: reportResult.conditionsUsed || "" },
+      results_count: reportResult.documents.length,
+      best_match_score: bestScore,
+      matched_id_docto: bestMatch?.IDDocto || null,
+      error: reportResult.error || undefined,
+      duration_ms: duration,
+    });
+
+    if (bestMatch && bestScore >= 80 && bestMatch.IDDocto) {
+      console.log(`[SICAS Lookup] Strategy 2 match: IDDocto=${bestMatch.IDDocto}, score=${bestScore}`);
+      return {
+        found: true,
+        documentId: bestMatch.IDDocto,
+        documentData: bestMatch,
+        rawResponse: reportResult.rawResponse,
+        method: "report_h03117",
+        score: bestScore,
+        diagnostics,
+      };
+    }
+  }
+
+  // Strategy 3: Alternate report (HWS03668_WS)
+  {
+    const t0 = Date.now();
+    console.log(`[SICAS Lookup] Strategy 3: Report HWS03668_WS for "${policyNumber}"...`);
+    const altResult = await searchDocumentByAlternateReport(
+      policyNumber, vendorId, ctx, sicasEndpoint, sicasUsername, sicasPassword,
+    );
+    const duration = Date.now() - t0;
+
+    let bestScore = 0;
+    let bestMatch: Record<string, string> | null = null;
+
+    for (const doc of altResult.documents) {
+      const docScore = scoreSicasDocumentMatch(ctx, doc);
+      if (docScore > bestScore) {
+        bestScore = docScore;
+        bestMatch = doc;
+      }
+      if (doc.IDDocto && docScore >= 60) {
+        allScoredMatches.push({
+          id_docto: doc.IDDocto,
+          documento: doc.Documento || doc.NumPoliza || "",
+          cliente: doc.CliNombre || doc.Cliente || "",
+          score: docScore,
+          method: "report_hws03668",
+        });
+      }
+    }
+
+    diagnostics.push({
+      strategy: "report_hws03668_ws",
+      request_summary: { key_code: "HWS03668_WS", policy_number: policyNumber },
+      results_count: altResult.documents.length,
+      best_match_score: bestScore,
+      matched_id_docto: bestMatch?.IDDocto || null,
+      error: altResult.error || undefined,
+      duration_ms: duration,
+    });
+
+    if (bestMatch && bestScore >= 80 && bestMatch.IDDocto) {
+      console.log(`[SICAS Lookup] Strategy 3 match: IDDocto=${bestMatch.IDDocto}, score=${bestScore}`);
+      return {
+        found: true,
+        documentId: bestMatch.IDDocto,
+        documentData: bestMatch,
+        rawResponse: altResult.rawResponse,
+        method: "report_hws03668",
+        score: bestScore,
+        diagnostics,
+      };
+    }
+  }
+
+  // Check for possible matches (60-79)
+  const possibleMatches = allScoredMatches.filter(m => m.score >= 60).sort((a, b) => b.score - a.score);
+  if (possibleMatches.length > 0) {
+    return {
+      found: false,
+      error: `Documento no confirmado. Se encontraron ${possibleMatches.length} posible(s) coincidencia(s) con score < 80.`,
+      method: "possible_matches_below_threshold",
+      diagnostics,
+      multipleMatches: possibleMatches,
+    };
+  }
+
+  return {
+    found: false,
+    error: `Documento con poliza "${policyNumber}" no encontrado en SICAS`,
+    method: "exhausted_all_methods",
+    diagnostics,
+  };
+}
+
+interface ReadDocumentsResult {
+  documents: Record<string, string>[];
+  rawResponse?: string;
+}
+
+async function readDocumentsByClient(
+  clientId: string,
+  endpoint: string,
+  username: string,
+  password: string,
+): Promise<ReadDocumentsResult> {
+  const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soap:Header/>
+  <soap:Body>
+    <tem:ReadInfoData>
+      <tem:oConfigData>
+        <tem:PropertyTypeReadData>eDocumentos_Cliente</tem:PropertyTypeReadData>
+        <tem:PropertyIDData>${escapeXml(clientId)}</tem:PropertyIDData>
+        <tem:PropertyData_TypeDataReturn>Data_XML</tem:PropertyData_TypeDataReturn>
+      </tem:oConfigData>
+      <tem:oConfigAuth>
+        <tem:UserName>${escapeXml(username)}</tem:UserName>
+        <tem:Password>${escapeXml(password)}</tem:Password>
+      </tem:oConfigAuth>
+    </tem:ReadInfoData>
+  </soap:Body>
+</soap:Envelope>`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://tempuri.org/ReadInfoData",
+      },
+      body: soapEnvelope,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      console.error(`[SICAS Lookup] ReadInfoData HTTP ${response.status}`);
+      return { documents: [], rawResponse: responseText.substring(0, 2000) };
+    }
+
+    const decoded = responseText.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+    const documents = parseDocumentRecords(decoded);
+
+    console.log(`[SICAS Lookup] ReadInfoData eDocumentos_Cliente returned ${documents.length} documents`);
+    return { documents, rawResponse: responseText.substring(0, 3000) };
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    console.error(`[SICAS Lookup] ReadInfoData error: ${error.message}`);
+    return { documents: [] };
+  }
+}
+
+interface ReportSearchResult {
+  documents: Record<string, string>[];
+  rawResponse?: string;
+  error?: string;
+  conditionsUsed?: string;
+}
+
+async function searchDocumentByReportEnhanced(
+  policyNumber: string,
+  vendorId: string | null,
+  ctx: LookupContext,
+  endpoint: string,
+  username: string,
+  password: string,
+): Promise<ReportSearchResult> {
+  // Build conditions with date range if registration date is available
+  let conditions = `Documento|${escapeXml(policyNumber)}`;
+
+  if (ctx.registrationDate) {
+    try {
+      const regDate = new Date(ctx.registrationDate);
+      const fromDate = new Date(regDate.getTime() - 2 * 24 * 60 * 60 * 1000);
+      const toDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const fmtFrom = `${String(fromDate.getDate()).padStart(2, "0")}/${String(fromDate.getMonth() + 1).padStart(2, "0")}/${fromDate.getFullYear()}`;
+      const fmtTo = `${String(toDate.getDate()).padStart(2, "0")}/${String(toDate.getMonth() + 1).padStart(2, "0")}/${toDate.getFullYear()}`;
+      conditions = `Poliza;0;0;${escapeXml(policyNumber)};${escapeXml(policyNumber)};0;0;DatDocumentos.Documento,FCaptura;0;0;${fmtFrom};${fmtTo};0;0;DatDocumentos.FCaptura`;
+    } catch {
+      // Fallback to simple condition
+    }
+  }
+
+  const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soap:Header/>
+  <soap:Body>
+    <tem:ProcesarWS>
+      <tem:oConfigData>
+        <tem:KeyProcess>REPORT</tem:KeyProcess>
+        <tem:KeyCode>H03117</tem:KeyCode>
+        <tem:ConditionsAdd>${conditions}</tem:ConditionsAdd>
+        <tem:Page>1</tem:Page>
+        <tem:ItemForPage>20</tem:ItemForPage>
+      </tem:oConfigData>
+      <tem:oConfigAuth>
+        <tem:UserName>${escapeXml(username)}</tem:UserName>
+        <tem:Password>${escapeXml(password)}</tem:Password>
+      </tem:oConfigAuth>
+    </tem:ProcesarWS>
+  </soap:Body>
+</soap:Envelope>`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://tempuri.org/ProcesarWS",
+      },
+      body: soapEnvelope,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      return { documents: [], error: `HTTP ${response.status}`, rawResponse: responseText.substring(0, 2000), conditionsUsed: conditions };
+    }
+
+    const decoded = responseText.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+    const documents = parseDocumentRecords(decoded);
+
+    console.log(`[SICAS Lookup] Report H03117 returned ${documents.length} documents`);
+    return { documents, rawResponse: responseText.substring(0, 3000), conditionsUsed: conditions };
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    return { documents: [], error: error.message, conditionsUsed: conditions };
+  }
+}
+
+async function searchDocumentByAlternateReport(
+  policyNumber: string,
+  vendorId: string | null,
+  ctx: LookupContext,
+  endpoint: string,
+  username: string,
+  password: string,
+): Promise<ReportSearchResult> {
+  const conditions = `Documento|${escapeXml(policyNumber)}`;
+
+  const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soap:Header/>
+  <soap:Body>
+    <tem:ProcesarWS>
+      <tem:oConfigData>
+        <tem:KeyProcess>REPORT</tem:KeyProcess>
+        <tem:KeyCode>HWS03668_WS</tem:KeyCode>
+        <tem:ConditionsAdd>${conditions}</tem:ConditionsAdd>
+        <tem:Page>1</tem:Page>
+        <tem:ItemForPage>20</tem:ItemForPage>
+      </tem:oConfigData>
+      <tem:oConfigAuth>
+        <tem:UserName>${escapeXml(username)}</tem:UserName>
+        <tem:Password>${escapeXml(password)}</tem:Password>
+      </tem:oConfigAuth>
+    </tem:ProcesarWS>
+  </soap:Body>
+</soap:Envelope>`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://tempuri.org/ProcesarWS",
+      },
+      body: soapEnvelope,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      return { documents: [], error: `HTTP ${response.status}`, rawResponse: responseText.substring(0, 2000), conditionsUsed: conditions };
+    }
+
+    const decoded = responseText.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+    const documents = parseDocumentRecords(decoded);
+
+    console.log(`[SICAS Lookup] Report HWS03668_WS returned ${documents.length} documents`);
+    return { documents, rawResponse: responseText.substring(0, 3000), conditionsUsed: conditions };
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    return { documents: [], error: error.message, conditionsUsed: conditions };
+  }
+}
+
+function parseDocumentRecords(decoded: string): Record<string, string>[] {
+  const documents: Record<string, string>[] = [];
+
+  // Try Table_N format
+  const tableRegex = /<Table[_\d]*>([\s\S]*?)<\/Table[_\d]*>/g;
+  let match;
+
+  while ((match = tableRegex.exec(decoded)) !== null) {
+    const recordXml = match[1];
+    const doc: Record<string, string> = {};
+
+    // Extract all fields from the record
+    const fieldRegex = /<(\w+)>(.*?)<\/\1>/g;
+    let fieldMatch;
+    while ((fieldMatch = fieldRegex.exec(recordXml)) !== null) {
+      doc[fieldMatch[1]] = fieldMatch[2].trim();
+    }
+
+    if (doc.IDDocto || doc.IDDocumento || doc.ID_Docto) {
+      doc.IDDocto = doc.IDDocto || doc.IDDocumento || doc.ID_Docto;
+      documents.push(doc);
+    }
+  }
+
+  // Try DatDocumentos format
+  if (documents.length === 0) {
+    const datRegex = /<DatDocumentos>([\s\S]*?)<\/DatDocumentos>/g;
+    while ((match = datRegex.exec(decoded)) !== null) {
+      const recordXml = match[1];
+      const doc: Record<string, string> = {};
+
+      const fieldRegex = /<(\w+)>(.*?)<\/\1>/g;
+      let fieldMatch;
+      while ((fieldMatch = fieldRegex.exec(recordXml)) !== null) {
+        doc[fieldMatch[1]] = fieldMatch[2].trim();
+      }
+
+      if (doc.IDDocto || doc.IDDocumento) {
+        doc.IDDocto = doc.IDDocto || doc.IDDocumento;
+        documents.push(doc);
+      }
+    }
+  }
+
+  return documents;
+}
+
+// ============================================================
+// Verify Document by ID via ReadInfoData eDocumentos_Unico
+// ============================================================
+
+async function verifyDocumentById(
+  documentId: string,
+  endpoint: string,
+  username: string,
+  password: string,
+): Promise<{ valid: boolean; documentData?: Record<string, string>; rawResponse?: string; error?: string }> {
+  const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soap:Header/>
+  <soap:Body>
+    <tem:ReadInfoData>
+      <tem:oConfigData>
+        <tem:PropertyTypeReadData>eDocumentos_Unico</tem:PropertyTypeReadData>
+        <tem:PropertyIDData>${escapeXml(documentId)}</tem:PropertyIDData>
+        <tem:PropertyData_TypeDataReturn>Data_XML</tem:PropertyData_TypeDataReturn>
+      </tem:oConfigData>
+      <tem:oConfigAuth>
+        <tem:UserName>${escapeXml(username)}</tem:UserName>
+        <tem:Password>${escapeXml(password)}</tem:Password>
+      </tem:oConfigAuth>
+    </tem:ReadInfoData>
+  </soap:Body>
+</soap:Envelope>`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://tempuri.org/ReadInfoData",
+      },
+      body: soapEnvelope,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      return { valid: false, error: `HTTP ${response.status}`, rawResponse: responseText.substring(0, 2000) };
+    }
+
+    const decoded = responseText.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+    const documents = parseDocumentRecords(decoded);
+
+    if (documents.length > 0 && documents[0].IDDocto) {
+      return { valid: true, documentData: documents[0], rawResponse: responseText.substring(0, 2000) };
+    }
+
+    // Check if the ID appears in the response at all
+    if (decoded.includes(documentId)) {
+      return { valid: true, rawResponse: responseText.substring(0, 2000) };
+    }
+
+    return { valid: false, error: "Documento no encontrado con ese ID", rawResponse: responseText.substring(0, 2000) };
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    return { valid: false, error: error.message };
+  }
+}
+
+// ============================================================
+// SICAS Document Registration via ProcesarWS + HWCAPTURE
+// ============================================================
+// Correct method for creating documents in SICAS:
+// - SOAP Method: ProcesarWS (NOT Procesar_String)
+// - KeyProcess: DATA
+// - KeyCode: HWCAPTURE
+// - TProc: Save_Data
+// - TypeFormat: XML
+// - DataXML: TripleDES-encrypted XML containing DatDocumentos + DatDoctoDetail
+// - Encryption: TripleDES/CBC/ZeroPadding, Key fixed, IV = first 8 chars of username
+// ============================================================
+
+// Map from internal payload field names to SICAS HWCAPTURE XML element names
+const HWCAPTURE_FIELD_MAP: Record<string, string> = {
+  FechaInicio: "FDesde",
+  FechaFin: "FHasta",
+  PrimaTotal: "PrimaNeta",
+  IDFPago: "FPago",
+  IDEjecutivo: "IDEjecut",
+  Estatus: "Status",
+  IDSubRamo: "IDSRamo",
+};
+
+// SICAS TripleDES encryption key (from official documentation)
+const SICAS_3DES_KEY = "%SOnlineBOGO2001-2015WS#";
+
+function buildHwcaptureDataXml(sanitizedPayload: Record<string, string>): string {
+  const docElements: string[] = [];
+  docElements.push(`<IDDocto>-1</IDDocto>`);
+
+  for (const [key, value] of Object.entries(sanitizedPayload)) {
+    const hwField = HWCAPTURE_FIELD_MAP[key] || key;
+    docElements.push(`<${hwField}>${escapeXml(value)}</${hwField}>`);
+  }
+
+  return `<InfoData><DatDocumentos>${docElements.join("")}</DatDocumentos><DatDoctoDetail><IDDocto>-1</IDDocto></DatDoctoDetail></InfoData>`;
+}
+
+async function encryptDataXml(plainXml: string, username: string): Promise<string> {
+  const encoder = new TextEncoder();
+
+  // Key: pad/truncate to 24 bytes for TripleDES (192-bit)
+  const keyBytes = encoder.encode(SICAS_3DES_KEY);
+  const key24 = new Uint8Array(24);
+  key24.set(keyBytes.slice(0, 24));
+
+  // IV: first 8 characters of username
+  const ivStr = username.substring(0, 8).padEnd(8, "\0");
+  const iv = encoder.encode(ivStr);
+
+  // Plaintext with zero-padding to 8-byte block boundary
+  const plainBytes = encoder.encode(plainXml);
+  const blockSize = 8;
+  const paddedLen = Math.ceil(plainBytes.length / blockSize) * blockSize;
+  const padded = new Uint8Array(paddedLen);
+  padded.set(plainBytes);
+
+  // Import key for 3DES-CBC
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    key24,
+    { name: "DES-EDE3-CBC" as any, length: 192 },
+    false,
+    ["encrypt"]
+  );
+
+  // Encrypt
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "DES-EDE3-CBC" as any, iv },
+    cryptoKey,
+    padded
+  );
+
+  // Return Base64 encoded
+  const encBytes = new Uint8Array(encrypted);
+  let binary = "";
+  for (let i = 0; i < encBytes.length; i++) {
+    binary += String.fromCharCode(encBytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Fallback: manual TripleDES implementation for Deno environments where
+// crypto.subtle may not support DES-EDE3-CBC
+async function encryptDataXmlFallback(plainXml: string, username: string): Promise<string> {
+  // URL-encode the XML before encrypting (per SICAS docs)
+  const urlEncodedXml = encodeURIComponent(plainXml);
+
+  const encoder = new TextEncoder();
+
+  // Key: exactly 24 bytes
+  const keyStr = SICAS_3DES_KEY;
+  const keyBytes = encoder.encode(keyStr);
+  const key24 = new Uint8Array(24);
+  key24.set(keyBytes.slice(0, Math.min(keyBytes.length, 24)));
+
+  // IV: first 8 characters of username
+  const ivStr = username.substring(0, 8).padEnd(8, "\0");
+  const ivBytes = encoder.encode(ivStr);
+
+  // Pad plaintext to 8-byte blocks with zeros
+  const plainBytes = encoder.encode(urlEncodedXml);
+  const blockSize = 8;
+  const paddedLen = Math.ceil(plainBytes.length / blockSize) * blockSize;
+  const padded = new Uint8Array(paddedLen);
+  padded.set(plainBytes);
+
+  try {
+    // Try Web Crypto API with 3DES
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      key24,
+      { name: "DES-EDE3-CBC", length: 192 } as any,
+      false,
+      ["encrypt"]
+    );
+
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "DES-EDE3-CBC", iv: ivBytes } as any,
+      cryptoKey,
+      padded
+    );
+
+    const encBytes = new Uint8Array(encrypted);
+    let binary = "";
+    for (let i = 0; i < encBytes.length; i++) {
+      binary += String.fromCharCode(encBytes[i]);
+    }
+    return btoa(binary);
+  } catch (_cryptoError) {
+    // If Web Crypto doesn't support 3DES, use Node crypto module (available in Deno)
+    try {
+      const { createCipheriv } = await import("node:crypto");
+      const cipher = createCipheriv("des-ede3-cbc", key24, ivBytes);
+      cipher.setAutoPadding(false);
+      const enc1 = cipher.update(padded);
+      const enc2 = cipher.final();
+      const result = Buffer.concat([enc1, enc2]);
+      return result.toString("base64");
+    } catch (nodeError: any) {
+      throw new Error(`Encryption failed: WebCrypto and Node crypto both unavailable. ${nodeError.message}`);
+    }
+  }
+}
+
+interface DocumentRegistrationDiagnostic {
+  executed: boolean;
+  method: string;
+  key_process: string;
+  key_code: string;
+  tproc: string;
+  type_format: string;
+  payload_fields: Record<string, string>;
+  missing_fields: string[];
+  field_mapping: Record<string, string>;
+  plain_data_xml: string;
+  encrypted_data_xml_length: number;
+  soap_request_redacted: string;
+  soap_response: string;
+  parsed_response: { response_nbr: number | null; response_txt: string; has_success: boolean; has_error: boolean } | null;
+  detected_id_docto: string | null;
+  document_stage_status: "not_attempted" | "sent_to_sicas" | "success_with_id" | "success_without_id" | "not_created" | "failed" | "duplicate";
+  encryption_used: boolean;
+  encryption_method: string;
+  iv_used: string;
+  error_message: string | null;
+}
+
+interface RegisterDocumentResult {
+  success: boolean;
+  documentId?: string;
+  noIdReturned?: boolean;
+  rawResponse?: string;
+  error?: string;
+  stepError?: StepError;
+  isDuplicate?: boolean;
+  duplicateId?: string;
+  duplicateMessage?: string;
+  diagnostics?: DocumentRegistrationDiagnostic;
+}
 
 async function registerDocument(
   sanitizedPayload: Record<string, string>,
   sicasEndpoint: string,
   sicasUsername: string,
   sicasPassword: string
-): Promise<{ success: boolean; documentId?: string; error?: string; stepError?: StepError; isDuplicate?: boolean; duplicateId?: string; duplicateMessage?: string }> {
-  // Build pipe-delimited field|value pairs for policy registration
-  // Per SICAS WS 2.0: PropertyTypeProcess=WS_SaveData, PropertyTypeData=WS_Poliza
-  // Valid EnumTypeData values: WS_Contactos, WS_Poliza, WS_Recibo, WS_Catalogo, WS_Consulta
-  const docFields: string[] = [];
-  for (const [key, value] of Object.entries(sanitizedPayload)) {
-    docFields.push(`DatDocumentos.${key}|${value}`);
+): Promise<RegisterDocumentResult> {
+  const dataXmlPlain = buildHwcaptureDataXml(sanitizedPayload);
+  const encodedPassword = sicasPassword.replace(/ /g, "%20");
+
+  // Encrypt DataXML per SICAS V3 requirements
+  let dataXmlEncrypted: string;
+  let encryptionMethod = "none";
+  try {
+    dataXmlEncrypted = await encryptDataXmlFallback(dataXmlPlain, sicasUsername);
+    encryptionMethod = "TripleDES-CBC-ZeroPad";
+  } catch (encErr: any) {
+    console.error(`[SICAS Register] Encryption failed: ${encErr.message}. Sending plain XML as fallback.`);
+    dataXmlEncrypted = dataXmlPlain;
+    encryptionMethod = "FAILED_PLAIN_FALLBACK";
   }
 
-  const oDataStringDoc = docFields.join(",");
+  // Build field mapping for diagnostics
+  const fieldMapping: Record<string, string> = {};
+  for (const key of Object.keys(sanitizedPayload)) {
+    fieldMapping[key] = HWCAPTURE_FIELD_MAP[key] || key;
+  }
 
-  assertValidTypeData("WS_Poliza");
+  const ivUsed = sicasUsername.substring(0, 8).padEnd(8, "\0");
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
   <soapenv:Header/>
   <soapenv:Body>
-    <tem:Procesar_String>
-      <tem:oDataString><![CDATA[${oDataStringDoc}]]></tem:oDataString>
-      <tem:oConfigData>
-        <tem:PropertyTypeProcess>WS_SaveData</tem:PropertyTypeProcess>
-        <tem:PropertyTypeData>WS_Poliza</tem:PropertyTypeData>
-      </tem:oConfigData>
-      <tem:oConfigAuth>
-        <tem:UserName>${escapeXml(sicasUsername)}</tem:UserName>
-        <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
-      </tem:oConfigAuth>
-    </tem:Procesar_String>
+    <tem:ProcesarWS>
+      <tem:oDataWS>
+        <tem:Credentials>
+          <tem:UserName>${sicasUsername}</tem:UserName>
+          <tem:Password>${encodedPassword}</tem:Password>
+        </tem:Credentials>
+        <tem:TypeFormat>XML</tem:TypeFormat>
+        <tem:KeyProcess>DATA</tem:KeyProcess>
+        <tem:KeyCode>HWCAPTURE</tem:KeyCode>
+        <tem:TProc>Save_Data</tem:TProc>
+        <tem:DataXML>${dataXmlEncrypted}</tem:DataXML>
+      </tem:oDataWS>
+    </tem:ProcesarWS>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-  console.log(`[SICAS Register] POST ${sicasEndpoint} (Documento)`);
-  console.log(`[SICAS Register] Full SOAP Request:`, soapEnvelope);
-  console.log(`[SICAS Register] Payload: ${docFields.join(", ")}`);
+  console.log(`[SICAS Register] SOAP Method: ProcesarWS`);
+  console.log(`[SICAS Register] KeyProcess: DATA`);
+  console.log(`[SICAS Register] KeyCode: HWCAPTURE`);
+  console.log(`[SICAS Register] TProc: Save_Data`);
+  console.log(`[SICAS Register] TypeFormat: XML`);
+  console.log(`[SICAS Register] Encryption: ${encryptionMethod}`);
+  console.log(`[SICAS Register] IV (username prefix): ${ivUsed}`);
+  console.log(`[SICAS Register] Endpoint: ${sicasEndpoint}`);
+  console.log(`[SICAS Register] Fields count: ${Object.keys(sanitizedPayload).length}`);
+  console.log(`[SICAS Register] Field mapping: ${JSON.stringify(fieldMapping)}`);
+  console.log(`[SICAS Register] DataXML plain: ${dataXmlPlain}`);
+  console.log(`[SICAS Register] DataXML encrypted length: ${dataXmlEncrypted.length}`);
+  console.log(`[SICAS Register] DataXML encrypted preview: ${dataXmlEncrypted.substring(0, 80)}...`);
+
+  const requiredFields = ["IDCli", "IDVend", "Documento", "IDCia", "IDRamo", "IDSubRamo", "IDMon", "IDFPago", "IDEjecutivo", "FechaInicio", "FechaFin", "PrimaTotal", "Estatus", "IDTipoDocto"];
+  const missingFields = requiredFields.filter(f => !sanitizedPayload[f] || sanitizedPayload[f] === "0" || sanitizedPayload[f] === "");
+
+  const baseDiagnostics: DocumentRegistrationDiagnostic = {
+    executed: true,
+    method: "ProcesarWS",
+    key_process: "DATA",
+    key_code: "HWCAPTURE",
+    tproc: "Save_Data",
+    type_format: "XML",
+    payload_fields: { ...sanitizedPayload },
+    missing_fields: missingFields,
+    field_mapping: fieldMapping,
+    plain_data_xml: dataXmlPlain,
+    encrypted_data_xml_length: dataXmlEncrypted.length,
+    soap_request_redacted: "",
+    soap_response: "",
+    parsed_response: null,
+    detected_id_docto: null,
+    document_stage_status: "sent_to_sicas",
+    encryption_used: encryptionMethod !== "FAILED_PLAIN_FALLBACK",
+    encryption_method: encryptionMethod,
+    iv_used: ivUsed,
+    error_message: null,
+  };
+
+  // Build redacted SOAP request (hide password)
+  baseDiagnostics.soap_request_redacted = soapEnvelope.replace(
+    /<tem:Password>[^<]*<\/tem:Password>/,
+    "<tem:Password>***REDACTED***</tem:Password>"
+  ).substring(0, 3000);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 45000);
@@ -892,7 +1859,7 @@ async function registerDocument(
       method: "POST",
       headers: {
         "Content-Type": "text/xml; charset=utf-8",
-        "SOAPAction": "http://tempuri.org/Procesar_String",
+        "SOAPAction": "http://tempuri.org/ProcesarWS",
       },
       body: soapEnvelope,
       signal: controller.signal,
@@ -900,8 +1867,9 @@ async function registerDocument(
     clearTimeout(timeoutId);
 
     const responseText = await response.text();
+    baseDiagnostics.soap_response = responseText.substring(0, 4000);
     console.log(`[SICAS Register] Response status: ${response.status}`);
-    console.log(`[SICAS Register] Response body (first 800):`, responseText.substring(0, 800));
+    console.log(`[SICAS Register] Response body (first 1500):`, responseText.substring(0, 1500));
 
     if (!response.ok) {
       const fault = parseSoapFault(responseText);
@@ -918,8 +1886,11 @@ async function registerDocument(
         payloadSanitized: sanitizedPayload,
       });
 
+      baseDiagnostics.document_stage_status = "failed";
+      baseDiagnostics.error_message = faultMessage;
+
       console.error(`[SICAS Register] SOAP Fault: code=${fault.faultcode}, string=${fault.faultstring}, detail=${fault.detail}`);
-      return { success: false, error: faultMessage, stepError };
+      return { success: false, error: faultMessage, stepError, diagnostics: baseDiagnostics };
     }
 
     const decoded = responseText
@@ -930,58 +1901,69 @@ async function registerDocument(
     const isDuplicate = /duplicad|ya existe|already exists/i.test(decoded);
     if (isDuplicate) {
       const dupIdMatch = decoded.match(/IDDocto["\s:=]*>?(\d+)/i) || decoded.match(/<ID>(\d+)<\/ID>/i);
+      baseDiagnostics.document_stage_status = "duplicate";
+      baseDiagnostics.detected_id_docto = dupIdMatch?.[1] || null;
+      baseDiagnostics.error_message = "Poliza ya existe en SICAS";
       return {
         success: false,
         isDuplicate: true,
         duplicateId: dupIdMatch?.[1] || undefined,
         duplicateMessage: "Poliza ya existe en SICAS",
+        diagnostics: baseDiagnostics,
       };
     }
 
-    const docIdMatch = decoded.match(/<IDDocto>(\d+)<\/IDDocto>/i) ||
-                       decoded.match(/<RESPONSENBR>\s*(\d+)\s*<\/RESPONSENBR>/i) ||
-                       decoded.match(/<ID>(\d+)<\/ID>/i) ||
-                       decoded.match(/IDDocto["\s:=]*>?(\d+)/i);
+    // Use enhanced multi-format ID extraction
+    const extractedId = extractFirstValidId(responseText, DOCUMENT_ID_FIELDS);
 
-    const hasSuccess = /SUCESS|SUCCESS|OK|GUARDADO|CREADO|REGISTRADO/i.test(decoded);
-    const hasError = /ERROR|FALLO|FAILED/i.test(decoded) && !/SUCESS/i.test(decoded);
+    // ProcesarWS responses have RESPONSENBR: 1 = success, 0 or negative = error
+    const responseNbrMatch = decoded.match(/<RESPONSENBR>\s*(-?\d+)\s*<\/RESPONSENBR>/i);
+    const responseNbr = responseNbrMatch ? parseInt(responseNbrMatch[1]) : null;
+    const responseTxt = decoded.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i)?.[1] || "";
 
-    if (hasError) {
-      const errorMsg = decoded.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i)?.[1] ||
+    const hasSuccess = responseNbr === 1 || /SUCESS|SUCCESS|OK|GUARDADO|CREADO|REGISTRADO/i.test(decoded);
+    const hasError = (responseNbr !== null && responseNbr <= 0) || (/ERROR|FALLO|FAILED/i.test(decoded) && !/SUCESS/i.test(decoded));
+
+    baseDiagnostics.parsed_response = { response_nbr: responseNbr, response_txt: responseTxt, has_success: hasSuccess, has_error: hasError };
+    baseDiagnostics.detected_id_docto = extractedId || null;
+
+    if (hasError && !extractedId) {
+      const errorMsg = responseTxt ||
                        decoded.match(/<Message>(.*?)<\/Message>/i)?.[1] ||
                        decoded.match(/<faultstring>(.*?)<\/faultstring>/i)?.[1] ||
-                       `Error SICAS: ${responseText.substring(0, 200)}`;
+                       `Error SICAS (RESPONSENBR=${responseNbr}): ${responseText.substring(0, 200)}`;
       const stepError = buildStepError("save_hwcapture", errorMsg, {
         endpoint: sicasEndpoint,
         statusCode: response.status,
         responseBody: responseText.substring(0, 3000),
         payloadSanitized: sanitizedPayload,
       });
-      return { success: false, error: errorMsg, stepError };
+      baseDiagnostics.document_stage_status = "failed";
+      baseDiagnostics.error_message = errorMsg;
+      return { success: false, error: errorMsg, stepError, diagnostics: baseDiagnostics };
     }
 
-    if (docIdMatch?.[1] && parseInt(docIdMatch[1]) > 0) {
-      return { success: true, documentId: docIdMatch[1] };
+    if (extractedId) {
+      console.log(`[SICAS Register] Document ID extracted: ${extractedId}`);
+      baseDiagnostics.document_stage_status = "success_with_id";
+      return { success: true, documentId: extractedId, rawResponse: responseText.substring(0, 3000), diagnostics: baseDiagnostics };
     }
 
     if (hasSuccess) {
-      return { success: true };
+      console.warn(`[SICAS Register] SUCCESS but no IDDocto in response. RESPONSENBR=${responseNbr}, RESPONSETXT=${responseTxt}`);
+      baseDiagnostics.document_stage_status = "success_without_id";
+      return { success: true, noIdReturned: true, rawResponse: responseText.substring(0, 3000), diagnostics: baseDiagnostics };
     }
 
-    const responseNbr = decoded.match(/<RESPONSENBR>\s*(-?\d+)\s*<\/RESPONSENBR>/i);
-    if (responseNbr && parseInt(responseNbr[1]) > 0) {
-      return { success: true, documentId: responseNbr[1] };
-    }
-    if (responseNbr && parseInt(responseNbr[1]) === 0) {
-      const txt = decoded.match(/<RESPONSETXT>(.*?)<\/RESPONSETXT>/i)?.[1] || "SICAS retorno 0";
-      return { success: false, error: txt };
-    }
-
-    return { success: false, error: `Respuesta SICAS no reconocida: ${responseText.substring(0, 200)}` };
+    baseDiagnostics.document_stage_status = "failed";
+    baseDiagnostics.error_message = `Respuesta SICAS no reconocida: ${responseText.substring(0, 200)}`;
+    return { success: false, error: baseDiagnostics.error_message, rawResponse: responseText.substring(0, 3000), diagnostics: baseDiagnostics };
   } catch (error: any) {
     clearTimeout(timeoutId);
     const msg = error.name === "AbortError" ? "Timeout: SICAS no respondio en 45s" : error.message;
-    return { success: false, error: msg };
+    baseDiagnostics.document_stage_status = "failed";
+    baseDiagnostics.error_message = msg;
+    return { success: false, error: msg, diagnostics: baseDiagnostics };
   }
 }
 
@@ -1215,7 +2197,31 @@ Deno.serve(async (req: Request) => {
           sicas_registration_status: "manual_review_required",
           sicas_error_step: "validate_payload",
           sicas_error_message: `Payload invalido: ${validation.errors.join("; ")}`,
-          sicas_request_debug: { validation_errors: validation.errors, sanitized_payload: validation.sanitizedPayload },
+          sicas_request_debug: {
+            document_registration_diagnostic: {
+              executed: false,
+              method: "ProcesarWS",
+              key_process: "DATA",
+              key_code: "HWCAPTURE",
+              tproc: "Save_Data",
+              type_format: "XML",
+              payload_fields: validation.sanitizedPayload || {},
+              missing_fields: validation.errors || [],
+              field_mapping: {},
+              plain_data_xml: "",
+              encrypted_data_xml_length: 0,
+              soap_request_redacted: "",
+              soap_response: "",
+              parsed_response: null,
+              detected_id_docto: null,
+              document_stage_status: "not_attempted",
+              encryption_used: false,
+              encryption_method: "none",
+              iv_used: "",
+              error_message: `Payload invalido: ${validation.errors.join("; ")}`,
+            },
+            validation_errors: validation.errors,
+          },
         }).eq("id", delivery_id);
 
         return new Response(
@@ -1259,29 +2265,157 @@ Deno.serve(async (req: Request) => {
         sicasPassword
       );
 
-      if (hwResult.success) {
+      // Determine contact status based on what happened during this flow
+      const contactStatus = clientNeedsCreation
+        ? (resolution.resolved.IDCli?.source === "auto_created" ? "created" : "existing")
+        : (resolution.resolved.IDCli?.value && resolution.resolved.IDCli.value !== "0" ? "existing" : "not_attempted");
+
+      if (hwResult.success && hwResult.documentId) {
+        // FULL SUCCESS: SICAS returned a valid document ID
         currentStep = "completed";
         steps[steps.length - 1].status = "completed";
-        steps[steps.length - 1].detail = hwResult.documentId ? `Documento SICAS: ${hwResult.documentId}` : "Registro exitoso";
+        steps[steps.length - 1].detail = `Documento SICAS: ${hwResult.documentId}`;
 
         await supabase.from("policy_deliveries").update({
           sicas_registration_status: "registered",
-          sicas_document_id: hwResult.documentId || null,
+          sicas_document_id: hwResult.documentId,
           sicas_registered_at: new Date().toISOString(),
           sicas_error_message: null,
           sicas_error_step: null,
+          sicas_contact_status: contactStatus,
+          sicas_document_status: "created",
+          sicas_document_response: hwResult.rawResponse ? { raw: hwResult.rawResponse } : null,
+          sicas_registration_stage: "completed",
+          sicas_request_debug: { document_registration_diagnostic: hwResult.diagnostics || null },
         }).eq("id", delivery_id);
 
         return new Response(
           JSON.stringify({
             success: true,
             action,
+            overall_status: "success",
             status: "registered",
             step: "completed",
             message: "Poliza registrada en SICAS correctamente.",
+            contact_status: contactStatus,
+            document_status: "created",
             document_id: hwResult.documentId,
+            sicas_contact_id: resolution.resolved.IDCli?.value || null,
+            sicas_client_id: resolution.resolved.IDCli?.value || null,
+            sicas_document_id: hwResult.documentId,
             steps,
             resolved: resolution.resolved,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else if (hwResult.success && hwResult.noIdReturned) {
+        // SICAS said "success" but no document ID. Attempt post-save lookup.
+        steps[steps.length - 1].status = "warning";
+        steps[steps.length - 1].detail = "SICAS confirmo exito sin IDDocto, buscando...";
+
+        const policyNumber = validation.sanitizedPayload.Documento || delivery.manual_policy_number || delivery.policy_number || "";
+        const clientIdForLookup = resolution.resolved.IDCli?.value || delivery.sicas_client_id || null;
+        const vendorIdForLookup = validation.sanitizedPayload.IDVend || delivery.vendor_sicas_id || null;
+
+        const lookupResult = await findSicasDocumentAfterSave(
+          policyNumber,
+          clientIdForLookup,
+          vendorIdForLookup,
+          sicasEndpoint,
+          sicasUsername,
+          sicasPassword,
+          {
+            insuredName: delivery.insured_name || null,
+            premium: delivery.total_premium || validation.sanitizedPayload.PrimaNeta || null,
+            startDate: delivery.start_date || null,
+            registrationDate: new Date().toISOString(),
+          },
+        );
+
+        if (lookupResult.found && lookupResult.documentId) {
+          // Post-save lookup found the document
+          currentStep = "completed";
+          steps.push({ step: "post_save_lookup", status: "completed", detail: `Documento encontrado: ${lookupResult.documentId} (${lookupResult.method})` });
+
+          await supabase.from("policy_deliveries").update({
+            sicas_registration_status: "registered",
+            sicas_document_id: lookupResult.documentId,
+            sicas_registered_at: new Date().toISOString(),
+            sicas_error_message: null,
+            sicas_error_step: null,
+            sicas_contact_status: contactStatus,
+            sicas_document_status: "created",
+            sicas_document_response: hwResult.rawResponse ? { raw: hwResult.rawResponse } : null,
+            sicas_document_resolution_method: "post_save_lookup",
+            sicas_document_lookup_attempts: 1,
+            sicas_last_lookup_at: new Date().toISOString(),
+            sicas_document_lookup_response: lookupResult.rawResponse ? { raw: lookupResult.rawResponse, method: lookupResult.method } : null,
+            sicas_registration_stage: "completed",
+            sicas_request_debug: { document_registration_diagnostic: hwResult.diagnostics ? { ...hwResult.diagnostics, document_stage_status: "success_with_id", detected_id_docto: lookupResult.documentId } : null },
+          }).eq("id", delivery_id);
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              action,
+              overall_status: "success",
+              status: "registered",
+              step: "completed",
+              message: "Poliza registrada en SICAS correctamente.",
+              contact_status: contactStatus,
+              document_status: "created",
+              document_id: lookupResult.documentId,
+              resolution_method: "post_save_lookup",
+              sicas_document_id: lookupResult.documentId,
+              steps,
+              resolved: resolution.resolved,
+              diagnostic: "SICAS no devolvio IDDocto en la respuesta, pero el documento fue encontrado por busqueda posterior.",
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Lookup failed - all strategies returned 0, document was NOT created
+        steps.push({ step: "post_save_lookup", status: "failed", detail: lookupResult.error || "0 resultados en todas las estrategias" });
+
+        const docNotCreatedStatus = "document_not_created";
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: docNotCreatedStatus,
+          sicas_document_id: null,
+          sicas_error_message: "El contacto/cliente existe pero la poliza no aparece en SICAS. El documento no fue creado.",
+          sicas_error_step: "save_hwcapture",
+          sicas_contact_status: contactStatus,
+          sicas_document_status: docNotCreatedStatus,
+          sicas_document_response: hwResult.rawResponse ? { raw: hwResult.rawResponse } : null,
+          sicas_document_resolution_method: "not_found_after_success",
+          sicas_document_lookup_attempts: 1,
+          sicas_last_lookup_at: new Date().toISOString(),
+          sicas_document_lookup_response: lookupResult.rawResponse
+            ? { raw: lookupResult.rawResponse, method: lookupResult.method, diagnostics: lookupResult.diagnostics, search_context: { policy_number: policyNumber, client_id: clientIdForLookup, vendor_id: vendorIdForLookup } }
+            : { diagnostics: lookupResult.diagnostics, search_context: { policy_number: policyNumber, client_id: clientIdForLookup, vendor_id: vendorIdForLookup } },
+          sicas_registration_stage: "save_hwcapture",
+          sicas_request_debug: { document_registration_diagnostic: hwResult.diagnostics ? { ...hwResult.diagnostics, document_stage_status: "not_created" } : null },
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            action,
+            overall_status: "partial_success",
+            status: docNotCreatedStatus,
+            step: "save_hwcapture",
+            message: "El contacto/cliente fue creado, pero la poliza no aparece en SICAS. El documento no fue creado.",
+            contact_status: contactStatus,
+            document_status: docNotCreatedStatus,
+            sicas_contact_id: resolution.resolved.IDCli?.value || null,
+            sicas_document_id: null,
+            next_action: "retry_document_registration",
+            resolution_method: "not_found_after_success",
+            steps,
+            resolved: resolution.resolved,
+            sanitized_payload: validation.sanitizedPayload,
+            document_registration_diagnostic: hwResult.diagnostics || null,
+            lookup_diagnostics: lookupResult.diagnostics || null,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -1313,15 +2447,20 @@ Deno.serve(async (req: Request) => {
         steps[steps.length - 1].status = "failed";
         steps[steps.length - 1].detail = hwResult.error || "Error desconocido";
 
+        // Document registration failed but contact may have been created
+        const hasContact = contactStatus === "created" || contactStatus === "existing";
+        const overallStatus = hasContact ? "partial_success" : "error";
+
         const errorData: Record<string, any> = {
-          sicas_registration_status: "error",
+          sicas_registration_status: overallStatus === "partial_success" ? "partial_success" : "error",
           sicas_error_message: hwResult.error,
           sicas_error_step: "save_hwcapture",
+          sicas_contact_status: contactStatus,
+          sicas_document_status: "failed",
+          sicas_document_response: hwResult.rawResponse ? { raw: hwResult.rawResponse } : null,
+          sicas_registration_stage: "save_hwcapture",
+          sicas_request_debug: { document_registration_diagnostic: hwResult.diagnostics || null, step_error: hwResult.stepError || null },
         };
-
-        if (hwResult.stepError) {
-          errorData.sicas_request_debug = hwResult.stepError;
-        }
 
         await supabase.from("policy_deliveries").update(errorData).eq("id", delivery_id);
 
@@ -1329,21 +2468,549 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({
             success: false,
             action,
-            status: "sicas_error",
+            overall_status: overallStatus,
+            status: overallStatus === "partial_success" ? "partial_success" : "sicas_error",
             step: "save_hwcapture",
-            message: hwResult.error || "Error al registrar en SICAS",
+            message: hasContact
+              ? `Contacto creado en SICAS, pero la poliza no fue registrada. ${hwResult.error || ""}`
+              : (hwResult.error || "Error al registrar en SICAS"),
+            contact_status: contactStatus,
+            document_status: "failed",
+            sicas_contact_id: resolution.resolved.IDCli?.value || null,
+            sicas_document_id: null,
+            next_action: hasContact ? "retry_document" : "retry",
             steps,
             step_error: hwResult.stepError || null,
             resolved: resolution.resolved,
             sanitized_payload: validation.sanitizedPayload,
             logs: resolution.logs,
+            document_registration_diagnostic: hwResult.diagnostics || null,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
 
-    throw new Error(`Unknown action: ${action}. Use "resolve", "register", or "auto".`);
+    // === RETRY_DOCUMENT action: retry only the document step using existing resolved data ===
+    if (action === "retry_document") {
+      const steps: Array<{ step: string; status: string; detail?: string }> = [];
+
+      let existingPayload = delivery.sicas_request_payload as Record<string, string> | null;
+
+      // If no payload exists from a previous attempt, re-resolve fields using existing client ID
+      if (!existingPayload || Object.keys(existingPayload).length === 0) {
+        currentStep = "resolve_required_fields";
+        steps.push({ step: "resolve_required_fields", status: "in_progress" });
+
+        const resolution = await resolveSicasHwcaptureRequiredFields(supabase, delivery, defaults);
+
+        // Use previously stored client ID if available
+        const storedClientId = delivery.sicas_client_id || (delivery.sicas_resolved_fields as any)?.IDCli?.value;
+        if (storedClientId && storedClientId !== "0" && storedClientId !== "__auto_create__") {
+          resolution.resolved.IDCli = { value: storedClientId, source: "previously_resolved" };
+          resolution.missing = resolution.missing.filter((m: string) => !m.includes("IDCli"));
+        }
+
+        // Remove missing IDCli - the point of retry_document is that client already exists
+        resolution.missing = resolution.missing.filter((m: string) => !m.includes("IDCli"));
+
+        steps[steps.length - 1].status = "completed";
+        steps[steps.length - 1].detail = `${Object.keys(resolution.resolved).length} campos resueltos`;
+
+        // Validate and build payload
+        const validation = validatePayload(resolution.resolved, delivery);
+        if (!validation.valid) {
+          await supabase.from("policy_deliveries").update({
+            sicas_registration_status: "manual_review_required",
+            sicas_error_step: "validate_payload",
+            sicas_error_message: `Payload invalido: ${validation.errors.join("; ")}`,
+            sicas_resolved_fields: resolution.resolved,
+            sicas_request_debug: {
+              document_registration_diagnostic: {
+                executed: false,
+                method: "ProcesarWS",
+                key_process: "DATA",
+                key_code: "HWCAPTURE",
+                tproc: "Save_Data",
+                type_format: "XML",
+                payload_fields: validation.sanitizedPayload || {},
+                missing_fields: validation.errors,
+                field_mapping: {},
+                plain_data_xml: "",
+                encrypted_data_xml_length: 0,
+                soap_request_redacted: "",
+                soap_response: "",
+                parsed_response: null,
+                detected_id_docto: null,
+                document_stage_status: "not_attempted",
+                encryption_used: false,
+                encryption_method: "none",
+                iv_used: "",
+                error_message: `Validacion fallida: ${validation.errors.join("; ")}`,
+              },
+            },
+          }).eq("id", delivery_id);
+
+          return new Response(
+            JSON.stringify({
+              success: false,
+              action: "retry_document",
+              overall_status: "partial_success",
+              status: "validation_failed",
+              step: "validate_payload",
+              document_status: "validation_failed",
+              message: `Contacto/cliente resuelto, pero faltan datos para registrar la poliza. ${validation.errors.join("; ")}`,
+              missing_fields: validation.errors,
+              steps,
+              resolved: resolution.resolved,
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        existingPayload = validation.sanitizedPayload;
+
+        // Save the newly built payload for future retries
+        await supabase.from("policy_deliveries").update({
+          sicas_request_payload: existingPayload,
+          sicas_resolved_fields: resolution.resolved,
+          sicas_registration_status: "registering",
+          sicas_registration_attempts: (delivery.sicas_registration_attempts || 0) + 1,
+          sicas_last_attempt_at: new Date().toISOString(),
+          sicas_error_step: null,
+          sicas_error_message: null,
+        }).eq("id", delivery_id);
+
+        steps.push({ step: "validate_payload", status: "completed", detail: `${Object.keys(existingPayload).length} campos reconstruidos` });
+      } else {
+        // Re-validate payload from previous attempt
+        currentStep = "validate_payload";
+        steps.push({ step: "validate_payload", status: "completed", detail: `${Object.keys(existingPayload).length} campos del intento anterior` });
+
+        const attempts = (delivery.sicas_registration_attempts || 0) + 1;
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "registering",
+          sicas_registration_attempts: attempts,
+          sicas_last_attempt_at: new Date().toISOString(),
+          sicas_error_step: null,
+          sicas_error_message: null,
+        }).eq("id", delivery_id);
+      }
+
+      // Step: save_hwcapture (retry)
+      currentStep = "save_hwcapture";
+      steps.push({ step: currentStep, status: "in_progress" });
+
+      const hwResult = await registerDocument(
+        existingPayload!,
+        sicasEndpoint,
+        sicasUsername,
+        sicasPassword
+      );
+
+      if (hwResult.success && hwResult.documentId) {
+        currentStep = "completed";
+        steps[steps.length - 1].status = "completed";
+        steps[steps.length - 1].detail = `Documento SICAS: ${hwResult.documentId}`;
+
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "registered",
+          sicas_document_id: hwResult.documentId,
+          sicas_registered_at: new Date().toISOString(),
+          sicas_error_message: null,
+          sicas_error_step: null,
+          sicas_document_status: "created",
+          sicas_document_response: hwResult.rawResponse ? { raw: hwResult.rawResponse } : null,
+          sicas_registration_stage: "completed",
+          sicas_request_debug: { document_registration_diagnostic: hwResult.diagnostics || null },
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: "retry_document",
+            overall_status: "success",
+            status: "registered",
+            step: "completed",
+            message: "Poliza registrada en SICAS correctamente.",
+            contact_status: delivery.sicas_contact_status || "existing",
+            document_status: "created",
+            document_id: hwResult.documentId,
+            steps,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else if (hwResult.success && hwResult.noIdReturned) {
+        steps[steps.length - 1].status = "warning";
+        steps[steps.length - 1].detail = "SICAS confirmo exito sin IDDocto, buscando...";
+
+        // Attempt post-save lookup
+        const policyNumber = existingPayload.Documento || delivery.manual_policy_number || delivery.policy_number || "";
+        const clientIdForLookup = existingPayload.IDCli || delivery.sicas_client_id || null;
+        const vendorIdForLookup = existingPayload.IDVend || delivery.vendor_sicas_id || null;
+        const prevAttempts = (delivery as any).sicas_document_lookup_attempts || 0;
+
+        const lookupResult = await findSicasDocumentAfterSave(
+          policyNumber, clientIdForLookup, vendorIdForLookup,
+          sicasEndpoint, sicasUsername, sicasPassword,
+          {
+            insuredName: delivery.insured_name || null,
+            premium: delivery.total_premium || existingPayload.PrimaNeta || null,
+            startDate: delivery.start_date || null,
+            registrationDate: new Date().toISOString(),
+          },
+        );
+
+        if (lookupResult.found && lookupResult.documentId) {
+          steps.push({ step: "post_save_lookup", status: "completed", detail: `Encontrado: ${lookupResult.documentId}` });
+
+          await supabase.from("policy_deliveries").update({
+            sicas_registration_status: "registered",
+            sicas_document_id: lookupResult.documentId,
+            sicas_registered_at: new Date().toISOString(),
+            sicas_error_message: null,
+            sicas_error_step: null,
+            sicas_document_status: "created",
+            sicas_document_resolution_method: "post_save_lookup",
+            sicas_document_lookup_attempts: prevAttempts + 1,
+            sicas_last_lookup_at: new Date().toISOString(),
+            sicas_document_lookup_response: lookupResult.rawResponse ? { raw: lookupResult.rawResponse, method: lookupResult.method } : null,
+            sicas_registration_stage: "completed",
+          }).eq("id", delivery_id);
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              action: "retry_document",
+              overall_status: "success",
+              status: "registered",
+              step: "completed",
+              message: "Poliza registrada en SICAS correctamente.",
+              document_status: "created",
+              document_id: lookupResult.documentId,
+              resolution_method: "post_save_lookup",
+              steps,
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        steps.push({ step: "post_save_lookup", status: "failed", detail: lookupResult.error || "No encontrado" });
+
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "unverified",
+          sicas_error_message: "SICAS confirmo exito pero no se pudo verificar el documento.",
+          sicas_error_step: "save_hwcapture",
+          sicas_document_status: "unverified",
+          sicas_document_resolution_method: "not_found_after_success",
+          sicas_document_lookup_attempts: prevAttempts + 1,
+          sicas_last_lookup_at: new Date().toISOString(),
+          sicas_document_lookup_response: lookupResult.rawResponse ? { raw: lookupResult.rawResponse, method: lookupResult.method } : null,
+          sicas_request_debug: { document_registration_diagnostic: hwResult.diagnostics || null },
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            action: "retry_document",
+            overall_status: "unverified",
+            status: "unverified",
+            step: "save_hwcapture",
+            message: "SICAS confirmo exito, pero MOVI no pudo verificar el documento.",
+            document_status: "unverified",
+            next_action: "retry_lookup",
+            steps,
+            document_registration_diagnostic: hwResult.diagnostics || null,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        steps[steps.length - 1].status = "failed";
+        steps[steps.length - 1].detail = hwResult.error || "Error desconocido";
+
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "partial_success",
+          sicas_error_message: hwResult.error,
+          sicas_error_step: "save_hwcapture",
+          sicas_document_status: "failed",
+          sicas_document_response: hwResult.rawResponse ? { raw: hwResult.rawResponse } : null,
+          sicas_request_debug: { document_registration_diagnostic: hwResult.diagnostics || null, step_error: hwResult.stepError || null },
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            action: "retry_document",
+            overall_status: "partial_success",
+            status: "partial_success",
+            step: "save_hwcapture",
+            message: hwResult.error || "Error al registrar documento en SICAS",
+            document_status: "failed",
+            next_action: "retry_document",
+            steps,
+            step_error: hwResult.stepError || null,
+            document_registration_diagnostic: hwResult.diagnostics || null,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // === RETRY_LOOKUP action: search for document without re-registering ===
+    if (action === "retry_lookup") {
+      const existingPayload = delivery.sicas_request_payload as Record<string, string> | null;
+      const policyNumber = existingPayload?.Documento || delivery.manual_policy_number || delivery.policy_number || "";
+      const clientIdForLookup = existingPayload?.IDCli || delivery.sicas_client_id || null;
+      const vendorIdForLookup = existingPayload?.IDVend || delivery.vendor_sicas_id || null;
+      const prevAttempts = (delivery as any).sicas_document_lookup_attempts || 0;
+
+      if (!policyNumber) {
+        return new Response(
+          JSON.stringify({ success: false, action: "retry_lookup", status: "error", message: "No hay numero de poliza para buscar." }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const extraContext = {
+        insuredName: delivery.insured_name || existingPayload?.Asegurado || null,
+        premium: delivery.total_premium || existingPayload?.PrimaNeta || null,
+        startDate: delivery.start_date || null,
+        registrationDate: (delivery as any).sicas_registered_at || (delivery as any).updated_at || null,
+      };
+
+      // Strategy 4 (local): search in sicas_documents table first
+      let localMatch: { id_docto: string; score: number } | null = null;
+      if (policyNumber) {
+        const normalizedPn = normalizePolicyNumber(policyNumber);
+        const { data: localDocs } = await supabase
+          .from("sicas_documents")
+          .select("id_sicas, raw")
+          .or(`numero_poliza.ilike.%${policyNumber}%,documento.ilike.%${policyNumber}%`)
+          .limit(10);
+
+        if (localDocs && localDocs.length > 0) {
+          for (const ld of localDocs) {
+            const ldDoc = ld.raw || {};
+            ldDoc.IDDocto = ldDoc.IDDocto || ld.id_sicas;
+            const ldScore = scoreSicasDocumentMatch(
+              { policyNumber, clientId: clientIdForLookup, vendorId: vendorIdForLookup, insuredName: extraContext.insuredName, premium: extraContext.premium, startDate: extraContext.startDate, registrationDate: extraContext.registrationDate },
+              ldDoc
+            );
+            if (ldScore >= 80 && ld.id_sicas) {
+              localMatch = { id_docto: ld.id_sicas, score: ldScore };
+              break;
+            }
+          }
+        }
+      }
+
+      if (localMatch) {
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "registered",
+          sicas_document_id: localMatch.id_docto,
+          sicas_registered_at: new Date().toISOString(),
+          sicas_error_message: null,
+          sicas_error_step: null,
+          sicas_document_status: "created",
+          sicas_document_resolution_method: "local_table_match",
+          sicas_document_lookup_attempts: prevAttempts + 1,
+          sicas_last_lookup_at: new Date().toISOString(),
+          sicas_document_lookup_response: { method: "local_table_match", score: localMatch.score },
+          sicas_registration_stage: "completed",
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: "retry_lookup",
+            status: "registered",
+            message: `Poliza encontrada en tabla local sincronizada (score: ${localMatch.score}).`,
+            document_id: localMatch.id_docto,
+            resolution_method: "local_table_match",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Search via SICAS SOAP
+      const lookupResult = await findSicasDocumentAfterSave(
+        policyNumber, clientIdForLookup, vendorIdForLookup,
+        sicasEndpoint, sicasUsername, sicasPassword, extraContext,
+      );
+
+      if (lookupResult.found && lookupResult.documentId) {
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "registered",
+          sicas_document_id: lookupResult.documentId,
+          sicas_registered_at: new Date().toISOString(),
+          sicas_error_message: null,
+          sicas_error_step: null,
+          sicas_document_status: "created",
+          sicas_document_resolution_method: lookupResult.method || "post_save_lookup",
+          sicas_document_lookup_attempts: prevAttempts + 1,
+          sicas_last_lookup_at: new Date().toISOString(),
+          sicas_document_lookup_response: {
+            method: lookupResult.method,
+            score: lookupResult.score,
+            diagnostics: lookupResult.diagnostics,
+          },
+          sicas_registration_stage: "completed",
+        }).eq("id", delivery_id);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: "retry_lookup",
+            status: "registered",
+            message: `Poliza encontrada en SICAS (${lookupResult.method}, score: ${lookupResult.score}).`,
+            document_id: lookupResult.documentId,
+            resolution_method: lookupResult.method,
+            score: lookupResult.score,
+            diagnostics: lookupResult.diagnostics,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Not found - save diagnostics
+      const lookupResponse = {
+        method: lookupResult.method,
+        diagnostics: lookupResult.diagnostics,
+        multiple_matches: lookupResult.multipleMatches || null,
+        search_context: {
+          policy_number: policyNumber,
+          client_id: clientIdForLookup,
+          vendor_id: vendorIdForLookup,
+          insured_name: extraContext.insuredName,
+          premium: extraContext.premium,
+          start_date: extraContext.startDate,
+          registration_date: extraContext.registrationDate,
+        },
+      };
+
+      await supabase.from("policy_deliveries").update({
+        sicas_document_lookup_attempts: prevAttempts + 1,
+        sicas_last_lookup_at: new Date().toISOString(),
+        sicas_document_lookup_response: lookupResponse,
+      }).eq("id", delivery_id);
+
+      const hasMultiple = lookupResult.multipleMatches && lookupResult.multipleMatches.length > 0;
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          action: "retry_lookup",
+          status: hasMultiple ? "multiple_matches" : "unverified",
+          message: hasMultiple
+            ? `Se encontraron ${lookupResult.multipleMatches!.length} posible(s) coincidencia(s) pero ninguna con score >= 80.`
+            : (lookupResult.error || "Documento no encontrado en SICAS."),
+          next_action: "retry_lookup",
+          lookup_attempts: prevAttempts + 1,
+          diagnostics: lookupResult.diagnostics,
+          matches: lookupResult.multipleMatches || [],
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // === MANUAL_CAPTURE action: validate and save a manually entered IDDocto ===
+    if (action === "manual_capture") {
+      const manualId = body.sicas_document_id || body.document_id || body.id_docto;
+
+      if (!manualId || !/^\d+$/.test(String(manualId))) {
+        return new Response(
+          JSON.stringify({ success: false, action: "manual_capture", status: "error", message: "IDDocto debe ser un numero valido." }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const docId = String(manualId);
+      if (parseInt(docId) <= 0) {
+        return new Response(
+          JSON.stringify({ success: false, action: "manual_capture", status: "error", message: "IDDocto debe ser mayor a 0." }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Validate document exists in SICAS
+      const verification = await verifyDocumentById(docId, sicasEndpoint, sicasUsername, sicasPassword);
+
+      if (!verification.valid) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            action: "manual_capture",
+            status: "error",
+            message: verification.error || `Documento con ID ${docId} no encontrado en SICAS.`,
+            raw_response: verification.rawResponse,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Score the match against delivery data
+      const existingPayload = delivery.sicas_request_payload as Record<string, string> | null;
+      const policyNumber = existingPayload?.Documento || delivery.manual_policy_number || delivery.policy_number || "";
+      let matchWarning: string | null = null;
+      let matchScore = 0;
+
+      if (verification.documentData) {
+        const ctx: LookupContext = {
+          policyNumber,
+          clientId: existingPayload?.IDCli || delivery.sicas_client_id || null,
+          vendorId: existingPayload?.IDVend || delivery.vendor_sicas_id || null,
+          insuredName: delivery.insured_name || null,
+          premium: delivery.total_premium || existingPayload?.PrimaNeta || null,
+          startDate: delivery.start_date || null,
+          registrationDate: (delivery as any).sicas_registered_at || null,
+        };
+        matchScore = scoreSicasDocumentMatch(ctx, verification.documentData);
+
+        if (matchScore < 60) {
+          const docNum = verification.documentData.Documento || verification.documentData.NumPoliza || "";
+          matchWarning = `Advertencia: Coincidencia baja (score: ${matchScore}). SICAS poliza="${docNum}", entrega poliza="${policyNumber}". Verifica que sea el documento correcto.`;
+        } else if (matchScore < 80) {
+          matchWarning = `Coincidencia parcial (score: ${matchScore}). Documento guardado pero revisar datos.`;
+        }
+      }
+
+      await supabase.from("policy_deliveries").update({
+        sicas_registration_status: "registered",
+        sicas_document_id: docId,
+        sicas_registered_at: new Date().toISOString(),
+        sicas_error_message: null,
+        sicas_error_step: null,
+        sicas_document_status: "created",
+        sicas_document_resolution_method: "manual_verified",
+        sicas_document_lookup_response: {
+          raw: verification.rawResponse,
+          method: "manual_verify",
+          score: matchScore,
+          document_data: verification.documentData || null,
+        },
+        sicas_registration_stage: "completed",
+      }).eq("id", delivery_id);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          action: "manual_capture",
+          overall_status: "success",
+          status: "registered",
+          message: matchWarning
+            ? `Documento ${docId} verificado y guardado. ${matchWarning}`
+            : `Documento ${docId} verificado en SICAS y guardado correctamente (score: ${matchScore}).`,
+          document_id: docId,
+          resolution_method: "manual_verified",
+          score: matchScore,
+          document_data: verification.documentData || null,
+          warning: matchWarning,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    throw new Error(`Unknown action: ${action}. Use "resolve", "register", "auto", "retry_document", "retry_lookup", or "manual_capture".`);
   } catch (error: any) {
     console.error(`[SICAS] Fatal error at step "${currentStep}":`, error.message);
     return new Response(

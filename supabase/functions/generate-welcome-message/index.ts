@@ -14,6 +14,7 @@ interface UserContext {
   nombre: string;
   rol: string;
   oficina: string | null;
+  oficina_id: string | null;
   email: string | null;
   fecha_ingreso: string | null;
 }
@@ -125,6 +126,30 @@ interface FullContext {
   comunicados: ComunicadosContext | null;
 }
 
+type BulletType = "production" | "renewals" | "emissions" | "portfolio" | "tickets" | "commissions" | "leads" | "tasks" | "contact_center" | "whatsapp" | "email" | "marketing" | "courses" | "documents" | "cross_sell" | "alerts" | "general";
+type BulletPriority = "high" | "medium" | "low";
+
+interface AnalysisBullet {
+  type: BulletType;
+  priority: BulletPriority;
+  text: string;
+}
+
+interface AnalysisAction {
+  label: string;
+  type: "navigate";
+  target: string;
+  priority: BulletPriority;
+}
+
+interface StructuredAnalysis {
+  title: string;
+  source: string;
+  summary_bullets: AnalysisBullet[];
+  actions: AnalysisAction[];
+  tone: "positive" | "neutral" | "attention";
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtNum(n: number): string {
@@ -153,10 +178,10 @@ async function buildFullContext(
 
   const ctx: FullContext = {
     usuario: {
-      nombre:
-        usuario?.nombre_completo || usuario?.nombre || "Usuario",
+      nombre: usuario?.nombre_completo || usuario?.nombre || "Usuario",
       rol: usuario?.rol || "Agente",
       oficina: (usuario?.oficinas as any)?.nombre || null,
+      oficina_id: usuario?.oficina_id || null,
       email: usuario?.email_laboral || null,
       fecha_ingreso: usuario?.fecha_ingreso || null,
     },
@@ -514,9 +539,9 @@ async function fetchComunicados(
   } catch { return null; }
 }
 
-// ── Prompt Builder ──────────────────────────────────────────────────────────
+// ── Structured Prompt Builder ───────────────────────────────────────────────
 
-function buildPrompt(ctx: FullContext, periodo: string): string {
+function buildStructuredPrompt(ctx: FullContext, periodo: string): string {
   const nombre = ctx.usuario.nombre.split(" ")[0];
   const sections: string[] = [];
 
@@ -528,10 +553,8 @@ function buildPrompt(ctx: FullContext, periodo: string): string {
     if (s.renovaciones_7d > 0) lines.push(`URGENTE - Renovaciones proximas 7 dias: ${s.renovaciones_7d}`);
     if (s.renovaciones_15d > 0) lines.push(`Renovaciones 15 dias: ${s.renovaciones_15d}`);
     if (s.renovaciones_30d > 0) lines.push(`Renovaciones 30 dias: ${s.renovaciones_30d}, prima a renovar: ${fmtMoney(s.prima_renovar_30d)}`);
-    if (s.cancelaciones_mes > 0) lines.push(`Cancelaciones este mes: ${s.cancelaciones_mes}`);
     if (s.clientes_total > 0) lines.push(`Clientes en cartera: ${s.clientes_total}`);
     if (s.top_ramo) lines.push(`Ramo principal: ${s.top_ramo}`);
-    if (s.top_aseguradora) lines.push(`Aseguradora principal: ${s.top_aseguradora}`);
     if (lines.length > 0) sections.push(`PRODUCCION / SICAS:\n${lines.join("\n")}`);
   }
 
@@ -539,7 +562,7 @@ function buildPrompt(ctx: FullContext, periodo: string): string {
     const t = ctx.tickets;
     const lines: string[] = [];
     if (t.abiertos > 0) lines.push(`Tramites abiertos: ${t.abiertos}`);
-    if (t.en_proceso > 0) lines.push(`Tramites en proceso: ${t.en_proceso}`);
+    if (t.en_proceso > 0) lines.push(`En proceso: ${t.en_proceso}`);
     if (t.cerrados_mes > 0) lines.push(`Cerrados este mes: ${t.cerrados_mes}`);
     if (t.vencidos_7d > 0) lines.push(`ATENCION: ${t.vencidos_7d} tramite(s) sin actualizacion en 7+ dias`);
     if (lines.length > 0) sections.push(`TRAMITES:\n${lines.join("\n")}`);
@@ -549,8 +572,7 @@ function buildPrompt(ctx: FullContext, periodo: string): string {
     const c = ctx.comisiones;
     const lines: string[] = [];
     if (c.total_periodo_actual > 0) lines.push(`Comisiones periodo actual: ${fmtMoney(c.total_periodo_actual)}`);
-    if (c.total_periodo_anterior > 0) lines.push(`Periodo anterior: ${fmtMoney(c.total_periodo_anterior)}`);
-    if (c.variacion_pct !== 0) lines.push(`Variacion: ${c.variacion_pct > 0 ? "+" : ""}${c.variacion_pct.toFixed(1)}%`);
+    if (c.variacion_pct !== 0) lines.push(`Variacion vs anterior: ${c.variacion_pct > 0 ? "+" : ""}${c.variacion_pct.toFixed(1)}%`);
     if (lines.length > 0) sections.push(`COMISIONES:\n${lines.join("\n")}`);
   }
 
@@ -561,172 +583,194 @@ function buildPrompt(ctx: FullContext, periodo: string): string {
     if (crm.cotizaciones_activas > 0) lines.push(`Cotizaciones activas: ${crm.cotizaciones_activas}`);
     if (crm.tareas_pendientes > 0) lines.push(`Tareas pendientes: ${crm.tareas_pendientes}`);
     if (crm.tareas_vencidas > 0) lines.push(`ATENCION: ${crm.tareas_vencidas} tarea(s) vencida(s)`);
-    if (crm.contactos_recientes_30d > 0) lines.push(`Nuevos contactos (30d): ${crm.contactos_recientes_30d}`);
     if (lines.length > 0) sections.push(`CRM:\n${lines.join("\n")}`);
   }
 
   if (ctx.webLeads) {
     const w = ctx.webLeads;
     const lines: string[] = [];
-    if (w.leads_mes > 0) lines.push(`Leads desde pagina web este mes: ${w.leads_mes}`);
+    if (w.leads_mes > 0) lines.push(`Leads web este mes: ${w.leads_mes}`);
     if (w.leads_sin_seguimiento > 0) lines.push(`Leads sin seguimiento: ${w.leads_sin_seguimiento}`);
-    if (!w.tiene_pagina) lines.push("Pagina web publica: no configurada aun");
-    if (lines.length > 0) sections.push(`MI PAGINA WEB:\n${lines.join("\n")}`);
+    if (lines.length > 0) sections.push(`LEADS WEB:\n${lines.join("\n")}`);
   }
 
   if (ctx.registroActividades) {
     const ra = ctx.registroActividades;
-    const lines: string[] = [];
-    lines.push(`Actividades registradas este mes: ${ra.actividades_mes}`);
-    if (ra.en_proceso > 0) lines.push(`En proceso: ${ra.en_proceso}`);
-    if (ra.completadas_mes > 0) lines.push(`Completadas: ${ra.completadas_mes}`);
-    sections.push(`REGISTRO DE ACTIVIDADES:\n${lines.join("\n")}`);
+    sections.push(`REGISTRO ACTIVIDADES:\nActividades mes: ${ra.actividades_mes}, en proceso: ${ra.en_proceso}, completadas: ${ra.completadas_mes}`);
   }
 
   if (ctx.education) {
     const e = ctx.education;
-    const lines: string[] = [];
-    lines.push(`Lecciones completadas: ${e.lecciones_completadas} de ${e.lecciones_total}`);
-    if (e.tiempo_total_min > 0) lines.push(`Tiempo de estudio: ${e.tiempo_total_min} min`);
-    sections.push(`CAPACITACION:\n${lines.join("\n")}`);
-  }
-
-  if (ctx.produccion) {
-    const p = ctx.produccion;
-    const lines: string[] = [];
-    lines.push(`Registros de produccion este mes: ${p.registros_mes}`);
-    if (p.importe_mes > 0) lines.push(`Importe total: ${fmtMoney(p.importe_mes)}`);
-    sections.push(`PRODUCCION (EXCEL):\n${lines.join("\n")}`);
+    sections.push(`CAPACITACION:\nLecciones completadas: ${e.lecciones_completadas}/${e.lecciones_total}`);
   }
 
   if (ctx.comunicados && ctx.comunicados.sin_leer > 0) {
     sections.push(`COMUNICADOS:\nSin leer: ${ctx.comunicados.sin_leer}`);
   }
 
-  if (ctx.chat && ctx.chat.mensajes_no_leidos > 0) {
-    sections.push(`CHAT INTERNO:\nConversaciones con mensajes no leidos: ${ctx.chat.mensajes_no_leidos}`);
-  }
+  const dataBlock = sections.length > 0 ? sections.join("\n\n") : "No hay datos suficientes.";
 
-  if (ctx.store && (ctx.store.pedidos_pendientes > 0 || ctx.store.pedidos_mes > 0)) {
-    const lines: string[] = [];
-    if (ctx.store.pedidos_pendientes > 0) lines.push(`Pedidos pendientes: ${ctx.store.pedidos_pendientes}`);
-    if (ctx.store.pedidos_mes > 0) lines.push(`Pedidos este mes: ${ctx.store.pedidos_mes}`);
-    sections.push(`TIENDA:\n${lines.join("\n")}`);
-  }
+  return `Eres el motor de analisis inteligente de MOVI Digital, plataforma para agentes de seguros en Mexico.
+Recibes metricas reales de un usuario. No inventes datos. Solo usa la informacion recibida.
 
-  if (ctx.centroDigital) {
-    const cd = ctx.centroDigital;
-    const lines: string[] = [];
-    lines.push(`Archivos en Centro Digital: ${cd.archivos_total}`);
-    if (cd.subidos_semana > 0) lines.push(`Subidos esta semana: ${cd.subidos_semana}`);
-    sections.push(`CENTRO DIGITAL:\n${lines.join("\n")}`);
-  }
+Tu tarea es generar un JSON con:
+1. Entre 3 y 6 bullets claros, breves y accionables.
+2. Una lista de botones sugeridos segun los hallazgos.
+3. Prioridad por bullet y por accion.
 
-  if (ctx.gamificacion) {
-    const g = ctx.gamificacion;
-    const lines: string[] = [];
-    if (g.nivel > 0) lines.push(`Nivel: ${g.nivel}`);
-    if (g.dias_racha > 0) lines.push(`Racha: ${g.dias_racha} dias consecutivos`);
-    if (lines.length > 0) sections.push(`GAMIFICACION:\n${lines.join("\n")}`);
-  }
+Responde UNICAMENTE con JSON valido con esta estructura:
+{
+  "title": "Tu resumen inteligente",
+  "tone": "positive|neutral|attention",
+  "summary_bullets": [
+    {"type": "...", "priority": "high|medium|low", "text": "..."}
+  ],
+  "actions": [
+    {"label": "...", "type": "navigate", "target": "...", "priority": "high|medium|low"}
+  ]
+}
 
-  const dataBlock = sections.length > 0
-    ? sections.join("\n\n")
-    : "No hay datos suficientes de los modulos en este momento.";
+REGLAS DE BULLETS:
+- Maximo 6 bullets, minimo 3.
+- Texto corto y directo (maximo 80 caracteres por bullet).
+- No uses markdown ni formato especial.
+- Cada bullet debe ser entendible por un agente de seguros.
+- Prioriza: renovaciones urgentes > tramites vencidos > leads sin seguimiento > produccion > comisiones > capacitacion.
+- Los bullets de prioridad "high" son riesgos o acciones urgentes.
+- Los bullets de prioridad "medium" son datos operativos importantes.
+- Los bullets de prioridad "low" son informativos o complementarios.
+- Ordena primero los de prioridad alta.
+- NO inventes numeros ni datos.
+- Todos en espanol.
 
-  return `Eres el asistente personal profesional de MOVI Digital, una plataforma integral para promotorias y agentes de seguros en Mexico. Tu trabajo es generar un mensaje de analisis ejecutivo diario personalizado para cada usuario, basandote en los datos reales de su operacion.
+TIPOS VALIDOS PARA BULLETS: production, renewals, emissions, portfolio, tickets, commissions, leads, tasks, courses, documents, cross_sell, alerts, general
 
-INSTRUCCIONES ESTRICTAS:
-1. Escribe como un mentor cercano y profesional que conoce la operacion del usuario. Usa tono directo, calido y constructivo.
-2. El mensaje debe tener entre 90 y 160 palabras. Maximo 2-3 parrafos cortos.
-3. NO uses listas, vinetas, markdown, negritas, asteriscos ni formato especial. Solo texto plano fluido.
-4. NO enumeres metricas una por una. Interpreta y sintetiza: que significan los datos, que senales positivas o de atencion hay, y que conviene hacer a continuacion.
-5. Si hay datos de varios modulos, integralos naturalmente en el mensaje.
-6. SIEMPRE incluye datos de PRODUCCION/SICAS y de TRAMITES cuando esten disponibles. Estos dos modulos son OBLIGATORIOS en el mensaje. Complementa con datos de los demas modulos que consideres relevantes para dar un panorama completo.
-7. PRIORIDAD de contenido:
-   P1 (OBLIGATORIO): Produccion SICAS (polizas, emisiones, renovaciones, cartera) y Tramites (abiertos, en proceso, vencidos)
-   P2 (URGENTE): Renovaciones proximas 7 dias, tramites vencidos, tareas CRM vencidas, leads sin seguimiento
-   P3 (IMPORTANTE): Comisiones, oportunidades de venta, cotizaciones activas, CRM
-   P4 (COMPLEMENTARIO): Comunicados, capacitacion, gamificacion, pagina web
-8. Siempre menciona el nombre del usuario al inicio.
-9. Si no hay datos de SICAS o Tramites, menciona brevemente que aun no hay informacion de produccion/tramites registrada y sugiere que sincronice o registre actividad.
-10. NUNCA inventes datos. Solo usa lo proporcionado.
-11. Incluye al menos una recomendacion accionable especifica basada en los datos de produccion o tramites.
-12. Todos los textos en espanol.
+REGLAS DE ACCIONES/BOTONES:
+- Maximo 4 botones.
+- Cada boton debe navegar a una ruta real de MOVI.
+- Rutas validas:
+  /mi-produccion-sicas-live?tab=renovaciones (para renovaciones)
+  /mi-produccion-sicas-live?tab=resumen (para produccion)
+  /mi-produccion-sicas-live?tab=oportunidades (para venta cruzada)
+  /tramites (para tramites)
+  /mi-crm (para CRM/tareas)
+  /mi-crm/contactos (para leads/contactos)
+  /mis-comisiones (para comisiones)
+  /seguros-education (para capacitacion)
+  /centro-digital (para documentos)
+  /mercadotecnia/publicidad (para publicidad/marketing)
+- El label debe ser corto: 2-3 palabras.
+- Solo incluye botones relevantes a los datos mostrados.
 
-Responde UNICAMENTE con un JSON asi:
-{"message": "tu mensaje en texto plano", "tone": "positive|neutral|attention"}
-
-Donde tone es:
-- "positive": produccion creciente, buenas metricas, buen ritmo de trabajo
-- "attention": hay pendientes urgentes, retrasos, caidas, o temas que requieren accion inmediata
-- "neutral": situacion estable o datos insuficientes para emitir juicio
+TONE:
+- "positive": produccion creciente, buenas metricas, buen ritmo
+- "attention": pendientes urgentes, retrasos, caidas, accion inmediata
+- "neutral": situacion estable o datos parciales
 
 USUARIO: ${nombre} (${ctx.usuario.rol}${ctx.usuario.oficina ? `, oficina: ${ctx.usuario.oficina}` : ""})
 PERIODO: ${periodo}
 
-DATOS DE SUS MODULOS:
+DATOS:
 ${dataBlock}`;
 }
 
-// ── Fallback Generator ──────────────────────────────────────────────────────
+// ── Structured Fallback Generator ───────────────────────────────────────────
 
-function generateFallback(ctx: FullContext): { message: string; tone: "positive" | "neutral" | "attention" } {
-  const nombre = ctx.usuario.nombre.split(" ")[0];
-  const parts: string[] = [];
+function generateStructuredFallback(ctx: FullContext): StructuredAnalysis {
+  const bullets: AnalysisBullet[] = [];
+  const actions: AnalysisAction[] = [];
   let tone: "positive" | "neutral" | "attention" = "neutral";
+  const hasSicas = !!ctx.sicas;
 
   if (ctx.sicas) {
     const s = ctx.sicas;
-    if (s.emisiones_mes > 0) {
-      parts.push(`${nombre}, este mes llevas ${fmtMoney(s.prima_emitida_mes)} en prima emitida con ${s.emisiones_mes} emisiones`);
-      tone = "positive";
-    } else if (s.polizas_vigentes > 0) {
-      parts.push(`${nombre}, tienes ${s.polizas_vigentes} polizas vigentes en tu cartera con una prima total de ${fmtMoney(s.prima_vigente)}`);
-    }
     if (s.renovaciones_7d > 0) {
-      parts.push(`Tienes ${s.renovaciones_7d} renovacion${s.renovaciones_7d > 1 ? "es" : ""} en los siguientes 7 dias que conviene gestionar cuanto antes`);
+      bullets.push({ type: "renewals", priority: "high", text: `Tienes ${s.renovaciones_7d} renovacion${s.renovaciones_7d > 1 ? "es" : ""} que vence${s.renovaciones_7d > 1 ? "n" : ""} en los proximos 7 dias.` });
+      actions.push({ label: "Ver renovaciones", type: "navigate", target: "/mi-produccion-sicas-live?tab=renovaciones", priority: "high" });
       tone = "attention";
+    } else if (s.renovaciones_15d > 0) {
+      bullets.push({ type: "renewals", priority: "high", text: `Tienes ${s.renovaciones_15d} renovacion${s.renovaciones_15d > 1 ? "es" : ""} proxima${s.renovaciones_15d > 1 ? "s" : ""} en los siguientes 15 dias.` });
+      actions.push({ label: "Ver renovaciones", type: "navigate", target: "/mi-produccion-sicas-live?tab=renovaciones", priority: "high" });
     } else if (s.renovaciones_30d > 0) {
-      parts.push(`Hay ${s.renovaciones_30d} renovacion${s.renovaciones_30d > 1 ? "es" : ""} proximas en los siguientes 30 dias por ${fmtMoney(s.prima_renovar_30d)}`);
+      bullets.push({ type: "renewals", priority: "medium", text: `Hay ${s.renovaciones_30d} renovacion${s.renovaciones_30d > 1 ? "es" : ""} en los proximos 30 dias por ${fmtMoney(s.prima_renovar_30d)}.` });
+      actions.push({ label: "Ver renovaciones", type: "navigate", target: "/mi-produccion-sicas-live?tab=renovaciones", priority: "medium" });
+    }
+
+    if (s.emisiones_mes > 0) {
+      bullets.push({ type: "emissions", priority: "medium", text: `Llevas ${s.emisiones_mes} emision${s.emisiones_mes > 1 ? "es" : ""} este mes por ${fmtMoney(s.prima_emitida_mes)} en prima.` });
+      if (tone !== "attention") tone = "positive";
+    } else if (s.polizas_vigentes > 0) {
+      bullets.push({ type: "portfolio", priority: "low", text: `Tu cartera tiene ${s.polizas_vigentes} polizas vigentes con prima total de ${fmtMoney(s.prima_vigente)}.` });
+    }
+
+    if (s.clientes_total > 5) {
+      const ramosUnicos = new Set<string>();
+      if (s.top_ramo) ramosUnicos.add(s.top_ramo);
+      if (ramosUnicos.size > 0 && s.clientes_total > 10) {
+        bullets.push({ type: "cross_sell", priority: "medium", text: `Detectamos oportunidades de venta cruzada en ${s.clientes_total} clientes.` });
+        actions.push({ label: "Ver oportunidades", type: "navigate", target: "/mi-produccion-sicas-live?tab=oportunidades", priority: "medium" });
+      }
     }
   }
 
-  if (ctx.tickets && (ctx.tickets.abiertos + ctx.tickets.en_proceso) > 0) {
-    const pending = ctx.tickets.abiertos + ctx.tickets.en_proceso;
-    parts.push(`En tramites, tienes ${pending} pendiente${pending > 1 ? "s" : ""} de atencion`);
-    if (ctx.tickets.vencidos_7d > 0) {
-      parts.push(`${ctx.tickets.vencidos_7d} de ellos lleva${ctx.tickets.vencidos_7d > 1 ? "n" : ""} mas de una semana sin actualizacion`);
+  if (ctx.tickets) {
+    const t = ctx.tickets;
+    if (t.vencidos_7d > 0) {
+      bullets.push({ type: "tickets", priority: "high", text: `Hay ${t.vencidos_7d} tramite${t.vencidos_7d > 1 ? "s" : ""} sin movimiento en mas de 7 dias.` });
       tone = "attention";
+    } else if (t.abiertos + t.en_proceso > 0) {
+      bullets.push({ type: "tickets", priority: "medium", text: `Tienes ${t.abiertos + t.en_proceso} tramite${(t.abiertos + t.en_proceso) > 1 ? "s" : ""} pendiente${(t.abiertos + t.en_proceso) > 1 ? "s" : ""} de atencion.` });
+    }
+    if (t.abiertos + t.en_proceso > 0 || t.vencidos_7d > 0) {
+      actions.push({ label: "Ver tramites", type: "navigate", target: "/tramites", priority: t.vencidos_7d > 0 ? "high" : "medium" });
     }
   }
 
   if (ctx.crm?.tareas_vencidas && ctx.crm.tareas_vencidas > 0) {
-    parts.push(`En tu CRM hay ${ctx.crm.tareas_vencidas} tarea${ctx.crm.tareas_vencidas > 1 ? "s" : ""} vencida${ctx.crm.tareas_vencidas > 1 ? "s" : ""}`);
+    bullets.push({ type: "tasks", priority: "high", text: `Tienes ${ctx.crm.tareas_vencidas} tarea${ctx.crm.tareas_vencidas > 1 ? "s" : ""} vencida${ctx.crm.tareas_vencidas > 1 ? "s" : ""} en tu CRM.` });
+    actions.push({ label: "Ver tareas", type: "navigate", target: "/mi-crm", priority: "high" });
     tone = "attention";
   }
 
-  if (ctx.comisiones && ctx.comisiones.total_periodo_actual > 0 && ctx.comisiones.variacion_pct > 10) {
-    parts.push(`Tus comisiones muestran un crecimiento de ${ctx.comisiones.variacion_pct.toFixed(0)}% respecto al periodo anterior`);
-    tone = "positive";
-  }
-
   if (ctx.webLeads && ctx.webLeads.leads_sin_seguimiento > 0) {
-    parts.push(`Tienes ${ctx.webLeads.leads_sin_seguimiento} lead${ctx.webLeads.leads_sin_seguimiento > 1 ? "s" : ""} de tu pagina web sin seguimiento`);
+    bullets.push({ type: "leads", priority: "high", text: `Tienes ${ctx.webLeads.leads_sin_seguimiento} lead${ctx.webLeads.leads_sin_seguimiento > 1 ? "s" : ""} sin seguimiento.` });
+    actions.push({ label: "Atender leads", type: "navigate", target: "/mi-crm/contactos", priority: "high" });
+    if (tone !== "attention") tone = "attention";
   }
 
-  if (ctx.comunicados && ctx.comunicados.sin_leer > 0) {
-    parts.push(`Hay ${ctx.comunicados.sin_leer} comunicado${ctx.comunicados.sin_leer > 1 ? "s" : ""} sin leer`);
+  if (ctx.comisiones && ctx.comisiones.variacion_pct > 10) {
+    bullets.push({ type: "commissions", priority: "low", text: `Tus comisiones crecieron ${ctx.comisiones.variacion_pct.toFixed(0)}% respecto al periodo anterior.` });
+    if (tone === "neutral") tone = "positive";
+  } else if (ctx.comisiones && ctx.comisiones.total_periodo_actual > 0) {
+    bullets.push({ type: "commissions", priority: "low", text: `Comisiones del periodo: ${fmtMoney(ctx.comisiones.total_periodo_actual)}.` });
   }
 
-  if (parts.length === 0) {
-    return {
-      message: `${nombre}, aun no hay suficiente actividad consolidada para generar un analisis mas detallado, pero conforme se registren mas movimientos en tus modulos de MOVI, aqui veras observaciones y sugerencias personalizadas para ayudarte a dar mejor seguimiento a tu operacion comercial.`,
-      tone: "neutral",
-    };
+  if (ctx.education && ctx.education.lecciones_completadas > 0 && bullets.length < 6) {
+    bullets.push({ type: "courses", priority: "low", text: `Has completado ${ctx.education.lecciones_completadas} de ${ctx.education.lecciones_total} lecciones disponibles.` });
   }
 
-  return { message: parts.join(". ") + ".", tone };
+  if (bullets.length === 0) {
+    bullets.push({ type: "general", priority: "low", text: "Aun no hay suficiente informacion para generar un analisis completo." });
+    bullets.push({ type: "general", priority: "low", text: "Empieza revisando tus renovaciones, tareas y leads." });
+    actions.push({ label: "Ver produccion", type: "navigate", target: "/mi-produccion-sicas-live?tab=resumen", priority: "medium" });
+    actions.push({ label: "Ver tramites", type: "navigate", target: "/tramites", priority: "medium" });
+  }
+
+  // Sort by priority
+  const order: Record<BulletPriority, number> = { high: 0, medium: 1, low: 2 };
+  bullets.sort((a, b) => order[a.priority] - order[b.priority]);
+
+  // Limit to 6 bullets and 4 actions
+  const finalBullets = bullets.slice(0, 6);
+  const finalActions = actions.slice(0, 4);
+
+  return {
+    title: "Tu resumen inteligente",
+    source: hasSicas ? "SICAS + MOVI" : "Solo MOVI",
+    summary_bullets: finalBullets,
+    actions: finalActions,
+    tone,
+  };
 }
 
 // ── Get modules that had data ───────────────────────────────────────────────
@@ -782,6 +826,7 @@ Deno.serve(async (req) => {
     const now = new Date();
     const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
+    // Check cache
     if (!forceRegenerate) {
       const { data: cached } = await serviceClient
         .from("dashboard_smart_analysis")
@@ -791,18 +836,37 @@ Deno.serve(async (req) => {
 
       if (cached && cached.periodo === periodo && cached.expires_at) {
         const expiresAt = new Date(cached.expires_at).getTime();
-        if (Date.now() < expiresAt && cached.analysis_json?.message) {
-          console.log(`[Welcome] Cache hit for user ${user.id}, expires ${cached.expires_at}`);
-          return new Response(
-            JSON.stringify({
-              success: true,
-              analysis: { message: cached.analysis_json.message, tone: cached.analysis_json.tone || "neutral" },
-              source: "cache",
-              periodo,
-              modules: cached.modules_included || [],
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        if (Date.now() < expiresAt && cached.analysis_json) {
+          console.log(`[Welcome] Cache hit for user ${user.id}`);
+          const cachedJson = cached.analysis_json as any;
+
+          // Return structured format if available
+          if (cachedJson.summary_bullets) {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                structured: cachedJson,
+                source: "cache",
+                periodo,
+                modules: cached.modules_included || [],
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          // Legacy format
+          if (cachedJson.message) {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                analysis: { message: cachedJson.message, tone: cachedJson.tone || "neutral" },
+                source: "cache",
+                periodo,
+                modules: cached.modules_included || [],
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
         }
       }
     }
@@ -811,38 +875,41 @@ Deno.serve(async (req) => {
     console.log(`[Welcome] Building context for user ${user.id}...`);
     const ctx = await buildFullContext(serviceClient, user.id);
     const contextMs = Date.now() - startMs;
-    console.log(`[Welcome] Context built in ${contextMs}ms. Modules: ${getModulesIncluded(ctx).join(", ") || "none"}`);
-
     const modulesIncluded = getModulesIncluded(ctx);
-    const hasData = modulesIncluded.length > 0;
+    console.log(`[Welcome] Context built in ${contextMs}ms. Modules: ${modulesIncluded.join(", ") || "none"}`);
 
+    const hasData = modulesIncluded.length > 0;
+    const hasSicas = !!ctx.sicas;
+
+    // No data or no OpenAI key: generate structured fallback
     if (!hasData || !openaiApiKey) {
-      const fallback = generateFallback(ctx);
+      const structured = generateStructuredFallback(ctx);
       await serviceClient.from("dashboard_smart_analysis").upsert({
         user_id: user.id,
-        analysis_json: fallback,
+        analysis_json: structured,
         sicas_context_hash: `${periodo}_${Date.now()}`,
         periodo,
-        has_sicas_mapping: !!ctx.sicas,
+        has_sicas_mapping: hasSicas,
         source: "fallback",
         context_json: ctx,
         model_used: null,
         generation_ms: Date.now() - startMs,
         modules_included: modulesIncluded,
-        expires_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
 
       return new Response(
-        JSON.stringify({ success: true, analysis: fallback, source: "fallback", periodo, modules: modulesIncluded }),
+        JSON.stringify({ success: true, structured, source: "fallback", periodo, modules: modulesIncluded }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const prompt = buildPrompt(ctx, periodo);
+    // Call OpenAI for structured analysis
+    const prompt = buildStructuredPrompt(ctx, periodo);
     const model = "gpt-4o-mini";
 
-    console.log(`[Welcome] Calling OpenAI (${model})...`);
+    console.log(`[Welcome] Calling OpenAI (${model}) for structured analysis...`);
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -855,11 +922,11 @@ Deno.serve(async (req) => {
           { role: "system", content: prompt },
           {
             role: "user",
-            content: `Genera el mensaje de analisis ejecutivo personalizado para ${ctx.usuario.nombre.split(" ")[0]} en el periodo ${periodo}. Responde SOLO con el JSON.`,
+            content: `Genera el analisis estructurado para ${ctx.usuario.nombre.split(" ")[0]} en el periodo ${periodo}. Responde SOLO con el JSON.`,
           },
         ],
-        temperature: 0.6,
-        max_tokens: 600,
+        temperature: 0.5,
+        max_tokens: 800,
         response_format: { type: "json_object" },
       }),
     });
@@ -867,10 +934,25 @@ Deno.serve(async (req) => {
     const totalMs = Date.now() - startMs;
 
     if (!openaiResponse.ok) {
-      console.error("[Welcome] OpenAI error:", openaiResponse.status, await openaiResponse.text());
-      const fallback = generateFallback(ctx);
+      console.error("[Welcome] OpenAI error:", openaiResponse.status);
+      const structured = generateStructuredFallback(ctx);
+      await serviceClient.from("dashboard_smart_analysis").upsert({
+        user_id: user.id,
+        analysis_json: structured,
+        sicas_context_hash: `${periodo}_${Date.now()}`,
+        periodo,
+        has_sicas_mapping: hasSicas,
+        source: "fallback",
+        context_json: ctx,
+        model_used: null,
+        generation_ms: totalMs,
+        modules_included: modulesIncluded,
+        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+
       return new Response(
-        JSON.stringify({ success: true, analysis: fallback, source: "fallback", periodo, modules: modulesIncluded }),
+        JSON.stringify({ success: true, structured, source: "fallback", periodo, modules: modulesIncluded }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -879,9 +961,9 @@ Deno.serve(async (req) => {
     const rawContent = openaiData.choices?.[0]?.message?.content;
 
     if (!rawContent) {
-      const fallback = generateFallback(ctx);
+      const structured = generateStructuredFallback(ctx);
       return new Response(
-        JSON.stringify({ success: true, analysis: fallback, source: "fallback", periodo, modules: modulesIncluded }),
+        JSON.stringify({ success: true, structured, source: "fallback", periodo, modules: modulesIncluded }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -890,43 +972,101 @@ Deno.serve(async (req) => {
     try {
       parsed = JSON.parse(rawContent);
     } catch {
-      console.error("[Welcome] Failed to parse ChatGPT JSON:", rawContent.substring(0, 300));
-      const fallback = generateFallback(ctx);
+      console.error("[Welcome] Failed to parse OpenAI JSON:", rawContent.substring(0, 300));
+      const structured = generateStructuredFallback(ctx);
       return new Response(
-        JSON.stringify({ success: true, analysis: fallback, source: "fallback", periodo, modules: modulesIncluded }),
+        JSON.stringify({ success: true, structured, source: "fallback", periodo, modules: modulesIncluded }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const message = typeof parsed.message === "string" && parsed.message.length > 0
-      ? parsed.message.slice(0, 1200)
-      : generateFallback(ctx).message;
+    // Validate and normalize the structured response
+    const validTones = ["positive", "neutral", "attention"];
+    const validTypes = ["production", "renewals", "emissions", "portfolio", "tickets", "commissions", "leads", "tasks", "contact_center", "whatsapp", "email", "marketing", "courses", "documents", "cross_sell", "alerts", "general"];
+    const validPriorities = ["high", "medium", "low"];
 
-    const tone = ["positive", "neutral", "attention"].includes(parsed.tone)
-      ? parsed.tone
-      : "neutral";
+    const summaryBullets: AnalysisBullet[] = [];
+    if (Array.isArray(parsed.summary_bullets)) {
+      for (const b of parsed.summary_bullets.slice(0, 6)) {
+        if (typeof b.text === "string" && b.text.length > 0) {
+          summaryBullets.push({
+            type: validTypes.includes(b.type) ? b.type : "general",
+            priority: validPriorities.includes(b.priority) ? b.priority : "medium",
+            text: b.text.slice(0, 120),
+          });
+        }
+      }
+    }
 
-    const analysis = { message, tone };
+    const validRoutes = [
+      "/mi-produccion-sicas-live",
+      "/tramites",
+      "/mi-crm",
+      "/mi-crm/contactos",
+      "/mi-crm/tareas",
+      "/mis-comisiones",
+      "/seguros-education",
+      "/centro-digital",
+      "/mercadotecnia/publicidad",
+      "/mercadotecnia/mi-marca",
+      "/mercadotecnia/mi-pagina-web",
+    ];
 
+    const analysisActions: AnalysisAction[] = [];
+    if (Array.isArray(parsed.actions)) {
+      for (const a of parsed.actions.slice(0, 4)) {
+        if (typeof a.label === "string" && typeof a.target === "string") {
+          const basePath = a.target.split("?")[0];
+          if (!validRoutes.includes(basePath)) continue;
+          analysisActions.push({
+            label: a.label.slice(0, 30),
+            type: "navigate",
+            target: a.target,
+            priority: validPriorities.includes(a.priority) ? a.priority : "medium",
+          });
+        }
+      }
+    }
+
+    // If OpenAI returned insufficient bullets, supplement with fallback
+    if (summaryBullets.length < 3) {
+      const fallback = generateStructuredFallback(ctx);
+      for (const b of fallback.summary_bullets) {
+        if (summaryBullets.length >= 6) break;
+        if (!summaryBullets.some(existing => existing.type === b.type)) {
+          summaryBullets.push(b);
+        }
+      }
+    }
+
+    const structured: StructuredAnalysis = {
+      title: typeof parsed.title === "string" ? parsed.title.slice(0, 60) : "Tu resumen inteligente",
+      source: hasSicas ? "SICAS + MOVI" : "Solo MOVI",
+      summary_bullets: summaryBullets,
+      actions: analysisActions.length > 0 ? analysisActions : generateStructuredFallback(ctx).actions.slice(0, 3),
+      tone: validTones.includes(parsed.tone) ? parsed.tone : "neutral",
+    };
+
+    // Cache the result (30 minutes)
     await serviceClient.from("dashboard_smart_analysis").upsert({
       user_id: user.id,
-      analysis_json: analysis,
+      analysis_json: structured,
       sicas_context_hash: `${periodo}_${Date.now()}`,
       periodo,
-      has_sicas_mapping: !!ctx.sicas,
+      has_sicas_mapping: hasSicas,
       source: "chatgpt",
       context_json: ctx,
       model_used: model,
       generation_ms: totalMs,
       modules_included: modulesIncluded,
-      expires_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+      expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
 
-    console.log(`[Welcome] Generated for ${ctx.usuario.nombre.split(" ")[0]} in ${totalMs}ms (${modulesIncluded.length} modules, source: chatgpt)`);
+    console.log(`[Welcome] Generated structured analysis for ${ctx.usuario.nombre.split(" ")[0]} in ${totalMs}ms (${modulesIncluded.length} modules, ${summaryBullets.length} bullets)`);
 
     return new Response(
-      JSON.stringify({ success: true, analysis, source: "chatgpt", periodo, modules: modulesIncluded }),
+      JSON.stringify({ success: true, structured, source: "chatgpt", periodo, modules: modulesIncluded }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {

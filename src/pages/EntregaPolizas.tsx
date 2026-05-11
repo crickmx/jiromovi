@@ -1,20 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Upload,
-  FileText,
-  Download,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  X,
-  Send,
-  Search,
-  Clock,
-  UploadCloud,
-  ShieldAlert,
-  Ban,
-  Zap,
-} from 'lucide-react';
+import { Upload, FileText, Download, Loader2, CheckCircle2, AlertCircle, X, Send, Search, Clock, UploadCloud, ShieldAlert, Ban, Zap, CreditCard as Edit3, Eye, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -897,16 +882,21 @@ const SICAS_STATUS_CONFIG: Record<string, { label: string; color: string; icon: 
   ready_to_register: { label: 'Listo', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: UploadCloud },
   resolving: { label: 'Resolviendo...', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
   creating_client: { label: 'Creando cliente...', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
+  client_creation_failed: { label: 'Error cliente', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   validating: { label: 'Validando', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400', icon: Loader2 },
   duplicate_found: { label: 'Duplicado', color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400', icon: Ban },
   duplicate: { label: 'Duplicado', color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400', icon: Ban },
   registering: { label: 'Registrando...', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
   registered: { label: 'Registrado', color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400', icon: CheckCircle2 },
+  partial_success: { label: 'Parcial', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400', icon: AlertCircle },
+  unverified: { label: 'No verificable', color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400', icon: AlertCircle },
+  document_not_created: { label: 'Doc. no creado', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   uploading_files: { label: 'Subiendo docs', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
   completed: { label: 'Completado', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300', icon: CheckCircle2 },
   error: { label: 'Error', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   timeout: { label: 'Timeout', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   sicas_rejected: { label: 'Rechazado', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
+  validation_failed: { label: 'Datos faltantes', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300', icon: ShieldAlert },
   manual_review_required: { label: 'Revision manual', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300', icon: ShieldAlert },
 };
 
@@ -1025,8 +1015,14 @@ function HistorialTab({ usuario }: { usuario: any }) {
       if (result?.success && result?.status === 'registered') {
         setRegisterResult({ id: record.id, success: true, message: result.message || 'Registrado en SICAS correctamente.' });
         loadRecords();
+      } else if (result?.status === 'partial_success' || result?.overall_status === 'partial_success') {
+        setRegisterResult({ id: record.id, success: false, message: result.message || 'Contacto creado, pero la poliza no fue registrada.' });
+        loadRecords();
       } else if (result?.status === 'duplicate_found') {
         setRegisterResult({ id: record.id, success: false, message: result.message || 'La poliza ya existe en SICAS.' });
+        loadRecords();
+      } else if (result?.status === 'unverified') {
+        setRegisterResult({ id: record.id, success: false, message: result.message || 'SICAS confirmo guardado pero no devolvio IDDocto. Intente busqueda manual.' });
         loadRecords();
       } else if (result?.status === 'manual_review_required') {
         setPreRegistrationModal({ record, data: result });
@@ -1040,6 +1036,92 @@ function HistorialTab({ usuario }: { usuario: any }) {
         });
         loadRecords();
       }
+    } catch (err) {
+      setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
+    } finally {
+      setResolving(null);
+    }
+  };
+
+  const handleRetryDocument = async (record: DeliveryRecord) => {
+    setResolving(record.id);
+    setRegisterResult(null);
+
+    try {
+      console.log('[EntregaPolizas][SICAS] Executing HWCAPTURE document registration via dedicated function', { delivery_id: record.id });
+
+      const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-register-document-delivery', {
+        body: { delivery_id: record.id },
+      });
+
+      if (invokeError) {
+        throw new Error(invokeError.message || 'Error de conexion con la funcion SICAS');
+      }
+
+      if (result?.success && result?.status === 'registered') {
+        setRegisterResult({ id: record.id, success: true, message: result.message || 'Poliza registrada en SICAS correctamente.' });
+      } else if (result?.status === 'unverified') {
+        setRegisterResult({ id: record.id, success: false, message: result.message || 'SICAS confirmo guardado pero no devolvio IDDocto.' });
+      } else {
+        setRegisterResult({ id: record.id, success: false, message: result?.message || 'No se pudo registrar la poliza. Intente de nuevo.' });
+      }
+      loadRecords();
+    } catch (err) {
+      setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
+    } finally {
+      setResolving(null);
+    }
+  };
+
+  const handleRetryLookup = async (record: DeliveryRecord) => {
+    setResolving(record.id);
+    setRegisterResult(null);
+
+    try {
+      const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-register-policy-delivery', {
+        body: { delivery_id: record.id, action: 'retry_lookup' },
+      });
+
+      if (invokeError) throw new Error(invokeError.message || 'Error de conexion');
+
+      if (result?.success && result?.status === 'registered') {
+        setRegisterResult({ id: record.id, success: true, message: result.message || 'Poliza encontrada en SICAS.' });
+      } else {
+        setRegisterResult({ id: record.id, success: false, message: result?.message || 'Documento no encontrado en SICAS.' });
+      }
+      loadRecords();
+    } catch (err) {
+      setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
+    } finally {
+      setResolving(null);
+    }
+  };
+
+  const [manualCaptureModal, setManualCaptureModal] = useState<DeliveryRecord | null>(null);
+  const [manualDocId, setManualDocId] = useState('');
+  const [diagnosticModal, setDiagnosticModal] = useState<DeliveryRecord | null>(null);
+
+  const handleManualCapture = async () => {
+    if (!manualCaptureModal || !manualDocId.trim()) return;
+    const record = manualCaptureModal;
+    setManualCaptureModal(null);
+    setResolving(record.id);
+    setRegisterResult(null);
+
+    try {
+      const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-register-policy-delivery', {
+        body: { delivery_id: record.id, action: 'manual_capture', sicas_document_id: manualDocId.trim() },
+      });
+
+      if (invokeError) throw new Error(invokeError.message || 'Error de conexion');
+
+      if (result?.success) {
+        setRegisterResult({ id: record.id, success: true, message: result.message || `Documento ${manualDocId} verificado y guardado.` });
+      } else {
+        setRegisterResult({ id: record.id, success: false, message: result?.message || 'No se pudo verificar el documento.' });
+      }
+      setManualDocId('');
+      loadRecords();
     } catch (err) {
       setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
     } finally {
@@ -1327,16 +1409,97 @@ function HistorialTab({ usuario }: { usuario: any }) {
                             <span className="inline-flex items-center gap-1 text-[10px] text-sky-600 dark:text-sky-400">
                               <Loader2 className="w-3 h-3 animate-spin" /> Registrando en SICAS...
                             </span>
-                          ) : r.sicas_registration_status === 'manual_review_required' ? (
+                          ) : r.sicas_registration_status === 'partial_success' ? (
                             <div className="flex items-center gap-1 justify-center">
                               <button
-                                onClick={() => handleResolveSicas(r)}
+                                onClick={() => handleRetryDocument(r)}
                                 disabled={resolving === r.id}
                                 className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors disabled:opacity-50"
-                                title="Reintentar registro automatico en SICAS"
+                                title="Reintentar solo el registro de poliza (contacto ya creado)"
                               >
                                 <Zap className="w-3 h-3" />
-                                Reintentar
+                                Reintentar poliza
+                              </button>
+                            </div>
+                          ) : r.sicas_registration_status === 'document_not_created' ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <button
+                                onClick={() => handleRetryDocument(r)}
+                                disabled={resolving === r.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-md transition-colors disabled:opacity-50"
+                                title="Reintentar solo el registro de documento (sin crear contacto)"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                Reintentar registro
+                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setDiagnosticModal(r)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
+                                  title="Ver diagnostico de registro HWCAPTURE"
+                                >
+                                  <Eye className="w-2.5 h-2.5" />
+                                  Diagnostico
+                                </button>
+                                <button
+                                  onClick={() => { setManualCaptureModal(r); setManualDocId(''); }}
+                                  disabled={resolving === r.id}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/30 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 rounded transition-colors disabled:opacity-50"
+                                  title="Capturar manualmente el IDDocto de SICAS"
+                                >
+                                  <Edit3 className="w-2.5 h-2.5" />
+                                  IDDocto
+                                </button>
+                              </div>
+                            </div>
+                          ) : r.sicas_registration_status === 'unverified' ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <button
+                                onClick={() => handleRetryLookup(r)}
+                                disabled={resolving === r.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-md transition-colors disabled:opacity-50"
+                                title="Buscar el documento en SICAS sin re-registrar"
+                              >
+                                <Search className="w-3 h-3" />
+                                Reintentar busqueda
+                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => { setManualCaptureModal(r); setManualDocId(''); }}
+                                  disabled={resolving === r.id}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/30 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 rounded transition-colors disabled:opacity-50"
+                                  title="Capturar manualmente el IDDocto de SICAS"
+                                >
+                                  <Edit3 className="w-2.5 h-2.5" />
+                                  IDDocto
+                                </button>
+                                <button
+                                  onClick={() => setDiagnosticModal(r)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
+                                  title="Ver diagnostico de busqueda"
+                                >
+                                  <Eye className="w-2.5 h-2.5" />
+                                  Diagnostico
+                                </button>
+                              </div>
+                            </div>
+                          ) : r.sicas_registration_status === 'manual_review_required' || r.sicas_registration_status === 'validation_failed' ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <button
+                                onClick={() => handleRetryDocument(r)}
+                                disabled={resolving === r.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors disabled:opacity-50"
+                                title="Reintentar registro de documento en SICAS"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                Reintentar registro
+                              </button>
+                              <button
+                                onClick={() => setDiagnosticModal(r)}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
+                              >
+                                <Eye className="w-2.5 h-2.5" />
+                                Diagnostico
                               </button>
                             </div>
                           ) : canAttemptRegistration(r) ? (
@@ -1406,6 +1569,350 @@ function HistorialTab({ usuario }: { usuario: any }) {
           isRegistering={!!registering}
         />
       )}
+
+      {manualCaptureModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setManualCaptureModal(null)} />
+          <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-xl">
+                <Edit3 className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-neutral-900 dark:text-white">Capturar IDDocto</h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  Ingresa el ID de documento que SICAS asigno a esta poliza. Se verificara contra SICAS antes de guardar.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">IDDocto SICAS</label>
+              <input
+                type="text"
+                value={manualDocId}
+                onChange={(e) => setManualDocId(e.target.value)}
+                placeholder="Ej: 123456"
+                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                autoFocus
+              />
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
+                Poliza: {manualCaptureModal.manual_policy_number || manualCaptureModal.policy_number || 'N/A'}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setManualCaptureModal(null)}
+                className="px-3 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleManualCapture}
+                disabled={!manualDocId.trim()}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Verificar y guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {diagnosticModal && (
+        <DiagnosticModal
+          record={diagnosticModal}
+          onClose={() => setDiagnosticModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ========================
+// DIAGNOSTIC MODAL
+// ========================
+
+function DiagnosticModal({ record, onClose }: { record: DeliveryRecord; onClose: () => void }) {
+  const lookupData = (record as any).sicas_document_lookup_response as Record<string, any> | null;
+  const debugData = (record as any).sicas_request_debug as Record<string, any> | null;
+
+  const regDiag = (debugData?.document_registration_diagnostic || debugData?.registration_diagnostics) as {
+    executed?: boolean;
+    method?: string;
+    key_process?: string;
+    key_code?: string;
+    tproc?: string;
+    type_format?: string;
+    payload_fields?: Record<string, string>;
+    missing_fields?: string[];
+    field_mapping?: Record<string, string>;
+    plain_data_xml?: string;
+    encrypted_data_xml_length?: number;
+    soap_request_redacted?: string;
+    soap_response?: string;
+    parsed_response?: { response_nbr: number | null; response_txt: string; has_success: boolean; has_error: boolean } | null;
+    detected_id_docto?: string | null;
+    document_stage_status?: string;
+    encryption_used?: boolean;
+    encryption_method?: string;
+    iv_used?: string;
+    error_message?: string | null;
+    // Legacy fields (pre-update records)
+    keyProcess?: string;
+    keyCode?: string;
+    tProc?: string;
+    typeFormat?: string;
+    dataXmlPlain?: string;
+    dataXmlEncryptedLength?: number;
+    soapResponsePreview?: string;
+    fieldMapping?: Record<string, string>;
+    encryptionUsed?: boolean;
+    encryptionMethod?: string;
+    ivUsed?: string;
+  } | null;
+
+  const diagnostics = lookupData?.diagnostics as Array<{
+    strategy: string;
+    request_summary: Record<string, string>;
+    results_count: number;
+    best_match_score: number;
+    matched_id_docto: string | null;
+    error?: string;
+    duration_ms?: number;
+  }> | null;
+  const searchContext = lookupData?.search_context as Record<string, string> | null;
+  const multipleMatches = lookupData?.multiple_matches as Array<{
+    id_docto: string;
+    documento: string;
+    cliente: string;
+    score: number;
+    method: string;
+  }> | null;
+
+  const stageStatusLabels: Record<string, { label: string; color: string }> = {
+    not_attempted: { label: 'No ejecutado', color: 'text-neutral-500 bg-neutral-100 dark:bg-neutral-700' },
+    sent_to_sicas: { label: 'Enviado a SICAS', color: 'text-blue-700 bg-blue-100 dark:bg-blue-900/30' },
+    success_with_id: { label: 'Creado (con ID)', color: 'text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30' },
+    success_without_id: { label: 'Exito sin ID', color: 'text-amber-700 bg-amber-100 dark:bg-amber-900/30' },
+    not_created: { label: 'No creado', color: 'text-red-700 bg-red-100 dark:bg-red-900/30' },
+    failed: { label: 'Fallo', color: 'text-red-700 bg-red-100 dark:bg-red-900/30' },
+    duplicate: { label: 'Duplicado', color: 'text-amber-700 bg-amber-100 dark:bg-amber-900/30' },
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-4 animate-in fade-in zoom-in-95">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-neutral-900 dark:text-white">Diagnostico SICAS</h3>
+          <button onClick={onClose} className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg">
+            <X className="w-4 h-4 text-neutral-500" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {/* === REGISTRATION DIAGNOSTIC SECTION (ALWAYS FIRST) === */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Registro de documento / HWCAPTURE</p>
+            {regDiag ? (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 space-y-2">
+                {/* Stage status badge */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-neutral-500">Estado:</span>
+                  {(() => {
+                    const status = regDiag.document_stage_status || 'sent_to_sicas';
+                    const info = stageStatusLabels[status] || stageStatusLabels['sent_to_sicas'];
+                    return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${info.color}`}>{info.label}</span>;
+                  })()}
+                  {regDiag.detected_id_docto && (
+                    <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300">IDDocto: {regDiag.detected_id_docto}</span>
+                  )}
+                </div>
+
+                {regDiag.error_message && (
+                  <div className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1">{regDiag.error_message}</div>
+                )}
+
+                {/* SOAP method info */}
+                <div className="grid grid-cols-3 gap-1 text-[10px]">
+                  <div><span className="text-neutral-500">Method:</span> <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{regDiag.method || regDiag.key_process ? 'ProcesarWS' : 'N/A'}</span></div>
+                  <div><span className="text-neutral-500">KeyProcess:</span> <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{regDiag.key_process || regDiag.keyProcess || 'DATA'}</span></div>
+                  <div><span className="text-neutral-500">KeyCode:</span> <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{regDiag.key_code || regDiag.keyCode || 'HWCAPTURE'}</span></div>
+                  <div><span className="text-neutral-500">TProc:</span> <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{regDiag.tproc || regDiag.tProc || 'Save_Data'}</span></div>
+                  <div><span className="text-neutral-500">TypeFormat:</span> <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{regDiag.type_format || regDiag.typeFormat || 'XML'}</span></div>
+                  <div><span className="text-neutral-500">Encriptacion:</span> <span className={`font-mono font-medium ${(regDiag.encryption_used ?? regDiag.encryptionUsed) ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{regDiag.encryption_method || regDiag.encryptionMethod || 'N/A'}</span></div>
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-[10px]">
+                  {(regDiag.iv_used || regDiag.ivUsed) && <div><span className="text-neutral-500">IV:</span> <span className="font-mono text-blue-700 dark:text-blue-300">{regDiag.iv_used || regDiag.ivUsed}</span></div>}
+                  {(regDiag.encrypted_data_xml_length || regDiag.dataXmlEncryptedLength) && <div><span className="text-neutral-500">DataXML enc. length:</span> <span className="font-mono text-blue-700 dark:text-blue-300">{regDiag.encrypted_data_xml_length || regDiag.dataXmlEncryptedLength}</span></div>}
+                </div>
+
+                {/* Payload fields */}
+                {regDiag.payload_fields && Object.keys(regDiag.payload_fields).length > 0 && (
+                  <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
+                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">Campos del payload ({Object.keys(regDiag.payload_fields).length})</p>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                      {Object.entries(regDiag.payload_fields).map(([key, val]) => (
+                        <div key={key} className="font-mono truncate">
+                          <span className="text-neutral-500">{key}:</span>{' '}
+                          <span className="text-blue-700 dark:text-blue-300 font-medium">{val || <span className="text-red-400 italic">vacio</span>}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Missing fields */}
+                {regDiag.missing_fields && regDiag.missing_fields.length > 0 && (
+                  <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
+                    <p className="text-[9px] font-semibold text-red-500 mb-1">Campos faltantes o vacios ({regDiag.missing_fields.length})</p>
+                    <div className="flex flex-wrap gap-1">
+                      {regDiag.missing_fields.map((f) => (
+                        <span key={f} className="text-[9px] font-mono bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">{f}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Field mapping */}
+                {(regDiag.field_mapping || regDiag.fieldMapping) && Object.keys(regDiag.field_mapping || regDiag.fieldMapping || {}).length > 0 && (
+                  <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
+                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">Mapeo de campos (interno - SICAS)</p>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                      {Object.entries(regDiag.field_mapping || regDiag.fieldMapping || {}).map(([from, to]) => (
+                        <div key={from} className="font-mono">
+                          <span className="text-neutral-500">{from}</span>
+                          <span className="text-neutral-400 mx-1">-&gt;</span>
+                          <span className="text-blue-700 dark:text-blue-300">{to}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Parsed response */}
+                {regDiag.parsed_response && (
+                  <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
+                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">Respuesta parseada</p>
+                    <div className="grid grid-cols-2 gap-1 text-[10px]">
+                      <div><span className="text-neutral-500">RESPONSENBR:</span> <span className={`font-mono font-bold ${regDiag.parsed_response.response_nbr === 1 ? 'text-emerald-600' : 'text-red-600'}`}>{regDiag.parsed_response.response_nbr ?? 'null'}</span></div>
+                      <div><span className="text-neutral-500">RESPONSETXT:</span> <span className="font-mono text-neutral-700 dark:text-neutral-300">{regDiag.parsed_response.response_txt || 'vacio'}</span></div>
+                      <div><span className="text-neutral-500">hasSuccess:</span> <span className={`font-mono ${regDiag.parsed_response.has_success ? 'text-emerald-600' : 'text-neutral-400'}`}>{String(regDiag.parsed_response.has_success)}</span></div>
+                      <div><span className="text-neutral-500">hasError:</span> <span className={`font-mono ${regDiag.parsed_response.has_error ? 'text-red-600' : 'text-neutral-400'}`}>{String(regDiag.parsed_response.has_error)}</span></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* DataXML plain */}
+                {(regDiag.plain_data_xml || regDiag.dataXmlPlain) && (
+                  <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
+                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">DataXML enviado (plain)</p>
+                    <pre className="text-[9px] font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900/50 rounded p-2 overflow-x-auto max-h-28 whitespace-pre-wrap break-all">{regDiag.plain_data_xml || regDiag.dataXmlPlain}</pre>
+                  </div>
+                )}
+
+                {/* SOAP Request redacted */}
+                {regDiag.soap_request_redacted && (
+                  <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
+                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">SOAP Request (redactado)</p>
+                    <pre className="text-[9px] font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900/50 rounded p-2 overflow-x-auto max-h-28 whitespace-pre-wrap break-all">{regDiag.soap_request_redacted.substring(0, 1500)}</pre>
+                  </div>
+                )}
+
+                {/* SOAP Response */}
+                {(regDiag.soap_response || regDiag.soapResponsePreview) && (
+                  <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
+                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">Respuesta SOAP</p>
+                    <pre className="text-[9px] font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900/50 rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap break-all">{(regDiag.soap_response || regDiag.soapResponsePreview || '').substring(0, 2000)}</pre>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-neutral-100 dark:bg-neutral-700/30 border border-neutral-200 dark:border-neutral-600 rounded-lg p-3">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">La etapa de registro de documento no fue ejecutada. No hay datos de HWCAPTURE disponibles.</p>
+                <p className="text-[10px] text-neutral-400 mt-1">Usa "Reintentar registro" para ejecutar el registro del documento en SICAS.</p>
+              </div>
+            )}
+          </div>
+
+          {/* === SEARCH CONTEXT SECTION === */}
+          <div className="bg-neutral-50 dark:bg-neutral-700/30 rounded-lg p-3 space-y-1">
+            <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Datos de busqueda</p>
+            {searchContext ? (
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                {Object.entries(searchContext).map(([key, val]) => val ? (
+                  <div key={key}>
+                    <span className="text-neutral-500 dark:text-neutral-400">{key.replace(/_/g, ' ')}:</span>{' '}
+                    <span className="text-neutral-800 dark:text-white font-medium">{val}</span>
+                  </div>
+                ) : null)}
+              </div>
+            ) : (
+              <div className="text-xs text-neutral-400">
+                <p>Poliza: {record.manual_policy_number || record.policy_number || 'N/A'}</p>
+                <p>Asegurado: {record.insured_name || 'N/A'}</p>
+                <p>Intentos: {(record as any).sicas_document_lookup_attempts || 0}</p>
+                <p>Ultimo intento: {(record as any).sicas_last_lookup_at ? new Date((record as any).sicas_last_lookup_at).toLocaleString('es-MX') : 'Nunca'}</p>
+              </div>
+            )}
+          </div>
+
+          {/* === SEARCH STRATEGIES SECTION === */}
+          {diagnostics && diagnostics.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Estrategias de busqueda ejecutadas</p>
+              {diagnostics.map((d, i) => (
+                <div key={i} className={`rounded-lg border p-2.5 text-xs ${d.best_match_score >= 80 ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10' : d.best_match_score >= 60 ? 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10' : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-700/20'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-neutral-800 dark:text-white">{d.strategy}</span>
+                    {d.duration_ms !== undefined && (
+                      <span className="text-[9px] text-neutral-400">{d.duration_ms}ms</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-neutral-600 dark:text-neutral-300">
+                    <span>Resultados: <strong>{d.results_count}</strong></span>
+                    <span>Mejor score: <strong className={d.best_match_score >= 80 ? 'text-emerald-600' : d.best_match_score >= 60 ? 'text-amber-600' : ''}>{d.best_match_score}</strong></span>
+                    {d.matched_id_docto && <span>IDDocto: <strong>{d.matched_id_docto}</strong></span>}
+                    {d.error && <span className="col-span-2 text-red-500">{d.error}</span>}
+                  </div>
+                  {d.request_summary && Object.keys(d.request_summary).length > 0 && (
+                    <div className="mt-1 pt-1 border-t border-neutral-100 dark:border-neutral-600">
+                      <p className="text-[9px] text-neutral-400">
+                        {Object.entries(d.request_summary).map(([k, v]) => `${k}=${v}`).join(' | ')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : !regDiag ? (
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 py-2">
+              No hay datos de diagnostico disponibles. Ejecuta "Reintentar busqueda" para generar diagnosticos.
+            </div>
+          ) : null}
+
+          {/* === MULTIPLE MATCHES SECTION === */}
+          {multipleMatches && multipleMatches.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Posibles coincidencias (score &lt; 80)</p>
+              <div className="space-y-1">
+                {multipleMatches.map((m, i) => (
+                  <div key={i} className="flex items-center justify-between rounded border border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-900/10 px-2 py-1.5 text-xs">
+                    <div>
+                      <span className="font-medium text-neutral-800 dark:text-white">ID: {m.id_docto}</span>
+                      <span className="text-neutral-500 ml-2">{m.documento}</span>
+                      {m.cliente && <span className="text-neutral-400 ml-2 text-[10px]">{m.cliente.substring(0, 25)}</span>}
+                    </div>
+                    <span className="text-amber-600 dark:text-amber-400 font-semibold text-[10px]">Score: {m.score}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
