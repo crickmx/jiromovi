@@ -888,9 +888,9 @@ const SICAS_STATUS_CONFIG: Record<string, { label: string; color: string; icon: 
   duplicate: { label: 'Duplicado', color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400', icon: Ban },
   registering: { label: 'Registrando...', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
   registered: { label: 'Registrado', color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400', icon: CheckCircle2 },
-  partial_success: { label: 'Parcial', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400', icon: AlertCircle },
-  unverified: { label: 'No verificable', color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400', icon: AlertCircle },
-  document_not_created: { label: 'Doc. no creado', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
+  partial_success: { label: 'Pendiente registro', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400', icon: AlertCircle },
+  unverified: { label: 'Pendiente verificacion', color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400', icon: AlertCircle },
+  document_not_created: { label: 'Pendiente registro', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   uploading_files: { label: 'Subiendo docs', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
   completed: { label: 'Completado', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300', icon: CheckCircle2 },
   error: { label: 'Error', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
@@ -1043,27 +1043,35 @@ function HistorialTab({ usuario }: { usuario: any }) {
     }
   };
 
-  const handleRetryDocument = async (record: DeliveryRecord) => {
+  const handleRegisterDocument = async (record: DeliveryRecord) => {
     setResolving(record.id);
     setRegisterResult(null);
 
     try {
-      console.log('[EntregaPolizas][SICAS] Executing HWCAPTURE document registration via dedicated function', { delivery_id: record.id });
+      console.log('[SICAS] ===== REGISTRAR EN SICAS (HWCAPTURE) =====');
+      console.log('[SICAS] Calling: sicas-register-document-delivery');
+      console.log('[SICAS] Action: HWCAPTURE - Crear documento nuevo en SICAS');
+      console.log('[SICAS] delivery_id:', record.id);
+      console.log('[SICAS] policy_number:', record.policy_number || record.manual_policy_number);
+      console.log('[SICAS] sicas_client_id:', (record as any).sicas_client_id);
+      console.log('[SICAS] sicas_document_id (actual):', record.sicas_document_id || 'NULL - no existe aun');
 
       const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-register-document-delivery', {
         body: { delivery_id: record.id },
       });
+
+      console.log('[SICAS] Response:', result);
 
       if (invokeError) {
         throw new Error(invokeError.message || 'Error de conexion con la funcion SICAS');
       }
 
       if (result?.success && result?.status === 'registered') {
-        setRegisterResult({ id: record.id, success: true, message: result.message || 'Poliza registrada en SICAS correctamente.' });
+        setRegisterResult({ id: record.id, success: true, message: result.message || 'Documento registrado en SICAS correctamente.' });
       } else if (result?.status === 'unverified') {
-        setRegisterResult({ id: record.id, success: false, message: result.message || 'SICAS confirmo guardado pero no devolvio IDDocto.' });
+        setRegisterResult({ id: record.id, success: false, message: result.message || 'SICAS confirmo guardado pero no devolvio IDDocto. Usa busqueda para verificar.' });
       } else {
-        setRegisterResult({ id: record.id, success: false, message: result?.message || 'No se pudo registrar la poliza. Intente de nuevo.' });
+        setRegisterResult({ id: record.id, success: false, message: result?.message || 'No se pudo registrar el documento. Intente de nuevo.' });
       }
       loadRecords();
     } catch (err) {
@@ -1074,10 +1082,22 @@ function HistorialTab({ usuario }: { usuario: any }) {
   };
 
   const handleRetryLookup = async (record: DeliveryRecord) => {
+    if (!record.sicas_document_id && !record.sicas_registered_at) {
+      setRegisterResult({ id: record.id, success: false, message: 'No existe IDDocto de SICAS. El documento no ha sido registrado aun. Usa "Registrar en SICAS" primero.' });
+      return;
+    }
+
     setResolving(record.id);
     setRegisterResult(null);
 
     try {
+      console.log('[SICAS] ===== BUSQUEDA / VERIFICACION =====');
+      console.log('[SICAS] Calling: sicas-register-policy-delivery (retry_lookup)');
+      console.log('[SICAS] Action: BUSCAR documento existente en SICAS');
+      console.log('[SICAS] delivery_id:', record.id);
+      console.log('[SICAS] sicas_document_id:', record.sicas_document_id);
+      console.log('[SICAS] policy_number:', record.policy_number || record.manual_policy_number);
+
       const { data: result, error: invokeError } = await supabase.functions.invoke('sicas-register-policy-delivery', {
         body: { delivery_id: record.id, action: 'retry_lookup' },
       });
@@ -1085,7 +1105,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
       if (invokeError) throw new Error(invokeError.message || 'Error de conexion');
 
       if (result?.success && result?.status === 'registered') {
-        setRegisterResult({ id: record.id, success: true, message: result.message || 'Poliza encontrada en SICAS.' });
+        setRegisterResult({ id: record.id, success: true, message: result.message || 'Documento encontrado y verificado en SICAS.' });
       } else {
         setRegisterResult({ id: record.id, success: false, message: result?.message || 'Documento no encontrado en SICAS.' });
       }
@@ -1394,9 +1414,14 @@ function HistorialTab({ usuario }: { usuario: any }) {
                             {statusConfig.label}
                           </span>
                           {r.sicas_document_id && (
-                            <span className="text-[9px] text-neutral-400 dark:text-white/30">ID: {r.sicas_document_id}</span>
+                            <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono">ID: {r.sicas_document_id}</span>
                           )}
-                          {r.sicas_error_message && (
+                          {!r.sicas_document_id && ['partial_success', 'document_not_created', 'error', 'sicas_rejected', 'client_creation_failed', 'validation_failed', 'manual_review_required'].includes(r.sicas_registration_status || '') && (
+                            <span className="text-[9px] text-amber-600 dark:text-amber-400">
+                              Pendiente: ejecutar HWCAPTURE
+                            </span>
+                          )}
+                          {r.sicas_error_message && r.sicas_registration_status !== 'partial_success' && r.sicas_registration_status !== 'document_not_created' && (
                             <span className="text-[9px] text-red-500 dark:text-red-400 max-w-[140px] truncate" title={r.sicas_error_message}>
                               {r.sicas_error_message}
                             </span>
@@ -1409,28 +1434,57 @@ function HistorialTab({ usuario }: { usuario: any }) {
                             <span className="inline-flex items-center gap-1 text-[10px] text-sky-600 dark:text-sky-400">
                               <Loader2 className="w-3 h-3 animate-spin" /> Registrando en SICAS...
                             </span>
-                          ) : r.sicas_registration_status === 'partial_success' ? (
-                            <div className="flex items-center gap-1 justify-center">
-                              <button
-                                onClick={() => handleRetryDocument(r)}
-                                disabled={resolving === r.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors disabled:opacity-50"
-                                title="Reintentar solo el registro de poliza (contacto ya creado)"
-                              >
-                                <Zap className="w-3 h-3" />
-                                Reintentar poliza
-                              </button>
-                            </div>
-                          ) : r.sicas_registration_status === 'document_not_created' ? (
+                          ) : r.sicas_registration_status === 'unverified' && r.sicas_registered_at ? (
+                            /* FLOW B: Document was sent to SICAS (HWCAPTURE executed) but IDDocto not confirmed yet */
                             <div className="flex flex-col items-center gap-1">
                               <button
-                                onClick={() => handleRetryDocument(r)}
+                                onClick={() => handleRetryLookup(r)}
+                                disabled={resolving === r.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-md transition-colors disabled:opacity-50"
+                                title="Buscar el documento en SICAS (HWCAPTURE ya fue ejecutado)"
+                              >
+                                <Search className="w-3 h-3" />
+                                Verificar en SICAS
+                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleRegisterDocument(r)}
+                                  disabled={resolving === r.id}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-colors disabled:opacity-50"
+                                  title="Re-registrar documento en SICAS si la busqueda no encuentra nada"
+                                >
+                                  <Zap className="w-2.5 h-2.5" />
+                                  Re-registrar
+                                </button>
+                                <button
+                                  onClick={() => { setManualCaptureModal(r); setManualDocId(''); }}
+                                  disabled={resolving === r.id}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/30 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 rounded transition-colors disabled:opacity-50"
+                                  title="Capturar manualmente el IDDocto de SICAS"
+                                >
+                                  <Edit3 className="w-2.5 h-2.5" />
+                                  IDDocto
+                                </button>
+                                <button
+                                  onClick={() => setDiagnosticModal(r)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
+                                >
+                                  <Eye className="w-2.5 h-2.5" />
+                                  Diag
+                                </button>
+                              </div>
+                            </div>
+                          ) : ['partial_success', 'document_not_created', 'manual_review_required', 'validation_failed', 'error', 'sicas_rejected', 'client_creation_failed'].includes(r.sicas_registration_status || '') ? (
+                            /* FLOW A: Document NOT yet registered in SICAS - needs HWCAPTURE */
+                            <div className="flex flex-col items-center gap-1">
+                              <button
+                                onClick={() => handleRegisterDocument(r)}
                                 disabled={resolving === r.id}
                                 className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-md transition-colors disabled:opacity-50"
-                                title="Reintentar solo el registro de documento (sin crear contacto)"
+                                title="Registrar documento en SICAS via HWCAPTURE (el documento NO existe aun en SICAS)"
                               >
-                                <RefreshCw className="w-3 h-3" />
-                                Reintentar registro
+                                <Zap className="w-3 h-3" />
+                                Registrar en SICAS
                               </button>
                               <div className="flex items-center gap-1">
                                 <button
@@ -1451,56 +1505,6 @@ function HistorialTab({ usuario }: { usuario: any }) {
                                   IDDocto
                                 </button>
                               </div>
-                            </div>
-                          ) : r.sicas_registration_status === 'unverified' ? (
-                            <div className="flex flex-col items-center gap-1">
-                              <button
-                                onClick={() => handleRetryLookup(r)}
-                                disabled={resolving === r.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-md transition-colors disabled:opacity-50"
-                                title="Buscar el documento en SICAS sin re-registrar"
-                              >
-                                <Search className="w-3 h-3" />
-                                Reintentar busqueda
-                              </button>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => { setManualCaptureModal(r); setManualDocId(''); }}
-                                  disabled={resolving === r.id}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/30 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 rounded transition-colors disabled:opacity-50"
-                                  title="Capturar manualmente el IDDocto de SICAS"
-                                >
-                                  <Edit3 className="w-2.5 h-2.5" />
-                                  IDDocto
-                                </button>
-                                <button
-                                  onClick={() => setDiagnosticModal(r)}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
-                                  title="Ver diagnostico de busqueda"
-                                >
-                                  <Eye className="w-2.5 h-2.5" />
-                                  Diagnostico
-                                </button>
-                              </div>
-                            </div>
-                          ) : r.sicas_registration_status === 'manual_review_required' || r.sicas_registration_status === 'validation_failed' ? (
-                            <div className="flex flex-col items-center gap-1">
-                              <button
-                                onClick={() => handleRetryDocument(r)}
-                                disabled={resolving === r.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md transition-colors disabled:opacity-50"
-                                title="Reintentar registro de documento en SICAS"
-                              >
-                                <RefreshCw className="w-3 h-3" />
-                                Reintentar registro
-                              </button>
-                              <button
-                                onClick={() => setDiagnosticModal(r)}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
-                              >
-                                <Eye className="w-2.5 h-2.5" />
-                                Diagnostico
-                              </button>
                             </div>
                           ) : canAttemptRegistration(r) ? (
                             <div className="flex items-center gap-1 justify-center">
@@ -1830,9 +1834,25 @@ function DiagnosticModal({ record, onClose }: { record: DeliveryRecord; onClose:
                 )}
               </div>
             ) : (
-              <div className="bg-neutral-100 dark:bg-neutral-700/30 border border-neutral-200 dark:border-neutral-600 rounded-lg p-3">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">La etapa de registro de documento no fue ejecutada. No hay datos de HWCAPTURE disponibles.</p>
-                <p className="text-[10px] text-neutral-400 mt-1">Usa "Reintentar registro" para ejecutar el registro del documento en SICAS.</p>
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">Documento pendiente de registro en SICAS</p>
+                </div>
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  El registro HWCAPTURE no ha sido ejecutado. El documento no existe todavia en SICAS.
+                </p>
+                <div className="text-[10px] text-neutral-600 dark:text-neutral-300 space-y-1 pt-1 border-t border-amber-100 dark:border-amber-800">
+                  <p><strong>Estado:</strong> No se ha enviado HWCAPTURE</p>
+                  <p><strong>IDDocto SICAS:</strong> {record.sicas_document_id || 'No existe'}</p>
+                  <p><strong>Registro SICAS:</strong> {record.sicas_registered_at ? new Date(record.sicas_registered_at).toLocaleString('es-MX') : 'Nunca'}</p>
+                  <p><strong>Ultimo intento:</strong> {record.sicas_last_attempt_at ? new Date(record.sicas_last_attempt_at).toLocaleString('es-MX') : 'Nunca'}</p>
+                  <p><strong>Intentos:</strong> {record.sicas_registration_attempts || 0}</p>
+                  {record.sicas_error_message && <p><strong>Ultimo error:</strong> <span className="text-red-600">{record.sicas_error_message}</span></p>}
+                </div>
+                <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium pt-1">
+                  Accion recomendada: Usa el boton "Registrar en SICAS" para ejecutar HWCAPTURE y crear el documento.
+                </p>
               </div>
             )}
           </div>
@@ -1889,7 +1909,9 @@ function DiagnosticModal({ record, onClose }: { record: DeliveryRecord; onClose:
             </div>
           ) : !regDiag ? (
             <div className="text-xs text-neutral-500 dark:text-neutral-400 py-2">
-              No hay datos de diagnostico disponibles. Ejecuta "Reintentar busqueda" para generar diagnosticos.
+              No hay datos de busqueda. {record.sicas_document_id || record.sicas_registered_at
+                ? 'Ejecuta "Verificar en SICAS" para buscar el documento.'
+                : 'Primero registra el documento con "Registrar en SICAS", despues podras verificarlo.'}
             </div>
           ) : null}
 
