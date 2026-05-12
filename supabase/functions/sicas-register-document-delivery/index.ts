@@ -14,6 +14,7 @@ const corsHeaders = {
 // ============================================================
 
 const SICAS_3DES_KEY = "%SOnlineBOGO2001-2015WS#";
+const SICAS_DEFAULT_ENDPOINT = "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
 
 const HWCAPTURE_FIELD_MAP: Record<string, string> = {
   FechaInicio: "FDesde",
@@ -51,6 +52,12 @@ interface DocumentRegistrationDiagnostic {
   encryption_method: string;
   iv_used: string;
   error_message: string | null;
+  http_status?: number;
+  endpoint_used?: string;
+  soap_action?: string;
+  request_timestamp?: string;
+  response_timestamp?: string;
+  duration_ms?: number;
 }
 
 // ============================================================
@@ -123,10 +130,6 @@ function extractFirstValidId(responseText: string, fieldNames: string[]): string
     const jsonRegex = new RegExp(`"${field}"\\s*:\\s*"?(\\d+)"?`, "i");
     const jsonMatch = decoded.match(jsonRegex);
     if (jsonMatch?.[1] && parseInt(jsonMatch[1]) > 0) return jsonMatch[1];
-
-    const attrRegex = new RegExp(`${field}["\\s:=]*>?(\\d+)`, "i");
-    const attrMatch = decoded.match(attrRegex);
-    if (attrMatch?.[1] && parseInt(attrMatch[1]) > 0) return attrMatch[1];
   }
 
   const processDataMatch = decoded.match(/<PROCESSDATA[^>]*>([\s\S]*?)<\/PROCESSDATA>/i);
@@ -156,24 +159,23 @@ function buildHwcaptureDataXml(sanitizedPayload: Record<string, string>): string
   return `<InfoData><DatDocumentos>${docElements.join("")}</DatDocumentos><DatDoctoDetail><IDDocto>-1</IDDocto></DatDoctoDetail></InfoData>`;
 }
 
-async function encryptDataXml(plainXml: string, username: string): Promise<string> {
-  const urlEncodedXml = encodeURIComponent(plainXml);
+async function encryptDataXml(plainXml: string, username: string): Promise<{ encrypted: string; method: string }> {
   const encoder = new TextEncoder();
 
-  const keyStr = SICAS_3DES_KEY;
-  const keyBytes = encoder.encode(keyStr);
+  const keyBytes = encoder.encode(SICAS_3DES_KEY);
   const key24 = new Uint8Array(24);
   key24.set(keyBytes.slice(0, Math.min(keyBytes.length, 24)));
 
   const ivStr = username.substring(0, 8).padEnd(8, "\0");
   const ivBytes = encoder.encode(ivStr);
 
-  const plainBytes = encoder.encode(urlEncodedXml);
+  const plainBytes = encoder.encode(plainXml);
   const blockSize = 8;
   const paddedLen = Math.ceil(plainBytes.length / blockSize) * blockSize;
   const padded = new Uint8Array(paddedLen);
   padded.set(plainBytes);
 
+  // Try Web Crypto first (Deno/Supabase Edge supports DES-EDE3-CBC)
   try {
     const cryptoKey = await crypto.subtle.importKey(
       "raw",
@@ -194,19 +196,23 @@ async function encryptDataXml(plainXml: string, username: string): Promise<strin
     for (let i = 0; i < encBytes.length; i++) {
       binary += String.fromCharCode(encBytes[i]);
     }
-    return btoa(binary);
-  } catch (_cryptoError) {
-    try {
-      const { createCipheriv } = await import("node:crypto");
-      const cipher = createCipheriv("des-ede3-cbc", key24, ivBytes);
-      cipher.setAutoPadding(false);
-      const enc1 = cipher.update(padded);
-      const enc2 = cipher.final();
-      const result = Buffer.concat([enc1, enc2]);
-      return result.toString("base64");
-    } catch (nodeError: any) {
-      throw new Error(`Encryption failed: WebCrypto and Node crypto both unavailable. ${nodeError.message}`);
-    }
+    return { encrypted: btoa(binary), method: "WebCrypto-DES-EDE3-CBC" };
+  } catch (webCryptoError: any) {
+    console.warn(`[HWCAPTURE] WebCrypto DES-EDE3-CBC not available: ${webCryptoError.message}. Trying node:crypto...`);
+  }
+
+  // Fallback: Node.js crypto module (available in Deno)
+  try {
+    const { createCipheriv } = await import("node:crypto");
+    const cipher = createCipheriv("des-ede3-cbc", key24, ivBytes);
+    cipher.setAutoPadding(false);
+    const enc1 = cipher.update(padded);
+    const enc2 = cipher.final();
+    const result = Buffer.concat([enc1, enc2]);
+    return { encrypted: result.toString("base64"), method: "NodeCrypto-des-ede3-cbc" };
+  } catch (nodeError: any) {
+    console.error(`[HWCAPTURE] Node crypto also failed: ${nodeError.message}`);
+    throw new Error(`Encryption failed: both WebCrypto and Node crypto unavailable. WebCrypto: ${webCryptoError?.message}, Node: ${nodeError.message}`);
   }
 }
 
@@ -266,11 +272,9 @@ async function resolveFieldsForHwcapture(
   });
   await Promise.all(catalogPromises);
 
-  // Use existing resolved fields if available
   const existingResolved = delivery.sicas_resolved_fields as Record<string, { value: string; source: string }> | null;
 
   const resolveField = (fieldName: string, catalogTypeId: number, searchTerms: string[], overrideKey: string | null): void => {
-    // Priority 1: Override from delivery
     const overrideValue = overrideKey ? delivery[overrideKey] : null;
     if (overrideValue) {
       payload[fieldName] = String(overrideValue);
@@ -278,14 +282,12 @@ async function resolveFieldsForHwcapture(
       return;
     }
 
-    // Priority 2: Previously resolved value
     if (existingResolved?.[fieldName]?.value && existingResolved[fieldName].value !== "0" && existingResolved[fieldName].value !== "__auto_create__") {
       payload[fieldName] = existingResolved[fieldName].value;
       resolved_sources[fieldName] = `prev_resolved:${existingResolved[fieldName].source}`;
       return;
     }
 
-    // Priority 3: Default from sicas_hwcapture_defaults
     const defaultVal = getDefault(fieldName);
     if (defaultVal) {
       payload[fieldName] = defaultVal;
@@ -293,7 +295,6 @@ async function resolveFieldsForHwcapture(
       return;
     }
 
-    // Priority 4: Catalog match
     const records = catalogCache[catalogTypeId] || [];
     if (records.length > 0 && searchTerms.length > 0) {
       const match = findCatalogMatch(records, searchTerms);
@@ -304,7 +305,6 @@ async function resolveFieldsForHwcapture(
       }
     }
 
-    // Priority 5: First catalog item as last resort
     if (records.length === 1) {
       payload[fieldName] = records[0].id_sicas;
       resolved_sources[fieldName] = "single_catalog_item";
@@ -314,7 +314,6 @@ async function resolveFieldsForHwcapture(
     warnings.push(`${fieldName}: no se pudo resolver (catalogo ${catalogTypeId} tiene ${records.length} items)`);
   };
 
-  // Resolve each field
   resolveField("IDTipoDocto", 24, ["POLIZA", "POLIZAS", "POL"], "sicas_override_tipo_docto");
   resolveField("IDCia", 12, ["QUALITAS", "QUALITAS COMPANIA DE SEGUROS", "QUALITAS COMPANIA", "QUALITAS SEGUROS"], "sicas_override_cia");
   resolveField("IDRamo", 9, ["AUTOS", "AUTOMOVILES", "VEHICULOS", "DANOS AUTOS", "AUTO"], "sicas_override_ramo");
@@ -324,7 +323,7 @@ async function resolveFieldsForHwcapture(
   resolveField("IDGrupo", 62, ["GENERAL"], "sicas_override_grupo");
   resolveField("Estatus", 40, ["VIGENTE", "VIGENTES", "V", "VIG", "ACTIVA"], "sicas_override_estatus");
 
-  // IDEjecutivo: special handling
+  // IDEjecutivo
   if (delivery.sicas_override_ejecutivo) {
     payload.IDEjecutivo = delivery.sicas_override_ejecutivo;
     resolved_sources.IDEjecutivo = "override";
@@ -335,20 +334,17 @@ async function resolveFieldsForHwcapture(
     payload.IDEjecutivo = getDefault("IDEjecutivo")!;
     resolved_sources.IDEjecutivo = "default";
   } else if (delivery.vendor_sicas_id) {
-    payload.IDEjecutivo = delivery.vendor_sicas_id;
+    payload.IDEjecutivo = String(delivery.vendor_sicas_id);
     resolved_sources.IDEjecutivo = "fallback_vendor_id";
-    warnings.push("IDEjecutivo: usando vendor_sicas_id como fallback");
-  } else {
-    warnings.push("IDEjecutivo: no se pudo resolver");
   }
 
-  // IDCli: MUST exist (the whole point of this function - client was already created)
+  // IDCli
   const clientId = delivery.sicas_client_id || existingResolved?.IDCli?.value || delivery.sicas_override_cliente;
   if (clientId && clientId !== "0" && clientId !== "__auto_create__") {
     payload.IDCli = String(clientId);
     resolved_sources.IDCli = "existing_client";
   } else {
-    warnings.push("IDCli: no se encontro el ID del cliente en la base de datos");
+    warnings.push("IDCli: no se encontro el ID del cliente");
   }
 
   // IDVend
@@ -371,18 +367,19 @@ async function resolveFieldsForHwcapture(
   if (startDate) { payload.FechaInicio = startDate; resolved_sources.FechaInicio = "delivery"; }
   if (endDate) { payload.FechaFin = endDate; resolved_sources.FechaFin = "delivery"; }
 
-  // Premium
-  const premium = sanitizeField(delivery.total_premium || delivery.extracted_data?.primaTotal);
-  if (premium && premium !== "0") { payload.PrimaTotal = premium; resolved_sources.PrimaTotal = "delivery"; }
+  // Premium - normalize: remove commas, keep dot decimal
+  const rawPremium = sanitizeField(delivery.total_premium || delivery.extracted_data?.primaTotal);
+  if (rawPremium && rawPremium !== "0") {
+    const normalizedPremium = rawPremium.replace(/,/g, "").replace(/\$/g, "").trim();
+    payload.PrimaTotal = normalizedPremium;
+    resolved_sources.PrimaTotal = "delivery";
+  }
 
   // Office
-  if (delivery.sicas_office_id) { payload.IDOficina = delivery.sicas_office_id; resolved_sources.IDOficina = "delivery"; }
+  if (delivery.sicas_office_id) { payload.IDOficina = String(delivery.sicas_office_id); resolved_sources.IDOficina = "delivery"; }
 
   // Vehicle fields
-  if (delivery.vehicle_description) { payload.Descripcion = delivery.vehicle_description; resolved_sources.Descripcion = "delivery"; }
-  if (delivery.plates) { payload.Placas = delivery.plates; resolved_sources.Placas = "delivery"; }
-  if (delivery.vin) { payload.NumSerie = delivery.vin; resolved_sources.NumSerie = "delivery"; }
-  if (delivery.engine) { payload.Motor = delivery.engine; resolved_sources.Motor = "delivery"; }
+  if (delivery.vehicle_description) { payload.Descripcion = normalizeText(delivery.vehicle_description); resolved_sources.Descripcion = "delivery"; }
 
   return { payload, warnings, resolved_sources };
 }
@@ -397,18 +394,29 @@ async function executeHwcapture(
   sicasUsername: string,
   sicasPassword: string,
 ): Promise<{ success: boolean; documentId?: string; noIdReturned?: boolean; error?: string; isDuplicate?: boolean; duplicateId?: string; diagnostics: DocumentRegistrationDiagnostic }> {
+  const startTime = Date.now();
   const dataXmlPlain = buildHwcaptureDataXml(payload);
-  const encodedPassword = sicasPassword.replace(/ /g, "%20");
 
   let dataXmlEncrypted: string;
   let encryptionMethod = "none";
   try {
-    dataXmlEncrypted = await encryptDataXml(dataXmlPlain, sicasUsername);
-    encryptionMethod = "TripleDES-CBC-ZeroPad";
+    const result = await encryptDataXml(dataXmlPlain, sicasUsername);
+    dataXmlEncrypted = result.encrypted;
+    encryptionMethod = result.method;
   } catch (encErr: any) {
-    console.error(`[HWCAPTURE] Encryption failed: ${encErr.message}. Sending plain XML.`);
-    dataXmlEncrypted = dataXmlPlain;
-    encryptionMethod = "FAILED_PLAIN_FALLBACK";
+    console.error(`[HWCAPTURE] Encryption FAILED: ${encErr.message}. Cannot proceed.`);
+    const diagnostics: DocumentRegistrationDiagnostic = {
+      executed: false, method: "ProcesarWS", key_process: "DATA", key_code: "HWCAPTURE",
+      tproc: "Save_Data", type_format: "XML", payload_fields: { ...payload },
+      missing_fields: [], field_mapping: {}, plain_data_xml: dataXmlPlain,
+      encrypted_data_xml_length: 0, soap_request_redacted: "", soap_response: "",
+      parsed_response: null, detected_id_docto: null, document_stage_status: "failed",
+      encryption_used: false, encryption_method: "FAILED", iv_used: sicasUsername.substring(0, 8),
+      error_message: `Encryption failed: ${encErr.message}`,
+      endpoint_used: sicasEndpoint, soap_action: "http://tempuri.org/ProcesarWS",
+      request_timestamp: new Date().toISOString(), duration_ms: Date.now() - startTime,
+    };
+    return { success: false, error: `Encryption failed: ${encErr.message}`, diagnostics };
   }
 
   const fieldMapping: Record<string, string> = {};
@@ -425,8 +433,8 @@ async function executeHwcapture(
     <tem:ProcesarWS>
       <tem:oDataWS>
         <tem:Credentials>
-          <tem:UserName>${sicasUsername}</tem:UserName>
-          <tem:Password>${encodedPassword}</tem:Password>
+          <tem:UserName>${escapeXml(sicasUsername)}</tem:UserName>
+          <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
         </tem:Credentials>
         <tem:TypeFormat>XML</tem:TypeFormat>
         <tem:KeyProcess>DATA</tem:KeyProcess>
@@ -438,15 +446,24 @@ async function executeHwcapture(
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-  console.log(`[HWCAPTURE] Executing SICAS ProcesarWS HWCAPTURE`);
+  console.log(`[HWCAPTURE] ========== EXECUTING SICAS HWCAPTURE ==========`);
   console.log(`[HWCAPTURE] Endpoint: ${sicasEndpoint}`);
-  console.log(`[HWCAPTURE] Fields: ${Object.keys(payload).join(", ")}`);
-  console.log(`[HWCAPTURE] IDCli=${payload.IDCli}, IDVend=${payload.IDVend}, Documento=${payload.Documento}`);
-  console.log(`[HWCAPTURE] Encryption: ${encryptionMethod}, IV: ${ivUsed}`);
-  console.log(`[HWCAPTURE] DataXML plain: ${dataXmlPlain}`);
+  console.log(`[HWCAPTURE] SOAPAction: http://tempuri.org/ProcesarWS`);
+  console.log(`[HWCAPTURE] Method: ProcesarWS / KeyProcess=DATA / KeyCode=HWCAPTURE / TProc=Save_Data`);
+  console.log(`[HWCAPTURE] Username: ${sicasUsername}`);
+  console.log(`[HWCAPTURE] Encryption: ${encryptionMethod}, IV: "${ivUsed}"`);
+  console.log(`[HWCAPTURE] Payload fields: ${JSON.stringify(payload)}`);
+  console.log(`[HWCAPTURE] DataXML (plain): ${dataXmlPlain}`);
+  console.log(`[HWCAPTURE] DataXML (encrypted, first 100 chars): ${dataXmlEncrypted.substring(0, 100)}`);
+  console.log(`[HWCAPTURE] DataXML encrypted length: ${dataXmlEncrypted.length}`);
+  console.log(`[HWCAPTURE] SOAP envelope size: ${soapEnvelope.length} bytes`);
 
   const requiredFields = ["IDCli", "IDVend", "Documento", "IDCia", "IDRamo", "IDSubRamo", "IDMon", "IDFPago", "IDEjecutivo", "FechaInicio", "FechaFin", "PrimaTotal", "Estatus", "IDTipoDocto"];
   const missingFields = requiredFields.filter(f => !payload[f] || payload[f] === "0" || payload[f] === "");
+
+  if (missingFields.length > 0) {
+    console.warn(`[HWCAPTURE] WARNING: Missing fields (will attempt anyway): ${missingFields.join(", ")}`);
+  }
 
   const diagnostics: DocumentRegistrationDiagnostic = {
     executed: true,
@@ -468,10 +485,13 @@ async function executeHwcapture(
     parsed_response: null,
     detected_id_docto: null,
     document_stage_status: "sent_to_sicas",
-    encryption_used: encryptionMethod !== "FAILED_PLAIN_FALLBACK",
+    encryption_used: true,
     encryption_method: encryptionMethod,
     iv_used: ivUsed,
     error_message: null,
+    endpoint_used: sicasEndpoint,
+    soap_action: "http://tempuri.org/ProcesarWS",
+    request_timestamp: new Date().toISOString(),
   };
 
   const controller = new AbortController();
@@ -490,15 +510,37 @@ async function executeHwcapture(
     clearTimeout(timeoutId);
 
     const responseText = await response.text();
-    diagnostics.soap_response = responseText.substring(0, 4000);
-    console.log(`[HWCAPTURE] Response status: ${response.status}`);
-    console.log(`[HWCAPTURE] Response body (first 1500):`, responseText.substring(0, 1500));
+    const endTime = Date.now();
+    diagnostics.soap_response = responseText.substring(0, 5000);
+    diagnostics.http_status = response.status;
+    diagnostics.response_timestamp = new Date().toISOString();
+    diagnostics.duration_ms = endTime - startTime;
+
+    console.log(`[HWCAPTURE] ========== SICAS RESPONSE ==========`);
+    console.log(`[HWCAPTURE] HTTP Status: ${response.status} ${response.statusText}`);
+    console.log(`[HWCAPTURE] Duration: ${endTime - startTime}ms`);
+    console.log(`[HWCAPTURE] Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+    console.log(`[HWCAPTURE] Response body (first 2000):`, responseText.substring(0, 2000));
 
     if (!response.ok) {
       const fault = parseSoapFault(responseText);
-      const faultMessage = fault.faultstring
-        ? `SOAP Fault [${fault.faultcode}]: ${fault.faultstring}`
-        : `SICAS HTTP ${response.status}: ${response.statusText}`;
+      console.error(`[HWCAPTURE] HTTP ERROR ${response.status}`);
+      console.error(`[HWCAPTURE] SOAP Fault code: ${fault.faultcode}`);
+      console.error(`[HWCAPTURE] SOAP Fault string: ${fault.faultstring}`);
+      console.error(`[HWCAPTURE] SOAP Fault detail: ${fault.detail}`);
+      console.error(`[HWCAPTURE] Full response: ${responseText}`);
+
+      let faultMessage: string;
+      if (fault.faultstring) {
+        faultMessage = `SOAP Fault [${fault.faultcode}]: ${fault.faultstring}`;
+        if (fault.detail) faultMessage += ` | Detail: ${fault.detail}`;
+      } else {
+        faultMessage = `SICAS HTTP ${response.status}: ${response.statusText}`;
+        if (responseText.length > 0 && responseText.length < 500) {
+          faultMessage += ` | Body: ${responseText}`;
+        }
+      }
+
       diagnostics.document_stage_status = "failed";
       diagnostics.error_message = faultMessage;
       return { success: false, error: faultMessage, diagnostics };
@@ -526,11 +568,13 @@ async function executeHwcapture(
     diagnostics.parsed_response = { response_nbr: responseNbr, response_txt: responseTxt, has_success: hasSuccess, has_error: hasError };
     diagnostics.detected_id_docto = extractedId || null;
 
+    console.log(`[HWCAPTURE] Parsed: RESPONSENBR=${responseNbr}, RESPONSETXT="${responseTxt}", hasSuccess=${hasSuccess}, hasError=${hasError}, extractedId=${extractedId}`);
+
     if (hasError && !extractedId) {
       const errorMsg = responseTxt ||
         decoded.match(/<Message>(.*?)<\/Message>/i)?.[1] ||
         decoded.match(/<faultstring>(.*?)<\/faultstring>/i)?.[1] ||
-        `Error SICAS (RESPONSENBR=${responseNbr}): ${responseText.substring(0, 200)}`;
+        `Error SICAS (RESPONSENBR=${responseNbr}): ${responseText.substring(0, 300)}`;
       diagnostics.document_stage_status = "failed";
       diagnostics.error_message = errorMsg;
       return { success: false, error: errorMsg, diagnostics };
@@ -538,22 +582,26 @@ async function executeHwcapture(
 
     if (extractedId) {
       diagnostics.document_stage_status = "success_with_id";
+      console.log(`[HWCAPTURE] SUCCESS! Document registered with IDDocto=${extractedId}`);
       return { success: true, documentId: extractedId, diagnostics };
     }
 
     if (hasSuccess) {
       diagnostics.document_stage_status = "success_without_id";
+      console.log(`[HWCAPTURE] SUCCESS (no ID returned) - SICAS confirmed save`);
       return { success: true, noIdReturned: true, diagnostics };
     }
 
     diagnostics.document_stage_status = "failed";
-    diagnostics.error_message = `Respuesta SICAS no reconocida: ${responseText.substring(0, 200)}`;
+    diagnostics.error_message = `Respuesta SICAS no reconocida: ${responseText.substring(0, 300)}`;
     return { success: false, error: diagnostics.error_message, diagnostics };
   } catch (error: any) {
     clearTimeout(timeoutId);
     const msg = error.name === "AbortError" ? "Timeout: SICAS no respondio en 45s" : error.message;
     diagnostics.document_stage_status = "failed";
     diagnostics.error_message = msg;
+    diagnostics.duration_ms = Date.now() - startTime;
+    console.error(`[HWCAPTURE] EXCEPTION: ${msg}`);
     return { success: false, error: msg, diagnostics };
   }
 }
@@ -572,19 +620,15 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const sicasUsername = Deno.env.get("SICAS_USERNAME") || "";
+    const sicasUsername = Deno.env.get("SICAS_USERNAME") || Deno.env.get("SICAS_USUARIO") || "";
     const sicasPassword = Deno.env.get("SICAS_PASSWORD") || "";
-    const sicasEndpoint = Deno.env.get("SICAS_SOAP_ENDPOINT") || Deno.env.get("SICAS_ENDPOINT") || "";
+    const sicasEndpoint = Deno.env.get("SICAS_SOAP_ENDPOINT") || Deno.env.get("SICAS_ENDPOINT") || SICAS_DEFAULT_ENDPOINT;
+
+    console.log(`[HWCAPTURE] Config: username=${sicasUsername ? 'SET' : 'MISSING'}, password=${sicasPassword ? 'SET' : 'MISSING'}, endpoint=${sicasEndpoint}`);
 
     if (!sicasUsername || !sicasPassword) {
       return new Response(
-        JSON.stringify({ success: false, error: "SICAS credentials not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    if (!sicasEndpoint) {
-      return new Response(
-        JSON.stringify({ success: false, error: "SICAS endpoint not configured" }),
+        JSON.stringify({ success: false, error: "SICAS credentials not configured (SICAS_USERNAME/SICAS_PASSWORD)" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -599,7 +643,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`[HWCAPTURE] Starting document registration for delivery_id=${delivery_id}`);
+    console.log(`[HWCAPTURE] ========== START: delivery_id=${delivery_id} ==========`);
 
     // Load the delivery record
     const { data: delivery, error: fetchError } = await supabase
@@ -615,26 +659,27 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Check if client ID exists - this is the only hard requirement
+    console.log(`[HWCAPTURE] Delivery loaded: policy=${delivery.policy_number || delivery.manual_policy_number}, client_id=${delivery.sicas_client_id}, vendor_id=${delivery.vendor_sicas_id}`);
+
+    // Check if client ID exists
     const clientId = delivery.sicas_client_id ||
       (delivery.sicas_resolved_fields as any)?.IDCli?.value ||
       delivery.sicas_override_cliente;
 
     if (!clientId || clientId === "0" || clientId === "__auto_create__") {
       const notAttemptedDiag: DocumentRegistrationDiagnostic = {
-        executed: false,
-        method: "ProcesarWS", key_process: "DATA", key_code: "HWCAPTURE",
-        tproc: "Save_Data", type_format: "XML",
-        payload_fields: {}, missing_fields: ["IDCli"],
-        field_mapping: {}, plain_data_xml: "",
-        encrypted_data_xml_length: 0, soap_request_redacted: "",
-        soap_response: "", parsed_response: null,
+        executed: false, method: "ProcesarWS", key_process: "DATA", key_code: "HWCAPTURE",
+        tproc: "Save_Data", type_format: "XML", payload_fields: {}, missing_fields: ["IDCli"],
+        field_mapping: {}, plain_data_xml: "", encrypted_data_xml_length: 0,
+        soap_request_redacted: "", soap_response: "", parsed_response: null,
         detected_id_docto: null, document_stage_status: "not_attempted",
         encryption_used: false, encryption_method: "none", iv_used: "",
         error_message: "No existe sicas_client_id. Primero se debe crear/resolver el contacto en SICAS.",
+        endpoint_used: sicasEndpoint,
       };
 
       await supabase.from("policy_deliveries").update({
+        sicas_registration_status: "document_not_created",
         sicas_request_debug: { document_registration_diagnostic: notAttemptedDiag },
         sicas_error_message: "IDCli no disponible. Use el flujo completo de registro primero.",
         sicas_error_step: "validate_client_id",
@@ -642,8 +687,7 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({
-          success: false,
-          status: "no_client_id",
+          success: false, status: "no_client_id",
           error: "No existe sicas_client_id. Primero se debe crear/resolver el contacto en SICAS.",
           document_registration_diagnostic: notAttemptedDiag,
         }),
@@ -667,19 +711,13 @@ Deno.serve(async (req: Request) => {
       sicas_error_message: null,
     }).eq("id", delivery_id);
 
-    // Resolve fields - lenient, uses existing resolved + defaults + catalogs
+    // Resolve fields
     const { payload, warnings, resolved_sources } = await resolveFieldsForHwcapture(supabase, delivery, defaults);
 
-    console.log(`[HWCAPTURE] Resolved payload: ${JSON.stringify(payload)}`);
-    console.log(`[HWCAPTURE] Warnings: ${JSON.stringify(warnings)}`);
-    console.log(`[HWCAPTURE] Missing critical fields: IDCli=${payload.IDCli ? 'OK' : 'MISSING'}, Documento=${payload.Documento ? 'OK' : 'MISSING'}`);
+    console.log(`[HWCAPTURE] Resolved ${Object.keys(payload).length} fields, ${warnings.length} warnings`);
+    console.log(`[HWCAPTURE] Payload: ${JSON.stringify(payload)}`);
 
-    // Save resolved payload for traceability
-    await supabase.from("policy_deliveries").update({
-      sicas_request_payload: payload,
-    }).eq("id", delivery_id);
-
-    // Execute HWCAPTURE - ALWAYS attempt regardless of missing non-critical fields
+    // Execute HWCAPTURE
     const result = await executeHwcapture(payload, sicasEndpoint, sicasUsername, sicasPassword);
 
     if (result.success && result.documentId) {
@@ -696,9 +734,8 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({
-          success: true,
-          status: "registered",
-          message: `Poliza registrada en SICAS con ID: ${result.documentId}`,
+          success: true, status: "registered",
+          message: `Documento registrado en SICAS con ID: ${result.documentId}`,
           document_id: result.documentId,
           document_registration_diagnostic: result.diagnostics,
         }),
@@ -709,6 +746,7 @@ Deno.serve(async (req: Request) => {
     if (result.success && result.noIdReturned) {
       await supabase.from("policy_deliveries").update({
         sicas_registration_status: "unverified",
+        sicas_registered_at: new Date().toISOString(),
         sicas_error_message: "SICAS confirmo exito pero no devolvio IDDocto.",
         sicas_error_step: "save_hwcapture",
         sicas_document_status: "unverified",
@@ -718,9 +756,8 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({
-          success: false,
-          status: "unverified",
-          message: "SICAS confirmo exito pero no devolvio IDDocto. Use 'Reintentar busqueda' para verificar.",
+          success: false, status: "unverified",
+          message: "SICAS confirmo exito pero no devolvio IDDocto. Use 'Verificar en SICAS' para buscar.",
           document_registration_diagnostic: result.diagnostics,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -734,8 +771,7 @@ Deno.serve(async (req: Request) => {
           sicas_registration_status: "registered",
           sicas_document_id: docId,
           sicas_registered_at: new Date().toISOString(),
-          sicas_error_message: null,
-          sicas_error_step: null,
+          sicas_error_message: null, sicas_error_step: null,
           sicas_document_status: "created",
           sicas_registration_stage: "completed",
           sicas_request_debug: { document_registration_diagnostic: result.diagnostics, resolved_sources, warnings },
@@ -743,11 +779,9 @@ Deno.serve(async (req: Request) => {
 
         return new Response(
           JSON.stringify({
-            success: true,
-            status: "registered",
+            success: true, status: "registered",
             message: `Poliza ya existia en SICAS con ID: ${docId}`,
-            document_id: docId,
-            is_duplicate: true,
+            document_id: docId, is_duplicate: true,
             document_registration_diagnostic: result.diagnostics,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -764,8 +798,7 @@ Deno.serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({
-          success: false,
-          status: "duplicate_no_id",
+          success: false, status: "duplicate_no_id",
           message: "Poliza duplicada en SICAS pero no se obtuvo el IDDocto.",
           document_registration_diagnostic: result.diagnostics,
         }),
@@ -773,7 +806,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // HWCAPTURE failed
+    // HWCAPTURE failed - IMPORTANT: update status so it doesn't stay stuck in "registering"
     await supabase.from("policy_deliveries").update({
       sicas_registration_status: "document_not_created",
       sicas_error_message: result.error || "Error desconocido en HWCAPTURE",
@@ -784,8 +817,7 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({
-        success: false,
-        status: "document_not_created",
+        success: false, status: "document_not_created",
         message: result.error || "Error al registrar documento en SICAS via HWCAPTURE",
         document_registration_diagnostic: result.diagnostics,
         warnings,
@@ -794,6 +826,23 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error: any) {
     console.error(`[HWCAPTURE] Unhandled error:`, error);
+
+    // Try to update the delivery status so it doesn't stay stuck
+    try {
+      const body = await req.clone().json().catch(() => ({}));
+      const delivery_id = body.delivery_id || body.policy_delivery_id || body.id;
+      if (delivery_id) {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        await supabase.from("policy_deliveries").update({
+          sicas_registration_status: "document_not_created",
+          sicas_error_message: `Error interno: ${error.message}`,
+          sicas_error_step: "unhandled_exception",
+        }).eq("id", delivery_id);
+      }
+    } catch (_) { /* ignore cleanup errors */ }
+
     return new Response(
       JSON.stringify({ success: false, error: error.message || "Error interno" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
