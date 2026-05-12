@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { createSicasRestClientWithDbAuth, SicasRestClient } from "../_shared/sicasRestClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,8 +21,8 @@ const MAX_SECONDS = 45;
 const PAGES_PER_BATCH = 999;
 const MAX_RETRIES_PER_PAGE = 3;
 const RETRY_DELAY_MS = 5000;
-const PAGE_FETCH_TIMEOUT_MS = 90000;
 const INTER_PAGE_DELAY_MS = 1500;
+const TOKEN_RENEW_INTERVAL = 3;
 
 interface SyncState {
   currentPage: number;
@@ -36,22 +37,6 @@ interface SyncState {
   droppedPages: number[];
   retryAttempts: Record<string, number>;
   incrementalSince?: string;
-}
-
-interface SoapPageResult {
-  records: Record<string, unknown>[];
-  totalPages: number;
-  totalRecords: number;
-  currentPage: number;
-}
-
-function xmlEscape(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
 }
 
 function sleep(ms: number): Promise<void> {
@@ -76,139 +61,34 @@ async function triggerSelfContinuation(jobId: string): Promise<void> {
   }
 }
 
-async function fetchSoapPage(
-  endpoint: string,
-  username: string,
-  password: string,
+async function fetchRestPage(
+  client: SicasRestClient,
+  keyCode: string,
   page: number,
   itemsPerPage: number,
-  incrementalSince?: string
-): Promise<SoapPageResult> {
-  const escapedUser = xmlEscape(username);
-  const escapedPass = xmlEscape(password);
+  _incrementalSince?: string
+): Promise<{ records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number }> {
+  const response = await client.readReport({
+    keyCode,
+    pageRequested: page,
+    itemsForPage: itemsPerPage,
+    sortFields: "DatDocumentos.FCaptura DESC",
+    formatResponse: 2,
+  });
 
-  let conditionsAdd = "Estatus;0;0;0;Vigentes;-1;0;DatDocumentos.Status";
-  if (incrementalSince) {
-    const parts = incrementalSince.split("-");
-    const fromDate = `${parts[2]}/${parts[1]}/${parts[0]} 00:00`;
-    const today = new Date();
-    const toDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()} 23:59`;
-    conditionsAdd += `!Desde|Hasta|Captura;3;1;${fromDate}|${toDate};${fromDate}|${toDate};0;-1;DatDocumentos.FCaptura`;
+  if (!response.Sucess && response.Error) {
+    throw new Error(`SICAS REST error: ${response.Error}`);
   }
 
-  const envelope = `<?xml version="1.0" encoding="utf-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
-  <soapenv:Header/>
-  <soapenv:Body>
-    <tem:ProcesarWS>
-      <tem:oDataWS>
-        <tem:Credentials>
-          <tem:UserName>${escapedUser}</tem:UserName>
-          <tem:Password>${escapedPass}</tem:Password>
-        </tem:Credentials>
-        <tem:TypeFormat>XML</tem:TypeFormat>
-        <tem:KeyProcess>REPORT</tem:KeyProcess>
-        <tem:KeyCode>H03400</tem:KeyCode>
-        <tem:Page>${page}</tem:Page>
-        <tem:ItemForPage>${itemsPerPage}</tem:ItemForPage>
-        <tem:InfoSort>DatDocumentos.FCaptura DESC</tem:InfoSort>
-        <tem:ConditionsAdd>${conditionsAdd}</tem:ConditionsAdd>
-      </tem:oDataWS>
-    </tem:ProcesarWS>
-  </soapenv:Body>
-</soapenv:Envelope>`;
+  const records = response.Response?.[0]?.TableInfo || [];
+  const control = response.Response?.[1]?.TableControl?.[0]
+    || response.Response?.[0]?.TableControl?.[0];
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), PAGE_FETCH_TIMEOUT_MS);
+  const totalPages = control?.Pages || 1;
+  const totalRecords = control?.MaxRecords || 0;
+  const currentPage = control?.Page || page;
 
-  let resp: Response;
-  try {
-    resp = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        SOAPAction: "http://tempuri.org/ProcesarWS",
-      },
-      body: envelope,
-      signal: controller.signal,
-    });
-  } catch (e: unknown) {
-    clearTimeout(timeoutId);
-    const err = e as Error;
-    if (err.name === "AbortError") {
-      throw new Error(`Page ${page} fetch timeout (${PAGE_FETCH_TIMEOUT_MS}ms)`);
-    }
-    throw e;
-  }
-  clearTimeout(timeoutId);
-
-  if (!resp.ok) {
-    throw new Error(`SOAP HTTP ${resp.status}: ${resp.statusText}`);
-  }
-
-  const rawText = await resp.text();
-
-  const decoded = rawText
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
-
-  // Check for errors in PROCESSDATA
-  const msgMatch = decoded.match(/<MESSAGE>([\s\S]*?)<\/MESSAGE>/i);
-  if (msgMatch) {
-    const msg = msgMatch[1].trim();
-    if (
-      msg.toLowerCase().includes("error") ||
-      msg.toLowerCase().includes("denied") ||
-      msg.toLowerCase().includes("sintaxis")
-    ) {
-      throw new Error(`SICAS SOAP error: ${msg}`);
-    }
-  }
-
-  // Parse <TableInfo> blocks for records
-  const records: Record<string, unknown>[] = [];
-  const tableInfoRegex = /<TableInfo>([\s\S]*?)<\/TableInfo>/gi;
-  let match;
-  while ((match = tableInfoRegex.exec(decoded)) !== null) {
-    const block = match[1];
-    const record: Record<string, unknown> = {};
-    const fieldRegex = /<(\w+)>([\s\S]*?)<\/\1>/g;
-    let fm;
-    while ((fm = fieldRegex.exec(block)) !== null) {
-      const val = fm[2].trim();
-      if (val && !isNaN(Number(val)) && val !== "") {
-        record[fm[1]] = Number(val);
-      } else {
-        record[fm[1]] = val;
-      }
-    }
-    if (Object.keys(record).length > 0) {
-      records.push(record);
-    }
-  }
-
-  // Parse <TableControl> for pagination
-  let totalPages = 1;
-  let totalRecords = 0;
-  let currentPageReturned = page;
-
-  const controlMatch = decoded.match(
-    /<TableControl>([\s\S]*?)<\/TableControl>/i
-  );
-  if (controlMatch) {
-    const controlBlock = controlMatch[1];
-    const pagesMatch = controlBlock.match(/<Pages>(\d+)<\/Pages>/i);
-    const maxRecMatch = controlBlock.match(/<MaxRecords>(\d+)<\/MaxRecords>/i);
-    const pageMatch = controlBlock.match(/<Page>(\d+)<\/Page>/i);
-    if (pagesMatch) totalPages = parseInt(pagesMatch[1], 10);
-    if (maxRecMatch) totalRecords = parseInt(maxRecMatch[1], 10);
-    if (pageMatch) currentPageReturned = parseInt(pageMatch[1], 10);
-  }
-
-  return { records, totalPages, totalRecords, currentPage: currentPageReturned };
+  return { records, totalPages, totalRecords, currentPage };
 }
 
 Deno.serve(async (req: Request) => {
@@ -224,20 +104,29 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Read credentials: env vars take priority (proven working), fallback to sicas_config table
+    // Read config for keycode
     const { data: sicasConfig } = await supabase
       .from("sicas_config")
-      .select("endpoint, sicas_usuario, sicas_password")
+      .select("endpoint, sicas_usuario, sicas_password, code_auth")
       .limit(1)
       .maybeSingle();
 
-    const soapEndpoint = Deno.env.get("SICAS_SOAP_ENDPOINT")
-      || sicasConfig?.endpoint
-      || "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx";
-    const sicasUsername = Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "";
-    const sicasPassword = Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "";
+    // Determine REST keycode (HWS_DOCTOS is the standard for all documents)
+    const keyCode = "HWS_DOCTOS";
 
-    console.log(`[BULK-SYNC] Using endpoint: ${soapEndpoint}, user: ${sicasUsername.substring(0, 3)}***`);
+    console.log(`[BULK-SYNC] Using REST API with keyCode: ${keyCode}`);
+
+    // Create REST client with DB auth (code_auth from sicas_config)
+    let restClient: SicasRestClient;
+    try {
+      restClient = await createSicasRestClientWithDbAuth({
+        username: Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "",
+        password: Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "",
+        sCodeAuth: Deno.env.get("SICAS_CODE_AUTH") || sicasConfig?.code_auth || undefined,
+      });
+    } catch (e) {
+      return jsonResponse(500, { ok: false, error: `Error creando cliente REST: ${(e as Error).message}` });
+    }
 
     // ── ACTION: start ──────────────────────────────────────────────────
     if (action === "start") {
@@ -322,7 +211,7 @@ Deno.serve(async (req: Request) => {
           mode: mode || "full",
           status: "running",
           triggered_by: body.triggeredBy || null,
-          keycode: "H03400_SOAP",
+          keycode: `${keyCode}_REST`,
           started_at: new Date().toISOString(),
           total_pages: 0,
           current_page: 0,
@@ -389,22 +278,20 @@ Deno.serve(async (req: Request) => {
 
       // Discovery phase: totalPages === 0 means we still need to fetch page 1
       if (syncState.totalPages === 0) {
-        console.log("[BULK-SYNC] Discovery phase: fetching page 1...");
-        let firstPage: SoapPageResult | null = null;
+        console.log("[BULK-SYNC] Discovery phase: fetching page 1 via REST...");
+        let firstPageResult: { records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number } | null = null;
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
-            firstPage = await fetchSoapPage(
-              soapEndpoint, sicasUsername, sicasPassword,
-              1, ITEMS_PER_PAGE, syncState.incrementalSince
+            firstPageResult = await fetchRestPage(
+              restClient, keyCode, 1, ITEMS_PER_PAGE, syncState.incrementalSince
             );
             break;
           } catch (e: unknown) {
             console.error(`[BULK-SYNC] Page 1 attempt ${attempt}/3 failed: ${(e as Error).message}`);
             if (attempt === 3) {
-              // Mark job as failed
               await supabase.from("sicas_sync_jobs").update({
                 status: "failed",
-                error_message: `Error en pagina 1 despues de 3 intentos: ${(e as Error).message}`,
+                error_message: `Error en pagina 1 despues de 3 intentos (REST): ${(e as Error).message}`,
                 finished_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               }).eq("id", jobId);
@@ -413,33 +300,52 @@ Deno.serve(async (req: Request) => {
             await sleep(5000 * attempt);
           }
         }
-        if (!firstPage) {
+        if (!firstPageResult) {
           await supabase.from("sicas_sync_jobs").update({
-            status: "failed", error_message: "No se pudo obtener pagina 1",
+            status: "failed", error_message: "No se pudo obtener pagina 1 via REST",
             finished_at: new Date().toISOString(), updated_at: new Date().toISOString(),
           }).eq("id", jobId);
           return jsonResponse(200, { ok: true, status: "failed" });
         }
 
-        syncState.totalPages = firstPage.totalPages;
-        syncState.totalRecordsInSicas = firstPage.totalRecords;
-        syncState.totalFetched = firstPage.records.length;
+        syncState.totalPages = firstPageResult.totalPages;
+        syncState.totalRecordsInSicas = firstPageResult.totalRecords;
+        syncState.totalFetched = firstPageResult.records.length;
         syncState.currentPage = 1;
 
-        console.log(`[BULK-SYNC] Discovered: ${syncState.totalRecordsInSicas} records, ${syncState.totalPages} pages`);
+        console.log(`[BULK-SYNC] Discovered via REST: ${syncState.totalRecordsInSicas} records, ${syncState.totalPages} pages`);
+
+        // Process page 1 records immediately
+        if (firstPageResult.records.length > 0) {
+          const despachoNameToOffice = await loadDespachoNameMap(supabase);
+          const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
+          const documents = firstPageResult.records
+            .map((raw) => mapDocument(raw, keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
+            .filter((d) => d !== null);
+          const result = await upsertDocuments(supabase, documents);
+          syncState.totalUpserted += result.upserted;
+          syncState.totalErrors += result.errors;
+          console.log(`[BULK-SYNC] Page 1: ${firstPageResult.records.length} fetched, ${result.upserted} upserted`);
+        }
+
+        // Move to page 2
+        syncState.currentPage = 2;
 
         // Update job with discovery info
         await supabase.from("sicas_sync_jobs").update({
           total_pages: syncState.totalPages,
           total_in_sicas: syncState.totalRecordsInSicas,
+          current_page: 1,
+          total_synced: syncState.totalUpserted,
+          percent: syncState.totalPages > 0 ? Math.round((1 / syncState.totalPages) * 90) : 0,
           error_message: JSON.stringify(syncState),
           updated_at: new Date().toISOString(),
         }).eq("id", jobId).eq("status", "running");
 
-        // Trigger next batch to start actual processing
+        // Trigger next batch
         EdgeRuntime.waitUntil(sleep(1000).then(() => triggerSelfContinuation(jobId)));
         return jsonResponse(200, { ok: true, jobId, status: "running", progress: {
-          percent: 0, currentPage: 0, totalPages: syncState.totalPages,
+          percent: 0, currentPage: 1, totalPages: syncState.totalPages,
           totalRecordsInSicas: syncState.totalRecordsInSicas,
         }});
       }
@@ -470,7 +376,7 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(200, { ok: true, status: "completed" });
       }
 
-      // Retry mode: process failed pages with staggered delays and max attempts
+      // Retry mode: process failed pages
       if (syncState.currentPage === -1) {
         const pagesToRetry = [...syncState.failedPages];
         syncState.failedPages = [];
@@ -479,12 +385,10 @@ Deno.serve(async (req: Request) => {
         for (const page of pagesToRetry) {
           const elapsed = (Date.now() - batchStart) / 1000;
           if (elapsed >= MAX_SECONDS) {
-            // Put remaining back into failedPages for next batch
             syncState.failedPages.push(...pagesToRetry.slice(retryIdx));
             break;
           }
 
-          // Check retry attempts - drop page if exceeded max
           const pageKey = String(page);
           const attempts = (syncState.retryAttempts[pageKey] || 0) + 1;
           syncState.retryAttempts[pageKey] = attempts;
@@ -497,16 +401,19 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          // Staggered delay between retries to avoid overwhelming SICAS
           if (retryIdx > 0) {
             await sleep(RETRY_DELAY_MS);
           }
 
-          console.log(`[BULK-SYNC] RETRY: page ${page} attempt ${attempts}/${MAX_RETRIES_PER_PAGE} (${retryIdx + 1}/${pagesToRetry.length})...`);
+          // Renew token periodically
+          if (retryIdx % TOKEN_RENEW_INTERVAL === 0) {
+            try { await restClient.getValidToken(); } catch { /* ignore */ }
+          }
+
+          console.log(`[BULK-SYNC] RETRY: page ${page} attempt ${attempts}/${MAX_RETRIES_PER_PAGE}...`);
           try {
-            const pageResult = await fetchSoapPage(
-              soapEndpoint, sicasUsername, sicasPassword,
-              page, ITEMS_PER_PAGE, syncState.incrementalSince
+            const pageResult = await fetchRestPage(
+              restClient, keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
             );
 
             if (pageResult.records.length > 0) {
@@ -514,7 +421,7 @@ Deno.serve(async (req: Request) => {
               syncState.retriedPages++;
               delete syncState.retryAttempts[pageKey];
               const documents = pageResult.records
-                .map((raw) => mapDocument(raw, "H03400", despachoNameToOffice, vendorToUser, vendorToOficina))
+                .map((raw) => mapDocument(raw, keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
                 .filter((d) => d !== null);
               const result = await upsertDocuments(supabase, documents);
               syncState.totalUpserted += result.upserted;
@@ -531,7 +438,6 @@ Deno.serve(async (req: Request) => {
           pagesThisBatch++;
         }
 
-        // If no more failed pages, mark complete
         if (syncState.failedPages.length === 0) {
           syncState.currentPage = syncState.totalPages + 1;
           await markComplete(supabase, jobId, syncState);
@@ -548,15 +454,19 @@ Deno.serve(async (req: Request) => {
 
           const page = syncState.currentPage;
 
-          // Throttle: wait between page requests to avoid overwhelming SICAS
+          // Throttle between page requests
           if (pagesThisBatch > 0) {
             await sleep(INTER_PAGE_DELAY_MS);
           }
 
+          // Renew token periodically
+          if (pagesThisBatch > 0 && pagesThisBatch % TOKEN_RENEW_INTERVAL === 0) {
+            try { await restClient.getValidToken(); } catch { /* ignore */ }
+          }
+
           try {
-            const pageResult = await fetchSoapPage(
-              soapEndpoint, sicasUsername, sicasPassword,
-              page, ITEMS_PER_PAGE, syncState.incrementalSince
+            const pageResult = await fetchRestPage(
+              restClient, keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
             );
 
             if (pageResult.records.length === 0) {
@@ -567,15 +477,14 @@ Deno.serve(async (req: Request) => {
               if (retryElapsed < MAX_SECONDS - 8) {
                 await sleep(RETRY_DELAY_MS);
                 try {
-                  const retryResult = await fetchSoapPage(
-                    soapEndpoint, sicasUsername, sicasPassword,
-                    page, ITEMS_PER_PAGE, syncState.incrementalSince
+                  const retryResult = await fetchRestPage(
+                    restClient, keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
                   );
                   if (retryResult.records.length > 0) {
                     syncState.totalFetched += retryResult.records.length;
                     syncState.retriedPages++;
                     const documents = retryResult.records
-                      .map((raw) => mapDocument(raw, "H03400", despachoNameToOffice, vendorToUser, vendorToOficina))
+                      .map((raw) => mapDocument(raw, keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
                       .filter((d) => d !== null);
                     const result = await upsertDocuments(supabase, documents);
                     syncState.totalUpserted += result.upserted;
@@ -615,13 +524,7 @@ Deno.serve(async (req: Request) => {
 
             const documents = pageResult.records
               .map((raw) =>
-                mapDocument(
-                  raw,
-                  "H03400",
-                  despachoNameToOffice,
-                  vendorToUser,
-                  vendorToOficina
-                )
+                mapDocument(raw, keyCode, despachoNameToOffice, vendorToUser, vendorToOficina)
               )
               .filter((d) => d !== null);
 
@@ -653,12 +556,10 @@ Deno.serve(async (req: Request) => {
         .from("sicas_documents")
         .select("*", { count: "exact", head: true });
 
-      // In retry mode, percent is based on how many failed pages remain vs total
       let percent: number;
       if (isComplete) {
         percent = 100;
       } else if (syncState.currentPage === -1) {
-        // Retry mode: base progress on pages processed vs pages remaining
         const totalFailedOriginal = syncState.failedPages.length + syncState.droppedPages.length + syncState.retriedPages;
         const processed = syncState.droppedPages.length + syncState.retriedPages;
         percent = Math.min(99, Math.round(90 + (processed / Math.max(1, totalFailedOriginal)) * 10));
