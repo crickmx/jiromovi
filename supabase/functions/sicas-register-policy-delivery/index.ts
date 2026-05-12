@@ -168,6 +168,20 @@ function sanitizeField(value: any): string | null {
   return str;
 }
 
+function normalizeSicasAmount(value: string | null | undefined): string | null {
+  if (!value) return null;
+  let str = String(value).trim();
+  if (!str || str === "0") return null;
+  // Remove thousands separators (commas) but preserve decimal point
+  // "15,231.80" → "15231.80", "1,000,000.50" → "1000000.50"
+  str = str.replace(/,(?=\d{3}(\.|,|\b))/g, "");
+  // If result is not a valid number, return null
+  const num = parseFloat(str);
+  if (isNaN(num) || num <= 0) return null;
+  // Return with 2 decimal places
+  return num.toFixed(2);
+}
+
 function escapeXml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -848,8 +862,9 @@ function validatePayload(resolved: Record<string, ResolvedField>, delivery: Poli
   if (startDate) sanitizedPayload.FechaInicio = startDate;
   if (endDate) sanitizedPayload.FechaFin = endDate;
 
-  const premium = sanitizeField(delivery.total_premium || delivery.extracted_data?.primaTotal);
-  if (premium && premium !== "0") sanitizedPayload.PrimaTotal = premium;
+  const rawPremium = sanitizeField(delivery.total_premium || delivery.extracted_data?.primaTotal);
+  const premium = normalizeSicasAmount(rawPremium);
+  if (premium) sanitizedPayload.PrimaTotal = premium;
 
   if (delivery.sicas_office_id) sanitizedPayload.IDOficina = delivery.sicas_office_id;
   if (delivery.vehicle_description) sanitizedPayload.Descripcion = delivery.vehicle_description;
@@ -874,17 +889,17 @@ function extractFirstValidId(responseText: string, fieldNames: string[]): string
     // XML tag format: <FieldName>12345</FieldName>
     const xmlRegex = new RegExp(`<${field}>\\s*(\\d+)\\s*</${field}>`, "i");
     const xmlMatch = decoded.match(xmlRegex);
-    if (xmlMatch?.[1] && parseInt(xmlMatch[1]) > 0) return xmlMatch[1];
+    if (xmlMatch?.[1] && parseInt(xmlMatch[1]) >= MIN_VALID_DOCUMENT_ID) return xmlMatch[1];
 
     // JSON format: "FieldName": "12345" or "FieldName": 12345
     const jsonRegex = new RegExp(`"${field}"\\s*:\\s*"?(\\d+)"?`, "i");
     const jsonMatch = decoded.match(jsonRegex);
-    if (jsonMatch?.[1] && parseInt(jsonMatch[1]) > 0) return jsonMatch[1];
+    if (jsonMatch?.[1] && parseInt(jsonMatch[1]) >= MIN_VALID_DOCUMENT_ID) return jsonMatch[1];
 
     // Attribute format: FieldName="12345"
     const attrRegex = new RegExp(`${field}["\s:=]*>?(\\d+)`, "i");
     const attrMatch = decoded.match(attrRegex);
-    if (attrMatch?.[1] && parseInt(attrMatch[1]) > 0) return attrMatch[1];
+    if (attrMatch?.[1] && parseInt(attrMatch[1]) >= MIN_VALID_DOCUMENT_ID) return attrMatch[1];
   }
 
   // Also check for PROCESSDATA or NewDataSet wrappers
@@ -893,7 +908,7 @@ function extractFirstValidId(responseText: string, fieldNames: string[]): string
     for (const field of fieldNames) {
       const innerRegex = new RegExp(`<${field}>\\s*(\\d+)\\s*</${field}>`, "i");
       const innerMatch = processDataMatch[1].match(innerRegex);
-      if (innerMatch?.[1] && parseInt(innerMatch[1]) > 0) return innerMatch[1];
+      if (innerMatch?.[1] && parseInt(innerMatch[1]) >= MIN_VALID_DOCUMENT_ID) return innerMatch[1];
     }
   }
 
@@ -902,7 +917,7 @@ function extractFirstValidId(responseText: string, fieldNames: string[]): string
     for (const field of fieldNames) {
       const innerRegex = new RegExp(`<${field}>\\s*(\\d+)\\s*</${field}>`, "i");
       const innerMatch = newDataSetMatch[1].match(innerRegex);
-      if (innerMatch?.[1] && parseInt(innerMatch[1]) > 0) return innerMatch[1];
+      if (innerMatch?.[1] && parseInt(innerMatch[1]) >= MIN_VALID_DOCUMENT_ID) return innerMatch[1];
     }
   }
 
@@ -912,7 +927,7 @@ function extractFirstValidId(responseText: string, fieldNames: string[]): string
     for (const field of fieldNames) {
       const innerRegex = new RegExp(`<${field}>\\s*(\\d+)\\s*</${field}>`, "i");
       const innerMatch = dataInfoMatch[1].match(innerRegex);
-      if (innerMatch?.[1] && parseInt(innerMatch[1]) > 0) return innerMatch[1];
+      if (innerMatch?.[1] && parseInt(innerMatch[1]) >= MIN_VALID_DOCUMENT_ID) return innerMatch[1];
     }
   }
 
@@ -926,10 +941,11 @@ const DOCUMENT_ID_FIELDS = [
   "DocumentoID",
   "NewIDValue",
   "NewSubIDValue",
-  "RESPONSENBR",
-  "DATA",
   "ID",
 ];
+
+// Minimum threshold for a valid document ID (small numbers like 1-10 are likely response codes, not document IDs)
+const MIN_VALID_DOCUMENT_ID = 100;
 
 // ============================================================
 // Post-Save Document Lookup via SICAS ReadInfoData
@@ -2029,40 +2045,17 @@ Deno.serve(async (req: Request) => {
             steps[steps.length - 1].detail = `Cliente creado pero sin ID. Se usara 0.`;
             resolution.warnings.push("IDCli: SICAS confirmo creacion pero no devolvio ID. Se registra con 0.");
           } else {
-            if (createResult.stepError) {
-              await supabase.from("policy_deliveries").update({
-                sicas_error_step: "create_client_if_needed",
-                sicas_error_message: createResult.error,
-                sicas_request_debug: createResult.stepError,
-                sicas_registration_status: "client_creation_failed",
-              }).eq("id", delivery_id);
-
-              steps[steps.length - 1].status = "failed";
-              steps[steps.length - 1].detail = createResult.error;
-
-              return new Response(
-                JSON.stringify({
-                  success: false,
-                  action,
-                  status: "client_creation_failed",
-                  step: "create_client_if_needed",
-                  message: `No se pudo crear Cliente SICAS. ${createResult.error}`,
-                  steps,
-                  step_error: createResult.stepError,
-                  resolved: resolution.resolved,
-                  logs: resolution.logs,
-                }),
-                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-              );
-            }
-
+            // Client creation failed - but DO NOT block HWCAPTURE.
+            // Per requirement: always proceed to document registration with IDCli=0 as fallback.
             resolution.resolved.IDCli = { value: "0", source: "fallback_create_failed", label: resolution.resolved.IDCli?.label || "Cliente no creado" };
             resolution.warnings.push(`IDCli: Auto-creacion fallo (${createResult.error}). Se registra con cliente generico (0).`);
             steps[steps.length - 1].status = "warning";
-            steps[steps.length - 1].detail = `Fallo: ${createResult.error}. Usando fallback 0.`;
+            steps[steps.length - 1].detail = `Fallo: ${createResult.error}. Continuando con IDCli=0.`;
 
             await supabase.from("policy_deliveries").update({
               sicas_client_match_method: "fallback_zero",
+              sicas_contact_status: "creation_failed",
+              sicas_error_message: createResult.error || null,
             }).eq("id", delivery_id);
           }
         }
@@ -2168,15 +2161,33 @@ Deno.serve(async (req: Request) => {
       steps.push({ step: currentStep, status: "in_progress" });
 
       const attempts = (delivery.sicas_registration_attempts || 0) + 1;
+      // Determine contact status early so we track it before HWCAPTURE
+      let contactStatus: string;
+      if (!clientNeedsCreation) {
+        contactStatus = resolution.resolved.IDCli?.value && resolution.resolved.IDCli.value !== "0" ? "existing" : "not_attempted";
+      } else if (resolution.resolved.IDCli?.source === "auto_created") {
+        contactStatus = "created";
+      } else if (resolution.resolved.IDCli?.source === "created_no_id") {
+        contactStatus = "created_no_id";
+      } else if (resolution.resolved.IDCli?.source === "fallback_create_failed") {
+        contactStatus = "creation_failed";
+      } else {
+        contactStatus = "existing";
+      }
+
       await supabase.from("policy_deliveries").update({
         sicas_registration_status: "registering",
+        sicas_registration_stage: "save_hwcapture",
         sicas_registration_attempts: attempts,
         sicas_last_attempt_at: new Date().toISOString(),
         sicas_resolved_fields: resolution.resolved,
         sicas_request_payload: validation.sanitizedPayload,
+        sicas_contact_status: contactStatus,
         sicas_error_step: null,
         sicas_error_message: null,
       }).eq("id", delivery_id);
+
+      console.log(`[SICAS Register] Proceeding to HWCAPTURE. IDCli=${validation.sanitizedPayload.IDCli || "0"}, contactStatus=${contactStatus}, fields=${Object.keys(validation.sanitizedPayload).length}`);
 
       const hwResult = await registerDocument(
         validation.sanitizedPayload,
@@ -2184,11 +2195,6 @@ Deno.serve(async (req: Request) => {
         sicasUsername,
         sicasPassword
       );
-
-      // Determine contact status based on what happened during this flow
-      const contactStatus = clientNeedsCreation
-        ? (resolution.resolved.IDCli?.source === "auto_created" ? "created" : "existing")
-        : (resolution.resolved.IDCli?.value && resolution.resolved.IDCli.value !== "0" ? "existing" : "not_attempted");
 
       if (hwResult.success && hwResult.documentId) {
         // FULL SUCCESS: SICAS returned a valid document ID

@@ -1757,9 +1757,48 @@ function DiagnosticModal({ record, onClose }: { record: DeliveryRecord; onClose:
         </div>
 
         <div className="space-y-3">
-          {/* === REGISTRATION DIAGNOSTIC SECTION (ALWAYS FIRST) === */}
+          {/* === STAGE 1: CONTACT / CLIENT === */}
+          {(() => {
+            const contactStatus = (record as any).sicas_contact_status as string | null;
+            const clientId = (record as any).sicas_client_id as string | null;
+            const clientName = (record as any).sicas_client_name as string | null;
+            const clientMethod = (record as any).sicas_client_match_method as string | null;
+            const contactLabels: Record<string, { label: string; color: string; icon: string }> = {
+              created: { label: 'Creado', color: 'text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30', icon: 'check' },
+              created_no_id: { label: 'Creado (sin ID)', color: 'text-amber-700 bg-amber-100 dark:bg-amber-900/30', icon: 'alert' },
+              existing: { label: 'Existente', color: 'text-blue-700 bg-blue-100 dark:bg-blue-900/30', icon: 'check' },
+              creation_failed: { label: 'Fallo creacion', color: 'text-red-700 bg-red-100 dark:bg-red-900/30', icon: 'x' },
+              not_attempted: { label: 'No requerido', color: 'text-neutral-500 bg-neutral-100 dark:bg-neutral-700', icon: 'minus' },
+            };
+            const info = contactLabels[contactStatus || ''] || contactLabels['not_attempted'];
+            return (
+              <div className="space-y-2">
+                <p className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Etapa 1: Contacto / Cliente</p>
+                <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg p-3 space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[9px] text-neutral-500">Estado:</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${info.color}`}>{info.label}</span>
+                    {clientId && clientId !== '0' && (
+                      <span className="text-[10px] font-mono font-bold text-teal-700 dark:text-teal-300">IDCli: {clientId}</span>
+                    )}
+                  </div>
+                  {clientName && (
+                    <div className="text-[10px] text-neutral-600 dark:text-neutral-400"><span className="text-neutral-500">Nombre:</span> {clientName}</div>
+                  )}
+                  {clientMethod && (
+                    <div className="text-[10px] text-neutral-600 dark:text-neutral-400"><span className="text-neutral-500">Metodo:</span> <span className="font-mono">{clientMethod}</span></div>
+                  )}
+                  {contactStatus === 'creation_failed' && (record as any).sicas_error_message && (record as any).sicas_error_step === 'create_client_if_needed' && (
+                    <div className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1 mt-1">{(record as any).sicas_error_message}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* === STAGE 2: REGISTRATION DIAGNOSTIC SECTION === */}
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Registro de documento / HWCAPTURE</p>
+            <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Etapa 2: Registro de documento / HWCAPTURE</p>
             {regDiag ? (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 space-y-2">
                 {/* Stage status badge */}
