@@ -1165,11 +1165,25 @@ function HistorialTab({ usuario }: { usuario: any }) {
       console.log('[SICAS] InvokeError:', invokeError);
 
       if (invokeError) {
+        const ctx = (invokeError as any).context;
+        let parsedBody: any = null;
+        try {
+          if (typeof ctx === 'string') parsedBody = JSON.parse(ctx);
+          else if (ctx?.body) parsedBody = typeof ctx.body === 'string' ? JSON.parse(ctx.body) : ctx.body;
+        } catch {}
+
+        if (parsedBody?.action_required === 'resolve_data' || parsedBody?.status === 'validation_failed') {
+          const fields = (parsedBody.missing_fields || []).join(', ');
+          setRegisterResult({ id: record.id, success: false, message: parsedBody.message || `Faltan datos: ${fields}. Use "Resolver datos".` });
+          loadRecords();
+          return;
+        }
+
         const errorDetail = [
           `Funcion: sicas-register-document-delivery`,
           `delivery_id: ${record.id}`,
           invokeError.message || 'Sin mensaje de error',
-          (invokeError as any).context ? `Contexto: ${(invokeError as any).context}` : null,
+          parsedBody?.message || null,
         ].filter(Boolean).join(' | ');
         throw new Error(`No se pudo invocar la funcion: ${errorDetail}`);
       }
@@ -1730,6 +1744,12 @@ function HistorialTab({ usuario }: { usuario: any }) {
           record={completarDatosRecord}
           onClose={() => setCompletarDatosRecord(null)}
           onSaved={() => loadRecords()}
+          onSavedAndRegister={() => {
+            const rec = completarDatosRecord;
+            loadRecords().then(() => {
+              handleRegisterDocument(rec);
+            });
+          }}
         />
       )}
 

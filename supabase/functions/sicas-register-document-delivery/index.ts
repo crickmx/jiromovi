@@ -750,6 +750,45 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[HWCAPTURE] Delivery loaded: policy=${delivery.policy_number || delivery.manual_policy_number}, client_id=${delivery.sicas_client_id}, vendor_id=${delivery.vendor_sicas_id}`);
 
+    // Early validation: check core fields exist before any SICAS call
+    const coreValidationMissing: string[] = [];
+    if (!delivery.policy_number && !delivery.manual_policy_number) coreValidationMissing.push("policy_number");
+    if (!delivery.insured_name) coreValidationMissing.push("insured_name");
+    if (!delivery.total_premium) coreValidationMissing.push("premium");
+    if (!delivery.start_date) coreValidationMissing.push("start_date");
+    if (!delivery.end_date) coreValidationMissing.push("end_date");
+
+    if (coreValidationMissing.length > 0) {
+      console.warn(`[HWCAPTURE] BLOCKED: Missing core fields: ${coreValidationMissing.join(", ")}`);
+
+      await supabase.from("policy_deliveries").update({
+        sicas_registration_status: "document_not_created",
+        sicas_error_message: `Faltan datos obligatorios: ${coreValidationMissing.join(", ")}`,
+        sicas_error_step: "validate_core_fields",
+      }).eq("id", delivery_id);
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          status: "validation_failed",
+          document_status: "validation_failed",
+          stage: "validate_hwcapture_payload",
+          message: "Faltan datos obligatorios para registrar la poliza en SICAS.",
+          missing_fields: coreValidationMissing,
+          action_required: "resolve_data",
+          normalized_delivery: {
+            policy_number: delivery.policy_number || delivery.manual_policy_number || null,
+            insured_name: delivery.insured_name || null,
+            premium: delivery.total_premium || null,
+            start_date: delivery.start_date || null,
+            end_date: delivery.end_date || null,
+            sicas_client_id: delivery.sicas_client_id || null,
+          },
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Check if client ID exists
     const clientId = delivery.sicas_client_id ||
       (delivery.sicas_resolved_fields as any)?.IDCli?.value ||
