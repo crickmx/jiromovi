@@ -46,15 +46,21 @@ export class SicasSoapReportClient {
   private endpoint: string;
   private username: string;
   private password: string;
+  private sicasUser?: string;
+  private sicasPassword?: string;
 
   constructor(config: {
     endpoint: string;
     username: string;
     password: string;
+    sicasUser?: string;
+    sicasPassword?: string;
   }) {
     this.endpoint = config.endpoint;
     this.username = config.username;
     this.password = config.password;
+    this.sicasUser = config.sicasUser;
+    this.sicasPassword = config.sicasPassword;
   }
 
   /**
@@ -100,6 +106,14 @@ export class SicasSoapReportClient {
     const sortFieldXml = sortField ? `<tem:InfoSort>${sortField}</tem:InfoSort>` : '';
     const conditionsXml = conditionsAdd ? `<tem:ConditionsAdd>${conditionsAdd}</tem:ConditionsAdd>` : '';
 
+    // CredentialsUserSICAS is required when WS credentials differ from SICAS user credentials
+    const credentialsUserSicasXml = this.sicasUser && this.sicasPassword
+      ? `<tem:CredentialsUserSICAS>
+          <tem:UserName>${this.sicasUser}</tem:UserName>
+          <tem:Password>${this.encodePassword(this.sicasPassword)}</tem:Password>
+        </tem:CredentialsUserSICAS>`
+      : '';
+
     return `<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
   <soapenv:Header/>
@@ -110,6 +124,7 @@ export class SicasSoapReportClient {
           <tem:UserName>${this.username}</tem:UserName>
           <tem:Password>${encodedPassword}</tem:Password>
         </tem:Credentials>
+        ${credentialsUserSicasXml}
         <tem:TypeFormat>${typeFormat}</tem:TypeFormat>
         <tem:KeyProcess>REPORT</tem:KeyProcess>
         <tem:KeyCode>${keyCode}</tem:KeyCode>

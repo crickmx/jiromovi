@@ -16,7 +16,7 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-const ITEMS_PER_PAGE = 500;
+const ITEMS_PER_PAGE = 100;
 const MAX_SECONDS = 45;
 const PAGES_PER_BATCH = 999;
 const MAX_RETRIES_PER_PAGE = 3;
@@ -129,17 +129,21 @@ Deno.serve(async (req: Request) => {
 
     // SOAP-only transport (REST not available for this SICAS license)
     const soapEndpoint = sicasConfig?.endpoint || "https://www.sicasonline.com.mx/SICASOnline/WS_SICASOnline.asmx";
-    const sicasUsername = Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "";
-    const sicasPassword = Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "";
+    const wsUsername = Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "";
+    const wsPassword = Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "";
+    const sicasUser = Deno.env.get("SICAS_USUARIO") || "";
+    const sicasUserPassword = sicasConfig?.sicas_password || Deno.env.get("SICAS_PASSWORD") || "";
 
-    if (!sicasUsername || !sicasPassword) {
+    if (!wsUsername || !wsPassword) {
       return jsonResponse(400, { ok: false, error: "Credenciales SICAS no configuradas. Revisa la configuracion SICAS." });
     }
 
     const soapClient = new SicasSoapReportClient({
       endpoint: soapEndpoint,
-      username: sicasUsername,
-      password: sicasPassword,
+      username: wsUsername,
+      password: wsPassword,
+      sicasUser: sicasUser || undefined,
+      sicasPassword: sicasUser ? sicasUserPassword : undefined,
     });
 
     // Determine keycode from DB config with fallback chain (SOAP ProcesarWS)
@@ -327,9 +331,14 @@ Deno.serve(async (req: Request) => {
           let succeeded = false;
           for (let attempt = 1; attempt <= MAX_RETRIES_PER_PAGE; attempt++) {
             try {
-              firstPageResult = await fetchSoapPage(soapClient, tryCode, 1, ITEMS_PER_PAGE, syncState.incrementalSince);
-              usedKeyCode = tryCode;
-              succeeded = true;
+              const result = await fetchSoapPage(soapClient, tryCode, 1, ITEMS_PER_PAGE, syncState.incrementalSince);
+              if (result.records.length > 0 || result.totalRecords > 0) {
+                firstPageResult = result;
+                usedKeyCode = tryCode;
+                succeeded = true;
+              } else {
+                console.log(`[BULK-SYNC] Code "${tryCode}" returned 0 records. Trying next code...`);
+              }
               break;
             } catch (e: unknown) {
               const errMsg = (e as Error).message || "";
@@ -375,9 +384,9 @@ Deno.serve(async (req: Request) => {
         }
 
         if (!firstPageResult || firstPageResult.records.length === 0) {
-          const message = firstPageResult
-            ? `Reporte SOAP "${usedKeyCode}" no devolvio registros. Verifica que el reporte tenga datos, KeyCode o permisos.`
-            : `No se encontraron documentos con los reportes SOAP configurados. Codigos probados: ${codesToAttempt.join(", ")}. Error: ${lastError}`;
+          const message = lastError
+            ? `No se encontraron documentos con los reportes SOAP configurados. Codigos probados: ${codesToAttempt.join(", ")}. Error: ${lastError}`
+            : `Ningun reporte SOAP devolvio registros. Codigos probados: ${codesToAttempt.join(", ")}. Verifica KeyCode, permisos o condiciones en la configuracion SICAS.`;
 
           await supabase.from("sicas_sync_jobs").update({
             status: firstPageResult ? "completed" : "failed",
