@@ -878,6 +878,8 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
 
 const SICAS_STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   not_started: { label: 'Sin iniciar', color: 'bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-white/40', icon: Clock },
+  datos_incompletos: { label: 'Datos incompletos', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300', icon: ShieldAlert },
+  error_cifrado: { label: 'Error cifrado', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   pending_fields: { label: 'Pendiente', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400', icon: Clock },
   ready_to_register: { label: 'Listo', color: 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400', icon: UploadCloud },
   resolving: { label: 'Resolviendo...', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: Loader2 },
@@ -1044,6 +1046,16 @@ function HistorialTab({ usuario }: { usuario: any }) {
   };
 
   const handleRegisterDocument = async (record: DeliveryRecord) => {
+    const missingFields = getMissingFieldsForRegistration(record);
+    if (missingFields.length > 0) {
+      setRegisterResult({
+        id: record.id,
+        success: false,
+        message: `No se puede registrar en SICAS porque faltan datos obligatorios: ${missingFields.join(', ')}.`
+      });
+      return;
+    }
+
     setResolving(record.id);
     setRegisterResult(null);
 
@@ -1156,17 +1168,26 @@ function HistorialTab({ usuario }: { usuario: any }) {
     await handleRegisterSicas(record);
   };
 
+  const getMissingFieldsForRegistration = (r: DeliveryRecord): string[] => {
+    const missing: string[] = [];
+    if (!r.policy_number && !r.manual_policy_number) missing.push('Poliza');
+    if (!r.insured_name) missing.push('Asegurado');
+    if (!r.total_premium) missing.push('Prima');
+    if (!r.start_date) missing.push('Fecha inicio');
+    if (!r.end_date) missing.push('Fecha fin');
+    return missing;
+  };
+
   const canAttemptRegistration = (r: DeliveryRecord): boolean => {
     const status = r.sicas_registration_status || '';
     const blockedStates = ['registered', 'completed', 'validating', 'uploading_files'];
     if (blockedStates.includes(status)) return false;
-    // Allow retry on stale "registering" (older than 3 minutes)
     if (status === 'registering') {
       const lastAttempt = r.sicas_last_attempt_at ? new Date(r.sicas_last_attempt_at).getTime() : 0;
       if (lastAttempt && Date.now() - lastAttempt > 3 * 60 * 1000) return true;
       return false;
     }
-    if (!r.policy_number) return false;
+    if (!r.policy_number && !r.manual_policy_number) return false;
     return true;
   };
 
@@ -1506,6 +1527,25 @@ function HistorialTab({ usuario }: { usuario: any }) {
                                 </button>
                               </div>
                             </div>
+                          ) : getMissingFieldsForRegistration(r).length > 0 ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <button
+                                disabled
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-md opacity-70 cursor-not-allowed"
+                                title={`Faltan datos: ${getMissingFieldsForRegistration(r).join(', ')}`}
+                              >
+                                <ShieldAlert className="w-3 h-3" />
+                                Completar datos
+                              </button>
+                              <button
+                                onClick={() => setCompletarDatosRecord(r)}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                title="Completar datos faltantes para poder registrar en SICAS"
+                              >
+                                <Edit3 className="w-2.5 h-2.5" />
+                                Editar
+                              </button>
+                            </div>
                           ) : canAttemptRegistration(r) ? (
                             <div className="flex items-center gap-1 justify-center">
                               <button
@@ -1519,8 +1559,8 @@ function HistorialTab({ usuario }: { usuario: any }) {
                               </button>
                             </div>
                           ) : (
-                            <span className="text-[10px] text-neutral-400 dark:text-white/30" title={!r.policy_number ? 'Sin numero de poliza' : 'No disponible'}>
-                              {!r.policy_number ? 'Sin poliza' : '-'}
+                            <span className="text-[10px] text-neutral-400 dark:text-white/30" title={!r.policy_number && !r.manual_policy_number ? 'Sin numero de poliza' : 'No disponible'}>
+                              {!r.policy_number && !r.manual_policy_number ? 'Sin poliza' : '-'}
                             </span>
                           )}
                         </td>
@@ -1848,10 +1888,36 @@ function DiagnosticModal({ record, onClose }: { record: DeliveryRecord; onClose:
                   <p><strong>Registro SICAS:</strong> {record.sicas_registered_at ? new Date(record.sicas_registered_at).toLocaleString('es-MX') : 'Nunca'}</p>
                   <p><strong>Ultimo intento:</strong> {record.sicas_last_attempt_at ? new Date(record.sicas_last_attempt_at).toLocaleString('es-MX') : 'Nunca'}</p>
                   <p><strong>Intentos:</strong> {record.sicas_registration_attempts || 0}</p>
-                  {record.sicas_error_message && <p><strong>Ultimo error:</strong> <span className="text-red-600">{record.sicas_error_message}</span></p>}
                 </div>
+
+                {record.sicas_error_message && (
+                  <div className="pt-2 border-t border-amber-100 dark:border-amber-800">
+                    <p className="text-[9px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Errores anteriores (intentos previos)</p>
+                    <p className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-1.5 font-mono break-all">{record.sicas_error_message}</p>
+                    <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-1 italic">Este error corresponde a un intento anterior. HWCAPTURE no ha sido ejecutado exitosamente.</p>
+                  </div>
+                )}
+
+                {(() => {
+                  const missingFields = getMissingFieldsForRegistration(record);
+                  if (missingFields.length > 0) {
+                    return (
+                      <div className="pt-2 border-t border-amber-100 dark:border-amber-800">
+                        <p className="text-[9px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-1">Datos obligatorios faltantes</p>
+                        <ul className="text-[10px] text-red-600 dark:text-red-400 list-disc pl-3 space-y-0.5">
+                          {missingFields.map(f => <li key={f}>{f}</li>)}
+                        </ul>
+                        <p className="text-[9px] text-amber-700 dark:text-amber-300 font-medium mt-1">Complete estos datos antes de intentar el registro.</p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
                 <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium pt-1">
-                  Accion recomendada: Usa el boton "Registrar en SICAS" para ejecutar HWCAPTURE y crear el documento.
+                  {getMissingFieldsForRegistration(record).length > 0
+                    ? 'Accion recomendada: Complete los datos faltantes y luego use "Registrar en SICAS".'
+                    : 'Accion recomendada: Usa el boton "Registrar en SICAS" para ejecutar HWCAPTURE y crear el documento.'}
                 </p>
               </div>
             )}
