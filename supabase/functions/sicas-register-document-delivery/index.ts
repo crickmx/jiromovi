@@ -11,6 +11,13 @@ const corsHeaders = {
 // DEDICATED HWCAPTURE DOCUMENT REGISTRATION
 // This function ONLY registers a document in SICAS via HWCAPTURE.
 // It does NOT search, create clients, or do lookups.
+//
+// SICAS ProcesarWS contract for HWCAPTURE:
+// - DataXML must be TripleDES-encrypted (URL-encoded XML -> encrypt -> base64)
+// - KeyProcess: DATA, KeyCode: HWCAPTURE, TProc: Save_Data, TypeFormat: XML
+// - Encryption: TripleDES/CBC/ZeroPadding, Key fixed, IV = first 8 chars of username
+// - Plain XML MUST NEVER be sent - SICAS returns HTTP 400 if it receives
+//   unencrypted XML nested inside <tem:DataXML>
 // ============================================================
 
 const SICAS_3DES_KEY = "%SOnlineBOGO2001-2015WS#";
@@ -42,6 +49,7 @@ interface DocumentRegistrationDiagnostic {
   missing_fields: string[];
   field_mapping: Record<string, string>;
   plain_data_xml: string;
+  url_encoded_data_xml: string;
   encrypted_data_xml_length: number;
   soap_request_redacted: string;
   soap_response: string;
@@ -50,6 +58,7 @@ interface DocumentRegistrationDiagnostic {
   document_stage_status: "not_attempted" | "sent_to_sicas" | "success_with_id" | "success_without_id" | "not_created" | "failed" | "duplicate";
   encryption_used: boolean;
   encryption_method: string;
+  encryption_error: string | null;
   iv_used: string;
   error_message: string | null;
   http_status?: number;
@@ -58,6 +67,11 @@ interface DocumentRegistrationDiagnostic {
   request_timestamp?: string;
   response_timestamp?: string;
   duration_ms?: number;
+  prima_original?: string;
+  prima_normalized?: string;
+  new_document_id_value: string;
+  include_dat_docto_detail: boolean;
+  data_xml_send_mode: "encrypted" | "plain_fallback_blocked";
 }
 
 // ============================================================
@@ -93,11 +107,29 @@ function normalizeDate(dateStr: string | null | undefined): string {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+function normalizeSicasAmount(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const cleaned = String(value).replace(/[$,\s]/g, "").trim();
+  const num = parseFloat(cleaned);
+  if (isNaN(num) || num === 0) return null;
+  return num.toFixed(2);
+}
+
 function sanitizeField(value: any): string | null {
   if (value === undefined || value === null) return null;
   const str = String(value).trim();
   if (str === "" || str === "undefined" || str === "null" || str === "NaN" || str === "[object Object]") return null;
   return str;
+}
+
+function isValidNumericId(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const num = parseInt(value);
+  return !isNaN(num) && num > 0;
+}
+
+function isValidDateFormat(value: string): boolean {
+  return /^\d{2}\/\d{2}\/\d{4}$/.test(value);
 }
 
 function parseSoapFault(responseText: string): { faultcode: string; faultstring: string; detail: string } {
@@ -140,6 +172,16 @@ function extractFirstValidId(responseText: string, fieldNames: string[]): string
       if (innerMatch?.[1] && parseInt(innerMatch[1]) > 0) return innerMatch[1];
     }
   }
+
+  const newDataSetMatch = decoded.match(/<NewDataSet[^>]*>([\s\S]*?)<\/NewDataSet>/i);
+  if (newDataSetMatch) {
+    for (const field of fieldNames) {
+      const innerRegex = new RegExp(`<${field}>\\s*(\\d+)\\s*</${field}>`, "i");
+      const innerMatch = newDataSetMatch[1].match(innerRegex);
+      if (innerMatch?.[1] && parseInt(innerMatch[1]) > 0) return innerMatch[1];
+    }
+  }
+
   return null;
 }
 
@@ -159,23 +201,29 @@ function buildHwcaptureDataXml(sanitizedPayload: Record<string, string>): string
   return `<InfoData><DatDocumentos>${docElements.join("")}</DatDocumentos><DatDoctoDetail><IDDocto>-1</IDDocto></DatDoctoDetail></InfoData>`;
 }
 
-async function encryptDataXml(plainXml: string, username: string): Promise<{ encrypted: string; method: string }> {
+async function encryptDataXml(plainXml: string, username: string): Promise<{ encrypted: string; method: string; urlEncodedXml: string }> {
+  // Step 1: URL-encode the XML before encrypting (per SICAS documentation)
+  const urlEncodedXml = encodeURIComponent(plainXml);
+
   const encoder = new TextEncoder();
 
+  // Key: exactly 24 bytes for TripleDES (192-bit)
   const keyBytes = encoder.encode(SICAS_3DES_KEY);
   const key24 = new Uint8Array(24);
   key24.set(keyBytes.slice(0, Math.min(keyBytes.length, 24)));
 
+  // IV: first 8 characters of username, padded with nulls
   const ivStr = username.substring(0, 8).padEnd(8, "\0");
   const ivBytes = encoder.encode(ivStr);
 
-  const plainBytes = encoder.encode(plainXml);
+  // Pad plaintext to 8-byte blocks with zeros (ZeroPadding)
+  const plainBytes = encoder.encode(urlEncodedXml);
   const blockSize = 8;
   const paddedLen = Math.ceil(plainBytes.length / blockSize) * blockSize;
   const padded = new Uint8Array(paddedLen);
   padded.set(plainBytes);
 
-  // Try Web Crypto first (Deno/Supabase Edge supports DES-EDE3-CBC)
+  // Try Web Crypto API first (Supabase Edge Functions support DES-EDE3-CBC)
   try {
     const cryptoKey = await crypto.subtle.importKey(
       "raw",
@@ -196,7 +244,7 @@ async function encryptDataXml(plainXml: string, username: string): Promise<{ enc
     for (let i = 0; i < encBytes.length; i++) {
       binary += String.fromCharCode(encBytes[i]);
     }
-    return { encrypted: btoa(binary), method: "WebCrypto-DES-EDE3-CBC" };
+    return { encrypted: btoa(binary), method: "WebCrypto-DES-EDE3-CBC", urlEncodedXml };
   } catch (webCryptoError: any) {
     console.warn(`[HWCAPTURE] WebCrypto DES-EDE3-CBC not available: ${webCryptoError.message}. Trying node:crypto...`);
   }
@@ -209,15 +257,15 @@ async function encryptDataXml(plainXml: string, username: string): Promise<{ enc
     const enc1 = cipher.update(padded);
     const enc2 = cipher.final();
     const result = Buffer.concat([enc1, enc2]);
-    return { encrypted: result.toString("base64"), method: "NodeCrypto-des-ede3-cbc" };
+    return { encrypted: result.toString("base64"), method: "NodeCrypto-des-ede3-cbc", urlEncodedXml };
   } catch (nodeError: any) {
     console.error(`[HWCAPTURE] Node crypto also failed: ${nodeError.message}`);
-    throw new Error(`Encryption failed: both WebCrypto and Node crypto unavailable. WebCrypto: ${webCryptoError?.message}, Node: ${nodeError.message}`);
+    throw new Error(`Encryption failed: both WebCrypto and Node crypto unavailable. Node: ${nodeError.message}`);
   }
 }
 
 // ============================================================
-// Catalog Resolution (lenient - uses fallbacks aggressively)
+// Catalog Resolution
 // ============================================================
 
 interface CatalogRecord {
@@ -259,7 +307,6 @@ async function resolveFieldsForHwcapture(
     return def?.default_value || null;
   };
 
-  // Load catalogs
   const catalogTypeIds = [24, 12, 9, 10, 6, 8, 16, 62, 40];
   const catalogCache: Record<number, CatalogRecord[]> = {};
   const catalogPromises = catalogTypeIds.map(async (ctId) => {
@@ -367,12 +414,12 @@ async function resolveFieldsForHwcapture(
   if (startDate) { payload.FechaInicio = startDate; resolved_sources.FechaInicio = "delivery"; }
   if (endDate) { payload.FechaFin = endDate; resolved_sources.FechaFin = "delivery"; }
 
-  // Premium - normalize: remove commas, keep dot decimal
+  // Premium - CRITICAL: must remove comma thousands separators
   const rawPremium = sanitizeField(delivery.total_premium || delivery.extracted_data?.primaTotal);
-  if (rawPremium && rawPremium !== "0") {
-    const normalizedPremium = rawPremium.replace(/,/g, "").replace(/\$/g, "").trim();
+  const normalizedPremium = normalizeSicasAmount(rawPremium);
+  if (normalizedPremium) {
     payload.PrimaTotal = normalizedPremium;
-    resolved_sources.PrimaTotal = "delivery";
+    resolved_sources.PrimaTotal = "delivery_normalized";
   }
 
   // Office
@@ -380,8 +427,51 @@ async function resolveFieldsForHwcapture(
 
   // Vehicle fields
   if (delivery.vehicle_description) { payload.Descripcion = normalizeText(delivery.vehicle_description); resolved_sources.Descripcion = "delivery"; }
+  if (delivery.plates) { payload.Placas = String(delivery.plates).trim(); resolved_sources.Placas = "delivery"; }
+  if (delivery.vin) { payload.NumSerie = String(delivery.vin).trim(); resolved_sources.NumSerie = "delivery"; }
+  if (delivery.engine) { payload.Motor = String(delivery.engine).trim(); resolved_sources.Motor = "delivery"; }
 
   return { payload, warnings, resolved_sources };
+}
+
+// ============================================================
+// Pre-send Validation
+// ============================================================
+
+function validatePayloadBeforeSend(payload: Record<string, string>): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  const numericFields = ["IDCli", "IDVend", "IDCia", "IDRamo", "IDSubRamo", "IDMon", "IDFPago", "IDEjecutivo", "IDGrupo", "IDOficina", "IDTipoDocto"];
+  for (const field of numericFields) {
+    const value = payload[field];
+    if (value && !isValidNumericId(value)) {
+      errors.push(`${field}: valor "${value}" no es un ID numerico valido`);
+    }
+  }
+
+  if (!payload.Documento) {
+    errors.push("Documento: numero de poliza requerido");
+  }
+
+  if (payload.FechaInicio && !isValidDateFormat(payload.FechaInicio)) {
+    errors.push(`FechaInicio: formato "${payload.FechaInicio}" invalido (esperado dd/MM/yyyy)`);
+  }
+  if (payload.FechaFin && !isValidDateFormat(payload.FechaFin)) {
+    errors.push(`FechaFin: formato "${payload.FechaFin}" invalido (esperado dd/MM/yyyy)`);
+  }
+
+  if (payload.PrimaTotal) {
+    const num = parseFloat(payload.PrimaTotal);
+    if (isNaN(num) || payload.PrimaTotal.includes(",")) {
+      errors.push(`PrimaTotal: valor "${payload.PrimaTotal}" contiene comas o no es numerico`);
+    }
+  }
+
+  if (!payload.IDCli || payload.IDCli === "0") {
+    errors.push("IDCli: ID de cliente requerido");
+  }
+
+  return { valid: errors.length === 0, errors };
 }
 
 // ============================================================
@@ -393,31 +483,10 @@ async function executeHwcapture(
   sicasEndpoint: string,
   sicasUsername: string,
   sicasPassword: string,
+  rawPremium: string | null,
 ): Promise<{ success: boolean; documentId?: string; noIdReturned?: boolean; error?: string; isDuplicate?: boolean; duplicateId?: string; diagnostics: DocumentRegistrationDiagnostic }> {
   const startTime = Date.now();
   const dataXmlPlain = buildHwcaptureDataXml(payload);
-
-  let dataXmlEncrypted: string;
-  let encryptionMethod = "none";
-  try {
-    const result = await encryptDataXml(dataXmlPlain, sicasUsername);
-    dataXmlEncrypted = result.encrypted;
-    encryptionMethod = result.method;
-  } catch (encErr: any) {
-    console.error(`[HWCAPTURE] Encryption FAILED: ${encErr.message}. Cannot proceed.`);
-    const diagnostics: DocumentRegistrationDiagnostic = {
-      executed: false, method: "ProcesarWS", key_process: "DATA", key_code: "HWCAPTURE",
-      tproc: "Save_Data", type_format: "XML", payload_fields: { ...payload },
-      missing_fields: [], field_mapping: {}, plain_data_xml: dataXmlPlain,
-      encrypted_data_xml_length: 0, soap_request_redacted: "", soap_response: "",
-      parsed_response: null, detected_id_docto: null, document_stage_status: "failed",
-      encryption_used: false, encryption_method: "FAILED", iv_used: sicasUsername.substring(0, 8),
-      error_message: `Encryption failed: ${encErr.message}`,
-      endpoint_used: sicasEndpoint, soap_action: "http://tempuri.org/ProcesarWS",
-      request_timestamp: new Date().toISOString(), duration_ms: Date.now() - startTime,
-    };
-    return { success: false, error: `Encryption failed: ${encErr.message}`, diagnostics };
-  }
 
   const fieldMapping: Record<string, string> = {};
   for (const key of Object.keys(payload)) {
@@ -425,6 +494,46 @@ async function executeHwcapture(
   }
 
   const ivUsed = sicasUsername.substring(0, 8).padEnd(8, "\0");
+  const requiredFields = ["IDCli", "IDVend", "Documento", "IDCia", "IDRamo", "IDSubRamo", "IDMon", "IDFPago", "IDEjecutivo", "FechaInicio", "FechaFin", "PrimaTotal", "Estatus", "IDTipoDocto"];
+  const missingFields = requiredFields.filter(f => !payload[f] || payload[f] === "0" || payload[f] === "");
+
+  // Encrypt DataXML - this MUST succeed, we never send plain XML
+  let dataXmlEncrypted: string;
+  let encryptionMethod = "none";
+  let encryptionError: string | null = null;
+  let urlEncodedXml = "";
+
+  try {
+    const result = await encryptDataXml(dataXmlPlain, sicasUsername);
+    dataXmlEncrypted = result.encrypted;
+    encryptionMethod = result.method;
+    urlEncodedXml = result.urlEncodedXml;
+  } catch (encErr: any) {
+    encryptionError = encErr.message;
+    console.error(`[HWCAPTURE] ENCRYPTION FAILED: ${encErr.message}`);
+    console.error(`[HWCAPTURE] BLOCKING - will NOT send plain XML to SICAS (causes HTTP 400)`);
+
+    const diagnostics: DocumentRegistrationDiagnostic = {
+      executed: false, method: "ProcesarWS", key_process: "DATA", key_code: "HWCAPTURE",
+      tproc: "Save_Data", type_format: "XML", payload_fields: { ...payload },
+      missing_fields: missingFields, field_mapping: fieldMapping, plain_data_xml: dataXmlPlain,
+      url_encoded_data_xml: "", encrypted_data_xml_length: 0,
+      soap_request_redacted: "", soap_response: "",
+      parsed_response: null, detected_id_docto: null, document_stage_status: "failed",
+      encryption_used: false, encryption_method: "FAILED",
+      encryption_error: encryptionError, iv_used: ivUsed,
+      error_message: `Cifrado TripleDES fallo: ${encErr.message}. No se envio a SICAS.`,
+      endpoint_used: sicasEndpoint, soap_action: "http://tempuri.org/ProcesarWS",
+      request_timestamp: new Date().toISOString(), duration_ms: Date.now() - startTime,
+      prima_original: rawPremium || undefined, prima_normalized: payload.PrimaTotal || undefined,
+      new_document_id_value: "-1", include_dat_docto_detail: true,
+      data_xml_send_mode: "plain_fallback_blocked",
+    };
+    return { success: false, error: `Cifrado TripleDES fallo: ${encErr.message}. Contacte soporte tecnico.`, diagnostics };
+  }
+
+  // Password: URL-encode spaces (matching working function)
+  const encodedPassword = sicasPassword.replace(/ /g, "%20");
 
   const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -434,7 +543,7 @@ async function executeHwcapture(
       <tem:oDataWS>
         <tem:Credentials>
           <tem:UserName>${escapeXml(sicasUsername)}</tem:UserName>
-          <tem:Password>${escapeXml(sicasPassword)}</tem:Password>
+          <tem:Password>${encodedPassword}</tem:Password>
         </tem:Credentials>
         <tem:TypeFormat>XML</tem:TypeFormat>
         <tem:KeyProcess>DATA</tem:KeyProcess>
@@ -454,12 +563,11 @@ async function executeHwcapture(
   console.log(`[HWCAPTURE] Encryption: ${encryptionMethod}, IV: "${ivUsed}"`);
   console.log(`[HWCAPTURE] Payload fields: ${JSON.stringify(payload)}`);
   console.log(`[HWCAPTURE] DataXML (plain): ${dataXmlPlain}`);
-  console.log(`[HWCAPTURE] DataXML (encrypted, first 100 chars): ${dataXmlEncrypted.substring(0, 100)}`);
+  console.log(`[HWCAPTURE] DataXML (URL-encoded, first 200): ${urlEncodedXml.substring(0, 200)}`);
+  console.log(`[HWCAPTURE] DataXML (encrypted, first 100): ${dataXmlEncrypted.substring(0, 100)}`);
   console.log(`[HWCAPTURE] DataXML encrypted length: ${dataXmlEncrypted.length}`);
   console.log(`[HWCAPTURE] SOAP envelope size: ${soapEnvelope.length} bytes`);
-
-  const requiredFields = ["IDCli", "IDVend", "Documento", "IDCia", "IDRamo", "IDSubRamo", "IDMon", "IDFPago", "IDEjecutivo", "FechaInicio", "FechaFin", "PrimaTotal", "Estatus", "IDTipoDocto"];
-  const missingFields = requiredFields.filter(f => !payload[f] || payload[f] === "0" || payload[f] === "");
+  console.log(`[HWCAPTURE] Prima original: "${rawPremium}", normalized: "${payload.PrimaTotal}"`);
 
   if (missingFields.length > 0) {
     console.warn(`[HWCAPTURE] WARNING: Missing fields (will attempt anyway): ${missingFields.join(", ")}`);
@@ -476,6 +584,7 @@ async function executeHwcapture(
     missing_fields: missingFields,
     field_mapping: fieldMapping,
     plain_data_xml: dataXmlPlain,
+    url_encoded_data_xml: urlEncodedXml.substring(0, 1000),
     encrypted_data_xml_length: dataXmlEncrypted.length,
     soap_request_redacted: soapEnvelope.replace(
       /<tem:Password>[^<]*<\/tem:Password>/,
@@ -487,11 +596,17 @@ async function executeHwcapture(
     document_stage_status: "sent_to_sicas",
     encryption_used: true,
     encryption_method: encryptionMethod,
+    encryption_error: null,
     iv_used: ivUsed,
     error_message: null,
     endpoint_used: sicasEndpoint,
     soap_action: "http://tempuri.org/ProcesarWS",
     request_timestamp: new Date().toISOString(),
+    prima_original: rawPremium || undefined,
+    prima_normalized: payload.PrimaTotal || undefined,
+    new_document_id_value: "-1",
+    include_dat_docto_detail: true,
+    data_xml_send_mode: "encrypted",
   };
 
   const controller = new AbortController();
@@ -670,12 +785,15 @@ Deno.serve(async (req: Request) => {
       const notAttemptedDiag: DocumentRegistrationDiagnostic = {
         executed: false, method: "ProcesarWS", key_process: "DATA", key_code: "HWCAPTURE",
         tproc: "Save_Data", type_format: "XML", payload_fields: {}, missing_fields: ["IDCli"],
-        field_mapping: {}, plain_data_xml: "", encrypted_data_xml_length: 0,
-        soap_request_redacted: "", soap_response: "", parsed_response: null,
-        detected_id_docto: null, document_stage_status: "not_attempted",
-        encryption_used: false, encryption_method: "none", iv_used: "",
+        field_mapping: {}, plain_data_xml: "", url_encoded_data_xml: "",
+        encrypted_data_xml_length: 0, soap_request_redacted: "", soap_response: "",
+        parsed_response: null, detected_id_docto: null, document_stage_status: "not_attempted",
+        encryption_used: false, encryption_method: "none", encryption_error: null, iv_used: "",
         error_message: "No existe sicas_client_id. Primero se debe crear/resolver el contacto en SICAS.",
         endpoint_used: sicasEndpoint,
+        prima_original: undefined, prima_normalized: undefined,
+        new_document_id_value: "-1", include_dat_docto_detail: true,
+        data_xml_send_mode: "plain_fallback_blocked",
       };
 
       await supabase.from("policy_deliveries").update({
@@ -717,8 +835,32 @@ Deno.serve(async (req: Request) => {
     console.log(`[HWCAPTURE] Resolved ${Object.keys(payload).length} fields, ${warnings.length} warnings`);
     console.log(`[HWCAPTURE] Payload: ${JSON.stringify(payload)}`);
 
+    // Pre-send validation
+    const validation = validatePayloadBeforeSend(payload);
+    if (!validation.valid) {
+      console.error(`[HWCAPTURE] Pre-send validation FAILED: ${validation.errors.join("; ")}`);
+
+      await supabase.from("policy_deliveries").update({
+        sicas_registration_status: "document_not_created",
+        sicas_error_message: `Validacion fallida: ${validation.errors.join("; ")}`,
+        sicas_error_step: "validate_payload",
+        sicas_request_debug: { validation_errors: validation.errors, payload, resolved_sources, warnings },
+      }).eq("id", delivery_id);
+
+      return new Response(
+        JSON.stringify({
+          success: false, status: "validation_failed",
+          error: `No se pudo registrar en SICAS porque faltan datos obligatorios: ${validation.errors.join("; ")}`,
+          validation_errors: validation.errors,
+          warnings,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Execute HWCAPTURE
-    const result = await executeHwcapture(payload, sicasEndpoint, sicasUsername, sicasPassword);
+    const rawPremium = sanitizeField(delivery.total_premium || delivery.extracted_data?.primaTotal);
+    const result = await executeHwcapture(payload, sicasEndpoint, sicasUsername, sicasPassword, rawPremium);
 
     if (result.success && result.documentId) {
       await supabase.from("policy_deliveries").update({
@@ -806,7 +948,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // HWCAPTURE failed - IMPORTANT: update status so it doesn't stay stuck in "registering"
+    // HWCAPTURE failed - update status so it doesn't stay stuck in "registering"
     await supabase.from("policy_deliveries").update({
       sicas_registration_status: "document_not_created",
       sicas_error_message: result.error || "Error desconocido en HWCAPTURE",
