@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Cloud, Database, Clock, Loader2, Download, RefreshCw,
   CheckCircle2, XCircle, Info, StopCircle, Users, ShieldAlert,
+  Stethoscope, Settings2,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { callEdgeFunction } from '../../pages/ProduccionSICASLive';
@@ -40,14 +41,20 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
   const [syncHistory, setSyncHistory] = useState<SyncRun[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [totalDocs, setTotalDocs] = useState<number | null>(null);
+  const [diagRunning, setDiagRunning] = useState(false);
+  const [diagResult, setDiagResult] = useState<{ results: { code: string; success: boolean; records: number; totalRecords: number; error?: string; sampleFields?: string[] }[]; recommendedKeyCode: string | null } | null>(null);
+  const [showConfig, setShowConfig] = useState(false);
+  const [sicasConfig, setSicasConfig] = useState<{ last_successful_report?: string; current_report_code?: string; alternate_report_codes?: string[] } | null>(null);
 
   const loadSyncInfo = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const [{ data: jobs }, { data: countData }] = await Promise.all([
+      const [{ data: jobs }, { data: countData }, { data: configData }] = await Promise.all([
         supabase.from('sicas_sync_jobs').select('*').order('started_at', { ascending: false }).limit(15),
         supabase.rpc('get_sicas_documents_count'),
+        supabase.from('sicas_config').select('last_successful_report, current_report_code, alternate_report_codes').limit(1).maybeSingle(),
       ]);
+      if (configData) setSicasConfig(configData);
       const count = typeof countData === 'number' ? countData : 0;
       // Map sicas_sync_jobs to SyncRun format for display
       const mapped: SyncRun[] = (jobs || []).map(j => ({
@@ -58,10 +65,11 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
         records_upserted: j.total_synced || 0,
         records_failed: j.total_errors || 0,
         status: j.status,
-        error_message: j.status === 'failed' ? (j.error_message?.startsWith('{') ? null : j.error_message) : null,
+        error_message: (j.status === 'failed' || j.status === 'empty') ? (j.error_message?.startsWith('{') ? null : j.error_message) : null,
         started_at: j.started_at,
         finished_at: j.finished_at,
         duration_seconds: j.started_at && j.finished_at ? Math.round((new Date(j.finished_at).getTime() - new Date(j.started_at).getTime()) / 1000) : null,
+        source_api: j.keycode?.endsWith('_SOAP') ? 'SOAP' : j.keycode?.endsWith('_REST') ? 'REST' : 'SOAP',
       }));
       setSyncHistory(mapped);
       setTotalDocs(count ?? 0);
@@ -140,9 +148,13 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
         setSyncing(false); setActiveJobId(null); setSyncProgress(null);
         setSyncResult({ ok: true, stats: { documentsUpserted: job.total_synced || 0, totalInSicas: job.total_in_sicas || 0, errors: job.total_errors || 0 } });
         loadSyncInfo(); onSyncComplete?.();
-      } else if (job.status === 'failed') {
+      } else if (job.status === 'failed' || job.status === 'empty') {
         setSyncing(false); setActiveJobId(null); setSyncProgress(null);
-        setSyncResult({ ok: false, error: job.error_message || 'Error desconocido' });
+        if (job.status === 'empty') {
+          setSyncResult({ ok: true, status: 'empty', localDocsAvailable: job.total_synced || 0, message: job.error_message });
+        } else {
+          setSyncResult({ ok: false, error: job.error_message || 'Error desconocido' });
+        }
         loadSyncInfo();
       } else if (job.status === 'cancelled') {
         setSyncing(false); setActiveJobId(null); setSyncProgress(null);
@@ -194,6 +206,19 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
   const cancelSync = async () => {
     if (!activeJobId) return;
     try { await callEdgeFunction('sicas-bulk-sync', { action: 'cancel', jobId: activeJobId }); } catch {}
+  };
+
+  const runDiagnostic = async () => {
+    setDiagRunning(true); setDiagResult(null);
+    try {
+      const result = await callEdgeFunction('sicas-bulk-sync', { action: 'diagnostic', testAll: true, items: 3, triggeredBy: userId || null });
+      if (result.results) {
+        setDiagResult({ results: result.results, recommendedKeyCode: result.recommendedKeyCode });
+      }
+      loadSyncInfo();
+    } catch (err: any) {
+      setDiagResult({ results: [{ code: 'ERROR', success: false, records: 0, totalRecords: 0, error: err?.message || 'Error desconocido' }], recommendedKeyCode: null });
+    } finally { setDiagRunning(false); }
   };
 
   const lastSync = syncHistory[0];
@@ -280,15 +305,90 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
             )}
 
             {syncResult && (
-              <div className={`mt-4 p-3 rounded-lg border text-sm ${syncResult.ok ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'}`}>
+              <div className={`mt-4 p-3 rounded-lg border text-sm ${
+                syncResult.ok
+                  ? syncResult.status === 'empty'
+                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300'
+                    : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+              }`}>
                 <div className="flex items-start gap-2">
-                  {syncResult.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <XCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+                  {syncResult.ok
+                    ? syncResult.status === 'empty'
+                      ? <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                      : <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+                    : <XCircle className="w-4 h-4 mt-0.5 shrink-0" />}
                   <div>
-                    <p className="font-medium">{syncResult.ok ? 'Sincronizacion completa' : 'Error en sincronizacion'}</p>
-                    {syncResult.ok && syncResult.stats && <p className="text-xs mt-1 opacity-80">{formatNumber(syncResult.stats.documentsUpserted)} documentos sincronizados</p>}
+                    <p className="font-medium">
+                      {syncResult.ok
+                        ? syncResult.status === 'empty'
+                          ? 'SOAP sin resultados - datos locales disponibles'
+                          : 'Sincronizacion completa'
+                        : 'Error en sincronizacion'}
+                    </p>
+                    {syncResult.ok && syncResult.status === 'empty' && (
+                      <p className="text-xs mt-1 opacity-80">
+                        La consulta SOAP no devolvio registros nuevos, pero hay {formatNumber(syncResult.localDocsAvailable || totalDocs || 0)} documentos locales disponibles de sincronizaciones anteriores. Los modulos funcionan con normalidad.
+                      </p>
+                    )}
+                    {syncResult.ok && syncResult.status !== 'empty' && syncResult.stats && <p className="text-xs mt-1 opacity-80">{formatNumber(syncResult.stats.documentsUpserted)} documentos sincronizados</p>}
                     {!syncResult.ok && <p className="text-xs mt-1 opacity-80">{syncResult.error as string}</p>}
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Diagnostic & Config */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Stethoscope className="w-4 h-4" style={{ color: accentColor }} /> Diagnostico SOAP
+              </h3>
+              <button onClick={() => setShowConfig(!showConfig)} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                <Settings2 className="w-3.5 h-3.5" /> {showConfig ? 'Ocultar config' : 'Ver config'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Prueba ligera: consulta 3 registros por cada KeyCode configurado para validar conectividad sin saturar SICAS.</p>
+
+            <button onClick={runDiagnostic} disabled={diagRunning || syncing} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+              {diagRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Stethoscope className="w-4 h-4" />} Ejecutar diagnostico
+            </button>
+
+            {diagResult && (
+              <div className="mt-3 space-y-2">
+                {diagResult.results.map(r => (
+                  <div key={r.code} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs ${r.success ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300' : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300'}`}>
+                    <div className="flex items-center gap-2">
+                      {r.success ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                      <span className="font-mono font-medium">{r.code}</span>
+                    </div>
+                    <span>{r.success ? `${r.records} registros (${formatNumber(r.totalRecords)} total)` : r.error?.substring(0, 60) || 'Sin datos'}</span>
+                  </div>
+                ))}
+                {diagResult.recommendedKeyCode && (
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium mt-2">KeyCode recomendado: <span className="font-mono">{diagResult.recommendedKeyCode}</span></p>
+                )}
+              </div>
+            )}
+
+            {showConfig && sicasConfig && (
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Ultimo reporte exitoso:</span>
+                    <p className="font-mono font-medium text-gray-800 dark:text-gray-200">{sicasConfig.last_successful_report || 'Ninguno'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Reporte configurado:</span>
+                    <p className="font-mono font-medium text-gray-800 dark:text-gray-200">{sicasConfig.current_report_code || 'Auto-detect'}</p>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Cadena de fallback:</span>
+                  <p className="font-mono text-xs text-gray-700 dark:text-gray-300 mt-0.5">HWS_DOCTOS → H03117 → HWS03668_WS → H03400</p>
+                </div>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 italic">HAPPDATAL_D004 excluido (es para cobranza, no documentos)</p>
               </div>
             )}
           </div>
@@ -308,6 +408,7 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
                       <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Metodo</th>
                       <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Reporte</th>
                       <th className="px-3 py-2 text-center text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Estado</th>
                       <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">En SICAS</th>
@@ -319,7 +420,10 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
                     {syncHistory.map(run => (
                       <tr key={run.run_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                         <td className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatDate(run.started_at)}</td>
-                        <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{run.keycode || run.module}</td>
+                        <td className="px-3 py-2">
+                          <SourceBadge source={run.source_api || 'SOAP'} />
+                        </td>
+                        <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{(run.keycode || run.module).replace(/_SOAP$|_REST$/, '')}</td>
                         <td className="px-3 py-2 text-center">
                           <SyncStatusBadge status={run.status} />
                         </td>
@@ -361,7 +465,21 @@ function SyncStatusBadge({ status }: { status: string }) {
     ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
     : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
 
+  const label = status === 'empty' ? 'sin datos SOAP' : status;
+
   return (
-    <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${classes}`}>{status}</span>
+    <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${classes}`}>{label}</span>
+  );
+}
+
+function SourceBadge({ source }: { source: string }) {
+  const classes = source === 'REST'
+    ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+    : source === 'DIAGNOSTIC'
+    ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+
+  return (
+    <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${classes}`}>{source}</span>
   );
 }

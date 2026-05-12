@@ -43,6 +43,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function formatNumber(n: number): string {
+  return n.toLocaleString("es-MX");
+}
+
 async function triggerSelfContinuation(jobId: string): Promise<void> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -147,13 +151,13 @@ Deno.serve(async (req: Request) => {
     });
 
     // Determine keycode from DB config with fallback chain (SOAP ProcesarWS)
+    // NOTE: HAPPDATAL_D004 is for cobranza (receivables), NOT documents - excluded intentionally
     const DOCUMENT_REPORT_CODES = [
       sicasConfig?.last_successful_report,
       sicasConfig?.current_report_code,
       "HWS_DOCTOS",
       "H03117",
       "HWS03668_WS",
-      "HAPPDATAL_D004",
       "H03400",
     ].filter((c): c is string => !!c && c.length > 0);
     const reportCodesToTry = [...new Set(DOCUMENT_REPORT_CODES)];
@@ -384,22 +388,37 @@ Deno.serve(async (req: Request) => {
         }
 
         if (!firstPageResult || firstPageResult.records.length === 0) {
+          // Check if local documents exist before marking as failed
+          const { count: localDocsCount } = await supabase
+            .from("sicas_documents")
+            .select("*", { count: "exact", head: true });
+
+          const hasLocalData = (localDocsCount || 0) > 0;
+
           const message = lastError
-            ? `No se encontraron documentos con los reportes SOAP configurados. Codigos probados: ${codesToAttempt.join(", ")}. Error: ${lastError}`
+            ? `SOAP no devolvio documentos. Codigos probados: ${codesToAttempt.join(", ")}. Error: ${lastError}`
             : `Ningun reporte SOAP devolvio registros. Codigos probados: ${codesToAttempt.join(", ")}. Verifica KeyCode, permisos o condiciones en la configuracion SICAS.`;
 
+          // If we have local data, mark as 'empty' (not 'failed') - local data is still usable
+          const finalStatus = hasLocalData ? "empty" : "failed";
+          const finalMessage = hasLocalData
+            ? `${message} (${formatNumber(localDocsCount || 0)} documentos locales disponibles de sincronizaciones anteriores)`
+            : message;
+
           await supabase.from("sicas_sync_jobs").update({
-            status: firstPageResult ? "completed" : "failed",
-            error_message: message,
+            status: finalStatus,
+            error_message: finalMessage,
             finished_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            percent: firstPageResult ? 100 : 0,
+            percent: hasLocalData ? 100 : 0,
+            total_synced: localDocsCount || 0,
           }).eq("id", jobId);
 
           return jsonResponse(200, {
-            ok: true,
-            status: firstPageResult ? "completed" : "failed",
-            message,
+            ok: hasLocalData,
+            status: finalStatus,
+            message: finalMessage,
+            localDocsAvailable: localDocsCount || 0,
             triedCodes: codesToAttempt,
             transport: "soap",
           });
@@ -745,6 +764,59 @@ Deno.serve(async (req: Request) => {
           failedPagesRemaining: syncState.failedPages.length,
           droppedPages: syncState.droppedPages.length,
         },
+      });
+    }
+
+    // ── ACTION: diagnostic ──────────────────────────────────────────────
+    if (action === "diagnostic") {
+      const testKeyCode = body.keyCode || keyCode;
+      const testItems = Math.min(body.items || 5, 10);
+
+      console.log(`[BULK-SYNC] DIAGNOSTIC: Testing keyCode "${testKeyCode}" with ${testItems} items...`);
+
+      const results: { code: string; success: boolean; records: number; totalRecords: number; error?: string; sampleFields?: string[] }[] = [];
+      const codesToTest = body.testAll ? reportCodesToTry : [testKeyCode];
+
+      for (const code of codesToTest) {
+        try {
+          const result = await fetchSoapPage(soapClient, code, 1, testItems);
+          results.push({
+            code,
+            success: result.records.length > 0 || result.totalRecords > 0,
+            records: result.records.length,
+            totalRecords: result.totalRecords,
+            sampleFields: result.records.length > 0 ? Object.keys(result.records[0]) : [],
+          });
+          console.log(`[BULK-SYNC] DIAGNOSTIC: "${code}" -> ${result.records.length} records, ${result.totalRecords} total`);
+        } catch (e: unknown) {
+          const errMsg = (e as Error).message || "Unknown error";
+          results.push({ code, success: false, records: 0, totalRecords: 0, error: errMsg });
+          console.log(`[BULK-SYNC] DIAGNOSTIC: "${code}" -> ERROR: ${errMsg}`);
+        }
+      }
+
+      // Log diagnostic run in sync_jobs for history
+      await supabase.from("sicas_sync_jobs").insert({
+        mode: "diagnostic",
+        status: results.some(r => r.success) ? "completed" : "empty",
+        triggered_by: body.triggeredBy || null,
+        keycode: `${testKeyCode}_DIAGNOSTIC`,
+        started_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
+        total_pages: 0,
+        current_page: 0,
+        total_synced: 0,
+        total_in_sicas: results.reduce((sum, r) => sum + r.totalRecords, 0),
+        total_errors: results.filter(r => !r.success).length,
+        percent: 100,
+        error_message: JSON.stringify({ diagnostic: true, results }),
+      });
+
+      return jsonResponse(200, {
+        ok: true,
+        status: "diagnostic_complete",
+        results,
+        recommendedKeyCode: results.find(r => r.success)?.code || null,
       });
     }
 
