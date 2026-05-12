@@ -232,6 +232,27 @@ Deno.serve(async (req: Request) => {
             .update({ status: "processing", updated_at: new Date().toISOString() })
             .eq("id", job.id);
 
+          // Resolve user contact info if not in payload
+          if (job.user_id && (!job.payload?.email || !job.payload?.phone)) {
+            const { data: jobUser } = await supabase
+              .from("usuarios")
+              .select("email_laboral, email_personal, celular_laboral, celular_personal, nombre, apellidos, nombre_completo")
+              .eq("id", job.user_id)
+              .maybeSingle();
+            if (jobUser) {
+              if (!job.payload) job.payload = {};
+              if (!job.payload.email) {
+                job.payload.email = jobUser.email_laboral || jobUser.email_personal || null;
+              }
+              if (!job.payload.phone) {
+                job.payload.phone = jobUser.celular_laboral || jobUser.celular_personal || null;
+              }
+              if (!job.payload.nombre_usuario) {
+                job.payload.nombre_usuario = jobUser.nombre_completo || `${jobUser.nombre || ""} ${jobUser.apellidos || ""}`.trim() || "Usuario";
+              }
+            }
+          }
+
           const isTicketEvent = (job.event_code || "").startsWith("tramite_");
           let ticketId: string | null = null;
 
