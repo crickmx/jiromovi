@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { SicasSoapReportClient, FilterCondition } from '../_shared/sicasSoapReportClient.ts';
+import { createSicasRequestManager } from '../_shared/sicasRequestManager.ts';
 import {
   getCursor,
   updateCursor,
@@ -52,6 +53,21 @@ Deno.serve(async (req: Request) => {
     console.log('[Sync Commissions] Iniciando sincronizacion SOAP...');
     console.log('[Sync Commissions] Source:', source);
     console.log('[Sync Commissions] KeyCode:', keyCode);
+
+    // Check circuit breaker
+    const requestManager = createSicasRequestManager(supabase);
+    const cbState = await requestManager.checkCircuitBreaker();
+    if (cbState.is_open) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          transport: 'soap',
+          error: 'SICAS esta respondiendo con errores o lentitud. Proceso pausado temporalmente.',
+          circuit_breaker: cbState,
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Get SOAP credentials from sicas_config
     const { data: config, error: configError } = await supabase

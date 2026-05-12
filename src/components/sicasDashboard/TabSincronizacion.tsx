@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Cloud, Database, Clock, Loader2, Download, RefreshCw,
-  CheckCircle2, XCircle, Info, StopCircle, Users,
+  CheckCircle2, XCircle, Info, StopCircle, Users, ShieldAlert,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { callEdgeFunction } from '../../pages/ProduccionSICASLive';
 import { formatDate, formatNumber } from '../../lib/sicasDashboardTypes';
+import { preflight, releaseClientLock, checkCircuitBreaker } from '../../lib/sicasRateControl';
 import MapeoUsuariosSICAS from '../produccion/MapeoUsuariosSICAS';
 
 interface Props {
@@ -159,12 +160,24 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
     return () => clearInterval(interval);
   }, [syncing, activeJobId, loadSyncInfo, onSyncComplete]);
 
+  const [circuitBreakerOpen, setCircuitBreakerOpen] = useState(false);
+
+  useEffect(() => {
+    checkCircuitBreaker().then(cb => setCircuitBreakerOpen(cb.is_open));
+  }, []);
+
   const runSync = async (mode: 'full' | 'incremental') => {
+    const blocked = await preflight(`sync-bulk-${mode}`, 'sync_massive', 'bulk_sync');
+    if (blocked) {
+      setSyncResult({ ok: false, error: blocked });
+      return;
+    }
+
     setSyncing(true); setSyncResult(null);
     setSyncProgress({ percent: 0, page: 0, totalPages: 0, fetched: 0, totalInSicas: 0 });
     try {
       const result = await callEdgeFunction('sicas-bulk-sync', { action: 'start', mode, triggeredBy: userId || null });
-      if (!result.ok) { setSyncResult(result); setSyncing(false); setSyncProgress(null); return; }
+      if (!result.ok) { setSyncResult(result); setSyncing(false); setSyncProgress(null); releaseClientLock(`sync-bulk-${mode}`); return; }
       setActiveJobId(result.jobId as string);
       if (result.alreadyRunning) {
         const p = result.progress as any;
@@ -173,6 +186,8 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
     } catch (err: any) {
       setSyncResult({ ok: false, error: err?.message || 'Error desconocido' });
       setSyncing(false); setSyncProgress(null);
+    } finally {
+      releaseClientLock(`sync-bulk-${mode}`);
     }
   };
 
@@ -194,6 +209,16 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
           <Users className="w-4 h-4" /> Mapeo de Usuarios
         </button>
       </div>
+
+      {circuitBreakerOpen && (
+        <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+          <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">SICAS con intermitencia</p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">SICAS esta respondiendo con errores o lentitud. Los procesos automaticos estan pausados temporalmente para evitar saturacion. Se reanudan automaticamente.</p>
+          </div>
+        </div>
+      )}
 
       {activeSection === 'mapeo' ? (
         <MapeoUsuariosSICAS callApi={(body) => callEdgeFunction('sicas-production-query', body)} />

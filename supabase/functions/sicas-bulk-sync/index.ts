@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SicasSoapReportClient } from "../_shared/sicasSoapReportClient.ts";
+import { createSicasRequestManager } from "../_shared/sicasRequestManager.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,6 +69,7 @@ async function fetchSoapPage(
   itemsPerPage: number,
   _incrementalSince?: string
 ): Promise<{ records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number }> {
+  const startMs = Date.now();
   const result = await client.executeReport({
     keyCode,
     page,
@@ -116,13 +118,15 @@ Deno.serve(async (req: Request) => {
       .limit(1)
       .maybeSingle();
 
-    // Check REST availability - default is DISABLED
-    const useRest = sicasConfig?.use_rest === true;
-    if (useRest) {
-      // REST is explicitly disabled - return clear message
-      // This block is a safeguard: even if use_rest is true in config,
-      // we know the endpoint returns 404 so we override to SOAP
-      console.log("[BULK-SYNC] REST API is not available (endpoint returns 404). Using SOAP.");
+    // Check circuit breaker before proceeding
+    const requestManager = createSicasRequestManager(supabase);
+    const cbState = await requestManager.checkCircuitBreaker();
+    if (cbState.is_open && action !== "status" && action !== "cancel") {
+      return jsonResponse(503, {
+        ok: false,
+        error: "SICAS esta respondiendo con errores o lentitud. MOVI pauso temporalmente los procesos automaticos para evitar saturacion.",
+        circuit_breaker: cbState,
+      });
     }
 
     // Always use SOAP - REST is disabled until SICAS confirms availability
@@ -547,6 +551,15 @@ Deno.serve(async (req: Request) => {
           const elapsed = (Date.now() - batchStart) / 1000;
           if (elapsed >= MAX_SECONDS) break;
 
+          // Check circuit breaker mid-batch
+          if (pagesThisBatch > 0 && pagesThisBatch % 5 === 0) {
+            const midCb = await requestManager.checkCircuitBreaker();
+            if (midCb.is_open) {
+              console.log("[BULK-SYNC] Circuit breaker tripped mid-batch. Pausing.");
+              break;
+            }
+          }
+
           const page = syncState.currentPage;
 
           if (pagesThisBatch > 0) {
@@ -634,11 +647,24 @@ Deno.serve(async (req: Request) => {
               break;
             }
           } catch (e: unknown) {
-            console.error(
-              `[BULK-SYNC] Page ${page} error: ${(e as Error).message}`
-            );
+            const errMsg = (e as Error).message || "";
+            console.error(`[BULK-SYNC] Page ${page} error: ${errMsg}`);
             syncState.totalErrors++;
             syncState.failedPages.push(page);
+
+            // Record error in circuit breaker
+            const isTimeout = errMsg.includes("timeout") || errMsg.includes("Timeout");
+            await supabase.rpc("record_sicas_error", { p_is_timeout: isTimeout });
+
+            // Log the failed call
+            await requestManager.logCall({
+              processType: "sync",
+              module: "documents",
+              keyCode: effectiveKeyCode,
+              responseSuccess: false,
+              errorMessage: errMsg,
+              errorCode: isTimeout ? "TIMEOUT" : "SOAP_ERROR",
+            });
           }
 
           syncState.currentPage++;

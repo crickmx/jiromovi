@@ -26,6 +26,7 @@ import {
 } from '../lib/sicasUtils';
 import type { SicasConfig, SicasDespachoWithMapping, SicasVendedorWithMapping } from '../lib/sicasTypes';
 import HwcaptureConfigSection from '../components/produccion/HwcaptureConfigSection';
+import SicasRateControlPanel from '../components/produccion/SicasRateControlPanel';
 
 export default function SicasAdmin() {
   const navigate = useNavigate();
@@ -968,20 +969,20 @@ export default function SicasAdmin() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6 mb-6">
+        <TabsList className="grid w-full grid-cols-7 mb-6">
           <TabsTrigger value="conexion">Conexión</TabsTrigger>
           <TabsTrigger value="despachos" className="relative">
-            Mapeo Despachos
+            Despachos
             {despachos.length > 0 && (
-              <Badge className="ml-2 bg-green-500 text-white text-xs px-1.5 py-0">
+              <Badge className="ml-1 bg-green-500 text-white text-xs px-1.5 py-0">
                 {despachos.length}
               </Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="vendedores" className="relative">
-            Mapeo Vendedores
+            Vendedores
             {vendedores.length > 0 && (
-              <Badge className="ml-2 bg-green-500 text-white text-xs px-1.5 py-0">
+              <Badge className="ml-1 bg-green-500 text-white text-xs px-1.5 py-0">
                 {vendedores.length}
               </Badge>
             )}
@@ -989,12 +990,13 @@ export default function SicasAdmin() {
           <TabsTrigger value="produccion" className="relative">
             Producción
             {totalPolizas > 0 && (
-              <Badge className="ml-2 bg-accent text-white text-xs px-1.5 py-0">
+              <Badge className="ml-1 bg-accent text-white text-xs px-1.5 py-0">
                 {totalPolizas}
               </Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="hwcapture">HWCAPTURE</TabsTrigger>
+          <TabsTrigger value="control">Control</TabsTrigger>
           <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
         </TabsList>
 
@@ -2262,6 +2264,10 @@ export default function SicasAdmin() {
           <Section>
             <HwcaptureConfigSection />
           </Section>
+        </TabsContent>
+
+        <TabsContent value="control">
+          <SicasRateControlPanel />
         </TabsContent>
 
         <TabsContent value="diagnostico">

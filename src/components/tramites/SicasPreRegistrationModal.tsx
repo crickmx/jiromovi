@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { supabase } from '../../lib/supabase';
+import { preflight, releaseClientLock } from '../../lib/sicasRateControl';
 
 interface DeliveryRecord {
   id: string;
@@ -222,6 +223,12 @@ export default function SicasPreRegistrationModal({
   }
 
   async function handleSyncCatalogs() {
+    const blocked = await preflight('sicas-sync-catalogs');
+    if (blocked) {
+      setSyncMessage({ type: 'error', text: blocked });
+      return;
+    }
+
     setSyncing(true);
     setSyncMessage(null);
     try {
@@ -245,10 +252,17 @@ export default function SicasPreRegistrationModal({
       setSyncMessage({ type: 'error', text: err.message });
     } finally {
       setSyncing(false);
+      releaseClientLock('sicas-sync-catalogs');
     }
   }
 
   async function handleAutoResolveAndRegister() {
+    const blocked = await preflight(`sicas-auto-resolve-${record.id}`);
+    if (blocked) {
+      setClientCreateStatus(blocked);
+      return;
+    }
+
     setCreatingClient(true);
     setClientCreateStatus('Resolviendo datos y registrando en SICAS...');
     try {
@@ -316,6 +330,7 @@ export default function SicasPreRegistrationModal({
       setClientCreateStatus(`Error: ${err.message}`);
     } finally {
       setCreatingClient(false);
+      releaseClientLock(`sicas-auto-resolve-${record.id}`);
     }
   }
 

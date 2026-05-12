@@ -8,6 +8,7 @@ import VendorSearchCombobox from '../components/lectorQualitas/VendorSearchCombo
 import CompletarDatosSicasModal from '../components/tramites/CompletarDatosSicasModal';
 import SicasPreRegistrationModal from '../components/tramites/SicasPreRegistrationModal';
 import type { SicasVendorOption } from '../lib/lectorQualitasTypes';
+import { preflight, releaseClientLock, checkCircuitBreaker, getSicasUserMessage } from '../lib/sicasRateControl';
 
 interface ExtractedCoverData {
   tipoPoliza?: string;
@@ -970,6 +971,13 @@ function HistorialTab({ usuario }: { usuario: any }) {
 
   const handleRegisterSicas = async (record: DeliveryRecord) => {
     setConfirmModal(null);
+
+    const blocked = await preflight(`sicas-register-${record.id}`);
+    if (blocked) {
+      setRegisterResult({ id: record.id, success: false, message: blocked });
+      return;
+    }
+
     setRegistering(record.id);
     setRegisterResult(null);
 
@@ -1001,10 +1009,17 @@ function HistorialTab({ usuario }: { usuario: any }) {
       setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
     } finally {
       setRegistering(null);
+      releaseClientLock(`sicas-register-${record.id}`);
     }
   };
 
   const handleResolveSicas = async (record: DeliveryRecord) => {
+    const blocked = await preflight(`sicas-resolve-${record.id}`);
+    if (blocked) {
+      setRegisterResult({ id: record.id, success: false, message: blocked });
+      return;
+    }
+
     setResolving(record.id);
     setRegisterResult(null);
 
@@ -1052,6 +1067,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
       setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
     } finally {
       setResolving(null);
+      releaseClientLock(`sicas-resolve-${record.id}`);
     }
   };
 
@@ -1063,6 +1079,12 @@ function HistorialTab({ usuario }: { usuario: any }) {
         success: false,
         message: `No se puede registrar en SICAS porque faltan datos obligatorios: ${missingFields.join(', ')}.`
       });
+      return;
+    }
+
+    const blocked = await preflight(`sicas-doc-${record.id}`);
+    if (blocked) {
+      setRegisterResult({ id: record.id, success: false, message: blocked });
       return;
     }
 
@@ -1100,12 +1122,19 @@ function HistorialTab({ usuario }: { usuario: any }) {
       setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
     } finally {
       setResolving(null);
+      releaseClientLock(`sicas-doc-${record.id}`);
     }
   };
 
   const handleRetryLookup = async (record: DeliveryRecord) => {
     if (!record.sicas_document_id && !record.sicas_registered_at) {
       setRegisterResult({ id: record.id, success: false, message: 'No existe IDDocto de SICAS. El documento no ha sido registrado aun. Usa "Registrar en SICAS" primero.' });
+      return;
+    }
+
+    const blocked = await preflight(`sicas-lookup-${record.id}`);
+    if (blocked) {
+      setRegisterResult({ id: record.id, success: false, message: blocked });
       return;
     }
 
@@ -1136,6 +1165,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
       setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
     } finally {
       setResolving(null);
+      releaseClientLock(`sicas-lookup-${record.id}`);
     }
   };
 
@@ -1146,6 +1176,13 @@ function HistorialTab({ usuario }: { usuario: any }) {
   const handleManualCapture = async () => {
     if (!manualCaptureModal || !manualDocId.trim()) return;
     const record = manualCaptureModal;
+
+    const blocked = await preflight(`sicas-manual-${record.id}`);
+    if (blocked) {
+      setRegisterResult({ id: record.id, success: false, message: blocked });
+      return;
+    }
+
     setManualCaptureModal(null);
     setResolving(record.id);
     setRegisterResult(null);
@@ -1168,6 +1205,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
       setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
     } finally {
       setResolving(null);
+      releaseClientLock(`sicas-manual-${record.id}`);
     }
   };
 

@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js@4.2.0";
+import { createSicasRequestManager } from "../_shared/sicasRequestManager.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1918,6 +1919,21 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Circuit breaker check
+    const requestManager = createSicasRequestManager(supabase);
+    const cbState = await requestManager.checkCircuitBreaker();
+    if (cbState.is_open) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          step: "start",
+          error: "SICAS esta respondiendo con errores o lentitud. Proceso pausado temporalmente.",
+          circuit_breaker: cbState,
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const sicasUsername = Deno.env.get("SICAS_USERNAME") || "";
     const sicasPassword = Deno.env.get("SICAS_PASSWORD") || "";
