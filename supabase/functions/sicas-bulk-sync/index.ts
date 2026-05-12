@@ -1,7 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SicasSoapReportClient } from "../_shared/sicasSoapReportClient.ts";
-import { createSicasRequestManager } from "../_shared/sicasRequestManager.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -119,8 +118,8 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     // Check circuit breaker before proceeding
-    const requestManager = createSicasRequestManager(supabase);
-    const cbState = await requestManager.checkCircuitBreaker();
+    const { data: cbData } = await supabase.rpc('check_sicas_circuit_breaker');
+    const cbState = cbData || { is_open: false };
     if (cbState.is_open && action !== "status" && action !== "cancel") {
       return jsonResponse(503, {
         ok: false,
@@ -553,8 +552,8 @@ Deno.serve(async (req: Request) => {
 
           // Check circuit breaker mid-batch
           if (pagesThisBatch > 0 && pagesThisBatch % 5 === 0) {
-            const midCb = await requestManager.checkCircuitBreaker();
-            if (midCb.is_open) {
+            const { data: midCbData } = await supabase.rpc('check_sicas_circuit_breaker');
+            if (midCbData?.is_open) {
               console.log("[BULK-SYNC] Circuit breaker tripped mid-batch. Pausing.");
               break;
             }
@@ -657,13 +656,19 @@ Deno.serve(async (req: Request) => {
             await supabase.rpc("record_sicas_error", { p_is_timeout: isTimeout });
 
             // Log the failed call
-            await requestManager.logCall({
-              processType: "sync",
+            await supabase.from("sicas_api_call_logs").insert({
+              process_type: "sync",
               module: "documents",
-              keyCode: effectiveKeyCode,
-              responseSuccess: false,
-              errorMessage: errMsg,
-              errorCode: isTimeout ? "TIMEOUT" : "SOAP_ERROR",
+              method: "ProcesarWS",
+              key_code: effectiveKeyCode,
+              response_success: false,
+              response_time_ms: 0,
+              retry_count: 0,
+              was_cached: false,
+              was_rate_limited: false,
+              was_blocked: false,
+              error_message: errMsg,
+              error_code: isTimeout ? "TIMEOUT" : "SOAP_ERROR",
             });
           }
 
