@@ -708,6 +708,21 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json();
+
+    if (body.health_check === true) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          function: "sicas-register-document-delivery",
+          status: "ok",
+          timestamp: new Date().toISOString(),
+          credentials_configured: !!(sicasUsername && sicasPassword),
+          endpoint: sicasEndpoint,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const delivery_id = body.delivery_id || body.policy_delivery_id || body.id;
 
     if (!delivery_id) {

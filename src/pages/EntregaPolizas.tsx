@@ -93,14 +93,71 @@ function looksLikeMoviFolio(value: string): boolean {
   return /^[A-Z]{2,4}-\d{4}-\d{3,6}$/i.test(value.trim());
 }
 
+function getDeliveryFieldValue(r: any, ...fieldNames: string[]): string | null {
+  for (const name of fieldNames) {
+    const val = r[name];
+    if (val && String(val).trim() !== '' && val !== 'null' && val !== 'undefined') return String(val).trim();
+  }
+  const ext = r.extracted_data as Record<string, any> | null;
+  if (ext) {
+    for (const name of fieldNames) {
+      const val = ext[name];
+      if (val && String(val).trim() !== '' && val !== 'null' && val !== 'undefined') return String(val).trim();
+    }
+  }
+  return null;
+}
+
 function getMissingFieldsForRegistration(r: DeliveryRecord): string[] {
   const missing: string[] = [];
-  if (!r.policy_number && !r.manual_policy_number) missing.push('Poliza');
-  if (!r.insured_name) missing.push('Asegurado');
-  if (!r.total_premium) missing.push('Prima');
-  if (!r.start_date) missing.push('Fecha inicio');
-  if (!r.end_date) missing.push('Fecha fin');
+  const rec = r as any;
+  if (!getDeliveryFieldValue(rec, 'policy_number', 'manual_policy_number', 'poliza', 'numero_poliza', 'document_number', 'Documento')) missing.push('Poliza');
+  if (!getDeliveryFieldValue(rec, 'insured_name', 'asegurado', 'contratante', 'client_name', 'nombre_asegurado')) missing.push('Asegurado');
+  if (!getDeliveryFieldValue(rec, 'total_premium', 'premium', 'prima', 'prima_neta', 'PrimaNeta')) missing.push('Prima');
+  if (!getDeliveryFieldValue(rec, 'start_date', 'fecha_inicio', 'vigencia_inicio', 'FDesde')) missing.push('Fecha inicio');
+  if (!getDeliveryFieldValue(rec, 'end_date', 'fecha_fin', 'vigencia_fin', 'FHasta')) missing.push('Fecha fin');
   return missing;
+}
+
+function getDeliveryValidationDetails(r: DeliveryRecord): { field: string; value: string | null; source: string }[] {
+  const rec = r as any;
+  const details: { field: string; value: string | null; source: string }[] = [];
+
+  const findSource = (fieldNames: string[]): { value: string | null; source: string } => {
+    for (const name of fieldNames) {
+      if (rec[name] && String(rec[name]).trim()) return { value: String(rec[name]).trim(), source: `delivery.${name}` };
+    }
+    const ext = rec.extracted_data as Record<string, any> | null;
+    if (ext) {
+      for (const name of fieldNames) {
+        if (ext[name] && String(ext[name]).trim()) return { value: String(ext[name]).trim(), source: `extracted_data.${name}` };
+      }
+    }
+    return { value: null, source: 'no encontrado' };
+  };
+
+  const poliza = findSource(['policy_number', 'manual_policy_number', 'poliza', 'numero_poliza', 'document_number', 'Documento']);
+  details.push({ field: 'Poliza', ...poliza });
+
+  const asegurado = findSource(['insured_name', 'asegurado', 'contratante', 'client_name', 'nombre_asegurado']);
+  details.push({ field: 'Asegurado', ...asegurado });
+
+  const prima = findSource(['total_premium', 'premium', 'prima', 'prima_neta', 'PrimaNeta']);
+  details.push({ field: 'Prima', ...prima });
+
+  const inicio = findSource(['start_date', 'fecha_inicio', 'vigencia_inicio', 'FDesde']);
+  details.push({ field: 'Fecha inicio', ...inicio });
+
+  const fin = findSource(['end_date', 'fecha_fin', 'vigencia_fin', 'FHasta']);
+  details.push({ field: 'Fecha fin', ...fin });
+
+  const clientId = findSource(['sicas_client_id']);
+  details.push({ field: 'IDCli', ...clientId });
+
+  const vendorId = findSource(['vendor_sicas_id']);
+  details.push({ field: 'IDVend', ...vendorId });
+
+  return details;
 }
 
 export default function EntregaPolizas() {
@@ -1105,21 +1162,34 @@ function HistorialTab({ usuario }: { usuario: any }) {
       });
 
       console.log('[SICAS] Response:', result);
+      console.log('[SICAS] InvokeError:', invokeError);
 
       if (invokeError) {
-        throw new Error(invokeError.message || 'Error de conexion con la funcion SICAS');
+        const errorDetail = [
+          `Funcion: sicas-register-document-delivery`,
+          `delivery_id: ${record.id}`,
+          invokeError.message || 'Sin mensaje de error',
+          (invokeError as any).context ? `Contexto: ${(invokeError as any).context}` : null,
+        ].filter(Boolean).join(' | ');
+        throw new Error(`No se pudo invocar la funcion: ${errorDetail}`);
       }
 
       if (result?.success && result?.status === 'registered') {
         setRegisterResult({ id: record.id, success: true, message: result.message || 'Documento registrado en SICAS correctamente.' });
       } else if (result?.status === 'unverified') {
         setRegisterResult({ id: record.id, success: false, message: result.message || 'SICAS confirmo guardado pero no devolvio IDDocto. Usa busqueda para verificar.' });
+      } else if (result?.status === 'validation_failed') {
+        setRegisterResult({ id: record.id, success: false, message: result.error || `Validacion fallida: ${(result.validation_errors || []).join(', ')}` });
+      } else if (result?.status === 'no_client_id') {
+        setRegisterResult({ id: record.id, success: false, message: result.error || 'No existe IDCli. Primero resuelva el contacto en SICAS.' });
       } else {
-        setRegisterResult({ id: record.id, success: false, message: result?.message || 'No se pudo registrar el documento. Intente de nuevo.' });
+        setRegisterResult({ id: record.id, success: false, message: result?.message || result?.error || 'No se pudo registrar el documento. Intente de nuevo.' });
       }
       loadRecords();
     } catch (err) {
-      setRegisterResult({ id: record.id, success: false, message: err instanceof Error ? err.message : 'Error de conexion' });
+      console.error('[SICAS] handleRegisterDocument error:', err);
+      const msg = err instanceof Error ? err.message : 'Error de conexion con sicas-register-document-delivery';
+      setRegisterResult({ id: record.id, success: false, message: msg });
     } finally {
       setResolving(null);
       releaseClientLock(`sicas-doc-${record.id}`);
@@ -1535,6 +1605,31 @@ function HistorialTab({ usuario }: { usuario: any }) {
                             </div>
                           ) : ['partial_success', 'document_not_created', 'manual_review_required', 'validation_failed', 'error', 'sicas_rejected', 'client_creation_failed'].includes(r.sicas_registration_status || '') ? (
                             /* FLOW A: Document NOT yet registered in SICAS - needs HWCAPTURE */
+                            getMissingFieldsForRegistration(r).length > 0 ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-md">
+                                <ShieldAlert className="w-3 h-3" />
+                                Datos incompletos
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setCompletarDatosRecord(r)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                  title={`Faltan: ${getMissingFieldsForRegistration(r).join(', ')}`}
+                                >
+                                  <Edit3 className="w-2.5 h-2.5" />
+                                  Resolver datos
+                                </button>
+                                <button
+                                  onClick={() => setDiagnosticModal(r)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
+                                >
+                                  <Eye className="w-2.5 h-2.5" />
+                                  Diag
+                                </button>
+                              </div>
+                            </div>
+                            ) : (
                             <div className="flex flex-col items-center gap-1">
                               <button
                                 onClick={() => handleRegisterDocument(r)}
@@ -1565,6 +1660,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                                 </button>
                               </div>
                             </div>
+                            )
                           ) : getMissingFieldsForRegistration(r).length > 0 ? (
                             <div className="flex flex-col items-center gap-1">
                               <button
@@ -1795,6 +1891,45 @@ function DiagnosticModal({ record, onClose }: { record: DeliveryRecord; onClose:
         </div>
 
         <div className="space-y-3">
+          {/* === STAGE 0: DATA VALIDATION === */}
+          {(() => {
+            const validationDetails = getDeliveryValidationDetails(record);
+            const missingFields = getMissingFieldsForRegistration(record);
+            const allPresent = missingFields.length === 0;
+            return (
+              <div className="space-y-2">
+                <p className="text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">Etapa 0: Validacion de datos</p>
+                <div className={`border rounded-lg p-3 space-y-2 ${allPresent ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-neutral-500">Estado:</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${allPresent ? 'text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30' : 'text-red-700 bg-red-100 dark:bg-red-900/30'}`}>
+                      {allPresent ? 'Datos completos' : `Faltan ${missingFields.length} campo(s)`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-1 text-[10px]">
+                    {validationDetails.map((d) => (
+                      <div key={d.field} className="flex items-start gap-2">
+                        <span className={`w-2 h-2 rounded-full mt-0.5 flex-shrink-0 ${d.value ? 'bg-emerald-500' : 'bg-red-400'}`} />
+                        <div className="min-w-0">
+                          <span className="font-medium text-neutral-700 dark:text-neutral-300">{d.field}:</span>{' '}
+                          <span className={`font-mono ${d.value ? 'text-neutral-800 dark:text-white' : 'text-red-500 italic'}`}>
+                            {d.value || 'N/A'}
+                          </span>
+                          <span className="text-[9px] text-neutral-400 ml-1">({d.source})</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {!allPresent && (
+                    <p className="text-[9px] text-red-600 dark:text-red-400 font-medium pt-1 border-t border-red-100 dark:border-red-800">
+                      HWCAPTURE no se puede ejecutar porque faltan datos obligatorios. Use "Resolver datos" para completar.
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* === STAGE 1: CONTACT / CLIENT === */}
           {(() => {
             const contactStatus = (record as any).sicas_contact_status as string | null;
