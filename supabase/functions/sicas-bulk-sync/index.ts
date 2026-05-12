@@ -107,14 +107,25 @@ Deno.serve(async (req: Request) => {
     // Read config for keycode
     const { data: sicasConfig } = await supabase
       .from("sicas_config")
-      .select("endpoint, sicas_usuario, sicas_password, code_auth")
+      .select("endpoint, sicas_usuario, sicas_password, code_auth, current_report_code, last_successful_report, alternate_report_codes, report_test_history")
       .limit(1)
       .maybeSingle();
 
-    // Determine REST keycode (HWS_DOCTOS is the standard for all documents)
-    const keyCode = "HWS_DOCTOS";
+    // Determine REST keycode from DB config with fallback chain
+    const DOCUMENT_REPORT_CODES = [
+      sicasConfig?.last_successful_report,
+      sicasConfig?.current_report_code,
+      "HWS_DOCTOS",
+      "H03117",
+      "HWS03668_WS",
+    ].filter((c): c is string => !!c && c.length > 0);
+    // Deduplicate while preserving priority order
+    const reportCodesToTry = [...new Set(DOCUMENT_REPORT_CODES)];
 
-    console.log(`[BULK-SYNC] Using REST API with keyCode: ${keyCode}`);
+    // Allow override from request body
+    const keyCode = body.keyCode || reportCodesToTry[0] || "HWS_DOCTOS";
+
+    console.log(`[BULK-SYNC] Using REST API with keyCode: ${keyCode} (fallbacks: ${reportCodesToTry.slice(1).join(", ")})`);
 
     // Create REST client with DB auth (code_auth from sicas_config)
     let restClient: SicasRestClient;
@@ -256,6 +267,9 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // Use the keycode stored in the job (set during discovery or start)
+      const effectiveKeyCode = job.keycode ? job.keycode.replace(/_REST$/, "").replace(/_SOAP$/, "") : keyCode;
+
       let syncState: SyncState;
       try {
         syncState = JSON.parse(job.error_message || "{}");
@@ -280,32 +294,85 @@ Deno.serve(async (req: Request) => {
       if (syncState.totalPages === 0) {
         console.log("[BULK-SYNC] Discovery phase: fetching page 1 via REST...");
         let firstPageResult: { records: Record<string, unknown>[]; totalPages: number; totalRecords: number; currentPage: number } | null = null;
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          try {
-            firstPageResult = await fetchRestPage(
-              restClient, keyCode, 1, ITEMS_PER_PAGE, syncState.incrementalSince
-            );
-            break;
-          } catch (e: unknown) {
-            console.error(`[BULK-SYNC] Page 1 attempt ${attempt}/3 failed: ${(e as Error).message}`);
-            if (attempt === 3) {
-              await supabase.from("sicas_sync_jobs").update({
-                status: "failed",
-                error_message: `Error en pagina 1 despues de 3 intentos (REST): ${(e as Error).message}`,
-                finished_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              }).eq("id", jobId);
-              return jsonResponse(200, { ok: true, status: "failed", error: (e as Error).message });
+        let effectiveKeyCode = keyCode;
+
+        // Try primary keycode, then fallbacks for non-retryable errors
+        const codesToAttempt = [keyCode, ...reportCodesToTry.filter(c => c !== keyCode)];
+        let lastError = "";
+
+        for (const tryCode of codesToAttempt) {
+          let succeeded = false;
+          for (let attempt = 1; attempt <= MAX_RETRIES_PER_PAGE; attempt++) {
+            try {
+              firstPageResult = await fetchRestPage(
+                restClient, tryCode, 1, ITEMS_PER_PAGE, syncState.incrementalSince
+              );
+              effectiveKeyCode = tryCode;
+              succeeded = true;
+              break;
+            } catch (e: unknown) {
+              const errMsg = (e as Error).message || "";
+              lastError = errMsg;
+              console.error(`[BULK-SYNC] Page 1 with code "${tryCode}" attempt ${attempt}/${MAX_RETRIES_PER_PAGE} failed: ${errMsg}`);
+
+              // Non-retryable errors: don't waste attempts, try next code
+              const isNonRetryable = /no encontrado|not found|no existe|no habilitado|not enabled|invalid.*report|credenciales|unauthorized|forbidden/i.test(errMsg);
+              if (isNonRetryable) {
+                console.warn(`[BULK-SYNC] Non-retryable error for code "${tryCode}": ${errMsg}. Trying next code...`);
+                // Update config to mark this code as invalid
+                await supabase.from("sicas_config").update({
+                  report_test_history: {
+                    ...(sicasConfig?.report_test_history || {}),
+                    last_test_at: new Date().toISOString(),
+                    last_failed_code: tryCode,
+                    last_failed_error: errMsg,
+                  },
+                  updated_at: new Date().toISOString(),
+                }).eq("id", sicasConfig?.id || "");
+                break; // Break retry loop, move to next code
+              }
+
+              // Retryable errors: wait and retry same code
+              if (attempt === MAX_RETRIES_PER_PAGE) break;
+              await sleep(RETRY_DELAY_MS * attempt);
             }
-            await sleep(5000 * attempt);
+          }
+          if (succeeded) {
+            // Save the working code to config for future use
+            if (tryCode !== sicasConfig?.last_successful_report) {
+              await supabase.from("sicas_config").update({
+                last_successful_report: tryCode,
+                report_test_history: {
+                  ...(sicasConfig?.report_test_history || {}),
+                  last_test_at: new Date().toISOString(),
+                  successful_codes: [...new Set([...(sicasConfig?.report_test_history?.successful_codes || []), tryCode])],
+                },
+                updated_at: new Date().toISOString(),
+              }).eq("id", sicasConfig?.id || "");
+            }
+            console.log(`[BULK-SYNC] Successfully connected with code "${tryCode}"`);
+            break;
           }
         }
+
         if (!firstPageResult) {
+          const friendlyMsg = /no encontrado|not found/i.test(lastError)
+            ? `Ningun reporte SICAS valido encontrado. Codigos probados: ${codesToAttempt.join(", ")}. Configura un reporte valido en Configuracion SICAS.`
+            : `Error en pagina 1 despues de intentar ${codesToAttempt.length} codigo(s) REST: ${lastError}`;
           await supabase.from("sicas_sync_jobs").update({
-            status: "failed", error_message: "No se pudo obtener pagina 1 via REST",
-            finished_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+            status: "failed",
+            error_message: friendlyMsg,
+            finished_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           }).eq("id", jobId);
-          return jsonResponse(200, { ok: true, status: "failed" });
+          return jsonResponse(200, { ok: true, status: "failed", error: friendlyMsg, triedCodes: codesToAttempt });
+        }
+
+        // Update job keycode if we used a different one
+        if (effectiveKeyCode !== keyCode) {
+          await supabase.from("sicas_sync_jobs").update({
+            keycode: `${effectiveKeyCode}_REST`,
+          }).eq("id", jobId);
         }
 
         syncState.totalPages = firstPageResult.totalPages;
@@ -320,7 +387,7 @@ Deno.serve(async (req: Request) => {
           const despachoNameToOffice = await loadDespachoNameMap(supabase);
           const { vendorToUser, vendorToOficina } = await loadVendorMaps(supabase);
           const documents = firstPageResult.records
-            .map((raw) => mapDocument(raw, keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
+            .map((raw) => mapDocument(raw, effectiveKeyCode || keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
             .filter((d) => d !== null);
           const result = await upsertDocuments(supabase, documents);
           syncState.totalUpserted += result.upserted;
@@ -413,7 +480,7 @@ Deno.serve(async (req: Request) => {
           console.log(`[BULK-SYNC] RETRY: page ${page} attempt ${attempts}/${MAX_RETRIES_PER_PAGE}...`);
           try {
             const pageResult = await fetchRestPage(
-              restClient, keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
+              restClient, effectiveKeyCode || keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
             );
 
             if (pageResult.records.length > 0) {
@@ -421,7 +488,7 @@ Deno.serve(async (req: Request) => {
               syncState.retriedPages++;
               delete syncState.retryAttempts[pageKey];
               const documents = pageResult.records
-                .map((raw) => mapDocument(raw, keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
+                .map((raw) => mapDocument(raw, effectiveKeyCode || keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
                 .filter((d) => d !== null);
               const result = await upsertDocuments(supabase, documents);
               syncState.totalUpserted += result.upserted;
@@ -466,7 +533,7 @@ Deno.serve(async (req: Request) => {
 
           try {
             const pageResult = await fetchRestPage(
-              restClient, keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
+              restClient, effectiveKeyCode || keyCode, page, ITEMS_PER_PAGE, syncState.incrementalSince
             );
 
             if (pageResult.records.length === 0) {
@@ -484,7 +551,7 @@ Deno.serve(async (req: Request) => {
                     syncState.totalFetched += retryResult.records.length;
                     syncState.retriedPages++;
                     const documents = retryResult.records
-                      .map((raw) => mapDocument(raw, keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
+                      .map((raw) => mapDocument(raw, effectiveKeyCode || keyCode, despachoNameToOffice, vendorToUser, vendorToOficina))
                       .filter((d) => d !== null);
                     const result = await upsertDocuments(supabase, documents);
                     syncState.totalUpserted += result.upserted;
