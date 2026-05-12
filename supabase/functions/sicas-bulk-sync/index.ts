@@ -224,11 +224,20 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const soapEndpoint =
-      Deno.env.get("SICAS_SOAP_ENDPOINT") ||
-      "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx";
-    const sicasUsername = Deno.env.get("SICAS_USERNAME") || "";
-    const sicasPassword = Deno.env.get("SICAS_PASSWORD") || "";
+    // Read credentials: env vars take priority (proven working), fallback to sicas_config table
+    const { data: sicasConfig } = await supabase
+      .from("sicas_config")
+      .select("endpoint, sicas_usuario, sicas_password")
+      .limit(1)
+      .maybeSingle();
+
+    const soapEndpoint = Deno.env.get("SICAS_SOAP_ENDPOINT")
+      || sicasConfig?.endpoint
+      || "https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx";
+    const sicasUsername = Deno.env.get("SICAS_USERNAME") || sicasConfig?.sicas_usuario || "";
+    const sicasPassword = Deno.env.get("SICAS_PASSWORD") || sicasConfig?.sicas_password || "";
+
+    console.log(`[BULK-SYNC] Using endpoint: ${soapEndpoint}, user: ${sicasUsername.substring(0, 3)}***`);
 
     // ── ACTION: start ──────────────────────────────────────────────────
     if (action === "start") {
