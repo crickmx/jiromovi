@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import CryptoJS from "npm:crypto-js@4.2.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1613,111 +1614,26 @@ function buildHwcaptureDataXml(sanitizedPayload: Record<string, string>): string
   return `<InfoData><DatDocumentos>${docElements.join("")}</DatDocumentos><DatDoctoDetail><IDDocto>-1</IDDocto></DatDoctoDetail></InfoData>`;
 }
 
-async function encryptDataXml(plainXml: string, username: string): Promise<string> {
-  const encoder = new TextEncoder();
-
-  // Key: pad/truncate to 24 bytes for TripleDES (192-bit)
-  const keyBytes = encoder.encode(SICAS_3DES_KEY);
-  const key24 = new Uint8Array(24);
-  key24.set(keyBytes.slice(0, 24));
-
-  // IV: first 8 characters of username
-  const ivStr = username.substring(0, 8).padEnd(8, "\0");
-  const iv = encoder.encode(ivStr);
-
-  // Plaintext with zero-padding to 8-byte block boundary
-  const plainBytes = encoder.encode(plainXml);
-  const blockSize = 8;
-  const paddedLen = Math.ceil(plainBytes.length / blockSize) * blockSize;
-  const padded = new Uint8Array(paddedLen);
-  padded.set(plainBytes);
-
-  // Import key for 3DES-CBC
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    key24,
-    { name: "DES-EDE3-CBC" as any, length: 192 },
-    false,
-    ["encrypt"]
-  );
-
-  // Encrypt
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "DES-EDE3-CBC" as any, iv },
-    cryptoKey,
-    padded
-  );
-
-  // Return Base64 encoded
-  const encBytes = new Uint8Array(encrypted);
-  let binary = "";
-  for (let i = 0; i < encBytes.length; i++) {
-    binary += String.fromCharCode(encBytes[i]);
-  }
-  return btoa(binary);
-}
-
-// Fallback: manual TripleDES implementation for Deno environments where
-// crypto.subtle may not support DES-EDE3-CBC
-async function encryptDataXmlFallback(plainXml: string, username: string): Promise<string> {
+// TripleDES encryption using crypto-js (pure JS, works in Deno/Edge Functions)
+function encryptDataXmlFallback(plainXml: string, username: string): string {
   // URL-encode the XML before encrypting (per SICAS docs)
   const urlEncodedXml = encodeURIComponent(plainXml);
 
-  const encoder = new TextEncoder();
+  // Key: exactly 24 bytes for TripleDES (192-bit) - parse as Latin1 word array
+  const key = CryptoJS.enc.Latin1.parse(SICAS_3DES_KEY);
 
-  // Key: exactly 24 bytes
-  const keyStr = SICAS_3DES_KEY;
-  const keyBytes = encoder.encode(keyStr);
-  const key24 = new Uint8Array(24);
-  key24.set(keyBytes.slice(0, Math.min(keyBytes.length, 24)));
-
-  // IV: first 8 characters of username
+  // IV: first 8 characters of username, padded with null bytes
   const ivStr = username.substring(0, 8).padEnd(8, "\0");
-  const ivBytes = encoder.encode(ivStr);
+  const iv = CryptoJS.enc.Latin1.parse(ivStr);
 
-  // Pad plaintext to 8-byte blocks with zeros
-  const plainBytes = encoder.encode(urlEncodedXml);
-  const blockSize = 8;
-  const paddedLen = Math.ceil(plainBytes.length / blockSize) * blockSize;
-  const padded = new Uint8Array(paddedLen);
-  padded.set(plainBytes);
+  // Encrypt using TripleDES CBC with ZeroPadding
+  const encrypted = CryptoJS.TripleDES.encrypt(
+    urlEncodedXml,
+    key,
+    { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.ZeroPadding }
+  );
 
-  try {
-    // Try Web Crypto API with 3DES
-    const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      key24,
-      { name: "DES-EDE3-CBC", length: 192 } as any,
-      false,
-      ["encrypt"]
-    );
-
-    const encrypted = await crypto.subtle.encrypt(
-      { name: "DES-EDE3-CBC", iv: ivBytes } as any,
-      cryptoKey,
-      padded
-    );
-
-    const encBytes = new Uint8Array(encrypted);
-    let binary = "";
-    for (let i = 0; i < encBytes.length; i++) {
-      binary += String.fromCharCode(encBytes[i]);
-    }
-    return btoa(binary);
-  } catch (_cryptoError) {
-    // If Web Crypto doesn't support 3DES, use Node crypto module (available in Deno)
-    try {
-      const { createCipheriv } = await import("node:crypto");
-      const cipher = createCipheriv("des-ede3-cbc", key24, ivBytes);
-      cipher.setAutoPadding(false);
-      const enc1 = cipher.update(padded);
-      const enc2 = cipher.final();
-      const result = Buffer.concat([enc1, enc2]);
-      return result.toString("base64");
-    } catch (nodeError: any) {
-      throw new Error(`Encryption failed: WebCrypto and Node crypto both unavailable. ${nodeError.message}`);
-    }
-  }
+  return encrypted.toString();
 }
 
 interface DocumentRegistrationDiagnostic {
@@ -1769,12 +1685,16 @@ async function registerDocument(
   let dataXmlEncrypted: string;
   let encryptionMethod = "none";
   try {
-    dataXmlEncrypted = await encryptDataXmlFallback(dataXmlPlain, sicasUsername);
-    encryptionMethod = "TripleDES-CBC-ZeroPad";
+    dataXmlEncrypted = encryptDataXmlFallback(dataXmlPlain, sicasUsername);
+    encryptionMethod = "CryptoJS-TripleDES-CBC";
   } catch (encErr: any) {
-    console.error(`[SICAS Register] Encryption failed: ${encErr.message}. Sending plain XML as fallback.`);
-    dataXmlEncrypted = dataXmlPlain;
-    encryptionMethod = "FAILED_PLAIN_FALLBACK";
+    console.error(`[SICAS Register] Encryption failed: ${encErr.message}. BLOCKING - will NOT send plain XML.`);
+    return {
+      success: false,
+      stage: "document_registration",
+      error: `Cifrado TripleDES falló: ${encErr.message}. Contacte soporte técnico.`,
+      diagnostics: { encryption_error: encErr.message, encryption_method: "FAILED" },
+    };
   }
 
   // Build field mapping for diagnostics

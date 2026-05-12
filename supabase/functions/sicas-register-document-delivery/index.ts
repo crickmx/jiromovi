@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import CryptoJS from "npm:crypto-js@4.2.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -201,67 +202,25 @@ function buildHwcaptureDataXml(sanitizedPayload: Record<string, string>): string
   return `<InfoData><DatDocumentos>${docElements.join("")}</DatDocumentos><DatDoctoDetail><IDDocto>-1</IDDocto></DatDoctoDetail></InfoData>`;
 }
 
-async function encryptDataXml(plainXml: string, username: string): Promise<{ encrypted: string; method: string; urlEncodedXml: string }> {
+function encryptDataXml(plainXml: string, username: string): { encrypted: string; method: string; urlEncodedXml: string } {
   // Step 1: URL-encode the XML before encrypting (per SICAS documentation)
   const urlEncodedXml = encodeURIComponent(plainXml);
 
-  const encoder = new TextEncoder();
+  // Key: exactly 24 bytes for TripleDES (192-bit) - parse as Latin1 word array
+  const key = CryptoJS.enc.Latin1.parse(SICAS_3DES_KEY);
 
-  // Key: exactly 24 bytes for TripleDES (192-bit)
-  const keyBytes = encoder.encode(SICAS_3DES_KEY);
-  const key24 = new Uint8Array(24);
-  key24.set(keyBytes.slice(0, Math.min(keyBytes.length, 24)));
-
-  // IV: first 8 characters of username, padded with nulls
+  // IV: first 8 characters of username, padded with null bytes
   const ivStr = username.substring(0, 8).padEnd(8, "\0");
-  const ivBytes = encoder.encode(ivStr);
+  const iv = CryptoJS.enc.Latin1.parse(ivStr);
 
-  // Pad plaintext to 8-byte blocks with zeros (ZeroPadding)
-  const plainBytes = encoder.encode(urlEncodedXml);
-  const blockSize = 8;
-  const paddedLen = Math.ceil(plainBytes.length / blockSize) * blockSize;
-  const padded = new Uint8Array(paddedLen);
-  padded.set(plainBytes);
+  // Encrypt using TripleDES CBC with ZeroPadding
+  const encrypted = CryptoJS.TripleDES.encrypt(
+    urlEncodedXml,
+    key,
+    { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.ZeroPadding }
+  );
 
-  // Try Web Crypto API first (Supabase Edge Functions support DES-EDE3-CBC)
-  try {
-    const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      key24,
-      { name: "DES-EDE3-CBC", length: 192 } as any,
-      false,
-      ["encrypt"]
-    );
-
-    const encrypted = await crypto.subtle.encrypt(
-      { name: "DES-EDE3-CBC", iv: ivBytes } as any,
-      cryptoKey,
-      padded
-    );
-
-    const encBytes = new Uint8Array(encrypted);
-    let binary = "";
-    for (let i = 0; i < encBytes.length; i++) {
-      binary += String.fromCharCode(encBytes[i]);
-    }
-    return { encrypted: btoa(binary), method: "WebCrypto-DES-EDE3-CBC", urlEncodedXml };
-  } catch (webCryptoError: any) {
-    console.warn(`[HWCAPTURE] WebCrypto DES-EDE3-CBC not available: ${webCryptoError.message}. Trying node:crypto...`);
-  }
-
-  // Fallback: Node.js crypto module (available in Deno)
-  try {
-    const { createCipheriv } = await import("node:crypto");
-    const cipher = createCipheriv("des-ede3-cbc", key24, ivBytes);
-    cipher.setAutoPadding(false);
-    const enc1 = cipher.update(padded);
-    const enc2 = cipher.final();
-    const result = Buffer.concat([enc1, enc2]);
-    return { encrypted: result.toString("base64"), method: "NodeCrypto-des-ede3-cbc", urlEncodedXml };
-  } catch (nodeError: any) {
-    console.error(`[HWCAPTURE] Node crypto also failed: ${nodeError.message}`);
-    throw new Error(`Encryption failed: both WebCrypto and Node crypto unavailable. Node: ${nodeError.message}`);
-  }
+  return { encrypted: encrypted.toString(), method: "CryptoJS-TripleDES-CBC", urlEncodedXml };
 }
 
 // ============================================================
@@ -504,7 +463,7 @@ async function executeHwcapture(
   let urlEncodedXml = "";
 
   try {
-    const result = await encryptDataXml(dataXmlPlain, sicasUsername);
+    const result = encryptDataXml(dataXmlPlain, sicasUsername);
     dataXmlEncrypted = result.encrypted;
     encryptionMethod = result.method;
     urlEncodedXml = result.urlEncodedXml;
