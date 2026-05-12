@@ -78,6 +78,14 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
       .maybeSingle();
 
     if (job) {
+      const startedAt = new Date(job.started_at).getTime();
+      const stuckThreshold = 2 * 60 * 60 * 1000; // 2 hours
+      if (Date.now() - startedAt > stuckThreshold && (job.current_page || 0) === 0) {
+        await supabase.from('sicas_sync_jobs').update({ status: 'failed', finished_at: new Date().toISOString(), error_message: 'Job marcado como fallido automaticamente (stuck >2h sin progreso)' }).eq('id', job.id);
+        setSyncResult({ ok: false, error: 'La sincronizacion anterior se quedo atorada y fue terminada automaticamente. Puedes reintentar.' });
+        loadSyncInfo();
+        return;
+      }
       setActiveJobId(job.id);
       setSyncing(true);
       setSyncProgress({
@@ -88,7 +96,7 @@ export default function TabSincronizacion({ userId, onSyncComplete, accentColor 
         totalInSicas: job.total_in_sicas || 0,
       });
     }
-  }, []);
+  }, [loadSyncInfo]);
 
   useEffect(() => { loadSyncInfo(); checkActiveJob(); }, [loadSyncInfo, checkActiveJob]);
 

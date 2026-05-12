@@ -92,6 +92,16 @@ function looksLikeMoviFolio(value: string): boolean {
   return /^[A-Z]{2,4}-\d{4}-\d{3,6}$/i.test(value.trim());
 }
 
+function getMissingFieldsForRegistration(r: DeliveryRecord): string[] {
+  const missing: string[] = [];
+  if (!r.policy_number && !r.manual_policy_number) missing.push('Poliza');
+  if (!r.insured_name) missing.push('Asegurado');
+  if (!r.total_premium) missing.push('Prima');
+  if (!r.start_date) missing.push('Fecha inicio');
+  if (!r.end_date) missing.push('Fecha fin');
+  return missing;
+}
+
 export default function EntregaPolizas() {
   const { usuario } = useAuth();
   const [activeTab, setActiveTab] = useState<'nueva' | 'historial'>('nueva');
@@ -1166,16 +1176,6 @@ function HistorialTab({ usuario }: { usuario: any }) {
     const record = preRegistrationModal.record;
     setPreRegistrationModal(null);
     await handleRegisterSicas(record);
-  };
-
-  const getMissingFieldsForRegistration = (r: DeliveryRecord): string[] => {
-    const missing: string[] = [];
-    if (!r.policy_number && !r.manual_policy_number) missing.push('Poliza');
-    if (!r.insured_name) missing.push('Asegurado');
-    if (!r.total_premium) missing.push('Prima');
-    if (!r.start_date) missing.push('Fecha inicio');
-    if (!r.end_date) missing.push('Fecha fin');
-    return missing;
   };
 
   const canAttemptRegistration = (r: DeliveryRecord): boolean => {

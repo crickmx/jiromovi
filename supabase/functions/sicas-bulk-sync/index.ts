@@ -452,6 +452,15 @@ Deno.serve(async (req: Request) => {
 
       let pagesThisBatch = 0;
 
+      // Safety check: if too many pages dropped (>60% of total), mark as partial and stop
+      if (syncState.droppedPages.length > syncState.totalPages * 0.6 && syncState.totalPages > 10) {
+        console.log(`[BULK-SYNC] Too many dropped pages (${syncState.droppedPages.length}/${syncState.totalPages}). Marking as partial.`);
+        syncState.currentPage = syncState.totalPages + 1;
+        syncState.failedPages = [];
+        await markComplete(supabase, jobId, syncState);
+        return jsonResponse(200, { ok: true, status: "completed" });
+      }
+
       // Retry mode: process failed pages with staggered delays and max attempts
       if (syncState.currentPage === -1) {
         const pagesToRetry = [...syncState.failedPages];
@@ -658,7 +667,7 @@ Deno.serve(async (req: Request) => {
           total_synced: uniqueCount || 0,
           total_in_sicas: syncState.totalRecordsInSicas,
           total_errors: syncState.totalErrors,
-          current_page: Math.max(0, syncState.currentPage - 1),
+          current_page: syncState.currentPage === -1 ? syncState.totalPages : Math.max(0, syncState.currentPage - 1),
           total_pages: syncState.totalPages,
           percent,
           error_message: JSON.stringify(syncState),
